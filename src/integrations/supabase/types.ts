@@ -94,8 +94,12 @@ export type Database = {
           created_by_user_id: string | null
           description: string | null
           id: string
+          is_promoted: boolean | null
           is_system: boolean | null
           name: string
+          promoted_brand_logo: string | null
+          promoted_brand_name: string | null
+          promoted_until: string | null
           type: string
         }
         Insert: {
@@ -103,8 +107,12 @@ export type Database = {
           created_by_user_id?: string | null
           description?: string | null
           id?: string
+          is_promoted?: boolean | null
           is_system?: boolean | null
           name: string
+          promoted_brand_logo?: string | null
+          promoted_brand_name?: string | null
+          promoted_until?: string | null
           type?: string
         }
         Update: {
@@ -112,8 +120,12 @@ export type Database = {
           created_by_user_id?: string | null
           description?: string | null
           id?: string
+          is_promoted?: boolean | null
           is_system?: boolean | null
           name?: string
+          promoted_brand_logo?: string | null
+          promoted_brand_name?: string | null
+          promoted_until?: string | null
           type?: string
         }
         Relationships: []
@@ -247,11 +259,16 @@ export type Database = {
           avatar_url: string | null
           boost_credits: number | null
           created_at: string
+          custom_theme: string | null
           display_name: string
+          elo_shields: number | null
           id: string
           is_bot: boolean | null
           is_pro: boolean | null
           location: string | null
+          profile_frame: string | null
+          reveals: number | null
+          rewinds: number | null
           socials: Json | null
           status_message: string | null
           updated_at: string
@@ -263,11 +280,16 @@ export type Database = {
           avatar_url?: string | null
           boost_credits?: number | null
           created_at?: string
+          custom_theme?: string | null
           display_name?: string
+          elo_shields?: number | null
           id?: string
           is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
+          profile_frame?: string | null
+          reveals?: number | null
+          rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
           updated_at?: string
@@ -279,17 +301,57 @@ export type Database = {
           avatar_url?: string | null
           boost_credits?: number | null
           created_at?: string
+          custom_theme?: string | null
           display_name?: string
+          elo_shields?: number | null
           id?: string
           is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
+          profile_frame?: string | null
+          reveals?: number | null
+          rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          item_type: string
+          profile_id: string
+          status: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          item_type: string
+          profile_id: string
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          item_type?: string
+          profile_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

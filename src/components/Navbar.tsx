@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Play, User, Settings } from "lucide-react";
+import { Home, Play, User, Settings, ShoppingBag } from "lucide-react";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 const navItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/play", label: "Play", icon: Play },
+  { path: "/shop", label: "Shop", icon: ShoppingBag },
   { path: "/profile", label: "Profile", icon: User },
   { path: "/settings", label: "Settings", icon: Settings },
 ];

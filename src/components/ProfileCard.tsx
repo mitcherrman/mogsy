@@ -1,6 +1,5 @@
-import { Instagram, Youtube, Twitch, Globe, Twitter } from "lucide-react";
+import { Instagram, Youtube, Twitch, Globe, Twitter, Crown, Zap } from "lucide-react";
 import TierBadge from "./TierBadge";
-import { getTierFromElo } from "@/lib/mock-data";
 
 interface ProfileCardProfile {
   id: string;
@@ -12,6 +11,9 @@ interface ProfileCardProfile {
   socials: Record<string, string>;
   elo: number;
   tier: "bronze" | "silver" | "gold" | "platinum";
+  isPro?: boolean;
+  profileFrame?: string;
+  isBoosted?: boolean;
 }
 
 interface ProfileCardProps {
@@ -28,16 +30,42 @@ const socialIcons: Record<string, React.ElementType> = {
   website: Globe,
 };
 
+const frameClasses: Record<string, string> = {
+  default: "",
+  gold: "ring-4 ring-yellow-400/60",
+  neon: "ring-4 ring-primary/60 shadow-[0_0_20px_hsl(210_80%_60%/0.4)]",
+  fire: "ring-4 ring-orange-500/60 shadow-[0_0_20px_hsl(25_100%_50%/0.4)]",
+  diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
+};
+
 export default function ProfileCard({ profile, side, onChoose }: ProfileCardProps) {
+  const frame = profile.profileFrame && frameClasses[profile.profileFrame]
+    ? frameClasses[profile.profileFrame]
+    : "";
+
   return (
     <div
       onClick={onChoose}
       className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-6 flex flex-col items-center text-center gap-4 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
     >
-      <div
-        className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${side === "left" ? "avatar-ring" : "avatar-ring-accent"}`}
-      >
-        <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+      <div className="relative">
+        <div
+          className={`w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${
+            frame || (side === "left" ? "avatar-ring" : "avatar-ring-accent")
+          }`}
+        >
+          <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+        </div>
+        {profile.isPro && (
+          <div className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center">
+            <Crown className="h-4 w-4 text-primary-foreground" />
+          </div>
+        )}
+        {profile.isBoosted && (
+          <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-yellow-500 flex items-center justify-center animate-pulse">
+            <Zap className="h-3.5 w-3.5 text-yellow-950" />
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">

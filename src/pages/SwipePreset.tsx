@@ -3,8 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SwipeAd from "@/components/SwipeAd";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PresetItem {
   id: string;
@@ -14,14 +16,19 @@ interface PresetItem {
   league_id: string;
 }
 
+const AD_INTERVAL = 10;
+
 export default function SwipePreset() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { user } = useAuth();
   const [items, setItems] = useState<PresetItem[]>([]);
   const [pair, setPair] = useState<[PresetItem, PresetItem] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
   const [leagueName, setLeagueName] = useState("");
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
+  const [showAd, setShowAd] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     if (leagueId) loadItems();
@@ -37,6 +44,14 @@ export default function SwipePreset() {
       setItems(data);
       setPair(getRandomPair(data));
     }
+
+    // Check pro status
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles").select("is_pro").eq("user_id", user.id).single();
+      if (profile?.is_pro) setIsPro(true);
+    }
+
     setLoading(false);
   };
 
@@ -68,7 +83,6 @@ export default function SwipePreset() {
         supabase.from("preset_items").update({ elo: newLoserElo }).eq("id", loser.id),
       ]);
 
-      // Update local state
       setItems((prev) =>
         prev.map((i) => {
           if (i.id === winner.id) return { ...i, elo: newWinnerElo };
@@ -77,13 +91,19 @@ export default function SwipePreset() {
         })
       );
 
+      const newCount = matchCount + 1;
+
       setTimeout(() => {
-        setMatchCount((c) => c + 1);
+        setMatchCount(newCount);
         setChosen(null);
-        setPair(getRandomPair(items, [pair[0].id, pair[1].id]));
+        if (!isPro && newCount % AD_INTERVAL === 0) {
+          setShowAd(true);
+        } else {
+          setPair(getRandomPair(items, [pair[0].id, pair[1].id]));
+        }
       }, 600);
     },
-    [pair, items, leagueId, chosen]
+    [pair, items, leagueId, chosen, matchCount, isPro]
   );
 
   if (loading) {
@@ -103,79 +123,88 @@ export default function SwipePreset() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="container mx-auto max-w-4xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Link to="/presets">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-2xl font-extrabold text-foreground">{leagueName}</h1>
-            <p className="text-muted-foreground text-sm">
-              Votes cast: <span className="text-primary font-bold">{matchCount}</span>
-            </p>
+    <>
+      {showAd && (
+        <SwipeAd
+          isPro={isPro}
+          onClose={() => {
+            setShowAd(false);
+            setPair(getRandomPair(items, pair ? [pair[0].id, pair[1].id] : undefined));
+          }}
+        />
+      )}
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex items-center gap-3 mb-6">
+            <Link to="/presets">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-2xl font-extrabold text-foreground">{leagueName}</h1>
+              <p className="text-muted-foreground text-sm">
+                Votes cast: <span className="text-primary font-bold">{matchCount}</span>
+              </p>
+            </div>
+            <Link to={`/leaderboard/${leagueId}`}>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Trophy className="h-4 w-4" /> Rankings
+              </Button>
+            </Link>
           </div>
-          <Link to={`/leaderboard/${leagueId}`}>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Trophy className="h-4 w-4" /> Rankings
-            </Button>
-          </Link>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`pair-${pair[0].id}-${pair[1].id}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            >
+              {pair.map((item, idx) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleChoose(idx as 0 | 1)}
+                  className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                    chosen === idx ? "ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-full h-full object-contain p-8 transition-transform duration-300 group-hover:scale-110"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+                        }}
+                      />
+                    ) : (
+                      <span className="text-6xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-foreground truncate">{item.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Elo: <span className="text-primary font-semibold">{item.elo}</span>
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="flex items-center justify-center my-6">
+            <span className="text-2xl font-black text-gradient">VS</span>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Tap the one you prefer. Rankings update instantly.
+          </p>
         </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`pair-${pair[0].id}-${pair[1].id}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-          >
-            {pair.map((item, idx) => (
-              <button
-                key={item.id}
-                onClick={() => handleChoose(idx as 0 | 1)}
-                className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                  chosen === idx ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      className="w-full h-full object-contain p-8 transition-transform duration-300 group-hover:scale-110"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                      }}
-                    />
-                  ) : (
-                    <span className="text-6xl font-black text-muted-foreground/30">
-                      {item.name.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-foreground truncate">{item.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Elo: <span className="text-primary font-semibold">{item.elo}</span>
-                  </p>
-                </div>
-              </button>
-            ))}
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex items-center justify-center my-6">
-          <span className="text-2xl font-black text-gradient">VS</span>
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Tap the one you prefer. Rankings update instantly.
-        </p>
       </div>
-    </div>
+    </>
   );
 }

@@ -4,10 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Crown, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const frameOptions = [
+  { id: "default", label: "Default", preview: "" },
+  { id: "gold", label: "Gold", preview: "ring-4 ring-yellow-400/60" },
+  { id: "neon", label: "Neon", preview: "ring-4 ring-blue-500/60 shadow-[0_0_15px_hsl(210_80%_60%/0.4)]" },
+  { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
+  { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
+];
 
 export default function Profile() {
   const { user } = useAuth();
@@ -15,6 +23,10 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [selectedFrame, setSelectedFrame] = useState("default");
+  const [boostActive, setBoostActive] = useState(false);
+  const [boostCredits, setBoostCredits] = useState(0);
   const [form, setForm] = useState({
     displayName: "",
     age: "",
@@ -43,6 +55,10 @@ export default function Profile() {
 
     if (profile) {
       setProfileId(profile.id);
+      setIsPro(profile.is_pro || false);
+      setSelectedFrame(profile.profile_frame || "default");
+      setBoostCredits(profile.boost_credits || 0);
+      setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
       setForm({
         displayName: profile.display_name || "",
@@ -92,6 +108,18 @@ export default function Profile() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleActivateBoost = async () => {
+    if (!profileId || boostCredits <= 0) return;
+    const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from("profiles").update({
+      active_boost_until: until,
+      boost_credits: boostCredits - 1,
+    }).eq("id", profileId);
+    setBoostActive(true);
+    setBoostCredits((c) => c - 1);
+    toast({ title: "⚡ Boost activated!", description: "You'll appear 3x more often for 24 hours." });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
@@ -112,6 +140,7 @@ export default function Profile() {
         location: form.location,
         status_message: form.statusMessage,
         socials,
+        profile_frame: isPro ? selectedFrame : "default",
       })
       .eq("id", profileId);
 
@@ -155,6 +184,60 @@ export default function Profile() {
                   <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                 </label>
               </div>
+            </div>
+
+            {/* Exposure Boost */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <Zap className="h-5 w-5 text-primary" />
+                <h3 className="font-bold text-foreground">Exposure Boost</h3>
+              </div>
+              {boostActive ? (
+                <p className="text-sm text-primary font-medium">⚡ Boost is active! You're appearing 3x more often.</p>
+              ) : boostCredits > 0 ? (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">{boostCredits} boost credit{boostCredits > 1 ? "s" : ""} available</p>
+                  <Button type="button" size="sm" onClick={handleActivateBoost}>
+                    Activate Boost
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No boost credits. <a href="/shop" className="text-primary hover:underline">Buy in Shop →</a>
+                </p>
+              )}
+            </div>
+
+            {/* Profile Frame (Pro only) */}
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <Crown className="h-5 w-5 text-primary" />
+                <h3 className="font-bold text-foreground">Profile Frame</h3>
+                {!isPro && <span className="text-[10px] uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full font-bold">Pro</span>}
+              </div>
+              {isPro ? (
+                <div className="flex gap-3 flex-wrap">
+                  {frameOptions.map((frame) => (
+                    <button
+                      key={frame.id}
+                      type="button"
+                      onClick={() => setSelectedFrame(frame.id)}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${
+                        selectedFrame === frame.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/30"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-full bg-secondary ${frame.preview}`} />
+                      <span className="text-[10px] font-medium text-muted-foreground">{frame.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Upgrade to Pro to unlock premium profile frames. <a href="/shop" className="text-primary hover:underline">Go to Shop →</a>
+                </p>
+              )}
             </div>
 
             {/* Basic info */}

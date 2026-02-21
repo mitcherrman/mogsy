@@ -18,6 +18,7 @@ import Presets from "./pages/Presets";
 import SwipePreset from "./pages/SwipePreset";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import Shop from "./pages/Shop";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
               <Route path="/presets" element={<Presets />} />
               <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
+              <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
