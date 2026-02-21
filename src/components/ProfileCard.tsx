@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Instagram, Youtube, Twitch, Globe, Twitter } from "lucide-react";
 import TierBadge from "./TierBadge";
 import { getTierFromElo } from "@/lib/mock-data";
@@ -29,40 +28,11 @@ const socialIcons: Record<string, React.ElementType> = {
   website: Globe,
 };
 
-const cardVariants = {
-  initial: {
-    opacity: 0,
-    scale: 0.97,
-  },
-  animate: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.35,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.95,
-    transition: {
-      duration: 0.2,
-      ease: [0.4, 0, 1, 1] as const,
-    },
-  },
-};
-
 export default function ProfileCard({ profile, side, onChoose }: ProfileCardProps) {
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
+    <div
       onClick={onChoose}
-      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.98 }}
-      className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-6 card-hover flex flex-col items-center text-center gap-4"
+      className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-6 flex flex-col items-center text-center gap-4 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
     >
       <div
         className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${side === "left" ? "avatar-ring" : "avatar-ring-accent"}`}
@@ -97,6 +67,6 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       <div className="text-xs font-bold text-muted-foreground mt-auto">
         ELO {profile.elo}
       </div>
-    </motion.div>
+    </div>
   );
 }
