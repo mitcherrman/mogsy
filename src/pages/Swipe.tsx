@@ -124,29 +124,35 @@ export default function Swipe() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch">
-          <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
+          <div key={`pair-${pair[0].id}-${pair[1].id}`} className="flex flex-col sm:flex-row gap-4 items-stretch">
             <ProfileCard
               key={`left-${pair[0].id}`}
               profile={pair[0]}
               side="left"
               onChoose={() => handleChoose(0)}
             />
-          </AnimatePresence>
 
-          <div className="flex items-center justify-center">
-            <span className="text-3xl font-black text-gradient animate-versus-pulse">VS</span>
-          </div>
+            <div className="flex items-center justify-center">
+              <motion.span
+                key={`vs-${pair[0].id}`}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+                className="text-3xl font-black text-gradient"
+              >
+                VS
+              </motion.span>
+            </div>
 
-          <AnimatePresence mode="wait">
             <ProfileCard
               key={`right-${pair[1].id}`}
               profile={pair[1]}
               side="right"
               onChoose={() => handleChoose(1)}
             />
-          </AnimatePresence>
-        </div>
+          </div>
+        </AnimatePresence>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
           Click on the profile you prefer. Elo updates instantly.

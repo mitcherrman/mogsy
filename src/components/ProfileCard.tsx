@@ -29,27 +29,69 @@ const socialIcons: Record<string, React.ElementType> = {
   website: Globe,
 };
 
+const cardVariants = {
+  initial: (side: "left" | "right") => ({
+    opacity: 0,
+    x: side === "left" ? -60 : 60,
+    scale: 0.95,
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 200,
+      damping: 24,
+      mass: 0.8,
+    },
+  },
+  exit: (side: "left" | "right") => ({
+    opacity: 0,
+    x: side === "left" ? -100 : 100,
+    scale: 0.9,
+    transition: {
+      duration: 0.3,
+      ease: [0.4, 0, 0.2, 1] as const,
+    },
+  }),
+};
+
 export default function ProfileCard({ profile, side, onChoose }: ProfileCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: side === "left" ? -40 : 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: side === "left" ? -40 : 40 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      layout
+      custom={side}
+      variants={cardVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
       onClick={onChoose}
+      whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
       className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-6 card-hover flex flex-col items-center text-center gap-4"
     >
-      <div className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${side === "left" ? "avatar-ring" : "avatar-ring-accent"}`}>
+      <motion.div
+        className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${side === "left" ? "avatar-ring" : "avatar-ring-accent"}`}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 20 }}
+      >
         <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
-      </div>
+      </motion.div>
 
-      <div className="space-y-1">
+      <motion.div
+        className="space-y-1"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.3 }}
+      >
         <h3 className="text-xl font-extrabold text-foreground">{profile.displayName}</h3>
         <p className="text-sm text-muted-foreground">
           {profile.age ? `${profile.age} · ` : ""}{profile.location}
         </p>
         <TierBadge tier={profile.tier} className="mt-1" />
-      </div>
+      </motion.div>
 
       {profile.statusMessage && (
         <p className="text-sm text-foreground/80 italic">"{profile.statusMessage}"</p>
