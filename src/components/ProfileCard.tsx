@@ -30,38 +30,31 @@ const socialIcons: Record<string, React.ElementType> = {
 };
 
 const cardVariants = {
-  initial: (side: "left" | "right") => ({
+  initial: {
     opacity: 0,
-    x: side === "left" ? -60 : 60,
-    scale: 0.95,
-  }),
+    scale: 0.97,
+  },
   animate: {
     opacity: 1,
-    x: 0,
     scale: 1,
     transition: {
-      type: "spring" as const,
-      stiffness: 200,
-      damping: 24,
-      mass: 0.8,
+      duration: 0.35,
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   },
-  exit: (side: "left" | "right") => ({
+  exit: {
     opacity: 0,
-    x: side === "left" ? -100 : 100,
-    scale: 0.9,
+    scale: 0.95,
     transition: {
-      duration: 0.3,
-      ease: [0.4, 0, 0.2, 1] as const,
+      duration: 0.2,
+      ease: [0.4, 0, 1, 1] as const,
     },
-  }),
+  },
 };
 
 export default function ProfileCard({ profile, side, onChoose }: ProfileCardProps) {
   return (
     <motion.div
-      layout
-      custom={side}
       variants={cardVariants}
       initial="initial"
       animate="animate"
@@ -71,27 +64,19 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       whileTap={{ scale: 0.98 }}
       className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-6 card-hover flex flex-col items-center text-center gap-4"
     >
-      <motion.div
+      <div
         className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden ${side === "left" ? "avatar-ring" : "avatar-ring-accent"}`}
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 20 }}
       >
         <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
-      </motion.div>
+      </div>
 
-      <motion.div
-        className="space-y-1"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.3 }}
-      >
+      <div className="space-y-1">
         <h3 className="text-xl font-extrabold text-foreground">{profile.displayName}</h3>
         <p className="text-sm text-muted-foreground">
           {profile.age ? `${profile.age} · ` : ""}{profile.location}
         </p>
         <TierBadge tier={profile.tier} className="mt-1" />
-      </motion.div>
+      </div>
 
       {profile.statusMessage && (
         <p className="text-sm text-foreground/80 italic">"{profile.statusMessage}"</p>

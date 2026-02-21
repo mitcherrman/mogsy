@@ -124,7 +124,7 @@ export default function Swipe() {
           </p>
         </div>
 
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           <div key={`pair-${pair[0].id}-${pair[1].id}`} className="flex flex-col sm:flex-row gap-4 items-stretch">
             <ProfileCard
               key={`left-${pair[0].id}`}
