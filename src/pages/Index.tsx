@@ -1,83 +1,73 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Swords, Trophy, TrendingUp } from "lucide-react";
-import mogsyLogo from "@/assets/mogsy-logo.png";
+import { Home, Play, User, Settings } from "lucide-react";
+import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import { useAuth } from "@/hooks/useAuth";
 
-const features = [
-  { icon: Swords, title: "Swipe & Vote", desc: "Choose between two profiles head-to-head. Your vote shapes the rankings." },
-  { icon: TrendingUp, title: "Elo Rankings", desc: "Competitive Elo system with Bronze, Silver, Gold, and Platinum tiers." },
-  { icon: Trophy, title: "Leaderboards", desc: "Climb the ranks and see where you stand against the community." },
+const navButtons = [
+  { path: "/home", label: "Home", icon: Home },
+  { path: "/play", label: "Play", icon: Play },
+  { path: "/profile", label: "Profile", icon: User },
+  { path: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Landing() {
+  const { user } = useAuth();
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 bg-gradient-to-br from-background via-background to-secondary/10">
-        <div className="relative z-10 flex flex-col items-center text-center gap-6 max-w-3xl">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      {/* Logo */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="mb-16"
+      >
+        <img src={mogsyLogo} alt="Mogsy" className="h-24 sm:h-32 md:h-40 object-contain" />
+      </motion.div>
+
+      {/* 4 Icon buttons */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="flex gap-8 sm:gap-12"
+      >
+        {navButtons.map((item, i) => (
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            key={item.path}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
+            transition={{ delay: 0.4 + i * 0.1 }}
           >
-            <img src={mogsyLogo} alt="Mogsy" className="h-24 sm:h-32" />
-          </motion.div>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg sm:text-xl text-muted-foreground max-w-xl"
-          >
-            Vote head-to-head. Climb the ranks. Compete in leagues.
-            The ultimate competitive profile ranking platform.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="flex gap-4"
-          >
-            <Link to="/auth">
-              <Button variant="hero" size="xl">Get Started</Button>
-            </Link>
-            <Link to="/swipe">
-              <Button variant="outline" size="xl">Try Swiping</Button>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="container mx-auto px-4 py-24">
-        <div className="grid gap-8 sm:grid-cols-3">
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.15 }}
-              className="rounded-2xl border border-border bg-card p-8 card-hover text-center"
+            <Link
+              to={item.path === "/profile" && !user ? "/auth" : item.path}
+              className="flex flex-col items-center gap-2 group"
             >
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <f.icon className="h-7 w-7 text-primary" />
+              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-border bg-card transition-all duration-200 group-hover:border-primary/50 group-hover:shadow-[0_0_20px_hsl(210_80%_60%/0.15)] group-hover:scale-105 active:scale-95">
+                <item.icon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground transition-colors group-hover:text-primary" />
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground">{f.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+              <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                {item.label}
+              </span>
+            </Link>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2026 Mogsy. All rights reserved.
-        </div>
-      </footer>
+      {/* Auth prompt */}
+      {!user && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-12"
+        >
+          <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            Sign in to get started →
+          </Link>
+        </motion.div>
+      )}
     </div>
   );
 }

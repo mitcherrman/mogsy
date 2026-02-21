@@ -8,12 +8,15 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Home from "./pages/Home";
+import Play from "./pages/Play";
 import Profile from "./pages/Profile";
 import Swipe from "./pages/Swipe";
 import Leagues from "./pages/Leagues";
 import Leaderboard from "./pages/Leaderboard";
 import Presets from "./pages/Presets";
 import SwipePreset from "./pages/SwipePreset";
+import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -30,7 +33,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route element={<Layout />}>
+              <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
               <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
               <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />

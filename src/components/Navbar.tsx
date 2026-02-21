@@ -1,26 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Swords, User, Trophy, LayoutGrid, LogOut } from "lucide-react";
-import mogsyLogo from "@/assets/mogsy-logo.png";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+import { Home, Play, User, Settings } from "lucide-react";
+import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 const navItems = [
-  { path: "/swipe", label: "Swipe", icon: Swords },
-  { path: "/leagues", label: "Leagues", icon: Trophy },
-  { path: "/presets", label: "Presets", icon: LayoutGrid },
+  { path: "/home", label: "Home", icon: Home },
+  { path: "/play", label: "Play", icon: Play },
   { path: "/profile", label: "Profile", icon: User },
+  { path: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Navbar() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={mogsyLogo} alt="Mogsy" className="h-8" />
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <Link to="/" className="flex items-center">
+          <img src={mogsyLogo} alt="Mogsy" className="h-6" />
         </Link>
 
         <div className="flex items-center gap-1">
@@ -42,11 +39,6 @@ export default function Navbar() {
               </Link>
             );
           })}
-          {user && (
-            <Button variant="ghost" size="sm" onClick={signOut} className="ml-2 text-muted-foreground hover:text-foreground">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
     </nav>
