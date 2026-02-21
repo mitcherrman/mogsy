@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Swords, LayoutGrid, Trophy } from "lucide-react";
+import { Swords, LayoutGrid, Trophy, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const playOptions = [
   {
@@ -24,10 +25,16 @@ const playOptions = [
 ];
 
 export default function Play() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-2xl">
-        <h1 className="text-3xl font-extrabold text-foreground mb-8">Play</h1>
+        <div className="flex items-center gap-3 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-3xl font-extrabold text-foreground">Play</h1>
+        </div>
 
         <div className="space-y-4">
           {playOptions.map((option, i) => (

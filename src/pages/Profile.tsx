@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ const frameOptions = [
 
 export default function Profile() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,7 +166,12 @@ export default function Profile() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl font-extrabold text-foreground mb-6">Edit Profile</h1>
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
+          </div>
 
           <form onSubmit={handleSave} className="space-y-8">
             {/* Photos */}

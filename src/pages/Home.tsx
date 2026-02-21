@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Swords, ChevronRight } from "lucide-react";
+import { Trophy, Swords, ChevronRight, Diamond } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
