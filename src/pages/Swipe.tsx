@@ -1,10 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Trophy } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getTierFromElo } from "@/lib/mock-data";
+import { Button } from "@/components/ui/button";
 
 interface SwipeProfile {
   id: string;
@@ -20,17 +23,41 @@ interface SwipeProfile {
 
 export default function Swipe() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<SwipeProfile[]>([]);
   const [pair, setPair] = useState<[SwipeProfile, SwipeProfile] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [globalLeagueId, setGlobalLeagueId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfiles();
   }, []);
 
   const loadProfiles = async () => {
+    // Get the global league
+    const { data: league } = await supabase
+      .from("leagues")
+      .select("id")
+      .eq("name", "Global Rankings")
+      .single();
+    
+    if (league) setGlobalLeagueId(league.id);
+
     const { data } = await supabase.from("profiles").select("*").neq("display_name", "");
+    
+    // Get existing memberships for ELO
+    let eloMap = new Map<string, number>();
+    if (league) {
+      const { data: memberships } = await supabase
+        .from("league_memberships")
+        .select("profile_id, elo")
+        .eq("league_id", league.id);
+      if (memberships) {
+        memberships.forEach((m: any) => eloMap.set(m.profile_id, m.elo));
+      }
+    }
+
     if (data && data.length >= 2) {
       const mapped: SwipeProfile[] = data.map((p: any) => ({
         id: p.id,
@@ -40,8 +67,8 @@ export default function Swipe() {
         statusMessage: p.status_message || "",
         avatarUrl: p.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${p.display_name}`,
         socials: (p.socials as any) || {},
-        elo: 1200, // default; will be from league membership later
-        tier: "bronze" as const,
+        elo: eloMap.get(p.id) ?? 1200,
+        tier: getTierFromElo(eloMap.get(p.id) ?? 1200),
       }));
       setProfiles(mapped);
       setPair(getRandomPair(mapped));
@@ -71,10 +98,10 @@ export default function Swipe() {
         .eq("name", "Global Rankings")
         .single();
 
-      if (globalLeague) {
+      if (globalLeagueId) {
         // Record match
         await supabase.from("matches").insert({
-          league_id: globalLeague.id,
+          league_id: globalLeagueId,
           winner_profile_id: winner.id,
           loser_profile_id: loser.id,
         });
@@ -83,19 +110,26 @@ export default function Swipe() {
         const { newWinnerElo, newLoserElo } = calculateElo(winner.elo, loser.elo);
 
         await supabase.from("league_memberships").upsert(
-          { league_id: globalLeague.id, profile_id: winner.id, elo: newWinnerElo, matches_played: 1 },
+          { league_id: globalLeagueId, profile_id: winner.id, elo: newWinnerElo, matches_played: 1 },
           { onConflict: "league_id,profile_id" }
         );
         await supabase.from("league_memberships").upsert(
-          { league_id: globalLeague.id, profile_id: loser.id, elo: newLoserElo, matches_played: 1 },
+          { league_id: globalLeagueId, profile_id: loser.id, elo: newLoserElo, matches_played: 1 },
           { onConflict: "league_id,profile_id" }
         );
+
+        // Update local state with new ELOs
+        setProfiles(prev => prev.map(p => {
+          if (p.id === winner.id) return { ...p, elo: newWinnerElo, tier: getTierFromElo(newWinnerElo) };
+          if (p.id === loser.id) return { ...p, elo: newLoserElo, tier: getTierFromElo(newLoserElo) };
+          return p;
+        }));
       }
 
       setMatchCount((c) => c + 1);
       setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
     },
-    [pair, profiles]
+    [pair, profiles, globalLeagueId]
   );
 
   if (loading) {
@@ -119,9 +153,22 @@ export default function Swipe() {
       <div className="container mx-auto max-w-4xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold text-foreground mb-1">Who's Better?</h1>
-          <p className="text-muted-foreground text-sm">
-            Matches played: <span className="text-primary font-bold">{matchCount}</span>
-          </p>
+          <div className="flex items-center justify-center gap-4">
+            <p className="text-muted-foreground text-sm">
+              Matches played: <span className="text-primary font-bold">{matchCount}</span>
+            </p>
+            {globalLeagueId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/leaderboard/${globalLeagueId}`)}
+                className="gap-1.5"
+              >
+                <Trophy className="h-4 w-4" />
+                Leaderboard
+              </Button>
+            )}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
