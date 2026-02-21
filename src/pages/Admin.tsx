@@ -4,11 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Save, Shield, UserPlus, Pencil } from "lucide-react";
+import { Trash2, Plus, Save, Shield, UserPlus, Pencil, X, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+
+const showPersistentError = (message: string) => {
+  toast.error(message, {
+    duration: Infinity,
+    action: {
+      label: "Copy",
+      onClick: () => navigator.clipboard.writeText(message),
+    },
+  });
+};
 
 interface PresetItem {
   id: string;
@@ -94,7 +104,7 @@ export default function Admin() {
       name: newItem.name,
       image_url: newItem.image_url || null,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { showPersistentError(error.message); return; }
     toast.success("Item added");
     setNewItem({ name: "", image_url: "" });
     loadItems(selectedLeague);
@@ -102,7 +112,7 @@ export default function Admin() {
 
   const handleUpdateItem = async (item: PresetItem) => {
     const { error } = await supabase.from("preset_items").update({ name: item.name, image_url: item.image_url }).eq("id", item.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { showPersistentError(error.message); return; }
     toast.success("Updated");
     setEditingItem(null);
     loadItems(selectedLeague);
@@ -110,7 +120,7 @@ export default function Admin() {
 
   const handleDeleteItem = async (id: string) => {
     const { error } = await supabase.from("preset_items").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { showPersistentError(error.message); return; }
     toast.success("Deleted");
     loadItems(selectedLeague);
   };
@@ -118,7 +128,7 @@ export default function Admin() {
   const handleCreateBot = async () => {
     if (!newBot.display_name.trim()) return;
     const { error } = await supabase.from("profiles").insert({
-      user_id: user!.id,
+      user_id: crypto.randomUUID(),
       display_name: newBot.display_name,
       avatar_url: newBot.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${newBot.display_name}`,
       age: newBot.age ? parseInt(newBot.age) : null,
@@ -126,7 +136,7 @@ export default function Admin() {
       status_message: newBot.status_message || null,
       is_bot: true,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { showPersistentError(error.message); return; }
     toast.success("Bot profile created");
     setNewBot({ display_name: "", avatar_url: "", age: "", location: "", status_message: "" });
     loadData();
@@ -134,7 +144,7 @@ export default function Admin() {
 
   const handleDeleteBot = async (id: string) => {
     const { error } = await supabase.from("profiles").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { showPersistentError(error.message); return; }
     toast.success("Bot deleted");
     loadData();
   };
