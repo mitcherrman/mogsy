@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Save, Shield, UserPlus, Pencil, X, Copy } from "lucide-react";
+import { Trash2, Plus, Save, Shield, UserPlus, Pencil, Megaphone, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -13,10 +13,7 @@ import { toast } from "sonner";
 const showPersistentError = (message: string) => {
   toast.error(message, {
     duration: Infinity,
-    action: {
-      label: "Copy",
-      onClick: () => navigator.clipboard.writeText(message),
-    },
+    action: { label: "Copy", onClick: () => navigator.clipboard.writeText(message) },
   });
 };
 
@@ -31,6 +28,10 @@ interface PresetItem {
 interface League {
   id: string;
   name: string;
+  is_promoted?: boolean;
+  promoted_brand_name?: string;
+  promoted_brand_logo?: string;
+  promoted_until?: string;
 }
 
 interface BotProfile {
@@ -48,12 +49,14 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<string>("");
   const [items, setItems] = useState<PresetItem[]>([]);
   const [botProfiles, setBotProfiles] = useState<BotProfile[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({ name: "", image_url: "" });
   const [newBot, setNewBot] = useState({ display_name: "", avatar_url: "", age: "", location: "", status_message: "" });
+  const [promotedForm, setPromotedForm] = useState({ league_id: "", brand_name: "", brand_logo: "", days: "30" });
 
   useEffect(() => {
     checkAdmin();
@@ -72,9 +75,10 @@ export default function Admin() {
   };
 
   const loadData = async () => {
-    const [{ data: leaguesData }, { data: bots }] = await Promise.all([
+    const [{ data: leaguesData }, { data: bots }, { data: allLeaguesData }] = await Promise.all([
       supabase.from("leagues").select("id, name").eq("type", "preset"),
       supabase.from("profiles").select("id, display_name, avatar_url, age, location, status_message").eq("is_bot", true),
+      supabase.from("leagues").select("id, name, is_promoted, promoted_brand_name, promoted_brand_logo, promoted_until"),
     ]);
     if (leaguesData) {
       setLeagues(leaguesData);
@@ -83,6 +87,7 @@ export default function Admin() {
         loadItems(leaguesData[0].id);
       }
     }
+    if (allLeaguesData) setAllLeagues(allLeaguesData);
     if (bots) setBotProfiles(bots);
     setLoading(false);
   };
@@ -149,6 +154,33 @@ export default function Admin() {
     loadData();
   };
 
+  const handlePromoteLeague = async () => {
+    if (!promotedForm.league_id) return;
+    const until = new Date(Date.now() + parseInt(promotedForm.days) * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase.from("leagues").update({
+      is_promoted: true,
+      promoted_brand_name: promotedForm.brand_name || null,
+      promoted_brand_logo: promotedForm.brand_logo || null,
+      promoted_until: until,
+    }).eq("id", promotedForm.league_id);
+    if (error) { showPersistentError(error.message); return; }
+    toast.success("League promoted!");
+    setPromotedForm({ league_id: "", brand_name: "", brand_logo: "", days: "30" });
+    loadData();
+  };
+
+  const handleRemovePromotion = async (id: string) => {
+    const { error } = await supabase.from("leagues").update({
+      is_promoted: false,
+      promoted_brand_name: null,
+      promoted_brand_logo: null,
+      promoted_until: null,
+    }).eq("id", id);
+    if (error) { showPersistentError(error.message); return; }
+    toast.success("Promotion removed");
+    loadData();
+  };
+
   if (loading || !isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -156,6 +188,8 @@ export default function Admin() {
       </div>
     );
   }
+
+  const promotedLeagues = allLeagues.filter((l) => l.is_promoted);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
@@ -169,71 +203,41 @@ export default function Admin() {
           <TabsList className="bg-secondary">
             <TabsTrigger value="items">Preset Items</TabsTrigger>
             <TabsTrigger value="bots">Bot Profiles</TabsTrigger>
+            <TabsTrigger value="promoted">Promoted Leagues</TabsTrigger>
           </TabsList>
 
           <TabsContent value="items" className="space-y-6">
-            {/* League selector */}
             <div className="flex flex-wrap gap-2">
               {leagues.map((l) => (
-                <Button
-                  key={l.id}
-                  variant={selectedLeague === l.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleLeagueChange(l.id)}
-                >
+                <Button key={l.id} variant={selectedLeague === l.id ? "default" : "outline"} size="sm" onClick={() => handleLeagueChange(l.id)}>
                   {l.name}
                 </Button>
               ))}
             </div>
 
-            {/* Add new item */}
             <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
               <h3 className="font-bold text-foreground flex items-center gap-2"><Plus className="h-4 w-4" /> Add Item</h3>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Name</Label>
-                  <Input value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="Item name" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Image URL</Label>
-                  <Input value={newItem.image_url} onChange={(e) => setNewItem({ ...newItem, image_url: e.target.value })} placeholder="https://..." />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAddItem} className="w-full">Add</Button>
-                </div>
+                <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="Item name" /></div>
+                <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={newItem.image_url} onChange={(e) => setNewItem({ ...newItem, image_url: e.target.value })} placeholder="https://..." /></div>
+                <div className="flex items-end"><Button onClick={handleAddItem} className="w-full">Add</Button></div>
               </div>
             </div>
 
-            {/* Items list */}
             <div className="space-y-2">
               {items.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
-                >
+                <motion.div key={item.id} layout className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                   <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
                     {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1" onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&size=40`;
-                      }} />
+                      <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&size=40`; }} />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground font-bold">{item.name.charAt(0)}</div>
                     )}
                   </div>
                   {editingItem === item.id ? (
                     <div className="flex-1 flex gap-2">
-                      <Input
-                        defaultValue={item.name}
-                        onChange={(e) => { item.name = e.target.value; }}
-                        className="text-sm"
-                      />
-                      <Input
-                        defaultValue={item.image_url || ""}
-                        onChange={(e) => { item.image_url = e.target.value; }}
-                        placeholder="Image URL"
-                        className="text-sm"
-                      />
+                      <Input defaultValue={item.name} onChange={(e) => { item.name = e.target.value; }} className="text-sm" />
+                      <Input defaultValue={item.image_url || ""} onChange={(e) => { item.image_url = e.target.value; }} placeholder="Image URL" className="text-sm" />
                       <Button size="sm" variant="ghost" onClick={() => handleUpdateItem(item)}><Save className="h-4 w-4" /></Button>
                     </div>
                   ) : (
@@ -242,12 +246,8 @@ export default function Admin() {
                         <p className="text-sm font-medium text-foreground">{item.name}</p>
                         <p className="text-xs text-muted-foreground">Elo: {item.elo}</p>
                       </div>
-                      <Button size="icon" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(item.id)} className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(item.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                     </>
                   )}
                 </motion.div>
@@ -256,7 +256,6 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="bots" className="space-y-6">
-            {/* Create bot */}
             <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
               <h3 className="font-bold text-foreground flex items-center gap-2"><UserPlus className="h-4 w-4" /> Create Bot Profile</h3>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -269,26 +268,80 @@ export default function Admin() {
               <Button onClick={handleCreateBot} className="gap-1.5"><UserPlus className="h-4 w-4" /> Create</Button>
             </div>
 
-            {/* Bot list */}
             <div className="space-y-2">
               {botProfiles.map((bot) => (
                 <div key={bot.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                  <img
-                    src={bot.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${bot.display_name}`}
-                    alt={bot.display_name}
-                    className="h-10 w-10 rounded-full object-cover bg-secondary"
-                  />
+                  <img src={bot.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${bot.display_name}`} alt={bot.display_name} className="h-10 w-10 rounded-full object-cover bg-secondary" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{bot.display_name}</p>
                     <p className="text-xs text-muted-foreground">{bot.location || "No location"} · {bot.age || "?"} yrs</p>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => handleDeleteBot(bot.id)} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDeleteBot(bot.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
-              {botProfiles.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-8">No bot profiles yet.</p>
+              {botProfiles.length === 0 && <p className="text-center text-muted-foreground text-sm py-8">No bot profiles yet.</p>}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="promoted" className="space-y-6">
+            {/* Create Promotion */}
+            <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+              <h3 className="font-bold text-foreground flex items-center gap-2"><Megaphone className="h-4 w-4" /> Promote a League</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">League</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={promotedForm.league_id}
+                    onChange={(e) => setPromotedForm({ ...promotedForm, league_id: e.target.value })}
+                  >
+                    <option value="">Select a league…</option>
+                    {allLeagues.filter((l) => !l.is_promoted).map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Brand Name</Label>
+                  <Input value={promotedForm.brand_name} onChange={(e) => setPromotedForm({ ...promotedForm, brand_name: e.target.value })} placeholder="Acme Corp" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Brand Logo URL</Label>
+                  <Input value={promotedForm.brand_logo} onChange={(e) => setPromotedForm({ ...promotedForm, brand_logo: e.target.value })} placeholder="https://..." />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Duration (days)</Label>
+                  <Input type="number" value={promotedForm.days} onChange={(e) => setPromotedForm({ ...promotedForm, days: e.target.value })} />
+                </div>
+              </div>
+              <Button onClick={handlePromoteLeague} className="gap-1.5"><Megaphone className="h-4 w-4" /> Promote</Button>
+            </div>
+
+            {/* Active Promotions */}
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Active Promotions</h3>
+              {promotedLeagues.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm py-8">No promoted leagues yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {promotedLeagues.map((league) => (
+                    <div key={league.id} className="flex items-center gap-3 rounded-xl border border-primary/30 bg-card p-4">
+                      {league.promoted_brand_logo && (
+                        <img src={league.promoted_brand_logo} alt="" className="h-10 w-10 rounded-lg object-contain bg-secondary p-1" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{league.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {league.promoted_brand_name && `By ${league.promoted_brand_name} · `}
+                          Ends {league.promoted_until ? new Date(league.promoted_until).toLocaleDateString() : "N/A"}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemovePromotion(league.id)} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </TabsContent>
