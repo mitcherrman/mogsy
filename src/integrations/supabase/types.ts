@@ -260,6 +260,7 @@ export type Database = {
           boost_credits: number | null
           created_at: string
           custom_theme: string | null
+          diamonds: number | null
           display_name: string
           elo_shields: number | null
           id: string
@@ -281,6 +282,7 @@ export type Database = {
           boost_credits?: number | null
           created_at?: string
           custom_theme?: string | null
+          diamonds?: number | null
           display_name?: string
           elo_shields?: number | null
           id?: string
@@ -302,6 +304,7 @@ export type Database = {
           boost_credits?: number | null
           created_at?: string
           custom_theme?: string | null
+          diamonds?: number | null
           display_name?: string
           elo_shields?: number | null
           id?: string

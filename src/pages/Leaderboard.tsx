@@ -1,7 +1,8 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Crown } from "lucide-react";
+import { Crown, ArrowLeft, Swords } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getTierFromElo, getTierColor } from "@/lib/mock-data";
 import TierBadge from "@/components/TierBadge";
@@ -19,6 +20,7 @@ interface LeaderboardEntry {
 
 export default function Leaderboard() {
   const { leagueId } = useParams();
+  const navigate = useNavigate();
   const [leagueName, setLeagueName] = useState("");
   const [leagueType, setLeagueType] = useState("");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -74,7 +76,6 @@ export default function Leaderboard() {
   const loadUserLeaderboard = async () => {
     if (!leagueId) return;
 
-    // Get all profiles with display names
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, display_name, avatar_url, location")
@@ -82,7 +83,6 @@ export default function Leaderboard() {
 
     if (!profiles || profiles.length === 0) return;
 
-    // Get existing memberships for ELO
     const { data: memberships } = await supabase
       .from("league_memberships")
       .select("profile_id, elo")
@@ -106,6 +106,11 @@ export default function Leaderboard() {
     setEntries(mapped);
   };
 
+  const getSwipeLink = () => {
+    if (leagueType === "preset") return `/swipe/preset/${leagueId}`;
+    return "/swipe";
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -118,8 +123,20 @@ export default function Leaderboard() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-2xl">
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-xl pb-4 mb-4 border-b border-border">
-          <h1 className="text-2xl font-extrabold text-foreground">{leagueName || "Leaderboard"}</h1>
-          <p className="text-sm text-muted-foreground">{entries.length} {leagueType === "preset" ? "items" : "players"}</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-extrabold text-foreground truncate">{leagueName || "Leaderboard"}</h1>
+              <p className="text-sm text-muted-foreground">{entries.length} {leagueType === "preset" ? "items" : "players"}</p>
+            </div>
+            <Link to={getSwipeLink()}>
+              <Button variant="default" size="sm" className="gap-1.5 flex-shrink-0">
+                <Swords className="h-4 w-4" /> Swipe
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-6">

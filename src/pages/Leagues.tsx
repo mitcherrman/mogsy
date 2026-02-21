@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Users, ChevronRight, Layers, Megaphone } from "lucide-react";
+import { Trophy, Users, ChevronRight, Layers, Megaphone, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
@@ -23,6 +24,7 @@ interface LeagueInfo {
 
 export default function Leagues() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -144,11 +146,16 @@ export default function Leagues() {
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-foreground flex items-center gap-2">
-            <Trophy className="h-8 w-8 text-primary" /> Browse Leagues
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">{leagues.length} leagues available</p>
+        <div className="mb-8 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-extrabold text-foreground flex items-center gap-2">
+              <Trophy className="h-8 w-8 text-primary" /> Browse Leagues
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">{leagues.length} leagues available</p>
+          </div>
         </div>
 
         {userLeagues.length > 0 && (

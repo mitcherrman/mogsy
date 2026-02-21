@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, Eye } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import { calculateElo } from "@/lib/elo";
@@ -218,7 +218,12 @@ export default function Swipe() {
       <div className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-foreground mb-1">Who's Better?</h1>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-3xl font-extrabold text-foreground">Who's Better?</h1>
+            </div>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <p className="text-muted-foreground text-sm">
                 Matches: <span className="text-primary font-bold">{matchCount}</span>

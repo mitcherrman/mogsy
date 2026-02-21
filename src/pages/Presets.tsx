@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Lock, Plus, Sparkles, Megaphone } from "lucide-react";
+import { Lock, Plus, Sparkles, Megaphone, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +21,7 @@ interface PresetLeague {
 
 export default function Presets() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isPro, setIsPro] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -107,9 +108,14 @@ export default function Presets() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold text-foreground">Preset Leagues</h1>
-            <p className="text-muted-foreground text-sm mt-1">Vote on categories beyond user profiles</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-extrabold text-foreground">Preset Leagues</h1>
+              <p className="text-muted-foreground text-sm mt-1">Vote on categories beyond user profiles</p>
+            </div>
           </div>
           <Button variant={isPro ? "default" : "accent"} onClick={() => setShowCreate(!showCreate)}>
             {isPro ? <><Plus className="h-4 w-4" /> Create</> : <><Lock className="h-4 w-4" /> Create Custom</>}

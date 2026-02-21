@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { Sun, Moon, Monitor, LogOut, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,12 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-2xl">
-        <h1 className="text-3xl font-extrabold text-foreground mb-8">Settings</h1>
+        <div className="flex items-center gap-3 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-3xl font-extrabold text-foreground">Settings</h1>
+        </div>
 
         {/* Theme */}
         <motion.section
