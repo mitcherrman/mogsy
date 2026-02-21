@@ -13,6 +13,8 @@ import Swipe from "./pages/Swipe";
 import Leagues from "./pages/Leagues";
 import Leaderboard from "./pages/Leaderboard";
 import Presets from "./pages/Presets";
+import SwipePreset from "./pages/SwipePreset";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
               <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
               <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
               <Route path="/presets" element={<Presets />} />
+              <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
+              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
