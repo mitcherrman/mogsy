@@ -14,13 +14,287 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      boosts: {
+        Row: {
+          active_until: string | null
+          created_at: string
+          credits: number | null
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          active_until?: string | null
+          created_at?: string
+          credits?: number | null
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          active_until?: string | null
+          created_at?: string
+          credits?: number | null
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boosts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_memberships: {
+        Row: {
+          elo: number
+          id: string
+          last_active_at: string | null
+          league_id: string
+          matches_played: number
+          profile_id: string
+        }
+        Insert: {
+          elo?: number
+          id?: string
+          last_active_at?: string | null
+          league_id: string
+          matches_played?: number
+          profile_id: string
+        }
+        Update: {
+          elo?: number
+          id?: string
+          last_active_at?: string | null
+          league_id?: string
+          matches_played?: number
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_memberships_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_memberships_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leagues: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          loser_item_id: string | null
+          loser_profile_id: string | null
+          winner_item_id: string | null
+          winner_profile_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          loser_item_id?: string | null
+          loser_profile_id?: string | null
+          winner_item_id?: string | null
+          winner_profile_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          loser_item_id?: string | null
+          loser_profile_id?: string | null
+          winner_item_id?: string | null
+          winner_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_loser_profile_id_fkey"
+            columns: ["loser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_profile_id_fkey"
+            columns: ["winner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      preset_items: {
+        Row: {
+          created_at: string
+          elo: number
+          external_link: string | null
+          id: string
+          image_url: string | null
+          league_id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          elo?: number
+          external_link?: string | null
+          id?: string
+          image_url?: string | null
+          league_id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          elo?: number
+          external_link?: string | null
+          id?: string
+          image_url?: string | null
+          league_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preset_items_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_photos: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          sort_order: number | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          sort_order?: number | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          sort_order?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_photos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active_boost_until: string | null
+          age: number | null
+          avatar_url: string | null
+          boost_credits: number | null
+          created_at: string
+          display_name: string
+          id: string
+          is_pro: boolean | null
+          location: string | null
+          socials: Json | null
+          status_message: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_boost_until?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          boost_credits?: number | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_pro?: boolean | null
+          location?: string | null
+          socials?: Json | null
+          status_message?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_boost_until?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          boost_credits?: number | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_pro?: boolean | null
+          location?: string | null
+          socials?: Json | null
+          status_message?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_league_creator: { Args: { _league_id: string }; Returns: boolean }
+      is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Swords, User, Trophy, LayoutGrid, Zap } from "lucide-react";
+import { Swords, User, Trophy, LayoutGrid, Zap, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { path: "/swipe", label: "Swipe", icon: Swords },
@@ -11,6 +13,7 @@ const navItems = [
 
 export default function Navbar() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -24,11 +27,7 @@ export default function Navbar() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="relative px-3 py-2 text-sm font-medium transition-colors"
-              >
+              <Link key={item.path} to={item.path} className="relative px-3 py-2 text-sm font-medium transition-colors">
                 <span className={`flex items-center gap-1.5 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
                   <item.icon className="h-4 w-4" />
                   <span className="hidden sm:inline">{item.label}</span>
@@ -43,6 +42,11 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {user && (
+            <Button variant="ghost" size="sm" onClick={signOut} className="ml-2 text-muted-foreground hover:text-foreground">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </nav>

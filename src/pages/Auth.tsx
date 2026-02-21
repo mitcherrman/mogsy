@@ -4,17 +4,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Zap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Will integrate with Cloud auth later
-    console.log(isLogin ? "Login" : "Signup", { email, password });
+    setLoading(true);
+
+    if (isLogin) {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      } else {
+        navigate("/swipe");
+      }
+    } else {
+      const { error } = await signUp(email, password);
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Check your email", description: "We sent you a confirmation link." });
+      }
+    }
+    setLoading(false);
   };
 
   return (
@@ -40,37 +62,20 @@ export default function Auth() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           </div>
-          <Button type="submit" variant="hero" className="w-full" size="lg">
-            {isLogin ? "Log In" : "Sign Up"}
+          <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
+            {loading ? "Loading…" : isLogin ? "Log In" : "Sign Up"}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary font-semibold hover:underline"
-          >
+          <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-semibold hover:underline">
             {isLogin ? "Sign up" : "Log in"}
           </button>
         </div>
