@@ -124,7 +124,15 @@ export default function SwipePreset() {
           </Link>
         </div>
 
-        <div key={`pair-${pair[0].id}-${pair[1].id}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`pair-${pair[0].id}-${pair[1].id}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          >
             {pair.map((item, idx) => (
               <button
                 key={item.id}
@@ -157,7 +165,8 @@ export default function SwipePreset() {
                 </div>
               </button>
             ))}
-          </div>
+          </motion.div>
+        </AnimatePresence>
 
         <div className="flex items-center justify-center my-6">
           <span className="text-2xl font-black text-gradient">VS</span>
