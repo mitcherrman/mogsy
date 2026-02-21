@@ -124,19 +124,22 @@ export default function SwipePreset() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {pair.map((item, idx) => (
-            <AnimatePresence mode="wait" key={`slot-${idx}`}>
+        <AnimatePresence mode="popLayout">
+          <div key={`pair-${pair[0].id}-${pair[1].id}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {pair.map((item, idx) => (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, y: 30, scale: 0.95 }}
                 animate={{
                   opacity: 1,
-                  scale: chosen === idx ? 1.05 : chosen !== null ? 0.9 : 1,
+                  y: 0,
+                  scale: chosen === idx ? 1.03 : chosen !== null ? 0.95 : 1,
                   filter: chosen !== null && chosen !== idx ? "brightness(0.5)" : "brightness(1)",
                 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 200, damping: 22, mass: 0.8, delay: idx * 0.08 }}
+                whileHover={chosen === null ? { scale: 1.02, transition: { duration: 0.2 } } : undefined}
+                whileTap={chosen === null ? { scale: 0.98 } : undefined}
                 onClick={() => handleChoose(idx as 0 | 1)}
                 className="relative rounded-2xl border border-border bg-card overflow-hidden card-hover group cursor-pointer text-left"
               >
@@ -164,17 +167,18 @@ export default function SwipePreset() {
                 </div>
                 {chosen === idx && (
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm rounded-2xl"
                   >
                     <span className="text-3xl font-black text-primary">✓</span>
                   </motion.div>
                 )}
               </motion.button>
-            </AnimatePresence>
-          ))}
-        </div>
+            ))}
+          </div>
+        </AnimatePresence>
 
         <div className="flex items-center justify-center my-6">
           <span className="text-2xl font-black text-gradient">VS</span>
