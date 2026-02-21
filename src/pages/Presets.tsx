@@ -104,7 +104,7 @@ export default function Presets() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {presets.map((preset, i) => (
             <motion.div key={preset.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Link to={`/leaderboard/${preset.id}`} className="block rounded-2xl border border-border bg-card p-6 card-hover">
+              <Link to={`/swipe/preset/${preset.id}`} className="block rounded-2xl border border-border bg-card p-6 card-hover">
                 <div className="text-4xl mb-3">{getIcon(preset.name)}</div>
                 <h3 className="text-lg font-bold text-foreground">{preset.name}</h3>
                 <p className="text-sm text-muted-foreground mt-1">{preset.itemCount} items · Vote now</p>
