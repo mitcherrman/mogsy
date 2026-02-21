@@ -124,24 +124,22 @@ export default function SwipePreset() {
           </Link>
         </div>
 
-        <AnimatePresence mode="popLayout">
-          <div key={`pair-${pair[0].id}-${pair[1].id}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`pair-${pair[0].id}-${pair[1].id}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          >
             {pair.map((item, idx) => (
-              <motion.button
+              <button
                 key={item.id}
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: chosen === idx ? 1.03 : chosen !== null ? 0.95 : 1,
-                  filter: chosen !== null && chosen !== idx ? "brightness(0.5)" : "brightness(1)",
-                }}
-                exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 200, damping: 22, mass: 0.8, delay: idx * 0.08 }}
-                whileHover={chosen === null ? { scale: 1.02, transition: { duration: 0.2 } } : undefined}
-                whileTap={chosen === null ? { scale: 0.98 } : undefined}
                 onClick={() => handleChoose(idx as 0 | 1)}
-                className="relative rounded-2xl border border-border bg-card overflow-hidden card-hover group cursor-pointer text-left"
+                className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                  chosen !== null && chosen !== idx ? "opacity-50 scale-95" : ""
+                } ${chosen === idx ? "scale-[1.03] ring-2 ring-primary" : ""}`}
               >
                 <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
                   {item.image_url ? (
@@ -166,18 +164,13 @@ export default function SwipePreset() {
                   </p>
                 </div>
                 {chosen === idx && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm rounded-2xl"
-                  >
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm rounded-2xl animate-scale-in">
                     <span className="text-3xl font-black text-primary">✓</span>
-                  </motion.div>
+                  </div>
                 )}
-              </motion.button>
+              </button>
             ))}
-          </div>
+          </motion.div>
         </AnimatePresence>
 
         <div className="flex items-center justify-center my-6">
