@@ -124,22 +124,14 @@ export default function SwipePreset() {
           </Link>
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`pair-${pair[0].id}-${pair[1].id}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-          >
+        <div key={`pair-${pair[0].id}-${pair[1].id}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {pair.map((item, idx) => (
               <button
                 key={item.id}
                 onClick={() => handleChoose(idx as 0 | 1)}
-                className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                  chosen !== null && chosen !== idx ? "opacity-50 scale-95" : ""
-                } ${chosen === idx ? "scale-[1.03] ring-2 ring-primary" : ""}`}
+                className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                  chosen === idx ? "ring-2 ring-primary" : ""
+                }`}
               >
                 <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
                   {item.image_url ? (
@@ -163,15 +155,9 @@ export default function SwipePreset() {
                     Elo: <span className="text-primary font-semibold">{item.elo}</span>
                   </p>
                 </div>
-                {chosen === idx && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-primary/20 backdrop-blur-sm rounded-2xl animate-scale-in">
-                    <span className="text-3xl font-black text-primary">✓</span>
-                  </div>
-                )}
               </button>
             ))}
-          </motion.div>
-        </AnimatePresence>
+          </div>
 
         <div className="flex items-center justify-center my-6">
           <span className="text-2xl font-black text-gradient">VS</span>
