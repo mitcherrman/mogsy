@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap, Swords, Trophy, TrendingUp } from "lucide-react";
-import heroBg from "@/assets/hero-bg.jpg";
+import { Swords, Trophy, TrendingUp } from "lucide-react";
+import mogsyLogo from "@/assets/mogsy-logo.png";
 
 const features = [
   { icon: Swords, title: "Swipe & Vote", desc: "Choose between two profiles head-to-head. Your vote shapes the rankings." },
@@ -14,23 +14,14 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4">
-        <div className="absolute inset-0 z-0">
-          <img src={heroBg} alt="" className="h-full w-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/90 to-background" />
-        </div>
-
+      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 bg-gradient-to-br from-background via-background to-secondary/10">
         <div className="relative z-10 flex flex-col items-center text-center gap-6 max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            className="flex items-center gap-3"
           >
-            <Zap className="h-10 w-10 text-primary" />
-            <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-gradient">
-              MatchRank
-            </h1>
+            <img src={mogsyLogo} alt="Mogsy" className="h-24 sm:h-32" />
           </motion.div>
 
           <motion.p
@@ -84,7 +75,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2026 MatchRank. All rights reserved.
+          © 2026 Mogsy. All rights reserved.
         </div>
       </footer>
     </div>
