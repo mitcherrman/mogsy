@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Swords, User, Trophy, LayoutGrid, Zap, LogOut } from "lucide-react";
+import { Swords, User, Trophy, LayoutGrid, LogOut } from "lucide-react";
+import mogsyLogo from "@/assets/mogsy-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -19,8 +20,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
-          <Zap className="h-6 w-6 text-primary" />
-          <span className="text-xl font-extrabold tracking-tight text-gradient">MatchRank</span>
+          <img src={mogsyLogo} alt="Mogsy" className="h-8" />
         </Link>
 
         <div className="flex items-center gap-1">
