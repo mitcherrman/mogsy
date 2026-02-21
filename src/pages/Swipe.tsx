@@ -125,33 +125,30 @@ export default function Swipe() {
         </div>
 
         <AnimatePresence mode="wait">
-          <div key={`pair-${pair[0].id}-${pair[1].id}`} className="flex flex-col sm:flex-row gap-4 items-stretch">
+          <motion.div
+            key={`pair-${pair[0].id}-${pair[1].id}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col sm:flex-row gap-4 items-stretch"
+          >
             <ProfileCard
-              key={`left-${pair[0].id}`}
               profile={pair[0]}
               side="left"
               onChoose={() => handleChoose(0)}
             />
 
             <div className="flex items-center justify-center">
-              <motion.span
-                key={`vs-${pair[0].id}`}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                className="text-3xl font-black text-gradient"
-              >
-                VS
-              </motion.span>
+              <span className="text-3xl font-black text-gradient">VS</span>
             </div>
 
             <ProfileCard
-              key={`right-${pair[1].id}`}
               profile={pair[1]}
               side="right"
               onChoose={() => handleChoose(1)}
             />
-          </div>
+          </motion.div>
         </AnimatePresence>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
