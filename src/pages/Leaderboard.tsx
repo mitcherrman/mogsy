@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getTierFromElo, getTierColor } from "@/lib/mock-data";
 import TierBadge from "@/components/TierBadge";
+import UserAvatar from "@/components/UserAvatar";
 
 interface LeaderboardEntry {
   id: string;
@@ -96,7 +97,7 @@ export default function Leaderboard() {
     const mapped: LeaderboardEntry[] = profiles.map((p: any) => ({
       id: p.id,
       displayName: p.display_name,
-      avatarUrl: p.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${p.id}`,
+      avatarUrl: p.avatar_url || "",
       location: p.location || "",
       elo: eloMap.get(p.id) ?? 1200,
       tier: getTierFromElo(eloMap.get(p.id) ?? 1200),
@@ -154,19 +155,19 @@ export default function Leaderboard() {
                     <span className={`text-lg font-black ${rank <= 3 ? "text-tier-gold" : "text-muted-foreground"}`}>{rank}</span>
                   )}
                 </div>
-                <div className={`${size} rounded-full overflow-hidden flex-shrink-0 ${isTop3 ? "avatar-ring" : "ring-1 ring-border"} transition-all`}>
-                  {entry.isPresetItem ? (
-                    entry.imageUrl ? (
+                {entry.isPresetItem ? (
+                  <div className={`${size} rounded-full overflow-hidden flex-shrink-0 ${isTop3 ? "avatar-ring" : "ring-1 ring-border"} transition-all`}>
+                    {entry.imageUrl ? (
                       <img src={entry.imageUrl} alt={entry.displayName} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
                         {entry.displayName.charAt(0)}
                       </div>
-                    )
-                  ) : (
-                    <img src={entry.avatarUrl} alt={entry.displayName} className="w-full h-full object-cover" />
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  <UserAvatar src={entry.avatarUrl} name={entry.displayName} size={isTop3 ? "xl" : "lg"} className={isTop3 ? "avatar-ring" : "ring-1 ring-border"} />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-foreground truncate">{entry.displayName}</span>

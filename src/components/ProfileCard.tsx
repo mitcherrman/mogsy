@@ -1,4 +1,4 @@
-import { Instagram, Youtube, Twitch, Globe, Twitter, Crown, Zap } from "lucide-react";
+import { Instagram, Youtube, Twitch, Globe, Twitter, Crown, Zap, User } from "lucide-react";
 import TierBadge from "./TierBadge";
 
 interface ProfileCardProfile {
@@ -54,7 +54,13 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
             frame || (side === "left" ? "avatar-ring" : "avatar-ring-accent")
           }`}
         >
-          <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+          {profile.avatarUrl && !profile.avatarUrl.includes("dicebear") ? (
+            <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
+              <User className="h-16 w-16 text-muted-foreground/70" />
+            </div>
+          )}
         </div>
         {profile.isPro && (
           <div className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center">
