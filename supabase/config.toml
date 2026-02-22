@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.admin-get-emails]
+verify_jwt = false
+
+[functions.populate-preset-images]
+verify_jwt = false
