@@ -4,9 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
+import EloChangeIndicator from "@/components/EloChangeIndicator";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +46,8 @@ export default function Swipe() {
   const [myRewinds, setMyRewinds] = useState(0);
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
+  const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const { playSwipeSound } = useSwipeSound();
 
   useEffect(() => {
     loadProfiles();
@@ -117,6 +121,7 @@ export default function Swipe() {
   const handleChoose = useCallback(
     async (winnerIndex: 0 | 1) => {
       if (!pair) return;
+      playSwipeSound();
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
@@ -148,6 +153,11 @@ export default function Swipe() {
 
         setLastMatch({ winner, loser, prevWinnerElo: winner.elo, prevLoserElo: loser.elo });
 
+        setEloChanges(new Map([
+          [winner.id, newWinnerElo - winner.elo],
+          [loser.id, finalLoserElo - loser.elo],
+        ]));
+
         setProfiles((prev) =>
           prev.map((p) => {
             if (p.id === winner.id) return { ...p, elo: newWinnerElo, tier: getTierFromElo(newWinnerElo) };
@@ -163,7 +173,9 @@ export default function Swipe() {
       // Show ad every AD_INTERVAL swipes for non-pro
       if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);
+        setEloChanges(new Map());
       } else {
+        setEloChanges(new Map());
         setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
       }
     },
@@ -255,11 +267,21 @@ export default function Swipe() {
               transition={{ duration: 0.25 }}
               className="flex flex-row gap-3 items-stretch flex-1"
             >
-              <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
+              <div className="flex flex-col flex-1">
+                <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
+                <div className="flex justify-center mt-1">
+                  <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+                </div>
+              </div>
               <div className="flex items-center justify-center px-1">
                 <span className="text-2xl font-black text-gradient">VS</span>
               </div>
-              <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
+              <div className="flex flex-col flex-1">
+                <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
+                <div className="flex justify-center mt-1">
+                  <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                </div>
+              </div>
             </motion.div>
           </AnimatePresence>
 
