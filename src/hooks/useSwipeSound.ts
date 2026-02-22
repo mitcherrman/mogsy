@@ -1,45 +1,85 @@
 import { useCallback, useRef } from "react";
 
-// Generate a subtle, satisfying "pop" sound using Web Audio API
+// Minimalist iOS-style haptic tap sound using Web Audio API
 export function useSwipeSound() {
   const ctxRef = useRef<AudioContext | null>(null);
 
+  const getCtx = () => {
+    if (!ctxRef.current) ctxRef.current = new AudioContext();
+    return ctxRef.current;
+  };
+
+  // Subtle iOS-style tap — short, clean, minimal
   const playSwipeSound = useCallback(() => {
     try {
-      if (!ctxRef.current) {
-        ctxRef.current = new AudioContext();
-      }
-      const ctx = ctxRef.current;
+      const ctx = getCtx();
+      const t = ctx.currentTime;
 
-      // Main pop tone
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.frequency.setValueAtTime(1200, t);
+      osc.frequency.exponentialRampToValueAtTime(800, t + 0.04);
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.2);
-
-      // Subtle harmonic
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(1320, ctx.currentTime + 0.03);
-      osc2.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1);
-      gain2.gain.setValueAtTime(0.03, ctx.currentTime + 0.03);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.03);
-      osc2.stop(ctx.currentTime + 0.18);
-    } catch {
-      // Silently fail if audio isn't available
-    }
+      osc.start(t);
+      osc.stop(t + 0.07);
+    } catch { /* silent */ }
   }, []);
 
-  return { playSwipeSound };
+  // Correct answer — ascending two-note chime
+  const playCorrectSound = useCallback(() => {
+    try {
+      const ctx = getCtx();
+      const t = ctx.currentTime;
+
+      // First note
+      const o1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      o1.type = "sine";
+      o1.frequency.setValueAtTime(880, t);
+      g1.gain.setValueAtTime(0.07, t);
+      g1.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o1.connect(g1);
+      g1.connect(ctx.destination);
+      o1.start(t);
+      o1.stop(t + 0.13);
+
+      // Second note (higher)
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.type = "sine";
+      o2.frequency.setValueAtTime(1174.66, t + 0.08); // D6
+      g2.gain.setValueAtTime(0.07, t + 0.08);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      o2.connect(g2);
+      g2.connect(ctx.destination);
+      o2.start(t + 0.08);
+      o2.stop(t + 0.23);
+    } catch { /* silent */ }
+  }, []);
+
+  // Wrong answer — short descending tone
+  const playWrongSound = useCallback(() => {
+    try {
+      const ctx = getCtx();
+      const t = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(400, t);
+      osc.frequency.exponentialRampToValueAtTime(250, t + 0.15);
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    } catch { /* silent */ }
+  }, []);
+
+  return { playSwipeSound, playCorrectSound, playWrongSound };
 }

@@ -94,6 +94,99 @@ export type Database = {
           },
         ]
       }
+      elo_check_games: {
+        Row: {
+          actual_higher_id: string
+          created_at: string
+          guessed_higher_id: string
+          id: string
+          is_correct: boolean
+          item_type: string
+          opponent_item_id: string
+          opponent_item_league_id: string
+          profile_id: string
+          shown_item_id: string
+          shown_item_league_id: string
+        }
+        Insert: {
+          actual_higher_id: string
+          created_at?: string
+          guessed_higher_id: string
+          id?: string
+          is_correct: boolean
+          item_type?: string
+          opponent_item_id: string
+          opponent_item_league_id: string
+          profile_id: string
+          shown_item_id: string
+          shown_item_league_id: string
+        }
+        Update: {
+          actual_higher_id?: string
+          created_at?: string
+          guessed_higher_id?: string
+          id?: string
+          is_correct?: boolean
+          item_type?: string
+          opponent_item_id?: string
+          opponent_item_league_id?: string
+          profile_id?: string
+          shown_item_id?: string
+          shown_item_league_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elo_check_games_opponent_item_league_id_fkey"
+            columns: ["opponent_item_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elo_check_games_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elo_check_games_shown_item_league_id_fkey"
+            columns: ["shown_item_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      elo_check_league_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          league_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          league_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          league_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elo_check_league_settings_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       image_reports: {
         Row: {
           created_at: string
