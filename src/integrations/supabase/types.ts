@@ -287,6 +287,7 @@ export type Database = {
           elo_shields: number | null
           id: string
           is_bot: boolean | null
+          is_flagged_underage: boolean | null
           is_pro: boolean | null
           location: string | null
           profile_frame: string | null
@@ -310,6 +311,7 @@ export type Database = {
           elo_shields?: number | null
           id?: string
           is_bot?: boolean | null
+          is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null
@@ -333,6 +335,7 @@ export type Database = {
           elo_shields?: number | null
           id?: string
           is_bot?: boolean | null
+          is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null

@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
-  ArrowLeft, StickyNote,
+  ArrowLeft, StickyNote, AlertTriangle,
 } from "lucide-react";
 
 interface Profile {
@@ -35,6 +35,7 @@ interface Profile {
   active_boost_until: string | null;
   profile_frame: string | null;
   admin_notes: string | null;
+  is_flagged_underage: boolean | null;
   created_at: string;
 }
 
@@ -270,6 +271,7 @@ export default function AdminUsers() {
           </div>
           <div className="flex gap-2">
             {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
+            {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
         </div>
 
