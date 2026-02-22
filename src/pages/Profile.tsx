@@ -153,7 +153,32 @@ export default function Profile() {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !profileId || !user) return;
     const file = e.target.files[0];
-    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Invalid file type", description: "Only JPEG, PNG, WebP and GIF images are allowed.", variant: "destructive" });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
+      return;
+    }
+
+    // Validate file extension
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      toast({ title: "Invalid file extension", description: "Only .jpg, .png, .webp and .gif files are allowed.", variant: "destructive" });
+      return;
+    }
+
+    // Use sanitized filename
+    const sanitizedName = `${Date.now()}${ext}`;
+    const filePath = `${user.id}/${sanitizedName}`;
     const { error } = await supabase.storage.from("profile-photos").upload(filePath, file);
     if (error) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });

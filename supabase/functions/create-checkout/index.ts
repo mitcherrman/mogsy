@@ -24,7 +24,21 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { priceId, mode, quantity } = await req.json();
+    const body = await req.json();
+    const { priceId, mode, quantity } = body;
+
+    // Input validation
+    if (!priceId || typeof priceId !== 'string' || !priceId.startsWith('price_')) {
+      return new Response(JSON.stringify({ error: "Invalid priceId" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
+      });
+    }
+    if (mode && !['payment', 'subscription'].includes(mode)) {
+      return new Response(JSON.stringify({ error: "Invalid mode" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
+      });
+    }
+    const safeQuantity = Math.min(Math.max(Math.floor(Number(quantity) || 1), 1), 99);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -41,7 +55,7 @@ serve(async (req) => {
     const sessionConfig: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: quantity || 1 }],
+      line_items: [{ price: priceId, quantity: safeQuantity }],
       mode: mode || "payment",
       success_url: `${origin}/shop?success=true`,
       cancel_url: `${origin}/shop?canceled=true`,
