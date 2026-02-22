@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import mogsyIcon from "@/assets/mogsy-icon.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -48,8 +48,8 @@ export default function Auth() {
       >
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <Zap className="h-6 w-6 text-primary" />
-            <span className="text-2xl font-extrabold text-gradient">MatchRank</span>
+            <img src={mogsyIcon} alt="Mogsy" className="h-10 w-10 rounded-xl" />
+            <span className="text-2xl font-extrabold text-gradient">Mogsy</span>
           </Link>
           <h2 className="text-xl font-bold text-foreground">
             {isLogin ? "Welcome back" : "Create your account"}
