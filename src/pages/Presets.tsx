@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Lock, Plus, Sparkles, Megaphone, ArrowLeft, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,7 +38,11 @@ export default function Presets() {
   const [loading, setLoading] = useState(true);
   const [newLeague, setNewLeague] = useState({ name: "", description: "" });
   const [creating, setCreating] = useState(false);
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const locationState = useLocation().state as { openCategory?: string } | null;
+  const [openCategories, setOpenCategories] = useState<Set<string>>(() => {
+    if (locationState?.openCategory) return new Set([locationState.openCategory]);
+    return new Set();
+  });
 
   const toggleCategory = (cat: string) => {
     setOpenCategories((prev) => {
@@ -133,6 +137,7 @@ export default function Presets() {
     <motion.div key={preset.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
       <Link
         to={`/swipe/preset/${preset.id}`}
+        state={{ from: "/presets", openCategory: preset.category }}
         className={`block rounded-2xl border bg-card p-6 card-hover ${
           preset.isPromoted ? "border-primary/40 shadow-[0_0_15px_hsl(210_80%_60%/0.1)]" : "border-border"
         }`}

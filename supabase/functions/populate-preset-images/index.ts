@@ -5,71 +5,125 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function getWikipediaImage(searchTerm: string, category?: string | null): Promise<string | null> {
-  // Build search query with context
-  let query = searchTerm;
+async function getWikipediaImages(searchTerm: string, category?: string | null): Promise<string[]> {
+  const images: string[] = [];
+  const seenUrls = new Set<string>();
+
+  // Build multiple search queries for variety
+  const queries: string[] = [searchTerm];
   if (category === 'Anime') {
-    // For anime action scenes like "Goku vs Frieza", search for the first character
     if (searchTerm.includes(' vs ')) {
-      query = searchTerm.split(' vs ')[0].trim();
+      queries.push(searchTerm.split(' vs ')[0].trim());
+      queries.push(searchTerm.split(' vs ')[1].trim());
     }
-    query += ' anime';
+    queries.push(searchTerm + ' anime');
+    queries.push(searchTerm + ' character');
   } else if (category === 'Movies') {
-    query += ' film';
+    queries.push(searchTerm + ' film');
+    queries.push(searchTerm + ' movie poster');
   } else if (category === 'Video Games') {
-    query += ' video game';
+    queries.push(searchTerm + ' video game');
+    queries.push(searchTerm + ' game character');
+  } else if (category === 'Celebrities') {
+    queries.push(searchTerm + ' portrait');
   }
 
-  const attempts = [
-    query,
-    searchTerm, // Try without category context
-  ];
-
-  for (const attempt of attempts) {
+  for (const query of queries) {
+    if (images.length >= 4) break;
     try {
-      const encoded = encodeURIComponent(attempt);
+      // Try REST API summary first
+      const encoded = encodeURIComponent(query);
       const resp = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`, {
         headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' }
       });
       if (resp.ok) {
         const data = await resp.json();
         if (data.thumbnail?.source) {
-          // Get a larger version
-          return data.thumbnail.source.replace(/\/\d+px-/, '/400px-');
+          const url = data.thumbnail.source.replace(/\/\d+px-/, '/400px-');
+          if (!seenUrls.has(url)) { images.push(url); seenUrls.add(url); }
+        }
+        if (data.originalimage?.source && !seenUrls.has(data.originalimage.source)) {
+          images.push(data.originalimage.source);
+          seenUrls.add(data.originalimage.source);
         }
       }
-    } catch (e) {
-      console.error(`Wikipedia fetch failed for "${attempt}":`, e);
-    }
-  }
 
-  // Final fallback: Wikipedia search API
-  try {
-    const searchResp = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&srnamespace=0&srlimit=1&format=json`,
-      { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
-    );
-    if (searchResp.ok) {
-      const searchData = await searchResp.json();
-      const title = searchData.query?.search?.[0]?.title;
-      if (title) {
-        const pageResp = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
-          { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
-        );
-        if (pageResp.ok) {
-          const pageData = await pageResp.json();
-          if (pageData.thumbnail?.source) {
-            return pageData.thumbnail.source.replace(/\/\d+px-/, '/400px-');
+      // Also try the images API for more images
+      const imagesResp = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&titles=${encoded}&prop=images&imlimit=10&format=json`,
+        { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
+      );
+      if (imagesResp.ok) {
+        const imagesData = await imagesResp.json();
+        const pages = imagesData.query?.pages;
+        if (pages) {
+          for (const page of Object.values(pages) as any[]) {
+            if (!page.images) continue;
+            for (const img of page.images) {
+              if (images.length >= 4) break;
+              const title = img.title as string;
+              // Skip icons, logos, commons, svg
+              if (/\.(svg|ico)$/i.test(title)) continue;
+              if (/commons-logo|wiki|icon|flag|crest|emblem/i.test(title)) continue;
+
+              // Get the actual image URL
+              const fileResp = await fetch(
+                `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json`,
+                { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
+              );
+              if (fileResp.ok) {
+                const fileData = await fileResp.json();
+                const filePages = fileData.query?.pages;
+                if (filePages) {
+                  for (const fp of Object.values(filePages) as any[]) {
+                    const ii = fp.imageinfo?.[0];
+                    if (ii?.thumburl && !seenUrls.has(ii.thumburl)) {
+                      images.push(ii.thumburl);
+                      seenUrls.add(ii.thumburl);
+                    }
+                  }
+                }
+              }
+              await new Promise(r => setTimeout(r, 30));
+            }
           }
         }
       }
+    } catch (e) {
+      console.error(`Wikipedia fetch failed for "${query}":`, e);
     }
-  } catch (e) {
-    console.error(`Wikipedia search failed for "${searchTerm}":`, e);
+    await new Promise(r => setTimeout(r, 50));
   }
 
-  return null;
+  // Final fallback: Wikipedia search API
+  if (images.length === 0) {
+    try {
+      const searchResp = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&srnamespace=0&srlimit=1&format=json`,
+        { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
+      );
+      if (searchResp.ok) {
+        const searchData = await searchResp.json();
+        const title = searchData.query?.search?.[0]?.title;
+        if (title) {
+          const pageResp = await fetch(
+            `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+            { headers: { 'User-Agent': 'MogsyApp/1.0 (contact@mogsy.app)' } }
+          );
+          if (pageResp.ok) {
+            const pageData = await pageResp.json();
+            if (pageData.thumbnail?.source) {
+              images.push(pageData.thumbnail.source.replace(/\/\d+px-/, '/400px-'));
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Wikipedia search failed for "${searchTerm}":`, e);
+    }
+  }
+
+  return images;
 }
 
 Deno.serve(async (req) => {
@@ -84,14 +138,8 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Build query for items needing images
-    let query = supabase
-      .from('preset_items')
-      .select('id, name, image_url, league_id');
-
-    // Filter items: null, empty, or placeholder images
-    query = query.or('image_url.is.null,image_url.eq.,image_url.like.%ui-avatars%');
-
+    // Get all preset items
+    let query = supabase.from('preset_items').select('id, name, image_url, league_id');
     const { data: items, error } = await query;
     if (error) throw error;
 
@@ -101,46 +149,82 @@ Deno.serve(async (req) => {
       .from('leagues')
       .select('id, category')
       .in('id', leagueIds);
-
     const leagueMap = new Map(leagues?.map(l => [l.id, l.category]) || []);
+
+    // Get existing images from preset_item_images table
+    const itemIds = items?.map(i => i.id) || [];
+    const { data: existingImages } = await supabase
+      .from('preset_item_images')
+      .select('preset_item_id, image_url')
+      .in('preset_item_id', itemIds);
+
+    const existingImageMap = new Map<string, Set<string>>();
+    existingImages?.forEach(img => {
+      const set = existingImageMap.get(img.preset_item_id) || new Set();
+      set.add(img.image_url);
+      existingImageMap.set(img.preset_item_id, set);
+    });
 
     // Filter by category if specified, then apply limit/offset
     let filteredItems = category
       ? (items || []).filter(i => leagueMap.get(i.league_id) === category)
       : (items || []);
+
+    // Prioritize items with fewer images
+    filteredItems.sort((a, b) => {
+      const aCount = existingImageMap.get(a.id)?.size || 0;
+      const bCount = existingImageMap.get(b.id)?.size || 0;
+      return aCount - bCount;
+    });
+
     filteredItems = filteredItems.slice(offset, offset + limit);
 
     console.log(`Processing ${filteredItems.length} items${category ? ` in category "${category}"` : ''}`);
 
-    const results = { updated: 0, failed: 0, total: filteredItems.length, details: [] as any[] };
+    const results = { updated: 0, failed: 0, images_added: 0, total: filteredItems.length, details: [] as any[] };
 
     for (const item of filteredItems) {
       const itemCategory = leagueMap.get(item.league_id);
-      const imageUrl = await getWikipediaImage(item.name, itemCategory);
+      const existingUrls = existingImageMap.get(item.id) || new Set();
+      const imageUrls = await getWikipediaImages(item.name, itemCategory);
 
-      if (imageUrl) {
-        const { error: updateError } = await supabase
-          .from('preset_items')
-          .update({ image_url: imageUrl })
-          .eq('id', item.id);
+      // Filter out duplicates
+      const newUrls = imageUrls.filter(url => !existingUrls.has(url));
 
-        if (!updateError) {
+      if (newUrls.length > 0) {
+        // Update main image_url if empty
+        if (!item.image_url || item.image_url === '' || item.image_url.includes('ui-avatars')) {
+          await supabase.from('preset_items').update({ image_url: newUrls[0] }).eq('id', item.id);
+        }
+
+        // Insert into preset_item_images table
+        const inserts = newUrls.map((url, idx) => ({
+          preset_item_id: item.id,
+          image_url: url,
+          sort_order: (existingUrls.size) + idx,
+        }));
+
+        const { error: insertError } = await supabase.from('preset_item_images').insert(inserts);
+        if (!insertError) {
+          results.images_added += newUrls.length;
           results.updated++;
-          results.details.push({ name: item.name, status: 'updated' });
+          results.details.push({ name: item.name, status: 'updated', images_added: newUrls.length });
         } else {
           results.failed++;
-          results.details.push({ name: item.name, status: 'update_failed', error: updateError.message });
+          results.details.push({ name: item.name, status: 'insert_failed', error: insertError.message });
         }
-      } else {
+      } else if (imageUrls.length === 0) {
         results.failed++;
         results.details.push({ name: item.name, status: 'no_image_found' });
+      } else {
+        results.details.push({ name: item.name, status: 'all_images_exist' });
       }
 
-      // Rate limit: 50ms between requests
-      await new Promise(r => setTimeout(r, 50));
+      // Rate limit
+      await new Promise(r => setTimeout(r, 100));
     }
 
-    console.log(`Done: ${results.updated} updated, ${results.failed} failed`);
+    console.log(`Done: ${results.updated} updated, ${results.images_added} images added, ${results.failed} failed`);
 
     return new Response(JSON.stringify({ success: true, ...results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

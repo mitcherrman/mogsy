@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 
 interface LeagueOption {
   id: string;
@@ -30,7 +31,11 @@ export default function Play() {
   const [userLeagues, setUserLeagues] = useState<LeagueOption[]>([]);
   const [presetLeagues, setPresetLeagues] = useState<LeagueOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const locationState = useLocation().state as { openCategory?: string } | null;
+  const [openCategories, setOpenCategories] = useState<Set<string>>(() => {
+    if (locationState?.openCategory) return new Set([locationState.openCategory]);
+    return new Set();
+  });
 
   const toggleCategory = (cat: string) => {
     setOpenCategories((prev) => {
@@ -98,9 +103,11 @@ export default function Play() {
 
   const LeagueCard = ({ league, type }: { league: LeagueOption; type: "user" | "preset" }) => {
     const swipeLink = type === "user" ? "/swipe" : `/swipe/preset/${league.id}`;
+    const linkState = type === "preset" ? { from: "/play", openCategory: league.category } : undefined;
     return (
       <Link
         to={swipeLink}
+        state={linkState}
         className={`flex items-center gap-4 rounded-2xl border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(210_80%_60%/0.12)] hover:-translate-y-0.5 ${
           league.isPromoted ? "border-primary/40" : "border-border"
         }`}
