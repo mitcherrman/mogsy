@@ -177,7 +177,7 @@ export default function SwipePreset() {
                 </span>
                 <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1" />
+                    <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-sm font-bold text-muted-foreground">
                       {item.name.charAt(0)}
@@ -263,7 +263,7 @@ export default function SwipePreset() {
                         <img
                           src={item.image_url}
                           alt={item.name}
-                          className="w-full h-full object-contain p-8 transition-transform duration-300 group-hover:scale-110"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                           }}
