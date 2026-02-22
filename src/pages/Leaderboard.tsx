@@ -78,7 +78,7 @@ export default function Leaderboard() {
     if (!leagueId) return;
 
     const { data: profiles } = await supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("id, display_name, avatar_url, location")
       .neq("display_name", "");
 

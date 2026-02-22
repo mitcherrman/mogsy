@@ -224,7 +224,7 @@ function LeaderboardPreview({ leagueId, leagueName, leagueType }: { leagueId: st
       if (memberships && memberships.length > 0) {
         const profileIds = memberships.map((m) => m.profile_id);
         const { data: profiles } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("id, display_name, avatar_url")
           .in("id", profileIds);
         const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
@@ -338,7 +338,7 @@ export default function SwipeLeagues() {
     if (!leagues) { setLoading(false); return; }
 
     const allLeagueIds = leagues.map((l) => l.id);
-    const { data: profileCount } = await supabase.from("profiles").select("id").neq("display_name", "");
+    const { data: profileCount } = await supabase.from("public_profiles").select("id").neq("display_name", "");
     const totalProfiles = profileCount?.length || 0;
 
     const itemCountMap = new Map<string, number>();
@@ -369,7 +369,7 @@ export default function SwipeLeagues() {
           .limit(1);
         if (topMember && topMember.length > 0) {
           const { data: profile } = await supabase
-            .from("profiles")
+            .from("public_profiles")
             .select("avatar_url")
             .eq("id", topMember[0].profile_id)
             .single();

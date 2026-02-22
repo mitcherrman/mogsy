@@ -53,7 +53,7 @@ export default function Leagues() {
     }
 
     const presetLeagueIds = allLeagues.filter((l) => l.type === "preset").map((l) => l.id);
-    const { data: profileCount } = await supabase.from("profiles").select("id").neq("display_name", "");
+    const { data: profileCount } = await supabase.from("public_profiles").select("id").neq("display_name", "");
     const totalProfiles = profileCount?.length || 0;
 
     const itemCountMap = new Map<string, number>();
