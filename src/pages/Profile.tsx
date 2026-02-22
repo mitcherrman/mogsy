@@ -22,11 +22,11 @@ const frameOptions = [
 ];
 
 const SOCIAL_PLACEHOLDERS: Record<string, string> = {
-  instagram: "@username or instagram.com/username",
-  tiktok: "@username or tiktok.com/@username",
-  youtube: "@channel or youtube.com/@channel",
-  x: "@handle or x.com/handle",
-  twitch: "username or twitch.tv/username",
+  instagram: "https://instagram.com/yourname",
+  tiktok: "https://tiktok.com/@yourname",
+  youtube: "https://youtube.com/@yourchannel",
+  x: "https://x.com/yourhandle",
+  twitch: "https://twitch.tv/yourname",
   website: "https://yourwebsite.com",
 };
 
@@ -124,7 +124,7 @@ export default function Profile() {
       const numeric = value.replace(/\D/g, "");
       const age = parseInt(numeric);
       if (numeric && age < 18) {
-        setAgeWarning("You must be 18 or older to use this app.");
+        setAgeWarning("Users under 18 will be flagged for review.");
       } else {
         setAgeWarning("");
       }
@@ -183,7 +183,7 @@ export default function Profile() {
     toast({ title: "⚡ Boost activated!", description: "You'll appear 3x more often for 24 hours." });
   };
 
-  const hasFormErrors = !!nameError || !!ageWarning || Object.values(socialErrors).some(Boolean);
+  const hasFormErrors = !!nameError || Object.values(socialErrors).some(Boolean);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,10 +203,6 @@ export default function Profile() {
     }
 
     const age = form.age ? parseInt(form.age) : null;
-    if (age !== null && age < 18) {
-      toast({ title: "Age restriction", description: "You must be 18 or older.", variant: "destructive" });
-      return;
-    }
 
     setSaving(true);
     const socials = {
@@ -344,13 +340,13 @@ export default function Profile() {
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        placeholder="18+"
+                        placeholder="Your age"
                         value={form.age}
                         onChange={(e) => handleChange("age", e.target.value)}
                         maxLength={3}
                       />
                       {ageWarning && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" /> {ageWarning}
                         </p>
                       )}
@@ -403,7 +399,7 @@ export default function Profile() {
                 {/* Social links */}
                 <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                   <Label className="text-base font-bold block">Social Links</Label>
-                  <p className="text-xs text-muted-foreground">Enter your username or paste a link. We'll validate it matches the platform.</p>
+                  <p className="text-xs text-muted-foreground">Paste the full link to your profile. Usernames and @ handles won't be accepted.</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {["instagram", "tiktok", "youtube", "x", "twitch", "website"].map((s) => (
                       <div key={s} className="space-y-1">

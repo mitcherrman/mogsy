@@ -27,6 +27,7 @@ interface Profile {
   status_message: string | null;
   is_pro: boolean | null;
   is_bot: boolean | null;
+  is_anonymous: boolean | null;
   diamonds: number | null;
   elo_shields: number | null;
   reveals: number | null;
@@ -271,6 +272,7 @@ export default function AdminUsers() {
           </div>
           <div className="flex gap-2">
             {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
+            {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
         </div>
@@ -549,6 +551,7 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">{p.location || "No location"} · Joined {new Date(p.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {p.is_anonymous && <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Anon</Badge>}
                 {p.is_pro && <Crown className="h-4 w-4 text-primary" />}
                 <Diamond className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
