@@ -91,6 +91,9 @@ export default function AdminUsers() {
   // Undo delete
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
 
+  // Email map
+  const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
@@ -100,6 +103,17 @@ export default function AdminUsers() {
       .order("created_at", { ascending: false });
     setProfiles(data || []);
     setLoading(false);
+
+    // Fetch emails for all user_ids
+    if (data && data.length > 0) {
+      const userIds = data.map((p) => p.user_id);
+      const { data: emailData } = await supabase.functions.invoke("admin-get-emails", {
+        body: { user_ids: userIds },
+      });
+      if (emailData?.emails) {
+        setEmailMap(emailData.emails);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -109,9 +123,11 @@ export default function AdminUsers() {
 
   const filtered = profiles.filter((p) => {
     const q = search.toLowerCase();
+    const email = emailMap[p.user_id] || "";
     return (
       p.display_name.toLowerCase().includes(q) ||
       p.user_id.toLowerCase().includes(q) ||
+      email.toLowerCase().includes(q) ||
       (p.location || "").toLowerCase().includes(q)
     );
   });
@@ -243,7 +259,8 @@ export default function AdminUsers() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-foreground truncate">{selectedUser.display_name}</h3>
+            <h3 className="font-bold text-foreground truncate">{selectedUser.display_name || "Unnamed"}</h3>
+            <p className="text-xs text-primary truncate">{emailMap[selectedUser.user_id] || "No email"}</p>
             <p className="text-xs text-muted-foreground truncate">{selectedUser.user_id}</p>
             <p className="text-xs text-muted-foreground">Joined {new Date(selectedUser.created_at).toLocaleDateString()}</p>
           </div>
@@ -454,7 +471,7 @@ export default function AdminUsers() {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search users by name or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search users by name, email, or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Badge variant="outline">{filtered.length} users</Badge>
       </div>
@@ -502,6 +519,7 @@ export default function AdminUsers() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
                 <p className="text-xs text-muted-foreground">{p.location || "No location"} · Joined {new Date(p.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
