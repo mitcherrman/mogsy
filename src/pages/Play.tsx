@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trophy, Megaphone } from "lucide-react";
+import { ArrowLeft, Trophy, Megaphone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LeagueOption {
@@ -17,11 +18,27 @@ interface LeagueOption {
   category: string | null;
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Anime: "🎌",
+  Movies: "🎬",
+  "Video Games": "🎮",
+  Celebrities: "⭐",
+};
+
 export default function Play() {
   const navigate = useNavigate();
   const [userLeagues, setUserLeagues] = useState<LeagueOption[]>([]);
   const [presetLeagues, setPresetLeagues] = useState<LeagueOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (cat: string) => {
+    setOpenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  };
 
   useEffect(() => {
     loadLeagues();
@@ -45,18 +62,12 @@ export default function Play() {
       items?.forEach((item) => itemCountMap.set(item.league_id, (itemCountMap.get(item.league_id) || 0) + 1));
     }
 
-    const getIcon = (name: string) => {
+    const getIcon = (name: string, category: string | null) => {
+      if (category && CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
       if (name.includes("Global")) return "🌍";
-      if (name.includes("North")) return "🇺🇸";
-      if (name.includes("Europe")) return "🇪🇺";
-      if (name.includes("Asia")) return "🌏";
       if (name.includes("Restaurant")) return "🍽️";
       if (name.includes("Fast Food")) return "🍔";
-      if (name.includes("2025")) return "🎬";
-      if (name.includes("All Time")) return "🏆";
-      if (name.includes("Celebrity")) return "⭐";
       if (name.includes("Car")) return "🏎️";
-      if (name.includes("Anime")) return "🎌";
       return "📋";
     };
 
@@ -64,6 +75,7 @@ export default function Play() {
     const presets: LeagueOption[] = [];
 
     leagues.forEach((l) => {
+      const cat = (l as any).category || null;
       const entry: LeagueOption = {
         id: l.id,
         name: l.name,
@@ -71,14 +83,13 @@ export default function Play() {
         memberCount: l.type === "preset" ? (itemCountMap.get(l.id) || 0) : totalProfiles,
         isPromoted: l.is_promoted || false,
         promotedBrandName: l.promoted_brand_name,
-        icon: getIcon(l.name),
-        category: (l as any).category || null,
+        icon: getIcon(l.name, cat),
+        category: cat,
       };
       if (l.type === "user") users.push(entry);
       else presets.push(entry);
     });
 
-    // Sort promoted first
     presets.sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0));
     setUserLeagues(users);
     setPresetLeagues(presets);
@@ -121,6 +132,17 @@ export default function Play() {
     );
   }
 
+  const categories = new Map<string, LeagueOption[]>();
+  const uncategorized: LeagueOption[] = [];
+  presetLeagues.forEach((l) => {
+    if (l.category) {
+      if (!categories.has(l.category)) categories.set(l.category, []);
+      categories.get(l.category)!.push(l);
+    } else {
+      uncategorized.push(l);
+    }
+  });
+
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-2xl">
@@ -151,51 +173,53 @@ export default function Play() {
           </TabsContent>
 
           <TabsContent value="presets">
-            {(() => {
-              const categories = new Map<string, LeagueOption[]>();
-              const uncategorized: LeagueOption[] = [];
-              presetLeagues.forEach((l) => {
-                if (l.category) {
-                  if (!categories.has(l.category)) categories.set(l.category, []);
-                  categories.get(l.category)!.push(l);
-                } else {
-                  uncategorized.push(l);
-                }
-              });
-              return (
-                <div className="space-y-6">
-                  {Array.from(categories.entries()).map(([cat, leagues]) => (
-                    <div key={cat}>
-                      <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                        {cat === "Anime" ? "🎌" : "📂"} {cat}
-                      </h2>
-                      <div className="space-y-3">
-                        {leagues.map((league, i) => (
-                          <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                            <LeagueCard league={league} type="preset" />
-                          </motion.div>
-                        ))}
-                      </div>
+            <div className="space-y-3">
+              {Array.from(categories.entries()).map(([cat, leagues]) => (
+                <Collapsible key={cat} open={openCategories.has(cat)} onOpenChange={() => toggleCategory(cat)}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+                    <span className="flex items-center gap-3">
+                      <span className="text-2xl">{CATEGORY_ICONS[cat] || "📂"}</span>
+                      <span className="font-bold text-foreground text-lg">{cat}</span>
+                      <span className="text-xs text-muted-foreground">{leagues.length} leagues</span>
+                    </span>
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has(cat) ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="space-y-2 mt-2 ml-2">
+                      {leagues.map((league, i) => (
+                        <motion.div key={league.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                          <LeagueCard league={league} type="preset" />
+                        </motion.div>
+                      ))}
                     </div>
-                  ))}
-                  {uncategorized.length > 0 && (
-                    <div>
-                      {categories.size > 0 && <h2 className="text-lg font-bold text-foreground mb-3">📋 Other</h2>}
-                      <div className="space-y-3">
-                        {uncategorized.map((league, i) => (
-                          <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                            <LeagueCard league={league} type="preset" />
-                          </motion.div>
-                        ))}
-                      </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+              {uncategorized.length > 0 && (
+                <Collapsible open={openCategories.has("__other")} onOpenChange={() => toggleCategory("__other")}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
+                    <span className="flex items-center gap-3">
+                      <span className="text-2xl">📋</span>
+                      <span className="font-bold text-foreground text-lg">Other</span>
+                      <span className="text-xs text-muted-foreground">{uncategorized.length} leagues</span>
+                    </span>
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has("__other") ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="space-y-2 mt-2 ml-2">
+                      {uncategorized.map((league, i) => (
+                        <motion.div key={league.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                          <LeagueCard league={league} type="preset" />
+                        </motion.div>
+                      ))}
                     </div>
-                  )}
-                  {presetLeagues.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">No preset leagues available.</p>
-                  )}
-                </div>
-              );
-            })()}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+              {presetLeagues.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No preset leagues available.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

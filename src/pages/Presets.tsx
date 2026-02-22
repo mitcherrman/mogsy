@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Lock, Plus, Sparkles, Megaphone, ArrowLeft } from "lucide-react";
+import { Lock, Plus, Sparkles, Megaphone, ArrowLeft, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,13 @@ interface PresetLeague {
   category: string | null;
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Anime: "🎌",
+  Movies: "🎬",
+  "Video Games": "🎮",
+  Celebrities: "⭐",
+};
+
 export default function Presets() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -30,13 +38,21 @@ export default function Presets() {
   const [loading, setLoading] = useState(true);
   const [newLeague, setNewLeague] = useState({ name: "", description: "" });
   const [creating, setCreating] = useState(false);
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (cat: string) => {
+    setOpenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  };
 
   useEffect(() => {
     loadPresets();
   }, [user]);
 
   const loadPresets = async () => {
-    // Check pro status
     if (user) {
       const { data: profile } = await supabase
         .from("profiles").select("is_pro").eq("user_id", user.id).single();
@@ -56,11 +72,10 @@ export default function Presets() {
             itemCount: count || 0,
             isPromoted: l.is_promoted || false,
             promotedBrandName: l.promoted_brand_name,
-            category: (l as any).category || null,
+            category: l.category || null,
           };
         })
       );
-      // Sort promoted first
       mapped.sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0));
       setPresets(mapped);
     }
@@ -87,14 +102,11 @@ export default function Presets() {
     setCreating(false);
   };
 
-  const getIcon = (name: string) => {
+  const getIcon = (name: string, category: string | null) => {
+    if (category && CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
     if (name.includes("Restaurant")) return "🍽️";
     if (name.includes("Fast Food")) return "🍔";
-    if (name.includes("2025")) return "🎬";
-    if (name.includes("All Time")) return "🏆";
-    if (name.includes("Celebrity")) return "⭐";
     if (name.includes("Car")) return "🏎️";
-    if (name.includes("Anime")) return "🎌";
     return "📋";
   };
 
@@ -105,6 +117,42 @@ export default function Presets() {
       </div>
     );
   }
+
+  const categories = new Map<string, PresetLeague[]>();
+  const uncategorized: PresetLeague[] = [];
+  presets.forEach((p) => {
+    if (p.category) {
+      if (!categories.has(p.category)) categories.set(p.category, []);
+      categories.get(p.category)!.push(p);
+    } else {
+      uncategorized.push(p);
+    }
+  });
+
+  const renderCard = (preset: PresetLeague, i: number) => (
+    <motion.div key={preset.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+      <Link
+        to={`/swipe/preset/${preset.id}`}
+        className={`block rounded-2xl border bg-card p-6 card-hover ${
+          preset.isPromoted ? "border-primary/40 shadow-[0_0_15px_hsl(210_80%_60%/0.1)]" : "border-border"
+        }`}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <span className="text-4xl">{getIcon(preset.name, preset.category)}</span>
+          {preset.isPromoted && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
+              <Megaphone className="h-3 w-3" /> Promoted
+            </span>
+          )}
+        </div>
+        <h3 className="text-lg font-bold text-foreground">{preset.name}</h3>
+        {preset.promotedBrandName && (
+          <p className="text-[10px] text-muted-foreground">Sponsored by {preset.promotedBrandName}</p>
+        )}
+        <p className="text-sm text-muted-foreground mt-1">{preset.itemCount} items · Vote now</p>
+      </Link>
+    </motion.div>
+  );
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
@@ -148,64 +196,46 @@ export default function Presets() {
           </motion.div>
         )}
 
-        {(() => {
-          const categories = new Map<string, PresetLeague[]>();
-          const uncategorized: PresetLeague[] = [];
-          presets.forEach((p) => {
-            if (p.category) {
-              if (!categories.has(p.category)) categories.set(p.category, []);
-              categories.get(p.category)!.push(p);
-            } else {
-              uncategorized.push(p);
-            }
-          });
-          const renderCard = (preset: PresetLeague, i: number) => (
-            <motion.div key={preset.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Link
-                to={`/swipe/preset/${preset.id}`}
-                className={`block rounded-2xl border bg-card p-6 card-hover ${
-                  preset.isPromoted ? "border-primary/40 shadow-[0_0_15px_hsl(210_80%_60%/0.1)]" : "border-border"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-4xl">{getIcon(preset.name)}</span>
-                  {preset.isPromoted && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
-                      <Megaphone className="h-3 w-3" /> Promoted
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-lg font-bold text-foreground">{preset.name}</h3>
-                {preset.promotedBrandName && (
-                  <p className="text-[10px] text-muted-foreground">Sponsored by {preset.promotedBrandName}</p>
-                )}
-                <p className="text-sm text-muted-foreground mt-1">{preset.itemCount} items · Vote now</p>
-              </Link>
-            </motion.div>
-          );
-          return (
-            <div className="space-y-8">
-              {Array.from(categories.entries()).map(([cat, list]) => (
-                <div key={cat}>
-                  <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                    {cat === "Anime" ? "🎌" : "📂"} {cat}
-                  </h2>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {list.map((p, i) => renderCard(p, i))}
+        <div className="space-y-4">
+          {Array.from(categories.entries()).map(([cat, list]) => (
+            <Collapsible key={cat} open={openCategories.has(cat)} onOpenChange={() => toggleCategory(cat)}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
+                <span className="flex items-center gap-3">
+                  <span className="text-3xl">{CATEGORY_ICONS[cat] || "📂"}</span>
+                  <div className="text-left">
+                    <span className="font-bold text-foreground text-xl">{cat}</span>
+                    <p className="text-xs text-muted-foreground">{list.length} leagues</p>
                   </div>
+                </span>
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has(cat) ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-3 ml-1">
+                  {list.map((p, i) => renderCard(p, i))}
                 </div>
-              ))}
-              {uncategorized.length > 0 && (
-                <div>
-                  {categories.size > 0 && <h2 className="text-xl font-bold text-foreground mb-4">📋 Other</h2>}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {uncategorized.map((p, i) => renderCard(p, i))}
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
+          {uncategorized.length > 0 && (
+            <Collapsible open={openCategories.has("__other")} onOpenChange={() => toggleCategory("__other")}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-colors">
+                <span className="flex items-center gap-3">
+                  <span className="text-3xl">📋</span>
+                  <div className="text-left">
+                    <span className="font-bold text-foreground text-xl">Other</span>
+                    <p className="text-xs text-muted-foreground">{uncategorized.length} leagues</p>
                   </div>
+                </span>
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has("__other") ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-3 ml-1">
+                  {uncategorized.map((p, i) => renderCard(p, i))}
                 </div>
-              )}
-            </div>
-          );
-        })()}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
       </div>
     </div>
   );
