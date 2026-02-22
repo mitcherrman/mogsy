@@ -10,6 +10,7 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import AdminPresetItems from "@/components/admin/AdminPresetItems";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";
+import AdminUsers from "@/components/admin/AdminUsers";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -53,14 +54,16 @@ export default function Admin() {
 
         <AdminStats />
 
-        <Tabs defaultValue="settings" className="mt-6 space-y-6">
-          <TabsList className="bg-secondary">
+        <Tabs defaultValue="users" className="mt-6 space-y-6">
+          <TabsList className="bg-secondary flex-wrap">
+            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="items">Preset Items</TabsTrigger>
             <TabsTrigger value="bots">Bots</TabsTrigger>
             <TabsTrigger value="promoted">Promoted</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="users"><AdminUsers /></TabsContent>
           <TabsContent value="settings"><AdminSettings /></TabsContent>
           <TabsContent value="items"><AdminPresetItems /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
