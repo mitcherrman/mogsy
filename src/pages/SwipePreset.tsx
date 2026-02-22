@@ -1,9 +1,12 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
+import TierBadge from "@/components/TierBadge";
+import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,17 +21,31 @@ interface PresetItem {
 
 const AD_INTERVAL = 10;
 
+function generateMatchups(items: PresetItem[]): [PresetItem, PresetItem][] {
+  const pairs: [PresetItem, PresetItem][] = [];
+  const rounds = 2;
+  for (let r = 0; r < rounds; r++) {
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    for (let i = 0; i + 1 < shuffled.length; i += 2) {
+      pairs.push([shuffled[i], shuffled[i + 1]]);
+    }
+  }
+  return pairs;
+}
+
 export default function SwipePreset() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { user } = useAuth();
   const [items, setItems] = useState<PresetItem[]>([]);
-  const [pair, setPair] = useState<[PresetItem, PresetItem] | null>(null);
+  const [matchups, setMatchups] = useState<[PresetItem, PresetItem][]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
   const [leagueName, setLeagueName] = useState("");
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [finished, setFinished] = useState(false);
 
   useEffect(() => {
     if (leagueId) loadItems();
@@ -42,10 +59,9 @@ export default function SwipePreset() {
     if (league) setLeagueName(league.name);
     if (data && data.length >= 2) {
       setItems(data);
-      setPair(getRandomPair(data));
+      setMatchups(generateMatchups(data));
     }
 
-    // Check pro status
     if (user) {
       const { data: profile } = await supabase
         .from("profiles").select("is_pro").eq("user_id", user.id).single();
@@ -55,14 +71,8 @@ export default function SwipePreset() {
     setLoading(false);
   };
 
-  function getRandomPair(list: PresetItem[], exclude?: [string, string]): [PresetItem, PresetItem] {
-    let a: number, b: number;
-    do {
-      a = Math.floor(Math.random() * list.length);
-      b = Math.floor(Math.random() * list.length);
-    } while (a === b || (exclude && exclude.includes(list[a].id) && exclude.includes(list[b].id)));
-    return [list[a], list[b]];
-  }
+  const pair = currentIndex < matchups.length ? matchups[currentIndex] : null;
+  const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
   const handleChoose = useCallback(
     async (winnerIndex: 0 | 1) => {
@@ -71,7 +81,9 @@ export default function SwipePreset() {
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
-      const { newWinnerElo, newLoserElo } = calculateElo(winner.elo, loser.elo);
+      const currentWinner = items.find(i => i.id === winner.id)!;
+      const currentLoser = items.find(i => i.id === loser.id)!;
+      const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
 
       await Promise.all([
         supabase.from("matches").insert({
@@ -92,18 +104,33 @@ export default function SwipePreset() {
       );
 
       const newCount = matchCount + 1;
+      const nextIndex = currentIndex + 1;
 
       setTimeout(() => {
         setMatchCount(newCount);
         setChosen(null);
-        if (!isPro && newCount % AD_INTERVAL === 0) {
+        if (nextIndex >= matchups.length) {
+          setFinished(true);
+        } else if (!isPro && newCount % AD_INTERVAL === 0) {
           setShowAd(true);
         } else {
-          setPair(getRandomPair(items, [pair[0].id, pair[1].id]));
+          setCurrentIndex(nextIndex);
         }
       }, 600);
     },
-    [pair, items, leagueId, chosen, matchCount, isPro]
+    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length]
+  );
+
+  const handleRestart = () => {
+    setMatchups(generateMatchups(items));
+    setCurrentIndex(0);
+    setMatchCount(0);
+    setFinished(false);
+  };
+
+  const sortedResults = useMemo(
+    () => [...items].sort((a, b) => b.elo - a.elo),
+    [items]
   );
 
   if (loading) {
@@ -114,10 +141,67 @@ export default function SwipePreset() {
     );
   }
 
-  if (!pair || items.length < 2) {
+  if (!matchups.length || items.length < 2) {
     return (
       <div className="min-h-screen bg-background px-4 py-8 flex items-center justify-center">
         <p className="text-muted-foreground">Not enough items to compare yet.</p>
+      </div>
+    );
+  }
+
+  if (finished) {
+    return (
+      <div className="min-h-screen bg-background px-4 py-8">
+        <div className="container mx-auto max-w-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <Link to="/presets">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-extrabold text-foreground flex-1">{leagueName} Results</h1>
+          </div>
+
+          <p className="text-muted-foreground text-sm mb-4">
+            You voted <span className="text-primary font-bold">{matchCount}</span> times. Here's how things stand:
+          </p>
+
+          <div className="space-y-2">
+            {sortedResults.map((item, idx) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 rounded-xl border border-border bg-card p-3 ${idx === 0 ? "ring-2 ring-primary" : ""}`}
+              >
+                <span className="w-8 text-center font-bold text-muted-foreground">
+                  {idx === 0 ? <Crown className="h-5 w-5 text-primary mx-auto" /> : `#${idx + 1}`}
+                </span>
+                <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="h-full w-full object-contain p-1" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-sm font-bold text-muted-foreground">
+                      {item.name.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                <span className="font-semibold text-foreground flex-1 truncate">{item.name}</span>
+                <span className="text-sm text-primary font-bold">{item.elo}</span>
+                <TierBadge tier={getTierFromElo(item.elo)} />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <Button onClick={handleRestart} variant="outline" className="flex-1 gap-2">
+              <RotateCcw className="h-4 w-4" /> Play Again
+            </Button>
+            <Link to={`/leaderboard/${leagueId}`} className="flex-1">
+              <Button className="w-full gap-2">
+                <Trophy className="h-4 w-4" /> Full Rankings
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -129,13 +213,13 @@ export default function SwipePreset() {
           isPro={isPro}
           onClose={() => {
             setShowAd(false);
-            setPair(getRandomPair(items, pair ? [pair[0].id, pair[1].id] : undefined));
+            setCurrentIndex(currentIndex + 1);
           }}
         />
       )}
       <div className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-4xl">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <Link to="/presets">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="h-5 w-5" />
@@ -144,7 +228,7 @@ export default function SwipePreset() {
             <div className="flex-1">
               <h1 className="text-2xl font-extrabold text-foreground">{leagueName}</h1>
               <p className="text-muted-foreground text-sm">
-                Votes cast: <span className="text-primary font-bold">{matchCount}</span>
+                {currentIndex + 1} / {matchups.length}
               </p>
             </div>
             <Link to={`/leaderboard/${leagueId}`}>
@@ -154,54 +238,55 @@ export default function SwipePreset() {
             </Link>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`pair-${pair[0].id}-${pair[1].id}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              {pair.map((item, idx) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleChoose(idx as 0 | 1)}
-                  className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                    chosen === idx ? "ring-2 ring-primary" : ""
-                  }`}
-                >
-                  <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-contain p-8 transition-transform duration-300 group-hover:scale-110"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                        }}
-                      />
-                    ) : (
-                      <span className="text-6xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-bold text-foreground truncate">{item.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Elo: <span className="text-primary font-semibold">{item.elo}</span>
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          <Progress value={progress} className="mb-6 h-2" />
+
+          {pair && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              >
+                {pair.map((item, idx) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleChoose(idx as 0 | 1)}
+                    className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                      chosen === idx ? "ring-2 ring-primary" : ""
+                    }`}
+                  >
+                    <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="w-full h-full object-contain p-8 transition-transform duration-300 group-hover:scale-110"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+                          }}
+                        />
+                      ) : (
+                        <span className="text-6xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-bold text-foreground truncate">{item.name}</h3>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           <div className="flex items-center justify-center my-6">
             <span className="text-2xl font-black text-gradient">VS</span>
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            Tap the one you prefer. Rankings update instantly.
+            Tap the one you prefer.
           </p>
         </div>
       </div>
