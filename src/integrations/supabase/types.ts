@@ -90,6 +90,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          category: string | null
           created_at: string
           created_by_user_id: string | null
           description: string | null
@@ -103,6 +104,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by_user_id?: string | null
           description?: string | null
@@ -116,6 +118,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by_user_id?: string | null
           description?: string | null

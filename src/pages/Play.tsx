@@ -14,6 +14,7 @@ interface LeagueOption {
   isPromoted: boolean;
   promotedBrandName: string | null;
   icon: string;
+  category: string | null;
 }
 
 export default function Play() {
@@ -29,7 +30,7 @@ export default function Play() {
   const loadLeagues = async () => {
     const { data: leagues } = await supabase
       .from("leagues")
-      .select("id, name, description, type, is_promoted, promoted_brand_name")
+      .select("id, name, description, type, is_promoted, promoted_brand_name, category")
       .order("created_at", { ascending: true });
 
     if (!leagues) { setLoading(false); return; }
@@ -71,6 +72,7 @@ export default function Play() {
         isPromoted: l.is_promoted || false,
         promotedBrandName: l.promoted_brand_name,
         icon: getIcon(l.name),
+        category: (l as any).category || null,
       };
       if (l.type === "user") users.push(entry);
       else presets.push(entry);
@@ -149,16 +151,51 @@ export default function Play() {
           </TabsContent>
 
           <TabsContent value="presets">
-            <div className="space-y-3">
-              {presetLeagues.map((league, i) => (
-                <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <LeagueCard league={league} type="preset" />
-                </motion.div>
-              ))}
-              {presetLeagues.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">No preset leagues available.</p>
-              )}
-            </div>
+            {(() => {
+              const categories = new Map<string, LeagueOption[]>();
+              const uncategorized: LeagueOption[] = [];
+              presetLeagues.forEach((l) => {
+                if (l.category) {
+                  if (!categories.has(l.category)) categories.set(l.category, []);
+                  categories.get(l.category)!.push(l);
+                } else {
+                  uncategorized.push(l);
+                }
+              });
+              return (
+                <div className="space-y-6">
+                  {Array.from(categories.entries()).map(([cat, leagues]) => (
+                    <div key={cat}>
+                      <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                        {cat === "Anime" ? "🎌" : "📂"} {cat}
+                      </h2>
+                      <div className="space-y-3">
+                        {leagues.map((league, i) => (
+                          <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                            <LeagueCard league={league} type="preset" />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {uncategorized.length > 0 && (
+                    <div>
+                      {categories.size > 0 && <h2 className="text-lg font-bold text-foreground mb-3">📋 Other</h2>}
+                      <div className="space-y-3">
+                        {uncategorized.map((league, i) => (
+                          <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                            <LeagueCard league={league} type="preset" />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {presetLeagues.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No preset leagues available.</p>
+                  )}
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>

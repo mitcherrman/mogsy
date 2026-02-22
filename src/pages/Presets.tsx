@@ -17,6 +17,7 @@ interface PresetLeague {
   itemCount: number;
   isPromoted: boolean;
   promotedBrandName: string | null;
+  category: string | null;
 }
 
 export default function Presets() {
@@ -44,7 +45,7 @@ export default function Presets() {
 
     const { data: leagues } = await supabase
       .from("leagues")
-      .select("id, name, description, is_promoted, promoted_brand_name")
+      .select("id, name, description, is_promoted, promoted_brand_name, category")
       .eq("type", "preset");
     if (leagues) {
       const mapped = await Promise.all(
@@ -55,6 +56,7 @@ export default function Presets() {
             itemCount: count || 0,
             isPromoted: l.is_promoted || false,
             promotedBrandName: l.promoted_brand_name,
+            category: (l as any).category || null,
           };
         })
       );
@@ -146,8 +148,18 @@ export default function Presets() {
           </motion.div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {presets.map((preset, i) => (
+        {(() => {
+          const categories = new Map<string, PresetLeague[]>();
+          const uncategorized: PresetLeague[] = [];
+          presets.forEach((p) => {
+            if (p.category) {
+              if (!categories.has(p.category)) categories.set(p.category, []);
+              categories.get(p.category)!.push(p);
+            } else {
+              uncategorized.push(p);
+            }
+          });
+          const renderCard = (preset: PresetLeague, i: number) => (
             <motion.div key={preset.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link
                 to={`/swipe/preset/${preset.id}`}
@@ -170,8 +182,30 @@ export default function Presets() {
                 <p className="text-sm text-muted-foreground mt-1">{preset.itemCount} items · Vote now</p>
               </Link>
             </motion.div>
-          ))}
-        </div>
+          );
+          return (
+            <div className="space-y-8">
+              {Array.from(categories.entries()).map(([cat, list]) => (
+                <div key={cat}>
+                  <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                    {cat === "Anime" ? "🎌" : "📂"} {cat}
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {list.map((p, i) => renderCard(p, i))}
+                  </div>
+                </div>
+              ))}
+              {uncategorized.length > 0 && (
+                <div>
+                  {categories.size > 0 && <h2 className="text-xl font-bold text-foreground mb-4">📋 Other</h2>}
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {uncategorized.map((p, i) => renderCard(p, i))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
