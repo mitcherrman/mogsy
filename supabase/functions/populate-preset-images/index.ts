@@ -132,11 +132,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { category, limit = 10, offset = 0 } = await req.json().catch(() => ({ limit: 10, offset: 0 }));
+    // Verify caller is admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Verify the user is admin using their JWT
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Check admin role
+    const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin');
+    if (!roleData || roleData.length === 0) {
+      return new Response(JSON.stringify({ error: 'Forbidden - Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const { category, limit: rawLimit = 10, offset = 0 } = await req.json().catch(() => ({ limit: 10, offset: 0 }));
+    const limit = Math.min(Math.max(Number(rawLimit) || 10, 1), 50); // Cap at 50
 
     // Get all preset items
     let query = supabase.from('preset_items').select('id, name, image_url, league_id');

@@ -74,7 +74,7 @@ export default function Swipe() {
       }
     }
 
-    const { data } = await supabase.from("profiles").select("*").neq("display_name", "");
+    const { data } = await supabase.from("public_profiles").select("*").neq("display_name", "");
 
     let eloMap = new Map<string, number>();
     if (league) {

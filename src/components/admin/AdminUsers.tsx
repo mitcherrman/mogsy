@@ -99,7 +99,7 @@ export default function AdminUsers() {
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at")
       .eq("is_bot", false)
       .order("created_at", { ascending: false });
     setProfiles((data as Profile[]) || []);

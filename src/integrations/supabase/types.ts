@@ -92,6 +92,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "boosts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       elo_check_games: {
@@ -147,6 +154,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elo_check_games_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -259,6 +273,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "league_memberships_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       leagues: {
@@ -359,10 +380,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "matches_loser_profile_id_fkey"
+            columns: ["loser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "matches_winner_profile_id_fkey"
             columns: ["winner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_profile_id_fkey"
+            columns: ["winner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -471,6 +506,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_photos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -586,6 +628,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchases_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -608,7 +657,78 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          active_boost_until: string | null
+          age: number | null
+          avatar_url: string | null
+          boost_credits: number | null
+          created_at: string | null
+          custom_theme: string | null
+          diamonds: number | null
+          display_name: string | null
+          elo_shields: number | null
+          id: string | null
+          is_anonymous: boolean | null
+          is_bot: boolean | null
+          is_pro: boolean | null
+          location: string | null
+          profile_frame: string | null
+          reveals: number | null
+          rewinds: number | null
+          socials: Json | null
+          status_message: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          active_boost_until?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          boost_credits?: number | null
+          created_at?: string | null
+          custom_theme?: string | null
+          diamonds?: number | null
+          display_name?: string | null
+          elo_shields?: number | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          is_bot?: boolean | null
+          is_pro?: boolean | null
+          location?: string | null
+          profile_frame?: string | null
+          reveals?: number | null
+          rewinds?: number | null
+          socials?: Json | null
+          status_message?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          active_boost_until?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          boost_credits?: number | null
+          created_at?: string | null
+          custom_theme?: string | null
+          diamonds?: number | null
+          display_name?: string | null
+          elo_shields?: number | null
+          id?: string | null
+          is_anonymous?: boolean | null
+          is_bot?: boolean | null
+          is_pro?: boolean | null
+          location?: string | null
+          profile_frame?: string | null
+          reveals?: number | null
+          rewinds?: number | null
+          socials?: Json | null
+          status_message?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
