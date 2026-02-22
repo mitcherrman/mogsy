@@ -18,6 +18,7 @@ interface LeagueOption {
   isPromoted: boolean;
   promotedBrandName: string | null;
   icon: string;
+  imageUrl: string | null;
   category: string | null;
   displayOrder: number;
 }
@@ -25,6 +26,7 @@ interface LeagueOption {
 interface CategoryItem {
   key: string;
   icon: string;
+  imageUrl: string | null;
   name: string;
   count: number;
   leagues: LeagueOption[];
@@ -79,8 +81,12 @@ function LeagueCard({
           league.isPromoted ? "border-primary/40" : "border-border"
         }`}
       >
-        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl flex-shrink-0">
-          {league.icon}
+        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+          {league.imageUrl ? (
+            <img src={league.imageUrl} alt={league.name} className="w-full h-full object-cover" />
+          ) : (
+            league.icon
+          )}
         </div>
         <div className="text-center min-w-0 w-full">
           <h3 className="font-bold text-foreground text-sm truncate">{league.name}</h3>
@@ -149,8 +155,12 @@ function DraggableCategoryCard({
           isOpen ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
         }`}
       >
-        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl flex-shrink-0">
-          {cat.icon}
+        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+          {cat.imageUrl ? (
+            <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover" />
+          ) : (
+            cat.icon
+          )}
         </div>
         <div className="text-center min-w-0 w-full">
           <h3 className="font-bold text-foreground text-sm truncate">{cat.name}</h3>
@@ -327,14 +337,48 @@ export default function Play() {
 
     if (!leagues) { setLoading(false); return; }
 
-    const presetIds = leagues.filter((l) => l.type === "preset").map((l) => l.id);
+    const allLeagueIds = leagues.map((l) => l.id);
     const { data: profileCount } = await supabase.from("profiles").select("id").neq("display_name", "");
     const totalProfiles = profileCount?.length || 0;
 
     const itemCountMap = new Map<string, number>();
-    if (presetIds.length > 0) {
-      const { data: items } = await supabase.from("preset_items").select("league_id").in("league_id", presetIds);
-      items?.forEach((item) => itemCountMap.set(item.league_id, (itemCountMap.get(item.league_id) || 0) + 1));
+    const topImageMap = new Map<string, string>();
+    if (allLeagueIds.length > 0) {
+      const { data: items } = await supabase
+        .from("preset_items")
+        .select("league_id, image_url, elo")
+        .in("league_id", allLeagueIds)
+        .order("elo", { ascending: false });
+      items?.forEach((item) => {
+        itemCountMap.set(item.league_id, (itemCountMap.get(item.league_id) || 0) + 1);
+        if (!topImageMap.has(item.league_id) && item.image_url) {
+          topImageMap.set(item.league_id, item.image_url);
+        }
+      });
+    }
+
+    // Also fetch top user avatar for user leagues
+    const userLeagueIds = leagues.filter((l) => l.type === "user").map((l) => l.id);
+    const userLeagueImageMap = new Map<string, string>();
+    if (userLeagueIds.length > 0) {
+      for (const lid of userLeagueIds) {
+        const { data: topMember } = await supabase
+          .from("league_memberships")
+          .select("profile_id")
+          .eq("league_id", lid)
+          .order("elo", { ascending: false })
+          .limit(1);
+        if (topMember && topMember.length > 0) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", topMember[0].profile_id)
+            .single();
+          if (profile?.avatar_url) {
+            userLeagueImageMap.set(lid, profile.avatar_url);
+          }
+        }
+      }
     }
 
     const getIcon = (name: string, category: string | null) => {
@@ -359,6 +403,7 @@ export default function Play() {
         isPromoted: l.is_promoted || false,
         promotedBrandName: l.promoted_brand_name,
         icon: getIcon(l.name, cat),
+        imageUrl: l.type === "preset" ? (topImageMap.get(l.id) || null) : (userLeagueImageMap.get(l.id) || null),
         category: cat,
         displayOrder: (l as any).display_order || 0,
       };
@@ -384,10 +429,13 @@ export default function Play() {
 
     const cats: CategoryItem[] = [];
     catMap.forEach((leagues, key) => {
-      cats.push({ key, icon: CATEGORY_ICONS[key] || "📂", name: key, count: leagues.length, leagues });
+      // Use the top image from the first league in the category
+      const catImage = leagues.find(l => l.imageUrl)?.imageUrl || null;
+      cats.push({ key, icon: CATEGORY_ICONS[key] || "📂", imageUrl: catImage, name: key, count: leagues.length, leagues });
     });
     if (uncat.length > 0) {
-      cats.push({ key: "__other", icon: "📋", name: "Other", count: uncat.length, leagues: uncat });
+      const uncatImage = uncat.find(l => l.imageUrl)?.imageUrl || null;
+      cats.push({ key: "__other", icon: "📋", imageUrl: uncatImage, name: "Other", count: uncat.length, leagues: uncat });
     }
     setCategoryItems(cats);
     setLoading(false);
@@ -496,10 +544,10 @@ export default function Play() {
           </div>
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
+        <Tabs defaultValue="presets" className="w-full">
           <TabsList className="w-full mb-6">
+            <TabsTrigger value="presets" className="flex-1">Collections</TabsTrigger>
             <TabsTrigger value="users" className="flex-1">User Leagues</TabsTrigger>
-            <TabsTrigger value="presets" className="flex-1">Preset Leagues</TabsTrigger>
           </TabsList>
 
           {/* ─── User Leagues ─── */}
