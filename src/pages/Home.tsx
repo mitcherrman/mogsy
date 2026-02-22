@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Swords, ChevronRight, Diamond } from "lucide-react";
+import { Trophy, Swords, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
@@ -13,7 +13,7 @@ interface LeagueInfo {
   type: string;
   elo: number;
   matchesPlayed: number;
-  lastSwipedAt: string;
+  lastSwipedAt: string | null;
 }
 
 interface RecentSwipe {
@@ -51,88 +51,81 @@ export default function Home() {
       return;
     }
 
-    // Load user's recent matches (user leagues)
-    const { data: userMatches } = await supabase
-      .from("matches")
-      .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
-      .or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    // Load ALL leagues and user's memberships in parallel
+    const [
+      { data: allLeagues },
+      { data: memberships },
+      { data: userMatches },
+      { data: presetMatches },
+    ] = await Promise.all([
+      supabase.from("leagues").select("id, name, type"),
+      supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profile.id),
+      supabase.from("matches")
+        .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
+        .or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.from("matches")
+        .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
+        .not("winner_item_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
 
-    // Load recent preset league matches (globally, since voter isn't tracked)
-    const { data: presetMatches } = await supabase
-      .from("matches")
-      .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
-      .not("winner_item_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    const leagueMap = new Map(allLeagues?.map((l) => [l.id, l]) || []);
+    const membershipMap = new Map(memberships?.map((m) => [m.league_id, m]) || []);
 
-    // Combine and deduplicate
+    // Build "Your Leagues" — all leagues user has memberships in + leagues from matches
+    const leagueSet = new Set<string>();
+    memberships?.forEach((m) => leagueSet.add(m.league_id));
+
+    // Also add leagues from recent matches
     const matchMap = new Map<string, typeof userMatches extends (infer T)[] | null ? T : never>();
     [...(userMatches || []), ...(presetMatches || [])].forEach((m) => {
       if (!matchMap.has(m.id)) matchMap.set(m.id, m);
+      leagueSet.add(m.league_id);
     });
     const allMatches = Array.from(matchMap.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    if (allMatches.length === 0) {
-      setLoading(false);
-      return;
-    }
-
-    // Gather unique league IDs from matches
-    const leagueIds = [...new Set(allMatches.map((m) => m.league_id))];
-
-    // Fetch league details
-    const { data: leaguesData } = await supabase
-      .from("leagues")
-      .select("id, name, type")
-      .in("id", leagueIds);
-
-    const leagueMap = new Map(leaguesData?.map((l) => [l.id, l]) || []);
-
-    // Build "Your Leagues" - 5 most recently swiped leagues
-    const leagueLastSwipe = new Map<string, { date: string; count: number }>();
+    // Count matches per league for preset leagues
+    const leagueMatchCount = new Map<string, { count: number; lastDate: string }>();
     allMatches.forEach((m) => {
-      const existing = leagueLastSwipe.get(m.league_id);
+      const existing = leagueMatchCount.get(m.league_id);
       if (!existing) {
-        leagueLastSwipe.set(m.league_id, { date: m.created_at, count: 1 });
+        leagueMatchCount.set(m.league_id, { count: 1, lastDate: m.created_at });
       } else {
         existing.count++;
       }
     });
 
-    // Get user's ELO for user-type leagues
-    const { data: memberships } = await supabase
-      .from("league_memberships")
-      .select("league_id, elo, matches_played")
-      .eq("profile_id", profile.id);
-
-    const membershipMap = new Map(memberships?.map((m) => [m.league_id, m]) || []);
-
     const leagueList: LeagueInfo[] = [];
-    leagueLastSwipe.forEach((info, leagueId) => {
+    leagueSet.forEach((leagueId) => {
       const league = leagueMap.get(leagueId);
       if (!league) return;
       const membership = membershipMap.get(leagueId);
+      const matchInfo = leagueMatchCount.get(leagueId);
       leagueList.push({
         id: leagueId,
         name: league.name,
         type: league.type,
         elo: membership?.elo || 1200,
-        matchesPlayed: membership?.matches_played || info.count,
-        lastSwipedAt: info.date,
+        matchesPlayed: membership?.matches_played || matchInfo?.count || 0,
+        lastSwipedAt: membership?.last_active_at || matchInfo?.lastDate || null,
       });
     });
 
-    leagueList.sort((a, b) => new Date(b.lastSwipedAt).getTime() - new Date(a.lastSwipedAt).getTime());
-    setLeagues(leagueList.slice(0, 5));
+    leagueList.sort((a, b) => {
+      const dateA = a.lastSwipedAt ? new Date(a.lastSwipedAt).getTime() : 0;
+      const dateB = b.lastSwipedAt ? new Date(b.lastSwipedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+    setLeagues(leagueList.slice(0, 6));
 
     // Build "Recent Swipes" - 5 most recent
     const recentMatchesSlice = allMatches.slice(0, 5);
 
-    // Gather profile and item IDs to resolve names
     const profileIds = new Set<string>();
     const itemIds = new Set<string>();
     recentMatchesSlice.forEach((m) => {
@@ -142,29 +135,22 @@ export default function Home() {
       if (m.loser_item_id) itemIds.add(m.loser_item_id);
     });
 
-    const profileMap = new Map<string, { name: string; avatar: string }>();
-    const itemMap = new Map<string, { name: string; image: string }>();
+    const profileNameMap = new Map<string, { name: string; avatar: string }>();
+    const itemNameMap = new Map<string, { name: string; image: string }>();
 
     if (profileIds.size > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", Array.from(profileIds));
-      profiles?.forEach((p) => {
-        profileMap.set(p.id, {
+      const { data } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", Array.from(profileIds));
+      data?.forEach((p) => {
+        profileNameMap.set(p.id, {
           name: p.display_name,
           avatar: p.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${p.display_name}`,
         });
       });
     }
-
     if (itemIds.size > 0) {
-      const { data: items } = await supabase
-        .from("preset_items")
-        .select("id, name, image_url")
-        .in("id", Array.from(itemIds));
-      items?.forEach((it) => {
-        itemMap.set(it.id, { name: it.name, image: it.image_url || "" });
+      const { data } = await supabase.from("preset_items").select("id, name, image_url").in("id", Array.from(itemIds));
+      data?.forEach((it) => {
+        itemNameMap.set(it.id, { name: it.name, image: it.image_url || "" });
       });
     }
 
@@ -178,15 +164,15 @@ export default function Home() {
       let loserImage = "";
 
       if (isPreset) {
-        const w = itemMap.get(m.winner_item_id || "");
-        const l = itemMap.get(m.loser_item_id || "");
+        const w = itemNameMap.get(m.winner_item_id || "");
+        const l = itemNameMap.get(m.loser_item_id || "");
         winnerName = w?.name || "Unknown";
         loserName = l?.name || "Unknown";
         winnerImage = w?.image || "";
         loserImage = l?.image || "";
       } else {
-        const w = profileMap.get(m.winner_profile_id || "");
-        const l = profileMap.get(m.loser_profile_id || "");
+        const w = profileNameMap.get(m.winner_profile_id || "");
+        const l = profileNameMap.get(m.loser_profile_id || "");
         winnerName = w?.name || "Unknown";
         loserName = l?.name || "Unknown";
         winnerImage = w?.avatar || "";
@@ -299,7 +285,7 @@ export default function Home() {
                       <img src={swipe.winnerImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                     )}
                     <span className="font-medium text-foreground truncate">{swipe.winnerName}</span>
-                    <span className="text-muted-foreground mx-1">beat</span>
+                    <Swords className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                     {swipe.loserImage && (
                       <img src={swipe.loserImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                     )}
