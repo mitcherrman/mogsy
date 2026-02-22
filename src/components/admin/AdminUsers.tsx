@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
-  ArrowLeft,
+  ArrowLeft, StickyNote,
 } from "lucide-react";
 
 interface Profile {
@@ -34,6 +34,7 @@ interface Profile {
   boost_credits: number | null;
   active_boost_until: string | null;
   profile_frame: string | null;
+  admin_notes: string | null;
   created_at: string;
 }
 
@@ -72,27 +73,25 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "leagues" | "matches" | "purchases">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases">("overview");
 
-  // Detail data
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [allLeagues, setAllLeagues] = useState<{ id: string; name: string }[]>([]);
 
-  // Editing
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
   const [saving, setSaving] = useState(false);
 
-  // Notifications
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifMessage, setNotifMessage] = useState("");
 
-  // Undo delete
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
-
-  // Email map
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+
+  // Admin notes
+  const [adminNotes, setAdminNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
@@ -101,10 +100,9 @@ export default function AdminUsers() {
       .select("*")
       .eq("is_bot", false)
       .order("created_at", { ascending: false });
-    setProfiles(data || []);
+    setProfiles((data as Profile[]) || []);
     setLoading(false);
 
-    // Fetch emails for all user_ids
     if (data && data.length > 0) {
       const userIds = data.map((p) => p.user_id);
       const { data: emailData } = await supabase.functions.invoke("admin-get-emails", {
@@ -135,6 +133,7 @@ export default function AdminUsers() {
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
     setDetailTab("overview");
+    setAdminNotes(profile.admin_notes || "");
     setEditForm({
       display_name: profile.display_name,
       is_pro: profile.is_pro,
@@ -182,8 +181,20 @@ export default function AdminUsers() {
     setSelectedUser({ ...selectedUser, ...editForm } as Profile);
   };
 
+  const saveAdminNotes = async () => {
+    if (!selectedUser) return;
+    setSavingNotes(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ admin_notes: adminNotes } as any)
+      .eq("id", selectedUser.id);
+    setSavingNotes(false);
+    if (error) { toast.error("Failed to save notes"); return; }
+    toast.success("Notes saved");
+    setSelectedUser({ ...selectedUser, admin_notes: adminNotes } as Profile);
+  };
+
   const deleteUser = async (profile: Profile) => {
-    // Soft-delete: remove from DB but keep in undo stack
     const { error } = await supabase.from("profiles").delete().eq("id", profile.id);
     if (error) { toast.error("Cannot delete: " + error.message); return; }
     setDeletedUsers((prev) => [{ profile, timestamp: Date.now() }, ...prev].slice(0, 20));
@@ -228,16 +239,9 @@ export default function AdminUsers() {
     setMemberships(data || []);
   };
 
-  const removeFromLeague = async (membershipId: string) => {
-    // We can't delete due to RLS, so we update elo to 0 and notify
-    // Actually league_memberships has no DELETE policy. Let's inform admin.
-    toast.error("League membership deletion requires a DB policy update. Contact dev team.");
-  };
-
   const getLeagueName = (leagueId: string) => allLeagues.find((l) => l.id === leagueId)?.name || "Unknown";
 
   const sendNotification = () => {
-    // Placeholder - would integrate with push/email service
     toast.success(`Notification sent to ${selectedUser?.display_name}: "${notifMessage}"`);
     setNotifOpen(false);
     setNotifMessage("");
@@ -271,7 +275,7 @@ export default function AdminUsers() {
 
         {/* Tab navigation */}
         <div className="flex gap-1 rounded-lg bg-secondary p-1">
-          {(["overview", "leagues", "matches", "purchases"] as const).map((tab) => (
+          {(["overview", "notes", "leagues", "matches", "purchases"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setDetailTab(tab)}
@@ -349,6 +353,25 @@ export default function AdminUsers() {
                 <Trash2 className="h-3 w-3 mr-1" /> Delete User
               </Button>
             </div>
+          </div>
+        )}
+
+        {detailTab === "notes" && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <StickyNote className="h-4 w-4 text-primary" />
+              <h4 className="font-bold text-sm text-foreground">Admin Notes</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">Private notes about this user. Only visible to admins.</p>
+            <Textarea
+              placeholder="Add notes about this user (e.g. warnings, VIP status, behavior issues)…"
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              rows={6}
+            />
+            <Button onClick={saveAdminNotes} disabled={savingNotes} size="sm">
+              {savingNotes ? "Saving…" : "Save Notes"}
+            </Button>
           </div>
         )}
 
@@ -449,7 +472,6 @@ export default function AdminUsers() {
           </div>
         )}
 
-        {/* Notification dialog */}
         <Dialog open={notifOpen} onOpenChange={setNotifOpen}>
           <DialogContent>
             <DialogHeader>
@@ -476,7 +498,6 @@ export default function AdminUsers() {
         <Badge variant="outline">{filtered.length} users</Badge>
       </div>
 
-      {/* Undo deleted users */}
       {deletedUsers.length > 0 && (
         <Collapsible>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm text-destructive font-medium">
@@ -518,7 +539,10 @@ export default function AdminUsers() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                  {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
+                </div>
                 <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
                 <p className="text-xs text-muted-foreground">{p.location || "No location"} · Joined {new Date(p.created_at).toLocaleDateString()}</p>
               </div>
@@ -535,4 +559,3 @@ export default function AdminUsers() {
     </div>
   );
 }
-
