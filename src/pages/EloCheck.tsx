@@ -326,30 +326,20 @@ export default function EloCheck() {
   };
 
   function getRandomPair(items: GameItem[]): [GameItem, GameItem] {
-    const leagueGroups = new Map<string, GameItem[]>();
-    items.forEach(item => {
-      const list = leagueGroups.get(item.leagueId) || [];
-      list.push(item);
-      leagueGroups.set(item.leagueId, list);
-    });
-
-    const validLeagues = [...leagueGroups.entries()].filter(([, v]) => v.length >= 2);
-    if (validLeagues.length === 0) {
-      let a = 0, b = 0;
-      while (a === b) {
-        a = Math.floor(Math.random() * items.length);
-        b = Math.floor(Math.random() * items.length);
-      }
-      return [items[a], items[b]];
+    // Cross-league pairing: pick two random items from any enabled leagues
+    if (items.length < 2) {
+      return [items[0], items[0]]; // fallback
     }
-
-    const [, leagueItems] = validLeagues[Math.floor(Math.random() * validLeagues.length)];
     let a = 0, b = 0;
-    while (a === b) {
-      a = Math.floor(Math.random() * leagueItems.length);
-      b = Math.floor(Math.random() * leagueItems.length);
-    }
-    return [leagueItems[a], leagueItems[b]];
+    // Try to pick from different leagues for variety, but allow same-league too
+    const maxAttempts = 20;
+    let attempts = 0;
+    do {
+      a = Math.floor(Math.random() * items.length);
+      b = Math.floor(Math.random() * items.length);
+      attempts++;
+    } while (a === b && attempts < maxAttempts);
+    return [items[a], items[b]];
   }
 
   const handleGuess = useCallback(async (guessedIndex: 0 | 1) => {
@@ -482,7 +472,7 @@ export default function EloCheck() {
 
                 {pair && (
                   <p className="text-center text-sm text-muted-foreground mb-4">
-                    Who's ranked higher in <span className="font-bold text-foreground">{pair[0].leagueName}</span>?
+                    Who's ranked higher in their league?
                   </p>
                 )}
 
