@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Trash2, Plus, Save, Pencil, ChevronDown, Undo2 } from "lucide-react";
+import { Trash2, Plus, Save, Pencil, ChevronDown, Undo2, ImageIcon, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -222,7 +222,14 @@ export default function AdminPresetItems() {
               ) : (
                 <>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{item.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-foreground">{item.name}</p>
+                      {item.image_url ? (
+                        <ImageIcon className="h-3 w-3 text-primary shrink-0" />
+                      ) : (
+                        <ImageOff className="h-3 w-3 text-destructive shrink-0" />
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">Elo: {item.elo}</p>
                   </div>
                   <Button size="icon" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
