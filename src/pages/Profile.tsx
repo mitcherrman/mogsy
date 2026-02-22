@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
+import { searchCities } from "@/lib/cities-data";
+import { validateSocialLink } from "@/lib/social-validators";
 
 const frameOptions = [
   { id: "default", label: "Default", preview: "" },
@@ -18,6 +20,15 @@ const frameOptions = [
   { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
   { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
 ];
+
+const SOCIAL_PLACEHOLDERS: Record<string, string> = {
+  instagram: "@username or instagram.com/username",
+  tiktok: "@username or tiktok.com/@username",
+  youtube: "@channel or youtube.com/@channel",
+  x: "@handle or x.com/handle",
+  twitch: "username or twitch.tv/username",
+  website: "https://yourwebsite.com",
+};
 
 export default function Profile() {
   const { user } = useAuth();
@@ -31,6 +42,12 @@ export default function Profile() {
   const [boostActive, setBoostActive] = useState(false);
   const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
+  const [ageWarning, setAgeWarning] = useState("");
+  const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const cityRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState({
     displayName: "",
     age: "",
@@ -44,6 +61,17 @@ export default function Profile() {
     website: "",
   });
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
+
+  // Close city dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (cityRef.current && !cityRef.current.contains(e.target as Node)) {
+        setShowCityDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -89,13 +117,37 @@ export default function Profile() {
 
   const handleChange = (field: string, value: string) => {
     if (field === "displayName") {
-      if (containsProfanity(value)) {
-        setNameError(getProfanityMessage());
+      setNameError(containsProfanity(value) ? getProfanityMessage() : "");
+    }
+    if (field === "age") {
+      // Only allow numeric input
+      const numeric = value.replace(/\D/g, "");
+      const age = parseInt(numeric);
+      if (numeric && age < 18) {
+        setAgeWarning("You must be 18 or older to use this app.");
       } else {
-        setNameError("");
+        setAgeWarning("");
       }
+      setForm((prev) => ({ ...prev, [field]: numeric }));
+      return;
+    }
+    if (field === "location") {
+      const results = searchCities(value);
+      setCitySuggestions(results);
+      setShowCityDropdown(results.length > 0);
+    }
+    // Validate social links
+    if (["instagram", "tiktok", "youtube", "x", "twitch", "website"].includes(field)) {
+      const result = validateSocialLink(field, value);
+      setSocialErrors((prev) => ({ ...prev, [field]: result.valid ? "" : result.message }));
     }
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const selectCity = (city: string) => {
+    setForm((prev) => ({ ...prev, location: city }));
+    setShowCityDropdown(false);
+    setCitySuggestions([]);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,6 +183,8 @@ export default function Profile() {
     toast({ title: "⚡ Boost activated!", description: "You'll appear 3x more often for 24 hours." });
   };
 
+  const hasFormErrors = !!nameError || !!ageWarning || Object.values(socialErrors).some(Boolean);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
@@ -138,6 +192,22 @@ export default function Profile() {
       toast({ title: "Inappropriate name", description: getProfanityMessage(), variant: "destructive" });
       return;
     }
+    // Re-validate socials
+    const socialKeys = ["instagram", "tiktok", "youtube", "x", "twitch", "website"];
+    for (const key of socialKeys) {
+      const result = validateSocialLink(key, (form as any)[key]);
+      if (!result.valid) {
+        toast({ title: `Invalid ${key}`, description: result.message, variant: "destructive" });
+        return;
+      }
+    }
+
+    const age = form.age ? parseInt(form.age) : null;
+    if (age !== null && age < 18) {
+      toast({ title: "Age restriction", description: "You must be 18 or older.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     const socials = {
       instagram: form.instagram,
@@ -147,16 +217,25 @@ export default function Profile() {
       twitch: form.twitch,
       website: form.website,
     };
+
+    // Flag underage if age < 18
+    const updatePayload: any = {
+      display_name: form.displayName,
+      age,
+      location: form.location,
+      status_message: form.statusMessage,
+      socials,
+      profile_frame: isPro ? selectedFrame : "default",
+    };
+    if (age !== null && age < 18) {
+      updatePayload.is_flagged_underage = true;
+    } else if (age !== null && age >= 18) {
+      updatePayload.is_flagged_underage = false;
+    }
+
     const { error } = await supabase
       .from("profiles")
-      .update({
-        display_name: form.displayName,
-        age: form.age ? parseInt(form.age) : null,
-        location: form.location,
-        status_message: form.statusMessage,
-        socials,
-        profile_frame: isPro ? selectedFrame : "default",
-      })
+      .update(updatePayload)
       .eq("id", profileId);
 
     if (error) {
@@ -177,7 +256,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
-      <div className="container mx-auto max-w-5xl">
+      <div className="container mx-auto max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
@@ -186,128 +265,214 @@ export default function Profile() {
             <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-8">
-            {/* Top center: Photos + Basic Info */}
-            <div className="max-w-2xl mx-auto space-y-6">
-              {/* Photos */}
-              <div>
-                <Label className="text-base font-bold mb-3 block">Photos</Label>
-                <div className="flex gap-3 flex-wrap justify-center">
-                  {photos.map((photo, i) => (
-                    <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border">
-                      <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => handlePhotoRemove(i)} className="absolute top-0.5 right-0.5 rounded-full bg-background/80 p-0.5">
-                        <X className="h-3 w-3 text-foreground" />
-                      </button>
+          <form onSubmit={handleSave}>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Left sidebar: Exposure Boost */}
+              <div className="lg:w-56 shrink-0 order-2 lg:order-1">
+                <div className="sticky top-8 rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-sm text-foreground">Boost</h3>
+                  </div>
+                  {boostActive ? (
+                    <div className="text-center space-y-2">
+                      <div className="text-2xl">⚡</div>
+                      <p className="text-xs text-primary font-medium">Boost active!</p>
+                      <p className="text-[10px] text-muted-foreground">3x more visibility for 24h</p>
                     </div>
-                  ))}
-                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
-                    <Plus className="h-5 w-5 text-muted-foreground" />
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                  </label>
-                </div>
-              </div>
-
-              {/* Basic info */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name *</Label>
-                  <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required />
-                  {nameError && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> {nameError}
-                    </p>
+                  ) : boostCredits > 0 ? (
+                    <div className="space-y-2 text-center">
+                      <p className="text-xs text-muted-foreground">{boostCredits} credit{boostCredits > 1 ? "s" : ""}</p>
+                      <Button type="button" size="sm" className="w-full text-xs" onClick={handleActivateBoost}>
+                        <Zap className="h-3 w-3 mr-1" /> Activate
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-2">
+                      <p className="text-xs text-muted-foreground">No credits</p>
+                      <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/shop")}>
+                        Get Boosts
+                      </Button>
+                    </div>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="age">Age</Label>
-                  <Input id="age" type="number" value={form.age} onChange={(e) => handleChange("age", e.target.value)} />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" placeholder="City, Country" value={form.location} onChange={(e) => handleChange("location", e.target.value)} />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="statusMessage">Status Message</Label>
-                  <Textarea id="statusMessage" placeholder="What's on your mind?" value={form.statusMessage} onChange={(e) => handleChange("statusMessage", e.target.value)} rows={2} />
-                </div>
               </div>
 
-              {/* Social links */}
-              <div>
-                <Label className="text-base font-bold mb-3 block">Social Links</Label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {["instagram", "tiktok", "youtube", "x", "twitch", "website"].map((s) => (
-                    <div key={s} className="space-y-1">
-                      <Label htmlFor={s} className="text-xs capitalize text-muted-foreground">{s}</Label>
-                      <Input id={s} placeholder={`Your ${s} handle`} value={(form as any)[s]} onChange={(e) => handleChange(s, e.target.value)} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Monetization features: side by side */}
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Exposure Boost - Left */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <Zap className="h-5 w-5 text-primary" />
-                  <h3 className="font-bold text-foreground">Exposure Boost</h3>
-                </div>
-                {boostActive ? (
-                  <p className="text-sm text-primary font-medium">⚡ Boost is active! You're appearing 3x more often.</p>
-                ) : boostCredits > 0 ? (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">{boostCredits} boost credit{boostCredits > 1 ? "s" : ""} available</p>
-                    <Button type="button" size="sm" onClick={handleActivateBoost}>
-                      Activate Boost
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No boost credits. <a href="/shop" className="text-primary hover:underline">Buy in Shop →</a>
-                  </p>
-                )}
-              </div>
-
-              {/* Profile Frame - Right */}
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <Crown className="h-5 w-5 text-primary" />
-                  <h3 className="font-bold text-foreground">Profile Frame</h3>
-                  {!isPro && <span className="text-[10px] uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full font-bold">Pro</span>}
-                </div>
-                {isPro ? (
+              {/* Center: Main profile form */}
+              <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-6">
+                {/* Photos */}
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <Label className="text-base font-bold mb-3 block">Photos</Label>
                   <div className="flex gap-3 flex-wrap">
-                    {frameOptions.map((frame) => (
-                      <button
-                        key={frame.id}
-                        type="button"
-                        onClick={() => setSelectedFrame(frame.id)}
-                        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${
-                          selectedFrame === frame.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/30"
-                        }`}
-                      >
-                        <div className={`w-12 h-12 rounded-full bg-secondary ${frame.preview}`} />
-                        <span className="text-[10px] font-medium text-muted-foreground">{frame.label}</span>
-                      </button>
+                    {photos.map((photo, i) => (
+                      <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border">
+                        <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => handlePhotoRemove(i)} className="absolute top-0.5 right-0.5 rounded-full bg-background/80 p-0.5">
+                          <X className="h-3 w-3 text-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">Add up to 6 photos. First photo is your main profile picture.</p>
+                </div>
+
+                {/* Basic info */}
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+                  <Label className="text-base font-bold block">Basic Info</Label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="displayName">Display Name *</Label>
+                      <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required maxLength={30} />
+                      {nameError ? (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> {nameError}
+                        </p>
+                      ) : form.displayName.length > 0 && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-primary" /> {30 - form.displayName.length} characters left
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age</Label>
+                      <Input
+                        id="age"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="18+"
+                        value={form.age}
+                        onChange={(e) => handleChange("age", e.target.value)}
+                        maxLength={3}
+                      />
+                      {ageWarning && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> {ageWarning}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2 sm:col-span-2 relative" ref={cityRef}>
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="location"
+                          placeholder="Start typing a city…"
+                          value={form.location}
+                          onChange={(e) => handleChange("location", e.target.value)}
+                          onFocus={() => { if (citySuggestions.length > 0) setShowCityDropdown(true); }}
+                          className="pl-9"
+                          autoComplete="off"
+                        />
+                      </div>
+                      {showCityDropdown && citySuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+                          {citySuggestions.map((city) => (
+                            <button
+                              key={city}
+                              type="button"
+                              onClick={() => selectCity(city)}
+                              className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                            >
+                              <MapPin className="inline h-3 w-3 mr-2 text-muted-foreground" />
+                              {city}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="statusMessage">Status Message</Label>
+                      <Textarea
+                        id="statusMessage"
+                        placeholder="What's on your mind?"
+                        value={form.statusMessage}
+                        onChange={(e) => handleChange("statusMessage", e.target.value)}
+                        rows={2}
+                        maxLength={150}
+                      />
+                      <p className="text-[10px] text-muted-foreground text-right">{form.statusMessage.length}/150</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Social links */}
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                  <Label className="text-base font-bold block">Social Links</Label>
+                  <p className="text-xs text-muted-foreground">Enter your username or paste a link. We'll validate it matches the platform.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {["instagram", "tiktok", "youtube", "x", "twitch", "website"].map((s) => (
+                      <div key={s} className="space-y-1">
+                        <Label htmlFor={s} className="text-xs capitalize text-muted-foreground">{s}</Label>
+                        <Input
+                          id={s}
+                          placeholder={SOCIAL_PLACEHOLDERS[s] || `Your ${s}`}
+                          value={(form as any)[s]}
+                          onChange={(e) => handleChange(s, e.target.value)}
+                          className={socialErrors[s] ? "border-destructive" : ""}
+                        />
+                        {socialErrors[s] && (
+                          <p className="text-[10px] text-destructive flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> {socialErrors[s]}
+                          </p>
+                        )}
+                        {!socialErrors[s] && (form as any)[s] && (
+                          <p className="text-[10px] text-primary flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Valid
+                          </p>
+                        )}
+                      </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Upgrade to Pro to unlock premium profile frames. <a href="/shop" className="text-primary hover:underline">Go to Shop →</a>
-                  </p>
-                )}
-              </div>
-            </div>
+                </div>
 
-            <div className="max-w-2xl mx-auto">
-              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || !!nameError}>
-                {saving ? "Saving…" : "Save Profile"}
-              </Button>
+                {/* Save button */}
+                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
+                  {saving ? "Saving…" : "Save Profile"}
+                </Button>
+              </div>
+
+              {/* Right sidebar: Profile Frame */}
+              <div className="lg:w-56 shrink-0 order-3">
+                <div className="sticky top-8 rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-sm text-foreground">Frame</h3>
+                    {!isPro && <span className="text-[8px] uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-full font-bold">Pro</span>}
+                  </div>
+                  {isPro ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {frameOptions.map((frame) => (
+                        <button
+                          key={frame.id}
+                          type="button"
+                          onClick={() => setSelectedFrame(frame.id)}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                            selectedFrame === frame.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/30"
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-full bg-secondary ${frame.preview}`} />
+                          <span className="text-[9px] font-medium text-muted-foreground">{frame.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-2">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-secondary ring-4 ring-primary/30" />
+                      <p className="text-[10px] text-muted-foreground">Unlock premium frames</p>
+                      <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/shop")}>
+                        <Crown className="h-3 w-3 mr-1" /> Go Pro
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </form>
         </motion.div>
