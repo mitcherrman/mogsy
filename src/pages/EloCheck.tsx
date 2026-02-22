@@ -140,7 +140,7 @@ export default function EloCheck() {
       if (memberships && memberships.length > 0) {
         const profileIds = [...new Set(memberships.map(m => m.profile_id))];
         const { data: profiles } = await supabase
-          .from("profiles").select("id, display_name, avatar_url")
+          .from("public_profiles").select("id, display_name, avatar_url")
           .in("id", profileIds);
         const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
         const leagueNameMap = new Map(enabledLeagues.map(l => [l.id, l.name]));
@@ -215,7 +215,7 @@ export default function EloCheck() {
       }
       if (allProfileIds.size > 0) {
         const { data: profiles } = await supabase
-          .from("profiles").select("id, display_name").in("id", [...allProfileIds]);
+          .from("public_profiles").select("id, display_name").in("id", [...allProfileIds]);
         profiles?.forEach(p => profileNameMap.set(p.id, p.display_name));
       }
 
@@ -309,7 +309,7 @@ export default function EloCheck() {
       if (sorted.length > 0) {
         const ids = sorted.map(s => s[0]);
         const { data: profiles } = await supabase
-          .from("profiles").select("id, display_name, avatar_url").in("id", ids);
+          .from("public_profiles").select("id, display_name, avatar_url").in("id", ids);
         const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
         setUserLeaderboard(sorted.map(([id, count]) => {
           const p = profileMap.get(id);

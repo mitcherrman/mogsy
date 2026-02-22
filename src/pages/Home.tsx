@@ -140,7 +140,7 @@ export default function Home() {
     const itemNameMap = new Map<string, { name: string; image: string }>();
 
     if (profileIds.size > 0) {
-      const { data } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", Array.from(profileIds));
+      const { data } = await supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", Array.from(profileIds));
       data?.forEach((p) => {
         profileNameMap.set(p.id, {
           name: p.display_name,
