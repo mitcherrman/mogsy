@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Trash2, Plus, Save, Pencil, ChevronDown, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy } from "lucide-react";
+import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -63,7 +62,7 @@ export default function AdminCollections() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({ name: "", image_url: "" });
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
 
   // Detail view state
@@ -83,6 +82,8 @@ export default function AdminCollections() {
         if (data) {
           setLeagues(data as League[]);
           if (data.length > 0) {
+            const firstCat = data[0].category || "Uncategorized";
+            setSelectedCategory(firstCat);
             setSelectedLeague(data[0].id);
             loadItems(data[0].id);
           }
@@ -112,14 +113,6 @@ export default function AdminCollections() {
   const selectLeague = (id: string) => {
     setSelectedLeague(id);
     loadItems(id);
-  };
-
-  const toggleCategory = (cat: string) => {
-    setOpenCategories((prev) => {
-      const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
-      return next;
-    });
   };
 
   const updateLeagueDisplay = async (id: string, field: "show_elo" | "show_rank", value: boolean) => {
@@ -333,44 +326,54 @@ export default function AdminCollections() {
         </Button>
       </div>
 
-      {/* Category dropdowns with leagues + display settings */}
-      <div className="space-y-2">
+      {/* Category chips */}
+      <div className="flex flex-wrap gap-1.5">
         {categories.map((cat) => (
-          <Collapsible key={cat} open={openCategories.has(cat)} onOpenChange={() => toggleCategory(cat)}>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent/50 transition-colors">
-              <span>{CATEGORY_ICONS[cat] || "📁"} {cat} ({grouped[cat].length})</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${openCategories.has(cat) ? "rotate-180" : ""}`} />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2 space-y-1.5 pl-2">
-              {grouped[cat].map((l) => (
-                <div
-                  key={l.id}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2 transition-colors cursor-pointer ${
-                    selectedLeague === l.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border bg-card hover:bg-accent/50"
-                  }`}
-                  onClick={() => selectLeague(l.id)}
-                >
-                  <span className={`text-sm font-medium truncate flex-1 ${selectedLeague === l.id ? "text-primary" : "text-foreground"}`}>
-                    {l.name}
-                  </span>
-                  <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1.5">
-                      <Label className="text-[10px] text-muted-foreground">Elo</Label>
-                      <Switch checked={l.show_elo ?? true} onCheckedChange={(v) => updateLeagueDisplay(l.id, "show_elo", v)} />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Label className="text-[10px] text-muted-foreground">Rank</Label>
-                      <Switch checked={l.show_rank ?? true} onCheckedChange={(v) => updateLeagueDisplay(l.id, "show_rank", v)} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
+          <Button
+            key={cat}
+            variant={selectedCategory === cat ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedCategory(cat)}
+            className="text-xs h-7 px-2.5"
+          >
+            {CATEGORY_ICONS[cat] || "📁"} {cat}
+          </Button>
         ))}
       </div>
+
+      {/* League buttons for selected category */}
+      {selectedCategory && grouped[selectedCategory] && (
+        <div className="flex flex-wrap gap-1.5">
+          {grouped[selectedCategory].map((l) => (
+            <Button
+              key={l.id}
+              variant={selectedLeague === l.id ? "default" : "ghost"}
+              size="sm"
+              onClick={() => selectLeague(l.id)}
+              className="text-xs h-7 px-2.5"
+            >
+              {l.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Display settings for selected league */}
+      {selectedLeagueData && (
+        <div className="flex items-center gap-4 rounded-lg border border-border bg-card px-3 py-2">
+          <span className="text-sm font-medium text-foreground truncate">{selectedLeagueData.name}</span>
+          <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-[10px] text-muted-foreground">Elo</Label>
+              <Switch checked={selectedLeagueData.show_elo ?? true} onCheckedChange={(v) => updateLeagueDisplay(selectedLeague, "show_elo", v)} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-[10px] text-muted-foreground">Rank</Label>
+              <Switch checked={selectedLeagueData.show_rank ?? true} onCheckedChange={(v) => updateLeagueDisplay(selectedLeague, "show_rank", v)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Selected league items section */}
       {selectedLeagueData && (
