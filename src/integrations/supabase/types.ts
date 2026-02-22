@@ -276,6 +276,7 @@ export type Database = {
       profiles: {
         Row: {
           active_boost_until: string | null
+          admin_notes: string | null
           age: number | null
           avatar_url: string | null
           boost_credits: number | null
@@ -298,6 +299,7 @@ export type Database = {
         }
         Insert: {
           active_boost_until?: string | null
+          admin_notes?: string | null
           age?: number | null
           avatar_url?: string | null
           boost_credits?: number | null
@@ -320,6 +322,7 @@ export type Database = {
         }
         Update: {
           active_boost_until?: string | null
+          admin_notes?: string | null
           age?: number | null
           avatar_url?: string | null
           boost_credits?: number | null
