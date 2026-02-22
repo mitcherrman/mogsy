@@ -7,12 +7,11 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import AdminStats from "@/components/admin/AdminStats";
 import AdminSettings from "@/components/admin/AdminSettings";
-import AdminPresetItems from "@/components/admin/AdminPresetItems";
+import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
-import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 
 export default function Admin() {
@@ -62,8 +61,7 @@ export default function Admin() {
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="notifications">Alerts</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="league-settings">League Display</TabsTrigger>
-            <TabsTrigger value="items">Preset Items</TabsTrigger>
+            <TabsTrigger value="collections">Collections</TabsTrigger>
             <TabsTrigger value="bots">Bots</TabsTrigger>
             <TabsTrigger value="promoted">Promoted</TabsTrigger>
             <TabsTrigger value="elo-check">Elo Check</TabsTrigger>
@@ -72,8 +70,7 @@ export default function Admin() {
           <TabsContent value="users"><AdminUsers /></TabsContent>
           <TabsContent value="notifications"><AdminNotifications /></TabsContent>
           <TabsContent value="settings"><AdminSettings /></TabsContent>
-          <TabsContent value="league-settings"><AdminLeagueSettings /></TabsContent>
-          <TabsContent value="items"><AdminPresetItems /></TabsContent>
+          <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
           <TabsContent value="promoted"><AdminPromotedLeagues /></TabsContent>
           <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
