@@ -41,6 +41,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "user_ids required" }), { status: 400, headers: corsHeaders });
     }
 
+    // Enforce maximum batch size
+    const MAX_BATCH = 50;
+    if (user_ids.length > MAX_BATCH) {
+      return new Response(JSON.stringify({ error: `Maximum ${MAX_BATCH} user IDs per request` }), { status: 400, headers: corsHeaders });
+    }
+
+    // Validate all IDs are strings (UUIDs)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!user_ids.every((id: unknown) => typeof id === 'string' && uuidRegex.test(id))) {
+      return new Response(JSON.stringify({ error: "Invalid user_id format" }), { status: 400, headers: corsHeaders });
+    }
+
     // Fetch emails from auth.users using service role
     const emailMap: Record<string, string> = {};
     for (const uid of user_ids) {

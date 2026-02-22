@@ -159,8 +159,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden - Admin only' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { category, limit: rawLimit = 10, offset = 0 } = await req.json().catch(() => ({ limit: 10, offset: 0 }));
+    const { category, limit: rawLimit = 10, offset: rawOffset = 0 } = await req.json().catch(() => ({ limit: 10, offset: 0 }));
     const limit = Math.min(Math.max(Number(rawLimit) || 10, 1), 50); // Cap at 50
+    const offset = Math.max(Math.floor(Number(rawOffset) || 0), 0);
+
+    // Validate category if provided
+    const allowedCategories = ['Anime', 'Movies', 'Video Games', 'Celebrities', 'Sports', 'Music', 'TV Shows', 'Food', 'Animals', 'Other'];
+    if (category && typeof category === 'string' && !allowedCategories.includes(category)) {
+      return new Response(JSON.stringify({ error: 'Invalid category' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Get all preset items
     let query = supabase.from('preset_items').select('id, name, image_url, league_id');
