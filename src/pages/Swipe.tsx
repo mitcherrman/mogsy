@@ -87,7 +87,7 @@ export default function Swipe() {
         age: p.age || 0,
         location: p.location || "",
         statusMessage: p.status_message || "",
-        avatarUrl: p.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${p.display_name}`,
+        avatarUrl: p.avatar_url || "",
         socials: (p.socials as any) || {},
         elo: eloMap.get(p.id) ?? 1200,
         tier: getTierFromElo(eloMap.get(p.id) ?? 1200),

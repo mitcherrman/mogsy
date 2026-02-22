@@ -5,6 +5,7 @@ import { Trophy, Swords, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
+import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 
 interface LeagueInfo {
@@ -143,7 +144,7 @@ export default function Home() {
       data?.forEach((p) => {
         profileNameMap.set(p.id, {
           name: p.display_name,
-          avatar: p.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${p.display_name}`,
+          avatar: p.avatar_url || "",
         });
       });
     }
@@ -281,14 +282,10 @@ export default function Home() {
                   className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    {swipe.winnerImage && (
-                      <img src={swipe.winnerImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                    )}
+                    <UserAvatar src={swipe.winnerImage} name={swipe.winnerName} size="sm" />
                     <span className="font-medium text-foreground truncate">{swipe.winnerName}</span>
                     <Swords className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    {swipe.loserImage && (
-                      <img src={swipe.loserImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                    )}
+                    <UserAvatar src={swipe.loserImage} name={swipe.loserName} size="sm" />
                     <span className="font-medium text-foreground truncate">{swipe.loserName}</span>
                   </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-2 flex-shrink-0 ml-2">
