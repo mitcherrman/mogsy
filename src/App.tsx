@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import Shop from "./pages/Shop";
 import EloCheck from "./pages/EloCheck";
+import SwipeLeagues from "./pages/SwipeLeagues";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/presets" element={<Presets />} />
               <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
               <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+              <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
               <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             </Route>
