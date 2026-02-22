@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
-  ArrowLeft, StickyNote, AlertTriangle,
+  ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
 } from "lucide-react";
 
 interface Profile {
@@ -546,6 +546,11 @@ export default function AdminUsers() {
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
                   {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
+                  {p.avatar_url ? (
+                    <ImageIcon className="h-3 w-3 text-primary shrink-0" />
+                  ) : (
+                    <ImageOff className="h-3 w-3 text-destructive shrink-0" />
+                  )}
                 </div>
                 <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
                 <p className="text-xs text-muted-foreground">{p.location || "No location"} · Joined {new Date(p.created_at).toLocaleDateString()}</p>

@@ -217,17 +217,17 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-screen bg-background px-4 py-8">
-        <div className="container mx-auto max-w-4xl">
-          <div className="flex items-center gap-3 mb-4">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+        <div className="container mx-auto max-w-4xl flex flex-col flex-1">
+          <div className="flex items-center gap-3 mb-3">
             <Link to="/presets">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <div className="flex-1">
-              <h1 className="text-2xl font-extrabold text-foreground">{leagueName}</h1>
-              <p className="text-muted-foreground text-sm">
+              <h1 className="text-xl font-extrabold text-foreground">{leagueName}</h1>
+              <p className="text-muted-foreground text-xs">
                 {currentIndex + 1} / {matchups.length}
               </p>
             </div>
@@ -238,7 +238,7 @@ export default function SwipePreset() {
             </Link>
           </div>
 
-          <Progress value={progress} className="mb-6 h-2" />
+          <Progress value={progress} className="mb-3 h-1.5" />
 
           {pair && (
             <AnimatePresence mode="wait">
@@ -248,32 +248,32 @@ export default function SwipePreset() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                className="grid grid-cols-2 gap-3 flex-1"
               >
                 {pair.map((item, idx) => (
                   <button
                     key={item.id}
                     onClick={() => handleChoose(idx as 0 | 1)}
-                    className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                    className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] flex flex-col ${
                       chosen === idx ? "ring-2 ring-primary" : ""
                     }`}
                   >
-                    <div className="aspect-square w-full bg-secondary flex items-center justify-center overflow-hidden">
+                    <div className="aspect-[3/4] w-full bg-secondary flex items-center justify-center overflow-hidden">
                       {item.image_url ? (
                         <img
                           src={item.image_url}
                           alt={item.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          className="w-full h-full object-contain bg-secondary transition-transform duration-300 group-hover:scale-105"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                           }}
                         />
                       ) : (
-                        <span className="text-6xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                        <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
                       )}
                     </div>
-                    <div className="p-4">
-                      <h3 className="text-lg font-bold text-foreground truncate">{item.name}</h3>
+                    <div className="p-2 sm:p-3">
+                      <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{item.name}</h3>
                     </div>
                   </button>
                 ))}
@@ -281,12 +281,8 @@ export default function SwipePreset() {
             </AnimatePresence>
           )}
 
-          <div className="flex items-center justify-center my-6">
-            <span className="text-2xl font-black text-gradient">VS</span>
-          </div>
-
-          <p className="text-center text-xs text-muted-foreground">
-            Tap the one you prefer.
+          <p className="text-center text-xs text-muted-foreground mt-3 mb-2">
+            Tap the one you prefer
           </p>
         </div>
       </div>

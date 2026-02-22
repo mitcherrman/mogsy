@@ -215,14 +215,14 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-screen bg-background px-4 py-8">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-8">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+        <div className="container mx-auto max-w-4xl flex flex-col flex-1">
+          <div className="text-center mb-4">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <h1 className="text-3xl font-extrabold text-foreground">Who's Better?</h1>
+              <h1 className="text-2xl font-extrabold text-foreground">Who's Better?</h1>
             </div>
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <p className="text-muted-foreground text-sm">
@@ -253,17 +253,17 @@ export default function Swipe() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="flex flex-col sm:flex-row gap-4 items-stretch"
+              className="flex flex-row gap-3 items-stretch flex-1"
             >
               <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-              <div className="flex items-center justify-center">
-                <span className="text-3xl font-black text-gradient">VS</span>
+              <div className="flex items-center justify-center px-1">
+                <span className="text-2xl font-black text-gradient">VS</span>
               </div>
               <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
             </motion.div>
           </AnimatePresence>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
+          <p className="text-center text-xs text-muted-foreground mt-3">
             Click on the profile you prefer. Elo updates instantly.
           </p>
         </div>
