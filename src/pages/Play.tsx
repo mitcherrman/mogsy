@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { ArrowLeft, Megaphone, GripVertical, Trophy } from "lucide-react";
+import { ArrowLeft, Megaphone, GripVertical, Trophy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -527,7 +527,12 @@ export default function Play() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-3xl font-extrabold text-foreground">Play</h1>
+          <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>
+          <Link to="/elo-check">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Zap className="h-4 w-4" /> Elo Check
+            </Button>
+          </Link>
         </div>
 
         {/* Controls row */}
