@@ -240,15 +240,15 @@ export default function SwipePreset() {
         [loser.id, { old: oldRanks.get(loser.id)!, new: newRanks.get(loser.id)! }],
       ]));
 
-      await Promise.all([
-        supabase.from("matches").insert({
-          league_id: leagueId!,
-          winner_item_id: winner.id,
-          loser_item_id: loser.id,
-        }),
-        supabase.from("preset_items").update({ elo: newWinnerElo }).eq("id", winner.id),
-        supabase.from("preset_items").update({ elo: newLoserElo }).eq("id", loser.id),
-      ]);
+      const { data: rpcResult, error: rpcError } = await supabase.rpc("record_preset_match", {
+        _league_id: leagueId!,
+        _winner_item_id: winner.id,
+        _loser_item_id: loser.id,
+      });
+
+      if (rpcError) {
+        console.error("Preset match RPC error:", rpcError);
+      }
 
       setItems(updatedItems);
 
