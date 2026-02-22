@@ -174,6 +174,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           description: string | null
+          display_order: number | null
           id: string
           is_promoted: boolean | null
           is_system: boolean | null
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           description?: string | null
+          display_order?: number | null
           id?: string
           is_promoted?: boolean | null
           is_system?: boolean | null
@@ -206,6 +208,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           description?: string | null
+          display_order?: number | null
           id?: string
           is_promoted?: boolean | null
           is_system?: boolean | null

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trophy, Megaphone, ChevronDown } from "lucide-react";
+import { ArrowLeft, Trophy, Megaphone, ChevronDown, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -17,6 +17,7 @@ interface LeagueOption {
   promotedBrandName: string | null;
   icon: string;
   category: string | null;
+  displayOrder: number;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -37,6 +38,10 @@ export default function Play() {
     return new Set();
   });
 
+  // Drag state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
   const toggleCategory = (cat: string) => {
     setOpenCategories((prev) => {
       const next = new Set(prev);
@@ -52,8 +57,8 @@ export default function Play() {
   const loadLeagues = async () => {
     const { data: leagues } = await supabase
       .from("leagues")
-      .select("id, name, description, type, is_promoted, promoted_brand_name, category")
-      .order("created_at", { ascending: true });
+      .select("id, name, description, type, is_promoted, promoted_brand_name, category, display_order")
+      .order("display_order", { ascending: true });
 
     if (!leagues) { setLoading(false); return; }
 
@@ -90,16 +95,83 @@ export default function Play() {
         promotedBrandName: l.promoted_brand_name,
         icon: getIcon(l.name, cat),
         category: cat,
+        displayOrder: (l as any).display_order || 0,
       };
       if (l.type === "user") users.push(entry);
       else presets.push(entry);
     });
 
+    users.sort((a, b) => a.displayOrder - b.displayOrder);
     presets.sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0));
     setUserLeagues(users);
     setPresetLeagues(presets);
     setLoading(false);
   };
+
+  const handleDragStart = (id: string) => {
+    setDraggedId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    setDragOverId(id);
+  };
+
+  const handleDrop = async (targetId: string, list: LeagueOption[], setList: React.Dispatch<React.SetStateAction<LeagueOption[]>>) => {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+    const fromIdx = list.findIndex(l => l.id === draggedId);
+    const toIdx = list.findIndex(l => l.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const reordered = [...list];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    setList(reordered);
+    setDraggedId(null);
+    setDragOverId(null);
+
+    // Persist order
+    const updates = reordered.map((l, i) =>
+      supabase.from("leagues").update({ display_order: i } as any).eq("id", l.id)
+    );
+    await Promise.all(updates);
+  };
+
+  const UserLeagueCard = ({ league }: { league: LeagueOption }) => (
+    <div
+      draggable
+      onDragStart={() => handleDragStart(league.id)}
+      onDragOver={(e) => handleDragOver(e, league.id)}
+      onDrop={() => handleDrop(league.id, userLeagues, setUserLeagues)}
+      onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+      className={`transition-all duration-200 ${draggedId === league.id ? "opacity-40" : ""} ${dragOverId === league.id && draggedId !== league.id ? "ring-2 ring-primary rounded-2xl" : ""}`}
+    >
+      <Link
+        to="/swipe"
+        className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(210_80%_60%/0.12)] hover:-translate-y-0.5 cursor-grab active:cursor-grabbing"
+      >
+        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl">
+          {league.icon}
+        </div>
+        <div className="text-center min-w-0 w-full">
+          <h3 className="font-bold text-foreground text-sm truncate">{league.name}</h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {league.memberCount} players
+          </p>
+        </div>
+        {league.isPromoted && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">
+            <Megaphone className="h-2.5 w-2.5" /> Promoted
+          </span>
+        )}
+      </Link>
+    </div>
+  );
 
   const LeagueCard = ({ league, type }: { league: LeagueOption; type: "user" | "preset" }) => {
     const swipeLink = type === "user" ? "/swipe" : `/swipe/preset/${league.id}`;
@@ -167,14 +239,14 @@ export default function Play() {
           </TabsList>
 
           <TabsContent value="users">
-            <div className="space-y-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {userLeagues.map((league, i) => (
                 <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <LeagueCard league={league} type="user" />
+                  <UserLeagueCard league={league} />
                 </motion.div>
               ))}
               {userLeagues.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">No user leagues available.</p>
+                <p className="text-center text-muted-foreground py-8 col-span-full">No user leagues available.</p>
               )}
             </div>
           </TabsContent>

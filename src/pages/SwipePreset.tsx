@@ -380,11 +380,15 @@ export default function SwipePreset() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setUserShowElo(!userShowElo)}
+                onClick={() => {
+                  const next = !(userShowElo && userShowRank);
+                  setUserShowElo(next);
+                  setUserShowRank(next);
+                }}
                 className="h-8 w-8 text-muted-foreground"
-                title={userShowElo ? "Hide Elo" : "Show Elo"}
+                title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
               >
-                {userShowElo ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
                 <Button variant="outline" size="sm" className="gap-1.5">
@@ -419,12 +423,12 @@ export default function SwipePreset() {
                           chosen === idx ? "ring-2 ring-primary" : ""
                         }`}
                       >
-                        <div className="aspect-[3/4] w-full bg-secondary flex items-center justify-center overflow-hidden">
+                        <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center overflow-hidden">
                           {displayImage ? (
                             <img
                               src={displayImage}
                               alt={item.name}
-                              className="w-full h-full object-contain bg-secondary transition-transform duration-300 group-hover:scale-105"
+                              className="w-full h-full object-contain bg-muted transition-transform duration-300 group-hover:scale-105"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                               }}
