@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
 import TierBadge from "@/components/TierBadge";
+import EloChangeIndicator from "@/components/EloChangeIndicator";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { toast } from "sonner";
 
 interface PresetItem {
@@ -62,6 +64,9 @@ export default function SwipePreset() {
   const [showRank, setShowRank] = useState(true);
   const [userShowElo, setUserShowElo] = useState(true);
   const [userShowRank, setUserShowRank] = useState(true);
+  const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
+  const { playSwipeSound } = useSwipeSound();
 
   // Multi-image state
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
@@ -206,12 +211,34 @@ export default function SwipePreset() {
     async (winnerIndex: 0 | 1) => {
       if (!pair || chosen !== null) return;
       setChosen(winnerIndex);
+      playSwipeSound();
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
       const currentWinner = items.find(i => i.id === winner.id)!;
       const currentLoser = items.find(i => i.id === loser.id)!;
       const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
+
+      // Calculate rank changes
+      const oldRanks = new Map<string, number>();
+      [...items].sort((a, b) => b.elo - a.elo).forEach((item, idx) => oldRanks.set(item.id, idx + 1));
+
+      const updatedItems = items.map(i => {
+        if (i.id === winner.id) return { ...i, elo: newWinnerElo };
+        if (i.id === loser.id) return { ...i, elo: newLoserElo };
+        return i;
+      });
+      const newRanks = new Map<string, number>();
+      [...updatedItems].sort((a, b) => b.elo - a.elo).forEach((item, idx) => newRanks.set(item.id, idx + 1));
+
+      setEloChanges(new Map([
+        [winner.id, newWinnerElo - currentWinner.elo],
+        [loser.id, newLoserElo - currentLoser.elo],
+      ]));
+      setRankChanges(new Map([
+        [winner.id, { old: oldRanks.get(winner.id)!, new: newRanks.get(winner.id)! }],
+        [loser.id, { old: oldRanks.get(loser.id)!, new: newRanks.get(loser.id)! }],
+      ]));
 
       await Promise.all([
         supabase.from("matches").insert({
@@ -223,13 +250,7 @@ export default function SwipePreset() {
         supabase.from("preset_items").update({ elo: newLoserElo }).eq("id", loser.id),
       ]);
 
-      setItems((prev) =>
-        prev.map((i) => {
-          if (i.id === winner.id) return { ...i, elo: newWinnerElo };
-          if (i.id === loser.id) return { ...i, elo: newLoserElo };
-          return i;
-        })
-      );
+      setItems(updatedItems);
 
       const newCount = matchCount + 1;
       const nextIndex = currentIndex + 1;
@@ -237,7 +258,8 @@ export default function SwipePreset() {
       setTimeout(() => {
         setMatchCount(newCount);
         setChosen(null);
-        // Cycle images for next round
+        setEloChanges(new Map());
+        setRankChanges(new Map());
         setCurrentImageIndex(prev => {
           const next = new Map(prev);
           pair.forEach(p => {
@@ -445,6 +467,13 @@ export default function SwipePreset() {
                             )}
                             {eloVisible && (
                               <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                            )}
+                            {chosen !== null && (
+                              <EloChangeIndicator
+                                change={eloChanges.get(item.id) ?? null}
+                                oldRank={rankChanges.get(item.id)?.old ?? null}
+                                newRank={rankChanges.get(item.id)?.new ?? null}
+                              />
                             )}
                           </div>
                         </div>
