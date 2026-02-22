@@ -1,4 +1,4 @@
-// Validate social media links/handles
+// Validate social media links - ONLY full URLs accepted, no usernames or @handles
 interface ValidationResult {
   valid: boolean;
   message: string;
@@ -9,38 +9,43 @@ export function validateSocialLink(platform: string, value: string): ValidationR
 
   const v = value.trim();
 
+  // Reject bare usernames and @handles for all social platforms
+  if (platform !== "website") {
+    if (v.startsWith("@")) {
+      return { valid: false, message: `Paste the full ${platform} URL, not a username (e.g. no @ symbols)` };
+    }
+    // If it doesn't contain a dot or protocol, it's likely just a username
+    if (!v.includes(".") && !v.includes("://")) {
+      return { valid: false, message: `Paste the full link from ${platform}, not just a username` };
+    }
+  }
+
   switch (platform) {
     case "instagram": {
-      // Accept @handle or URL
-      if (v.startsWith("@") || /^[a-zA-Z0-9._]{1,30}$/.test(v)) return { valid: true, message: "" };
-      if (/instagram\.com\/[a-zA-Z0-9._]+/i.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid Instagram username or link" };
+      if (/^https?:\/\/(www\.)?instagram\.com\/[a-zA-Z0-9._]+\/?/i.test(v)) return { valid: true, message: "" };
+      return { valid: false, message: "Paste a valid Instagram link (e.g. https://instagram.com/yourname)" };
     }
     case "tiktok": {
-      if (v.startsWith("@") || /^[a-zA-Z0-9._]{1,24}$/.test(v)) return { valid: true, message: "" };
-      if (/tiktok\.com\/@?[a-zA-Z0-9._]+/i.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid TikTok username or link" };
+      if (/^https?:\/\/(www\.)?tiktok\.com\/@?[a-zA-Z0-9._]+\/?/i.test(v)) return { valid: true, message: "" };
+      return { valid: false, message: "Paste a valid TikTok link (e.g. https://tiktok.com/@yourname)" };
     }
     case "youtube": {
-      if (/youtube\.com\/(c\/|channel\/|@)?[a-zA-Z0-9._-]+/i.test(v)) return { valid: true, message: "" };
-      if (/youtu\.be/i.test(v)) return { valid: true, message: "" };
-      if (/^@?[a-zA-Z0-9._-]{1,50}$/.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid YouTube channel or link" };
+      if (/^https?:\/\/(www\.)?youtube\.com\/(c\/|channel\/|@)?[a-zA-Z0-9._-]+\/?/i.test(v)) return { valid: true, message: "" };
+      if (/^https?:\/\/youtu\.be\//i.test(v)) return { valid: true, message: "" };
+      return { valid: false, message: "Paste a valid YouTube link (e.g. https://youtube.com/@yourchannel)" };
     }
     case "x": {
-      if (v.startsWith("@") || /^[a-zA-Z0-9_]{1,15}$/.test(v)) return { valid: true, message: "" };
-      if (/x\.com\/[a-zA-Z0-9_]+/i.test(v) || /twitter\.com\/[a-zA-Z0-9_]+/i.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid X/Twitter username or link" };
+      if (/^https?:\/\/(www\.)?(x|twitter)\.com\/[a-zA-Z0-9_]+\/?/i.test(v)) return { valid: true, message: "" };
+      return { valid: false, message: "Paste a valid X/Twitter link (e.g. https://x.com/yourhandle)" };
     }
     case "twitch": {
-      if (/^[a-zA-Z0-9_]{4,25}$/.test(v)) return { valid: true, message: "" };
-      if (/twitch\.tv\/[a-zA-Z0-9_]+/i.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid Twitch username or link" };
+      if (/^https?:\/\/(www\.)?twitch\.tv\/[a-zA-Z0-9_]+\/?/i.test(v)) return { valid: true, message: "" };
+      return { valid: false, message: "Paste a valid Twitch link (e.g. https://twitch.tv/yourname)" };
     }
     case "website": {
       if (/^https?:\/\/.+\..+/i.test(v)) return { valid: true, message: "" };
       if (/^[a-zA-Z0-9].*\.[a-zA-Z]{2,}/.test(v)) return { valid: true, message: "" };
-      return { valid: false, message: "Enter a valid website URL" };
+      return { valid: false, message: "Enter a valid website URL (e.g. https://yourwebsite.com)" };
     }
     default:
       return { valid: true, message: "" };
