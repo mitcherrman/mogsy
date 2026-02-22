@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
@@ -10,6 +10,7 @@ import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface PresetItem {
   id: string;
@@ -17,6 +18,14 @@ interface PresetItem {
   image_url: string | null;
   elo: number;
   league_id: string;
+}
+
+interface ItemImage {
+  id: string;
+  preset_item_id: string;
+  image_url: string;
+  is_hidden: boolean;
+  sort_order: number;
 }
 
 const AD_INTERVAL = 10;
@@ -36,16 +45,27 @@ function generateMatchups(items: PresetItem[]): [PresetItem, PresetItem][] {
 export default function SwipePreset() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<PresetItem[]>([]);
   const [matchups, setMatchups] = useState<[PresetItem, PresetItem][]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
   const [leagueName, setLeagueName] = useState("");
+  const [leagueCategory, setLeagueCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [showElo, setShowElo] = useState(true);
+  const [showRank, setShowRank] = useState(true);
+  const [userShowElo, setUserShowElo] = useState(true);
+  const [userShowRank, setUserShowRank] = useState(true);
+
+  // Multi-image state
+  const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
+  const [currentImageIndex, setCurrentImageIndex] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (leagueId) loadItems();
@@ -53,13 +73,46 @@ export default function SwipePreset() {
 
   const loadItems = async () => {
     const [{ data: league }, { data }] = await Promise.all([
-      supabase.from("leagues").select("name").eq("id", leagueId!).single(),
+      supabase.from("leagues").select("name, category, show_elo, show_rank").eq("id", leagueId!).single(),
       supabase.from("preset_items").select("*").eq("league_id", leagueId!),
     ]);
-    if (league) setLeagueName(league.name);
+    if (league) {
+      setLeagueName(league.name);
+      setLeagueCategory((league as any).category);
+      setShowElo((league as any).show_elo ?? true);
+      setShowRank((league as any).show_rank ?? true);
+    }
     if (data && data.length >= 2) {
       setItems(data);
       setMatchups(generateMatchups(data));
+
+      // Load multi-images
+      const itemIds = data.map(i => i.id);
+      const { data: images } = await supabase
+        .from("preset_item_images")
+        .select("*")
+        .in("preset_item_id", itemIds)
+        .eq("is_hidden", false)
+        .order("sort_order");
+
+      if (images) {
+        const map = new Map<string, ItemImage[]>();
+        const idxMap = new Map<string, number>();
+        images.forEach(img => {
+          const list = map.get(img.preset_item_id) || [];
+          list.push(img as ItemImage);
+          map.set(img.preset_item_id, list);
+          if (!idxMap.has(img.preset_item_id)) {
+            idxMap.set(img.preset_item_id, Math.floor(Math.random() * (list.length)));
+          }
+        });
+        // Randomize starting index
+        map.forEach((imgs, itemId) => {
+          idxMap.set(itemId, Math.floor(Math.random() * imgs.length));
+        });
+        setItemImages(map);
+        setCurrentImageIndex(idxMap);
+      }
     }
 
     if (user) {
@@ -71,8 +124,83 @@ export default function SwipePreset() {
     setLoading(false);
   };
 
+  const getDisplayImage = (item: PresetItem): string | null => {
+    const images = itemImages.get(item.id);
+    if (images && images.length > 0) {
+      const idx = currentImageIndex.get(item.id) || 0;
+      return images[idx % images.length].image_url;
+    }
+    return item.image_url;
+  };
+
+  const getCurrentImageId = (item: PresetItem): string | null => {
+    const images = itemImages.get(item.id);
+    if (images && images.length > 0) {
+      const idx = currentImageIndex.get(item.id) || 0;
+      return images[idx % images.length].id;
+    }
+    return null;
+  };
+
+  const handleReportImage = async (item: PresetItem) => {
+    if (!user) { toast.error("Sign in to report images"); return; }
+    const imageId = getCurrentImageId(item);
+    if (!imageId) return;
+
+    const { error } = await supabase.from("image_reports").insert({
+      image_id: imageId,
+      user_id: user.id,
+    });
+
+    if (error) {
+      if (error.code === "23505") toast.info("Already reported this image");
+      else toast.error("Failed to report");
+      return;
+    }
+
+    // Check total reports
+    const { count } = await supabase.from("image_reports").select("*", { count: "exact", head: true }).eq("image_id", imageId);
+
+    if (count && count >= 10) {
+      await supabase.from("preset_item_images").update({ is_hidden: true }).eq("id", imageId);
+      await supabase.from("admin_notifications").insert({
+        type: "image_report_critical",
+        title: `Image auto-hidden: ${item.name}`,
+        message: `An image for "${item.name}" received ${count} reports and was automatically hidden.`,
+        metadata: { image_id: imageId, item_id: item.id, report_count: count },
+      });
+    } else {
+      await supabase.from("admin_notifications").insert({
+        type: "image_report",
+        title: `Image reported: ${item.name}`,
+        message: `A user reported an image for "${item.name}" as not representative. (${count || 1} total reports)`,
+        metadata: { image_id: imageId, item_id: item.id, report_count: count || 1 },
+      });
+    }
+
+    // Cycle to next image for this user
+    const images = itemImages.get(item.id);
+    if (images && images.length > 1) {
+      setCurrentImageIndex(prev => {
+        const next = new Map(prev);
+        next.set(item.id, ((prev.get(item.id) || 0) + 1) % images.length);
+        return next;
+      });
+    }
+
+    toast.success("Reported — showing a different image");
+  };
+
   const pair = currentIndex < matchups.length ? matchups[currentIndex] : null;
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
+
+  // Compute ranks
+  const rankMap = useMemo(() => {
+    const sorted = [...items].sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    sorted.forEach((item, idx) => map.set(item.id, idx + 1));
+    return map;
+  }, [items]);
 
   const handleChoose = useCallback(
     async (winnerIndex: 0 | 1) => {
@@ -109,6 +237,18 @@ export default function SwipePreset() {
       setTimeout(() => {
         setMatchCount(newCount);
         setChosen(null);
+        // Cycle images for next round
+        setCurrentImageIndex(prev => {
+          const next = new Map(prev);
+          pair.forEach(p => {
+            const imgs = itemImages.get(p.id);
+            if (imgs && imgs.length > 1) {
+              next.set(p.id, ((prev.get(p.id) || 0) + 1) % imgs.length);
+            }
+          });
+          return next;
+        });
+
         if (nextIndex >= matchups.length) {
           setFinished(true);
         } else if (!isPro && newCount % AD_INTERVAL === 0) {
@@ -118,7 +258,7 @@ export default function SwipePreset() {
         }
       }, 600);
     },
-    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length]
+    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length, itemImages]
   );
 
   const handleRestart = () => {
@@ -126,6 +266,12 @@ export default function SwipePreset() {
     setCurrentIndex(0);
     setMatchCount(0);
     setFinished(false);
+  };
+
+  const handleBack = () => {
+    // Navigate back to presets with the category open
+    const fromPage = location.state?.from || "/presets";
+    navigate(fromPage, { state: { openCategory: leagueCategory } });
   };
 
   const sortedResults = useMemo(
@@ -149,16 +295,17 @@ export default function SwipePreset() {
     );
   }
 
+  const eloVisible = showElo && userShowElo;
+  const rankVisible = showRank && userShowRank;
+
   if (finished) {
     return (
       <div className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-lg">
           <div className="flex items-center gap-3 mb-6">
-            <Link to="/presets">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <h1 className="text-2xl font-extrabold text-foreground flex-1">{leagueName} Results</h1>
           </div>
 
@@ -185,7 +332,7 @@ export default function SwipePreset() {
                   )}
                 </div>
                 <span className="font-semibold text-foreground flex-1 truncate">{item.name}</span>
-                <span className="text-sm text-primary font-bold">{item.elo}</span>
+                {eloVisible && <span className="text-sm text-primary font-bold">{item.elo}</span>}
                 <TierBadge tier={getTierFromElo(item.elo)} />
               </div>
             ))}
@@ -220,22 +367,31 @@ export default function SwipePreset() {
       <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           <div className="flex items-center gap-3 mb-3">
-            <Link to="/presets">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div className="flex-1">
               <h1 className="text-xl font-extrabold text-foreground">{leagueName}</h1>
               <p className="text-muted-foreground text-xs">
                 {currentIndex + 1} / {matchups.length}
               </p>
             </div>
-            <Link to={`/leaderboard/${leagueId}`}>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Trophy className="h-4 w-4" /> Rankings
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setUserShowElo(!userShowElo)}
+                className="h-8 w-8 text-muted-foreground"
+                title={userShowElo ? "Hide Elo" : "Show Elo"}
+              >
+                {userShowElo ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
-            </Link>
+              <Link to={`/leaderboard/${leagueId}`}>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Trophy className="h-4 w-4" /> Rankings
+                </Button>
+              </Link>
+            </div>
           </div>
 
           <Progress value={progress} className="mb-3 h-1.5" />
@@ -250,33 +406,57 @@ export default function SwipePreset() {
                 transition={{ duration: 0.25 }}
                 className="grid grid-cols-2 gap-3 flex-1"
               >
-                {pair.map((item, idx) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleChoose(idx as 0 | 1)}
-                    className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] flex flex-col ${
-                      chosen === idx ? "ring-2 ring-primary" : ""
-                    }`}
-                  >
-                    <div className="aspect-[3/4] w-full bg-secondary flex items-center justify-center overflow-hidden">
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          className="w-full h-full object-contain bg-secondary transition-transform duration-300 group-hover:scale-105"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                          }}
-                        />
-                      ) : (
-                        <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                {pair.map((item, idx) => {
+                  const displayImage = getDisplayImage(item);
+                  const rank = rankMap.get(item.id);
+                  const hasMultipleImages = (itemImages.get(item.id)?.length || 0) > 0;
+
+                  return (
+                    <div key={item.id} className="relative flex flex-col">
+                      <button
+                        onClick={() => handleChoose(idx as 0 | 1)}
+                        className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] flex flex-col flex-1 ${
+                          chosen === idx ? "ring-2 ring-primary" : ""
+                        }`}
+                      >
+                        <div className="aspect-[3/4] w-full bg-secondary flex items-center justify-center overflow-hidden">
+                          {displayImage ? (
+                            <img
+                              src={displayImage}
+                              alt={item.name}
+                              className="w-full h-full object-contain bg-secondary transition-transform duration-300 group-hover:scale-105"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+                              }}
+                            />
+                          ) : (
+                            <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                          )}
+                        </div>
+                        <div className="p-2 sm:p-3">
+                          <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{item.name}</h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {rankVisible && rank && (
+                              <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
+                            )}
+                            {eloVisible && (
+                              <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                      {hasMultipleImages && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                          title="Report image as not representative"
+                        >
+                          <Flag className="h-3.5 w-3.5" />
+                        </button>
                       )}
                     </div>
-                    <div className="p-2 sm:p-3">
-                      <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{item.name}</h3>
-                    </div>
-                  </button>
-                ))}
+                  );
+                })}
               </motion.div>
             </AnimatePresence>
           )}

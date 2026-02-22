@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string | null
+          metadata: Json | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          metadata?: Json | null
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          metadata?: Json | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -60,6 +90,38 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_reports: {
+        Row: {
+          created_at: string
+          id: string
+          image_id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_id: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_reports_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "preset_item_images"
             referencedColumns: ["id"]
           },
         ]
@@ -119,6 +181,8 @@ export type Database = {
           promoted_brand_logo: string | null
           promoted_brand_name: string | null
           promoted_until: string | null
+          show_elo: boolean | null
+          show_rank: boolean | null
           type: string
         }
         Insert: {
@@ -133,6 +197,8 @@ export type Database = {
           promoted_brand_logo?: string | null
           promoted_brand_name?: string | null
           promoted_until?: string | null
+          show_elo?: boolean | null
+          show_rank?: boolean | null
           type?: string
         }
         Update: {
@@ -147,6 +213,8 @@ export type Database = {
           promoted_brand_logo?: string | null
           promoted_brand_name?: string | null
           promoted_until?: string | null
+          show_elo?: boolean | null
+          show_rank?: boolean | null
           type?: string
         }
         Relationships: []
@@ -199,6 +267,44 @@ export type Database = {
             columns: ["winner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      preset_item_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_hidden: boolean
+          preset_item_id: string
+          report_count: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_hidden?: boolean
+          preset_item_id: string
+          report_count?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_hidden?: boolean
+          preset_item_id?: string
+          report_count?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preset_item_images_preset_item_id_fkey"
+            columns: ["preset_item_id"]
+            isOneToOne: false
+            referencedRelation: "preset_items"
             referencedColumns: ["id"]
           },
         ]
