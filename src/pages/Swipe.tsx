@@ -5,7 +5,7 @@ import { Trophy, Undo2, Shield, ArrowLeft } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
-import { calculateElo } from "@/lib/elo";
+// ELO calculation now handled server-side via record_user_match RPC
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
@@ -125,31 +125,27 @@ export default function Swipe() {
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
-      if (globalLeagueId) {
-        await supabase.from("matches").insert({
-          league_id: globalLeagueId,
-          winner_profile_id: winner.id,
-          loser_profile_id: loser.id,
+      if (globalLeagueId && myProfileId) {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_user_match", {
+          _league_id: globalLeagueId,
+          _winner_profile_id: winner.id,
+          _loser_profile_id: loser.id,
+          _caller_profile_id: myProfileId,
         });
 
-        const { newWinnerElo, newLoserElo } = calculateElo(winner.elo, loser.elo);
-
-        // Check if loser has ELO shield
-        const finalLoserElo = (loser.id === myProfileId && myShields > 0) ? loser.elo : newLoserElo;
-        if (loser.id === myProfileId && myShields > 0) {
-          setMyShields((s) => s - 1);
-          await supabase.from("profiles").update({ elo_shields: myShields - 1 }).eq("id", myProfileId);
-          toast({ title: "🛡️ ELO Shield activated!", description: "Your rating was protected." });
+        if (rpcError) {
+          console.error("Match RPC error:", rpcError);
+          return;
         }
 
-        await supabase.from("league_memberships").upsert(
-          { league_id: globalLeagueId, profile_id: winner.id, elo: newWinnerElo, matches_played: 1 },
-          { onConflict: "league_id,profile_id" }
-        );
-        await supabase.from("league_memberships").upsert(
-          { league_id: globalLeagueId, profile_id: loser.id, elo: finalLoserElo, matches_played: 1 },
-          { onConflict: "league_id,profile_id" }
-        );
+        const result = rpcResult as { newWinnerElo: number; newLoserElo: number; shieldUsed: boolean };
+        const newWinnerElo = result.newWinnerElo;
+        const finalLoserElo = result.newLoserElo;
+
+        if (result.shieldUsed) {
+          setMyShields((s) => s - 1);
+          toast({ title: "🛡️ ELO Shield activated!", description: "Your rating was protected." });
+        }
 
         setLastMatch({ winner, loser, prevWinnerElo: winner.elo, prevLoserElo: loser.elo });
 
@@ -183,18 +179,24 @@ export default function Swipe() {
   );
 
   const handleRewind = async () => {
-    if (!lastMatch || myRewinds <= 0 || !globalLeagueId) return;
-    // Revert ELOs
-    await supabase.from("league_memberships").upsert(
-      { league_id: globalLeagueId, profile_id: lastMatch.winner.id, elo: lastMatch.prevWinnerElo, matches_played: 1 },
-      { onConflict: "league_id,profile_id" }
-    );
-    await supabase.from("league_memberships").upsert(
-      { league_id: globalLeagueId, profile_id: lastMatch.loser.id, elo: lastMatch.prevLoserElo, matches_played: 1 },
-      { onConflict: "league_id,profile_id" }
-    );
+    if (!lastMatch || myRewinds <= 0 || !globalLeagueId || !myProfileId) return;
+
+    const { error } = await supabase.rpc("rewind_user_match", {
+      _league_id: globalLeagueId,
+      _winner_profile_id: lastMatch.winner.id,
+      _loser_profile_id: lastMatch.loser.id,
+      _prev_winner_elo: lastMatch.prevWinnerElo,
+      _prev_loser_elo: lastMatch.prevLoserElo,
+      _caller_profile_id: myProfileId,
+    });
+
+    if (error) {
+      console.error("Rewind error:", error);
+      toast({ title: "Rewind failed", description: error.message });
+      return;
+    }
+
     setMyRewinds((r) => r - 1);
-    await supabase.from("profiles").update({ rewinds: myRewinds - 1 }).eq("id", myProfileId!);
     setPair([lastMatch.winner, lastMatch.loser]);
     setLastMatch(null);
     toast({ title: "⏪ Rewind used!", description: "Vote again on the same pair." });

@@ -740,6 +740,34 @@ export type Database = {
       }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
+      record_preset_match: {
+        Args: {
+          _league_id: string
+          _loser_item_id: string
+          _winner_item_id: string
+        }
+        Returns: Json
+      }
+      record_user_match: {
+        Args: {
+          _caller_profile_id: string
+          _league_id: string
+          _loser_profile_id: string
+          _winner_profile_id: string
+        }
+        Returns: Json
+      }
+      rewind_user_match: {
+        Args: {
+          _caller_profile_id: string
+          _league_id: string
+          _loser_profile_id: string
+          _prev_loser_elo: number
+          _prev_winner_elo: number
+          _winner_profile_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
