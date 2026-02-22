@@ -662,20 +662,15 @@ export type Database = {
           active_boost_until: string | null
           age: number | null
           avatar_url: string | null
-          boost_credits: number | null
           created_at: string | null
           custom_theme: string | null
-          diamonds: number | null
           display_name: string | null
-          elo_shields: number | null
           id: string | null
           is_anonymous: boolean | null
           is_bot: boolean | null
           is_pro: boolean | null
           location: string | null
           profile_frame: string | null
-          reveals: number | null
-          rewinds: number | null
           socials: Json | null
           status_message: string | null
           updated_at: string | null
@@ -685,20 +680,15 @@ export type Database = {
           active_boost_until?: string | null
           age?: number | null
           avatar_url?: string | null
-          boost_credits?: number | null
           created_at?: string | null
           custom_theme?: string | null
-          diamonds?: number | null
           display_name?: string | null
-          elo_shields?: number | null
           id?: string | null
           is_anonymous?: boolean | null
           is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null
-          reveals?: number | null
-          rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
           updated_at?: string | null
@@ -708,20 +698,15 @@ export type Database = {
           active_boost_until?: string | null
           age?: number | null
           avatar_url?: string | null
-          boost_credits?: number | null
           created_at?: string | null
           custom_theme?: string | null
-          diamonds?: number | null
           display_name?: string | null
-          elo_shields?: number | null
           id?: string | null
           is_anonymous?: boolean | null
           is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null
-          reveals?: number | null
-          rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
           updated_at?: string | null
