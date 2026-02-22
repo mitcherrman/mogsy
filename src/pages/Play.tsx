@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Trophy, Megaphone, ChevronDown, GripVertical } from "lucide-react";
+import { ArrowLeft, Megaphone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -27,6 +27,116 @@ const CATEGORY_ICONS: Record<string, string> = {
   Celebrities: "⭐",
 };
 
+function DraggableGrid({
+  items,
+  onReorder,
+  renderCard,
+}: {
+  items: LeagueOption[];
+  onReorder: (reordered: LeagueOption[]) => void;
+  renderCard: (league: LeagueOption) => React.ReactNode;
+}) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const getDisplayOrder = () => {
+    if (dragIdx === null || overIdx === null || dragIdx === overIdx) return items;
+    const reordered = [...items];
+    const [moved] = reordered.splice(dragIdx, 1);
+    reordered.splice(overIdx, 0, moved);
+    return reordered;
+  };
+
+  const handlePointerDown = (idx: number, e: React.PointerEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    longPressTimer.current = setTimeout(() => {
+      isDragging.current = true;
+      setDragIdx(idx);
+      setOverIdx(idx);
+      target.setPointerCapture(e.pointerId);
+      // Prevent scroll while dragging
+      document.body.style.overflow = "hidden";
+    }, 300);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current || !containerRef.current) return;
+    e.preventDefault();
+    // Find which grid cell we're over
+    const container = containerRef.current;
+    const cards = Array.from(container.children) as HTMLElement[];
+    const point = { x: e.clientX, y: e.clientY };
+    for (let i = 0; i < cards.length; i++) {
+      const rect = cards[i].getBoundingClientRect();
+      if (point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom) {
+        setOverIdx(i);
+        break;
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    document.body.style.overflow = "";
+    if (isDragging.current && dragIdx !== null && overIdx !== null && dragIdx !== overIdx) {
+      const reordered = [...items];
+      const [moved] = reordered.splice(dragIdx, 1);
+      reordered.splice(overIdx, 0, moved);
+      onReorder(reordered);
+    }
+    isDragging.current = false;
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+
+  const handlePointerCancel = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    document.body.style.overflow = "";
+    isDragging.current = false;
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+
+  const displayed = getDisplayOrder();
+
+  return (
+    <div
+      ref={containerRef}
+      className="grid grid-cols-3 sm:grid-cols-4 gap-3"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+    >
+      {displayed.map((league, i) => {
+        const originalIdx = items.findIndex(l => l.id === league.id);
+        const isBeingDragged = dragIdx !== null && items[dragIdx]?.id === league.id;
+        return (
+          <motion.div
+            key={league.id}
+            layout
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: isBeingDragged ? 0.5 : 1, y: 0, scale: isBeingDragged ? 1.05 : 1 }}
+            transition={{ duration: 0.2 }}
+            onPointerDown={(e) => handlePointerDown(originalIdx, e)}
+            className={`touch-none select-none ${isBeingDragged ? "z-10" : ""}`}
+          >
+            {renderCard(league)}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Play() {
   const navigate = useNavigate();
   const [userLeagues, setUserLeagues] = useState<LeagueOption[]>([]);
@@ -37,10 +147,6 @@ export default function Play() {
     if (locationState?.openCategory) return new Set([locationState.openCategory]);
     return new Set();
   });
-
-  // Drag state
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const toggleCategory = (cat: string) => {
     setOpenCategories((prev) => {
@@ -102,66 +208,47 @@ export default function Play() {
     });
 
     users.sort((a, b) => a.displayOrder - b.displayOrder);
-    presets.sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0));
+    presets.sort((a, b) => a.displayOrder - b.displayOrder);
     setUserLeagues(users);
     setPresetLeagues(presets);
     setLoading(false);
   };
 
-  const handleDragStart = (id: string) => {
-    setDraggedId(id);
-  };
-
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
-    setDragOverId(id);
-  };
-
-  const handleDrop = async (targetId: string, list: LeagueOption[], setList: React.Dispatch<React.SetStateAction<LeagueOption[]>>) => {
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
-    const fromIdx = list.findIndex(l => l.id === draggedId);
-    const toIdx = list.findIndex(l => l.id === targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
-
-    const reordered = [...list];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
-
-    setList(reordered);
-    setDraggedId(null);
-    setDragOverId(null);
-
-    // Persist order
+  const persistOrder = useCallback(async (reordered: LeagueOption[]) => {
     const updates = reordered.map((l, i) =>
       supabase.from("leagues").update({ display_order: i } as any).eq("id", l.id)
     );
     await Promise.all(updates);
-  };
+  }, []);
 
-  const UserLeagueCard = ({ league }: { league: LeagueOption }) => (
-    <div
-      draggable
-      onDragStart={() => handleDragStart(league.id)}
-      onDragOver={(e) => handleDragOver(e, league.id)}
-      onDrop={() => handleDrop(league.id, userLeagues, setUserLeagues)}
-      onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
-      className={`transition-all duration-200 ${draggedId === league.id ? "opacity-40" : ""} ${dragOverId === league.id && draggedId !== league.id ? "ring-2 ring-primary rounded-2xl" : ""}`}
-    >
+  const handleUserReorder = useCallback((reordered: LeagueOption[]) => {
+    setUserLeagues(reordered);
+    persistOrder(reordered);
+  }, [persistOrder]);
+
+  const handlePresetReorder = useCallback((reordered: LeagueOption[]) => {
+    setPresetLeagues(reordered);
+    persistOrder(reordered);
+  }, [persistOrder]);
+
+  const renderLeagueCard = useCallback((league: LeagueOption, type: "user" | "preset") => {
+    const swipeLink = type === "user" ? "/swipe" : `/swipe/preset/${league.id}`;
+    const linkState = type === "preset" ? { from: "/play", openCategory: league.category } : undefined;
+    return (
       <Link
-        to="/swipe"
-        className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(210_80%_60%/0.12)] hover:-translate-y-0.5 cursor-grab active:cursor-grabbing"
+        to={swipeLink}
+        state={linkState}
+        className={`flex flex-col items-center gap-2 rounded-2xl border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(210_80%_60%/0.12)] hover:-translate-y-0.5 h-full ${
+          league.isPromoted ? "border-primary/40" : "border-border"
+        }`}
       >
-        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl">
+        <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-2xl flex-shrink-0">
           {league.icon}
         </div>
         <div className="text-center min-w-0 w-full">
           <h3 className="font-bold text-foreground text-sm truncate">{league.name}</h3>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {league.memberCount} players
+            {league.memberCount} {type === "preset" ? "items" : "players"}
           </p>
         </div>
         {league.isPromoted && (
@@ -170,38 +257,8 @@ export default function Play() {
           </span>
         )}
       </Link>
-    </div>
-  );
-
-  const LeagueCard = ({ league, type }: { league: LeagueOption; type: "user" | "preset" }) => {
-    const swipeLink = type === "user" ? "/swipe" : `/swipe/preset/${league.id}`;
-    const linkState = type === "preset" ? { from: "/play", openCategory: league.category } : undefined;
-    return (
-      <Link
-        to={swipeLink}
-        state={linkState}
-        className={`flex items-center gap-4 rounded-2xl border bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:shadow-[0_0_20px_hsl(210_80%_60%/0.12)] hover:-translate-y-0.5 ${
-          league.isPromoted ? "border-primary/40" : "border-border"
-        }`}
-      >
-        <span className="text-3xl flex-shrink-0">{league.icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-foreground truncate">{league.name}</h3>
-            {league.isPromoted && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider flex-shrink-0">
-                <Megaphone className="h-3 w-3" /> Promoted
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {league.memberCount} {type === "preset" ? "items" : "players"} · Swipe now
-          </p>
-        </div>
-        <Trophy className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-      </Link>
     );
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -211,12 +268,13 @@ export default function Play() {
     );
   }
 
-  const categories = new Map<string, LeagueOption[]>();
+  // Group presets by category
+  const categoryMap = new Map<string, LeagueOption[]>();
   const uncategorized: LeagueOption[] = [];
   presetLeagues.forEach((l) => {
     if (l.category) {
-      if (!categories.has(l.category)) categories.set(l.category, []);
-      categories.get(l.category)!.push(l);
+      if (!categoryMap.has(l.category)) categoryMap.set(l.category, []);
+      categoryMap.get(l.category)!.push(l);
     } else {
       uncategorized.push(l);
     }
@@ -232,6 +290,8 @@ export default function Play() {
           <h1 className="text-3xl font-extrabold text-foreground">Play</h1>
         </div>
 
+        <p className="text-xs text-muted-foreground mb-4">Long-press and drag to reorder</p>
+
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="w-full mb-6">
             <TabsTrigger value="users" className="flex-1">User Leagues</TabsTrigger>
@@ -239,21 +299,20 @@ export default function Play() {
           </TabsList>
 
           <TabsContent value="users">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {userLeagues.map((league, i) => (
-                <motion.div key={league.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <UserLeagueCard league={league} />
-                </motion.div>
-              ))}
-              {userLeagues.length === 0 && (
-                <p className="text-center text-muted-foreground py-8 col-span-full">No user leagues available.</p>
-              )}
-            </div>
+            {userLeagues.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No user leagues available.</p>
+            ) : (
+              <DraggableGrid
+                items={userLeagues}
+                onReorder={handleUserReorder}
+                renderCard={(league) => renderLeagueCard(league, "user")}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="presets">
             <div className="space-y-3">
-              {Array.from(categories.entries()).map(([cat, leagues]) => (
+              {Array.from(categoryMap.entries()).map(([cat, leagues]) => (
                 <Collapsible key={cat} open={openCategories.has(cat)} onOpenChange={() => toggleCategory(cat)}>
                   <CollapsibleTrigger className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
                     <span className="flex items-center gap-3">
@@ -264,12 +323,22 @@ export default function Play() {
                     <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has(cat) ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="space-y-2 mt-2 ml-2">
-                      {leagues.map((league, i) => (
-                        <motion.div key={league.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                          <LeagueCard league={league} type="preset" />
-                        </motion.div>
-                      ))}
+                    <div className="mt-2 ml-1">
+                      <DraggableGrid
+                        items={leagues}
+                        onReorder={(reordered) => {
+                          // Update within the full presetLeagues list
+                          const newPresets = presetLeagues.map(p => {
+                            const idx = reordered.findIndex(r => r.id === p.id);
+                            if (idx !== -1) return { ...p, displayOrder: idx };
+                            return p;
+                          });
+                          newPresets.sort((a, b) => a.displayOrder - b.displayOrder);
+                          setPresetLeagues(newPresets);
+                          persistOrder(reordered);
+                        }}
+                        renderCard={(league) => renderLeagueCard(league, "preset")}
+                      />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -285,12 +354,21 @@ export default function Play() {
                     <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${openCategories.has("__other") ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="space-y-2 mt-2 ml-2">
-                      {uncategorized.map((league, i) => (
-                        <motion.div key={league.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                          <LeagueCard league={league} type="preset" />
-                        </motion.div>
-                      ))}
+                    <div className="mt-2 ml-1">
+                      <DraggableGrid
+                        items={uncategorized}
+                        onReorder={(reordered) => {
+                          const newPresets = presetLeagues.map(p => {
+                            const idx = reordered.findIndex(r => r.id === p.id);
+                            if (idx !== -1) return { ...p, displayOrder: idx };
+                            return p;
+                          });
+                          newPresets.sort((a, b) => a.displayOrder - b.displayOrder);
+                          setPresetLeagues(newPresets);
+                          persistOrder(reordered);
+                        }}
+                        renderCard={(league) => renderLeagueCard(league, "preset")}
+                      />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
