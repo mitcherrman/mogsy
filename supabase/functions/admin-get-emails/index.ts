@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ emails: emailMap }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    console.error('admin-get-emails error:', e);
+    return new Response(JSON.stringify({ error: 'An internal error occurred' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

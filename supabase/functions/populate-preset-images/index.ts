@@ -261,8 +261,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+    console.error('populate-preset-images error:', error);
+    return new Response(JSON.stringify({ success: false, error: 'An internal error occurred' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
