@@ -24,9 +24,8 @@ interface LeagueItem {
   type: string;
 }
 
-const DUR_FAST = 0.19;
-const DUR_MED = 0.24;
-const DUR_EXIT = 0.15;
+const spring = { type: "spring" as const, stiffness: 300, damping: 28 };
+const springFast = { type: "spring" as const, stiffness: 400, damping: 30 };
 
 export default function Play() {
   const navigate = useNavigate();
@@ -78,7 +77,7 @@ export default function Play() {
   const currentCategories =
     expanded === "collections" ? presetCategories : { Leagues: userLeagues };
 
-  const getLeagueIcon = (name: string, category: string | null) => {
+  const getLeagueIcon = (name: string) => {
     if (name.includes("Restaurant")) return "🍽️";
     if (name.includes("Fast Food")) return "🍔";
     if (name.includes("Car")) return "🏎️";
@@ -104,7 +103,7 @@ export default function Play() {
           <AnimatePresence mode="popLayout">
             {(expanded === null || expanded === "collections") && (
               <TopBubble
-                key="collections" label="Collections" icon={<LayoutGrid className="h-10 w-10" />}
+                key="collections" label="Collections" icon={<LayoutGrid />}
                 isExpanded={expanded === "collections"} onToggle={() => toggle("collections")}
                 subExpanded={expanded === "collections" ? subExpanded : null} onSubToggle={handleSubToggle}
                 categories={currentCategories}
@@ -114,7 +113,7 @@ export default function Play() {
             )}
             {(expanded === null || expanded === "compete") && (
               <TopBubble
-                key="compete" label="Compete" icon={<Users className="h-10 w-10" />}
+                key="compete" label="Compete" icon={<Users />}
                 isExpanded={expanded === "compete"} onToggle={() => toggle("compete")}
                 subExpanded={expanded === "compete" ? subExpanded : null} onSubToggle={handleSubToggle}
                 categories={currentCategories}
@@ -129,6 +128,12 @@ export default function Play() {
   );
 }
 
+/* ─── Shared bubble style ─── */
+const bubbleBase = "rounded-full flex flex-col items-center justify-center border-2";
+const bubbleInactive = "border-border bg-card text-foreground";
+const bubbleActive = "border-primary bg-primary/10 text-primary";
+const bubbleHoverInactive = "hover:border-primary/40";
+
 /* ─── Top-level bubble ─── */
 function TopBubble({
   label, icon, isExpanded, onToggle, subExpanded, onSubToggle,
@@ -138,7 +143,7 @@ function TopBubble({
   subExpanded: SubKey; onSubToggle: (sub: SubKey) => void;
   categories: Record<string, LeagueItem[]>; selectedCategory: string | null;
   onCategorySelect: (cat: string | null) => void;
-  getLeagueIcon: (name: string, category: string | null) => string;
+  getLeagueIcon: (name: string) => string;
   onLeagueSelect: (league: LeagueItem) => void;
 }) {
   const categoryKeys = Object.keys(categories);
@@ -146,63 +151,103 @@ function TopBubble({
 
   return (
     <motion.div
-      layout
+      layout="position"
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8, transition: { duration: DUR_EXIT } }}
-      transition={{ duration: DUR_MED }}
-      className="flex flex-col items-center gap-4"
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={spring}
+      className="flex flex-col items-center gap-5"
     >
-      {/* Main circle — hide when swipe sub-expanded */}
-      <AnimatePresence>
+      {/* Main circle — hide when swipe is expanded */}
+      <AnimatePresence mode="wait">
         {subExpanded !== "swipe" && (
           <motion.button
-            key="main-circle" onClick={onToggle} layout
-            initial={{ opacity: 1, scale: 1 }} animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.6, transition: { duration: DUR_EXIT } }}
-            className={`relative h-32 w-32 rounded-full flex flex-col items-center justify-center gap-2 border-2 transition-colors duration-300 ${
-              isExpanded
-                ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
-                : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.12)]"
-            }`}
-            whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.95 }}
+            key="main-circle"
+            onClick={onToggle}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={springFast}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+            className={`h-32 w-32 gap-2 ${bubbleBase} ${isExpanded ? bubbleActive : `${bubbleInactive} ${bubbleHoverInactive}`}`}
+            style={{ boxShadow: isExpanded ? "0 0 40px hsl(var(--primary) / 0.25)" : "none" }}
           >
-            {icon}
+            <span className="h-10 w-10 flex items-center justify-center">{icon}</span>
             <span className="text-sm font-extrabold tracking-wide">{label}</span>
           </motion.button>
         )}
       </AnimatePresence>
 
       {/* Sub-bubbles: Swipe & Elo Check */}
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {isExpanded && (
           <motion.div
-            key="sub-actions" layout
-            initial={{ opacity: 0, y: -16, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -16, scale: 0.8 }} transition={{ duration: DUR_MED }}
-            className="flex flex-col items-center gap-4"
+            key="sub-actions"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={spring}
+            className="flex flex-col items-center gap-5"
           >
             <div className="flex items-center justify-center gap-6">
               <AnimatePresence mode="popLayout">
                 {(subExpanded === null || subExpanded === "swipe") && (
-                  <SubBubble key="swipe" label="Swipe" icon={<Shuffle />}
-                    onClick={() => onSubToggle("swipe")} isActive={subExpanded === "swipe"} delay={0} />
+                  <motion.button
+                    key="swipe"
+                    layout
+                    onClick={() => onSubToggle("swipe")}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                      width: subExpanded === "swipe" ? 128 : 80,
+                      height: subExpanded === "swipe" ? 128 : 80,
+                    }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={spring}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`${bubbleBase} gap-1 ${
+                      subExpanded === "swipe" ? bubbleActive : "border-primary/30 bg-primary/5 text-primary"
+                    }`}
+                    style={{ boxShadow: subExpanded === "swipe" ? "0 0 40px hsl(var(--primary) / 0.25)" : "none" }}
+                  >
+                    <Shuffle className={subExpanded === "swipe" ? "h-10 w-10" : "h-6 w-6"} />
+                    <span className={`font-extrabold tracking-wide ${subExpanded === "swipe" ? "text-sm" : "text-[10px]"}`}>
+                      Swipe
+                    </span>
+                  </motion.button>
                 )}
                 {(subExpanded === null || subExpanded === "elocheck") && (
-                  <SubBubble key="elocheck" label="Elo Check" icon={<Zap />}
-                    onClick={() => onSubToggle("elocheck")} isActive={false} delay={0.08} />
+                  <motion.button
+                    key="elocheck"
+                    onClick={() => onSubToggle("elocheck")}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ ...spring, delay: 0.05 }}
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`h-20 w-20 ${bubbleBase} gap-1 border-primary/30 bg-primary/5 text-primary`}
+                  >
+                    <Zap className="h-6 w-6" />
+                    <span className="text-[10px] font-extrabold tracking-wide">Elo Check</span>
+                  </motion.button>
                 )}
               </AnimatePresence>
             </div>
 
             {/* Level 3: Categories or direct leagues */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {subExpanded === "swipe" && (
                 <motion.div
                   key="category-area"
-                  initial={{ opacity: 0, y: -12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -12, scale: 0.9 }} transition={{ duration: DUR_MED }}
-                  className="flex flex-col items-center gap-4 mt-2"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={spring}
+                  className="flex flex-col items-center gap-5"
                 >
                   {hasMultipleCategories ? (
                     <>
@@ -210,26 +255,69 @@ function TopBubble({
                         <AnimatePresence mode="popLayout">
                           {categoryKeys
                             .filter((cat) => selectedCategory === null || selectedCategory === cat)
-                            .map((cat, i) => (
-                              <CategoryBubble key={cat} label={cat} emoji={CATEGORY_ICONS[cat] || "📋"}
-                                isActive={selectedCategory === cat}
-                                onClick={() => onCategorySelect(selectedCategory === cat ? null : cat)}
-                                delay={i * 0.04} />
-                            ))}
+                            .map((cat, i) => {
+                              const isActive = selectedCategory === cat;
+                              return (
+                                <motion.button
+                                  key={cat}
+                                  layout
+                                  onClick={() => onCategorySelect(isActive ? null : cat)}
+                                  initial={{ opacity: 0, scale: 0.5 }}
+                                  animate={{
+                                    opacity: 1,
+                                    scale: 1,
+                                    width: isActive ? 128 : 96,
+                                    height: isActive ? 128 : 96,
+                                  }}
+                                  exit={{ opacity: 0, scale: 0.5 }}
+                                  transition={{ ...spring, delay: i * 0.03 }}
+                                  whileHover={{ scale: 1.06 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className={`${bubbleBase} gap-1 ${
+                                    isActive ? bubbleActive : `${bubbleInactive} ${bubbleHoverInactive}`
+                                  }`}
+                                  style={{ boxShadow: isActive ? "0 0 40px hsl(var(--primary) / 0.25)" : "none" }}
+                                >
+                                  <span className={isActive ? "text-4xl" : "text-2xl"}>
+                                    {CATEGORY_ICONS[cat] || "📋"}
+                                  </span>
+                                  <span className={`font-extrabold tracking-wide leading-tight text-center px-1 ${
+                                    isActive ? "text-xs" : "text-[9px]"
+                                  }`}>
+                                    {cat}
+                                  </span>
+                                </motion.button>
+                              );
+                            })}
                         </AnimatePresence>
                       </div>
 
-                      <AnimatePresence>
+                      <AnimatePresence mode="wait">
                         {selectedCategory && categories[selectedCategory] && (
-                          <motion.div key={`leagues-${selectedCategory}`}
-                            initial={{ opacity: 0, y: -10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -10, scale: 0.9 }} transition={{ duration: DUR_MED }}
+                          <motion.div
+                            key={`leagues-${selectedCategory}`}
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={spring}
                             className="flex flex-wrap items-center justify-center gap-3"
                           >
                             {categories[selectedCategory].map((league, i) => (
-                              <LeagueBubble key={league.id} label={league.name}
-                                emoji={getLeagueIcon(league.name, league.category)}
-                                onClick={() => onLeagueSelect(league)} delay={i * 0.04} />
+                              <motion.button
+                                key={league.id}
+                                onClick={() => onLeagueSelect(league)}
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ ...springFast, delay: i * 0.04 }}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className={`h-20 w-20 ${bubbleBase} gap-0.5 ${bubbleInactive} ${bubbleHoverInactive}`}
+                              >
+                                <span className="text-xl">{getLeagueIcon(league.name)}</span>
+                                <span className="text-[9px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">
+                                  {league.name}
+                                </span>
+                              </motion.button>
                             ))}
                           </motion.div>
                         )}
@@ -239,9 +327,21 @@ function TopBubble({
                     <div className="flex flex-wrap items-center justify-center gap-3">
                       {categoryKeys.flatMap((cat) =>
                         categories[cat].map((league, i) => (
-                          <LeagueBubble key={league.id} label={league.name}
-                            emoji={getLeagueIcon(league.name, league.category)}
-                            onClick={() => onLeagueSelect(league)} delay={i * 0.04} />
+                          <motion.button
+                            key={league.id}
+                            onClick={() => onLeagueSelect(league)}
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ ...springFast, delay: i * 0.04 }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className={`h-20 w-20 ${bubbleBase} gap-0.5 ${bubbleInactive} ${bubbleHoverInactive}`}
+                          >
+                            <span className="text-xl">{getLeagueIcon(league.name)}</span>
+                            <span className="text-[9px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">
+                              {league.name}
+                            </span>
+                          </motion.button>
                         ))
                       )}
                     </div>
@@ -253,82 +353,5 @@ function TopBubble({
         )}
       </AnimatePresence>
     </motion.div>
-  );
-}
-
-/* ─── Sub bubble (Swipe / Elo Check) — grows to main size when active ─── */
-function SubBubble({ label, icon, onClick, isActive, delay }: {
-  label: string; icon: React.ReactNode; onClick: () => void; isActive: boolean; delay: number;
-}) {
-  // When active (swipe selected), grow to match the top-level bubble size
-  const size = isActive ? "h-32 w-32" : "h-20 w-20";
-  const iconSize = isActive ? "h-10 w-10" : "h-6 w-6";
-  const textSize = isActive ? "text-sm" : "text-[10px]";
-
-  return (
-    <motion.button
-      layout onClick={onClick}
-      initial={{ opacity: 0, scale: 0.5, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.5, y: -10 }}
-      transition={{ duration: DUR_FAST, delay }}
-      whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.95 }}
-      className={`${size} rounded-full border-2 flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
-        isActive
-          ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
-          : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 hover:shadow-[0_0_24px_hsl(var(--primary)/0.2)]"
-      }`}
-    >
-      <span className={`${iconSize} flex items-center justify-center transition-all duration-200`}>{icon}</span>
-      <span className={`${textSize} font-extrabold tracking-wide transition-all duration-200`}>{label}</span>
-    </motion.button>
-  );
-}
-
-/* ─── Category bubble — grows to main size when active ─── */
-function CategoryBubble({ label, emoji, isActive, onClick, delay }: {
-  label: string; emoji: string; isActive: boolean; onClick: () => void; delay: number;
-}) {
-  const size = isActive ? "h-32 w-32" : "h-24 w-24";
-  const emojiSize = isActive ? "text-4xl" : "text-2xl";
-  const textSize = isActive ? "text-xs" : "text-[9px]";
-
-  return (
-    <motion.button
-      layout onClick={onClick}
-      initial={{ opacity: 0, scale: 0.4, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.4, y: -8, transition: { duration: DUR_EXIT } }}
-      transition={{ duration: DUR_FAST, delay }}
-      whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.95 }}
-      className={`${size} rounded-full border-2 flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
-        isActive
-          ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
-          : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-      }`}
-    >
-      <span className={`${emojiSize} transition-all duration-200`}>{emoji}</span>
-      <span className={`${textSize} font-extrabold tracking-wide leading-tight text-center px-1 transition-all duration-200`}>
-        {label}
-      </span>
-    </motion.button>
-  );
-}
-
-/* ─── League bubble — bigger to match ratio ─── */
-function LeagueBubble({ label, emoji, onClick, delay }: {
-  label: string; emoji: string; onClick: () => void; delay: number;
-}) {
-  return (
-    <motion.button
-      onClick={onClick}
-      initial={{ opacity: 0, scale: 0.4, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: DUR_FAST, delay }}
-      whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-      className="h-20 w-20 rounded-full border border-border bg-card text-foreground flex flex-col items-center justify-center gap-0.5 hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.15)] transition-colors duration-200"
-    >
-      <span className="text-xl">{emoji}</span>
-      <span className="text-[9px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">
-        {label}
-      </span>
-    </motion.button>
   );
 }
