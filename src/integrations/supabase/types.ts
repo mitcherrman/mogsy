@@ -683,6 +683,8 @@ export type Database = {
           is_pro: boolean | null
           last_seen_at: string | null
           location: string | null
+          onboarding_completed: boolean | null
+          preferred_categories: string[] | null
           profile_frame: string | null
           reveals: number | null
           rewinds: number | null
@@ -709,6 +711,8 @@ export type Database = {
           is_pro?: boolean | null
           last_seen_at?: string | null
           location?: string | null
+          onboarding_completed?: boolean | null
+          preferred_categories?: string[] | null
           profile_frame?: string | null
           reveals?: number | null
           rewinds?: number | null
@@ -735,6 +739,8 @@ export type Database = {
           is_pro?: boolean | null
           last_seen_at?: string | null
           location?: string | null
+          onboarding_completed?: boolean | null
+          preferred_categories?: string[] | null
           profile_frame?: string | null
           reveals?: number | null
           rewinds?: number | null

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star } from "lucide-react";
@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
+import OnboardingFlow from "@/components/OnboardingFlow";
+import mogsyLogo from "@/assets/mogsy-logo.png";
 
 interface LeagueInfo {
   id: string;
@@ -15,6 +17,7 @@ interface LeagueInfo {
   elo: number;
   matchesPlayed: number;
   lastSwipedAt: string | null;
+  category: string | null;
 }
 
 interface RecentSwipe {
@@ -50,18 +53,21 @@ export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
+  const [suggestedLeagues, setSuggestedLeagues] = useState<LeagueInfo[]>([]);
   const [recentSwipes, setRecentSwipes] = useState<RecentSwipe[]>([]);
   const [topComments, setTopComments] = useState<TopComment[]>([]);
   const [bannerItems, setBannerItems] = useState<BannerItem[]>([]);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
+  const [hasLeagues, setHasLeagues] = useState(false);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (user) loadData();
+    if (user) checkOnboardingAndLoad();
   }, [user]);
 
-  // Rotate banner
   useEffect(() => {
     if (bannerItems.length <= 1) return;
     bannerTimer.current = setInterval(() => {
@@ -70,32 +76,54 @@ export default function Home() {
     return () => clearInterval(bannerTimer.current);
   }, [bannerItems.length]);
 
-  const loadData = async () => {
+  const checkOnboardingAndLoad = async () => {
     if (!user) return;
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, onboarding_completed, preferred_categories")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) { setLoading(false); return; }
+
+    if (!profile.onboarding_completed) {
+      setShowOnboarding(true);
+      setLoading(false);
+      return;
+    }
+
+    const cats = (profile.preferred_categories as string[]) || [];
+    setPreferredCategories(cats);
+    await loadData(profile.id, cats);
+  };
+
+  const handleOnboardingComplete = async (categories: string[]) => {
+    setShowOnboarding(false);
+    setPreferredCategories(categories);
+    if (!user) return;
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
       .single();
+    if (profile) await loadData(profile.id, categories);
+  };
 
-    if (!profile) {
-      setLoading(false);
-      return;
-    }
+  const loadData = async (profileId: string, cats: string[]) => {
+    setLoading(true);
 
-    // Load data in parallel
     const [
       { data: allLeagues },
       { data: memberships },
       { data: userMatches },
       { data: presetMatches },
     ] = await Promise.all([
-      supabase.from("leagues").select("id, name, type"),
-      supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profile.id),
+      supabase.from("leagues").select("id, name, type, category"),
+      supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profileId),
       supabase.from("matches")
         .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
-        .or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`)
+        .or(`winner_profile_id.eq.${profileId},loser_profile_id.eq.${profileId}`)
         .order("created_at", { ascending: false })
         .limit(50),
       supabase.from("matches")
@@ -143,6 +171,7 @@ export default function Home() {
         elo: membership?.elo || 1200,
         matchesPlayed: membership?.matches_played || matchInfo?.count || 0,
         lastSwipedAt: membership?.last_active_at || matchInfo?.lastDate || null,
+        category: league.category,
       });
     });
 
@@ -151,9 +180,28 @@ export default function Home() {
       const dateB = b.lastSwipedAt ? new Date(b.lastSwipedAt).getTime() : 0;
       return dateB - dateA;
     });
-    setLeagues(leagueList.slice(0, 6));
 
-    // Build "Recent Swipes"
+    const userOwnLeagues = leagueList.filter((l) => membershipMap.has(l.id));
+    setLeagues(userOwnLeagues.slice(0, 6));
+    setHasLeagues(userOwnLeagues.length > 0);
+
+    // Build suggested leagues from preferred categories
+    if (cats.length > 0) {
+      const suggested = (allLeagues || [])
+        .filter((l) => l.type === "preset" && l.category && cats.includes(l.category))
+        .map((l) => ({
+          id: l.id,
+          name: l.name,
+          type: l.type,
+          elo: 1200,
+          matchesPlayed: 0,
+          lastSwipedAt: null,
+          category: l.category,
+        }));
+      setSuggestedLeagues(suggested.slice(0, 12));
+    }
+
+    // Build recent swipes
     const recentMatchesSlice = allMatches.slice(0, 5);
     const profileIds = new Set<string>();
     const itemIds = new Set<string>();
@@ -201,11 +249,8 @@ export default function Home() {
     });
     setRecentSwipes(swipes);
 
-    // Load top comments (global, not per-user)
     loadTopComments();
-    // Load banner items
     loadBannerItems();
-
     setLoading(false);
   };
 
@@ -229,8 +274,8 @@ export default function Home() {
       commentProfileIds.length > 0 ? supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", commentProfileIds) : Promise.resolve({ data: [] }),
     ]);
 
-    const leagueMap = new Map((leaguesData || []).map((l) => [l.id, l.name]));
-    const profileMap = new Map((profiles || []).map((p) => [p.id, { name: p.display_name || "User", avatar: p.avatar_url || "" }]));
+    const leagueMap2 = new Map((leaguesData || []).map((l) => [l.id, l.name]));
+    const profileMap2 = new Map((profiles || []).map((p) => [p.id, { name: p.display_name || "User", avatar: p.avatar_url || "" }]));
 
     const reactionData = new Map<string, { count: number; emojis: Map<string, number> }>();
     (reactions || []).forEach((r) => {
@@ -243,11 +288,11 @@ export default function Home() {
     const withReactions = commentsData.map((c) => {
       const rd = reactionData.get(c.id);
       const topEmojis = rd ? [...rd.emojis.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([e]) => e) : [];
-      const prof = profileMap.get(c.profile_id);
+      const prof = profileMap2.get(c.profile_id);
       return {
         id: c.id,
         content: c.content,
-        league_name: c.league_id ? leagueMap.get(c.league_id) || "" : "",
+        league_name: c.league_id ? leagueMap2.get(c.league_id) || "" : "",
         reaction_count: rd?.count || 0,
         top_emojis: topEmojis,
         profile_name: prof?.name || "User",
@@ -260,34 +305,24 @@ export default function Home() {
   };
 
   const loadBannerItems = async () => {
-    // Get top preset items by ELO
     const { data: topPresets } = await supabase
       .from("preset_items")
       .select("name, image_url, elo, league_id, leagues!inner(name)")
       .not("image_url", "is", null)
       .not("image_url", "eq", "")
       .order("elo", { ascending: false })
-      .limit(5);
+      .limit(10);
 
-    // Get top users by ELO across leagues
     const { data: topMembers } = await supabase
       .from("league_memberships")
       .select("elo, profile_id, league_id, leagues!inner(name)")
       .order("elo", { ascending: false })
-      .limit(10);
+      .limit(15);
 
-    const items: BannerItem[] = [];
+    const userItems: BannerItem[] = [];
+    const presetItems: BannerItem[] = [];
 
-    (topPresets || []).forEach((item: any) => {
-      items.push({
-        name: item.name,
-        image: item.image_url,
-        elo: item.elo,
-        leagueName: item.leagues?.name || "",
-        type: "preset",
-      });
-    });
-
+    // Build user items first (prioritized)
     if (topMembers && topMembers.length > 0) {
       const pIds = [...new Set(topMembers.map((m) => m.profile_id))];
       const { data: profiles } = await supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", pIds);
@@ -296,7 +331,7 @@ export default function Home() {
       topMembers.forEach((m: any) => {
         const p = pMap.get(m.profile_id);
         if (p && p.avatar_url) {
-          items.push({
+          userItems.push({
             name: p.display_name || "User",
             image: p.avatar_url,
             elo: m.elo,
@@ -307,10 +342,37 @@ export default function Home() {
       });
     }
 
-    // Sort by elo descending, take top 8
-    items.sort((a, b) => b.elo - a.elo);
-    setBannerItems(items.slice(0, 8));
+    (topPresets || []).forEach((item: any) => {
+      presetItems.push({
+        name: item.name,
+        image: item.image_url,
+        elo: item.elo,
+        leagueName: item.leagues?.name || "",
+        type: "preset",
+      });
+    });
+
+    // Prioritize: first 3 slots are users (sorted by elo), then mix the rest
+    userItems.sort((a, b) => b.elo - a.elo);
+    presetItems.sort((a, b) => b.elo - a.elo);
+
+    const prioritized: BannerItem[] = [
+      ...userItems.slice(0, 3),
+      ...presetItems.slice(0, 5),
+    ];
+
+    // Fill remaining if users < 3
+    if (userItems.length < 3) {
+      const remaining = 8 - prioritized.length;
+      prioritized.push(...presetItems.slice(5, 5 + remaining));
+    }
+
+    setBannerItems(prioritized.slice(0, 8));
   };
+
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
 
   if (loading) {
     return (
@@ -321,11 +383,16 @@ export default function Home() {
   }
 
   const currentBanner = bannerItems[bannerIndex];
+  const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
-        <h1 className="text-3xl font-extrabold text-foreground mb-6">Home</h1>
+        {/* Mogsy Logo */}
+        <div className="flex items-center gap-3 mb-6">
+          <img src={mogsyLogo} alt="Mogsy" className="h-14 w-14" />
+          <h1 className="text-3xl font-extrabold text-foreground">Home</h1>
+        </div>
 
         {/* Rotating ELO Banner */}
         {bannerItems.length > 0 && currentBanner && (
@@ -369,21 +436,49 @@ export default function Home() {
           </section>
         )}
 
-        {/* Your Leagues - Bubble Style */}
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-primary" /> Your Leagues
-            </h2>
-            <Link to="/leagues" className="text-xs text-primary hover:underline">View all</Link>
-          </div>
-
-          {leagues.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-6 text-center">
-              <p className="text-muted-foreground text-sm">No leagues yet. Start swiping to join!</p>
-              <Link to="/play" className="text-primary text-sm mt-2 inline-block hover:underline">Start Swiping →</Link>
+        {/* Suggested Leagues (from preferences, shown when no own leagues) */}
+        {showSuggested && (
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" /> Suggested For You
+              </h2>
+              <Link to="/play" className="text-xs text-primary hover:underline">Browse all</Link>
             </div>
-          ) : (
+            <div className="flex flex-wrap gap-3 justify-center">
+              {suggestedLeagues.map((league, i) => (
+                <motion.div
+                  key={league.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <Link to={`/swipe/preset/${league.id}`}>
+                    <motion.div
+                      whileHover={{ scale: 1.06 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors"
+                    >
+                      <Star className="h-4 w-4 text-primary" />
+                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
+                      <span className="text-[8px] text-muted-foreground">{league.category}</span>
+                    </motion.div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Your Leagues - Bubble Style */}
+        {hasLeagues && (
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" /> Your Leagues
+              </h2>
+              <Link to="/leagues" className="text-xs text-primary hover:underline">View all</Link>
+            </div>
             <div className="flex flex-wrap gap-3 justify-center">
               {leagues.map((league, i) => (
                 <motion.div
@@ -410,8 +505,18 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
+
+        {/* No leagues fallback if also no suggestions */}
+        {!hasLeagues && suggestedLeagues.length === 0 && (
+          <section className="mb-10">
+            <div className="rounded-2xl border border-border bg-card p-6 text-center">
+              <p className="text-muted-foreground text-sm">No leagues yet. Start swiping to join!</p>
+              <Link to="/play" className="text-primary text-sm mt-2 inline-block hover:underline">Start Swiping →</Link>
+            </div>
+          </section>
+        )}
 
         {/* Recent Swipes */}
         <section className="mb-10">

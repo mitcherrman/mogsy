@@ -9,23 +9,37 @@ export function useSwipeSound() {
     return ctxRef.current;
   };
 
-  // Subtle iOS-style tap — short, clean, minimal
+  // Modern iOS-style haptic pop — layered with subtle harmonics
   const playSwipeSound = useCallback(() => {
     try {
       const ctx = getCtx();
       const t = ctx.currentTime;
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(1200, t);
-      osc.frequency.exponentialRampToValueAtTime(800, t + 0.04);
-      gain.gain.setValueAtTime(0.06, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.07);
+      // Primary pop — short rounded sine
+      const osc1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(600, t);
+      osc1.frequency.exponentialRampToValueAtTime(450, t + 0.035);
+      g1.gain.setValueAtTime(0.08, t);
+      g1.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      osc1.connect(g1);
+      g1.connect(ctx.destination);
+      osc1.start(t);
+      osc1.stop(t + 0.06);
+
+      // Harmonic shimmer — adds modern texture
+      const osc2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(1800, t);
+      osc2.frequency.exponentialRampToValueAtTime(1200, t + 0.03);
+      g2.gain.setValueAtTime(0.025, t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      osc2.connect(g2);
+      g2.connect(ctx.destination);
+      osc2.start(t);
+      osc2.stop(t + 0.05);
     } catch { /* silent */ }
   }, []);
 
