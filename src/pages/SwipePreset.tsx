@@ -383,14 +383,16 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-3 flex flex-col">
-        <div className="container mx-auto max-w-4xl flex flex-col flex-1">
-          {/* Controls bar - outside capture area */}
-          <div className="flex items-center gap-2 mb-2">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-2 flex flex-col">
+        <div className="container mx-auto max-w-lg flex flex-col flex-1">
+          {/* Controls bar */}
+          <div className="flex items-center gap-2 mb-1.5">
             <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex-1" />
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
+              {leagueName}
+            </span>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -422,9 +424,9 @@ export default function SwipePreset() {
             </div>
           </div>
 
-          <Progress value={progress} className="mb-3 h-1" />
+          <Progress value={progress} className="mb-2 h-1" />
 
-          {/* Capturable matchup area */}
+          {/* Matchup area */}
           {pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
               <AnimatePresence mode="wait">
@@ -434,7 +436,7 @@ export default function SwipePreset() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="flex items-stretch gap-2"
+                  className="grid grid-cols-2 gap-3"
                 >
                   {pair.map((item, idx) => {
                     const displayImage = getDisplayImage(item);
@@ -444,51 +446,40 @@ export default function SwipePreset() {
                     const isLoser = chosen !== null && chosen !== idx;
 
                     return (
-                      <div key={item.id} className="relative flex flex-col flex-1 min-w-0">
+                      <div key={item.id} className="relative flex flex-col">
                         <button
                           onClick={() => handleChoose(idx as 0 | 1)}
-                          className={`relative rounded-xl overflow-hidden group cursor-pointer text-left transition-all duration-300 flex flex-col flex-1 ${
+                          className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${
                             isWinner
-                              ? "ring-2 ring-primary shadow-[0_0_20px_hsl(210_80%_60%/0.3)] scale-[1.02]"
+                              ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
                               : isLoser
-                              ? "opacity-60 scale-[0.98]"
-                              : "hover:scale-[1.01] active:scale-[0.98]"
+                              ? "opacity-50 scale-[0.97]"
+                              : "hover:scale-[1.01] active:scale-[0.97]"
                           }`}
                         >
-                          {/* Image */}
-                          <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center overflow-hidden rounded-xl">
+                          {/* Image container - large, no cutoff */}
+                          <div className="aspect-[3/4] w-full bg-muted overflow-hidden">
                             {displayImage ? (
                               <img
                                 src={displayImage}
                                 alt={item.name}
-                                className="w-full h-full object-contain bg-muted transition-transform duration-300 group-hover:scale-105"
+                                className="w-full h-full object-contain bg-muted"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                                 }}
                               />
                             ) : (
-                              <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+                              <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
+                                {item.name.charAt(0)}
+                              </span>
                             )}
-                          </div>
-
-                          {/* Name & stats overlay at bottom */}
-                          <div className="p-2">
-                            <h3 className="text-sm sm:text-base font-extrabold text-foreground truncate text-center">{item.name}</h3>
-                            <div className="flex items-center justify-center gap-2 mt-0.5">
-                              {rankVisible && rank && (
-                                <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
-                              )}
-                              {eloVisible && (
-                                <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                              )}
-                            </div>
                           </div>
 
                           {/* Winner crown */}
                           {isWinner && (
                             <motion.div
-                              initial={{ scale: 0, y: -10 }}
-                              animate={{ scale: 1, y: 0 }}
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
                               className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
                             >
                               <Crown className="h-4 w-4" />
@@ -496,9 +487,33 @@ export default function SwipePreset() {
                           )}
                         </button>
 
-                        {/* Elo change below card */}
+                        {/* Report button */}
+                        {hasMultipleImages && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors z-10"
+                            title="Report image as not representative"
+                          >
+                            <Flag className="h-3 w-3" />
+                          </button>
+                        )}
+
+                        {/* Name & stats below image */}
+                        <div className="pt-2 text-center">
+                          <h3 className="text-sm font-extrabold text-foreground truncate">{item.name}</h3>
+                          <div className="flex items-center justify-center gap-2 mt-0.5">
+                            {rankVisible && rank && (
+                              <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
+                            )}
+                            {eloVisible && (
+                              <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Elo change indicator */}
                         {chosen !== null && (
-                          <div className="flex justify-center mt-1">
+                          <div className="flex justify-center mt-0.5">
                             <EloChangeIndicator
                               change={eloChanges.get(item.id) ?? null}
                               oldRank={rankChanges.get(item.id)?.old ?? null}
@@ -506,30 +521,15 @@ export default function SwipePreset() {
                             />
                           </div>
                         )}
-
-                        {/* Report button */}
-                        {hasMultipleImages && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                            title="Report image as not representative"
-                          >
-                            <Flag className="h-3 w-3" />
-                          </button>
-                        )}
                       </div>
                     );
                   })}
-
-                  {/* VS divider - positioned between cards */}
                 </motion.div>
               </AnimatePresence>
 
-              {/* Centered VS text */}
-              <div className="flex items-center justify-center -mt-[calc(50%+1rem)] pointer-events-none" style={{ position: 'relative', height: 0 }}>
-                <div className="relative z-10">
-                  <span className="text-lg font-black text-gradient drop-shadow-lg bg-background/80 rounded-full px-2 py-0.5">VS</span>
-                </div>
+              {/* VS badge centered between cards */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ top: '0', bottom: '4rem' }}>
+                <span className="text-sm font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 shadow-md">VS</span>
               </div>
             </MatchupCapture>
           )}
