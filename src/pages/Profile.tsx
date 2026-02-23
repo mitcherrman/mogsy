@@ -243,7 +243,6 @@ export default function Profile() {
       website: form.website,
     };
 
-    // Flag underage if age < 18
     const updatePayload: any = {
       display_name: form.displayName,
       age,
@@ -252,11 +251,6 @@ export default function Profile() {
       socials,
       profile_frame: isPro ? selectedFrame : "default",
     };
-    if (age !== null && age < 18) {
-      updatePayload.is_flagged_underage = true;
-    } else if (age !== null && age >= 18) {
-      updatePayload.is_flagged_underage = false;
-    }
 
     const { error } = await supabase
       .from("profiles")
