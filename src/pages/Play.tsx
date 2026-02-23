@@ -25,8 +25,6 @@ interface PreviewImage {
 const ease = { duration: 0.25, ease: [0.4, 0, 0.2, 1] as const };
 const fadeIn = { initial: { opacity: 0, scale: 0.85 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.85 }, transition: ease };
 
-const IMAGE_ROTATE_INTERVAL = 5000; // rotate every 5 seconds
-
 export default function Play() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState<ModeKey>(null);
@@ -34,7 +32,6 @@ export default function Play() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
-  const [imageIndex, setImageIndex] = useState(0);
 
   // Fetch leagues
   useEffect(() => {
@@ -75,28 +72,19 @@ export default function Play() {
     fetchImages();
   }, []);
 
-  // Rotate image index periodically
-  useEffect(() => {
-    if (previewImages.length === 0) return;
-    const timer = setInterval(() => {
-      setImageIndex((prev) => prev + 1);
-    }, IMAGE_ROTATE_INTERVAL);
-    return () => clearInterval(timer);
-  }, [previewImages.length]);
-
   // Get a rotating image for a category
   const getCategoryImage = useCallback((category: string) => {
     const catImages = previewImages.filter((img) => img.category === category);
     if (catImages.length === 0) return null;
-    return catImages[imageIndex % catImages.length]?.image_url || null;
-  }, [previewImages, imageIndex]);
+    return catImages[0]?.image_url || null;
+  }, [previewImages]);
 
   // Get a rotating image for a specific league
   const getLeagueImage = useCallback((leagueId: string) => {
     const leagueImages = previewImages.filter((img) => img.league_id === leagueId);
     if (leagueImages.length === 0) return null;
-    return leagueImages[imageIndex % leagueImages.length]?.image_url || null;
-  }, [previewImages, imageIndex]);
+    return leagueImages[0]?.image_url || null;
+  }, [previewImages]);
 
   const toggle = (key: ModeKey) => {
     if (expanded === key) { setExpanded(null); setSubExpanded(null); setSelectedCategory(null); }
