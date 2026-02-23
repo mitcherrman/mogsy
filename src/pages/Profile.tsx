@@ -199,10 +199,14 @@ export default function Profile() {
   const handleActivateBoost = async () => {
     if (!profileId || boostCredits <= 0) return;
     const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from("profiles").update({
+    const { error } = await supabase.from("profiles").update({
       active_boost_until: until,
       boost_credits: boostCredits - 1,
     }).eq("id", profileId);
+    if (error) {
+      toast({ title: "Boost failed", description: "No boost credits available.", variant: "destructive" });
+      return;
+    }
     setBoostActive(true);
     setBoostCredits((c) => c - 1);
     toast({ title: "⚡ Boost activated!", description: "You'll appear 3x more often for 24 hours." });

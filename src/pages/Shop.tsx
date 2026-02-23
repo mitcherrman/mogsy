@@ -144,10 +144,16 @@ export default function Shop() {
     setPurchasing(powerUp.id);
     const currentValue = (profile[powerUp.field] as number) || 0;
     const newDiamonds = (profile.diamonds || 0) - powerUp.diamondCost;
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ [powerUp.field]: currentValue + 1, diamonds: newDiamonds })
       .eq("id", profile.id);
+    if (error) {
+      toast({ title: "Purchase failed", description: "Not enough diamonds.", variant: "destructive" });
+      await loadProfile();
+      setPurchasing(null);
+      return;
+    }
     await supabase.from("purchases").insert({
       profile_id: profile.id,
       item_type: powerUp.id,
