@@ -182,7 +182,11 @@ export default function Play() {
     }
 
     // Swipe selected — show categories (or direct leagues for single-category)
-    const categoryKeys = Object.keys(currentCategories);
+    const categoryKeys = Object.keys(currentCategories).sort((a, b) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return a.localeCompare(b);
+    });
     const hasMultipleCategories = categoryKeys.length > 1;
 
     if (!selectedCategory && hasMultipleCategories) {
@@ -204,7 +208,7 @@ export default function Play() {
                     transition={{ ...ease, delay: i * 0.04 }}
                   >
                     <Bubble size={112} onClick={() => onCatSelect(cat)} active={false} variant="card" imageUrl={catImage}>
-                      <span className="text-xs font-extrabold tracking-wide leading-tight text-center px-1">{cat}</span>
+                      <span className="text-sm font-extrabold tracking-wide leading-tight text-center px-1">{cat}</span>
                     </Bubble>
                   </motion.div>
                 );
@@ -235,7 +239,7 @@ export default function Play() {
                     transition={{ ...ease, delay: i * 0.04 }}
                   >
                     <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card" imageUrl={leagueImage}>
-                      <span className="text-[11px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
+                      <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                     </Bubble>
                   </motion.div>
                 );
@@ -266,7 +270,7 @@ export default function Play() {
                   transition={{ ...ease, delay: i * 0.04 }}
                 >
                   <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card" imageUrl={leagueImage}>
-                    <span className="text-[11px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
+                    <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                   </Bubble>
                 </motion.div>
               );
