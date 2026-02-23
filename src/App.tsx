@@ -17,6 +17,7 @@ import Leaderboard from "./pages/Leaderboard";
 
 import SwipePreset from "./pages/SwipePreset";
 import Settings from "./pages/Settings";
+import Referral from "./pages/Referral";
 import Admin from "./pages/Admin";
 import Shop from "./pages/Shop";
 import EloCheck from "./pages/EloCheck";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/referral" element={<ProtectedRoute><Referral /></ProtectedRoute>} />
               <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
               <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
               <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />

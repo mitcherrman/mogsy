@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Home, Play, User, Settings, ShoppingBag, Diamond } from "lucide-react";
+import { Home, Play, User, Settings, ShoppingBag, Diamond, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
@@ -11,6 +11,7 @@ const navItems = [
   { path: "/play", label: "Play", icon: Play },
   { path: "/shop", label: "Shop", icon: ShoppingBag },
   { path: "/profile", label: "Profile", icon: User },
+  { path: "/referral", label: "Invite", icon: Gift },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
