@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import UserAvatar from "@/components/UserAvatar";
+import SEOHead from "@/components/SEOHead";
 
 interface GameItem {
   id: string;
@@ -411,6 +412,7 @@ export default function EloCheck() {
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+      <SEOHead title="Elo Check — Mogsy" description="Guess who's ranked higher in Mogsy's Elo Check game. Test your knowledge across all leagues and prove your ranking instincts." />
       <div className="container mx-auto max-w-2xl flex flex-col flex-1">
         <div className="flex items-center gap-3 mb-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">

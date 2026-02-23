@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
 import { searchCities } from "@/lib/cities-data";
 import { validateSocialLink } from "@/lib/social-validators";
+import SEOHead from "@/components/SEOHead";
 
 const frameOptions = [
   { id: "default", label: "Default", preview: "" },
@@ -276,6 +277,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
+      <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
       <div className="container mx-auto max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-6">

@@ -2,12 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Zap, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SEOHead from "@/components/SEOHead";
 
 export default function Play() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
+      <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups. Swipe through leagues, rate items, and climb the Elo leaderboard." />
       <div className="container mx-auto max-w-2xl">
         <div className="flex items-center gap-3 mb-8">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
