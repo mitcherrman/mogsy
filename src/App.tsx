@@ -14,7 +14,7 @@ import Profile from "./pages/Profile";
 import Swipe from "./pages/Swipe";
 import Leagues from "./pages/Leagues";
 import Leaderboard from "./pages/Leaderboard";
-import Presets from "./pages/Presets";
+
 import SwipePreset from "./pages/SwipePreset";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
@@ -43,7 +43,7 @@ const App = () => (
               <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
               <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
               <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
-              <Route path="/presets" element={<Presets />} />
+              
               <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
               <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
               <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />

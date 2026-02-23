@@ -290,8 +290,7 @@ export default function SwipePreset() {
   };
 
   const handleBack = () => {
-    const fromPage = location.state?.from || "/presets";
-    navigate(fromPage, { state: { openCategory: leagueCategory } });
+    navigate("/play");
   };
 
   const sortedResults = useMemo(
