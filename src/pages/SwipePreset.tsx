@@ -436,7 +436,7 @@ export default function SwipePreset() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="grid grid-cols-2 gap-3 md:gap-5 lg:gap-8"
+                  className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >
                   {pair.map((item, idx) => {
                     const displayImage = getDisplayImage(item);
@@ -446,19 +446,28 @@ export default function SwipePreset() {
                     const isLoser = chosen !== null && chosen !== idx;
 
                     return (
-                      <div key={item.id} className="relative flex flex-col">
-                        <button
+                      <div key={item.id} className="relative flex flex-col flex-1 min-h-0">
+                        <motion.button
                           onClick={() => handleChoose(idx as 0 | 1)}
-                          className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                          drag={chosen === null ? "x" : false}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.3}
+                          onDragEnd={(_e, info) => {
+                            if (Math.abs(info.offset.x) > 60) {
+                              handleChoose(idx as 0 | 1);
+                            }
+                          }}
+                          whileTap={{ scale: 0.97 }}
+                          className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
                             isWinner
                               ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
                               : isLoser
                               ? "opacity-50 scale-[0.97]"
-                              : "hover:scale-[1.01] active:scale-[0.97]"
+                              : "hover:scale-[1.01]"
                           }`}
                         >
-                          {/* Image container - large, no cutoff */}
-                          <div className="aspect-[3/4] w-full bg-muted overflow-hidden">
+                          {/* Image container - fills available space */}
+                          <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted overflow-hidden">
                             {displayImage ? (
                               <img
                                 src={displayImage}
@@ -485,7 +494,7 @@ export default function SwipePreset() {
                               <Crown className="h-4 w-4" />
                             </motion.div>
                           )}
-                        </button>
+                        </motion.button>
 
                         {/* Report button */}
                         {hasMultipleImages && (
@@ -499,7 +508,7 @@ export default function SwipePreset() {
                         )}
 
                         {/* Name & stats below image */}
-                        <div className="pt-2 text-center">
+                        <div className="pt-1.5 text-center flex-shrink-0">
                           <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                           <div className="flex items-center justify-center gap-2 mt-0.5">
                             {rankVisible && rank && (
@@ -513,7 +522,7 @@ export default function SwipePreset() {
 
                         {/* Elo change indicator */}
                         {chosen !== null && (
-                          <div className="flex justify-center mt-0.5">
+                          <div className="flex justify-center mt-0.5 flex-shrink-0">
                             <EloChangeIndicator
                               change={eloChanges.get(item.id) ?? null}
                               oldRank={rankChanges.get(item.id)?.old ?? null}
@@ -528,14 +537,14 @@ export default function SwipePreset() {
               </AnimatePresence>
 
               {/* VS badge centered between cards */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ top: '0', bottom: '4rem' }}>
-                <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md">VS</span>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">VS</span>
               </div>
             </MatchupCapture>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-2">
-            Tap the one you prefer · {currentIndex + 1}/{matchups.length}
+          <p className="text-center text-[10px] text-muted-foreground mt-1.5">
+            Tap or swipe to choose · {currentIndex + 1}/{matchups.length}
           </p>
         </div>
       </div>
