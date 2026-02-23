@@ -44,24 +44,32 @@ export default function Play() {
         </div>
 
         {/* Main bubbles */}
-        <div className="flex flex-col items-center gap-10">
-          <PlayBubble
-            label="Collections"
-            icon={<LayoutGrid className="h-10 w-10" />}
-            isExpanded={expanded === "collections"}
-            onToggle={() => toggle("collections")}
-            onSwipe={() => handleSwipe("collections")}
-            onEloCheck={handleEloCheck}
-          />
+        <div className="flex items-start justify-center gap-10 mt-8">
+          <AnimatePresence mode="popLayout">
+            {(expanded === null || expanded === "collections") && (
+              <PlayBubble
+                key="collections"
+                label="Collections"
+                icon={<LayoutGrid className="h-10 w-10" />}
+                isExpanded={expanded === "collections"}
+                onToggle={() => toggle("collections")}
+                onSwipe={() => handleSwipe("collections")}
+                onEloCheck={handleEloCheck}
+              />
+            )}
 
-          <PlayBubble
-            label="Compete"
-            icon={<Users className="h-10 w-10" />}
-            isExpanded={expanded === "compete"}
-            onToggle={() => toggle("compete")}
-            onSwipe={() => handleSwipe("compete")}
-            onEloCheck={handleEloCheck}
-          />
+            {(expanded === null || expanded === "compete") && (
+              <PlayBubble
+                key="compete"
+                label="Compete"
+                icon={<Users className="h-10 w-10" />}
+                isExpanded={expanded === "compete"}
+                onToggle={() => toggle("compete")}
+                onSwipe={() => handleSwipe("compete")}
+                onEloCheck={handleEloCheck}
+              />
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
@@ -85,10 +93,18 @@ function PlayBubble({
   onEloCheck: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-4">
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ type: "spring", stiffness: 400, damping: 26 }}
+      className="flex flex-col items-center gap-4"
+    >
       {/* Main bubble */}
       <motion.button
         onClick={onToggle}
+        layout
         className={`relative h-32 w-32 rounded-full flex flex-col items-center justify-center gap-2 border-2 transition-colors duration-300 ${
           isExpanded
             ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
@@ -96,7 +112,8 @@ function PlayBubble({
         }`}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.95 }}
-        layout
+
+
       >
         {icon}
         <span className="text-sm font-extrabold tracking-wide">{label}</span>
@@ -127,7 +144,7 @@ function PlayBubble({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
