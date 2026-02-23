@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Link2, Copy, Trash2, Users, Shield, Plus, ChevronDown, ChevronUp, Gift } from "lucide-react";
+import { Link2, Copy, Trash2, Users, Shield, Plus, ChevronDown, ChevronUp, Gift, Clock, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface InviteLink {
@@ -28,6 +29,18 @@ interface InviteLink {
   is_active: boolean;
   expires_at: string | null;
   created_at: string;
+  created_by_user_id: string;
+}
+
+interface Redemption {
+  id: string;
+  invite_link_id: string;
+  redeemed_by_user_id: string;
+  referrer_user_id: string | null;
+  created_at: string;
+  redeemer_name?: string;
+  link_label?: string;
+  link_code?: string;
 }
 
 interface UserInviteSettings {
@@ -49,6 +62,7 @@ function generateCode(): string {
 export default function AdminInviteLinks() {
   const { user } = useAuth();
   const [links, setLinks] = useState<InviteLink[]>([]);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [userSettings, setUserSettings] = useState<UserInviteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -72,12 +86,32 @@ export default function AdminInviteLinks() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [{ data: linksData }, { data: settingsData }] = await Promise.all([
+    const [{ data: linksData }, { data: settingsData }, { data: redemptionData }] = await Promise.all([
       supabase.from("invite_links").select("*").order("created_at", { ascending: false }),
       supabase.from("user_invite_settings").select("*").limit(1).single(),
+      supabase.from("invite_redemptions").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
-    setLinks((linksData as InviteLink[]) || []);
+    const allLinks = (linksData as InviteLink[]) || [];
+    setLinks(allLinks);
     setUserSettings(settingsData as UserInviteSettings | null);
+
+    // Enrich redemptions with user names and link info
+    const rData = (redemptionData || []) as Redemption[];
+    if (rData.length > 0) {
+      const userIds = [...new Set(rData.map(r => r.redeemed_by_user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name").in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p.display_name]));
+      const linkMap = new Map(allLinks.map(l => [l.id, l]));
+
+      setRedemptions(rData.map(r => ({
+        ...r,
+        redeemer_name: profileMap.get(r.redeemed_by_user_id) || "Unknown",
+        link_label: linkMap.get(r.invite_link_id)?.label || undefined,
+        link_code: linkMap.get(r.invite_link_id)?.code || undefined,
+      })));
+    } else {
+      setRedemptions([]);
+    }
     setLoading(false);
   };
 
@@ -286,7 +320,44 @@ export default function AdminInviteLinks() {
       {/* ─── Divider ─── */}
       <div className="border-t border-border" />
 
-      {/* ─── SECTION 2: User Referral Program Settings (always visible) ─── */}
+      {/* ─── SECTION 2: Redemption Log ─── */}
+      <div className="space-y-4">
+        <h3 className="font-bold text-foreground flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" /> Redemption Log
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Recent invite link redemptions showing who signed up and which link they used.
+        </p>
+
+        {redemptions.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-3">No redemptions yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {redemptions.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border bg-card px-4 py-3 flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{r.redeemer_name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    via <span className="font-mono text-primary">{r.link_label || r.link_code || "Unknown link"}</span>
+                    {r.referrer_user_id && " · User referral"}
+                  </p>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {new Date(r.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ─── Divider ─── */}
+      <div className="border-t border-border" />
+
+      {/* ─── SECTION 3: User Referral Program Settings ─── */}
       {userSettings && (
         <div className="space-y-4">
           <h3 className="font-bold text-foreground flex items-center gap-2">
@@ -356,7 +427,7 @@ function LinkCard({
           <div className="min-w-0">
             <p className="text-sm font-bold text-foreground truncate">{link.label || link.code}</p>
             <p className="text-[10px] text-muted-foreground">
-              {link.times_used}{link.max_uses ? `/${link.max_uses}` : ""} uses
+              {link.times_used}{link.max_uses ? `/${link.max_uses}` : ""} uses · Created {new Date(link.created_at).toLocaleDateString()}
               {isExpired && " · Expired"}
               {isMaxed && " · Maxed out"}
             </p>
@@ -379,6 +450,8 @@ function LinkCard({
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <span className="text-muted-foreground">Code:</span>
                 <span className="font-mono text-foreground">{link.code}</span>
+                <span className="text-muted-foreground">Type:</span>
+                <span className="text-foreground capitalize">{link.type}</span>
                 {link.grant_admin && <><span className="text-muted-foreground">Grants Admin:</span><span className="text-primary font-bold">Yes</span></>}
                 {link.grant_pro && <><span className="text-muted-foreground">Grants Pro:</span><span className="text-primary font-bold">Yes</span></>}
                 {link.grant_diamonds > 0 && <><span className="text-muted-foreground">Diamonds:</span><span>{link.grant_diamonds}</span></>}

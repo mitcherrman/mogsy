@@ -14,7 +14,7 @@ interface Notification {
   created_at: string;
 }
 
-export default function AdminNotifications() {
+export default function AdminNotifications({ onReadChange }: { onReadChange?: (unread: number) => void }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,26 +22,37 @@ export default function AdminNotifications() {
     loadNotifications();
   }, []);
 
+  const updateUnreadCount = (notifs: Notification[]) => {
+    const count = notifs.filter(n => !n.is_read).length;
+    onReadChange?.(count);
+  };
+
   const loadNotifications = async () => {
     const { data } = await supabase
       .from("admin_notifications")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (data) setNotifications(data as Notification[]);
+    const notifs = (data as Notification[]) || [];
+    setNotifications(notifs);
+    updateUnreadCount(notifs);
     setLoading(false);
   };
 
   const markRead = async (id: string) => {
     await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    const updated = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
+    setNotifications(updated);
+    updateUnreadCount(updated);
   };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.is_read).map(n => n.id);
     if (unread.length === 0) return;
     await supabase.from("admin_notifications").update({ is_read: true }).in("id", unread);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    const updated = notifications.map(n => ({ ...n, is_read: true }));
+    setNotifications(updated);
+    updateUnreadCount(updated);
     toast.success("All marked as read");
   };
 

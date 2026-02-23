@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
-  MapPin, Clock, ShieldCheck, ShieldOff,
+  MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift,
 } from "lucide-react";
 
 interface Profile {
@@ -72,20 +72,27 @@ interface DeletedUser {
   timestamp: number;
 }
 
+interface UserReferralData {
+  inviteLinks: { id: string; code: string; type: string; label: string | null; times_used: number; created_at: string }[];
+  redemptions: { id: string; redeemed_by_user_id: string; redeemer_name: string; link_code: string; created_at: string }[];
+  redeemedWith: { code: string; label: string | null; referrer_name: string | null } | null;
+}
+
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases" | "comments">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
   const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
 
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [allLeagues, setAllLeagues] = useState<{ id: string; name: string }[]>([]);
+  const [allLeagues, setAllLeagues] = useState<{ id: string; name: string; type: string }[]>([]);
 
   const [editForm, setEditForm] = useState<Partial<Profile>>({});
+  const [originalForm, setOriginalForm] = useState<Partial<Profile>>({});
   const [saving, setSaving] = useState(false);
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -95,9 +102,19 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
-  // Admin notes
   const [adminNotes, setAdminNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const [referralData, setReferralData] = useState<UserReferralData | null>(null);
+
+  // Check if form has changes
+  const hasChanges = useMemo(() => {
+    if (!originalForm || !editForm) return false;
+    return JSON.stringify(editForm) !== JSON.stringify(originalForm);
+  }, [editForm, originalForm]);
+
+  // Only show user/compete leagues for the "Add to league" dropdown
+  const userLeagues = useMemo(() => allLeagues.filter(l => l.type === "user"), [allLeagues]);
 
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
@@ -119,7 +136,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       }
     }
 
-    // Fetch all roles for display
     const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
     if (rolesData) {
       const map: Record<string, string[]> = {};
@@ -133,7 +149,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   useEffect(() => {
     fetchProfiles();
-    supabase.from("leagues").select("id, name").then(({ data }) => setAllLeagues(data || []));
+    supabase.from("leagues").select("id, name, type").then(({ data }) => setAllLeagues(data || []));
   }, [fetchProfiles]);
 
   const filtered = profiles.filter((p) => {
@@ -151,7 +167,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setSelectedUser(profile);
     setDetailTab("overview");
     setAdminNotes(profile.admin_notes || "");
-    setEditForm({
+    const formData = {
       display_name: profile.display_name,
       is_pro: profile.is_pro,
       diamonds: profile.diamonds,
@@ -161,7 +177,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       boost_credits: profile.boost_credits,
       profile_frame: profile.profile_frame,
       active_boost_until: profile.active_boost_until,
-    });
+    };
+    setEditForm(formData);
+    setOriginalForm(formData);
+    setReferralData(null);
 
     const [membRes, matchRes, purchRes, commRes] = await Promise.all([
       supabase.from("league_memberships").select("*").eq("profile_id", profile.id),
@@ -174,7 +193,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setMatches(matchRes.data || []);
     setPurchases(purchRes.data || []);
 
-    // Map league names for comments
     const commData = commRes.data || [];
     if (commData.length > 0) {
       const leagueIds = [...new Set(commData.filter(c => c.league_id).map(c => c.league_id!))];
@@ -192,6 +210,58 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     } else {
       setUserComments([]);
     }
+
+    // Load referral data
+    loadReferralData(profile.user_id);
+  };
+
+  const loadReferralData = async (userId: string) => {
+    const [{ data: links }, { data: redemptionsAsReferrer }, { data: redemptionSelf }] = await Promise.all([
+      supabase.from("invite_links").select("id, code, type, label, times_used, created_at").eq("created_by_user_id", userId).order("created_at", { ascending: false }),
+      supabase.from("invite_redemptions").select("id, redeemed_by_user_id, created_at, invite_link_id").eq("referrer_user_id", userId).order("created_at", { ascending: false }),
+      supabase.from("invite_redemptions").select("id, invite_link_id").eq("redeemed_by_user_id", userId).limit(1),
+    ]);
+
+    // Get redeemer names
+    const redemptions = redemptionsAsReferrer || [];
+    let enrichedRedemptions: UserReferralData["redemptions"] = [];
+    if (redemptions.length > 0) {
+      const redeemerIds = [...new Set(redemptions.map(r => r.redeemed_by_user_id))];
+      const { data: redeemerProfiles } = await supabase.from("profiles").select("user_id, display_name").in("user_id", redeemerIds);
+      const nameMap = new Map((redeemerProfiles || []).map(p => [p.user_id, p.display_name]));
+
+      const linkIds = [...new Set(redemptions.map(r => r.invite_link_id))];
+      const { data: linkData } = await supabase.from("invite_links").select("id, code").in("id", linkIds);
+      const codeMap = new Map((linkData || []).map(l => [l.id, l.code]));
+
+      enrichedRedemptions = redemptions.map(r => ({
+        id: r.id,
+        redeemed_by_user_id: r.redeemed_by_user_id,
+        redeemer_name: nameMap.get(r.redeemed_by_user_id) || "Unknown",
+        link_code: codeMap.get(r.invite_link_id) || "?",
+        created_at: r.created_at,
+      }));
+    }
+
+    // Check how this user was invited
+    let redeemedWith: UserReferralData["redeemedWith"] = null;
+    if (redemptionSelf && redemptionSelf.length > 0) {
+      const { data: inviteLink } = await supabase.from("invite_links").select("code, label, created_by_user_id").eq("id", redemptionSelf[0].invite_link_id).single();
+      if (inviteLink) {
+        let referrerName: string | null = null;
+        if (inviteLink.created_by_user_id) {
+          const { data: refProfile } = await supabase.from("profiles").select("display_name").eq("user_id", inviteLink.created_by_user_id).single();
+          referrerName = refProfile?.display_name || null;
+        }
+        redeemedWith = { code: inviteLink.code, label: inviteLink.label, referrer_name: referrerName };
+      }
+    }
+
+    setReferralData({
+      inviteLinks: (links || []) as any,
+      redemptions: enrichedRedemptions,
+      redeemedWith,
+    });
   };
 
   const saveUser = async () => {
@@ -214,6 +284,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setSaving(false);
     if (error) { toast.error("Failed to save"); return; }
     toast.success("User updated");
+    setOriginalForm({ ...editForm });
     fetchProfiles();
     setSelectedUser({ ...selectedUser, ...editForm } as Profile);
   };
@@ -363,12 +434,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         </div>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 rounded-lg bg-secondary p-1">
-          {(["overview", "notes", "leagues", "matches", "purchases", "comments"] as const).map((tab) => (
+        <div className="flex gap-1 rounded-lg bg-secondary p-1 overflow-x-auto">
+          {(["overview", "notes", "leagues", "matches", "purchases", "comments", "referrals"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setDetailTab(tab)}
-              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
+              className={`flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
                 detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -459,7 +530,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             )}
 
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={saveUser} disabled={saving} size="sm">{saving ? "Saving…" : "Save Changes"}</Button>
+              <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm" className={!hasChanges ? "opacity-50" : ""}>
+                {saving ? "Saving…" : "Save Changes"}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setNotifOpen(true)}>
                 <Send className="h-3 w-3 mr-1" /> Send Notification
               </Button>
@@ -493,9 +566,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           <div className="space-y-3">
             <div className="flex gap-2">
               <Select onValueChange={addToLeague}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder="Add to league…" /></SelectTrigger>
+                <SelectTrigger className="flex-1"><SelectValue placeholder="Add to compete league…" /></SelectTrigger>
                 <SelectContent>
-                  {allLeagues.map((l) => (
+                  {userLeagues.map((l) => (
                     <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -508,18 +581,23 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <TableHeader>
                   <TableRow>
                     <TableHead>League</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Elo</TableHead>
                     <TableHead>Matches</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {memberships.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium text-foreground">{getLeagueName(m.league_id)}</TableCell>
-                      <TableCell>{m.elo}</TableCell>
-                      <TableCell>{m.matches_played}</TableCell>
-                    </TableRow>
-                  ))}
+                  {memberships.map((m) => {
+                    const league = allLeagues.find(l => l.id === m.league_id);
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-medium text-foreground">{league?.name || "Unknown"}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[10px] capitalize">{league?.type || "?"}</Badge></TableCell>
+                        <TableCell>{m.elo}</TableCell>
+                        <TableCell>{m.matches_played}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -625,6 +703,82 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {detailTab === "referrals" && (
+          <div className="space-y-4">
+            {!referralData ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : (
+              <>
+                {/* How this user joined */}
+                {referralData.redeemedWith && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-1">
+                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Gift className="h-3.5 w-3.5 text-primary" /> Joined via Invite Link
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Code: <span className="font-mono text-primary">{referralData.redeemedWith.code}</span>
+                      {referralData.redeemedWith.label && ` (${referralData.redeemedWith.label})`}
+                    </p>
+                    {referralData.redeemedWith.referrer_name && (
+                      <p className="text-xs text-muted-foreground">Referred by: <span className="text-foreground font-medium">{referralData.redeemedWith.referrer_name}</span></p>
+                    )}
+                  </div>
+                )}
+
+                {/* User's own invite links */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5 text-primary" /> Their Invite Links
+                  </h4>
+                  {referralData.inviteLinks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No invite links created.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {referralData.inviteLinks.map(link => (
+                        <div key={link.id} className="rounded-lg border border-border bg-card px-3 py-2 flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-medium text-foreground">{link.label || link.code}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              <span className="font-mono">{link.code}</span> · {link.type} · {link.times_used} uses · {new Date(link.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Who they referred */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-primary" /> Users They Referred ({referralData.redemptions.length})
+                  </h4>
+                  {referralData.redemptions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No referrals yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {referralData.redemptions.map(r => (
+                        <div key={r.id} className="rounded-lg border border-border bg-card px-3 py-2 flex items-center gap-3">
+                          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground">{r.redeemer_name}</p>
+                            <p className="text-[10px] text-muted-foreground">via <span className="font-mono">{r.link_code}</span></p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}

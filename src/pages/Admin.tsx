@@ -22,6 +22,7 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -47,6 +48,15 @@ export default function Admin() {
         setIsMasterAdmin(hasMaster);
         setLoading(false);
       });
+
+    // Fetch unread notification count
+    supabase
+      .from("admin_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("is_read", false)
+      .then(({ count }) => {
+        setUnreadCount(count || 0);
+      });
   }, [user]);
 
   if (loading || !isAdmin) {
@@ -70,28 +80,35 @@ export default function Admin() {
 
         <AdminStats />
 
-        <Tabs defaultValue="users" className="mt-6 space-y-6">
+        <Tabs defaultValue="notifications" className="mt-6 space-y-6">
           <TabsList className="bg-secondary flex-wrap">
+            <TabsTrigger value="notifications" className="relative">
+              Alerts
+              {unreadCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="notifications">Alerts</TabsTrigger>
-            {isMasterAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
             <TabsTrigger value="collections">Collections</TabsTrigger>
             <TabsTrigger value="bots">Bots</TabsTrigger>
             <TabsTrigger value="promoted">Promoted</TabsTrigger>
             <TabsTrigger value="elo-check">Elo Check</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="invite-links">Invite Links</TabsTrigger>
+            {isMasterAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
           </TabsList>
 
+          <TabsContent value="notifications"><AdminNotifications onReadChange={(count) => setUnreadCount(count)} /></TabsContent>
           <TabsContent value="users"><AdminUsers isMasterAdmin={isMasterAdmin} /></TabsContent>
-          <TabsContent value="notifications"><AdminNotifications /></TabsContent>
-          {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}
           <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
           <TabsContent value="promoted"><AdminPromotedLeagues /></TabsContent>
           <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>
           <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
+          {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}
         </Tabs>
       </div>
     </div>
