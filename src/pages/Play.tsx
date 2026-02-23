@@ -187,25 +187,33 @@ function TopBubble({
       layout
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ type: "spring", stiffness: 400, damping: 26 }}
+      exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.1 } }}
+      transition={{ duration: 0.15 }}
       className="flex flex-col items-center gap-4"
     >
-      {/* Main circle */}
-      <motion.button
-        onClick={onToggle}
-        layout
-        className={`relative h-32 w-32 rounded-full flex flex-col items-center justify-center gap-2 border-2 transition-colors duration-300 ${
-          isExpanded
-            ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
-            : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.12)]"
-        }`}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {icon}
-        <span className="text-sm font-extrabold tracking-wide">{label}</span>
-      </motion.button>
+      {/* Main circle — hide when swipe sub-expanded */}
+      <AnimatePresence>
+        {subExpanded !== "swipe" && (
+          <motion.button
+            key="main-circle"
+            onClick={onToggle}
+            layout
+            initial={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.12 } }}
+            className={`relative h-32 w-32 rounded-full flex flex-col items-center justify-center gap-2 border-2 transition-colors duration-300 ${
+              isExpanded
+                ? "border-primary bg-primary/10 text-primary shadow-[0_0_40px_hsl(var(--primary)/0.25)]"
+                : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.12)]"
+            }`}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {icon}
+            <span className="text-sm font-extrabold tracking-wide">{label}</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Sub-bubbles: Swipe & Elo Check */}
       <AnimatePresence mode="popLayout">
@@ -216,7 +224,7 @@ function TopBubble({
             initial={{ opacity: 0, y: -16, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.8 }}
-            transition={{ type: "spring", stiffness: 400, damping: 24 }}
+            transition={{ duration: 0.15 }}
             className="flex flex-col items-center gap-4"
           >
             <div className="flex items-center justify-center gap-6">
@@ -311,7 +319,7 @@ function SubBubble({
       initial={{ opacity: 0, scale: 0.5, y: -10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.5, y: -10 }}
-      transition={{ type: "spring", stiffness: 500, damping: 22, delay }}
+      transition={{ duration: 0.12, delay }}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       className={`h-20 w-20 rounded-full border flex flex-col items-center justify-center gap-1 transition-colors duration-200 ${
