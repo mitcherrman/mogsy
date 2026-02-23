@@ -383,8 +383,8 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-2 flex flex-col">
-        <div className="container mx-auto max-w-lg flex flex-col flex-1">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-2 md:px-6 md:py-4 flex flex-col">
+        <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-1.5">
             <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -436,7 +436,7 @@ export default function SwipePreset() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="grid grid-cols-2 gap-3"
+                  className="grid grid-cols-2 gap-3 md:gap-5 lg:gap-8"
                 >
                   {pair.map((item, idx) => {
                     const displayImage = getDisplayImage(item);
@@ -500,13 +500,13 @@ export default function SwipePreset() {
 
                         {/* Name & stats below image */}
                         <div className="pt-2 text-center">
-                          <h3 className="text-sm font-extrabold text-foreground truncate">{item.name}</h3>
+                          <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                           <div className="flex items-center justify-center gap-2 mt-0.5">
                             {rankVisible && rank && (
-                              <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
+                              <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>
                             )}
                             {eloVisible && (
-                              <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                              <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
                             )}
                           </div>
                         </div>
@@ -529,7 +529,7 @@ export default function SwipePreset() {
 
               {/* VS badge centered between cards */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ top: '0', bottom: '4rem' }}>
-                <span className="text-sm font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 shadow-md">VS</span>
+                <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md">VS</span>
               </div>
             </MatchupCapture>
           )}
