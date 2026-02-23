@@ -14,6 +14,7 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminComments from "@/components/admin/AdminComments";
+import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -79,6 +80,7 @@ export default function Admin() {
             <TabsTrigger value="promoted">Promoted</TabsTrigger>
             <TabsTrigger value="elo-check">Elo Check</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="invite-links">Invite Links</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users"><AdminUsers isMasterAdmin={isMasterAdmin} /></TabsContent>
@@ -89,6 +91,7 @@ export default function Admin() {
           <TabsContent value="promoted"><AdminPromotedLeagues /></TabsContent>
           <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>
+          <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
         </Tabs>
       </div>
     </div>

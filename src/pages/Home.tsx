@@ -8,7 +8,7 @@ import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
-import mogsyLogo from "@/assets/mogsy-logo.png";
+import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 interface LeagueInfo {
   id: string;
@@ -198,7 +198,7 @@ export default function Home() {
           lastSwipedAt: null,
           category: l.category,
         }));
-      setSuggestedLeagues(suggested.slice(0, 12));
+      setSuggestedLeagues(suggested.slice(0, 5));
     }
 
     // Build recent swipes
@@ -389,9 +389,8 @@ export default function Home() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
-        <div className="flex items-center gap-3 mb-6">
-          <img src={mogsyLogo} alt="Mogsy" className="h-14 w-14" />
-          <h1 className="text-3xl font-extrabold text-foreground">Home</h1>
+        <div className="flex justify-center mb-8">
+          <img src={mogsyLogo} alt="Mogsy" className="h-16 sm:h-20" />
         </div>
 
         {/* Rotating ELO Banner */}

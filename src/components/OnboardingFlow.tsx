@@ -4,7 +4,7 @@ import { ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import mogsyIcon from "@/assets/mogsy-icon.png";
+import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 const ALL_CATEGORIES = [
   "Anime",
@@ -67,9 +67,9 @@ export default function OnboardingFlow({ onComplete }: { onComplete: (categories
             className="flex flex-col items-center text-center max-w-sm"
           >
             <motion.img
-              src={mogsyIcon}
+              src={mogsyLogo}
               alt="Mogsy"
-              className="h-24 w-24 mb-6"
+              className="h-20 sm:h-28 mb-6"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}

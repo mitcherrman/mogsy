@@ -36,7 +36,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <Link to="/" className="flex items-center">
-          <img src={mogsyLogo} alt="Mogsy" className="h-9" />
+          <img src={mogsyLogo} alt="Mogsy" className="h-12" />
         </Link>
 
         <div className="flex items-center gap-1">
