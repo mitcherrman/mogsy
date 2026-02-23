@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import SEOHead from "@/components/SEOHead";
 
 interface PresetLeague {
   id: string;
@@ -161,6 +162,7 @@ export default function Presets() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
+      <SEOHead title="Browse Leagues — Mogsy" description="Explore curated head-to-head leagues on Mogsy. Vote on your favorites, discover new matchups, and see community rankings." />
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">

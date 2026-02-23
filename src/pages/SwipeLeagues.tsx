@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getTierFromElo, getTierColor } from "@/lib/mock-data";
 import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
+import SEOHead from "@/components/SEOHead";
 
 interface LeagueOption {
   id: string;
@@ -520,6 +521,7 @@ export default function SwipeLeagues() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
+      <SEOHead title="Swipe Leagues — Mogsy" description="Swipe through leagues and vote head-to-head. Rate and rank items in Collections and User Leagues on Mogsy." />
       <div className="container mx-auto max-w-2xl">
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">

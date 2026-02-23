@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import mogsyIcon from "@/assets/mogsy-icon.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import SEOHead from "@/components/SEOHead";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -52,6 +53,7 @@ export default function Auth() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <SEOHead title="Sign In — Mogsy" description="Sign in or create your Mogsy account. Start voting, ranking, and competing in head-to-head leagues." />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

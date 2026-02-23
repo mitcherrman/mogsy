@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Home, Play, User, Settings } from "lucide-react";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import { useAuth } from "@/hooks/useAuth";
+import SEOHead from "@/components/SEOHead";
 
 const navButtons = [
   { path: "/home", label: "Home", icon: Home },
@@ -16,6 +17,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <SEOHead title="Mogsy — Vote, Rank, Compete" description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top." />
       {/* Logo */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
