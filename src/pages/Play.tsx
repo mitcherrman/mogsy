@@ -96,11 +96,11 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key="top-level" {...fadeIn} className="flex items-center justify-center gap-10">
-            <Bubble size={128} onClick={() => toggle("collections")} active={false} variant="card">
+            <Bubble size={148} onClick={() => toggle("collections")} active={false} variant="card">
               <span className="h-10 w-10 flex items-center justify-center"><LayoutGrid className="h-10 w-10" /></span>
               <span className="text-sm font-extrabold tracking-wide">Collections</span>
             </Bubble>
-            <Bubble size={128} onClick={() => toggle("compete")} active={false} variant="card">
+            <Bubble size={148} onClick={() => toggle("compete")} active={false} variant="card">
               <span className="h-10 w-10 flex items-center justify-center"><Users className="h-10 w-10" /></span>
               <span className="text-sm font-extrabold tracking-wide">Compete</span>
             </Bubble>
@@ -116,19 +116,19 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key="mode-selected" {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={128} onClick={() => toggle(expanded)} active variant="card">
+            <Bubble size={148} onClick={() => toggle(expanded)} active variant="card">
               <span className="h-10 w-10 flex items-center justify-center">{modeIcon}</span>
               <span className="text-sm font-extrabold tracking-wide">{modeLabel}</span>
             </Bubble>
             <div className="flex items-center justify-center gap-6">
-              <Bubble size={80} onClick={() => handleSubToggle("swipe")} active={false} variant="accent">
-                <Shuffle className="h-6 w-6" />
-                <span className="text-[10px] font-extrabold tracking-wide">Swipe</span>
-              </Bubble>
-              <Bubble size={80} onClick={() => handleSubToggle("elocheck")} active={false} variant="accent">
-                <Zap className="h-6 w-6" />
-                <span className="text-[10px] font-extrabold tracking-wide">Elo Check</span>
-              </Bubble>
+               <Bubble size={100} onClick={() => handleSubToggle("swipe")} active={false} variant="accent">
+                 <Shuffle className="h-7 w-7" />
+                 <span className="text-xs font-extrabold tracking-wide">Swipe</span>
+               </Bubble>
+               <Bubble size={100} onClick={() => handleSubToggle("elocheck")} active={false} variant="accent">
+                 <Zap className="h-7 w-7" />
+                 <span className="text-xs font-extrabold tracking-wide">Elo Check</span>
+               </Bubble>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -144,19 +144,19 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key="swipe-categories" {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={128} onClick={() => handleSubToggle("swipe")} active variant="accent">
-              <Shuffle className="h-10 w-10" />
-              <span className="text-sm font-extrabold tracking-wide">Swipe</span>
-            </Bubble>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {categoryKeys.map((cat, i) => (
-                <motion.div
-                  key={cat}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ ...ease, delay: i * 0.04 }}
-                >
-                  <Bubble size={96} onClick={() => onCatSelect(cat)} active={false} variant="card">
+             <Bubble size={148} onClick={() => handleSubToggle("swipe")} active variant="accent">
+               <Shuffle className="h-10 w-10" />
+               <span className="text-sm font-extrabold tracking-wide">Swipe</span>
+             </Bubble>
+             <div className="flex flex-wrap items-center justify-center gap-4">
+               {categoryKeys.map((cat, i) => (
+                 <motion.div
+                   key={cat}
+                   initial={{ opacity: 0, scale: 0.7 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   transition={{ ...ease, delay: i * 0.04 }}
+                 >
+                   <Bubble size={112} onClick={() => onCatSelect(cat)} active={false} variant="card">
                     <span className="text-2xl">{CATEGORY_ICONS[cat] || "📋"}</span>
                     <span className="text-[9px] font-extrabold tracking-wide leading-tight text-center px-1">{cat}</span>
                   </Bubble>
@@ -174,19 +174,19 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={128} onClick={() => setSelectedCategory(null)} active variant="card">
+            <Bubble size={148} onClick={() => setSelectedCategory(null)} active variant="card">
               <span className="text-4xl">{CATEGORY_ICONS[selectedCategory] || "📋"}</span>
               <span className="text-xs font-extrabold tracking-wide">{selectedCategory}</span>
             </Bubble>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {leaguesInCat.map((league, i) => (
-                <motion.div
-                  key={league.id}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ ...ease, delay: i * 0.04 }}
-                >
-                  <Bubble size={80} onClick={() => handleLeagueSelect(league)} active={false} variant="card">
+             <div className="flex flex-wrap items-center justify-center gap-4">
+               {leaguesInCat.map((league, i) => (
+                 <motion.div
+                   key={league.id}
+                   initial={{ opacity: 0, scale: 0.7 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   transition={{ ...ease, delay: i * 0.04 }}
+                 >
+                   <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card">
                     <span className="text-xl">{getLeagueIcon(league.name)}</span>
                     <span className="text-[9px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                   </Bubble>
@@ -203,19 +203,19 @@ export default function Play() {
     return (
       <AnimatePresence mode="wait">
         <motion.div key="swipe-leagues-direct" {...fadeIn} className="flex flex-col items-center gap-5">
-          <Bubble size={128} onClick={() => handleSubToggle("swipe")} active variant="accent">
-            <Shuffle className="h-10 w-10" />
-            <span className="text-sm font-extrabold tracking-wide">Swipe</span>
-          </Bubble>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {allLeagues.map((league, i) => (
-              <motion.div
-                key={league.id}
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ ...ease, delay: i * 0.04 }}
-              >
-                <Bubble size={80} onClick={() => handleLeagueSelect(league)} active={false} variant="card">
+           <Bubble size={148} onClick={() => handleSubToggle("swipe")} active variant="accent">
+             <Shuffle className="h-10 w-10" />
+             <span className="text-sm font-extrabold tracking-wide">Swipe</span>
+           </Bubble>
+           <div className="flex flex-wrap items-center justify-center gap-4">
+             {allLeagues.map((league, i) => (
+               <motion.div
+                 key={league.id}
+                 initial={{ opacity: 0, scale: 0.7 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 transition={{ ...ease, delay: i * 0.04 }}
+               >
+                 <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card">
                   <span className="text-xl">{getLeagueIcon(league.name)}</span>
                   <span className="text-[9px] font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                 </Bubble>
