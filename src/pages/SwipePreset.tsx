@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
 import TierBadge from "@/components/TierBadge";
@@ -546,6 +547,9 @@ export default function SwipePreset() {
           <p className="text-center text-[10px] text-muted-foreground mt-1.5">
             Tap or swipe to choose · {currentIndex + 1}/{matchups.length}
           </p>
+
+          {/* Comments section */}
+          {leagueId && <SwipeComments leagueId={leagueId} />}
         </div>
       </div>
     </>
