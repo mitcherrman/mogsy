@@ -13,15 +13,26 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp, linkAnonymousAccount } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const isAnonymous = user?.is_anonymous === true;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    if (isLogin) {
+    if (isAnonymous) {
+      // Link anonymous account to real account - preserves all data
+      const { error } = await linkAnonymousAccount(email, password);
+      if (error) {
+        toast({ title: "Linking failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Account created!", description: "Your anonymous progress has been saved to your new account." });
+        navigate("/swipe");
+      }
+    } else if (isLogin) {
       const { error } = await signIn(email, password);
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
@@ -52,12 +63,22 @@ export default function Auth() {
             <span className="text-2xl font-extrabold text-gradient">Mogsy</span>
           </Link>
           <h2 className="text-xl font-bold text-foreground">
-            {isLogin ? "Welcome back" : "Create your account"}
+            {isAnonymous ? "Claim your account" : isLogin ? "Welcome back" : "Create your account"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLogin ? "Log in to continue ranking" : "Start climbing the ranks"}
+            {isAnonymous
+              ? "Create an account to keep all your progress, matches, and settings"
+              : isLogin ? "Log in to continue ranking" : "Start climbing the ranks"}
           </p>
         </div>
+
+        {isAnonymous && (
+          <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 p-3">
+            <p className="text-xs text-primary font-medium">
+              ✨ Your match history, Elo ratings, diamonds, and settings will all be preserved!
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -69,16 +90,18 @@ export default function Auth() {
             <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           </div>
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Loading…" : isLogin ? "Log In" : "Sign Up"}
+            {loading ? "Loading…" : isAnonymous ? "Create Account & Keep Progress" : isLogin ? "Log In" : "Sign Up"}
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-semibold hover:underline">
-            {isLogin ? "Sign up" : "Log in"}
-          </button>
-        </div>
+        {!isAnonymous && (
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+            <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-semibold hover:underline">
+              {isLogin ? "Sign up" : "Log in"}
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );

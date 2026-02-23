@@ -534,6 +534,7 @@ export type Database = {
           is_bot: boolean | null
           is_flagged_underage: boolean | null
           is_pro: boolean | null
+          last_seen_at: string | null
           location: string | null
           profile_frame: string | null
           reveals: number | null
@@ -559,6 +560,7 @@ export type Database = {
           is_bot?: boolean | null
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
+          last_seen_at?: string | null
           location?: string | null
           profile_frame?: string | null
           reveals?: number | null
@@ -584,6 +586,7 @@ export type Database = {
           is_bot?: boolean | null
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
+          last_seen_at?: string | null
           location?: string | null
           profile_frame?: string | null
           reveals?: number | null
@@ -724,6 +727,7 @@ export type Database = {
         Returns: boolean
       }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
+      is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
       purchase_powerup: {
         Args: {

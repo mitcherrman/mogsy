@@ -9,6 +9,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  linkAnonymousAccount: (email: string, password: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,8 +53,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const linkAnonymousAccount = async (email: string, password: string) => {
+    const { error } = await supabase.auth.updateUser({
+      email,
+      password,
+    });
+    if (!error) {
+      // Mark profile as no longer anonymous
+      const userId = user?.id;
+      if (userId) {
+        await supabase.from("profiles").update({ is_anonymous: false }).eq("user_id", userId);
+      }
+    }
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, linkAnonymousAccount }}>
       {children}
     </AuthContext.Provider>
   );

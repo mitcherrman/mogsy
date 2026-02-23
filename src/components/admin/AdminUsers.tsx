@@ -15,6 +15,7 @@ import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
+  MapPin, Clock, ShieldCheck, ShieldOff,
 } from "lucide-react";
 
 interface Profile {
@@ -38,6 +39,7 @@ interface Profile {
   admin_notes: string | null;
   is_flagged_underage: boolean | null;
   created_at: string;
+  last_seen_at: string | null;
 }
 
 interface LeagueMembership {
@@ -70,7 +72,7 @@ interface DeletedUser {
   timestamp: number;
 }
 
-export default function AdminUsers() {
+export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,7 @@ export default function AdminUsers() {
 
   const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
+  const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
   // Admin notes
   const [adminNotes, setAdminNotes] = useState("");
@@ -99,7 +102,7 @@ export default function AdminUsers() {
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at")
+      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at, last_seen_at")
       .eq("is_bot", false)
       .order("created_at", { ascending: false });
     setProfiles((data as Profile[]) || []);
@@ -113,6 +116,17 @@ export default function AdminUsers() {
       if (emailData?.emails) {
         setEmailMap(emailData.emails);
       }
+    }
+
+    // Fetch all roles for display
+    const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
+    if (rolesData) {
+      const map: Record<string, string[]> = {};
+      for (const r of rolesData) {
+        if (!map[r.user_id]) map[r.user_id] = [];
+        map[r.user_id].push(r.role as string);
+      }
+      setUserRoles(map);
     }
   }, []);
 
@@ -249,7 +263,47 @@ export default function AdminUsers() {
     setNotifMessage("");
   };
 
+  const toggleAdminRole = async (userId: string) => {
+    const currentRoles = userRoles[userId] || [];
+    const isCurrentlyAdmin = currentRoles.includes("admin");
+
+    if (isCurrentlyAdmin) {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin" as any);
+      if (error) { toast.error("Failed to remove admin role"); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: (prev[userId] || []).filter((r) => r !== "admin"),
+      }));
+      toast.success("Admin role removed");
+    } else {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" as any });
+      if (error) { toast.error("Failed to grant admin role: " + error.message); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: [...(prev[userId] || []), "admin"],
+      }));
+      toast.success("Admin role granted");
+    }
+  };
+
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleString() : "Never";
+  const timeAgo = (d: string | null) => {
+    if (!d) return "Never";
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
   if (selectedUser) {
+    const selectedRoles = userRoles[selectedUser.user_id] || [];
+    const isSelectedAdmin = selectedRoles.includes("admin");
+    const isSelectedMaster = selectedRoles.includes("master_admin");
+
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-muted-foreground">
@@ -268,9 +322,19 @@ export default function AdminUsers() {
             <h3 className="font-bold text-foreground truncate">{selectedUser.display_name || "Unnamed"}</h3>
             <p className="text-xs text-primary truncate">{emailMap[selectedUser.user_id] || "No email"}</p>
             <p className="text-xs text-muted-foreground truncate">{selectedUser.user_id}</p>
-            <p className="text-xs text-muted-foreground">Joined {new Date(selectedUser.created_at).toLocaleDateString()}</p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Joined {new Date(selectedUser.created_at).toLocaleDateString()}</span>
+              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Last seen {timeAgo(selectedUser.last_seen_at)}</span>
+            </div>
+            {selectedUser.location && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <MapPin className="h-3 w-3" /> {selectedUser.location}
+              </p>
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {selectedRoles.includes("master_admin") && <Badge className="bg-primary/20 text-primary border-primary/30"><ShieldCheck className="h-3 w-3 mr-1" /> Master</Badge>}
+            {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
             {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
@@ -347,6 +411,31 @@ export default function AdminUsers() {
                 <Label className="text-xs">Pro Status</Label>
               </div>
             </div>
+
+            {/* Admin role management */}
+            {isMasterAdmin && !isSelectedMaster && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Admin Privileges</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSelectedAdmin ? "This user has admin access to the admin panel" : "Grant this user admin access"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isSelectedAdmin ? "destructive" : "outline"}
+                    onClick={() => toggleAdminRole(selectedUser.user_id)}
+                  >
+                    {isSelectedAdmin ? (
+                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Admin</>
+                    ) : (
+                      <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Admin</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 flex-wrap">
               <Button onClick={saveUser} disabled={saving} size="sm">{saving ? "Saving…" : "Save Changes"}</Button>
@@ -426,21 +515,30 @@ export default function AdminUsers() {
                   <TableRow>
                     <TableHead>League</TableHead>
                     <TableHead>Result</TableHead>
+                    <TableHead>Opponent</TableHead>
                     <TableHead>Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {matches.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="text-foreground">{getLeagueName(m.league_id)}</TableCell>
-                      <TableCell>
-                        <Badge variant={m.winner_profile_id === selectedUser.id ? "default" : "secondary"}>
-                          {m.winner_profile_id === selectedUser.id ? "Won" : "Lost"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{new Date(m.created_at).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
+                  {matches.map((m) => {
+                    const won = m.winner_profile_id === selectedUser.id;
+                    const opponentId = won ? m.loser_profile_id : m.winner_profile_id;
+                    const opponent = profiles.find((p) => p.id === opponentId);
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell className="text-foreground">{getLeagueName(m.league_id)}</TableCell>
+                        <TableCell>
+                          <Badge variant={won ? "default" : "secondary"}>
+                            {won ? "Won" : "Lost"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {opponent?.display_name || (opponentId ? "Unknown" : "—")}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{formatDate(m.created_at)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -467,7 +565,7 @@ export default function AdminUsers() {
                       <TableCell className="font-medium text-foreground capitalize">{p.item_type.replace(/_/g, " ")}</TableCell>
                       <TableCell>${(p.amount_cents / 100).toFixed(2)}</TableCell>
                       <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{formatDate(p.created_at)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -529,41 +627,50 @@ export default function AdminUsers() {
         <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
       ) : (
         <div className="space-y-1">
-          {filtered.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => openUserDetail(p)}
-              className="w-full flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/50 transition-colors text-left"
-            >
-              <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
-                {p.avatar_url ? (
-                  <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <User className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
-                  {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
+          {filtered.map((p) => {
+            const roles = userRoles[p.user_id] || [];
+            return (
+              <button
+                key={p.id}
+                onClick={() => openUserDetail(p)}
+                className="w-full flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/50 transition-colors text-left"
+              >
+                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden shrink-0">
                   {p.avatar_url ? (
-                    <ImageIcon className="h-3 w-3 text-primary shrink-0" />
+                    <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <ImageOff className="h-3 w-3 text-destructive shrink-0" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
-                <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
-                <p className="text-xs text-muted-foreground">{p.location || "No location"} · Joined {new Date(p.created_at).toLocaleDateString()}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {p.is_anonymous && <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Anon</Badge>}
-                {p.is_pro && <Crown className="h-4 w-4 text-primary" />}
-                <Diamond className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground text-sm truncate">{p.display_name || "Unnamed"}</p>
+                    {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
+                    {roles.includes("master_admin") && <ShieldCheck className="h-3 w-3 text-primary shrink-0" />}
+                    {roles.includes("admin") && <Shield className="h-3 w-3 text-primary shrink-0" />}
+                    {p.avatar_url ? (
+                      <ImageIcon className="h-3 w-3 text-primary shrink-0" />
+                    ) : (
+                      <ImageOff className="h-3 w-3 text-destructive shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-xs text-primary truncate">{emailMap[p.user_id] || ""}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {p.location && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{p.location}</span>}
+                    <span>Joined {new Date(p.created_at).toLocaleDateString()}</span>
+                    <span>· Last seen {timeAgo(p.last_seen_at)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {p.is_anonymous && <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Anon</Badge>}
+                  {p.is_pro && <Crown className="h-4 w-4 text-primary" />}
+                  <Diamond className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
