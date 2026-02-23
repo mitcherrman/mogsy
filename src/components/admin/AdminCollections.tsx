@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy } from "lucide-react";
+import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy, RotateCcw } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -42,10 +46,17 @@ interface League {
   show_rank: boolean | null;
 }
 
+interface EloResetData {
+  items: { id: string; previousElo: number }[];
+  memberships: { id: string; previousElo: number }[];
+}
+
 interface UndoAction {
-  type: "add" | "delete" | "update";
-  item: PresetItem;
+  type: "add" | "delete" | "update" | "elo_reset";
+  item?: PresetItem;
   previousState?: PresetItem;
+  resetData?: EloResetData;
+  leagueId?: string;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -131,22 +142,59 @@ export default function AdminCollections() {
   const handleUndo = async () => {
     const action = undoStack[undoStack.length - 1];
     if (!action) return;
-    if (action.type === "add") {
+    if (action.type === "add" && action.item) {
       await supabase.from("preset_items").delete().eq("id", action.item.id);
       toast.success("Undo: item removed");
-    } else if (action.type === "delete") {
+    } else if (action.type === "delete" && action.item) {
       await supabase.from("preset_items").insert({
         id: action.item.id, league_id: action.item.league_id,
         name: action.item.name, image_url: action.item.image_url, elo: action.item.elo,
       });
       toast.success("Undo: item restored");
-    } else if (action.type === "update" && action.previousState) {
+    } else if (action.type === "update" && action.previousState && action.item) {
       await supabase.from("preset_items")
         .update({ name: action.previousState.name, image_url: action.previousState.image_url })
         .eq("id", action.item.id);
       toast.success("Undo: item reverted");
+    } else if (action.type === "elo_reset" && action.resetData && action.leagueId) {
+      // Restore preset item elos
+      for (const item of action.resetData.items) {
+        await supabase.from("preset_items").update({ elo: item.previousElo }).eq("id", item.id);
+      }
+      // Restore league membership elos
+      for (const mem of action.resetData.memberships) {
+        await supabase.from("league_memberships").update({ elo: mem.previousElo }).eq("id", mem.id);
+      }
+      toast.success("Undo: Elo & rankings restored");
     }
     setUndoStack((prev) => prev.slice(0, -1));
+    loadItems(selectedLeague);
+  };
+
+  const handleResetElo = async () => {
+    if (!selectedLeague) return;
+    // Save current preset item elos
+    const { data: currentItems } = await supabase.from("preset_items").select("id, elo").eq("league_id", selectedLeague);
+    // Save current league membership elos
+    const { data: currentMemberships } = await supabase.from("league_memberships").select("id, elo").eq("league_id", selectedLeague);
+
+    const resetData: EloResetData = {
+      items: (currentItems || []).map(i => ({ id: i.id, previousElo: i.elo })),
+      memberships: (currentMemberships || []).map(m => ({ id: m.id, previousElo: m.elo })),
+    };
+
+    // Reset all preset items to 1200
+    const { error: e1 } = await supabase.from("preset_items").update({ elo: 1200 }).eq("league_id", selectedLeague);
+    // Reset all league memberships to 1200
+    const { error: e2 } = await supabase.from("league_memberships").update({ elo: 1200 }).eq("league_id", selectedLeague);
+
+    if (e1 || e2) {
+      toast.error("Failed to reset Elo");
+      return;
+    }
+
+    pushUndo({ type: "elo_reset", resetData, leagueId: selectedLeague });
+    toast.success(`Reset Elo for all items & users in this league to 1200`);
     loadItems(selectedLeague);
   };
 
@@ -371,6 +419,27 @@ export default function AdminCollections() {
               <Label className="text-[10px] text-muted-foreground">Rank</Label>
               <Switch checked={selectedLeagueData.show_rank ?? true} onCheckedChange={(v) => updateLeagueDisplay(selectedLeague, "show_rank", v)} />
             </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="gap-1 text-xs h-7">
+                  <RotateCcw className="h-3 w-3" /> Reset Elo
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset all Elo & Rankings?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set <strong>all items and user memberships</strong> in "{selectedLeagueData.name}" back to the default Elo of 1200. This action can be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetElo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       )}
