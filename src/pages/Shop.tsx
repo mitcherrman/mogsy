@@ -142,25 +142,27 @@ export default function Shop() {
       return;
     }
     setPurchasing(powerUp.id);
-    const currentValue = (profile[powerUp.field] as number) || 0;
-    const newDiamonds = (profile.diamonds || 0) - powerUp.diamondCost;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ [powerUp.field]: currentValue + 1, diamonds: newDiamonds })
-      .eq("id", profile.id);
-    if (error) {
-      toast({ title: "Purchase failed", description: "Not enough diamonds.", variant: "destructive" });
+    try {
+      const { data, error } = await supabase.rpc("purchase_powerup", {
+        _profile_id: profile.id,
+        _powerup_field: powerUp.field,
+        _diamond_cost: powerUp.diamondCost,
+      });
+      if (error) {
+        const msg = error.message?.includes("Insufficient") ? "Not enough diamonds." : error.message || "Purchase failed.";
+        toast({ title: "Purchase failed", description: msg, variant: "destructive" });
+        await loadProfile();
+        setPurchasing(null);
+        return;
+      }
+      const newDiamonds = (data as any)?.diamonds ?? 0;
+      const newValue = (data as any)?.powerup_value ?? 0;
+      setProfile({ ...profile, [powerUp.field]: newValue, diamonds: newDiamonds });
+      toast({ title: `${powerUp.name} purchased!`, description: `You now have ${newValue}. (${newDiamonds} 💎 remaining)` });
+    } catch (err: any) {
+      toast({ title: "Purchase failed", description: "Something went wrong.", variant: "destructive" });
       await loadProfile();
-      setPurchasing(null);
-      return;
     }
-    await supabase.from("purchases").insert({
-      profile_id: profile.id,
-      item_type: powerUp.id,
-      amount_cents: 0,
-    });
-    setProfile({ ...profile, [powerUp.field]: currentValue + 1, diamonds: newDiamonds });
-    toast({ title: `${powerUp.name} purchased!`, description: `You now have ${currentValue + 1}. (${newDiamonds} 💎 remaining)` });
     setPurchasing(null);
   };
 

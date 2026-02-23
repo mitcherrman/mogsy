@@ -725,6 +725,14 @@ export type Database = {
       }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
+      purchase_powerup: {
+        Args: {
+          _diamond_cost: number
+          _powerup_field: string
+          _profile_id: string
+        }
+        Returns: Json
+      }
       record_preset_match: {
         Args: {
           _league_id: string
