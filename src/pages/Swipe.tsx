@@ -1,14 +1,15 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
-// ELO calculation now handled server-side via record_user_match RPC
+import MatchupCapture from "@/components/MatchupCapture";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
+import { useScreenshot } from "@/hooks/useScreenshot";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,8 @@ export default function Swipe() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const captureRef = useRef<HTMLDivElement>(null);
+  const { capture } = useScreenshot(captureRef);
   const [profiles, setProfiles] = useState<SwipeProfile[]>([]);
   const [pair, setPair] = useState<[SwipeProfile, SwipeProfile] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
@@ -58,7 +61,6 @@ export default function Swipe() {
       .from("leagues").select("id").eq("name", "Global Rankings").single();
     if (league) setGlobalLeagueId(league.id);
 
-    // Get current user's profile
     if (user) {
       const { data: myProfile } = await supabase
         .from("profiles")
@@ -100,9 +102,8 @@ export default function Swipe() {
         isBoosted: p.active_boost_until ? new Date(p.active_boost_until) > now : false,
       }));
 
-      // Boosted profiles get duplicated for higher frequency
       const boosted = mapped.filter((p) => p.isBoosted);
-      const withBoosts = [...mapped, ...boosted, ...boosted]; // 3x chance
+      const withBoosts = [...mapped, ...boosted, ...boosted];
       setProfiles(withBoosts);
       setPair(getRandomPair(mapped));
     }
@@ -166,7 +167,6 @@ export default function Swipe() {
       const newCount = matchCount + 1;
       setMatchCount(newCount);
 
-      // Show ad every AD_INTERVAL swipes for non-pro
       if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);
         setEloChanges(new Map());
@@ -229,66 +229,77 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-3 flex flex-col">
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
-          <div className="text-center mb-4">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-5 w-5" />
+          {/* Controls bar */}
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <p className="text-muted-foreground text-xs">
+              Matches: <span className="text-primary font-bold">{matchCount}</span>
+            </p>
+            <div className="flex-1" />
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={capture}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Save snapshot"
+              >
+                <Camera className="h-4 w-4" />
               </Button>
-              <h1 className="text-2xl font-extrabold text-foreground">Who's Better?</h1>
-            </div>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <p className="text-muted-foreground text-sm">
-                Matches: <span className="text-primary font-bold">{matchCount}</span>
-              </p>
-              {globalLeagueId && (
-                <Button variant="outline" size="sm" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="gap-1.5">
-                  <Trophy className="h-4 w-4" /> Leaderboard
-                </Button>
-              )}
               {lastMatch && myRewinds > 0 && (
-                <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1.5">
-                  <Undo2 className="h-4 w-4" /> Rewind ({myRewinds})
+                <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
+                  <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
                 </Button>
               )}
               {myShields > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <Shield className="h-3 w-3" /> {myShields} shields
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Shield className="h-3 w-3" /> {myShields}
                 </span>
+              )}
+              {globalLeagueId && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="gap-1 h-8 text-xs">
+                  <Trophy className="h-3.5 w-3.5" /> Board
+                </Button>
               )}
             </div>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`pair-${pair[0].id}-${pair[1].id}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="flex flex-row gap-3 items-stretch flex-1"
-            >
-              <div className="flex flex-col flex-1">
-                <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-                <div className="flex justify-center mt-1">
-                  <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+          {/* Capturable matchup area */}
+          <MatchupCapture ref={captureRef} leagueName="Who's Better?">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`pair-${pair[0].id}-${pair[1].id}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex flex-row gap-3 items-stretch"
+              >
+                <div className="flex flex-col flex-1">
+                  <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
+                  <div className="flex justify-center mt-1">
+                    <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-center px-1">
-                <span className="text-2xl font-black text-gradient">VS</span>
-              </div>
-              <div className="flex flex-col flex-1">
-                <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
-                <div className="flex justify-center mt-1">
-                  <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                <div className="flex items-center justify-center px-1">
+                  <span className="text-lg font-black text-gradient">VS</span>
                 </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                <div className="flex flex-col flex-1">
+                  <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
+                  <div className="flex justify-center mt-1">
+                    <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </MatchupCapture>
 
-          <p className="text-center text-xs text-muted-foreground mt-3">
-            Click on the profile you prefer. Elo updates instantly.
+          <p className="text-center text-[10px] text-muted-foreground mt-2">
+            Tap the profile you prefer · ELO updates instantly
           </p>
         </div>
       </div>
