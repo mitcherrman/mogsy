@@ -380,6 +380,104 @@ export type Database = {
           },
         ]
       }
+      invite_links: {
+        Row: {
+          code: string
+          created_at: string
+          created_by_user_id: string
+          expires_at: string | null
+          grant_admin: boolean | null
+          grant_boost_credits: number | null
+          grant_diamonds: number | null
+          grant_elo_shields: number | null
+          grant_pro: boolean | null
+          grant_reveals: number | null
+          grant_rewinds: number | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          max_uses: number | null
+          recommended_categories: string[] | null
+          recommended_league_ids: string[] | null
+          times_used: number | null
+          type: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by_user_id: string
+          expires_at?: string | null
+          grant_admin?: boolean | null
+          grant_boost_credits?: number | null
+          grant_diamonds?: number | null
+          grant_elo_shields?: number | null
+          grant_pro?: boolean | null
+          grant_reveals?: number | null
+          grant_rewinds?: number | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          max_uses?: number | null
+          recommended_categories?: string[] | null
+          recommended_league_ids?: string[] | null
+          times_used?: number | null
+          type?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string | null
+          grant_admin?: boolean | null
+          grant_boost_credits?: number | null
+          grant_diamonds?: number | null
+          grant_elo_shields?: number | null
+          grant_pro?: boolean | null
+          grant_reveals?: number | null
+          grant_rewinds?: number | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          max_uses?: number | null
+          recommended_categories?: string[] | null
+          recommended_league_ids?: string[] | null
+          times_used?: number | null
+          type?: string
+        }
+        Relationships: []
+      }
+      invite_redemptions: {
+        Row: {
+          created_at: string
+          id: string
+          invite_link_id: string
+          redeemed_by_user_id: string
+          referrer_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_link_id: string
+          redeemed_by_user_id: string
+          referrer_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_link_id?: string
+          redeemed_by_user_id?: string
+          referrer_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_redemptions_invite_link_id_fkey"
+            columns: ["invite_link_id"]
+            isOneToOne: false
+            referencedRelation: "invite_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_memberships: {
         Row: {
           elo: number
@@ -792,6 +890,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_invite_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean | null
+          referrer_boost_credits: number | null
+          referrer_diamonds: number | null
+          reward_boost_credits: number | null
+          reward_diamonds: number | null
+          reward_elo_bonus: number | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean | null
+          referrer_boost_credits?: number | null
+          referrer_diamonds?: number | null
+          reward_boost_credits?: number | null
+          reward_diamonds?: number | null
+          reward_elo_bonus?: number | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean | null
+          referrer_boost_credits?: number | null
+          referrer_diamonds?: number | null
+          reward_boost_credits?: number | null
+          reward_diamonds?: number | null
+          reward_elo_bonus?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
