@@ -77,7 +77,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases" | "comments">("overview");
+  const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
 
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
@@ -162,15 +163,35 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       active_boost_until: profile.active_boost_until,
     });
 
-    const [membRes, matchRes, purchRes] = await Promise.all([
+    const [membRes, matchRes, purchRes, commRes] = await Promise.all([
       supabase.from("league_memberships").select("*").eq("profile_id", profile.id),
       supabase.from("matches").select("*").or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`).order("created_at", { ascending: false }).limit(50),
       supabase.from("purchases").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }),
+      supabase.from("comments").select("id, content, league_id, created_at, is_hidden").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(100),
     ]);
 
     setMemberships(membRes.data || []);
     setMatches(matchRes.data || []);
     setPurchases(purchRes.data || []);
+
+    // Map league names for comments
+    const commData = commRes.data || [];
+    if (commData.length > 0) {
+      const leagueIds = [...new Set(commData.filter(c => c.league_id).map(c => c.league_id!))];
+      const { data: leagues } = leagueIds.length > 0
+        ? await supabase.from("leagues").select("id, name").in("id", leagueIds)
+        : { data: [] };
+      const lMap = new Map((leagues || []).map(l => [l.id, l.name]));
+      setUserComments(commData.map(c => ({
+        id: c.id,
+        content: c.content,
+        league_name: c.league_id ? lMap.get(c.league_id) || "Unknown" : "N/A",
+        created_at: c.created_at,
+        is_hidden: c.is_hidden,
+      })));
+    } else {
+      setUserComments([]);
+    }
   };
 
   const saveUser = async () => {
@@ -343,7 +364,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
         {/* Tab navigation */}
         <div className="flex gap-1 rounded-lg bg-secondary p-1">
-          {(["overview", "notes", "leagues", "matches", "purchases"] as const).map((tab) => (
+          {(["overview", "notes", "leagues", "matches", "purchases", "comments"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setDetailTab(tab)}
@@ -570,6 +591,40 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   ))}
                 </TableBody>
               </Table>
+            )}
+          </div>
+        )}
+
+        {detailTab === "comments" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{userComments.length} comments by this user</p>
+            {userComments.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No comments</p>
+            ) : (
+              <div className="space-y-2">
+                {userComments.map((c) => (
+                  <div key={c.id} className={`rounded-lg border border-border bg-card p-3 ${c.is_hidden ? "opacity-50" : ""}`}>
+                    <p className="text-sm text-foreground break-words">{c.content}</p>
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                      <span>{c.league_name}</span>
+                      <span>{formatDate(c.created_at)}</span>
+                      {c.is_hidden && <Badge variant="outline" className="text-[9px]">Hidden</Badge>}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-6 text-destructive hover:text-destructive text-xs"
+                        onClick={async () => {
+                          await supabase.from("comments").delete().eq("id", c.id);
+                          setUserComments((prev) => prev.filter((x) => x.id !== c.id));
+                          toast.success("Comment deleted");
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

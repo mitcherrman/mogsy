@@ -6,6 +6,7 @@ import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
+import SwipeComments from "@/components/SwipeComments";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
@@ -301,6 +302,9 @@ export default function Swipe() {
           <p className="text-center text-[10px] text-muted-foreground mt-2">
             Tap the profile you prefer · ELO updates instantly
           </p>
+
+          {/* Comments section */}
+          {globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
         </div>
       </div>
     </>

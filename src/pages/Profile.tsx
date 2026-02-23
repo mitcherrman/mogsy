@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
+import ProfileTopComments from "@/components/ProfileTopComments";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -448,6 +449,9 @@ export default function Profile() {
                     ))}
                   </div>
                 </div>
+
+                {/* Top Comments */}
+                {profileId && <ProfileTopComments profileId={profileId} />}
 
                 {/* Save button */}
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
