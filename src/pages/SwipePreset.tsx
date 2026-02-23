@@ -1,17 +1,19 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
 import TierBadge from "@/components/TierBadge";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
+import MatchupCapture from "@/components/MatchupCapture";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
+import { useScreenshot } from "@/hooks/useScreenshot";
 import { toast } from "sonner";
 
 interface PresetItem {
@@ -49,6 +51,8 @@ export default function SwipePreset() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const captureRef = useRef<HTMLDivElement>(null);
+  const { capture } = useScreenshot(captureRef);
   const [items, setItems] = useState<PresetItem[]>([]);
   const [matchups, setMatchups] = useState<[PresetItem, PresetItem][]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -91,7 +95,6 @@ export default function SwipePreset() {
       setItems(data);
       setMatchups(generateMatchups(data));
 
-      // Load multi-images
       const itemIds = data.map(i => i.id);
       const { data: images } = await supabase
         .from("preset_item_images")
@@ -111,7 +114,6 @@ export default function SwipePreset() {
             idxMap.set(img.preset_item_id, Math.floor(Math.random() * (list.length)));
           }
         });
-        // Randomize starting index
         map.forEach((imgs, itemId) => {
           idxMap.set(itemId, Math.floor(Math.random() * imgs.length));
         });
@@ -163,7 +165,6 @@ export default function SwipePreset() {
       return;
     }
 
-    // Check total reports
     const { count } = await supabase.from("image_reports").select("*", { count: "exact", head: true }).eq("image_id", imageId);
 
     if (count && count >= 10) {
@@ -183,7 +184,6 @@ export default function SwipePreset() {
       });
     }
 
-    // Cycle to next image for this user
     const images = itemImages.get(item.id);
     if (images && images.length > 1) {
       setCurrentImageIndex(prev => {
@@ -199,7 +199,6 @@ export default function SwipePreset() {
   const pair = currentIndex < matchups.length ? matchups[currentIndex] : null;
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
-  // Compute ranks
   const rankMap = useMemo(() => {
     const sorted = [...items].sort((a, b) => b.elo - a.elo);
     const map = new Map<string, number>();
@@ -219,7 +218,6 @@ export default function SwipePreset() {
       const currentLoser = items.find(i => i.id === loser.id)!;
       const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
 
-      // Calculate rank changes
       const oldRanks = new Map<string, number>();
       [...items].sort((a, b) => b.elo - a.elo).forEach((item, idx) => oldRanks.set(item.id, idx + 1));
 
@@ -240,7 +238,7 @@ export default function SwipePreset() {
         [loser.id, { old: oldRanks.get(loser.id)!, new: newRanks.get(loser.id)! }],
       ]));
 
-      const { data: rpcResult, error: rpcError } = await supabase.rpc("record_preset_match", {
+      const { error: rpcError } = await supabase.rpc("record_preset_match", {
         _league_id: leagueId!,
         _winner_item_id: winner.id,
         _loser_item_id: loser.id,
@@ -291,7 +289,6 @@ export default function SwipePreset() {
   };
 
   const handleBack = () => {
-    // Navigate back to presets with the category open
     const fromPage = location.state?.from || "/presets";
     navigate(fromPage, { state: { openCategory: leagueCategory } });
   };
@@ -386,19 +383,24 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-3 flex flex-col">
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
-          <div className="flex items-center gap-3 mb-3">
-            <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
+          {/* Controls bar - outside capture area */}
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-extrabold text-foreground">{leagueName}</h1>
-              <p className="text-muted-foreground text-xs">
-                {currentIndex + 1} / {matchups.length}
-              </p>
-            </div>
+            <div className="flex-1" />
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={capture}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Save snapshot"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -413,89 +415,127 @@ export default function SwipePreset() {
                 {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <Trophy className="h-4 w-4" /> Rankings
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Trophy className="h-3.5 w-3.5" /> Rankings
                 </Button>
               </Link>
             </div>
           </div>
 
-          <Progress value={progress} className="mb-3 h-1.5" />
+          <Progress value={progress} className="mb-3 h-1" />
 
+          {/* Capturable matchup area */}
           {pair && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-2 gap-3 flex-1"
-              >
-                {pair.map((item, idx) => {
-                  const displayImage = getDisplayImage(item);
-                  const rank = rankMap.get(item.id);
-                  const hasMultipleImages = (itemImages.get(item.id)?.length || 0) > 0;
+            <MatchupCapture ref={captureRef} leagueName={leagueName}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex items-stretch gap-2"
+                >
+                  {pair.map((item, idx) => {
+                    const displayImage = getDisplayImage(item);
+                    const rank = rankMap.get(item.id);
+                    const hasMultipleImages = (itemImages.get(item.id)?.length || 0) > 0;
+                    const isWinner = chosen === idx;
+                    const isLoser = chosen !== null && chosen !== idx;
 
-                  return (
-                    <div key={item.id} className="relative flex flex-col">
-                      <button
-                        onClick={() => handleChoose(idx as 0 | 1)}
-                        className={`relative rounded-2xl border border-border bg-card overflow-hidden group cursor-pointer text-left transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] flex flex-col flex-1 ${
-                          chosen === idx ? "ring-2 ring-primary" : ""
-                        }`}
-                      >
-                        <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center overflow-hidden">
-                          {displayImage ? (
-                            <img
-                              src={displayImage}
-                              alt={item.name}
-                              className="w-full h-full object-contain bg-muted transition-transform duration-300 group-hover:scale-105"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                              }}
-                            />
-                          ) : (
-                            <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
-                          )}
-                        </div>
-                        <div className="p-2 sm:p-3">
-                          <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{item.name}</h3>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {rankVisible && rank && (
-                              <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
-                            )}
-                            {eloVisible && (
-                              <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                            )}
-                            {chosen !== null && (
-                              <EloChangeIndicator
-                                change={eloChanges.get(item.id) ?? null}
-                                oldRank={rankChanges.get(item.id)?.old ?? null}
-                                newRank={rankChanges.get(item.id)?.new ?? null}
+                    return (
+                      <div key={item.id} className="relative flex flex-col flex-1 min-w-0">
+                        <button
+                          onClick={() => handleChoose(idx as 0 | 1)}
+                          className={`relative rounded-xl overflow-hidden group cursor-pointer text-left transition-all duration-300 flex flex-col flex-1 ${
+                            isWinner
+                              ? "ring-2 ring-primary shadow-[0_0_20px_hsl(210_80%_60%/0.3)] scale-[1.02]"
+                              : isLoser
+                              ? "opacity-60 scale-[0.98]"
+                              : "hover:scale-[1.01] active:scale-[0.98]"
+                          }`}
+                        >
+                          {/* Image */}
+                          <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center overflow-hidden rounded-xl">
+                            {displayImage ? (
+                              <img
+                                src={displayImage}
+                                alt={item.name}
+                                className="w-full h-full object-contain bg-muted transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+                                }}
                               />
+                            ) : (
+                              <span className="text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
                             )}
                           </div>
-                        </div>
-                      </button>
-                      {hasMultipleImages && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                          title="Report image as not representative"
-                        >
-                          <Flag className="h-3.5 w-3.5" />
+
+                          {/* Name & stats overlay at bottom */}
+                          <div className="p-2">
+                            <h3 className="text-sm sm:text-base font-extrabold text-foreground truncate text-center">{item.name}</h3>
+                            <div className="flex items-center justify-center gap-2 mt-0.5">
+                              {rankVisible && rank && (
+                                <span className="text-[10px] font-semibold text-muted-foreground">#{rank}</span>
+                              )}
+                              {eloVisible && (
+                                <span className="text-[10px] font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Winner crown */}
+                          {isWinner && (
+                            <motion.div
+                              initial={{ scale: 0, y: -10 }}
+                              animate={{ scale: 1, y: 0 }}
+                              className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
+                            >
+                              <Crown className="h-4 w-4" />
+                            </motion.div>
+                          )}
                         </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-            </AnimatePresence>
+
+                        {/* Elo change below card */}
+                        {chosen !== null && (
+                          <div className="flex justify-center mt-1">
+                            <EloChangeIndicator
+                              change={eloChanges.get(item.id) ?? null}
+                              oldRank={rankChanges.get(item.id)?.old ?? null}
+                              newRank={rankChanges.get(item.id)?.new ?? null}
+                            />
+                          </div>
+                        )}
+
+                        {/* Report button */}
+                        {hasMultipleImages && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                            title="Report image as not representative"
+                          >
+                            <Flag className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* VS divider - positioned between cards */}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Centered VS text */}
+              <div className="flex items-center justify-center -mt-[calc(50%+1rem)] pointer-events-none" style={{ position: 'relative', height: 0 }}>
+                <div className="relative z-10">
+                  <span className="text-lg font-black text-gradient drop-shadow-lg bg-background/80 rounded-full px-2 py-0.5">VS</span>
+                </div>
+              </div>
+            </MatchupCapture>
           )}
 
-          <p className="text-center text-xs text-muted-foreground mt-3 mb-2">
-            Tap the one you prefer
+          <p className="text-center text-[10px] text-muted-foreground mt-2">
+            Tap the one you prefer · {currentIndex + 1}/{matchups.length}
           </p>
         </div>
       </div>
