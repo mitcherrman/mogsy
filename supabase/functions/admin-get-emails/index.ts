@@ -5,6 +5,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory rate limiting: max 10 requests per minute per admin
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,6 +52,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
     }
 
+    // Rate limit per admin user
+    if (!checkRateLimit(user.id)) {
+      console.warn(`Rate limit exceeded for admin ${user.id}`);
+      return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Get user_ids from request body
     const { user_ids } = await req.json();
     if (!user_ids || !Array.isArray(user_ids)) {
@@ -52,6 +75,9 @@ Deno.serve(async (req) => {
     if (!user_ids.every((id: unknown) => typeof id === 'string' && uuidRegex.test(id))) {
       return new Response(JSON.stringify({ error: "Invalid user_id format" }), { status: 400, headers: corsHeaders });
     }
+
+    // Audit log: record this access
+    console.log(`[AUDIT] admin-get-emails called by admin=${user.id} for ${user_ids.length} users at ${new Date().toISOString()}`);
 
     // Fetch emails from auth.users using service role
     const emailMap: Record<string, string> = {};
