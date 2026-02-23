@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Copy, Gift, Users, Diamond, Zap, Shield, ArrowLeft, Check } from "lucide-react";
+import { Copy, Gift, Users, Diamond, Zap, Shield, ArrowLeft, Check, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,12 +17,20 @@ interface ReferralSettings {
   referrer_boost_credits: number;
 }
 
+interface ReferralRedemption {
+  id: string;
+  redeemed_by_user_id: string;
+  redeemer_name: string;
+  created_at: string;
+}
+
 export default function Referral() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [settings, setSettings] = useState<ReferralSettings | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralCount, setReferralCount] = useState(0);
+  const [redemptions, setRedemptions] = useState<ReferralRedemption[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -36,12 +44,30 @@ export default function Referral() {
     const [{ data: settingsData }, { data: linkData }, { data: redemptionData }] = await Promise.all([
       supabase.from("user_invite_settings").select("*").limit(1).single(),
       supabase.from("invite_links").select("*").eq("created_by_user_id", user.id).eq("type", "user").limit(1).single(),
-      supabase.from("invite_redemptions").select("id").eq("referrer_user_id", user.id),
+      supabase.from("invite_redemptions").select("id, redeemed_by_user_id, created_at").eq("referrer_user_id", user.id).order("created_at", { ascending: false }),
     ]);
 
     setSettings(settingsData as ReferralSettings | null);
     setReferralCode(linkData?.code || null);
-    setReferralCount(redemptionData?.length || 0);
+
+    const rData = redemptionData || [];
+    setReferralCount(rData.length);
+
+    // Enrich with names
+    if (rData.length > 0) {
+      const userIds = [...new Set(rData.map(r => r.redeemed_by_user_id))];
+      const { data: profiles } = await supabase.from("public_profiles").select("user_id, display_name").in("user_id", userIds);
+      const nameMap = new Map((profiles || []).map(p => [p.user_id, p.display_name]));
+      setRedemptions(rData.map(r => ({
+        id: r.id,
+        redeemed_by_user_id: r.redeemed_by_user_id,
+        redeemer_name: nameMap.get(r.redeemed_by_user_id) || "Unknown",
+        created_at: r.created_at,
+      })));
+    } else {
+      setRedemptions([]);
+    }
+
     setLoading(false);
   };
 
@@ -164,6 +190,29 @@ export default function Referral() {
                 )}
               </div>
             </motion.div>
+
+            {/* Referral Log */}
+            {redemptions.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-3">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-primary" /> Your Referrals
+                </h3>
+                <div className="space-y-2">
+                  {redemptions.map(r => (
+                    <div key={r.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{r.redeemer_name}</p>
+                        <p className="text-[10px] text-muted-foreground">Joined {new Date(r.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <Gift className="h-4 w-4 text-primary shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
           </div>
         )}
       </div>
