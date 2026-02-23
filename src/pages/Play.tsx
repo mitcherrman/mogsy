@@ -167,7 +167,7 @@ function TopBubble({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}
-            transition={springFast}
+            transition={{ duration: 0.2 }}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.95 }}
             className={`h-32 w-32 gap-2 ${bubbleBase} ${isExpanded ? bubbleActive : `${bubbleInactive} ${bubbleHoverInactive}`}`}
@@ -192,26 +192,24 @@ function TopBubble({
           >
             <div className="flex items-center justify-center gap-6">
               <AnimatePresence mode="popLayout">
-                {(subExpanded === null || subExpanded === "swipe") && (
+                {(subExpanded === null || (subExpanded === "swipe" && !selectedCategory)) && (
                   <motion.button
                     key="swipe"
-                    layout
                     onClick={() => onSubToggle("swipe")}
                     initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      width: subExpanded === "swipe" ? 128 : 80,
-                      height: subExpanded === "swipe" ? 128 : 80,
-                    }}
+                    animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.5 }}
-                    transition={spring}
+                    transition={{ duration: 0.2 }}
                     whileHover={{ scale: 1.06 }}
                     whileTap={{ scale: 0.95 }}
                     className={`${bubbleBase} gap-1 ${
                       subExpanded === "swipe" ? bubbleActive : "border-primary/30 bg-primary/5 text-primary"
                     }`}
-                    style={{ boxShadow: subExpanded === "swipe" ? "0 0 40px hsl(var(--primary) / 0.25)" : "none" }}
+                    style={{
+                      width: subExpanded === "swipe" ? 128 : 80,
+                      height: subExpanded === "swipe" ? 128 : 80,
+                      boxShadow: subExpanded === "swipe" ? "0 0 40px hsl(var(--primary) / 0.25)" : "none",
+                    }}
                   >
                     <Shuffle className={subExpanded === "swipe" ? "h-10 w-10" : "h-6 w-6"} />
                     <span className={`font-extrabold tracking-wide ${subExpanded === "swipe" ? "text-sm" : "text-[10px]"}`}>
