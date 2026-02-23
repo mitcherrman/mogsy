@@ -5,6 +5,7 @@ import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
+import { useSwipeSound } from "@/hooks/useSwipeSound";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
@@ -27,6 +28,7 @@ const fadeIn = { initial: { opacity: 0, scale: 0.85 }, animate: { opacity: 1, sc
 
 export default function Play() {
   const navigate = useNavigate();
+  const { playSwipeSound } = useSwipeSound();
   const [expanded, setExpanded] = useState<ModeKey>(null);
   const [subExpanded, setSubExpanded] = useState<SubKey>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -72,19 +74,22 @@ export default function Play() {
     fetchImages();
   }, []);
 
-  // Get a rotating image for a category
   const getCategoryImage = useCallback((category: string) => {
     const catImages = previewImages.filter((img) => img.category === category);
     if (catImages.length === 0) return null;
     return catImages[0]?.image_url || null;
   }, [previewImages]);
 
-  // Get a rotating image for a specific league
   const getLeagueImage = useCallback((leagueId: string) => {
     const leagueImages = previewImages.filter((img) => img.league_id === leagueId);
     if (leagueImages.length === 0) return null;
     return leagueImages[0]?.image_url || null;
   }, [previewImages]);
+
+  const handleBubbleClick = (action: () => void) => {
+    playSwipeSound();
+    action();
+  };
 
   const toggle = (key: ModeKey) => {
     if (expanded === key) { setExpanded(null); setSubExpanded(null); setSelectedCategory(null); }
@@ -124,6 +129,23 @@ export default function Play() {
 
   const onCatSelect = (cat: string) => setSelectedCategory(cat);
 
+  // Determine if we need scrolling (large list of subcategories)
+  const needsScroll = (() => {
+    if (selectedCategory) {
+      const leaguesInCat = currentCategories[selectedCategory] || [];
+      return leaguesInCat.length > 8;
+    }
+    if (subExpanded && !selectedCategory) {
+      const categoryKeys = Object.keys(currentCategories);
+      if (categoryKeys.length <= 1) {
+        const allLeagues = categoryKeys.flatMap((cat) => currentCategories[cat]);
+        return allLeagues.length > 8;
+      }
+      return categoryKeys.length > 6;
+    }
+    return false;
+  })();
+
   const renderContent = () => {
     // No mode selected — show Collections & Compete side by side
     if (!expanded) {
@@ -131,18 +153,18 @@ export default function Play() {
         <AnimatePresence mode="wait">
           <motion.div key="top-level" {...fadeIn} className="flex items-center justify-center gap-10">
             <div className="flex flex-col items-center gap-2">
-              <Bubble size={148} onClick={() => toggle("collections")} active={false} variant="card">
+              <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("collections"))} active={false} variant="card">
                 <span className="h-10 w-10 flex items-center justify-center"><LayoutGrid className="h-10 w-10" /></span>
                 <span className="text-sm font-extrabold tracking-wide">Collections</span>
               </Bubble>
-              <span className="text-[11px] text-muted-foreground text-center max-w-[130px] leading-tight">Vote on curated matchups</span>
+              <FadeLabel delay={0.5}>Vote on curated matchups</FadeLabel>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <Bubble size={148} onClick={() => toggle("compete")} active={false} variant="card">
+              <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("compete"))} active={false} variant="card">
                 <span className="h-10 w-10 flex items-center justify-center"><Users className="h-10 w-10" /></span>
                 <span className="text-sm font-extrabold tracking-wide">Compete</span>
               </Bubble>
-              <span className="text-[11px] text-muted-foreground text-center max-w-[130px] leading-tight">Go head-to-head with others</span>
+              <FadeLabel delay={0.5}>Go head-to-head with others</FadeLabel>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -156,24 +178,24 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key="mode-selected" {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={148} onClick={() => toggle(expanded)} active variant="card">
+            <Bubble size={148} onClick={() => handleBubbleClick(() => toggle(expanded))} active variant="card">
               <span className="h-10 w-10 flex items-center justify-center">{modeIcon}</span>
               <span className="text-sm font-extrabold tracking-wide">{modeLabel}</span>
             </Bubble>
             <div className="flex items-center justify-center gap-6">
               <div className="flex flex-col items-center gap-2">
-                <Bubble size={100} onClick={() => handleSubToggle("swipe")} active={false} variant="accent">
+                <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active={false} variant="accent">
                   <Shuffle className="h-7 w-7" />
                   <span className="text-xs font-extrabold tracking-wide">Swipe</span>
                 </Bubble>
-                <span className="text-[10px] text-muted-foreground text-center max-w-[100px] leading-tight">Pick your favorite</span>
+                <FadeLabel delay={0.5}>Pick your favorite</FadeLabel>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <Bubble size={100} onClick={() => handleSubToggle("elocheck")} active={false} variant="accent">
+                <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("elocheck"))} active={false} variant="accent">
                   <Zap className="h-7 w-7" />
                   <span className="text-xs font-extrabold tracking-wide">Elo Check</span>
                 </Bubble>
-                <span className="text-[10px] text-muted-foreground text-center max-w-[100px] leading-tight">Guess who ranks higher</span>
+                <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
               </div>
             </div>
           </motion.div>
@@ -193,7 +215,7 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key="swipe-categories" {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={148} onClick={() => handleSubToggle("swipe")} active variant="accent">
+            <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
               <Shuffle className="h-10 w-10" />
               <span className="text-sm font-extrabold tracking-wide">Swipe</span>
             </Bubble>
@@ -207,7 +229,7 @@ export default function Play() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ ...ease, delay: i * 0.04 }}
                   >
-                    <Bubble size={112} onClick={() => onCatSelect(cat)} active={false} variant="card" imageUrl={catImage}>
+                    <Bubble size={112} onClick={() => handleBubbleClick(() => onCatSelect(cat))} active={false} variant="card" imageUrl={catImage}>
                       <span className="text-sm font-extrabold tracking-wide leading-tight text-center px-1">{cat}</span>
                     </Bubble>
                   </motion.div>
@@ -225,7 +247,7 @@ export default function Play() {
       return (
         <AnimatePresence mode="wait">
           <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={148} onClick={() => setSelectedCategory(null)} active variant="card" imageUrl={catImage}>
+            <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedCategory(null))} active variant="card" imageUrl={catImage}>
               <span className="text-sm font-extrabold tracking-wide">{selectedCategory}</span>
             </Bubble>
             <div className="flex flex-wrap items-center justify-center gap-4">
@@ -238,7 +260,7 @@ export default function Play() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ ...ease, delay: i * 0.04 }}
                   >
-                    <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card" imageUrl={leagueImage}>
+                    <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} active={false} variant="card" imageUrl={leagueImage}>
                       <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                     </Bubble>
                   </motion.div>
@@ -255,7 +277,7 @@ export default function Play() {
     return (
       <AnimatePresence mode="wait">
         <motion.div key="swipe-leagues-direct" {...fadeIn} className="flex flex-col items-center gap-5">
-          <Bubble size={148} onClick={() => handleSubToggle("swipe")} active variant="accent">
+          <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
             <Shuffle className="h-10 w-10" />
             <span className="text-sm font-extrabold tracking-wide">Swipe</span>
           </Bubble>
@@ -269,7 +291,7 @@ export default function Play() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ ...ease, delay: i * 0.04 }}
                 >
-                  <Bubble size={100} onClick={() => handleLeagueSelect(league)} active={false} variant="card" imageUrl={leagueImage}>
+                  <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} active={false} variant="card" imageUrl={leagueImage}>
                     <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
                   </Bubble>
                 </motion.div>
@@ -282,7 +304,7 @@ export default function Play() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className={`bg-background px-4 py-8 ${needsScroll ? 'min-h-screen' : 'h-[calc(100vh-4rem)] overflow-hidden'}`}>
       <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups." />
       <div className="container mx-auto max-w-md">
         <div className="flex items-center gap-3 mb-12">
@@ -296,6 +318,20 @@ export default function Play() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ─── Fade-in label below bubbles ─── */
+function FadeLabel({ children, delay }: { children: React.ReactNode; delay: number }) {
+  return (
+    <motion.span
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay }}
+      className="text-[10px] text-muted-foreground text-center max-w-[130px] leading-tight"
+    >
+      {children}
+    </motion.span>
   );
 }
 

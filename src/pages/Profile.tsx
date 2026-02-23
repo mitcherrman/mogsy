@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
-import ProfileTopComments from "@/components/ProfileTopComments";
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -291,7 +291,7 @@ export default function Profile() {
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Left sidebar: Exposure Boost */}
               <div className="lg:w-56 shrink-0 order-2 lg:order-1">
-                <div className="sticky top-8 rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="sticky top-20 rounded-2xl border border-border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Boost</h3>
@@ -452,8 +452,8 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Top Comments */}
-                {profileId && <ProfileTopComments profileId={profileId} />}
+
+
 
                 {/* Save button */}
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
@@ -463,7 +463,7 @@ export default function Profile() {
 
               {/* Right sidebar: Profile Frame */}
               <div className="lg:w-56 shrink-0 order-3">
-                <div className="sticky top-8 rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="sticky top-20 rounded-2xl border border-border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Frame</h3>
