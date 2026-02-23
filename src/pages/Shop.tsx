@@ -116,12 +116,21 @@ export default function Shop() {
     setPurchasing("portal");
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
+      if (error) {
+        // Try to parse the error body for a user-friendly message
+        const errorBody = typeof error === "object" && error?.context?.body
+          ? await error.context.json?.().catch(() => null)
+          : null;
+        const msg = data?.error || errorBody?.error || "Something went wrong";
+        toast({ title: "Portal error", description: msg, variant: "destructive" });
+        setPurchasing(null);
+        return;
+      }
       if (data?.url) {
         window.open(data.url, "_blank");
       }
     } catch (err: any) {
-      toast({ title: "Portal error", description: err.message || "Something went wrong", variant: "destructive" });
+      toast({ title: "Portal error", description: "Something went wrong", variant: "destructive" });
     }
     setPurchasing(null);
   };
