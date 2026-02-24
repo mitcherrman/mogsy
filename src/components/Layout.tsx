@@ -8,7 +8,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pt-16 animate-page-fade-in">
+      <main className="pt-14 animate-page-fade-in">
         <Outlet />
       </main>
     </div>
