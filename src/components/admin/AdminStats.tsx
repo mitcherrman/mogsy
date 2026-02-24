@@ -36,16 +36,16 @@ export default function AdminStats() {
     { label: "Bots", value: stats.totalBots, icon: Users, color: "text-secondary" },
     { label: "Leagues", value: stats.totalLeagues, icon: Trophy, color: "text-accent-foreground" },
     { label: "Matches", value: stats.totalMatches, icon: Swords, color: "text-destructive" },
-    { label: "Preset Items", value: stats.totalPresetItems, icon: Layers, color: "text-primary" },
+    { label: "Items", value: stats.totalPresetItems, icon: Layers, color: "text-primary" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
       {cards.map((c) => (
-        <div key={c.label} className="rounded-xl border border-border bg-card p-4 text-center">
-          <c.icon className={`h-5 w-5 mx-auto mb-1 ${c.color}`} />
-          <p className="text-2xl font-extrabold text-foreground">{c.value}</p>
-          <p className="text-xs text-muted-foreground">{c.label}</p>
+        <div key={c.label} className="rounded-lg sm:rounded-xl border border-border bg-card p-1.5 sm:p-4 text-center">
+          <c.icon className={`h-3 w-3 sm:h-5 sm:w-5 mx-auto mb-0.5 sm:mb-1 ${c.color}`} />
+          <p className="text-sm sm:text-2xl font-extrabold text-foreground leading-tight">{c.value}</p>
+          <p className="text-[9px] sm:text-xs text-muted-foreground leading-tight">{c.label}</p>
         </div>
       ))}
     </div>

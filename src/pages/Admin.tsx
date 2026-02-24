@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield } from "lucide-react";
+import { Shield, ChevronRight, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 import AdminStats from "@/components/admin/AdminStats";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminCollections from "@/components/admin/AdminCollections";
@@ -17,13 +18,30 @@ import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminAds from "@/components/admin/AdminAds";
 
+const allTabs = [
+  { value: "notifications", label: "Alerts", masterOnly: false },
+  { value: "users", label: "Users", masterOnly: false },
+  { value: "collections", label: "Collections", masterOnly: false },
+  { value: "bots", label: "Bots", masterOnly: false },
+  { value: "promoted", label: "Promoted", masterOnly: false },
+  { value: "elo-check", label: "Elo Check", masterOnly: false },
+  { value: "comments", label: "Comments", masterOnly: false },
+  { value: "invite-links", label: "Invites", masterOnly: false },
+  { value: "ads", label: "Ads", masterOnly: false },
+  { value: "settings", label: "Settings", masterOnly: true },
+];
+
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [tabPage, setTabPage] = useState(0);
+
+  const TABS_PER_PAGE = 3;
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -50,7 +68,6 @@ export default function Admin() {
         setLoading(false);
       });
 
-    // Fetch unread notification count
     supabase
       .from("admin_notifications")
       .select("id", { count: "exact", head: true })
@@ -68,39 +85,56 @@ export default function Admin() {
     );
   }
 
+  const visibleTabs = allTabs.filter(t => !t.masterOnly || isMasterAdmin);
+  const totalPages = Math.ceil(visibleTabs.length / TABS_PER_PAGE);
+  const paginatedTabs = isMobile
+    ? visibleTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE)
+    : visibleTabs;
+
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className="min-h-screen bg-background px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-4xl">
-        <div className="flex items-center gap-3 mb-6">
-          <Shield className="h-7 w-7 text-accent-foreground" />
-          <h1 className="text-3xl font-extrabold text-foreground">Admin Panel</h1>
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6">
+          <Shield className="h-5 w-5 sm:h-7 sm:w-7 text-accent-foreground" />
+          <h1 className="text-xl sm:text-3xl font-extrabold text-foreground">Admin</h1>
           {isMasterAdmin && (
-            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Master</span>
+            <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Master</span>
           )}
         </div>
 
         <AdminStats />
 
-        <Tabs defaultValue="notifications" className="mt-6 space-y-6">
-          <TabsList className="bg-secondary flex-wrap">
-            <TabsTrigger value="notifications" className="relative">
-              Alerts
-              {unreadCount > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
-                  {unreadCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="collections">Collections</TabsTrigger>
-            <TabsTrigger value="bots">Bots</TabsTrigger>
-            <TabsTrigger value="promoted">Promoted</TabsTrigger>
-            <TabsTrigger value="elo-check">Elo Check</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
-            <TabsTrigger value="invite-links">Invite Links</TabsTrigger>
-            <TabsTrigger value="ads">Ads</TabsTrigger>
-            {isMasterAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
-          </TabsList>
+        <Tabs defaultValue="notifications" className="mt-3 sm:mt-6 space-y-3 sm:space-y-6">
+          <div className="flex items-center gap-1">
+            {isMobile && tabPage > 0 && (
+              <button
+                onClick={() => setTabPage(p => p - 1)}
+                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            <TabsList className="bg-secondary flex-1 overflow-hidden">
+              {paginatedTabs.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="text-[11px] sm:text-sm px-2 sm:px-3 relative">
+                  {tab.label}
+                  {tab.value === "notifications" && unreadCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center h-3.5 min-w-3.5 sm:h-4 sm:min-w-4 px-0.5 sm:px-1 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold">
+                      {unreadCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {isMobile && tabPage < totalPages - 1 && (
+              <button
+                onClick={() => setTabPage(p => p + 1)}
+                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
           <TabsContent value="notifications"><AdminNotifications onReadChange={(count) => setUnreadCount(count)} /></TabsContent>
           <TabsContent value="users"><AdminUsers isMasterAdmin={isMasterAdmin} /></TabsContent>
