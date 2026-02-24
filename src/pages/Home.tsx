@@ -113,6 +113,9 @@ export default function Home() {
   const loadData = async (profileId: string, cats: string[]) => {
     setLoading(true);
 
+    // Start banner loading immediately in parallel with everything else
+    const bannerPromise = loadBannerItems();
+
     const [
       { data: allLeagues },
       { data: memberships },
@@ -250,7 +253,7 @@ export default function Home() {
     setRecentSwipes(swipes);
 
     loadTopComments();
-    loadBannerItems();
+    await bannerPromise;
     setLoading(false);
   };
 
@@ -389,8 +392,8 @@ export default function Home() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
-        <div className="flex justify-center mb-10">
-          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44" />
+        <div className="flex justify-center mb-6">
+          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44 -mb-4 object-cover object-top" style={{ clipPath: 'inset(0 0 12% 0)' }} />
         </div>
 
         {/* Rotating ELO Banner */}
