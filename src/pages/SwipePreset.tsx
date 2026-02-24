@@ -77,6 +77,7 @@ export default function SwipePreset() {
   const [gauntletMode, setGauntletMode] = useState(false);
   const [gauntletChampion, setGauntletChampion] = useState<PresetItem | null>(null);
   const [gauntletStreak, setGauntletStreak] = useState(0);
+  const [gauntletPair, setGauntletPair] = useState<[PresetItem, PresetItem] | null>(null);
 
   // Multi-image state
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
@@ -208,9 +209,7 @@ export default function SwipePreset() {
   }, [items]);
 
   const pair = gauntletMode
-    ? (gauntletChampion
-      ? [gauntletChampion, getGauntletChallenger(gauntletChampion)] as [PresetItem, PresetItem]
-      : (currentIndex < matchups.length ? matchups[currentIndex] : null))
+    ? gauntletPair
     : (currentIndex < matchups.length ? matchups[currentIndex] : null);
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
@@ -285,13 +284,14 @@ export default function SwipePreset() {
         });
 
         if (gauntletMode) {
-          // In gauntlet: winner stays, new challenger appears
-          setGauntletChampion(winner);
+          const updatedWinner = updatedItems.find(i => i.id === winner.id)!;
+          setGauntletChampion(updatedWinner);
           setGauntletStreak(prev => {
-            // If winner was already the champion, streak continues
             if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
             return 1;
           });
+          const challenger = getGauntletChallenger(updatedWinner);
+          setGauntletPair([updatedWinner, challenger]);
           if (!isPro && newCount % AD_INTERVAL === 0) {
             setShowAd(true);
           }
@@ -313,13 +313,19 @@ export default function SwipePreset() {
   const handleToggleGauntlet = () => {
     const next = !gauntletMode;
     setGauntletMode(next);
-    if (next && pair) {
-      // Start gauntlet from scratch - pick first pair randomly
-      setGauntletChampion(null);
-      setGauntletStreak(0);
+    setGauntletChampion(null);
+    setGauntletStreak(0);
+    if (next && items.length >= 2) {
+      // Start gauntlet with current matchup pair or random pair
+      const currentPair = currentIndex < matchups.length ? matchups[currentIndex] : null;
+      if (currentPair) {
+        setGauntletPair(currentPair);
+      } else {
+        const shuffled = [...items].sort(() => Math.random() - 0.5);
+        setGauntletPair([shuffled[0], shuffled[1]]);
+      }
     } else {
-      setGauntletChampion(null);
-      setGauntletStreak(0);
+      setGauntletPair(null);
     }
   };
 
@@ -495,12 +501,12 @@ export default function SwipePreset() {
           {/* Matchup area */}
           {pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
-              <AnimatePresence mode={gauntletMode ? "sync" : "wait"}>
+              <AnimatePresence mode="wait">
                 <motion.div
                   key={gauntletMode ? `gauntlet-${matchCount}` : `pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
-                  initial={gauntletMode ? false : { opacity: 0 }}
+                  initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={gauntletMode ? {} : { opacity: 0 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >

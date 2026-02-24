@@ -311,12 +311,12 @@ export default function Swipe() {
 
           {/* Capturable matchup area */}
           <MatchupCapture ref={captureRef} leagueName="Who's Better?">
-            <AnimatePresence mode={gauntletMode ? "sync" : "wait"}>
+            <AnimatePresence mode="wait">
               <motion.div
-                key={gauntletMode ? `gauntlet-${matchCount}` : `pair-${pair[0].id}-${pair[1].id}`}
-                initial={gauntletMode ? false : { opacity: 0 }}
+                key={`pair-${pair[0].id}-${pair[1].id}-${matchCount}`}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={gauntletMode ? {} : { opacity: 0 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
                 className="flex flex-row gap-3 items-stretch"
               >
