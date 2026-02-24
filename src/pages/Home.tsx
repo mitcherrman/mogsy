@@ -397,7 +397,7 @@ export default function Home() {
         {/* Rotating ELO Banner */}
         {bannerItems.length > 0 && currentBanner && (
           <section className="mb-8">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden relative h-32">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden relative h-28 sm:h-32">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={bannerIndex}
@@ -405,9 +405,9 @@ export default function Home() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ duration: 0.4 }}
-                  className="absolute inset-0 flex items-center gap-4 px-5"
+                  className="absolute inset-0 flex items-center gap-3 sm:gap-4 px-3 sm:px-5"
                 >
-                  <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
+                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
                     <img src={currentBanner.image} alt={currentBanner.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -415,20 +415,11 @@ export default function Home() {
                       <Crown className="h-4 w-4 text-primary" />
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Top Rated</span>
                     </div>
-                    <p className="font-extrabold text-lg text-foreground truncate">{currentBanner.name}</p>
+                    <p className="font-extrabold text-base sm:text-lg text-foreground truncate">{currentBanner.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm font-bold text-primary">{currentBanner.elo} ELO</span>
-                      <span className="text-xs text-muted-foreground">in {currentBanner.leagueName}</span>
+                      <span className="text-xs text-muted-foreground truncate">in {currentBanner.leagueName}</span>
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {bannerItems.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setBannerIndex(i)}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === bannerIndex ? "bg-primary" : "bg-muted-foreground/30"}`}
-                      />
-                    ))}
                   </div>
                 </motion.div>
               </AnimatePresence>
