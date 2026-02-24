@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,6 +63,21 @@ export default function Profile() {
     website: "",
   });
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+
+  const isEditing = (field: string) => editingFields.has(field);
+  const toggleEdit = (field: string) => {
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(field)) next.delete(field);
+      else next.add(field);
+      return next;
+    });
+  };
+  const isFieldFilled = (field: string) => {
+    const val = (form as any)[field];
+    return typeof val === "string" && val.trim().length > 0;
+  };
 
   // Close city dropdown on outside click
   useEffect(() => {
@@ -106,6 +121,23 @@ export default function Profile() {
         twitch: socials.twitch || "",
         website: socials.website || "",
       });
+
+      // Fields that are empty start in edit mode
+      const allFields = ["displayName", "age", "location", "statusMessage", "instagram", "tiktok", "youtube", "x", "twitch", "website"];
+      const formValues: Record<string, string> = {
+        displayName: profile.display_name || "",
+        age: profile.age?.toString() || "",
+        location: profile.location || "",
+        statusMessage: profile.status_message || "",
+        instagram: socials.instagram || "",
+        tiktok: socials.tiktok || "",
+        youtube: socials.youtube || "",
+        x: socials.x || "",
+        twitch: socials.twitch || "",
+        website: socials.website || "",
+      };
+      const emptyFields = new Set(allFields.filter((f) => !formValues[f]?.trim()));
+      setEditingFields(emptyFields);
 
       const { data: photoData } = await supabase
         .from("profile_photos")
@@ -298,11 +330,6 @@ export default function Profile() {
     instagram: Instagram, youtube: Youtube, twitch: Twitch, x: Twitter, website: Globe,
   };
 
-  const rotationPhotos = photos.slice(0, 3);
-  const currentAvatar = rotationPhotos.length > 0
-    ? rotationPhotos[Math.floor(Math.random() * rotationPhotos.length)].url
-    : null;
-
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
@@ -315,46 +342,7 @@ export default function Profile() {
             <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
           </div>
 
-          {/* Saved Info Summary Card */}
-          {form.displayName && (
-            <div className="rounded-2xl border border-primary/20 bg-card p-5 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-muted">
-                  {currentAvatar ? (
-                    <img src={currentAvatar} alt={form.displayName} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
-                      <User className="h-8 w-8 text-muted-foreground/70" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-extrabold text-foreground truncate">{form.displayName}</h2>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                    {form.age && <span>{form.age} years old</span>}
-                    {form.location && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{form.location}</span>}
-                    {isPro && <span className="text-primary font-bold flex items-center gap-0.5"><Crown className="h-3 w-3" /> Pro</span>}
-                  </div>
-                  {form.statusMessage && (
-                    <p className="text-xs text-foreground/70 italic mt-1 truncate">"{form.statusMessage}"</p>
-                  )}
-                  <div className="flex gap-2 mt-1.5">
-                    {Object.entries({ instagram: form.instagram, tiktok: form.tiktok, youtube: form.youtube, x: form.x, twitch: form.twitch, website: form.website })
-                      .filter(([, v]) => !!v)
-                      .map(([key, value]) => {
-                        const Icon = socialIcons[key];
-                        if (!Icon) return null;
-                        return (
-                          <a key={key} href={value} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                            <Icon className="h-3.5 w-3.5" />
-                          </a>
-                        );
-                      })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           <form onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-6">
@@ -425,78 +413,139 @@ export default function Profile() {
                 <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
                   <Label className="text-base font-bold block">Basic Info</Label>
                   <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Display Name */}
                     <div className="space-y-2">
-                      <Label htmlFor="displayName">Display Name *</Label>
-                      <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required maxLength={30} />
-                      {nameError ? (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" /> {nameError}
-                        </p>
-                      ) : form.displayName.length > 0 && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-primary" /> {30 - form.displayName.length} characters left
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
-                      <Input
-                        id="age"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="Your age"
-                        value={form.age}
-                        onChange={(e) => handleChange("age", e.target.value)}
-                        maxLength={3}
-                      />
-                      {ageWarning && (
-                        <p className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" /> {ageWarning}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2 sm:col-span-2 relative" ref={cityRef}>
-                      <Label htmlFor="location">Location</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="location"
-                          placeholder="Start typing a city…"
-                          value={form.location}
-                          onChange={(e) => handleChange("location", e.target.value)}
-                          onFocus={() => { if (citySuggestions.length > 0) setShowCityDropdown(true); }}
-                          className="pl-9"
-                          autoComplete="off"
-                        />
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="displayName">Display Name *</Label>
+                        {isFieldFilled("displayName") && !isEditing("displayName") && (
+                          <button type="button" onClick={() => toggleEdit("displayName")} className="text-muted-foreground hover:text-primary transition-colors">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
-                      {showCityDropdown && citySuggestions.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
-                          {citySuggestions.map((city) => (
-                            <button
-                              key={city}
-                              type="button"
-                              onClick={() => selectCity(city)}
-                              className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
-                            >
-                              <MapPin className="inline h-3 w-3 mr-2 text-muted-foreground" />
-                              {city}
-                            </button>
-                          ))}
-                        </div>
+                      {isEditing("displayName") || !isFieldFilled("displayName") ? (
+                        <>
+                          <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required maxLength={30} />
+                          {nameError ? (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" /> {nameError}
+                            </p>
+                          ) : form.displayName.length > 0 && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3 text-primary" /> {30 - form.displayName.length} characters left
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-foreground py-2 px-3 rounded-md bg-muted/30 border border-border">{form.displayName}</p>
                       )}
                     </div>
+
+                    {/* Age */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="age">Age</Label>
+                        {isFieldFilled("age") && !isEditing("age") && (
+                          <button type="button" onClick={() => toggleEdit("age")} className="text-muted-foreground hover:text-primary transition-colors">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {isEditing("age") || !isFieldFilled("age") ? (
+                        <>
+                          <Input
+                            id="age"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="Your age"
+                            value={form.age}
+                            onChange={(e) => handleChange("age", e.target.value)}
+                            maxLength={3}
+                          />
+                          {ageWarning && (
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" /> {ageWarning}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-foreground py-2 px-3 rounded-md bg-muted/30 border border-border">{form.age}</p>
+                      )}
+                    </div>
+
+                    {/* Location */}
+                    <div className="space-y-2 sm:col-span-2 relative" ref={cityRef}>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="location">Location</Label>
+                        {isFieldFilled("location") && !isEditing("location") && (
+                          <button type="button" onClick={() => toggleEdit("location")} className="text-muted-foreground hover:text-primary transition-colors">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {isEditing("location") || !isFieldFilled("location") ? (
+                        <>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="location"
+                              placeholder="Start typing a city…"
+                              value={form.location}
+                              onChange={(e) => handleChange("location", e.target.value)}
+                              onFocus={() => { if (citySuggestions.length > 0) setShowCityDropdown(true); }}
+                              className="pl-9"
+                              autoComplete="off"
+                            />
+                          </div>
+                          {showCityDropdown && citySuggestions.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+                              {citySuggestions.map((city) => (
+                                <button
+                                  key={city}
+                                  type="button"
+                                  onClick={() => selectCity(city)}
+                                  className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                                >
+                                  <MapPin className="inline h-3 w-3 mr-2 text-muted-foreground" />
+                                  {city}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-foreground py-2 px-3 rounded-md bg-muted/30 border border-border flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />{form.location}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Status Message */}
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="statusMessage">Status Message</Label>
-                      <Textarea
-                        id="statusMessage"
-                        placeholder="What's on your mind?"
-                        value={form.statusMessage}
-                        onChange={(e) => handleChange("statusMessage", e.target.value)}
-                        rows={2}
-                        maxLength={150}
-                      />
-                      <p className="text-[10px] text-muted-foreground text-right">{form.statusMessage.length}/150</p>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="statusMessage">Status Message</Label>
+                        {isFieldFilled("statusMessage") && !isEditing("statusMessage") && (
+                          <button type="button" onClick={() => toggleEdit("statusMessage")} className="text-muted-foreground hover:text-primary transition-colors">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      {isEditing("statusMessage") || !isFieldFilled("statusMessage") ? (
+                        <>
+                          <Textarea
+                            id="statusMessage"
+                            placeholder="What's on your mind?"
+                            value={form.statusMessage}
+                            onChange={(e) => handleChange("statusMessage", e.target.value)}
+                            rows={2}
+                            maxLength={150}
+                          />
+                          <p className="text-[10px] text-muted-foreground text-right">{form.statusMessage.length}/150</p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-foreground/80 italic py-2 px-3 rounded-md bg-muted/30 border border-border">"{form.statusMessage}"</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -508,23 +557,36 @@ export default function Profile() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     {["instagram", "tiktok", "youtube", "x", "twitch", "website"].map((s) => (
                       <div key={s} className="space-y-1">
-                        <Label htmlFor={s} className="text-xs capitalize text-muted-foreground">{s}</Label>
-                        <Input
-                          id={s}
-                          placeholder={SOCIAL_PLACEHOLDERS[s] || `Your ${s}`}
-                          value={(form as any)[s]}
-                          onChange={(e) => handleChange(s, e.target.value)}
-                          className={socialErrors[s] ? "border-destructive" : ""}
-                        />
-                        {socialErrors[s] && (
-                          <p className="text-[10px] text-destructive flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" /> {socialErrors[s]}
-                          </p>
-                        )}
-                        {!socialErrors[s] && (form as any)[s] && (
-                          <p className="text-[10px] text-primary flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Valid
-                          </p>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={s} className="text-xs capitalize text-muted-foreground">{s}</Label>
+                          {isFieldFilled(s) && !isEditing(s) && (
+                            <button type="button" onClick={() => toggleEdit(s)} className="text-muted-foreground hover:text-primary transition-colors">
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        {isEditing(s) || !isFieldFilled(s) ? (
+                          <>
+                            <Input
+                              id={s}
+                              placeholder={SOCIAL_PLACEHOLDERS[s] || `Your ${s}`}
+                              value={(form as any)[s]}
+                              onChange={(e) => handleChange(s, e.target.value)}
+                              className={socialErrors[s] ? "border-destructive" : ""}
+                            />
+                            {socialErrors[s] && (
+                              <p className="text-[10px] text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" /> {socialErrors[s]}
+                              </p>
+                            )}
+                            {!socialErrors[s] && (form as any)[s] && (
+                              <p className="text-[10px] text-primary flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Valid
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-xs text-foreground py-2 px-3 rounded-md bg-muted/30 border border-border truncate">{(form as any)[s]}</p>
                         )}
                       </div>
                     ))}
