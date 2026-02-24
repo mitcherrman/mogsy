@@ -491,6 +491,7 @@ export default function EloCheck() {
                     >
                       {pair.map((item, idx) => {
                         const isHigher = item.elo >= pair[idx === 0 ? 1 : 0].elo;
+                        const isOnFire = !revealed && streak >= 3;
 
                         return (
                           <motion.button
@@ -502,6 +503,8 @@ export default function EloCheck() {
                                 ? isHigher
                                   ? "border-emerald-500/50 ring-2 ring-emerald-500/30"
                                   : "border-red-500/30 opacity-70"
+                                : isOnFire
+                                ? "on-fire cursor-pointer hover:scale-[1.01] active:scale-[0.98]"
                                 : "border-border hover:border-primary/40 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
                             }`}
                             whileTap={!revealed ? { scale: 0.97 } : undefined}

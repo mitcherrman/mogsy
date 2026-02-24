@@ -308,45 +308,73 @@ export default function Play() {
         );
       }
 
+      // Sort regular leagues by item count heuristic: more general name = top
+      // Sort by name length as proxy (shorter = more general), then alphabetically
+      const sortedLeagues = [...regularLeagues].sort((a, b) => {
+        // "Best X" with shorter name = more general
+        const aWords = a.name.split(' ').length;
+        const bWords = b.name.split(' ').length;
+        if (aWords !== bWords) return aWords - bWords;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Build pyramid rows: 1, 2, 3, 4... items per row
+      const allItems = [
+        ...subcategories.map(sub => ({ type: 'subcategory' as const, id: sub, name: sub })),
+        ...sortedLeagues.map(l => ({ type: 'league' as const, id: l.id, name: l.name, league: l })),
+      ];
+
+      const pyramidRows: typeof allItems[] = [];
+      let idx = 0;
+      let rowSize = 1;
+      while (idx < allItems.length) {
+        pyramidRows.push(allItems.slice(idx, idx + rowSize));
+        idx += rowSize;
+        rowSize++;
+      }
+
       return (
         <AnimatePresence mode="wait">
           <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
             <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedCategory(null))} active variant="card" imageUrl={catImage}>
               <span className="text-sm font-extrabold tracking-wide">{selectedCategory}</span>
             </Bubble>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              {/* Show subcategory bubbles */}
-              {subcategories.map((sub, i) => {
-                const isLol = sub === "League of Legends";
-                return (
-                  <motion.div
-                    key={sub}
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ ...ease, delay: i * 0.04 }}
-                  >
-                    <Bubble size={112} onClick={() => handleBubbleClick(() => setSelectedSubcategory(sub))} active={false} variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : undefined}>
-                      <span className="text-sm font-extrabold tracking-wide leading-tight text-center px-1">{isLol ? "⚔️" : "📁"} {sub}</span>
-                    </Bubble>
-                  </motion.div>
-                );
-              })}
-              {/* Show regular leagues */}
-              {regularLeagues.map((league, i) => {
-                const leagueImage = getLeagueImage(league.id);
-                return (
-                  <motion.div
-                    key={league.id}
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ ...ease, delay: (subcategories.length + i) * 0.04 }}
-                  >
-                    <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} active={false} variant="card" imageUrl={leagueImage}>
-                      <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{league.name}</span>
-                    </Bubble>
-                  </motion.div>
-                );
-              })}
+            <div className="flex flex-col items-center gap-3">
+              {pyramidRows.map((row, rowIdx) => (
+                <div key={rowIdx} className="flex items-center justify-center gap-3">
+                  {row.map((entry, i) => {
+                    const globalIdx = pyramidRows.slice(0, rowIdx).reduce((s, r) => s + r.length, 0) + i;
+                    if (entry.type === 'subcategory') {
+                      const isLol = entry.name === "League of Legends";
+                      return (
+                        <motion.div
+                          key={entry.id}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ ...ease, delay: globalIdx * 0.04 }}
+                        >
+                          <Bubble size={100} onClick={() => handleBubbleClick(() => setSelectedSubcategory(entry.name))} active={false} variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : undefined}>
+                            <span className="text-xs font-extrabold tracking-wide leading-tight text-center px-1">{isLol ? "⚔️" : "📁"} {entry.name}</span>
+                          </Bubble>
+                        </motion.div>
+                      );
+                    }
+                    const leagueImage = getLeagueImage(entry.id);
+                    return (
+                      <motion.div
+                        key={entry.id}
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ ...ease, delay: globalIdx * 0.04 }}
+                      >
+                        <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(entry.league!))} active={false} variant="card" imageUrl={leagueImage}>
+                          <span className="text-xs font-bold tracking-wide leading-tight text-center px-1 line-clamp-2">{entry.name}</span>
+                        </Bubble>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </motion.div>
         </AnimatePresence>

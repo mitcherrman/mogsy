@@ -508,9 +508,38 @@ export default function SwipePreset() {
           {/* Matchup area */}
           {pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
+              {gauntletMode ? (
+                /* Gauntlet: render champion stable, only challenger animates */
+                <div className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1">
+                  {pair.map((item, idx) => {
+                    const isChampion = gauntletChampion && item.id === gauntletChampion.id;
+                    return (
+                      <GauntletCard
+                        key={`slot-${idx}`}
+                        item={item}
+                        idx={idx}
+                        isChampion={!!isChampion}
+                        matchCount={matchCount}
+                        chosen={chosen}
+                        rankMap={rankMap}
+                        itemImages={itemImages}
+                        currentImageIndex={currentImageIndex}
+                        eloVisible={eloVisible}
+                        rankVisible={rankVisible}
+                        items={items}
+                        eloChanges={eloChanges}
+                        rankChanges={rankChanges}
+                        getDisplayImage={getDisplayImage}
+                        handleChoose={handleChoose}
+                        handleReportImage={handleReportImage}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={gauntletMode ? `gauntlet-${matchCount}` : `pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
+                  key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -614,6 +643,7 @@ export default function SwipePreset() {
                   })}
                 </motion.div>
               </AnimatePresence>
+              )}
 
               {/* VS badge centered between cards */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -633,5 +663,106 @@ export default function SwipePreset() {
         </div>
       </div>
     </>
+  );
+}
+
+/* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
+function GauntletCard({
+  item, idx, isChampion, matchCount, chosen, rankMap, itemImages, currentImageIndex,
+  eloVisible, rankVisible, items, eloChanges, rankChanges, getDisplayImage, handleChoose, handleReportImage,
+}: {
+  item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
+  chosen: 0 | 1 | null; rankMap: Map<string, number>;
+  itemImages: Map<string, ItemImage[]>; currentImageIndex: Map<string, number>;
+  eloVisible: boolean; rankVisible: boolean; items: PresetItem[];
+  eloChanges: Map<string, number>; rankChanges: Map<string, { old: number; new: number }>;
+  getDisplayImage: (item: PresetItem) => string | null;
+  handleChoose: (idx: 0 | 1) => void;
+  handleReportImage: (item: PresetItem) => void;
+}) {
+  const displayImage = getDisplayImage(item);
+  const rank = rankMap.get(item.id);
+  const hasMultipleImages = (itemImages.get(item.id)?.length || 0) > 0;
+  const isWinner = chosen === idx;
+  const isLoser = chosen !== null && chosen !== idx;
+
+  const cardContent = (
+    <div className="relative flex flex-col flex-1 min-h-0">
+      <motion.button
+        onClick={() => handleChoose(idx as 0 | 1)}
+        drag={chosen === null ? "x" : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.3}
+        onDragEnd={(_e: any, info: any) => {
+          if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
+        }}
+        whileTap={{ scale: 0.97 }}
+        className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
+          isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
+        } ${
+          isWinner
+            ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
+            : isLoser
+            ? "opacity-50 scale-[0.97]"
+            : "hover:scale-[1.01]"
+        }`}
+      >
+        <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted overflow-hidden">
+          {displayImage ? (
+            <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-muted"
+              onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
+          )}
+        </div>
+        {isWinner && (
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+            className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg">
+            <Crown className="h-4 w-4" />
+          </motion.div>
+        )}
+      </motion.button>
+      {hasMultipleImages && (
+        <button onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors z-10"
+          title="Report image as not representative">
+          <Flag className="h-3 w-3" />
+        </button>
+      )}
+      <div className="pt-1.5 text-center flex-shrink-0">
+        <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+        <div className="flex items-center justify-center gap-2 mt-0.5">
+          {rankVisible && rank && <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>}
+          {eloVisible && <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>}
+        </div>
+      </div>
+      {chosen !== null && (
+        <div className="flex justify-center mt-0.5 flex-shrink-0">
+          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} />
+        </div>
+      )}
+    </div>
+  );
+
+  if (isChampion) {
+    // Champion stays stable — no AnimatePresence exit/enter
+    return <div className="flex flex-col flex-1 min-h-0">{cardContent}</div>;
+  }
+
+  // Challenger fades in
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={`challenger-${item.id}-${matchCount}`}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.25 }}
+        className="flex flex-col flex-1 min-h-0"
+      >
+        {cardContent}
+      </motion.div>
+    </AnimatePresence>
   );
 }
