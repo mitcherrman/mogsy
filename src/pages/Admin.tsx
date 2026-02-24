@@ -41,7 +41,7 @@ export default function Admin() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [tabPage, setTabPage] = useState(0);
 
-  const TABS_PER_PAGE = 3;
+  const TABS_PER_PAGE = 5;
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -114,18 +114,22 @@ export default function Admin() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <TabsList className="bg-secondary flex-1 overflow-hidden">
+            <div className="flex-1 flex gap-1 overflow-hidden">
               {paginatedTabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="text-[11px] sm:text-sm px-2 sm:px-3 relative">
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="flex-1 text-[10px] sm:text-sm px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all relative"
+                >
                   {tab.label}
                   {tab.value === "notifications" && unreadCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center h-3.5 min-w-3.5 sm:h-4 sm:min-w-4 px-0.5 sm:px-1 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold">
+                    <span className="ml-0.5 inline-flex items-center justify-center h-3.5 min-w-3.5 sm:h-4 sm:min-w-4 px-0.5 sm:px-1 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold">
                       {unreadCount}
                     </span>
                   )}
                 </TabsTrigger>
               ))}
-            </TabsList>
+            </div>
             {isMobile && tabPage < totalPages - 1 && (
               <button
                 onClick={() => setTabPage(p => p + 1)}
