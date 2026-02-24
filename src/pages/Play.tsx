@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const fadeIn = { initial: { opacity: 0, scale: 0.85 }, animate: { opacity: 1, sc
 
 export default function Play() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { playSwipeSound } = useSwipeSound();
   const [expanded, setExpanded] = useState<ModeKey>(null);
   const [subExpanded, setSubExpanded] = useState<SubKey>(null);
@@ -44,6 +45,19 @@ export default function Play() {
       .select("id, name, category, type, subcategory")
       .then(({ data }) => { if (data) setLeagues(data as LeagueItem[]); });
   }, []);
+
+  // Restore navigation state from swipe back button
+  useEffect(() => {
+    const state = location.state as { restoreCategory?: string; restoreSubcategory?: string } | null;
+    if (state?.restoreCategory) {
+      setExpanded("collections");
+      setSubExpanded("swipe");
+      setSelectedCategory(state.restoreCategory);
+      setSelectedSubcategory(state.restoreSubcategory || null);
+      // Clear the state so refreshing doesn't re-restore
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   // Fetch random preview images from preset items
   useEffect(() => {
