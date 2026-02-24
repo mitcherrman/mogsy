@@ -120,7 +120,7 @@ export default function Play() {
     else if (selectedCategory) setSelectedCategory(null);
     else if (subExpanded) setSubExpanded(null);
     else if (expanded) setExpanded(null);
-    else navigate(-1);
+    else navigate("/home");
   };
 
   const handleLeagueSelect = (league: LeagueItem) => {
@@ -318,19 +318,21 @@ export default function Play() {
         return a.name.localeCompare(b.name);
       });
 
-      // Build pyramid rows: 1, 2, 3, 4... items per row
+      // Build pyramid rows: 1, 2, 3 max per row
       const allItems = [
         ...subcategories.map(sub => ({ type: 'subcategory' as const, id: sub, name: sub })),
         ...sortedLeagues.map(l => ({ type: 'league' as const, id: l.id, name: l.name, league: l })),
       ];
 
+      const MAX_ROW = 3;
       const pyramidRows: typeof allItems[] = [];
       let idx = 0;
       let rowSize = 1;
       while (idx < allItems.length) {
-        pyramidRows.push(allItems.slice(idx, idx + rowSize));
-        idx += rowSize;
-        rowSize++;
+        const size = Math.min(rowSize, MAX_ROW);
+        pyramidRows.push(allItems.slice(idx, idx + size));
+        idx += size;
+        if (rowSize < MAX_ROW) rowSize++;
       }
 
       return (
