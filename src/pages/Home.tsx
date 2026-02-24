@@ -385,12 +385,7 @@ export default function Home() {
   const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="min-h-screen bg-background px-4 py-8"
-    >
+    <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
         <div className="flex justify-center mb-2">
@@ -581,6 +576,6 @@ export default function Home() {
           </section>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
