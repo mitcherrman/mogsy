@@ -377,9 +377,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
+      <div className="min-h-screen bg-background" />
     );
   }
 
@@ -387,7 +385,12 @@ export default function Home() {
   const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-background px-4 py-8"
+    >
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
         <div className="flex justify-center mb-2">
@@ -578,6 +581,6 @@ export default function Home() {
           </section>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
