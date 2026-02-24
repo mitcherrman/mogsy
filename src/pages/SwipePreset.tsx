@@ -60,6 +60,7 @@ export default function SwipePreset() {
   const [matchCount, setMatchCount] = useState(0);
   const [leagueName, setLeagueName] = useState("");
   const [leagueCategory, setLeagueCategory] = useState<string | null>(null);
+  const [leagueSubcategory, setLeagueSubcategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
   const [showAd, setShowAd] = useState(false);
@@ -96,6 +97,7 @@ export default function SwipePreset() {
     if (league) {
       setLeagueName(league.name);
       setLeagueCategory((league as any).category);
+      setLeagueSubcategory((league as any).subcategory ?? null);
       setShowElo((league as any).show_elo ?? true);
       setShowRank((league as any).show_rank ?? true);
       // Check if this is a League of Legends subcategory league
@@ -346,7 +348,7 @@ export default function SwipePreset() {
   };
 
   const handleBack = () => {
-    navigate("/play");
+    navigate("/play", { state: { restoreCategory: leagueCategory, restoreSubcategory: leagueSubcategory } });
   };
 
   const sortedResults = useMemo(
