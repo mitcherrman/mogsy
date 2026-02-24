@@ -31,10 +31,13 @@ export default function Play() {
   const navigate = useNavigate();
   const location = useLocation();
   const { playSwipeSound } = useSwipeSound();
-  const [expanded, setExpanded] = useState<ModeKey>(null);
-  const [subExpanded, setSubExpanded] = useState<SubKey>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+
+  // Read restore state eagerly to avoid intermediate render flash
+  const restoreState = location.state as { restoreCategory?: string; restoreSubcategory?: string } | null;
+  const [expanded, setExpanded] = useState<ModeKey>(restoreState?.restoreCategory ? "collections" : null);
+  const [subExpanded, setSubExpanded] = useState<SubKey>(restoreState?.restoreCategory ? "swipe" : null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(restoreState?.restoreCategory || null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreState?.restoreSubcategory || null);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
 
@@ -46,18 +49,12 @@ export default function Play() {
       .then(({ data }) => { if (data) setLeagues(data as LeagueItem[]); });
   }, []);
 
-  // Restore navigation state from swipe back button
+  // Clear restore state so refresh doesn't re-restore
   useEffect(() => {
-    const state = location.state as { restoreCategory?: string; restoreSubcategory?: string } | null;
-    if (state?.restoreCategory) {
-      setExpanded("collections");
-      setSubExpanded("swipe");
-      setSelectedCategory(state.restoreCategory);
-      setSelectedSubcategory(state.restoreSubcategory || null);
-      // Clear the state so refreshing doesn't re-restore
+    if (restoreState?.restoreCategory) {
       window.history.replaceState({}, "");
     }
-  }, [location.state]);
+  }, []);
 
   // Fetch random preview images from preset items
   useEffect(() => {
