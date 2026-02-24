@@ -45,19 +45,31 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
 
-    <!-- Non-render-blocking font loading -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'" />
+    <!-- Preload LCP image so browser discovers it immediately -->
+    <link rel="preload" as="image" href="/mogsy-logo-text.png" fetchpriority="high" />
+
+    <!-- Non-render-blocking font loading via JS injection -->
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" />
     </noscript>
-
+    <script>
+      // Load fonts asynchronously to avoid render-blocking
+      (function() {
+        var fonts = [
+          'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+          'https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap',
+          'https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap'
+        ];
+        fonts.forEach(function(href) {
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = href;
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
   </head>
 
   <body>

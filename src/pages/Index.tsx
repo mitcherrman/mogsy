@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Home, Play, User, Settings } from "lucide-react";
-import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import { useAuth } from "@/hooks/useAuth";
 import SEOHead from "@/components/SEOHead";
 
@@ -25,7 +24,7 @@ export default function Landing() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="mb-16"
       >
-        <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44 object-contain" width={612} height={408} fetchPriority="high" />
+        <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-28 sm:h-36 md:h-44 object-contain" width={612} height={408} fetchPriority="high" />
       </motion.div>
 
       {/* 4 Icon buttons */}
