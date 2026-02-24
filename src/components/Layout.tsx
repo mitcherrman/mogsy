@@ -7,22 +7,22 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Layout() {
   useTrackActivity();
   const { loading: authLoading } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
 
-  // Only show content after auth resolves AND after the first paint cycle,
-  // guaranteeing a blank frame is painted before the navbar appears.
   useEffect(() => {
-    if (!authLoading) {
-      requestAnimationFrame(() => setMounted(true));
+    if (!authLoading && !visible) {
+      // Double rAF ensures the blank frame is actually painted before we fade in
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
     }
-  }, [authLoading]);
-
-  if (!mounted) {
-    return <div className="min-h-screen bg-background" />;
-  }
+  }, [authLoading, visible]);
 
   return (
-    <div className="min-h-screen bg-background animate-page-fade-in">
+    <div
+      className="min-h-screen bg-background transition-opacity duration-300"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
       <Navbar />
       <main className="pt-16">
         <Outlet />
