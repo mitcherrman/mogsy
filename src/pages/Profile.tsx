@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -254,6 +254,13 @@ export default function Profile() {
       profile_frame: isPro ? selectedFrame : "default",
     };
 
+    // Set avatar_url to a random photo from the first 3
+    if (photos.length > 0) {
+      const rotationPhotos = photos.slice(0, 3);
+      const randomPhoto = rotationPhotos[Math.floor(Math.random() * rotationPhotos.length)];
+      updatePayload.avatar_url = randomPhoto.url;
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update(updatePayload)
@@ -275,6 +282,15 @@ export default function Profile() {
     );
   }
 
+  const socialIcons: Record<string, React.ElementType> = {
+    instagram: Instagram, youtube: Youtube, twitch: Twitch, x: Twitter, website: Globe,
+  };
+
+  const rotationPhotos = photos.slice(0, 3);
+  const currentAvatar = rotationPhotos.length > 0
+    ? rotationPhotos[Math.floor(Math.random() * rotationPhotos.length)].url
+    : null;
+
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
@@ -286,6 +302,47 @@ export default function Profile() {
             </Button>
             <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
           </div>
+
+          {/* Saved Info Summary Card */}
+          {form.displayName && (
+            <div className="rounded-2xl border border-primary/20 bg-card p-5 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                  {currentAvatar ? (
+                    <img src={currentAvatar} alt={form.displayName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
+                      <User className="h-8 w-8 text-muted-foreground/70" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-extrabold text-foreground truncate">{form.displayName}</h2>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                    {form.age && <span>{form.age} years old</span>}
+                    {form.location && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{form.location}</span>}
+                    {isPro && <span className="text-primary font-bold flex items-center gap-0.5"><Crown className="h-3 w-3" /> Pro</span>}
+                  </div>
+                  {form.statusMessage && (
+                    <p className="text-xs text-foreground/70 italic mt-1 truncate">"{form.statusMessage}"</p>
+                  )}
+                  <div className="flex gap-2 mt-1.5">
+                    {Object.entries({ instagram: form.instagram, tiktok: form.tiktok, youtube: form.youtube, x: form.x, twitch: form.twitch, website: form.website })
+                      .filter(([, v]) => !!v)
+                      .map(([key, value]) => {
+                        const Icon = socialIcons[key];
+                        if (!Icon) return null;
+                        return (
+                          <a key={key} href={value} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                            <Icon className="h-3.5 w-3.5" />
+                          </a>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-6">
@@ -327,8 +384,13 @@ export default function Profile() {
                   <Label className="text-base font-bold mb-3 block">Photos</Label>
                   <div className="flex gap-3 flex-wrap">
                     {photos.map((photo, i) => (
-                      <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border">
+                      <div key={i} className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 ${i < 3 ? "border-primary/60 ring-2 ring-primary/20" : "border-border"}`}>
                         <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                        {i < 3 && (
+                          <div className="absolute top-0.5 left-0.5">
+                            <Star className="h-3 w-3 text-primary fill-primary" />
+                          </div>
+                        )}
                         <button type="button" onClick={() => handlePhotoRemove(i)} className="absolute top-0.5 right-0.5 rounded-full bg-background/80 p-0.5">
                           <X className="h-3 w-3 text-foreground" />
                         </button>
@@ -339,7 +401,12 @@ export default function Profile() {
                       <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                     </label>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-2">Add up to 6 photos. First photo is your main profile picture.</p>
+                  <p className="text-[10px] text-muted-foreground mt-2">Add up to 6 photos. Your first 3 photos (★) will be rotated as your profile picture across the app.</p>
+                  {photos.length >= 2 && photos.length <= 6 && (
+                    <p className="text-[10px] text-primary font-medium flex items-center gap-1 mt-1">
+                      <Star className="h-3 w-3 fill-primary" /> {Math.min(photos.length, 3)} photo{Math.min(photos.length, 3) > 1 ? "s" : ""} in rotation
+                    </p>
+                  )}
                 </div>
 
                 {/* Basic info */}
