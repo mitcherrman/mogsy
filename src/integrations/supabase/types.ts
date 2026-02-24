@@ -543,6 +543,7 @@ export type Database = {
           promoted_until: string | null
           show_elo: boolean | null
           show_rank: boolean | null
+          subcategory: string | null
           type: string
         }
         Insert: {
@@ -560,6 +561,7 @@ export type Database = {
           promoted_until?: string | null
           show_elo?: boolean | null
           show_rank?: boolean | null
+          subcategory?: string | null
           type?: string
         }
         Update: {
@@ -577,6 +579,7 @@ export type Database = {
           promoted_until?: string | null
           show_elo?: boolean | null
           show_rank?: boolean | null
+          subcategory?: string | null
           type?: string
         }
         Relationships: []

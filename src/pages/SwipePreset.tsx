@@ -85,11 +85,12 @@ export default function SwipePreset() {
 
   useEffect(() => {
     if (leagueId) loadItems();
+    return () => { document.documentElement.classList.remove("theme-lol"); };
   }, [leagueId]);
 
   const loadItems = async () => {
     const [{ data: league }, { data }] = await Promise.all([
-      supabase.from("leagues").select("name, category, show_elo, show_rank").eq("id", leagueId!).single(),
+      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory").eq("id", leagueId!).single(),
       supabase.from("preset_items").select("*").eq("league_id", leagueId!),
     ]);
     if (league) {
@@ -97,6 +98,10 @@ export default function SwipePreset() {
       setLeagueCategory((league as any).category);
       setShowElo((league as any).show_elo ?? true);
       setShowRank((league as any).show_rank ?? true);
+      // Check if this is a League of Legends subcategory league
+      if ((league as any).subcategory === "League of Legends") {
+        document.documentElement.classList.add("theme-lol");
+      }
     }
     if (data && data.length >= 2) {
       setItems(data);
