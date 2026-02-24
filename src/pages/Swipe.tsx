@@ -181,10 +181,10 @@ export default function Swipe() {
         if (!isPro && newCount % AD_INTERVAL === 0) {
           setShowAd(true);
         } else {
-          // New challenger from pool
           const others = profiles.filter(p => p.id !== winner.id);
           const challenger = others[Math.floor(Math.random() * others.length)];
-          setPair([winner, challenger]);
+          const winnerWasLeft = pair[0].id === winner.id;
+          setPair(winnerWasLeft ? [winner, challenger] : [challenger, winner]);
         }
       } else if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);

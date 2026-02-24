@@ -291,7 +291,9 @@ export default function SwipePreset() {
             return 1;
           });
           const challenger = getGauntletChallenger(updatedWinner);
-          setGauntletPair([updatedWinner, challenger]);
+          // Keep winner on the same side they were chosen from
+          const winnerWasLeft = pair[0].id === winner.id;
+          setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
           if (!isPro && newCount % AD_INTERVAL === 0) {
             setShowAd(true);
           }
