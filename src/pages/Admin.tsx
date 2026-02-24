@@ -17,6 +17,7 @@ import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminAds from "@/components/admin/AdminAds";
+import AdminBanners from "@/components/admin/AdminBanners";
 
 const allTabs = [
   { value: "notifications", label: "Alerts", masterOnly: false },
@@ -28,6 +29,7 @@ const allTabs = [
   { value: "comments", label: "Comments", masterOnly: false },
   { value: "invite-links", label: "Invites", masterOnly: false },
   { value: "ads", label: "Ads", masterOnly: false },
+  { value: "banners", label: "Banners", masterOnly: false },
   { value: "settings", label: "Settings", masterOnly: true },
 ];
 
@@ -149,6 +151,7 @@ export default function Admin() {
           <TabsContent value="comments"><AdminComments /></TabsContent>
           <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
           <TabsContent value="ads"><AdminAds /></TabsContent>
+          <TabsContent value="banners"><AdminBanners /></TabsContent>
           {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}
         </Tabs>
       </div>
