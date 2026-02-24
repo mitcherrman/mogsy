@@ -84,6 +84,14 @@ export default function SwipePreset() {
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
   const [currentImageIndex, setCurrentImageIndex] = useState<Map<string, number>>(new Map());
 
+  // Apply theme immediately from navigation state (before data loads) to prevent flash
+  useEffect(() => {
+    const state = location.state as { subcategory?: string } | null;
+    if (state?.subcategory === "League of Legends") {
+      document.documentElement.classList.add("theme-lol");
+    }
+  }, []);
+
   useEffect(() => {
     if (leagueId) loadItems();
     return () => { document.documentElement.classList.remove("theme-lol"); };
