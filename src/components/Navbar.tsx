@@ -18,13 +18,8 @@ const navItems = [
 
 export default function Navbar() {
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [diamonds, setDiamonds] = useState<number | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading) setReady(true);
-  }, [authLoading]);
 
   useEffect(() => {
     if (user) loadDiamonds();
@@ -40,7 +35,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl transition-opacity duration-300" style={{ opacity: ready ? 1 : 0 }}>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl animate-page-fade-in">
       <div className="container mx-auto flex h-14 items-center px-4 gap-1">
         <Link to="/" className="flex items-center shrink-0">
           <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12" />
