@@ -18,7 +18,7 @@ const navItems = [
 
 export default function Navbar() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [diamonds, setDiamonds] = useState<number | null>(null);
 
   useEffect(() => {
@@ -33,6 +33,9 @@ export default function Navbar() {
       .single();
     if (data) setDiamonds(data.diamonds ?? 0);
   };
+
+  // Don't render anything until auth state is resolved to prevent flash
+  if (authLoading) return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl animate-page-fade-in">
