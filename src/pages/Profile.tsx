@@ -188,14 +188,30 @@ export default function Profile() {
     }
     const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(filePath);
     await supabase.from("profile_photos").insert({ profile_id: profileId, url: urlData.publicUrl, sort_order: photos.length });
-    setPhotos((prev) => [...prev, { id: "temp", url: urlData.publicUrl }]);
+    const newPhotos = [...photos, { id: "temp", url: urlData.publicUrl }];
+    setPhotos(newPhotos);
+    // Auto-sync avatar_url to a random photo from the first 3
+    const rotationPhotos = newPhotos.slice(0, 3);
+    const randomPhoto = rotationPhotos[Math.floor(Math.random() * rotationPhotos.length)];
+    await supabase.from("profiles").update({ avatar_url: randomPhoto.url }).eq("id", profileId);
     toast({ title: "Photo uploaded" });
   };
 
   const handlePhotoRemove = async (index: number) => {
     const photo = photos[index];
     await supabase.from("profile_photos").delete().eq("id", photo.id);
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    const remaining = photos.filter((_, i) => i !== index);
+    setPhotos(remaining);
+    // Auto-sync avatar_url after removal
+    if (profileId) {
+      if (remaining.length > 0) {
+        const rotationPhotos = remaining.slice(0, 3);
+        const randomPhoto = rotationPhotos[Math.floor(Math.random() * rotationPhotos.length)];
+        await supabase.from("profiles").update({ avatar_url: randomPhoto.url }).eq("id", profileId);
+      } else {
+        await supabase.from("profiles").update({ avatar_url: "" }).eq("id", profileId);
+      }
+    }
   };
 
   const handleActivateBoost = async () => {
