@@ -10,24 +10,50 @@ interface BannerItem {
   leagueName: string;
 }
 
+interface BannerConfig {
+  rotation_delay: number;
+  mode: "auto" | "manual";
+  manual_items: { id: string; type: string; name: string; image: string; elo: number; league_name: string }[];
+}
+
 export default function NavBanner() {
   const [items, setItems] = useState<BannerItem[]>([]);
   const [index, setIndex] = useState(0);
+  const [delay, setDelay] = useState(7000);
   const timer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    loadItems();
+    loadConfig();
   }, []);
 
   useEffect(() => {
     if (items.length <= 1) return;
     timer.current = setInterval(() => {
       setIndex((i) => (i + 1) % items.length);
-    }, 7000); // slower rotation
+    }, delay);
     return () => clearInterval(timer.current);
-  }, [items.length]);
+  }, [items.length, delay]);
 
-  const loadItems = async () => {
+  const loadConfig = async () => {
+    const { data: configData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "navbar_banner_config")
+      .single();
+
+    const cfg = configData?.value as unknown as BannerConfig | null;
+    if (cfg) setDelay(cfg.rotation_delay || 7000);
+
+    if (cfg?.mode === "manual" && cfg.manual_items?.length > 0) {
+      setItems(cfg.manual_items.map((m) => ({ name: m.name, image: m.image, elo: m.elo, leagueName: m.league_name })));
+      return;
+    }
+
+    // Auto mode
+    await loadAutoItems();
+  };
+
+  const loadAutoItems = async () => {
     const [{ data: presets }, { data: members }] = await Promise.all([
       supabase
         .from("preset_items")

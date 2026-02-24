@@ -58,6 +58,7 @@ export default function Home() {
   const [topComments, setTopComments] = useState<TopComment[]>([]);
   const [bannerItems, setBannerItems] = useState<BannerItem[]>([]);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerDelay, setBannerDelay] = useState(4000);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
@@ -72,9 +73,9 @@ export default function Home() {
     if (bannerItems.length <= 1) return;
     bannerTimer.current = setInterval(() => {
       setBannerIndex((i) => (i + 1) % bannerItems.length);
-    }, 4000);
+    }, bannerDelay);
     return () => clearInterval(bannerTimer.current);
-  }, [bannerItems.length]);
+  }, [bannerItems.length, bannerDelay]);
 
   const checkOnboardingAndLoad = async () => {
     if (!user) return;
@@ -308,6 +309,22 @@ export default function Home() {
   };
 
   const loadBannerItems = async () => {
+    // Load config from app_settings
+    const { data: configData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "home_banner_config")
+      .single();
+
+    const cfg = configData?.value as unknown as { rotation_delay?: number; mode?: string; manual_items?: { name: string; image: string; elo: number; league_name: string }[] } | null;
+    if (cfg?.rotation_delay) setBannerDelay(cfg.rotation_delay);
+
+    if (cfg?.mode === "manual" && cfg.manual_items && cfg.manual_items.length > 0) {
+      setBannerItems(cfg.manual_items.map((m) => ({ name: m.name, image: m.image, elo: m.elo, leagueName: m.league_name, type: "preset" as const })));
+      return;
+    }
+
+    // Auto mode (existing logic)
     const { data: topPresets } = await supabase
       .from("preset_items")
       .select("name, image_url, elo, league_id, leagues!inner(name)")
@@ -325,7 +342,6 @@ export default function Home() {
     const userItems: BannerItem[] = [];
     const presetItems: BannerItem[] = [];
 
-    // Build user items first (prioritized)
     if (topMembers && topMembers.length > 0) {
       const pIds = [...new Set(topMembers.map((m) => m.profile_id))];
       const { data: profiles } = await supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", pIds);
@@ -334,37 +350,19 @@ export default function Home() {
       topMembers.forEach((m: any) => {
         const p = pMap.get(m.profile_id);
         if (p && p.avatar_url) {
-          userItems.push({
-            name: p.display_name || "User",
-            image: p.avatar_url,
-            elo: m.elo,
-            leagueName: m.leagues?.name || "",
-            type: "user",
-          });
+          userItems.push({ name: p.display_name || "User", image: p.avatar_url, elo: m.elo, leagueName: m.leagues?.name || "", type: "user" });
         }
       });
     }
 
     (topPresets || []).forEach((item: any) => {
-      presetItems.push({
-        name: item.name,
-        image: item.image_url,
-        elo: item.elo,
-        leagueName: item.leagues?.name || "",
-        type: "preset",
-      });
+      presetItems.push({ name: item.name, image: item.image_url, elo: item.elo, leagueName: item.leagues?.name || "", type: "preset" });
     });
 
-    // Prioritize: first 3 slots are users (sorted by elo), then mix the rest
     userItems.sort((a, b) => b.elo - a.elo);
     presetItems.sort((a, b) => b.elo - a.elo);
 
-    const prioritized: BannerItem[] = [
-      ...userItems.slice(0, 3),
-      ...presetItems.slice(0, 5),
-    ];
-
-    // Fill remaining if users < 3
+    const prioritized: BannerItem[] = [...userItems.slice(0, 3), ...presetItems.slice(0, 5)];
     if (userItems.length < 3) {
       const remaining = 8 - prioritized.length;
       prioritized.push(...presetItems.slice(5, 5 + remaining));
