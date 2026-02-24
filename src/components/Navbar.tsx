@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-
+import { motion } from "framer-motion";
 import { Home, Play, User, Settings, ShoppingBag, Diamond, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,7 +53,11 @@ export default function Navbar() {
                   <span className="hidden md:inline text-xs">{item.label}</span>
                 </span>
                 {isActive && (
-                  <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-gradient-primary rounded-full" />
+                  <motion.div
+                    layoutId="nav-indicator"
+                    className="absolute bottom-0 left-1 right-1 h-0.5 bg-gradient-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
                 )}
               </Link>
             );
