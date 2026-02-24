@@ -187,24 +187,14 @@ export default function SwipePreset() {
       return;
     }
 
-    const { count } = await supabase.from("image_reports").select("*", { count: "exact", head: true }).eq("image_id", imageId);
-
-    if (count && count >= 10) {
-      await supabase.from("preset_item_images").update({ is_hidden: true }).eq("id", imageId);
-      await supabase.from("admin_notifications").insert({
-        type: "image_report_critical",
-        title: `Image auto-hidden: ${item.name}`,
-        message: `An image for "${item.name}" received ${count} reports and was automatically hidden.`,
-        metadata: { image_id: imageId, item_id: item.id, report_count: count },
-      });
-    } else {
-      await supabase.from("admin_notifications").insert({
-        type: "image_report",
-        title: `Image reported: ${item.name}`,
-        message: `A user reported an image for "${item.name}" as not representative. (${count || 1} total reports)`,
-        metadata: { image_id: imageId, item_id: item.id, report_count: count || 1 },
-      });
-    }
+    // Auto-hide logic is handled atomically by the database trigger check_and_auto_hide_image()
+    // Send a basic report notification (critical auto-hide notification is handled by the trigger)
+    await supabase.from("admin_notifications").insert({
+      type: "image_report",
+      title: `Image reported: ${item.name}`,
+      message: `A user reported an image for "${item.name}" as not representative.`,
+      metadata: { image_id: imageId, item_id: item.id },
+    });
 
     const images = itemImages.get(item.id);
     if (images && images.length > 1) {
