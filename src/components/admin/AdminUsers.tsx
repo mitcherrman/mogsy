@@ -40,6 +40,7 @@ interface Profile {
   is_flagged_underage: boolean | null;
   created_at: string;
   last_seen_at: string | null;
+  ads_enabled: boolean | null;
 }
 
 interface LeagueMembership {
@@ -81,6 +82,8 @@ interface UserReferralData {
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
+  const [filterMode, setFilterMode] = useState<string>("all");
+  const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
@@ -120,7 +123,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at, last_seen_at")
+      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at, last_seen_at, ads_enabled")
       .eq("is_bot", false)
       .order("created_at", { ascending: false });
     setProfiles((data as Profile[]) || []);
@@ -152,16 +155,45 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     supabase.from("leagues").select("id, name, type").then(({ data }) => setAllLeagues(data || []));
   }, [fetchProfiles]);
 
-  const filtered = profiles.filter((p) => {
-    const q = search.toLowerCase();
-    const email = emailMap[p.user_id] || "";
-    return (
-      p.display_name.toLowerCase().includes(q) ||
-      p.user_id.toLowerCase().includes(q) ||
-      email.toLowerCase().includes(q) ||
-      (p.location || "").toLowerCase().includes(q)
-    );
-  });
+  const filtered = useMemo(() => {
+    let list = profiles.filter((p) => {
+      const q = search.toLowerCase();
+      const email = emailMap[p.user_id] || "";
+      return (
+        p.display_name.toLowerCase().includes(q) ||
+        p.user_id.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        (p.location || "").toLowerCase().includes(q)
+      );
+    });
+
+    // Apply filter
+    const roles = userRoles;
+    switch (filterMode) {
+      case "pro": list = list.filter(p => p.is_pro); break;
+      case "free": list = list.filter(p => !p.is_pro); break;
+      case "signed_up": list = list.filter(p => !p.is_anonymous); break;
+      case "anonymous": list = list.filter(p => p.is_anonymous); break;
+      case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
+      case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
+      case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
+      case "has_avatar": list = list.filter(p => !!p.avatar_url); break;
+      case "no_avatar": list = list.filter(p => !p.avatar_url); break;
+      case "underage": list = list.filter(p => p.is_flagged_underage); break;
+    }
+
+    // Apply sort
+    switch (sortMode) {
+      case "newest": list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break;
+      case "oldest": list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break;
+      case "last_seen_recent": list.sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime()); break;
+      case "last_seen_oldest": list.sort((a, b) => new Date(a.last_seen_at || 0).getTime() - new Date(b.last_seen_at || 0).getTime()); break;
+      case "most_diamonds": list.sort((a, b) => (b.diamonds ?? 0) - (a.diamonds ?? 0)); break;
+      case "name_az": list.sort((a, b) => a.display_name.localeCompare(b.display_name)); break;
+    }
+
+    return list;
+  }, [profiles, search, emailMap, filterMode, sortMode, userRoles]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
@@ -177,6 +209,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       boost_credits: profile.boost_credits,
       profile_frame: profile.profile_frame,
       active_boost_until: profile.active_boost_until,
+      ads_enabled: profile.ads_enabled,
     };
     setEditForm(formData);
     setOriginalForm(formData);
@@ -279,7 +312,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         boost_credits: editForm.boost_credits,
         profile_frame: editForm.profile_frame,
         active_boost_until: editForm.active_boost_until,
-      })
+        ads_enabled: editForm.ads_enabled,
+      } as any)
       .eq("id", selectedUser.id);
     setSaving(false);
     if (error) { toast.error("Failed to save"); return; }
@@ -501,6 +535,16 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   onCheckedChange={(c) => setEditForm((f) => ({ ...f, is_pro: c }))}
                 />
                 <Label className="text-xs">Pro Status</Label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 pt-2">
+                <Switch
+                  checked={editForm.ads_enabled ?? true}
+                  onCheckedChange={(c) => setEditForm((f) => ({ ...f, ads_enabled: c }))}
+                />
+                <Label className="text-xs">Ads Enabled</Label>
               </div>
             </div>
 
@@ -807,6 +851,36 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           <Input placeholder="Search users by name, email, or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Badge variant="outline">{filtered.length} users</Badge>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <Select value={filterMode} onValueChange={setFilterMode}>
+          <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Filter…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Users</SelectItem>
+            <SelectItem value="pro">Pro Only</SelectItem>
+            <SelectItem value="free">Free Only</SelectItem>
+            <SelectItem value="signed_up">Signed Up</SelectItem>
+            <SelectItem value="anonymous">Anonymous</SelectItem>
+            <SelectItem value="ads_on">Ads On</SelectItem>
+            <SelectItem value="ads_off">Ads Off</SelectItem>
+            <SelectItem value="admins">Admins</SelectItem>
+            <SelectItem value="has_avatar">Has Avatar</SelectItem>
+            <SelectItem value="no_avatar">No Avatar</SelectItem>
+            <SelectItem value="underage">Flagged Underage</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortMode} onValueChange={setSortMode}>
+          <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Sort…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="last_seen_recent">Recently Active</SelectItem>
+            <SelectItem value="last_seen_oldest">Least Recently Active</SelectItem>
+            <SelectItem value="most_diamonds">Most Diamonds</SelectItem>
+            <SelectItem value="name_az">Name A-Z</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {deletedUsers.length > 0 && (

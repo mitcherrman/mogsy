@@ -392,8 +392,8 @@ export default function Home() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
-        <div className="flex justify-center mb-6">
-          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44 -mb-4 object-cover object-top" style={{ clipPath: 'inset(0 0 12% 0)' }} />
+        <div className="flex justify-center mb-2">
+          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44 -mb-6 object-cover" style={{ clipPath: 'inset(15% 0 15% 0)' }} />
         </div>
 
         {/* Rotating ELO Banner */}
