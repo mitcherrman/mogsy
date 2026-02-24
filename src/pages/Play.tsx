@@ -127,7 +127,8 @@ export default function Play() {
   };
 
   const handleLeagueSelect = (league: LeagueItem) => {
-    if (league.type === "preset") navigate(`/swipe/preset/${league.id}`);
+    const navState = { subcategory: league.subcategory };
+    if (league.type === "preset") navigate(`/swipe/preset/${league.id}`, { state: navState });
     else navigate("/swipe");
   };
 
