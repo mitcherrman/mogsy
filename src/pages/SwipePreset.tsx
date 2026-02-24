@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
@@ -72,6 +72,11 @@ export default function SwipePreset() {
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
   const { playSwipeSound } = useSwipeSound();
+
+  // Gauntlet mode
+  const [gauntletMode, setGauntletMode] = useState(false);
+  const [gauntletChampion, setGauntletChampion] = useState<PresetItem | null>(null);
+  const [gauntletStreak, setGauntletStreak] = useState(0);
 
   // Multi-image state
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
@@ -197,7 +202,16 @@ export default function SwipePreset() {
     toast.success("Reported — showing a different image");
   };
 
-  const pair = currentIndex < matchups.length ? matchups[currentIndex] : null;
+  const getGauntletChallenger = useCallback((champion: PresetItem): PresetItem => {
+    const others = items.filter(i => i.id !== champion.id);
+    return others[Math.floor(Math.random() * others.length)];
+  }, [items]);
+
+  const pair = gauntletMode
+    ? (gauntletChampion
+      ? [gauntletChampion, getGauntletChallenger(gauntletChampion)] as [PresetItem, PresetItem]
+      : (currentIndex < matchups.length ? matchups[currentIndex] : null))
+    : (currentIndex < matchups.length ? matchups[currentIndex] : null);
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
   const rankMap = useMemo(() => {
@@ -270,23 +284,52 @@ export default function SwipePreset() {
           return next;
         });
 
-        if (nextIndex >= matchups.length) {
-          setFinished(true);
-        } else if (!isPro && newCount % AD_INTERVAL === 0) {
-          setShowAd(true);
+        if (gauntletMode) {
+          // In gauntlet: winner stays, new challenger appears
+          setGauntletChampion(winner);
+          setGauntletStreak(prev => {
+            // If winner was already the champion, streak continues
+            if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
+            return 1;
+          });
+          if (!isPro && newCount % AD_INTERVAL === 0) {
+            setShowAd(true);
+          }
         } else {
-          setCurrentIndex(nextIndex);
+          const nextIndex = currentIndex + 1;
+          if (nextIndex >= matchups.length) {
+            setFinished(true);
+          } else if (!isPro && newCount % AD_INTERVAL === 0) {
+            setShowAd(true);
+          } else {
+            setCurrentIndex(nextIndex);
+          }
         }
       }, 600);
     },
-    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length, itemImages]
+    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
+
+  const handleToggleGauntlet = () => {
+    const next = !gauntletMode;
+    setGauntletMode(next);
+    if (next && pair) {
+      // Start gauntlet from scratch - pick first pair randomly
+      setGauntletChampion(null);
+      setGauntletStreak(0);
+    } else {
+      setGauntletChampion(null);
+      setGauntletStreak(0);
+    }
+  };
 
   const handleRestart = () => {
     setMatchups(generateMatchups(items));
     setCurrentIndex(0);
     setMatchCount(0);
     setFinished(false);
+    setGauntletChampion(null);
+    setGauntletStreak(0);
   };
 
   const handleBack = () => {
@@ -379,7 +422,9 @@ export default function SwipePreset() {
           isPro={isPro}
           onClose={() => {
             setShowAd(false);
-            setCurrentIndex(currentIndex + 1);
+            if (!gauntletMode) {
+              setCurrentIndex(currentIndex + 1);
+            }
           }}
         />
       )}
@@ -404,6 +449,15 @@ export default function SwipePreset() {
                 <Camera className="h-4 w-4" />
               </Button>
               <Button
+                variant={gauntletMode ? "default" : "ghost"}
+                size="icon"
+                onClick={handleToggleGauntlet}
+                className={`h-8 w-8 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+              >
+                <Swords className="h-4 w-4" />
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => {
@@ -424,14 +478,26 @@ export default function SwipePreset() {
             </div>
           </div>
 
-          <Progress value={progress} className="mb-2 h-1" />
+          {gauntletMode ? (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Swords className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-bold text-primary">Gauntlet</span>
+              {gauntletStreak > 0 && (
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  🔥 {gauntletStreak} win streak
+                </span>
+              )}
+            </div>
+          ) : (
+            <Progress value={progress} className="mb-2 h-1" />
+          )}
 
           {/* Matchup area */}
           {pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
+                  key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}-${matchCount}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -544,7 +610,9 @@ export default function SwipePreset() {
           )}
 
           <p className="text-center text-[10px] text-muted-foreground mt-1.5">
-            Tap or swipe to choose · {currentIndex + 1}/{matchups.length}
+            {gauntletMode
+              ? `Tap to choose · Winner stays · ${matchCount} votes`
+              : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
           </p>
 
           {/* Comments section */}

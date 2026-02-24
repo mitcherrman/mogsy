@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
@@ -51,6 +51,9 @@ export default function Swipe() {
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [gauntletMode, setGauntletMode] = useState(false);
+  const [gauntletChampion, setGauntletChampion] = useState<SwipeProfile | null>(null);
+  const [gauntletStreak, setGauntletStreak] = useState(0);
   const { playSwipeSound } = useSwipeSound();
 
   useEffect(() => {
@@ -168,7 +171,22 @@ export default function Swipe() {
       const newCount = matchCount + 1;
       setMatchCount(newCount);
 
-      if (!isPro && newCount % AD_INTERVAL === 0) {
+      if (gauntletMode) {
+        setEloChanges(new Map());
+        setGauntletChampion(winner);
+        setGauntletStreak(prev => {
+          if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
+          return 1;
+        });
+        if (!isPro && newCount % AD_INTERVAL === 0) {
+          setShowAd(true);
+        } else {
+          // New challenger from pool
+          const others = profiles.filter(p => p.id !== winner.id);
+          const challenger = others[Math.floor(Math.random() * others.length)];
+          setPair([winner, challenger]);
+        }
+      } else if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);
         setEloChanges(new Map());
       } else {
@@ -176,7 +194,7 @@ export default function Swipe() {
         setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
       }
     },
-    [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields]
+    [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields, gauntletMode, gauntletChampion]
   );
 
   const handleRewind = async () => {
@@ -226,7 +244,13 @@ export default function Swipe() {
           isPro={isPro}
           onClose={() => {
             setShowAd(false);
-            setPair(getRandomPair(profiles, pair ? [pair[0].id, pair[1].id] : undefined));
+            if (gauntletMode && gauntletChampion) {
+              const others = profiles.filter(p => p.id !== gauntletChampion.id);
+              const challenger = others[Math.floor(Math.random() * others.length)];
+              setPair([gauntletChampion, challenger]);
+            } else {
+              setPair(getRandomPair(profiles, pair ? [pair[0].id, pair[1].id] : undefined));
+            }
           }}
         />
       )}
@@ -239,6 +263,9 @@ export default function Swipe() {
             </Button>
             <p className="text-muted-foreground text-xs">
               Matches: <span className="text-primary font-bold">{matchCount}</span>
+              {gauntletMode && gauntletStreak > 0 && (
+                <span className="ml-2">🔥 {gauntletStreak} streak</span>
+              )}
             </p>
             <div className="flex-1" />
             <div className="flex items-center gap-1">
@@ -250,6 +277,19 @@ export default function Swipe() {
                 title="Save snapshot"
               >
                 <Camera className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={gauntletMode ? "default" : "ghost"}
+                size="icon"
+                onClick={() => {
+                  setGauntletMode(!gauntletMode);
+                  setGauntletChampion(null);
+                  setGauntletStreak(0);
+                }}
+                className={`h-8 w-8 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+              >
+                <Swords className="h-4 w-4" />
               </Button>
               {lastMatch && myRewinds > 0 && (
                 <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
@@ -300,7 +340,9 @@ export default function Swipe() {
           </MatchupCapture>
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">
-            Tap the profile you prefer · ELO updates instantly
+            {gauntletMode
+              ? "Tap to choose · Winner stays on screen"
+              : "Tap the profile you prefer · ELO updates instantly"}
           </p>
 
           {/* Comments section */}

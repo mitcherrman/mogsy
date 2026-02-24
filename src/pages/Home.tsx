@@ -389,8 +389,8 @@ export default function Home() {
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
-        <div className="flex justify-center mb-8">
-          <img src={mogsyLogo} alt="Mogsy" className="h-16 sm:h-20" />
+        <div className="flex justify-center mb-10">
+          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44" />
         </div>
 
         {/* Rotating ELO Banner */}
