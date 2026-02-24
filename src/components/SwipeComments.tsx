@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -240,15 +241,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
 
   const renderComment = (comment: Comment) => (
     <div key={comment.id} className="flex gap-2 py-2 first:pt-0">
-      <div className="h-7 w-7 rounded-full bg-secondary flex-shrink-0 overflow-hidden">
-        {comment.avatar_url ? (
-          <img src={comment.avatar_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">
-            {comment.display_name.charAt(0)}
-          </span>
-        )}
-      </div>
+      <UserAvatar src={comment.avatar_url} name={comment.display_name} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-foreground truncate">{comment.display_name}</span>
