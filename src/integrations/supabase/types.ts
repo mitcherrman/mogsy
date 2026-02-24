@@ -769,6 +769,7 @@ export type Database = {
         Row: {
           active_boost_until: string | null
           admin_notes: string | null
+          ads_enabled: boolean | null
           age: number | null
           avatar_url: string | null
           boost_credits: number | null
@@ -797,6 +798,7 @@ export type Database = {
         Insert: {
           active_boost_until?: string | null
           admin_notes?: string | null
+          ads_enabled?: boolean | null
           age?: number | null
           avatar_url?: string | null
           boost_credits?: number | null
@@ -825,6 +827,7 @@ export type Database = {
         Update: {
           active_boost_until?: string | null
           admin_notes?: string | null
+          ads_enabled?: boolean | null
           age?: number | null
           avatar_url?: string | null
           boost_credits?: number | null

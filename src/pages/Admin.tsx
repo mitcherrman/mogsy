@@ -15,6 +15,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
+import AdminAds from "@/components/admin/AdminAds";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -97,6 +98,7 @@ export default function Admin() {
             <TabsTrigger value="elo-check">Elo Check</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="invite-links">Invite Links</TabsTrigger>
+            <TabsTrigger value="ads">Ads</TabsTrigger>
             {isMasterAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
           </TabsList>
 
@@ -108,6 +110,7 @@ export default function Admin() {
           <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>
           <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
+          <TabsContent value="ads"><AdminAds /></TabsContent>
           {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}
         </Tabs>
       </div>
