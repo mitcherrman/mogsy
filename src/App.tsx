@@ -7,12 +7,12 @@ import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
 
 // Lazy-load all non-landing routes to reduce initial JS bundle
 const Home = lazy(() => import("./pages/Home"));
+const Auth = lazy(() => import("./pages/Auth"));
 const Play = lazy(() => import("./pages/Play"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Swipe = lazy(() => import("./pages/Swipe"));
