@@ -166,6 +166,13 @@ export default function Play() {
     return false;
   })();
 
+  // While restoring state, wait for leagues to load to avoid flashing wrong view
+  if (restoreState?.restoreCategory && leagues.length === 0) {
+    return <div className={`px-4 py-8 h-[calc(100vh-4rem)] overflow-hidden bg-background transition-colors duration-500`}>
+      <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups." />
+    </div>;
+  }
+
   const renderContent = () => {
     // No mode selected — show Collections & Compete side by side
     if (!expanded) {
