@@ -24,7 +24,7 @@ export default function Landing() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="mb-16"
       >
-        <img src="/mogsy-logo-text.png" alt="" className="h-28 sm:h-36 md:h-44 object-contain" width={612} height={408} fetchPriority="high" />
+        <img src="/mogsy-logo-text.png" alt="" className="h-28 sm:h-36 md:h-44 object-contain" width={264} height={176} sizes="(min-width: 768px) 264px, (min-width: 640px) 216px, 168px" fetchPriority="high" />
       </motion.div>
 
       {/* 4 Icon buttons */}
