@@ -403,11 +403,7 @@ export default function EloCheck() {
   const currentItems = gameMode === "items" ? presetItems : userItems;
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    return <div className="min-h-screen bg-background" />;
   }
 
   return (
