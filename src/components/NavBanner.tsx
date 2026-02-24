@@ -91,31 +91,31 @@ export default function NavBanner() {
     setItems(result.slice(0, 6));
   };
 
-  if (items.length === 0) return null;
-
-  const current = items[index];
+  const current = items.length > 0 ? items[index] : null;
 
   return (
     <div className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={index}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -12 }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0 flex items-center gap-1.5 sm:gap-2 px-2"
-        >
-          <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
-            <img src={current.image} alt={current.name} className="w-full h-full object-cover" />
-          </div>
-          <div className="flex-1 min-w-0 flex items-center gap-1">
-            <Crown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary flex-shrink-0" />
-            <span className="text-[10px] sm:text-xs font-bold text-foreground truncate">{current.name}</span>
-          </div>
-          <span className="text-[9px] sm:text-[10px] font-bold text-primary flex-shrink-0">{current.elo}</span>
-        </motion.div>
-      </AnimatePresence>
+      {current && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 flex items-center gap-1.5 sm:gap-2 px-2"
+          >
+            <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
+              <img src={current.image} alt={current.name} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0 flex items-center gap-1">
+              <Crown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs font-bold text-foreground truncate">{current.name}</span>
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-bold text-primary flex-shrink-0">{current.elo}</span>
+          </motion.div>
+        </AnimatePresence>
+      )}
     </div>
   );
 }
