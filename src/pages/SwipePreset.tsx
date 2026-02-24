@@ -495,12 +495,12 @@ export default function SwipePreset() {
           {/* Matchup area */}
           {pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode={gauntletMode ? "sync" : "wait"}>
                 <motion.div
-                  key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}-${matchCount}`}
-                  initial={{ opacity: 0 }}
+                  key={gauntletMode ? `gauntlet-${matchCount}` : `pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
+                  initial={gauntletMode ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  exit={gauntletMode ? {} : { opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >
