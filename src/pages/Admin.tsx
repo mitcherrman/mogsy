@@ -112,7 +112,7 @@ export default function Admin() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <div className="flex-1 flex gap-1 overflow-hidden">
+            <TabsList className="flex-1 flex gap-1 overflow-hidden h-auto bg-transparent p-0">
               {paginatedTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
@@ -127,7 +127,7 @@ export default function Admin() {
                   )}
                 </TabsTrigger>
               ))}
-            </div>
+            </TabsList>
             {isMobile && tabPage < totalPages - 1 && (
               <button
                 onClick={() => setTabPage(p => p + 1)}
