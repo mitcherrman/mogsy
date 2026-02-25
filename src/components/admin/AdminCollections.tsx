@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy, RotateCcw } from "lucide-react";
+import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy, RotateCcw, EyeOff, Upload, Link } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -64,6 +65,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   Movies: "🎬",
   "Video Games": "🎮",
   Celebrities: "⭐",
+  Sports: "⚽",
+  Food: "🍕",
 };
 
 export default function AdminCollections() {
@@ -81,6 +84,12 @@ export default function AdminCollections() {
   const [itemDetailImages, setItemDetailImages] = useState<ItemImage[]>([]);
   const [itemMatches, setItemMatches] = useState<MatchRecord[]>([]);
   const [allItems, setAllItems] = useState<Map<string, string>>(new Map());
+
+  // Image add state
+  const [addImageUrl, setAddImageUrl] = useState("");
+  const [addImageZoom, setAddImageZoom] = useState(100);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase
@@ -157,11 +166,9 @@ export default function AdminCollections() {
         .eq("id", action.item.id);
       toast.success("Undo: item reverted");
     } else if (action.type === "elo_reset" && action.resetData && action.leagueId) {
-      // Restore preset item elos
       for (const item of action.resetData.items) {
         await supabase.from("preset_items").update({ elo: item.previousElo }).eq("id", item.id);
       }
-      // Restore league membership elos
       for (const mem of action.resetData.memberships) {
         await supabase.from("league_memberships").update({ elo: mem.previousElo }).eq("id", mem.id);
       }
@@ -173,26 +180,15 @@ export default function AdminCollections() {
 
   const handleResetElo = async () => {
     if (!selectedLeague) return;
-    // Save current preset item elos
     const { data: currentItems } = await supabase.from("preset_items").select("id, elo").eq("league_id", selectedLeague);
-    // Save current league membership elos
     const { data: currentMemberships } = await supabase.from("league_memberships").select("id, elo").eq("league_id", selectedLeague);
-
     const resetData: EloResetData = {
       items: (currentItems || []).map(i => ({ id: i.id, previousElo: i.elo })),
       memberships: (currentMemberships || []).map(m => ({ id: m.id, previousElo: m.elo })),
     };
-
-    // Reset all preset items to 1200
     const { error: e1 } = await supabase.from("preset_items").update({ elo: 1200 }).eq("league_id", selectedLeague);
-    // Reset all league memberships to 1200
     const { error: e2 } = await supabase.from("league_memberships").update({ elo: 1200 }).eq("league_id", selectedLeague);
-
-    if (e1 || e2) {
-      toast.error("Failed to reset Elo");
-      return;
-    }
-
+    if (e1 || e2) { toast.error("Failed to reset Elo"); return; }
     pushUndo({ type: "elo_reset", resetData, leagueId: selectedLeague });
     toast.success(`Reset Elo for all items & users in this league to 1200`);
     loadItems(selectedLeague);
@@ -230,6 +226,8 @@ export default function AdminCollections() {
 
   const openItemDetail = async (item: PresetItem) => {
     setSelectedItem(item);
+    setAddImageUrl("");
+    setAddImageZoom(100);
     const { data: images } = await supabase
       .from("preset_item_images")
       .select("*")
@@ -264,11 +262,88 @@ export default function AdminCollections() {
     }
   };
 
+  // Image management functions
+  const handleAddImageByUrl = async () => {
+    if (!addImageUrl.trim() || !selectedItem) return;
+    // Check for duplicate
+    const exists = itemDetailImages.some(img => img.image_url === addImageUrl.trim());
+    if (exists) { toast.error("This image URL already exists for this item"); return; }
+
+    const nextOrder = itemDetailImages.length;
+    const { data, error } = await supabase
+      .from("preset_item_images")
+      .insert({ preset_item_id: selectedItem.id, image_url: addImageUrl.trim(), sort_order: nextOrder })
+      .select()
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setItemDetailImages(prev => [...prev, data as ItemImage]);
+    setAddImageUrl("");
+    setAddImageZoom(100);
+    toast.success("Image added");
+  };
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedItem) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF allowed"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `preset-items/${selectedItem.id}/${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("profile-photos")
+      .upload(path, file);
+
+    if (uploadError) { toast.error(uploadError.message); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
+    const imageUrl = urlData.publicUrl;
+
+    const nextOrder = itemDetailImages.length;
+    const { data, error } = await supabase
+      .from("preset_item_images")
+      .insert({ preset_item_id: selectedItem.id, image_url: imageUrl, sort_order: nextOrder })
+      .select()
+      .single();
+
+    if (error) { toast.error(error.message); setUploading(false); return; }
+    setItemDetailImages(prev => [...prev, data as ItemImage]);
+    setUploading(false);
+    toast.success("Image uploaded & added");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleToggleImageVisibility = async (img: ItemImage) => {
+    const newHidden = !img.is_hidden;
+    const { error } = await supabase
+      .from("preset_item_images")
+      .update({ is_hidden: newHidden })
+      .eq("id", img.id);
+    if (error) { toast.error(error.message); return; }
+    setItemDetailImages(prev => prev.map(i => i.id === img.id ? { ...i, is_hidden: newHidden } : i));
+    toast.success(newHidden ? "Image hidden from rotation" : "Image shown in rotation");
+  };
+
+  const handleDeleteImage = async (img: ItemImage) => {
+    const { error } = await supabase
+      .from("preset_item_images")
+      .delete()
+      .eq("id", img.id);
+    if (error) { toast.error(error.message); return; }
+    setItemDetailImages(prev => prev.filter(i => i.id !== img.id));
+    toast.success("Image removed");
+  };
+
   // Detail view
   if (selectedItem) {
     const wins = itemMatches.filter(m => m.winner_item_id === selectedItem.id).length;
     const losses = itemMatches.filter(m => m.loser_item_id === selectedItem.id).length;
     const rank = [...items].sort((a, b) => b.elo - a.elo).findIndex(i => i.id === selectedItem.id) + 1;
+    const visibleCount = itemDetailImages.filter(i => !i.is_hidden).length;
 
     return (
       <div className="space-y-6">
@@ -294,18 +369,111 @@ export default function AdminCollections() {
           </div>
         </div>
 
-        {/* Images */}
-        <div className="space-y-3">
-          <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
-            <ImageIcon className="h-4 w-4 text-primary" /> Images ({itemDetailImages.length})
-          </h4>
+        {/* Images section with management */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary" /> Images ({itemDetailImages.length})
+              <span className="text-muted-foreground font-normal">• {visibleCount} active</span>
+            </h4>
+          </div>
+
+          {/* Add image controls */}
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Image</h5>
+            <div className="flex gap-2">
+              <Input
+                value={addImageUrl}
+                onChange={(e) => setAddImageUrl(e.target.value)}
+                placeholder="Paste image URL..."
+                className="text-sm"
+              />
+              <Button size="sm" onClick={handleAddImageByUrl} disabled={!addImageUrl.trim()} className="gap-1 shrink-0">
+                <Link className="h-3.5 w-3.5" /> Add URL
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleUploadImage}
+                className="hidden"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="gap-1"
+              >
+                <Upload className="h-3.5 w-3.5" /> {uploading ? "Uploading..." : "Upload File"}
+              </Button>
+            </div>
+
+            {/* Zoom/crop preview for URL */}
+            {addImageUrl.trim() && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Zoom / Crop Preview</Label>
+                <Slider
+                  value={[addImageZoom]}
+                  onValueChange={([v]) => setAddImageZoom(v)}
+                  min={50}
+                  max={200}
+                  step={5}
+                  className="w-full"
+                />
+                <span className="text-[10px] text-muted-foreground">{addImageZoom}%</span>
+                <div className="w-32 h-32 rounded-lg border border-border overflow-hidden mx-auto bg-muted">
+                  <img
+                    src={addImageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    style={{ transform: `scale(${addImageZoom / 100})` }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Existing images grid */}
           {itemDetailImages.length === 0 ? (
             <p className="text-sm text-muted-foreground">No images associated with this item.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {itemDetailImages.map(img => (
-                <div key={img.id} className={`relative rounded-xl border overflow-hidden ${img.is_hidden ? "opacity-40 border-destructive" : "border-border"}`}>
+                <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : "border-border"}`}>
                   <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted" />
+                  {/* Overlay with action buttons */}
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      size="icon"
+                      variant={img.is_hidden ? "default" : "secondary"}
+                      className="h-8 w-8"
+                      onClick={() => handleToggleImageVisibility(img)}
+                      title={img.is_hidden ? "Show in rotation" : "Hide from rotation"}
+                    >
+                      {img.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="destructive" className="h-8 w-8" title="Delete image">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete image?</AlertDialogTitle>
+                          <AlertDialogDescription>This will permanently remove this image from the rotation.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteImage(img)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-2 py-1 text-[10px]">
                     <span className={img.is_hidden ? "text-destructive font-bold" : "text-muted-foreground"}>
                       {img.is_hidden ? "Hidden" : `${img.report_count} reports`}
@@ -374,35 +542,41 @@ export default function AdminCollections() {
         </Button>
       </div>
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {categories.map((cat) => (
-          <Button
-            key={cat}
-            variant={selectedCategory === cat ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedCategory(cat)}
-            className="text-xs h-7 px-2.5"
-          >
-            {CATEGORY_ICONS[cat] || "📁"} {cat}
-          </Button>
-        ))}
-      </div>
-
-      {/* League buttons for selected category */}
-      {selectedCategory && grouped[selectedCategory] && (
+      {/* Categories header + chips */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categories</h4>
         <div className="flex flex-wrap gap-1.5">
-          {grouped[selectedCategory].map((l) => (
+          {categories.map((cat) => (
             <Button
-              key={l.id}
-              variant={selectedLeague === l.id ? "default" : "ghost"}
+              key={cat}
+              variant={selectedCategory === cat ? "default" : "outline"}
               size="sm"
-              onClick={() => selectLeague(l.id)}
+              onClick={() => setSelectedCategory(cat)}
               className="text-xs h-7 px-2.5"
             >
-              {l.name}
+              {CATEGORY_ICONS[cat] || "📁"} {cat}
             </Button>
           ))}
+        </div>
+      </div>
+
+      {/* Sub-categories header + outlined buttons */}
+      {selectedCategory && grouped[selectedCategory] && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sub Categories</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {grouped[selectedCategory].map((l) => (
+              <Button
+                key={l.id}
+                variant={selectedLeague === l.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => selectLeague(l.id)}
+                className="text-xs h-7 px-2.5"
+              >
+                {l.name}
+              </Button>
+            ))}
+          </div>
         </div>
       )}
 
