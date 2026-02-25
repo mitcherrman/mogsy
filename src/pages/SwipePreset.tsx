@@ -664,7 +664,12 @@ export default function SwipePreset() {
               </div>
 
               {/* Slice battle animation */}
-              <SliceBattleAnimation winnerSide={sliceWinner} onComplete={handleSliceComplete} />
+              <SliceBattleAnimation
+                winnerSide={sliceWinner}
+                loserImageUrl={pair && sliceWinner !== null ? getDisplayImage(pair[sliceWinner === 0 ? 1 : 0]) : null}
+                loserName={pair && sliceWinner !== null ? pair[sliceWinner === 0 ? 1 : 0].name : ""}
+                onComplete={handleSliceComplete}
+              />
             </MatchupCapture>
           )}
 
