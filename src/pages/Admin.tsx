@@ -138,6 +138,14 @@ export default function Admin() {
                 </TabsTrigger>
               ))}
             </TabsList>
+            {tabPage < totalPages - 1 && (
+              <button
+                onClick={() => setTabPage(p => p + 1)}
+                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <TabsContent value="notifications"><AdminNotifications onReadChange={(count) => setUnreadCount(count)} /></TabsContent>
