@@ -1,0 +1,178 @@
+import { useEffect, useState, useRef } from "react";
+import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+interface UserNotification {
+  id: string;
+  title: string;
+  message: string | null;
+  type: string;
+  image_url: string | null;
+  created_at: string;
+  target_type: string;
+  target_league_ids: string[] | null;
+  target_categories: string[] | null;
+  metadata: any;
+}
+
+const typeIcons: Record<string, typeof Bell> = {
+  general: Bell,
+  new_item: Star,
+  elo_milestone: Trophy,
+  new_league: Megaphone,
+  promotion: Gift,
+  update: Zap,
+  warning: AlertTriangle,
+  spotlight: Crown,
+};
+
+export default function UserNotificationBell() {
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    loadNotifications();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel("user-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "user_notifications" },
+        (payload) => {
+          const notif = payload.new as UserNotification;
+          setNotifications(prev => [notif, ...prev]);
+          toast(notif.title, {
+            description: notif.message || undefined,
+            icon: notif.image_url ? undefined : "🔔",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const loadNotifications = async () => {
+    if (!user) return;
+
+    const [notifRes, readRes] = await Promise.all([
+      supabase.from("user_notifications").select("*").order("created_at", { ascending: false }).limit(30),
+      supabase.from("user_notification_reads").select("notification_id").eq("user_id", user.id),
+    ]);
+
+    setNotifications((notifRes.data as UserNotification[]) || []);
+    setReadIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
+    setLoaded(true);
+  };
+
+  const markRead = async (id: string) => {
+    if (!user || readIds.has(id)) return;
+    setReadIds(prev => new Set(prev).add(id));
+    await supabase.from("user_notification_reads").insert({ notification_id: id, user_id: user.id });
+  };
+
+  const markAllRead = async () => {
+    if (!user) return;
+    const unread = notifications.filter(n => !readIds.has(n.id));
+    if (unread.length === 0) return;
+    const newReadIds = new Set(readIds);
+    const inserts = unread.map(n => {
+      newReadIds.add(n.id);
+      return { notification_id: n.id, user_id: user.id };
+    });
+    setReadIds(newReadIds);
+    await supabase.from("user_notification_reads").insert(inserts);
+  };
+
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+
+  if (!user || !loaded) return null;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+      >
+        <Bell className="h-4 w-4" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50">
+          <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
+            <p className="text-xs font-bold text-foreground">Notifications</p>
+            {unreadCount > 0 && (
+              <button onClick={markAllRead} className="text-[10px] text-primary hover:underline">
+                Mark all read
+              </button>
+            )}
+          </div>
+
+          {notifications.length === 0 ? (
+            <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
+          ) : (
+            notifications.map(n => {
+              const Icon = typeIcons[n.type] || Bell;
+              const isRead = readIds.has(n.id);
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => markRead(n.id)}
+                  className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
+                    isRead ? "bg-card" : "bg-primary/5"
+                  } hover:bg-secondary`}
+                >
+                  <div className="flex items-start gap-2">
+                    {n.image_url ? (
+                      <img src={n.image_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                        {n.title}
+                      </p>
+                      {n.message && (
+                        <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                      )}
+                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                        {new Date(n.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {!isRead && (
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
