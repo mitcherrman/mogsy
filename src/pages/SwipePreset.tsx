@@ -9,6 +9,7 @@ import SwipeAd from "@/components/SwipeAd";
 import TierBadge from "@/components/TierBadge";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
+import SliceBattleAnimation from "@/components/SliceBattleAnimation";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +74,8 @@ export default function SwipePreset() {
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
   const { playSwipeSound } = useSwipeSound();
+  const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
+  const pendingAction = useRef<(() => void) | null>(null);
 
   // Gauntlet mode
   const [gauntletMode, setGauntletMode] = useState(false);
@@ -225,11 +228,9 @@ export default function SwipePreset() {
     return map;
   }, [items]);
 
-  const handleChoose = useCallback(
+  const executeChoice = useCallback(
     async (winnerIndex: 0 | 1) => {
-      if (!pair || chosen !== null) return;
-      setChosen(winnerIndex);
-      playSwipeSound();
+      if (!pair) return;
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
@@ -270,7 +271,6 @@ export default function SwipePreset() {
       setItems(updatedItems);
 
       const newCount = matchCount + 1;
-      const nextIndex = currentIndex + 1;
 
       setTimeout(() => {
         setMatchCount(newCount);
@@ -296,7 +296,6 @@ export default function SwipePreset() {
             return 1;
           });
           const challenger = getGauntletChallenger(updatedWinner);
-          // Keep winner on the same side they were chosen from
           const winnerWasLeft = pair[0].id === winner.id;
           setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
           if (!isPro && newCount % AD_INTERVAL === 0) {
@@ -314,8 +313,26 @@ export default function SwipePreset() {
         }
       }, 600);
     },
-    [pair, items, leagueId, chosen, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
+    [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
+
+  const handleChoose = useCallback(
+    (winnerIndex: 0 | 1) => {
+      if (!pair || chosen !== null || sliceWinner !== null) return;
+      setChosen(winnerIndex);
+      playSwipeSound();
+      // Trigger slice animation
+      setSliceWinner(winnerIndex);
+      pendingAction.current = () => executeChoice(winnerIndex);
+    },
+    [pair, chosen, sliceWinner, playSwipeSound, executeChoice]
+  );
+
+  const handleSliceComplete = useCallback(() => {
+    setSliceWinner(null);
+    pendingAction.current?.();
+    pendingAction.current = null;
+  }, []);
 
   const handleToggleGauntlet = () => {
     const next = !gauntletMode;
@@ -645,6 +662,9 @@ export default function SwipePreset() {
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">VS</span>
               </div>
+
+              {/* Slice battle animation */}
+              <SliceBattleAnimation winnerSide={sliceWinner} onComplete={handleSliceComplete} />
             </MatchupCapture>
           )}
 
