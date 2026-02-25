@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, ChevronRight, ChevronLeft } from "lucide-react";
+import { Shield, ChevronRight, ChevronLeft, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -20,7 +20,6 @@ import AdminAds from "@/components/admin/AdminAds";
 import AdminBanners from "@/components/admin/AdminBanners";
 
 const allTabs = [
-  { value: "notifications", label: "Alerts", masterOnly: false },
   { value: "users", label: "Users", masterOnly: false },
   { value: "collections", label: "Collections", masterOnly: false },
   { value: "bots", label: "Bots", masterOnly: false },
@@ -41,9 +40,10 @@ export default function Admin() {
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeTab, setActiveTab] = useState("users");
   const [tabPage, setTabPage] = useState(0);
 
-  const TABS_PER_PAGE = 5;
+  const TABS_PER_PAGE = isMobile ? 5 : 7;
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -85,9 +85,7 @@ export default function Admin() {
 
   const visibleTabs = allTabs.filter(t => !t.masterOnly || isMasterAdmin);
   const totalPages = Math.ceil(visibleTabs.length / TABS_PER_PAGE);
-  const paginatedTabs = isMobile
-    ? visibleTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE)
-    : visibleTabs;
+  const paginatedTabs = visibleTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE);
 
   return (
     <div className="min-h-screen bg-background px-3 sm:px-4 py-4 sm:py-8">
@@ -102,9 +100,9 @@ export default function Admin() {
 
         <AdminStats />
 
-        <Tabs defaultValue="notifications" className="mt-3 sm:mt-6 space-y-3 sm:space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3 sm:mt-6 space-y-3 sm:space-y-6">
           <div className="flex items-center gap-1">
-            {isMobile && tabPage > 0 && (
+            {tabPage > 0 && (
               <button
                 onClick={() => setTabPage(p => p - 1)}
                 className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -112,23 +110,18 @@ export default function Admin() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <TabsList className="flex-1 flex gap-1 overflow-hidden h-auto bg-transparent p-0">
+            <TabsList className="flex gap-1 overflow-hidden h-auto bg-transparent p-0">
               {paginatedTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="flex-1 text-[10px] sm:text-sm px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all relative"
+                  className="text-[10px] sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all whitespace-nowrap"
                 >
                   {tab.label}
-                  {tab.value === "notifications" && unreadCount > 0 && (
-                    <span className="ml-0.5 inline-flex items-center justify-center h-3.5 min-w-3.5 sm:h-4 sm:min-w-4 px-0.5 sm:px-1 rounded-full bg-destructive text-destructive-foreground text-[8px] sm:text-[9px] font-bold">
-                      {unreadCount}
-                    </span>
-                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
-            {isMobile && tabPage < totalPages - 1 && (
+            {tabPage < totalPages - 1 && (
               <button
                 onClick={() => setTabPage(p => p + 1)}
                 className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -136,6 +129,23 @@ export default function Admin() {
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
+
+            {/* Notifications bell */}
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className={`shrink-0 ml-auto flex items-center justify-center h-8 w-8 rounded-lg border transition-colors relative ${
+                activeTab === "notifications"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
           </div>
 
           <TabsContent value="notifications"><AdminNotifications onReadChange={(count) => setUnreadCount(count)} /></TabsContent>
