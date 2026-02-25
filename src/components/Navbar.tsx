@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import NavBanner from "./NavBanner";
+import UserNotificationBell from "./UserNotificationBell";
 
 const navItems = [
   { path: "/home", label: "Home", icon: Home },
@@ -62,6 +63,9 @@ export default function Navbar() {
               </Link>
             );
           })}
+
+          {/* Notification bell */}
+          <UserNotificationBell />
 
           {/* Diamond balance */}
           {diamonds !== null && (

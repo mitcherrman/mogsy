@@ -930,6 +930,115 @@ export type Database = {
         }
         Relationships: []
       }
+      user_notification_reads: {
+        Row: {
+          id: string
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "user_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          item_id: string | null
+          league_id: string | null
+          message: string | null
+          metadata: Json | null
+          profile_id: string | null
+          sent_by_user_id: string
+          target_categories: string[] | null
+          target_league_ids: string[] | null
+          target_type: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          item_id?: string | null
+          league_id?: string | null
+          message?: string | null
+          metadata?: Json | null
+          profile_id?: string | null
+          sent_by_user_id: string
+          target_categories?: string[] | null
+          target_league_ids?: string[] | null
+          target_type?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          item_id?: string | null
+          league_id?: string | null
+          message?: string | null
+          metadata?: Json | null
+          profile_id?: string | null
+          sent_by_user_id?: string
+          target_categories?: string[] | null
+          target_league_ids?: string[] | null
+          target_type?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "preset_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
