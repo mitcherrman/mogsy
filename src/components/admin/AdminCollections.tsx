@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy, RotateCcw, EyeOff, Upload, Link } from "lucide-react";
+import { Trash2, Plus, Save, Pencil, Undo2, ImageIcon, ImageOff, ArrowLeft, Eye, Trophy, RotateCcw, EyeOff, Upload, Link, Maximize2 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -89,6 +90,7 @@ export default function AdminCollections() {
   const [addImageUrl, setAddImageUrl] = useState("");
   const [addImageZoom, setAddImageZoom] = useState(100);
   const [uploading, setUploading] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -444,9 +446,18 @@ export default function AdminCollections() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {itemDetailImages.map(img => (
                 <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : "border-border"}`}>
-                  <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted" />
+                  <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
                   {/* Overlay with action buttons */}
                   <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-8 w-8"
+                      onClick={() => setViewingImage(img.image_url)}
+                      title="View full image"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant={img.is_hidden ? "default" : "secondary"}
@@ -483,6 +494,15 @@ export default function AdminCollections() {
               ))}
             </div>
           )}
+
+          {/* Full image lightbox */}
+          <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
+            <DialogContent className="max-w-3xl p-2 bg-background/95 backdrop-blur-xl">
+              {viewingImage && (
+                <img src={viewingImage} alt="" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Match history */}
