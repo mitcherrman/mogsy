@@ -7,6 +7,7 @@ import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
+import SliceBattleAnimation from "@/components/SliceBattleAnimation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
@@ -55,6 +56,8 @@ export default function Swipe() {
   const [gauntletChampion, setGauntletChampion] = useState<SwipeProfile | null>(null);
   const [gauntletStreak, setGauntletStreak] = useState(0);
   const { playSwipeSound } = useSwipeSound();
+  const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
+  const pendingChoose = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     loadProfiles();
@@ -123,10 +126,9 @@ export default function Swipe() {
     return [list[a], list[b]];
   }
 
-  const handleChoose = useCallback(
+  const executeChoice = useCallback(
     async (winnerIndex: 0 | 1) => {
       if (!pair) return;
-      playSwipeSound();
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
@@ -196,6 +198,22 @@ export default function Swipe() {
     },
     [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields, gauntletMode, gauntletChampion]
   );
+
+  const handleChoose = useCallback(
+    (winnerIndex: 0 | 1) => {
+      if (!pair || sliceWinner !== null) return;
+      playSwipeSound();
+      setSliceWinner(winnerIndex);
+      pendingChoose.current = () => executeChoice(winnerIndex);
+    },
+    [pair, sliceWinner, playSwipeSound, executeChoice]
+  );
+
+  const handleSliceComplete = useCallback(() => {
+    setSliceWinner(null);
+    pendingChoose.current?.();
+    pendingChoose.current = null;
+  }, []);
 
   const handleRewind = async () => {
     if (!lastMatch || myRewinds <= 0 || !globalLeagueId || !myProfileId) return;
@@ -314,23 +332,39 @@ export default function Swipe() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="flex flex-row gap-3 items-stretch"
+                className="relative flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch"
               >
-                <div className="flex flex-col flex-1">
+                {/* Left / Top card */}
+                <motion.div
+                  className="flex flex-col flex-1 relative z-10"
+                  animate={sliceWinner === 0 ? { scale: 1.03, y: -4 } : { scale: 1, y: 0 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
                   <div className="flex justify-center mt-1">
                     <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
                   </div>
+                </motion.div>
+
+                {/* VS badge - positioned between cards, not overlapping */}
+                <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
+                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
                 </div>
-                <div className="flex items-center justify-center px-1">
-                  <span className="text-lg font-black text-gradient">VS</span>
-                </div>
-                <div className="flex flex-col flex-1">
+
+                {/* Right / Bottom card */}
+                <motion.div
+                  className="flex flex-col flex-1 relative z-10"
+                  animate={sliceWinner === 1 ? { scale: 1.03, y: -4 } : { scale: 1, y: 0 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
                   <div className="flex justify-center mt-1">
                     <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
                   </div>
-                </div>
+                </motion.div>
+
+                {/* Slice battle animation overlay */}
+                <SliceBattleAnimation winnerSide={sliceWinner} onComplete={handleSliceComplete} />
               </motion.div>
             </AnimatePresence>
           </MatchupCapture>
