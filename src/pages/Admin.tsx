@@ -96,6 +96,21 @@ export default function Admin() {
           {isMasterAdmin && (
             <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Master</span>
           )}
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className={`shrink-0 ml-auto flex items-center justify-center h-8 w-8 rounded-lg border transition-colors relative ${
+              activeTab === "notifications"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+            }`}
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </button>
         </div>
 
         <AdminStats />
@@ -110,42 +125,17 @@ export default function Admin() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <TabsList className="flex gap-1 overflow-hidden h-auto bg-transparent p-0">
+            <TabsList className="flex-1 flex gap-1 overflow-hidden h-auto bg-transparent p-0">
               {paginatedTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="text-[10px] sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all whitespace-nowrap"
+                  className="flex-1 text-[10px] sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all whitespace-nowrap"
                 >
                   {tab.label}
                 </TabsTrigger>
               ))}
             </TabsList>
-            {tabPage < totalPages - 1 && (
-              <button
-                onClick={() => setTabPage(p => p + 1)}
-                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
-
-            {/* Notifications bell */}
-            <button
-              onClick={() => setActiveTab("notifications")}
-              className={`shrink-0 ml-auto flex items-center justify-center h-8 w-8 rounded-lg border transition-colors relative ${
-                activeTab === "notifications"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
           </div>
 
           <TabsContent value="notifications"><AdminNotifications onReadChange={(count) => setUnreadCount(count)} /></TabsContent>
