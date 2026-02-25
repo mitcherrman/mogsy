@@ -961,14 +961,22 @@ export type Database = {
       }
       user_notifications: {
         Row: {
+          action_url: string | null
           created_at: string
+          emoji: string | null
           id: string
           image_url: string | null
+          is_recurring: boolean
+          is_sent: boolean
           item_id: string | null
           league_id: string | null
           message: string | null
           metadata: Json | null
+          priority: string
           profile_id: string | null
+          recurrence_end_at: string | null
+          recurrence_rule: string | null
+          scheduled_at: string | null
           sent_by_user_id: string
           target_categories: string[] | null
           target_league_ids: string[] | null
@@ -977,14 +985,22 @@ export type Database = {
           type: string
         }
         Insert: {
+          action_url?: string | null
           created_at?: string
+          emoji?: string | null
           id?: string
           image_url?: string | null
+          is_recurring?: boolean
+          is_sent?: boolean
           item_id?: string | null
           league_id?: string | null
           message?: string | null
           metadata?: Json | null
+          priority?: string
           profile_id?: string | null
+          recurrence_end_at?: string | null
+          recurrence_rule?: string | null
+          scheduled_at?: string | null
           sent_by_user_id: string
           target_categories?: string[] | null
           target_league_ids?: string[] | null
@@ -993,14 +1009,22 @@ export type Database = {
           type?: string
         }
         Update: {
+          action_url?: string | null
           created_at?: string
+          emoji?: string | null
           id?: string
           image_url?: string | null
+          is_recurring?: boolean
+          is_sent?: boolean
           item_id?: string | null
           league_id?: string | null
           message?: string | null
           metadata?: Json | null
+          priority?: string
           profile_id?: string | null
+          recurrence_end_at?: string | null
+          recurrence_rule?: string | null
+          scheduled_at?: string | null
           sent_by_user_id?: string
           target_categories?: string[] | null
           target_league_ids?: string[] | null
