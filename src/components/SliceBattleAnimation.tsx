@@ -202,12 +202,14 @@ export default function SliceBattleAnimation({
               ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
             }}
           >
-            <img
-              src={imageUrl}
-              alt={loserName}
-              className="w-full h-full object-contain bg-muted"
-              draggable={false}
-            />
+            <div className="w-full h-full bg-background">
+              <img
+                src={imageUrl}
+                alt={loserName}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            </div>
             {/* Torn edge shadow along the bottom of this half */}
             <div
               className="absolute bottom-0 left-0 right-0 h-3 pointer-events-none"
@@ -239,12 +241,14 @@ export default function SliceBattleAnimation({
               ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
             }}
           >
-            <img
-              src={imageUrl}
-              alt={loserName}
-              className="w-full h-full object-contain bg-muted"
-              draggable={false}
-            />
+            <div className="w-full h-full bg-background">
+              <img
+                src={imageUrl}
+                alt={loserName}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            </div>
             {/* Torn edge shadow along the top of this half */}
             <div
               className="absolute top-0 left-0 right-0 h-3 pointer-events-none"
