@@ -310,6 +310,9 @@ export default function SwipePreset() {
           setCurrentIndex(nextIndex);
         }
       }
+
+      // Clear slice overlay AFTER new pair state is committed
+      setSliceWinner(null);
     },
     [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
@@ -327,11 +330,11 @@ export default function SwipePreset() {
   );
 
   const handleSliceComplete = useCallback(() => {
-    // Clear chosen state first so the old loser card never renders in faded state
     setChosen(null);
     pendingAction.current?.();
-    setSliceWinner(null);
     pendingAction.current = null;
+    // NOTE: sliceWinner is cleared at the end of executeChoice, not here,
+    // so the overlay stays mounted until the new pair is committed.
   }, []);
 
   const handleToggleGauntlet = () => {

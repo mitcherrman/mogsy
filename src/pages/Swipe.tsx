@@ -195,6 +195,9 @@ export default function Swipe() {
         setEloChanges(new Map());
         setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
       }
+
+      // Clear slice overlay AFTER new pair state is committed
+      setSliceWinner(null);
     },
     [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields, gauntletMode, gauntletChampion]
   );
@@ -210,9 +213,9 @@ export default function Swipe() {
   );
 
   const handleSliceComplete = useCallback(() => {
-    setSliceWinner(null);
     pendingChoose.current?.();
     pendingChoose.current = null;
+    // sliceWinner cleared in executeChoice after pair is committed
   }, []);
 
   const handleRewind = async () => {
