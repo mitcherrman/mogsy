@@ -159,25 +159,79 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     }
 
     setSubmitting(true);
+    const contentTrimmed = newComment.trim();
     const insertData: any = {
       profile_id: myProfileId,
       league_id: leagueId,
-      content: newComment.trim(),
+      content: contentTrimmed,
     };
     if (replyingTo) {
       insertData.parent_comment_id = replyingTo.id;
     }
 
-    const { error } = await supabase.from("comments").insert(insertData);
+    // Build optimistic comment
+    const tempId = crypto.randomUUID();
+    const myProfile = comments.find(c => c.profile_id === myProfileId);
+    const optimisticComment: Comment = {
+      id: tempId,
+      profile_id: myProfileId,
+      content: contentTrimmed,
+      is_hidden: false,
+      created_at: new Date().toISOString(),
+      display_name: myProfile?.display_name || "You",
+      avatar_url: myProfile?.avatar_url || null,
+      reactions: {},
+      total_reactions: 0,
+      parent_comment_id: replyingTo?.id || null,
+      replies: [],
+    };
 
+    // If no display name found from existing comments, fetch it
+    if (!myProfile) {
+      const { data: profileData } = await supabase
+        .from("public_profiles")
+        .select("display_name, avatar_url")
+        .eq("id", myProfileId)
+        .single();
+      if (profileData) {
+        optimisticComment.display_name = profileData.display_name || "You";
+        optimisticComment.avatar_url = profileData.avatar_url;
+      }
+    }
+
+    // Optimistically add to state
+    const replyTarget = replyingTo?.id;
+    setComments((prev) => {
+      if (replyTarget) {
+        return prev.map((c) =>
+          c.id === replyTarget
+            ? { ...c, replies: [...c.replies, optimisticComment] }
+            : c
+        );
+      }
+      return [optimisticComment, ...prev];
+    });
+
+    setNewComment("");
+    setReplyingTo(null);
+    setSubmitting(false);
+
+    // Persist in background
+    const { error } = await supabase.from("comments").insert(insertData);
     if (error) {
       toast.error("Failed to post comment");
-    } else {
-      setNewComment("");
-      setReplyingTo(null);
-      await loadComments();
+      // Rollback
+      setComments((prev) => {
+        if (replyTarget) {
+          return prev.map((c) =>
+            c.id === replyTarget
+              ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) }
+              : c
+          );
+        }
+        return prev.filter((c) => c.id !== tempId);
+      });
     }
-    setSubmitting(false);
   };
 
   // Optimistic emoji reaction — no full reload
