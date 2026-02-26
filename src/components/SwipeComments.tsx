@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Trash2, Flag, EyeOff, Send, SmilePlus } from "lucide-react";
+import { ChevronDown, Trash2, Flag, EyeOff, Send, SmilePlus, Reply, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { cn } from "@/lib/utils";
@@ -22,10 +22,18 @@ interface Comment {
   avatar_url: string | null;
   reactions: Record<string, { count: number; reacted: boolean }>;
   total_reactions: number;
+  parent_comment_id: string | null;
+  replies: Comment[];
 }
 
 interface SwipeCommentsProps {
   leagueId: string;
+}
+
+interface DeletedComment {
+  comment: Comment;
+  parentId: string | null;
+  timeout: ReturnType<typeof setTimeout>;
 }
 
 export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
@@ -37,6 +45,9 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
   const [loading, setLoading] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  const [deletedComments, setDeletedComments] = useState<Map<string, DeletedComment>>(new Map());
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -55,11 +66,11 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     setLoading(true);
     const { data: commentsData } = await supabase
       .from("comments")
-      .select("id, profile_id, content, is_hidden, created_at")
+      .select("id, profile_id, content, is_hidden, created_at, parent_comment_id")
       .eq("league_id", leagueId)
       .eq("is_hidden", false)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (!commentsData || commentsData.length === 0) {
       setComments([]);
@@ -92,7 +103,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
       if (r.profile_id === myProfileId) map[r.emoji].reacted = true;
     });
 
-    const mapped: Comment[] = commentsData.map((c) => {
+    const allComments: Comment[] = commentsData.map((c) => {
       const profile = profileMap.get(c.profile_id);
       const rxns = reactionMap.get(c.id) || {};
       const total = Object.values(rxns).reduce((sum, r) => sum + r.count, 0);
@@ -102,10 +113,31 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         avatar_url: profile?.avatar_url || null,
         reactions: rxns,
         total_reactions: total,
+        replies: [],
       };
     });
 
-    setComments(mapped);
+    // Build tree: separate top-level and replies
+    const commentMap = new Map(allComments.map((c) => [c.id, c]));
+    const topLevel: Comment[] = [];
+
+    allComments.forEach((c) => {
+      if (c.parent_comment_id && commentMap.has(c.parent_comment_id)) {
+        commentMap.get(c.parent_comment_id)!.replies.push(c);
+      } else if (!c.parent_comment_id) {
+        topLevel.push(c);
+      } else {
+        // orphaned reply — show as top-level
+        topLevel.push(c);
+      }
+    });
+
+    // Sort replies by date ascending
+    topLevel.forEach((c) => {
+      c.replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
+
+    setComments(topLevel);
     setLoading(false);
   }, [leagueId, myProfileId]);
 
@@ -127,30 +159,67 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from("comments").insert({
+    const insertData: any = {
       profile_id: myProfileId,
       league_id: leagueId,
       content: newComment.trim(),
-    });
+    };
+    if (replyingTo) {
+      insertData.parent_comment_id = replyingTo.id;
+    }
+
+    const { error } = await supabase.from("comments").insert(insertData);
 
     if (error) {
       toast.error("Failed to post comment");
     } else {
       setNewComment("");
+      setReplyingTo(null);
       await loadComments();
     }
     setSubmitting(false);
   };
 
+  // Optimistic emoji reaction — no full reload
   const handleReact = async (commentId: string, emoji: string) => {
     if (!myProfileId) {
       toast.error("Sign in to react");
       return;
     }
 
-    const comment = comments.find((c) => c.id === commentId);
-    const alreadyReacted = comment?.reactions[emoji]?.reacted;
+    // Find comment (could be top-level or reply)
+    const findComment = (list: Comment[]): Comment | undefined => {
+      for (const c of list) {
+        if (c.id === commentId) return c;
+        const found = c.replies.find((r) => r.id === commentId);
+        if (found) return found;
+      }
+      return undefined;
+    };
 
+    const comment = findComment(comments);
+    if (!comment) return;
+    const alreadyReacted = comment.reactions[emoji]?.reacted;
+
+    // Optimistic update
+    setComments((prev) => {
+      const update = (list: Comment[]): Comment[] =>
+        list.map((c) => {
+          const target = c.id === commentId ? c : null;
+          const updatedReplies = c.replies.map((r) =>
+            r.id === commentId ? applyReaction(r, emoji, alreadyReacted) : r
+          );
+          return {
+            ...(target ? applyReaction(c, emoji, alreadyReacted) : c),
+            replies: target ? c.replies : updatedReplies,
+          };
+        });
+      return update(prev);
+    });
+
+    setShowEmojiPicker(null);
+
+    // Persist in background
     if (alreadyReacted) {
       await supabase
         .from("comment_reactions")
@@ -165,24 +234,109 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         emoji,
       });
     }
-
-    setShowEmojiPicker(null);
-    await loadComments();
   };
 
-  const handleDelete = async (commentId: string) => {
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
-    if (error) {
-      toast.error("Failed to delete");
+  const applyReaction = (comment: Comment, emoji: string, wasReacted: boolean | undefined): Comment => {
+    const newReactions = { ...comment.reactions };
+    if (wasReacted) {
+      if (newReactions[emoji]) {
+        newReactions[emoji] = { count: newReactions[emoji].count - 1, reacted: false };
+        if (newReactions[emoji].count <= 0) delete newReactions[emoji];
+      }
     } else {
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-      toast.success("Comment deleted");
+      newReactions[emoji] = {
+        count: (newReactions[emoji]?.count || 0) + 1,
+        reacted: true,
+      };
     }
+    const total = Object.values(newReactions).reduce((sum, r) => sum + r.count, 0);
+    return { ...comment, reactions: newReactions, total_reactions: total };
+  };
+
+  const handleDelete = async (commentId: string, parentId: string | null = null) => {
+    // Find the comment before removing
+    const findAndRemove = (list: Comment[]): { found: Comment | null; newList: Comment[] } => {
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].id === commentId) {
+          const found = list[i];
+          return { found, newList: [...list.slice(0, i), ...list.slice(i + 1)] };
+        }
+        const replyIdx = list[i].replies.findIndex((r) => r.id === commentId);
+        if (replyIdx !== -1) {
+          const found = list[i].replies[replyIdx];
+          const newReplies = [...list[i].replies.slice(0, replyIdx), ...list[i].replies.slice(replyIdx + 1)];
+          const newList = [...list];
+          newList[i] = { ...newList[i], replies: newReplies };
+          return { found, newList };
+        }
+      }
+      return { found: null, newList: list };
+    };
+
+    const { found, newList } = findAndRemove(comments);
+    if (!found) return;
+
+    // Optimistic remove
+    setComments(newList);
+
+    // Set up undo with timeout
+    const timeout = setTimeout(async () => {
+      // Actually delete from DB
+      await supabase.from("comments").delete().eq("id", commentId);
+      setDeletedComments((prev) => {
+        const next = new Map(prev);
+        next.delete(commentId);
+        return next;
+      });
+    }, 5000);
+
+    const deleted: DeletedComment = { comment: found, parentId, timeout };
+    setDeletedComments((prev) => new Map(prev).set(commentId, deleted));
+
+    toast("Comment deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => handleUndoDelete(commentId),
+      },
+      duration: 4500,
+    });
+  };
+
+  const handleUndoDelete = (commentId: string) => {
+    const entry = deletedComments.get(commentId);
+    if (!entry) return;
+
+    clearTimeout(entry.timeout);
+
+    // Restore comment to state
+    setComments((prev) => {
+      if (entry.parentId) {
+        return prev.map((c) =>
+          c.id === entry.parentId
+            ? { ...c, replies: [...c.replies, entry.comment].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) }
+            : c
+        );
+      }
+      return [...prev, entry.comment].sort((a, b) => b.total_reactions - a.total_reactions || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    });
+
+    setDeletedComments((prev) => {
+      const next = new Map(prev);
+      next.delete(commentId);
+      return next;
+    });
+
+    toast.success("Comment restored");
   };
 
   const handleHide = async (commentId: string) => {
     if (!myProfileId) return;
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setComments((prev) => {
+      // Remove from top-level or replies
+      return prev
+        .filter((c) => c.id !== commentId)
+        .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) }));
+    });
     toast.success("Comment hidden for you");
   };
 
@@ -203,7 +357,6 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
       return;
     }
 
-    // Check report count and auto-hide
     const { count } = await supabase
       .from("comment_reports")
       .select("*", { count: "exact", head: true })
@@ -211,7 +364,11 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
 
     if (count && count >= 5) {
       await supabase.from("comments").update({ is_hidden: true, hidden_by_admin: false }).eq("id", commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setComments((prev) =>
+        prev
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) }))
+      );
       await supabase.from("admin_notifications").insert({
         type: "comment_report_critical",
         title: "Comment auto-hidden",
@@ -234,13 +391,17 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     return `${days}d`;
   };
 
-  // Sort by total reactions desc, then by date
+  const handleReply = (commentId: string, displayName: string) => {
+    setReplyingTo({ id: commentId, name: displayName });
+    inputRef.current?.focus();
+  };
+
   const sorted = [...comments].sort((a, b) => b.total_reactions - a.total_reactions || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3);
 
-  const renderComment = (comment: Comment) => (
-    <div key={comment.id} className="flex gap-2 py-2 first:pt-0">
+  const renderComment = (comment: Comment, isReply = false) => (
+    <div key={comment.id} className={cn("flex gap-2 py-2 first:pt-0", isReply && "ml-6 border-l-2 border-border pl-2")}>
       <UserAvatar src={comment.avatar_url} name={comment.display_name} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
@@ -287,11 +448,22 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
             )}
           </div>
 
+          {/* Reply button (only for top-level) */}
+          {!isReply && (
+            <button
+              onClick={() => handleReply(comment.id, comment.display_name)}
+              className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+              title="Reply"
+            >
+              <Reply className="h-3 w-3" />
+            </button>
+          )}
+
           {/* Actions */}
           <div className="ml-auto flex items-center gap-0.5">
             {comment.profile_id === myProfileId && (
               <button
-                onClick={() => handleDelete(comment.id)}
+                onClick={() => handleDelete(comment.id, isReply ? comment.parent_comment_id : null)}
                 className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                 title="Delete"
               >
@@ -318,6 +490,13 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
             )}
           </div>
         </div>
+
+        {/* Replies */}
+        {comment.replies.length > 0 && (
+          <div className="mt-1">
+            {comment.replies.map((reply) => renderComment(reply, true))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -326,13 +505,23 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     <div className="mt-3 rounded-xl border border-border bg-card p-3">
       <h4 className="text-xs font-bold text-foreground mb-2">Comments</h4>
 
+      {/* Reply indicator */}
+      {replyingTo && (
+        <div className="flex items-center gap-1 text-[10px] text-primary mb-1">
+          <Reply className="h-3 w-3" />
+          <span>Replying to {replyingTo.name}</span>
+          <button onClick={() => setReplyingTo(null)} className="ml-1 text-muted-foreground hover:text-foreground">✕</button>
+        </div>
+      )}
+
       {/* New comment input */}
       {user && myProfileId ? (
         <div className="flex gap-2 mb-3">
           <Input
+            ref={inputRef}
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add a comment..."
+            placeholder={replyingTo ? `Reply to ${replyingTo.name}...` : "Add a comment..."}
             className="text-xs h-8"
             maxLength={500}
             onKeyDown={(e) => {
@@ -363,10 +552,8 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         <p className="text-[10px] text-muted-foreground text-center py-3">No comments yet. Be the first!</p>
       ) : (
         <>
-          {/* Top 3 comments */}
-          <div className="divide-y divide-border">{top3.map(renderComment)}</div>
+          <div className="divide-y divide-border">{top3.map((c) => renderComment(c))}</div>
 
-          {/* Remaining comments */}
           {rest.length > 0 && (
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
               <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-primary font-medium mt-2 hover:underline w-full">
@@ -374,7 +561,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
                 {rest.length} more comment{rest.length > 1 ? "s" : ""}
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="divide-y divide-border mt-1">{rest.map(renderComment)}</div>
+                <div className="divide-y divide-border mt-1">{rest.map((c) => renderComment(c))}</div>
               </CollapsibleContent>
             </Collapsible>
           )}
