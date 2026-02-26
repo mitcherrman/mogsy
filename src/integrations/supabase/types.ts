@@ -201,6 +201,7 @@ export type Database = {
           id: string
           is_hidden: boolean
           league_id: string | null
+          parent_comment_id: string | null
           profile_id: string
           updated_at: string
         }
@@ -211,6 +212,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           league_id?: string | null
+          parent_comment_id?: string | null
           profile_id: string
           updated_at?: string
         }
@@ -221,6 +223,7 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           league_id?: string | null
+          parent_comment_id?: string | null
           profile_id?: string
           updated_at?: string
         }
@@ -230,6 +233,13 @@ export type Database = {
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
             referencedColumns: ["id"]
           },
           {
