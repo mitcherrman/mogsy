@@ -1,75 +1,61 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback, useId } from "react";
 
+interface CardItem {
+  imageUrl: string | null;
+  name: string;
+}
+
 interface SliceBattleAnimationProps {
   winnerSide: 0 | 1 | null;
-  loserImageUrl: string | null;
-  loserName: string;
+  items: CardItem[];
   onComplete: () => void;
 }
 
 /**
- * High-quality card tear animation:
- * 1. Winner lifts (scale + translateY)
- * 2. Diagonal slash sweeps across loser card
- * 3. Loser card splits into two jagged halves that drift apart
- * 4. Winner settles back down
- *
- * Uses the real loser image with inline SVG jagged clip-paths.
- * Total: ~800ms
+ * Full-screen opaque overlay that renders BOTH cards as replicas.
+ * The loser side gets a jagged tear animation.
+ * The winner side stays static (no scale/lift).
+ * This completely hides the real cards underneath during the animation.
  */
 
-// Generate jagged tear polygon points along a diagonal line
-// Returns SVG polygon points string for top half and bottom half
 function generateTearPoints(width: number, height: number, teeth: number = 14) {
-  const angle = 12; // degrees
+  const angle = 12;
   const rad = (angle * Math.PI) / 180;
-
-  // The diagonal line goes from (0, centerY + offset) to (width, centerY - offset)
   const centerY = height / 2;
   const halfDiag = (width * Math.tan(rad)) / 2;
-  const startY = centerY + halfDiag; // left edge
-  const endY = centerY - halfDiag;   // right edge
+  const startY = centerY + halfDiag;
+  const endY = centerY - halfDiag;
+  const toothDepth = height * 0.025;
 
-  // Generate zigzag points along the diagonal
   const zigzagTop: string[] = [];
   const zigzagBottom: string[] = [];
-  const toothDepth = height * 0.025; // depth of each tooth
 
   for (let i = 0; i <= teeth; i++) {
     const t = i / teeth;
     const x = t * width;
     const baseY = startY + (endY - startY) * t;
-    // Alternate up/down for zigzag
     const offset = i % 2 === 0 ? -toothDepth : toothDepth;
     zigzagTop.push(`${x},${baseY + offset}`);
     zigzagBottom.push(`${x},${baseY + offset}`);
   }
 
-  // Top half: top-left → top-right → zigzag right-to-left → close
-  const topPoints = [
-    `0,0`,
-    `${width},0`,
-    ...zigzagTop.reverse(),
-  ].join(" ");
-
-  // Bottom half: zigzag left-to-right → bottom-right → bottom-left → close
-  const bottomPoints = [
-    ...zigzagBottom,
-    `${width},${height}`,
-    `0,${height}`,
-  ].join(" ");
+  const topPoints = [`0,0`, `${width},0`, ...zigzagTop.reverse()].join(" ");
+  const bottomPoints = [...zigzagBottom, `${width},${height}`, `0,${height}`].join(" ");
 
   return { topPoints, bottomPoints };
 }
 
+function getImageUrl(item: CardItem): string {
+  return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
+}
+
 export default function SliceBattleAnimation({
   winnerSide,
-  loserImageUrl,
-  loserName,
+  items,
   onComplete,
 }: SliceBattleAnimationProps) {
-  const [phase, setPhase] = useState<"idle" | "rise" | "slash" | "split" | "done">("idle");
+  const [phase, setPhase] = useState<"idle" | "slash" | "split" | "done">("idle");
   const clipId = useId();
 
   const reset = useCallback(() => {
@@ -83,42 +69,34 @@ export default function SliceBattleAnimation({
       return;
     }
 
-    setPhase("rise");
-    const t1 = setTimeout(() => setPhase("slash"), 200);
-    const t2 = setTimeout(() => setPhase("split"), 350);
-    const t3 = setTimeout(reset, 800);
+    setPhase("slash");
+    const t1 = setTimeout(() => setPhase("split"), 150);
+    const t2 = setTimeout(reset, 700);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
   }, [winnerSide, reset]);
 
-  if (winnerSide === null || phase === "idle") return null;
+  if (winnerSide === null || phase === "idle" || items.length < 2) return null;
 
-  const isLeftWinner = winnerSide === 0;
-  // Loser is on the opposite side
-  const loserOnRight = isLeftWinner;
+  const loserIdx = winnerSide === 0 ? 1 : 0;
+  const loserOnRight = winnerSide === 0;
 
-  // SVG viewBox dimensions (arbitrary, we use percentage-based polygon coords)
   const W = 1000;
   const H = 1400;
   const { topPoints, bottomPoints } = generateTearPoints(W, H);
-
   const topClipId = `tear-top-${clipId}`;
   const bottomClipId = `tear-bottom-${clipId}`;
-
-  // Fallback image
-  const imageUrl = loserImageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(loserName)}&background=1a1a2e&color=00d4ff&size=400`;
 
   return (
     <AnimatePresence>
       <motion.div
-        className="absolute inset-0 z-50 pointer-events-none"
+        className="absolute inset-0 z-50 pointer-events-none bg-background"
         initial={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.1 }}
+        transition={{ duration: 0.05 }}
       >
         {/* Hidden SVG defs for jagged clip-paths */}
         <svg className="absolute w-0 h-0" aria-hidden="true">
@@ -134,118 +112,102 @@ export default function SliceBattleAnimation({
           </defs>
         </svg>
 
-        {/* ── Winner overlay: subtle scale lift and settle ── */}
-        <motion.div
-          className="absolute top-0 bottom-0 overflow-hidden"
-          style={{
-            left: isLeftWinner ? 0 : "50%",
-            right: isLeftWinner ? "50%" : 0,
-          }}
-          initial={{ scale: 1, y: 0 }}
-          animate={
-            phase === "rise" || phase === "slash"
-              ? { scale: 1.05, y: -8 }
-              : phase === "split"
-              ? { scale: 1.02, y: -3 }
-              : { scale: 1, y: 0 }
-          }
-          transition={
-            phase === "done"
-              ? { duration: 0.2, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }
-          }
-        >
-          {/* Winner glow */}
-          <motion.div
-            className="absolute inset-0 rounded-2xl"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: phase === "slash" || phase === "split" ? 0.15 : 0,
-              boxShadow:
-                phase === "slash" || phase === "split"
-                  ? "inset 0 0 40px hsl(var(--primary) / 0.25), 0 0 25px hsl(var(--primary) / 0.12)"
-                  : "inset 0 0 0px transparent",
-            }}
-            transition={{ duration: 0.15 }}
-          >
-            <div className="w-full h-full bg-primary/10 rounded-2xl" />
-          </motion.div>
-        </motion.div>
+        {/* Full overlay with both cards side by side */}
+        <div className="w-full h-full flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 p-0">
+          {items.map((item, idx) => {
+            const isLoser = idx === loserIdx;
+            const imageUrl = getImageUrl(item);
 
-        {/* ── Loser card: real image torn into two jagged halves ── */}
-        <div
-          className="absolute top-0 bottom-0"
-          style={{
-            left: loserOnRight ? "50%" : 0,
-            right: loserOnRight ? 0 : "50%",
-          }}
-        >
-          {/* Top half of the loser card */}
-          <motion.div
-            className="absolute inset-0 overflow-hidden rounded-2xl"
-            style={{
-              clipPath: `url(#${topClipId})`,
-            }}
-            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-            animate={
-              phase === "split" || phase === "done"
-                ? {
-                    x: loserOnRight ? 30 : -30,
-                    y: -45,
-                    rotate: loserOnRight ? 5 : -5,
-                    opacity: phase === "done" ? 0 : 1,
-                  }
-                : { x: 0, y: 0, rotate: 0, opacity: 1 }
+            if (!isLoser) {
+              // Winner side: static replica
+              return (
+                <div key={idx} className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 rounded-2xl overflow-hidden">
+                    <div className="w-full h-full bg-white">
+                      <img
+                        src={imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-contain bg-white"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-1.5 text-center flex-shrink-0">
+                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                  </div>
+                </div>
+              );
             }
-            transition={{
-              duration: phase === "done" ? 0.15 : 0.35,
-              ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
-            }}
-          >
-            <div className="w-full h-full bg-background">
-              <img
-                src={imageUrl}
-                alt={loserName}
-                className="w-full h-full object-contain"
-                draggable={false}
-              />
-            </div>
-          </motion.div>
 
-          {/* Bottom half of the loser card */}
-          <motion.div
-            className="absolute inset-0 overflow-hidden rounded-2xl"
-            style={{
-              clipPath: `url(#${bottomClipId})`,
-            }}
-            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-            animate={
-              phase === "split" || phase === "done"
-                ? {
-                    x: loserOnRight ? -20 : 20,
-                    y: 50,
-                    rotate: loserOnRight ? -4 : 4,
-                    opacity: phase === "done" ? 0 : 1,
-                  }
-                : { x: 0, y: 0, rotate: 0, opacity: 1 }
-            }
-            transition={{
-              duration: phase === "done" ? 0.15 : 0.35,
-              ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
-            }}
-          >
-            <div className="w-full h-full bg-background">
-              <img
-                src={imageUrl}
-                alt={loserName}
-                className="w-full h-full object-contain"
-                draggable={false}
-              />
-            </div>
-          </motion.div>
+            // Loser side: torn into two jagged halves
+            return (
+              <div key={idx} className="flex-1 flex flex-col min-h-0 relative">
+                <div className="flex-1 relative rounded-2xl overflow-hidden">
+                  {/* Top half */}
+                  <motion.div
+                    className="absolute inset-0 overflow-hidden rounded-2xl"
+                    style={{ clipPath: `url(#${topClipId})` }}
+                    initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+                    animate={
+                      phase === "split" || phase === "done"
+                        ? {
+                            x: loserOnRight ? 30 : -30,
+                            y: -45,
+                            rotate: loserOnRight ? 5 : -5,
+                            opacity: phase === "done" ? 0 : 1,
+                          }
+                        : { x: 0, y: 0, rotate: 0, opacity: 1 }
+                    }
+                    transition={{
+                      duration: phase === "done" ? 0.15 : 0.35,
+                      ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
+                    }}
+                  >
+                    <div className="w-full h-full bg-white">
+                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                    </div>
+                  </motion.div>
+
+                  {/* Bottom half */}
+                  <motion.div
+                    className="absolute inset-0 overflow-hidden rounded-2xl"
+                    style={{ clipPath: `url(#${bottomClipId})` }}
+                    initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+                    animate={
+                      phase === "split" || phase === "done"
+                        ? {
+                            x: loserOnRight ? -20 : 20,
+                            y: 50,
+                            rotate: loserOnRight ? -4 : 4,
+                            opacity: phase === "done" ? 0 : 1,
+                          }
+                        : { x: 0, y: 0, rotate: 0, opacity: 1 }
+                    }
+                    transition={{
+                      duration: phase === "done" ? 0.15 : 0.35,
+                      ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
+                    }}
+                  >
+                    <div className="w-full h-full bg-white">
+                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                    </div>
+                  </motion.div>
+                </div>
+
+                <div className="pt-1.5 text-center flex-shrink-0">
+                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* ── Diagonal slash flash ── */}
+        {/* VS badge replica */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">VS</span>
+        </div>
+
+        {/* Diagonal slash flash */}
         {phase === "slash" && (
           <div
             className="absolute top-0 bottom-0 overflow-hidden"
@@ -272,7 +234,7 @@ export default function SliceBattleAnimation({
           </div>
         )}
 
-        {/* ── Impact sparks at tear center ── */}
+        {/* Impact sparks */}
         {(phase === "slash" || phase === "split") && (
           <motion.div
             className="absolute"

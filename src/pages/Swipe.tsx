@@ -378,8 +378,7 @@ export default function Swipe() {
                 {/* Slice battle animation overlay */}
                 <SliceBattleAnimation
                   winnerSide={sliceWinner}
-                  loserImageUrl={sliceWinner !== null ? pair[sliceWinner === 0 ? 1 : 0].avatarUrl : null}
-                  loserName={sliceWinner !== null ? pair[sliceWinner === 0 ? 1 : 0].displayName : ""}
+                  items={pair ? pair.map(p => ({ imageUrl: p.avatarUrl, name: p.displayName })) : []}
                   onComplete={handleSliceComplete}
                 />
               </motion.div>

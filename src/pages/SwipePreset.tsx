@@ -550,13 +550,13 @@ export default function SwipePreset() {
                   })}
                 </div>
               ) : (
-              <AnimatePresence mode="sync" initial={false}>
+              <AnimatePresence mode="wait">
                 <motion.div
                   key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12 }}
+                  transition={{ duration: 0.25 }}
                   className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >
                   {pair.map((item, idx) => {
@@ -580,10 +580,10 @@ export default function SwipePreset() {
                           }}
                           whileTap={{ scale: 0.97 }}
                           className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
-                            isWinner
+                          isWinner
                               ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
                               : isLoser
-                              ? `${sliceWinner !== null ? "opacity-0" : "opacity-50"} scale-[0.97]`
+                              ? "opacity-50 scale-[0.97]"
                               : "hover:scale-[1.01]"
                           }`}
                         >
@@ -666,8 +666,7 @@ export default function SwipePreset() {
               {/* Slice battle animation */}
               <SliceBattleAnimation
                 winnerSide={sliceWinner}
-                loserImageUrl={pair && sliceWinner !== null ? getDisplayImage(pair[sliceWinner === 0 ? 1 : 0]) : null}
-                loserName={pair && sliceWinner !== null ? pair[sliceWinner === 0 ? 1 : 0].name : ""}
+                items={pair ? pair.map(item => ({ imageUrl: getDisplayImage(item), name: item.name })) : []}
                 onComplete={handleSliceComplete}
               />
             </MatchupCapture>
