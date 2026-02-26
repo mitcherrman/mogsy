@@ -337,7 +337,13 @@ export default function Swipe() {
                 {/* Left / Top card */}
                 <motion.div
                   className="flex flex-col flex-1 relative z-10"
-                  animate={sliceWinner === 0 ? { scale: 1.03, y: -4 } : { scale: 1, y: 0 }}
+                  animate={
+                    sliceWinner === 0
+                      ? { scale: 1.03, y: -4, opacity: 1 }
+                      : sliceWinner === 1
+                      ? { scale: 1, y: 0, opacity: 0 }
+                      : { scale: 1, y: 0, opacity: 1 }
+                  }
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
@@ -354,7 +360,13 @@ export default function Swipe() {
                 {/* Right / Bottom card */}
                 <motion.div
                   className="flex flex-col flex-1 relative z-10"
-                  animate={sliceWinner === 1 ? { scale: 1.03, y: -4 } : { scale: 1, y: 0 }}
+                  animate={
+                    sliceWinner === 1
+                      ? { scale: 1.03, y: -4, opacity: 1 }
+                      : sliceWinner === 0
+                      ? { scale: 1, y: 0, opacity: 0 }
+                      : { scale: 1, y: 0, opacity: 1 }
+                  }
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
