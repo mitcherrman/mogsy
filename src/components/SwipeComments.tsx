@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import UserAvatar from "@/components/UserAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +39,7 @@ interface DeletedComment {
 
 export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
@@ -342,7 +344,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         next.delete(commentId);
         return next;
       });
-    }, 5000);
+    }, 4000);
 
     const deleted: DeletedComment = { comment: found, parentId, timeout };
     setDeletedComments((prev) => new Map(prev).set(commentId, deleted));
@@ -352,7 +354,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         label: "Undo",
         onClick: () => handleUndoDelete(commentId),
       },
-      duration: 4500,
+      duration: 4000,
     });
   };
 
@@ -456,10 +458,14 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
 
   const renderComment = (comment: Comment, isReply = false) => (
     <div key={comment.id} className={cn("flex gap-2 py-2 first:pt-0", isReply && "ml-6 border-l-2 border-border pl-2")}>
-      <UserAvatar src={comment.avatar_url} name={comment.display_name} size="sm" />
+      <button onClick={() => navigate(`/user/${comment.profile_id}`)} className="flex-shrink-0">
+        <UserAvatar src={comment.avatar_url} name={comment.display_name} size="sm" />
+      </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-foreground truncate">{comment.display_name}</span>
+          <button onClick={() => navigate(`/user/${comment.profile_id}`)} className="text-xs font-semibold text-foreground truncate hover:text-primary transition-colors">
+            {comment.display_name}
+          </button>
           <span className="text-[10px] text-muted-foreground">{timeAgo(comment.created_at)}</span>
         </div>
         <p className="text-xs text-foreground/80 break-words">{comment.content}</p>
