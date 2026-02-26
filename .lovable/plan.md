@@ -1,69 +1,48 @@
 
 
-## Analysis of the Problem
+## Problem Analysis
 
-The current `SliceBattleAnimation` renders **abstract semi-transparent colored divs** (`bg-destructive/8`) with clip-path polygons. It never shows the actual card content — no image, no text. The user sees vague tinted rectangles splitting apart, which looks cheap and disconnected from the cards on screen.
+The root cause is that the `SliceBattleAnimation` only overlays the **loser half** of the screen, leaving the actual cards underneath partially visible. The winner card also gets a motion overlay that causes visual glitching (jumping up/down). Meanwhile, the actual card elements in `SwipePreset.tsx` try to hide themselves with `opacity-0` classes, but there are timing gaps between state changes that cause brief flashes.
 
-Your suggestion about splitting the actual image is exactly the right approach. We don't need to pre-process or store two halves — we can render the loser's actual image twice, each clipped to a half with a jagged tear edge using CSS `clip-path` and `mask-image`, then animate them apart. This is a well-established technique used in card game UIs (Hearthstone card destruction, Clash Royale defeats, etc.).
+The `AnimatePresence mode="sync"` change from the last edit also made things worse by allowing old and new pairs to render simultaneously.
 
----
+## Plan
 
-## Technical Approach: Real Image Tear
+### 1. Revert recent broken changes in `SwipePreset.tsx`
+- Change `AnimatePresence mode="sync" initial={false}` back to `mode="wait"`
+- Change transition duration back to `0.25`
 
-### Core Idea
-1. Pass the **loser card's image URL and name** into `SliceBattleAnimation`
-2. Render a full replica of the loser card (image + name overlay) positioned exactly over the real card
-3. At the tear moment, swap to **two copies** of that replica, each clipped to top/bottom half with a jagged SVG edge mask
-4. Animate the halves separating — top half drifts up-left with slight rotation, bottom half drops down-right
-5. Add a bright diagonal slash line at the moment of separation
+### 2. Redesign `SliceBattleAnimation` to be a full-screen opaque overlay
 
-### Jagged Tear Edge
-Instead of a clean diagonal line, use an **inline SVG `clipPath`** with a zigzag/perforated pattern along the cut line. This gives the torn-paper / sliced effect. The zigzag runs at approximately 10-15 degrees diagonally across the card.
+Instead of only overlaying parts of the screen, the animation will render **both cards as opaque replicas** covering the entire matchup area. This way, the actual cards underneath are completely irrelevant during the animation.
 
-### Animation Phases (total ~800ms)
+**New approach:**
+- Accept both winner and loser image URLs + names
+- Render a **full opaque overlay** with both card images side by side (matching the layout)
+- The winner side stays static (no scale/lift animation — this removes the glitch)
+- The loser side gets the tear animation
+- When animation completes, the overlay disappears and the next pair is already loaded underneath
+
+This means:
+- No need for `opacity-0` hacks on the actual cards
+- No timing-sensitive state synchronization
+- The overlay is self-contained and covers everything
+
+### 3. Update `SwipePreset.tsx` card rendering
+- Remove the `sliceWinner !== null ? "opacity-0"` hack from the loser card class
+- Remove the winner overlay section from `SliceBattleAnimation` (no more scale/lift on winner)
+- Pass both card images to `SliceBattleAnimation` instead of just the loser
+- In `handleSliceComplete`: execute the pending action first (loads next pair), then clear `sliceWinner` — the overlay hides everything during the transition
+
+### 4. Updated `SliceBattleAnimation` props
 ```text
-Phase 1: "rise" (0-200ms)
-  - Winner card scales up 1.05x, lifts -8px (existing behavior, improved)
-  - Loser card: no change yet — builds tension
-
-Phase 2: "slash" (200-350ms)  
-  - A bright white diagonal line sweeps across the loser card (150ms)
-  - At 300ms mark: loser card snaps into two jagged halves
-
-Phase 3: "split" (350-650ms)
-  - Top half: translates (-30px, -40px), rotates -5°, fades to 0
-  - Bottom half: translates (20px, 50px), rotates 3°, fades to 0
-  - Winner card settles back to scale 1.0
-
-Phase 4: "done" (650-800ms)
-  - Cleanup, call onComplete
+Old:  winnerSide, loserImageUrl, loserName, onComplete
+New:  winnerSide, items (array of {imageUrl, name} for both cards), onComplete
 ```
 
-### Changes Required
+The component renders a full opaque `div` with `bg-background` covering `absolute inset-0`, containing both card images laid out identically to the real cards. The winner side is static, the loser side gets the jagged tear. On completion, the entire overlay unmounts.
 
-**`src/components/SliceBattleAnimation.tsx`** — Full rewrite:
-- New props: `loserImageUrl: string | null`, `loserName: string`, and existing `winnerSide` / `onComplete`
-- Render an **inline SVG** defining a jagged polygon clip-path for top-half and bottom-half
-- Two `motion.div` elements each containing the actual loser image, clipped to their respective halves
-- The jagged edge is a zigzag polyline at ~12° angle across the midpoint
-- Diagonal slash flash line (bright white, 2px, sweeps via `scaleX` animation)
-- Winner glow remains but simplified
-
-**`src/pages/SwipePreset.tsx`** — Minor prop additions:
-- Pass `loserImageUrl` and `loserName` to `SliceBattleAnimation` based on the current pair and `sliceWinner` state
-- Also need to know the loser card's position (top/left vs bottom/right) — already derivable from `winnerSide`
-
-### Jagged Edge Detail
-The SVG clip-path polygon for the top half would look like:
-```text
-0,0 → 100,0 → 100,45% → zigzag teeth → 0,55% → 0,0
-```
-Where the zigzag has ~12-16 small triangular teeth running diagonally, creating a torn/perforated look. The bottom half uses the inverse polygon. Both clip-paths reference the same SVG `<defs>` block rendered once.
-
-### Why This Works
-- Uses the **real image** — the tear looks like the actual card is being destroyed
-- Jagged edges via SVG clip-path are GPU-accelerated and crisp at any resolution
-- No image pre-processing, no storage, no server changes needed
-- The framer-motion spring/ease curves give physicality to the falling halves
-- Total duration stays under 1 second so it doesn't slow down gameplay
+### Files to modify
+- `src/components/SliceBattleAnimation.tsx` — Accept both card images, render full opaque overlay with both sides, remove winner scale animation
+- `src/pages/SwipePreset.tsx` — Revert AnimatePresence changes, remove opacity-0 hack, pass both card data to SliceBattleAnimation
 
