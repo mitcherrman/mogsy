@@ -272,46 +272,44 @@ export default function SwipePreset() {
 
       const newCount = matchCount + 1;
 
-      setTimeout(() => {
-        setMatchCount(newCount);
-        setChosen(null);
-        setEloChanges(new Map());
-        setRankChanges(new Map());
-        setCurrentImageIndex(prev => {
-          const next = new Map(prev);
-          pair.forEach(p => {
-            const imgs = itemImages.get(p.id);
-            if (imgs && imgs.length > 1) {
-              next.set(p.id, ((prev.get(p.id) || 0) + 1) % imgs.length);
-            }
-          });
-          return next;
+      setMatchCount(newCount);
+      setChosen(null);
+      setEloChanges(new Map());
+      setRankChanges(new Map());
+      setCurrentImageIndex(prev => {
+        const next = new Map(prev);
+        pair.forEach(p => {
+          const imgs = itemImages.get(p.id);
+          if (imgs && imgs.length > 1) {
+            next.set(p.id, ((prev.get(p.id) || 0) + 1) % imgs.length);
+          }
         });
+        return next;
+      });
 
-        if (gauntletMode) {
-          const updatedWinner = updatedItems.find(i => i.id === winner.id)!;
-          setGauntletChampion(updatedWinner);
-          setGauntletStreak(prev => {
-            if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
-            return 1;
-          });
-          const challenger = getGauntletChallenger(updatedWinner);
-          const winnerWasLeft = pair[0].id === winner.id;
-          setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
-          if (!isPro && newCount % AD_INTERVAL === 0) {
-            setShowAd(true);
-          }
-        } else {
-          const nextIndex = currentIndex + 1;
-          if (nextIndex >= matchups.length) {
-            setFinished(true);
-          } else if (!isPro && newCount % AD_INTERVAL === 0) {
-            setShowAd(true);
-          } else {
-            setCurrentIndex(nextIndex);
-          }
+      if (gauntletMode) {
+        const updatedWinner = updatedItems.find(i => i.id === winner.id)!;
+        setGauntletChampion(updatedWinner);
+        setGauntletStreak(prev => {
+          if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
+          return 1;
+        });
+        const challenger = getGauntletChallenger(updatedWinner);
+        const winnerWasLeft = pair[0].id === winner.id;
+        setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
+        if (!isPro && newCount % AD_INTERVAL === 0) {
+          setShowAd(true);
         }
-      }, 600);
+      } else {
+        const nextIndex = currentIndex + 1;
+        if (nextIndex >= matchups.length) {
+          setFinished(true);
+        } else if (!isPro && newCount % AD_INTERVAL === 0) {
+          setShowAd(true);
+        } else {
+          setCurrentIndex(nextIndex);
+        }
+      }
     },
     [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
