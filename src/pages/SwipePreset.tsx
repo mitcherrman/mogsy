@@ -583,17 +583,17 @@ export default function SwipePreset() {
                             isWinner
                               ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
                               : isLoser
-                              ? "opacity-50 scale-[0.97]"
+                              ? `${sliceWinner !== null ? "opacity-0" : "opacity-50"} scale-[0.97]`
                               : "hover:scale-[1.01]"
                           }`}
                         >
                           {/* Image container - fills available space */}
-                          <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted overflow-hidden">
+                          <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
                             {displayImage ? (
                               <img
                                 src={displayImage}
                                 alt={item.name}
-                                className="w-full h-full object-contain bg-muted"
+                                className="w-full h-full object-contain bg-white"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                                 }}
@@ -728,9 +728,9 @@ function GauntletCard({
             : "hover:scale-[1.01]"
         }`}
       >
-        <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted overflow-hidden">
+        <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
           {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-muted"
+            <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-white"
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
             />
           ) : (
