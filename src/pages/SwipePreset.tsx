@@ -550,13 +550,13 @@ export default function SwipePreset() {
                   })}
                 </div>
               ) : (
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="sync" initial={false}>
                 <motion.div
                   key={`pair-${pair[0].id}-${pair[1].id}-${currentIndex}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
+                  transition={{ duration: 0.12 }}
                   className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >
                   {pair.map((item, idx) => {
