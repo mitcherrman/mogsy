@@ -193,12 +193,12 @@ export default function SliceBattleAnimation({
                     x: loserOnRight ? 30 : -30,
                     y: -45,
                     rotate: loserOnRight ? 5 : -5,
-                    opacity: phase === "done" ? 0 : 0.8,
+                    opacity: phase === "done" ? 0 : 1,
                   }
-                : { x: 0, y: 0, rotate: 0, opacity: phase === "slash" ? 1 : 0 }
+                : { x: 0, y: 0, rotate: 0, opacity: 1 }
             }
             transition={{
-              duration: phase === "done" ? 0.15 : 0.3,
+              duration: phase === "done" ? 0.15 : 0.35,
               ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
             }}
           >
@@ -210,13 +210,6 @@ export default function SliceBattleAnimation({
                 draggable={false}
               />
             </div>
-            {/* Torn edge shadow along the bottom of this half */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-3 pointer-events-none"
-              style={{
-                background: "linear-gradient(to top, hsl(var(--foreground) / 0.15), transparent)",
-              }}
-            />
           </motion.div>
 
           {/* Bottom half of the loser card */}
@@ -232,12 +225,12 @@ export default function SliceBattleAnimation({
                     x: loserOnRight ? -20 : 20,
                     y: 50,
                     rotate: loserOnRight ? -4 : 4,
-                    opacity: phase === "done" ? 0 : 0.8,
+                    opacity: phase === "done" ? 0 : 1,
                   }
-                : { x: 0, y: 0, rotate: 0, opacity: phase === "slash" ? 1 : 0 }
+                : { x: 0, y: 0, rotate: 0, opacity: 1 }
             }
             transition={{
-              duration: phase === "done" ? 0.15 : 0.3,
+              duration: phase === "done" ? 0.15 : 0.35,
               ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
             }}
           >
@@ -249,13 +242,6 @@ export default function SliceBattleAnimation({
                 draggable={false}
               />
             </div>
-            {/* Torn edge shadow along the top of this half */}
-            <div
-              className="absolute top-0 left-0 right-0 h-3 pointer-events-none"
-              style={{
-                background: "linear-gradient(to bottom, hsl(var(--foreground) / 0.15), transparent)",
-              }}
-            />
           </motion.div>
         </div>
 
