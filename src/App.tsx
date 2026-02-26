@@ -25,6 +25,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Shop = lazy(() => import("./pages/Shop"));
 const EloCheck = lazy(() => import("./pages/EloCheck"));
 const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
                 <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
                 <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
+                <Route path="/user/:profileId" element={<UserProfile />} />
                 <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<NotFound />} />
