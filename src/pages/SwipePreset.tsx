@@ -327,8 +327,10 @@ export default function SwipePreset() {
   );
 
   const handleSliceComplete = useCallback(() => {
-    setSliceWinner(null);
+    // Clear chosen state first so the old loser card never renders in faded state
+    setChosen(null);
     pendingAction.current?.();
+    setSliceWinner(null);
     pendingAction.current = null;
   }, []);
 
