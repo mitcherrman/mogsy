@@ -164,11 +164,19 @@ export default function Leaderboard() {
                     )}
                   </div>
                 ) : (
-                  <UserAvatar src={entry.avatarUrl} name={entry.displayName} size={isTop3 ? "xl" : "lg"} className={isTop3 ? "avatar-ring" : "ring-1 ring-border"} />
+                  <button onClick={() => navigate(`/user/${entry.id}`)} className="flex-shrink-0">
+                    <UserAvatar src={entry.avatarUrl} name={entry.displayName} size={isTop3 ? "xl" : "lg"} className={`${isTop3 ? "avatar-ring" : "ring-1 ring-border"} hover:ring-primary/50 transition-all`} />
+                  </button>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground truncate">{entry.displayName}</span>
+                    {entry.isPresetItem ? (
+                      <span className="font-bold text-foreground truncate">{entry.displayName}</span>
+                    ) : (
+                      <button onClick={() => navigate(`/user/${entry.id}`)} className="font-bold text-foreground truncate hover:text-primary transition-colors text-left">
+                        {entry.displayName}
+                      </button>
+                    )}
                     <TierBadge tier={entry.tier} />
                   </div>
                   {entry.location && <div className="text-sm text-muted-foreground">{entry.location}</div>}
