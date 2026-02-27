@@ -385,7 +385,7 @@ export default function Home() {
   const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className="min-h-screen px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         {/* Mogsy Logo */}
         <div className="flex justify-center mb-2">

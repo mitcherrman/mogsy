@@ -168,7 +168,7 @@ export default function Play() {
 
   // While restoring state, wait for leagues to load to avoid flashing wrong view
   if (restoreState?.restoreCategory && leagues.length === 0) {
-    return <div className={`px-4 py-8 h-[calc(100vh-4rem)] overflow-hidden bg-background transition-colors duration-500`}>
+    return <div className={`px-4 py-8 h-[calc(100vh-4rem)] overflow-hidden transition-colors duration-500`}>
       <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups." />
     </div>;
   }
@@ -417,7 +417,7 @@ export default function Play() {
   const isLolTheme = selectedSubcategory === "League of Legends";
 
   return (
-    <div className={`px-4 py-8 ${needsScroll ? 'min-h-screen' : 'h-[calc(100vh-4rem)] overflow-hidden'} ${isLolTheme ? 'theme-lol bg-[hsl(220,30%,8%)]' : 'bg-background'} transition-colors duration-500`}>
+    <div className={`px-4 py-8 ${needsScroll ? 'min-h-screen' : 'h-[calc(100vh-4rem)] overflow-hidden'} ${isLolTheme ? 'theme-lol bg-[hsl(220,30%,8%)]' : ''} transition-colors duration-500`}>
       <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups." />
       <div className="container mx-auto max-w-md">
         <div className="flex items-center gap-3 mb-12">

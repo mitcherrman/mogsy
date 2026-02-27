@@ -194,11 +194,11 @@ export default function Shop() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   return (
-    <div className="min-h-screen bg-background px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
       <SEOHead title="Shop — Mogsy" description="Get diamonds, boosts, shields, and premium items in the Mogsy shop. Power up your ranking experience." />
       <div className="container mx-auto max-w-3xl">
         {/* Header */}
