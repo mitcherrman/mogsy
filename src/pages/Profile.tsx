@@ -335,11 +335,25 @@ export default function Profile() {
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
       <div className="container mx-auto max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-3 mb-6">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
+            </div>
+            {profileId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/user/${profileId}`)}
+                className="gap-1.5 text-xs"
+              >
+                <User className="h-3.5 w-3.5" />
+                Preview Profile
+              </Button>
+            )}
           </div>
 
 
