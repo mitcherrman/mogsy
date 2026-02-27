@@ -2,26 +2,56 @@
 
 ## Analysis
 
-**Yes, these are conflicting and causing the flash.** Here's what happens:
+The network requests confirm the problem: every Navbar sub-component (NavBanner, UserNotificationBell, diamond fetch) fires its requests **twice** -- once at :42 and again at :45. Here's the sequence causing the flash:
 
-1. `Layout.tsx` (line 20) sets `bg-background` on the outer wrapper, then conditionally overrides it with the theme's `pageBg` via inline `style`.
-2. `Home.tsx` (line 388) **also** sets `bg-background` on its own root div — this paints the default background color **on top of** the themed background for a brief moment before the theme fully renders, causing the visible flash.
+```text
+Time 0: Auth loading=true → Layout shows blank div
+Time 1: Auth resolves (loading=false) → Layout renders Navbar immediately
+         BUT ProtectedRoute is still loading app_settings
+         → User sees: Navbar + empty page body (THE FLASH)
+Time 2: App settings load, anonymous sign-in triggers, user state changes
+         → Navbar unmounts & remounts (all fetches fire AGAIN)
+Time 3: Everything settles → full app visible
+```
 
-The Layout is the single source of truth for background. Home.tsx should not redeclare it.
+The root cause: **Layout gates on auth only, but ProtectedRoute gates on auth + settings + anonymous sign-in.** So the Navbar appears before the page content is ready, and then re-mounts when auth state changes.
 
 ## Plan
 
-**Single change — remove `bg-background` from Home.tsx line 388:**
+### 1. Gate the entire Layout behind app settings (Layout.tsx)
 
-```tsx
-// Before
-<div className="min-h-screen bg-background px-4 py-8">
+Add `useAppSettings` to Layout so it shows nothing (not even the Navbar) until both auth AND settings are resolved. This eliminates the "navbar alone" flash.
 
-// After
-<div className="min-h-screen px-4 py-8">
-```
+**File: `src/components/Layout.tsx`**
+- Import `useAppSettings`
+- Add `const { loading: settingsLoading } = useAppSettings();`
+- Change the loading gate from `if (loading)` to `if (loading || settingsLoading)`
 
-No changes needed in Layout.tsx — it correctly handles both default and themed backgrounds already.
+### 2. Move anonymous sign-in into AuthProvider (useAuth.tsx)
 
-I'll also scan other pages for the same duplicate `bg-background` pattern so we can fix them all at once.
+Currently ProtectedRoute handles anonymous sign-in, which changes the `user` state after Layout has already rendered the Navbar. Moving this into AuthProvider means the auth `loading` state won't resolve until the anonymous session is ready, preventing the double-mount.
+
+**File: `src/hooks/useAuth.tsx`**
+- Import `useAppSettings` or fetch `require_auth` setting directly inside the provider
+- When auth resolves with no user AND require_auth is false, trigger `signInAnonymously()` before setting `loading=false`
+- This ensures `loading` stays true until the user (anonymous or real) is fully established
+
+**File: `src/components/ProtectedRoute.tsx`**
+- Remove the anonymous sign-in logic (already handled by AuthProvider)
+- Simplify to just check auth + settings loading gates and redirect if needed
+
+### 3. Add fade-in to the full Layout wrapper (Layout.tsx)
+
+Apply `animate-page-fade-in` to the root Layout div instead of just `<main>`, so the Navbar and content appear together smoothly.
+
+**File: `src/components/Layout.tsx`**
+- Move `animate-page-fade-in` from the `<main>` tag to the root `<div>`
+
+## Summary of changes
+
+| File | Change |
+|------|--------|
+| `Layout.tsx` | Add settings loading gate; move fade-in to root div |
+| `useAuth.tsx` | Handle anonymous sign-in before resolving `loading` |
+| `ProtectedRoute.tsx` | Remove anonymous sign-in logic |
 
