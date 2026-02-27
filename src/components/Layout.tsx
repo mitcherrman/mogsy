@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { Suspense } from "react";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
@@ -25,7 +26,9 @@ export default function Layout() {
       <Navbar themeId={isEnabled ? themeId : undefined} />
       {isEnabled && <ThemeOverlay themeId={themeId} />}
       <main className="pt-14 relative z-20">
-        <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? themeId : null }} />
+        <Suspense fallback={<div className="min-h-screen" />}>
+          <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? themeId : null }} />
+        </Suspense>
       </main>
       <FloatingThemeSwitcher />
     </div>

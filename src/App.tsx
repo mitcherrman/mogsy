@@ -42,10 +42,9 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth" element={<Suspense fallback={<LazyFallback />}><Auth /></Suspense>} />
                 <Route element={<Layout />}>
                   <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                   <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
@@ -64,7 +63,6 @@ const App = () => (
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </SitewideThemeProvider>
