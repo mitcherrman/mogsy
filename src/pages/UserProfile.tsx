@@ -230,24 +230,28 @@ export default function UserProfile() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center text-center"
           >
-            {/* Avatar */}
+            {/* Avatar / Photo circles */}
             <div className="relative mb-4">
+              {photos.length > 0 ? (
+                <ProfilePhotoCircles photos={photos} />
+              ) : (
                 <div
                   className={cn(
                     "w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden",
                     frame || cn("ring-4", theme.styles.accentRing)
                   )}
                 >
-                {profile.avatar_url && !profile.avatar_url.includes("dicebear") ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name || ""}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <UserAvatar name={profile.display_name || ""} size="xl" />
-                )}
-              </div>
+                  {profile.avatar_url && !profile.avatar_url.includes("dicebear") ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.display_name || ""}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <UserAvatar name={profile.display_name || ""} size="xl" />
+                  )}
+                </div>
+              )}
               {profile.is_pro && (
                 <div className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center shadow-lg">
                   <Crown className="h-4 w-4 text-primary-foreground" />
@@ -331,16 +335,6 @@ export default function UserProfile() {
           </div>
         </motion.div>
 
-        {/* Photos circles */}
-        {photos.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <ProfilePhotoCircles photos={photos} />
-          </motion.div>
-        )}
 
         {/* League Rankings */}
         {leagueStats.length > 0 && (
