@@ -1,29 +1,39 @@
 
 
-## Root Cause
+## Problem
 
-The `<Suspense fallback={<LazyFallback />}>` in `App.tsx` wraps the entire route tree, including the `<Layout>` component which contains the Navbar. When a lazy-loaded page component (like Home) is first accessed, React.lazy throws a promise that bubbles up to this Suspense boundary, which **replaces everything below it** — including the already-rendered Navbar — with a blank div. Once the lazy component loads, everything re-renders together.
+After the slice animation completes, there's a visible "blink" where the old cards reappear briefly before the new cards load. This happens because of **two competing transition systems**:
 
-```text
-Current tree (problematic):
-  <Suspense fallback={blank}>     ← catches lazy promise, hides EVERYTHING
-    <Routes>
-      <Route element={<Layout>}>  ← has Navbar
-        <Route path="/home" element={<Home />} />  ← lazy, triggers Suspense
-```
+1. **SliceBattleAnimation** — opaque overlay that covers cards during the tear animation (700ms)
+2. **AnimatePresence mode="wait"** — wraps the card pair with a 250ms fade-out exit, then 250ms fade-in enter
 
-## Fix
+When `executeChoice` runs, it batches: new pair state + `setSliceWinner(null)`. React removes the overlay and sees the AnimatePresence key change in the same render. With `mode="wait"`, the OLD pair plays its exit animation (250ms fade-out) before the new pair enters — that exit is the "blink" showing the same cards again momentarily.
 
-**File: `src/App.tsx`**
+Additionally, in `Swipe.tsx`, the underlying cards have redundant `animate` props that scale/fade based on `sliceWinner` — but those are invisible under the opaque overlay.
 
-Move the `<Suspense>` boundary from around the entire `<Routes>` to inside the `<Layout>` component, wrapping only the `<Outlet>`. This way, when a lazy page loads, only the content area shows the fallback — the Navbar stays visible.
+## Plan
 
-1. Remove `<Suspense>` wrapper from `App.tsx` around `<Routes>`
-2. Add `<Suspense>` inside `Layout.tsx` wrapping only `<Outlet>`
+### 1. SwipePreset.tsx — Remove AnimatePresence exit delay (standard mode)
 
-**File: `src/components/Layout.tsx`**
+Replace `<AnimatePresence mode="wait">` with just rendering the `motion.div` directly (no AnimatePresence). Keep the `key` for remounting and the `initial/animate` for a quick fade-in of new cards — but eliminate the exit animation entirely. The slice overlay already provides the visual transition.
 
-Wrap `<Outlet>` with `<Suspense fallback={<div className="min-h-screen" />}>` so the Navbar persists while lazy pages load.
+**Lines ~556-561**: Remove `<AnimatePresence mode="wait">` opening tag
+**Line ~661**: Remove closing `</AnimatePresence>`
 
-For non-Layout routes (like `/`, `/auth`, `*`), add individual `<Suspense>` wrappers or keep them eagerly loaded (Index and NotFound are already non-lazy).
+### 2. Swipe.tsx — Same fix for user profile cards
+
+Replace `<AnimatePresence mode="wait">` (line 331) with no wrapper. Remove closing tag (line 388). Keep `motion.div` with key, initial, animate — but no exit.
+
+Also remove the redundant `animate` props on the left/right card `motion.div`s (lines 341-350 and 364-372) that scale/fade based on `sliceWinner` — these are invisible under the overlay and only cause a flash when the overlay is removed.
+
+### 3. Both files — Clear `eloChanges` timing
+
+In `SwipePreset.tsx`, `eloChanges` is set then immediately cleared in `executeChoice` (lines 252-277), meaning the indicators never display. This is a separate existing issue but not causing the blink — noting for awareness.
+
+### Summary of changes
+
+| File | Change |
+|------|--------|
+| `SwipePreset.tsx` | Remove `AnimatePresence mode="wait"` wrapper around standard-mode cards |
+| `Swipe.tsx` | Remove `AnimatePresence mode="wait"` wrapper; remove redundant `sliceWinner`-based animate props on card wrappers |
 
