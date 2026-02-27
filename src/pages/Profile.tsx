@@ -17,6 +17,7 @@ import SEOHead from "@/components/SEOHead";
 import { profileThemes } from "@/lib/profile-themes";
 import FavoritesEditor from "@/components/FavoritesEditor";
 
+
 const frameOptions = [
   { id: "default", label: "Default", preview: "" },
   { id: "gold", label: "Gold", preview: "ring-4 ring-yellow-400/60" },
