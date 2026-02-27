@@ -104,13 +104,13 @@ export default function Referral() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   const isEnabled = settings?.is_enabled ?? false;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className="min-h-screen px-4 py-8">
       <SEOHead title="Invite Friends — Mogsy" description="Invite friends to Mogsy and earn rewards!" />
       <div className="container mx-auto max-w-lg">
         <div className="flex items-center gap-3 mb-8">

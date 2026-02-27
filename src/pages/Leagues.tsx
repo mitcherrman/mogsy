@@ -85,7 +85,7 @@ export default function Leagues() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   const userLeagues = leagues.filter((l) => l.type === "user");
@@ -140,7 +140,7 @@ export default function Leagues() {
   );
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className="min-h-screen px-4 py-8">
       <div className="container mx-auto max-w-3xl">
         <div className="mb-8 flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">

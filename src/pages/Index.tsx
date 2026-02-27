@@ -15,7 +15,7 @@ export default function Landing() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <SEOHead title="Mogsy — Vote, Rank, Compete" description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top." />
       {/* Logo */}
       <motion.div

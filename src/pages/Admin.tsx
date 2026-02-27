@@ -82,7 +82,7 @@ export default function Admin() {
   }, [user]);
 
   if (loading || !isAdmin) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   const visibleTabs = allTabs.filter(t => !t.masterOnly || isMasterAdmin);
@@ -90,7 +90,7 @@ export default function Admin() {
   const paginatedTabs = visibleTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE);
 
   return (
-    <div className="min-h-screen bg-background px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-4xl">
         <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6">
           <Shield className="h-5 w-5 sm:h-7 sm:w-7 text-accent-foreground" />

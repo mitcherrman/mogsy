@@ -142,7 +142,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <SEOHead title="Sign In — Mogsy" description="Sign in or create your Mogsy account. Start voting, ranking, and competing in head-to-head leagues." />
       <motion.div
         initial={{ opacity: 0, y: 20 }}

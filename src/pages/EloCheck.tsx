@@ -403,11 +403,11 @@ export default function EloCheck() {
   const currentItems = gameMode === "items" ? presetItems : userItems;
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-4 flex flex-col">
+    <div className="min-h-[calc(100dvh-4rem)] px-4 py-4 flex flex-col">
       <SEOHead title="Elo Check — Mogsy" description="Guess who's ranked higher in Mogsy's Elo Check game. Test your knowledge across all leagues and prove your ranking instincts." />
       <div className="container mx-auto max-w-2xl flex flex-col flex-1">
         <div className="flex items-center gap-3 mb-4">

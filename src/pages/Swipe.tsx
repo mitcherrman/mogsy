@@ -243,12 +243,12 @@ export default function Swipe() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen" />;
   }
 
   if (!pair || profiles.length < 2) {
     return (
-      <div className="min-h-screen bg-background px-4 py-8 flex items-center justify-center">
+      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
         <p className="text-muted-foreground">Not enough profiles to compare yet. Invite friends to join!</p>
       </div>
     );
@@ -271,7 +271,7 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] bg-background px-3 py-3 flex flex-col">
+      <div className="min-h-[calc(100dvh-4rem)] px-3 py-3 flex flex-col">
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-2">
