@@ -22,7 +22,9 @@ const SitewideThemeContext = createContext<SitewideThemeContextType>({
 });
 
 export function SitewideThemeProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  let authUser: ReturnType<typeof useAuth>["user"] = null;
+  try { authUser = useAuth().user; } catch { /* gracefully handle missing AuthProvider during HMR */ }
+  const user = authUser;
   const [themeId, setThemeId] = useState(() => localStorage.getItem("mogsy-active-theme") || "default");
   const [isEnabled, setIsEnabled] = useState(true);
   const [isPro, setIsPro] = useState(false);
