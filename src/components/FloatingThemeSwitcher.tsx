@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Palette, Lock, Crown, Check } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 function getCircleGradient(theme: typeof profileThemes[number]): string {
   if (theme.id === "default") return "linear-gradient(135deg, hsl(210,80%,60%), hsl(270,60%,65%))";
@@ -56,31 +57,36 @@ export default function FloatingThemeSwitcher() {
               const bg = getCircleGradient(theme);
 
               return (
-                <motion.button
-                  key={theme.id}
-                  whileHover={{ scale: locked ? 1 : 1.15 }}
-                  whileTap={{ scale: locked ? 1 : 0.9 }}
-                  onClick={() => !locked && handleSelect(theme.id)}
-                  className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
-                    isActive
-                      ? "border-primary ring-2 ring-primary/40 shadow-lg"
-                      : locked
-                      ? "border-border opacity-50 cursor-not-allowed"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                  style={{ background: bg }}
-                  title={theme.label + (locked ? " (Pro)" : "")}
-                >
-                  {isActive && (
-                    <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
-                  )}
-                  {locked && !isActive && (
-                    <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
-                  )}
-                  {theme.isPro && !locked && !isActive && (
-                    <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
-                  )}
-                </motion.button>
+                  <Tooltip key={theme.id}>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        whileHover={{ scale: locked ? 1 : 1.15 }}
+                        whileTap={{ scale: locked ? 1 : 0.9 }}
+                        onClick={() => !locked && handleSelect(theme.id)}
+                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
+                          isActive
+                            ? "border-primary ring-2 ring-primary/40 shadow-lg"
+                            : locked
+                            ? "border-border opacity-50 cursor-not-allowed"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                        style={{ background: bg }}
+                      >
+                        {isActive && (
+                          <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
+                        )}
+                        {locked && !isActive && (
+                          <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
+                        )}
+                        {theme.isPro && !locked && !isActive && (
+                          <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
+                        )}
+                      </motion.button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-xs font-medium">
+                      {theme.label}{locked ? " (Pro)" : ""}
+                    </TooltipContent>
+                  </Tooltip>
               );
             })}
           </motion.div>
