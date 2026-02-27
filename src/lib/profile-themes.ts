@@ -22,6 +22,14 @@ export interface ProfileTheme {
     headingColor: string;
     /** Name color override */
     nameColor: string;
+    /** Primary body text */
+    textColor: string;
+    /** Muted / secondary text */
+    mutedColor: string;
+    /** Inner card / list item bg */
+    innerBg: string;
+    /** Inner card border */
+    innerBorder: string;
   };
 }
 
@@ -40,6 +48,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "",
       headingColor: "",
       nameColor: "",
+      textColor: "",
+      mutedColor: "",
+      innerBg: "",
+      innerBorder: "",
     },
   },
   {
@@ -57,6 +69,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(240,20%,16%)/0.7] border-[hsl(260,30%,30%)/0.4]",
       headingColor: "text-[hsl(260,50%,80%)]",
       nameColor: "text-[hsl(240,30%,92%)]",
+      textColor: "text-[hsl(240,20%,85%)]",
+      mutedColor: "text-[hsl(240,15%,60%)]",
+      innerBg: "bg-[hsl(240,20%,18%)/0.6]",
+      innerBorder: "border-[hsl(260,25%,28%)/0.5]",
     },
   },
   {
@@ -74,6 +90,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(145,20%,14%)/0.7] border-[hsl(150,25%,25%)/0.4]",
       headingColor: "text-[hsl(150,40%,70%)]",
       nameColor: "text-[hsl(140,20%,90%)]",
+      textColor: "text-[hsl(140,15%,82%)]",
+      mutedColor: "text-[hsl(140,12%,55%)]",
+      innerBg: "bg-[hsl(145,18%,16%)/0.6]",
+      innerBorder: "border-[hsl(150,20%,24%)/0.5]",
     },
   },
   {
@@ -91,6 +111,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(350,20%,16%)/0.7] border-[hsl(340,35%,30%)/0.4]",
       headingColor: "text-[hsl(20,70%,75%)]",
       nameColor: "text-[hsl(30,60%,92%)]",
+      textColor: "text-[hsl(20,30%,85%)]",
+      mutedColor: "text-[hsl(350,15%,58%)]",
+      innerBg: "bg-[hsl(350,18%,18%)/0.6]",
+      innerBorder: "border-[hsl(340,30%,28%)/0.5]",
     },
   },
   {
@@ -108,6 +132,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(210,20%,16%)/0.7] border-[hsl(200,30%,28%)/0.4]",
       headingColor: "text-[hsl(170,50%,70%)]",
       nameColor: "text-[hsl(190,30%,92%)]",
+      textColor: "text-[hsl(200,20%,84%)]",
+      mutedColor: "text-[hsl(210,15%,56%)]",
+      innerBg: "bg-[hsl(210,18%,17%)/0.6]",
+      innerBorder: "border-[hsl(200,25%,26%)/0.5]",
     },
   },
   {
@@ -125,6 +153,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(270,18%,16%)/0.7] border-[hsl(45,50%,30%)/0.3]",
       headingColor: "text-[hsl(45,70%,70%)]",
       nameColor: "text-[hsl(45,40%,92%)]",
+      textColor: "text-[hsl(280,15%,84%)]",
+      mutedColor: "text-[hsl(270,12%,55%)]",
+      innerBg: "bg-[hsl(270,16%,17%)/0.6]",
+      innerBorder: "border-[hsl(45,40%,28%)/0.4]",
     },
   },
   {
@@ -142,6 +174,10 @@ export const profileThemes: ProfileTheme[] = [
       statBg: "bg-[hsl(220,30%,14%)/0.7] border-[hsl(45,70%,35%)/0.3]",
       headingColor: "text-[hsl(45,80%,65%)]",
       nameColor: "text-[hsl(45,50%,92%)]",
+      textColor: "text-[hsl(220,20%,82%)]",
+      mutedColor: "text-[hsl(220,15%,52%)]",
+      innerBg: "bg-[hsl(220,25%,15%)/0.6]",
+      innerBorder: "border-[hsl(45,60%,30%)/0.4]",
     },
   },
 ];

@@ -306,11 +306,11 @@ export default function UserProfile() {
       <div className="relative overflow-hidden">
         <div className={cn("absolute inset-0", theme.styles.heroBg)} />
         <div className="relative container mx-auto max-w-2xl px-4 pt-6 pb-8">
-          <Button
+            <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
-            className="text-muted-foreground hover:text-foreground mb-4"
+            className={cn("mb-4", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -361,13 +361,13 @@ export default function UserProfile() {
 
             <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
               {profile.age && (
-                <span className="text-sm text-muted-foreground">{profile.age} years old</span>
+                <span className={cn("text-sm", theme.styles.mutedColor || "text-muted-foreground")}>{profile.age} years old</span>
               )}
               {profile.age && profile.location && (
-                <span className="text-muted-foreground/40">·</span>
+                <span className={cn("opacity-40", theme.styles.mutedColor || "text-muted-foreground")}>·</span>
               )}
               {profile.location && (
-                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <span className={cn("text-sm flex items-center gap-1", theme.styles.mutedColor || "text-muted-foreground")}>
                   <MapPin className="h-3 w-3" />
                   {profile.location}
                 </span>
@@ -389,7 +389,7 @@ export default function UserProfile() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="mt-3 text-sm text-foreground/70 italic max-w-md"
+                className={cn("mt-3 text-sm italic max-w-md", theme.styles.textColor || "text-foreground/70")}
               >
                 "{profile.status_message}"
               </motion.p>
@@ -427,17 +427,17 @@ export default function UserProfile() {
           <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
             <Trophy className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
             <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{bestElo}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Best ELO</p>
+            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Best ELO</p>
           </div>
           <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
             <Swords className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
             <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{totalMatches}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Matches</p>
+            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Matches</p>
           </div>
           <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
             <Shield className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
             <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{leagueStats.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Leagues</p>
+            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Leagues</p>
           </div>
         </motion.div>
 
@@ -456,22 +456,22 @@ export default function UserProfile() {
                 <button
                   key={stat.league_id}
                   onClick={() => navigate(`/leaderboard/${stat.league_id}`)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border hover:border-primary/30 transition-colors text-left"
+                  className={cn("w-full flex items-center justify-between p-3 rounded-lg border transition-colors text-left", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", "hover:opacity-90")}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", "bg-primary/10")}>
+                    <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", theme.styles.innerBg || "bg-primary/10")}>
                       #{stat.rank}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{stat.league_name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className={cn("text-sm font-semibold truncate", theme.styles.textColor || "text-foreground")}>{stat.league_name}</p>
+                      <p className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
                         {stat.matches_played} matches · {stat.total_members} members
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <TierBadge tier={stat.tier} className="text-[9px] px-1.5 py-0" />
-                    <span className="text-sm font-bold text-foreground">{stat.elo}</span>
+                    <span className={cn("text-sm font-bold", theme.styles.textColor || "text-foreground")}>{stat.elo}</span>
                   </div>
                 </button>
               ))}
@@ -499,7 +499,7 @@ export default function UserProfile() {
                     href={value}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-background/50 border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                    className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors border", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {config.label}
@@ -522,9 +522,9 @@ export default function UserProfile() {
               <MessageSquare className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
               Latest Comment
             </h2>
-            <p className="text-sm text-foreground/80 italic">"{topComment.content}"</p>
+            <p className={cn("text-sm italic", theme.styles.textColor || "text-foreground/80")}>"{topComment.content}"</p>
             {topComment.league_name && (
-              <p className="text-[10px] text-muted-foreground mt-1">in {topComment.league_name}</p>
+              <p className={cn("text-[10px] mt-1", theme.styles.mutedColor || "text-muted-foreground")}>in {topComment.league_name}</p>
             )}
           </motion.div>
         )}
@@ -535,7 +535,7 @@ export default function UserProfile() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
-            className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-2"
+            className={cn("flex items-center justify-center gap-1.5 text-xs pt-2", theme.styles.mutedColor || "text-muted-foreground")}
           >
             <Calendar className="h-3 w-3" />
             Member since {memberSince}
