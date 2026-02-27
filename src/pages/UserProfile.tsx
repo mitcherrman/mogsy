@@ -196,9 +196,9 @@ export default function UserProfile() {
       .from("app_settings")
       .select("value")
       .eq("key", "favorites_mode")
-      .single();
+      .maybeSingle();
     
-    const mode = (settingData?.value as any)?.mode || "auto";
+    const mode = (settingData?.value as any)?.mode || "manual";
 
     if (mode === "manual") {
       // Load manually pinned favorites
@@ -217,31 +217,30 @@ export default function UserProfile() {
               .from("preset_items")
               .select("id, name, image_url")
               .eq("id", fav.item_id)
-              .single();
+              .maybeSingle();
             if (item) items.push({ id: item.id, type: "preset_item", name: item.name, image_url: item.image_url });
           } else {
             const { data: prof } = await supabase
               .from("public_profiles")
               .select("id, display_name, avatar_url")
               .eq("id", fav.item_id)
-              .single();
-            if (prof) items.push({ id: prof.id!, type: "user_profile", name: prof.display_name || "User", image_url: prof.avatar_url });
+              .maybeSingle();
+            if (prof && prof.id) items.push({ id: prof.id, type: "user_profile", name: prof.display_name || "User", image_url: prof.avatar_url });
           }
         }
         setFavorites(items);
       }
     } else {
-      // Auto mode: get top voted preset items from matches
+      // Auto mode: get top items user voted for in preset matches
+      // Since matches don't track the voter for presets, we look at user match wins
       const { data: matchData } = await supabase
         .from("matches")
         .select("winner_item_id")
-        .eq("winner_profile_id", pid)
         .not("winner_item_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(50);
 
       if (matchData && matchData.length > 0) {
-        // Count votes per item
         const counts = new Map<string, number>();
         for (const m of matchData) {
           if (m.winner_item_id) {

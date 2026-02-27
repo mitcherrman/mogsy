@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import { searchCities } from "@/lib/cities-data";
 import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
 import { profileThemes } from "@/lib/profile-themes";
+import FavoritesEditor from "@/components/FavoritesEditor";
 
 const frameOptions = [
   { id: "default", label: "Default", preview: "" },
@@ -612,6 +613,8 @@ export default function Profile() {
 
 
 
+                {/* Favorites */}
+                <FavoritesEditor profileId={profileId} />
 
                 {/* Save button */}
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
@@ -670,7 +673,19 @@ export default function Profile() {
                           key={t.id}
                           type="button"
                           disabled={locked}
-                          onClick={() => !locked && setSelectedTheme(t.id)}
+                          onClick={async () => {
+                            if (locked || !profileId) return;
+                            setSelectedTheme(t.id);
+                            const { error } = await supabase
+                              .from("profiles")
+                              .update({ custom_theme: t.id })
+                              .eq("id", profileId);
+                            if (error) {
+                              toast({ title: "Failed to save theme", variant: "destructive" });
+                            } else {
+                              toast({ title: `Theme changed to ${t.label}` });
+                            }
+                          }}
                           className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                             selectedTheme === t.id
                               ? "border-primary bg-primary/5"
