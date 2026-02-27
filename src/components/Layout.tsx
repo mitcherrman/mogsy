@@ -13,9 +13,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="animate-page-fade-in">
-        <Navbar />
-      </div>
+      <Navbar />
       <main className="pt-14 animate-page-fade-in">
         <Outlet />
       </main>
