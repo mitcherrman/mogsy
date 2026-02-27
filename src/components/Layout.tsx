@@ -7,12 +7,7 @@ export default function Layout() {
   useTrackActivity();
   const { loading } = useAuth();
 
-  if (loading) {
-    return <div className="min-h-screen bg-background" />;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
       <Navbar />
       <main className="pt-14 animate-page-fade-in">
         <Outlet />
