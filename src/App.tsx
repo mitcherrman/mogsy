@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
@@ -36,35 +37,37 @@ const LazyFallback = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<LazyFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route element={<Layout />}>
-                <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/referral" element={<ProtectedRoute><Referral /></ProtectedRoute>} />
-                <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
-                <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
-                <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
-                <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
-                <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-                <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
-                <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
-                <Route path="/user/:profileId" element={<UserProfile />} />
-                <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+      <SitewideThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<LazyFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route element={<Layout />}>
+                  <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                  <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/referral" element={<ProtectedRoute><Referral /></ProtectedRoute>} />
+                  <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
+                  <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
+                  <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
+                  <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
+                  <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+                  <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
+                  <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
+                  <Route path="/user/:profileId" element={<UserProfile />} />
+                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </SitewideThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
