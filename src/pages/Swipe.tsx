@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
@@ -328,32 +328,20 @@ export default function Swipe() {
 
           {/* Capturable matchup area */}
           <MatchupCapture ref={captureRef} leagueName="Who's Better?">
-            <AnimatePresence mode="wait">
               <motion.div
                 key={`pair-${pair[0].id}-${pair[1].id}-${matchCount}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: 0.2 }}
                 className="relative flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch"
               >
                 {/* Left / Top card */}
-                <motion.div
-                  className="flex flex-col flex-1 relative z-10"
-                  animate={
-                    sliceWinner === 0
-                      ? { scale: 1.03, y: -4, opacity: 1 }
-                      : sliceWinner === 1
-                      ? { scale: 1, y: 0, opacity: 0 }
-                      : { scale: 1, y: 0, opacity: 1 }
-                  }
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                >
+                <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
                   <div className="flex justify-center mt-1">
                     <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
                   </div>
-                </motion.div>
+                </div>
 
                 {/* VS badge - positioned between cards, not overlapping */}
                 <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
@@ -361,22 +349,12 @@ export default function Swipe() {
                 </div>
 
                 {/* Right / Bottom card */}
-                <motion.div
-                  className="flex flex-col flex-1 relative z-10"
-                  animate={
-                    sliceWinner === 1
-                      ? { scale: 1.03, y: -4, opacity: 1 }
-                      : sliceWinner === 0
-                      ? { scale: 1, y: 0, opacity: 0 }
-                      : { scale: 1, y: 0, opacity: 1 }
-                  }
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                >
+                <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
                   <div className="flex justify-center mt-1">
                     <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
                   </div>
-                </motion.div>
+                </div>
 
                 {/* Slice battle animation overlay */}
                 <SliceBattleAnimation
@@ -385,7 +363,7 @@ export default function Swipe() {
                   onComplete={handleSliceComplete}
                 />
               </motion.div>
-            </AnimatePresence>
+            
           </MatchupCapture>
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">
