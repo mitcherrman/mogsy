@@ -10,10 +10,11 @@ import SEOHead from "@/components/SEOHead";
 import { getTierFromElo } from "@/lib/mock-data";
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
-  Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield,
+  Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
+import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
 import { getThemeById } from "@/lib/profile-themes";
 
 interface ProfileData {
@@ -47,6 +48,14 @@ interface Photo {
   sort_order: number | null;
 }
 
+interface FavoriteItem {
+  id: string;
+  type: "preset_item" | "user_profile";
+  name: string;
+  image_url: string | null;
+  subtitle?: string;
+}
+
 const socialConfig: Record<string, { icon: React.ElementType; label: string }> = {
   instagram: { icon: Instagram, label: "Instagram" },
   tiktok: { icon: ExternalLink, label: "TikTok" },
@@ -74,6 +83,7 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [topComment, setTopComment] = useState<{ content: string; league_name: string } | null>(null);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
 
   useEffect(() => {
     if (!profileId) return;
@@ -174,7 +184,88 @@ export default function UserProfile() {
       setTopComment({ content: comment.content, league_name: leagueName });
     }
 
+    // Load favorites
+    await loadFavorites(profileId!);
+
     setLoading(false);
+  };
+
+  const loadFavorites = async (pid: string) => {
+    // Check admin setting for mode
+    const { data: settingData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "favorites_mode")
+      .single();
+    
+    const mode = (settingData?.value as any)?.mode || "auto";
+
+    if (mode === "manual") {
+      // Load manually pinned favorites
+      const { data: favData } = await supabase
+        .from("profile_favorites")
+        .select("*")
+        .eq("profile_id", pid)
+        .order("sort_order")
+        .limit(5);
+
+      if (favData && favData.length > 0) {
+        const items: FavoriteItem[] = [];
+        for (const fav of favData) {
+          if (fav.item_type === "preset_item") {
+            const { data: item } = await supabase
+              .from("preset_items")
+              .select("id, name, image_url")
+              .eq("id", fav.item_id)
+              .single();
+            if (item) items.push({ id: item.id, type: "preset_item", name: item.name, image_url: item.image_url });
+          } else {
+            const { data: prof } = await supabase
+              .from("public_profiles")
+              .select("id, display_name, avatar_url")
+              .eq("id", fav.item_id)
+              .single();
+            if (prof) items.push({ id: prof.id!, type: "user_profile", name: prof.display_name || "User", image_url: prof.avatar_url });
+          }
+        }
+        setFavorites(items);
+      }
+    } else {
+      // Auto mode: get top voted preset items from matches
+      const { data: matchData } = await supabase
+        .from("matches")
+        .select("winner_item_id")
+        .eq("winner_profile_id", pid)
+        .not("winner_item_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (matchData && matchData.length > 0) {
+        // Count votes per item
+        const counts = new Map<string, number>();
+        for (const m of matchData) {
+          if (m.winner_item_id) {
+            counts.set(m.winner_item_id, (counts.get(m.winner_item_id) || 0) + 1);
+          }
+        }
+        const topIds = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
+        
+        if (topIds.length > 0) {
+          const { data: items } = await supabase
+            .from("preset_items")
+            .select("id, name, image_url")
+            .in("id", topIds);
+          if (items) {
+            setFavorites(items.map((item) => ({
+              id: item.id,
+              type: "preset_item" as const,
+              name: item.name,
+              image_url: item.image_url,
+            })));
+          }
+        }
+      }
+    }
   };
 
   // Determine best ELO for overall tier
@@ -252,11 +343,6 @@ export default function UserProfile() {
                   )}
                 </div>
               )}
-              {profile.is_pro && (
-                <div className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                  <Crown className="h-4 w-4 text-primary-foreground" />
-                </div>
-              )}
               {isBoosted && (
                 <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-yellow-500 flex items-center justify-center animate-pulse shadow-lg">
                   <Zap className="h-4 w-4 text-yellow-950" />
@@ -264,10 +350,15 @@ export default function UserProfile() {
               )}
             </div>
 
-            {/* Name & location */}
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {profile.display_name || "Anonymous"}
-            </h1>
+            {/* Name with crown */}
+            <div className="flex items-center gap-2 justify-center">
+              {profile.is_pro && (
+                <Crown className="h-5 w-5 text-primary" />
+              )}
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+                {profile.display_name || "Anonymous"}
+              </h1>
+            </div>
 
             <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
               {profile.age && (
@@ -310,6 +401,22 @@ export default function UserProfile() {
 
       {/* Content */}
       <div className="container mx-auto max-w-2xl px-4 pb-12 space-y-5">
+
+        {/* Favorites */}
+        {favorites.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-xl border border-border bg-card p-4"
+          >
+            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
+              <Heart className="h-3.5 w-3.5 text-primary" />
+              Favorites
+            </h2>
+            <ProfileFavoriteCards items={favorites} />
+          </motion.div>
+        )}
 
         {/* Quick stats row */}
         <motion.div

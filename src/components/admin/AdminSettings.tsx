@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ interface SettingsState {
   max_photos: number;
   default_diamonds: number;
   allow_anonymous_browsing: boolean;
+  favorites_mode: "auto" | "manual";
 }
 
 export default function AdminSettings() {
@@ -22,6 +23,7 @@ export default function AdminSettings() {
     max_photos: 6,
     default_diamonds: 0,
     allow_anonymous_browsing: true,
+    favorites_mode: "auto",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,6 +43,7 @@ export default function AdminSettings() {
               case "max_photos_per_user": s.max_photos = val?.count ?? 6; break;
               case "default_diamonds": s.default_diamonds = val?.count ?? 0; break;
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
+              case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
             }
           }
           setSettings(s);
@@ -149,6 +152,49 @@ export default function AdminSettings() {
             />
             <Button size="sm" variant="outline" disabled={saving} onClick={() => saveNumericSetting("default_diamonds", "default_diamonds")}>
               Save
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Favorites */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Heart className="h-3.5 w-3.5" /> Profile Favorites
+        </h4>
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div>
+            <Label className="text-sm font-medium">Favorites Mode</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {settings.favorites_mode === "auto" 
+                ? "Auto: Shows items based on user's swiping preferences" 
+                : "Manual: Users pick their own favorite items/profiles"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={settings.favorites_mode === "auto" ? "default" : "outline"}
+              onClick={async () => {
+                setSettings((s) => ({ ...s, favorites_mode: "auto" }));
+                await updateSetting("favorites_mode", { mode: "auto" });
+              }}
+              className="text-xs"
+            >
+              Auto
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={settings.favorites_mode === "manual" ? "default" : "outline"}
+              onClick={async () => {
+                setSettings((s) => ({ ...s, favorites_mode: "manual" }));
+                await updateSetting("favorites_mode", { mode: "manual" });
+              }}
+              className="text-xs"
+            >
+              Manual
             </Button>
           </div>
         </div>
