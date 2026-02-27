@@ -17,7 +17,7 @@ const navItems = [
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
-export default function Navbar() {
+export default function Navbar({ themeId }: { themeId?: string }) {
   const location = useLocation();
   const { user } = useAuth();
   const [diamonds, setDiamonds] = useState<number | null>(null);
@@ -35,8 +35,13 @@ export default function Navbar() {
     if (data) setDiamonds(data.diamonds ?? 0);
   };
 
+  const hasTheme = themeId && themeId !== "default";
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl"
+      style={hasTheme ? { background: "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.1)" } : undefined}
+    >
       <div className="container mx-auto flex h-14 items-center px-4 gap-1">
         <Link to="/" className="flex items-center shrink-0">
           <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12" />
@@ -49,7 +54,7 @@ export default function Navbar() {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path} className="relative px-1.5 sm:px-3 py-2 text-sm font-medium transition-colors">
-                <span className={`flex items-center gap-1 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                <span className={`flex items-center gap-1 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
                   <item.icon className="h-4 w-4" />
                   <span className="hidden md:inline text-xs">{item.label}</span>
                 </span>

@@ -180,6 +180,27 @@ export const profileThemes: ProfileTheme[] = [
       innerBorder: "border-[hsl(45,60%,30%)/0.4]",
     },
   },
+  {
+    id: "cyberpunk",
+    label: "Cyberpunk",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(320,100%,50%)] via-[hsl(180,100%,50%)] to-[hsl(280,100%,40%)]",
+    styles: {
+      pageBg: "linear-gradient(180deg, hsl(260,30%,6%) 0%, hsl(280,20%,4%) 100%)",
+      heroBg: "bg-gradient-to-b from-[hsl(320,100%,50%)/0.25] via-[hsl(280,60%,30%)/0.15] to-transparent",
+      cardBg: "border-[hsl(180,100%,50%)/0.3] bg-[hsl(260,25%,10%)/0.8]",
+      accentRing: "ring-[hsl(320,100%,55%)/0.6]",
+      textAccent: "text-[hsl(180,100%,60%)]",
+      iconAccent: "text-[hsl(320,100%,65%)]",
+      statBg: "bg-[hsl(260,25%,12%)/0.8] border-[hsl(180,100%,50%)/0.25]",
+      headingColor: "text-[hsl(180,100%,65%)]",
+      nameColor: "text-[hsl(320,80%,90%)]",
+      textColor: "text-[hsl(260,20%,85%)]",
+      mutedColor: "text-[hsl(260,15%,55%)]",
+      innerBg: "bg-[hsl(260,20%,14%)/0.7]",
+      innerBorder: "border-[hsl(320,80%,40%)/0.3]",
+    },
+  },
 ];
 
 export function getThemeById(id: string): ProfileTheme {

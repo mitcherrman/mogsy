@@ -515,6 +515,127 @@ function LolOverlay() {
 }
 
 /* ────────────────────────────────────
+   CYBERPUNK – neon grid, glitch, rain
+   ──────────────────────────────────── */
+function CyberpunkOverlay() {
+  const raindrops = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    x: rand(0, 100),
+    height: rand(15, 40),
+    duration: rand(0.4, 1.2),
+    delay: rand(0, 2),
+    opacity: rand(0.15, 0.4),
+  }));
+
+  const glitchLines = Array.from({ length: 4 }, (_, i) => ({
+    id: i,
+    y: rand(10, 90),
+    delay: rand(0, 8),
+  }));
+
+  return (
+    <>
+      <style>{`
+        @keyframes digitalRain {
+          0%{transform:translateY(-100%);opacity:0}
+          10%{opacity:1}
+          90%{opacity:1}
+          100%{transform:translateY(calc(100vh + 100%));opacity:0}
+        }
+        @keyframes neonFlicker {
+          0%,19%,21%,23%,25%,54%,56%,100%{opacity:var(--flicker-opacity, .3)}
+          20%,24%,55%{opacity:0}
+        }
+        @keyframes glitchSlide {
+          0%,100%{transform:translateX(0);opacity:0}
+          49%{opacity:0}
+          50%{transform:translateX(-3px);opacity:.6}
+          51%{transform:translateX(5px);opacity:.4}
+          52%{transform:translateX(0);opacity:0}
+        }
+        @keyframes scanline {
+          0%{transform:translateY(-100%)}
+          100%{transform:translateY(100vh)}
+        }
+      `}</style>
+
+      {/* Neon grid floor at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none overflow-hidden" style={{ perspective: "400px" }}>
+        <div
+          className="w-full h-full origin-bottom"
+          style={{
+            transform: "rotateX(60deg)",
+            backgroundImage: `
+              linear-gradient(90deg, hsl(180,100%,50%,0.08) 1px, transparent 1px),
+              linear-gradient(0deg, hsl(320,100%,50%,0.08) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px",
+          }}
+        />
+      </div>
+
+      {/* Neon border accents */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, hsl(180,100%,50%), hsl(320,100%,50%), transparent)", opacity: 0.5, animation: "neonFlicker 4s linear infinite", "--flicker-opacity": "0.5" } as any} />
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] pointer-events-none" style={{ background: "linear-gradient(90deg, transparent, hsl(320,100%,50%), hsl(180,100%,50%), transparent)", opacity: 0.4, animation: "neonFlicker 5s 1s linear infinite", "--flicker-opacity": "0.4" } as any} />
+
+      {/* Digital rain */}
+      {raindrops.map((r) => (
+        <div
+          key={r.id}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${r.x}%`,
+            top: 0,
+            width: 1,
+            height: r.height,
+            background: `linear-gradient(to bottom, transparent, hsl(180,100%,50%))`,
+            opacity: r.opacity,
+            animation: `digitalRain ${r.duration}s ${r.delay}s linear infinite`,
+          }}
+        />
+      ))}
+
+      {/* Glitch lines */}
+      {glitchLines.map((g) => (
+        <div
+          key={g.id}
+          className="absolute left-0 right-0 pointer-events-none"
+          style={{
+            top: `${g.y}%`,
+            height: 2,
+            background: "hsl(320,100%,55%)",
+            animation: `glitchSlide 6s ${g.delay}s ease-in-out infinite`,
+          }}
+        />
+      ))}
+
+      {/* Scanline */}
+      <div
+        className="absolute left-0 right-0 h-[1px] pointer-events-none opacity-10"
+        style={{
+          background: "hsl(180,100%,70%)",
+          animation: "scanline 3s linear infinite",
+        }}
+      />
+
+      {/* Corner cyberpunk brackets */}
+      <svg className="absolute top-3 left-3 w-10 h-10 pointer-events-none opacity-40" viewBox="0 0 40 40">
+        <path d="M0,12 L0,0 L12,0" fill="none" stroke="hsl(180,100%,50%)" strokeWidth="2" />
+      </svg>
+      <svg className="absolute top-3 right-3 w-10 h-10 pointer-events-none opacity-40" viewBox="0 0 40 40">
+        <path d="M40,12 L40,0 L28,0" fill="none" stroke="hsl(320,100%,50%)" strokeWidth="2" />
+      </svg>
+      <svg className="absolute bottom-3 left-3 w-10 h-10 pointer-events-none opacity-40" viewBox="0 0 40 40">
+        <path d="M0,28 L0,40 L12,40" fill="none" stroke="hsl(320,100%,50%)" strokeWidth="2" />
+      </svg>
+      <svg className="absolute bottom-3 right-3 w-10 h-10 pointer-events-none opacity-40" viewBox="0 0 40 40">
+        <path d="M40,28 L40,40 L28,40" fill="none" stroke="hsl(180,100%,50%)" strokeWidth="2" />
+      </svg>
+    </>
+  );
+}
+
+/* ────────────────────────────────────
    Main overlay switch
    ──────────────────────────────────── */
 export default function ThemeOverlay({ themeId }: ThemeOverlayProps) {
@@ -526,6 +647,7 @@ export default function ThemeOverlay({ themeId }: ThemeOverlayProps) {
       {themeId === "aurora" && <AuroraOverlay />}
       {themeId === "royal" && <RoyalOverlay />}
       {themeId === "lol" && <LolOverlay />}
+      {themeId === "cyberpunk" && <CyberpunkOverlay />}
     </div>
   );
 }

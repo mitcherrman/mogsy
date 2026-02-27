@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ interface SettingsState {
   default_diamonds: number;
   allow_anonymous_browsing: boolean;
   favorites_mode: "auto" | "manual";
+  sitewide_themes_enabled: boolean;
 }
 
 export default function AdminSettings() {
@@ -24,6 +25,7 @@ export default function AdminSettings() {
     default_diamonds: 0,
     allow_anonymous_browsing: true,
     favorites_mode: "auto",
+    sitewide_themes_enabled: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +46,7 @@ export default function AdminSettings() {
               case "default_diamonds": s.default_diamonds = val?.count ?? 0; break;
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
+              case "sitewide_themes_enabled": s.sitewide_themes_enabled = val?.enabled ?? false; break;
             }
           }
           setSettings(s);
@@ -198,6 +201,19 @@ export default function AdminSettings() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Sitewide Themes */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Palette className="h-3.5 w-3.5" /> Sitewide Themes
+        </h4>
+        <SettingToggle
+          label="Enable Sitewide Themes (Pro Feature)"
+          description="Allow Pro users to apply their profile theme across the entire app, including backgrounds, overlays, and themed UI elements"
+          checked={settings.sitewide_themes_enabled}
+          onChange={() => toggleSetting("sitewide_themes_enabled", "sitewide_themes_enabled")}
+        />
       </div>
     </div>
   );
