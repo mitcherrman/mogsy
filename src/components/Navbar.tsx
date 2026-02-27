@@ -24,7 +24,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
 
   useEffect(() => {
     if (user) loadDiamonds();
-  }, [user, location.pathname]);
+  }, [user]);
 
   const loadDiamonds = async () => {
     const { data } = await supabase
