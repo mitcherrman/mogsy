@@ -296,7 +296,7 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
       <SEOHead
         title={`${profile.display_name || "User"} — Mogsy`}
         description={`View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`}
@@ -352,9 +352,9 @@ export default function UserProfile() {
             {/* Name with crown */}
             <div className="flex items-center gap-2 justify-center">
               {profile.is_pro && (
-                <Crown className="h-5 w-5 text-primary" />
+                <Crown className={cn("h-5 w-5", theme.styles.iconAccent || "text-primary")} />
               )}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+              <h1 className={cn("text-2xl sm:text-3xl font-extrabold", theme.styles.nameColor || "text-foreground")}>
                 {profile.display_name || "Anonymous"}
               </h1>
             </div>
@@ -377,7 +377,7 @@ export default function UserProfile() {
             <div className="flex items-center gap-2 mt-2">
               <TierBadge tier={overallTier} />
               {profile.is_pro && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/30 px-2.5 py-0.5 text-xs font-bold text-primary">
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold", theme.styles.textAccent || "text-primary", "bg-primary/10 border border-primary/30")}>
                   <Crown className="h-3 w-3" /> PRO
                 </span>
               )}
@@ -407,10 +407,10 @@ export default function UserProfile() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="rounded-xl border border-border bg-card p-4"
+            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
-              <Heart className="h-3.5 w-3.5 text-primary" />
+            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
+              <Heart className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
               Favorites
             </h2>
             <ProfileFavoriteCards items={favorites} />
@@ -424,19 +424,19 @@ export default function UserProfile() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-3 gap-3"
         >
-          <div className="rounded-xl border border-border bg-card p-3 text-center">
-            <Trophy className="h-4 w-4 mx-auto text-primary mb-1" />
-            <p className="text-lg font-extrabold text-foreground">{bestElo}</p>
+          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
+            <Trophy className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
+            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{bestElo}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Best ELO</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-3 text-center">
-            <Swords className="h-4 w-4 mx-auto text-primary mb-1" />
-            <p className="text-lg font-extrabold text-foreground">{totalMatches}</p>
+          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
+            <Swords className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
+            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{totalMatches}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Matches</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-3 text-center">
-            <Shield className="h-4 w-4 mx-auto text-primary mb-1" />
-            <p className="text-lg font-extrabold text-foreground">{leagueStats.length}</p>
+          <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
+            <Shield className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
+            <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{leagueStats.length}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Leagues</p>
           </div>
         </motion.div>
@@ -448,9 +448,9 @@ export default function UserProfile() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="rounded-xl border border-border bg-card p-4"
+            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className="text-sm font-bold text-foreground mb-3">League Rankings</h2>
+            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>League Rankings</h2>
             <div className="space-y-2">
               {leagueStats.map((stat) => (
                 <button
@@ -459,7 +459,7 @@ export default function UserProfile() {
                   className="w-full flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border hover:border-primary/30 transition-colors text-left"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-xs shrink-0">
+                    <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", "bg-primary/10")}>
                       #{stat.rank}
                     </div>
                     <div className="min-w-0">
@@ -485,9 +485,9 @@ export default function UserProfile() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="rounded-xl border border-border bg-card p-4"
+            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className="text-sm font-bold text-foreground mb-3">Socials</h2>
+            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>Socials</h2>
             <div className="flex flex-wrap gap-2">
               {activeSocials.map(([key, value]) => {
                 const config = socialConfig[key];
@@ -516,10 +516,10 @@ export default function UserProfile() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="rounded-xl border border-border bg-card p-4"
+            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5 text-primary" />
+            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
+              <MessageSquare className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
               Latest Comment
             </h2>
             <p className="text-sm text-foreground/80 italic">"{topComment.content}"</p>
