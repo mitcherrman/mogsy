@@ -15,10 +15,10 @@ export default function Layout() {
     <div className="min-h-screen bg-background">
       <div className="animate-page-fade-in">
         <Navbar />
-        <main className="pt-14">
-          <Outlet />
-        </main>
       </div>
+      <main className="pt-14 animate-page-fade-in">
+        <Outlet />
+      </main>
     </div>
   );
 }
