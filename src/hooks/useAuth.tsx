@@ -20,19 +20,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Initialize: get session, check settings, maybe sign in anonymously
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    return () => subscription.unsubscribe();
+      if (session?.user) {
+        if (mounted) {
+          setSession(session);
+          setUser(session.user);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // No user — check if we should sign in anonymously
+      const { data: settingsData } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .eq("key", "require_auth");
+
+      const requireAuth = settingsData?.[0]
+        ? (settingsData[0].value as any)?.enabled ?? true
+        : true;
+
+      if (!requireAuth) {
+        // Sign in anonymously before resolving loading
+        await supabase.auth.signInAnonymously();
+        // onAuthStateChange will set user/session
+      }
+
+      if (mounted) {
+        setLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
@@ -59,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
     if (!error) {
-      // Mark profile as no longer anonymous
       const userId = user?.id;
       if (userId) {
         await supabase.from("profiles").update({ is_anonymous: false }).eq("user_id", userId);
