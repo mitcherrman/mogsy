@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,7 @@ import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
 import { searchCities } from "@/lib/cities-data";
 import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
+import { profileThemes } from "@/lib/profile-themes";
 
 const frameOptions = [
   { id: "default", label: "Default", preview: "" },
@@ -41,6 +42,7 @@ export default function Profile() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState("default");
+  const [selectedTheme, setSelectedTheme] = useState("default");
   const [boostActive, setBoostActive] = useState(false);
   const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
@@ -106,6 +108,7 @@ export default function Profile() {
       setProfileId(profile.id);
       setIsPro(profile.is_pro || false);
       setSelectedFrame(profile.profile_frame || "default");
+      setSelectedTheme(profile.custom_theme || "default");
       setBoostCredits(profile.boost_credits || 0);
       setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
@@ -300,8 +303,8 @@ export default function Profile() {
       status_message: form.statusMessage,
       socials,
       profile_frame: isPro ? selectedFrame : "default",
+      custom_theme: selectedTheme,
     };
-
     // Set avatar_url to a random photo from the first 3
     if (photos.length > 0) {
       const rotationPhotos = photos.slice(0, 3);
@@ -651,6 +654,40 @@ export default function Profile() {
                       </Button>
                     </div>
                   )}
+                </div>
+
+                {/* Profile Theme */}
+                <div className="sticky top-[22rem] rounded-2xl border border-border bg-card p-4 space-y-3 mt-4">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-sm text-foreground">Theme</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {profileThemes.map((t) => {
+                      const locked = t.isPro && !isPro;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          disabled={locked}
+                          onClick={() => !locked && setSelectedTheme(t.id)}
+                          className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                            selectedTheme === t.id
+                              ? "border-primary bg-primary/5"
+                              : locked
+                              ? "border-border opacity-50 cursor-not-allowed"
+                              : "border-border hover:border-primary/30"
+                          }`}
+                        >
+                          <div className={`w-full h-6 rounded-md ${t.preview}`} />
+                          <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
+                          {locked && (
+                            <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

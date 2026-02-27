@@ -13,6 +13,8 @@ import {
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
+import { getThemeById } from "@/lib/profile-themes";
 
 interface ProfileData {
   id: string;
@@ -184,6 +186,7 @@ export default function UserProfile() {
   const memberSince = profile?.created_at ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "";
   const socials = (profile?.socials || {}) as Record<string, string>;
   const activeSocials = Object.entries(socials).filter(([, v]) => v && v.trim());
+  const theme = getThemeById(profile?.custom_theme || "default");
 
   if (loading) {
     return (
@@ -211,7 +214,7 @@ export default function UserProfile() {
 
       {/* Hero header */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-primary/5 to-background" />
+        <div className={cn("absolute inset-0", theme.styles.heroBg)} />
         <div className="relative container mx-auto max-w-2xl px-4 pt-6 pb-8">
           <Button
             variant="ghost"
@@ -229,12 +232,12 @@ export default function UserProfile() {
           >
             {/* Avatar */}
             <div className="relative mb-4">
-              <div
-                className={cn(
-                  "w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden",
-                  frame || "ring-4 ring-primary/30"
-                )}
-              >
+                <div
+                  className={cn(
+                    "w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden",
+                    frame || cn("ring-4", theme.styles.accentRing)
+                  )}
+                >
                 {profile.avatar_url && !profile.avatar_url.includes("dicebear") ? (
                   <img
                     src={profile.avatar_url}
@@ -328,31 +331,14 @@ export default function UserProfile() {
           </div>
         </motion.div>
 
-        {/* Photos gallery */}
+        {/* Photos circles */}
         {photos.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="rounded-xl border border-border bg-card p-4"
           >
-            <h2 className="text-sm font-bold text-foreground mb-3">Photos</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {photos.map((photo, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedPhoto(photo.url)}
-                  className="aspect-square rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-colors"
-                >
-                  <img
-                    src={photo.url}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </button>
-              ))}
-            </div>
+            <ProfilePhotoCircles photos={photos} />
           </motion.div>
         )}
 
