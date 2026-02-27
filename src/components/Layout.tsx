@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
+import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
@@ -15,12 +16,11 @@ export default function Layout() {
     return <div className="min-h-screen bg-background" />;
   }
 
-  const hasCustomTheme = isEnabled && themeId !== "default";
-  const themeClass = hasCustomTheme ? `theme-${themeId}` : "";
+  const hasCustomTheme = isEnabled && themeId !== "default" && themeId !== "light" && themeId !== "dark";
 
   return (
     <div
-      className={cn("min-h-screen bg-background relative", themeClass)}
+      className={cn("min-h-screen bg-background relative")}
       style={hasCustomTheme && theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}
     >
       <Navbar themeId={hasCustomTheme ? themeId : undefined} />
@@ -28,6 +28,7 @@ export default function Layout() {
       <main className="pt-14 animate-page-fade-in relative z-20">
         <Outlet context={{ sitewideTheme: hasCustomTheme ? theme : null, sitewideThemeId: hasCustomTheme ? themeId : null }} />
       </main>
+      <FloatingThemeSwitcher />
     </div>
   );
 }
