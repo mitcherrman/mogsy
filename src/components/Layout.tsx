@@ -8,6 +8,7 @@ export default function Layout() {
   const { loading } = useAuth();
 
   return (
+    <div>
       <Navbar />
       <main className="pt-14 animate-page-fade-in">
         <Outlet />
