@@ -91,17 +91,11 @@ export default function NavBanner() {
     setItems(result.slice(0, 6));
   };
 
-  const [ready, setReady] = useState(false);
   const current = items.length > 0 ? items[index] : null;
-
-  useEffect(() => {
-    if (items.length > 0) setReady(true);
-  }, [items.length]);
 
   return (
     <div
-      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60 transition-opacity duration-300"
-      style={{ opacity: ready ? 1 : 0 }}
+      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60"
     >
       {current && (
         <AnimatePresence mode="wait">
