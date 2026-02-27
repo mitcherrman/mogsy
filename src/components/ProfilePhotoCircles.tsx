@@ -21,11 +21,10 @@ export default function ProfilePhotoCircles({ photos }: ProfilePhotoCirclesProps
   // Each photo is a circle. The "active" one is biggest.
   // They flow left to right, active slides right over time.
   const getSize = (index: number) => {
-    if (index === activeIndex) return { size: 80, ring: true };
-    // Distance from active determines size
+    if (index === activeIndex) return { size: 120, ring: true };
     const dist = Math.abs(index - activeIndex);
-    if (dist === 1) return { size: 56, ring: false };
-    return { size: 44, ring: false };
+    if (dist === 1) return { size: 72, ring: false };
+    return { size: 56, ring: false };
   };
 
   return (
