@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
 import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
 import { getThemeById } from "@/lib/profile-themes";
+import ThemeOverlay from "@/components/ThemeOverlay";
 
 interface ProfileData {
   id: string;
@@ -296,7 +297,8 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-background" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
+    <div className="min-h-screen bg-background relative" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
+      <ThemeOverlay themeId={theme.id} />
       <SEOHead
         title={`${profile.display_name || "User"} — Mogsy`}
         description={`View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`}
@@ -305,7 +307,7 @@ export default function UserProfile() {
       {/* Hero header */}
       <div className="relative overflow-hidden">
         <div className={cn("absolute inset-0", theme.styles.heroBg)} />
-        <div className="relative container mx-auto max-w-2xl px-4 pt-6 pb-8">
+        <div className="relative container mx-auto max-w-2xl px-4 pt-6 pb-8 z-20">
             <Button
             variant="ghost"
             size="icon"
@@ -399,7 +401,7 @@ export default function UserProfile() {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto max-w-2xl px-4 pb-12 space-y-5">
+      <div className="container mx-auto max-w-2xl px-4 pb-12 space-y-5 relative z-20">
 
         {/* Favorites */}
         {favorites.length > 0 && (
