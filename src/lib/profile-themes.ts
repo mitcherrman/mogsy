@@ -84,6 +84,18 @@ export const profileThemes: ProfileTheme[] = [
       textAccent: "text-[hsl(45,90%,55%)]",
     },
   },
+  {
+    id: "lol",
+    label: "League of Legends",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(220,60%,15%)] via-[hsl(45,100%,50%)] to-[hsl(220,60%,15%)]",
+    styles: {
+      heroBg: "bg-gradient-to-b from-[hsl(220,60%,12%)/0.5] via-[hsl(45,90%,50%)/0.15] to-transparent",
+      cardBg: "border-[hsl(45,80%,45%)/0.3]",
+      accentRing: "ring-[hsl(45,100%,50%)/0.5]",
+      textAccent: "text-[hsl(45,100%,55%)]",
+    },
+  },
 ];
 
 export function getThemeById(id: string): ProfileTheme {
