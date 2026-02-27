@@ -206,27 +206,6 @@
   animation: champion-pulse 0.8s ease-out 1;
 }
 
-/* League of Legends theme */
-.theme-lol {
-  --background: 220 30% 8%;
-  --foreground: 45 90% 85%;
-  --card: 220 25% 12%;
-  --card-foreground: 45 90% 85%;
-  --primary: 45 100% 50%;
-  --primary-foreground: 220 30% 8%;
-  --secondary: 200 60% 40%;
-  --secondary-foreground: 45 90% 95%;
-  --muted: 220 15% 25%;
-  --muted-foreground: 45 30% 65%;
-  --accent: 220 25% 15%;
-  --accent-foreground: 45 90% 85%;
-  --border: 220 20% 20%;
-  --input: 220 20% 20%;
-  --ring: 45 100% 50%;
-  --gradient-primary: linear-gradient(135deg, hsl(45, 100%, 50%), hsl(30, 100%, 45%), hsl(200, 60%, 40%));
-  --shadow-glow-primary: 0 0 30px hsl(45 100% 50% / 0.3);
-}
-
 /* Sitewide theme CSS variable overrides */
 .theme-midnight {
   --background: 230 30% 8%;

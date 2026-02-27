@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Palette, Sun, Moon, Lock, Crown } from "lucide-react";
+import { Palette, Lock, Crown, Check } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 
-/** Extract a CSS gradient from pageBg or fall back to a solid from heroBg */
 function getCircleGradient(theme: typeof profileThemes[number]): string {
-  const s = theme.styles;
-  if (s.pageBg) return s.pageBg;
-  // fallback: parse hsl from heroBg class
+  if (theme.id === "default") return "linear-gradient(135deg, hsl(210,80%,60%), hsl(270,60%,65%))";
+  if (theme.styles.pageBg) return theme.styles.pageBg;
   return "hsl(210,80%,60%)";
 }
 
@@ -27,10 +25,8 @@ export default function FloatingThemeSwitcher() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // All profile themes except "default" (default is represented by light/dark)
-  const themeCircles = profileThemes.filter((t) => t.id !== "default");
-
   const canUseTheme = (id: string) => {
+    if (id === "default") return true;
     if (isPro) return true;
     if (chosenFreeTheme === id) return true;
     const theme = profileThemes.find((t) => t.id === id);
@@ -54,42 +50,7 @@ export default function FloatingThemeSwitcher() {
             transition={{ duration: 0.2 }}
             className="flex flex-col items-center gap-2.5 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
           >
-            {/* Light / Dark */}
-            <motion.button
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleSelect("light")}
-              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                themeId === "light"
-                  ? "border-primary ring-2 ring-primary/40 shadow-lg"
-                  : "border-border hover:border-primary/50"
-              }`}
-              style={{ background: "hsl(209,40%,96%)" }}
-              title="Light"
-            >
-              <Sun className="h-4 w-4" style={{ color: "hsl(35,90%,50%)" }} />
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.15 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleSelect("dark")}
-              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                themeId === "dark"
-                  ? "border-primary ring-2 ring-primary/40 shadow-lg"
-                  : "border-border hover:border-primary/50"
-              }`}
-              style={{ background: "hsl(222,47%,11%)" }}
-              title="Dark"
-            >
-              <Moon className="h-4 w-4" style={{ color: "hsl(210,80%,75%)" }} />
-            </motion.button>
-
-            {/* Divider */}
-            <div className="w-6 h-[1px] bg-border" />
-
-            {/* Profile theme circles */}
-            {themeCircles.map((theme) => {
+            {profileThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
               const bg = getCircleGradient(theme);
@@ -110,10 +71,13 @@ export default function FloatingThemeSwitcher() {
                   style={{ background: bg }}
                   title={theme.label + (locked ? " (Pro)" : "")}
                 >
-                  {locked && (
+                  {isActive && (
+                    <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
+                  )}
+                  {locked && !isActive && (
                     <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
                   )}
-                  {theme.isPro && !locked && (
+                  {theme.isPro && !locked && !isActive && (
                     <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
                   )}
                 </motion.button>
