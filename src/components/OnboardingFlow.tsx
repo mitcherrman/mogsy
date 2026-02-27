@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight, Sparkles, Palette, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { profileThemes } from "@/lib/profile-themes";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 const ALL_CATEGORIES = [
@@ -26,12 +27,28 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   Other: "🌈",
 };
 
-type Step = "welcome" | "pick";
+const THEME_COLORS: Record<string, [string, string]> = {
+  midnight: ["hsl(250,50%,25%)", "hsl(260,60%,50%)"],
+  forest: ["hsl(150,40%,25%)", "hsl(130,50%,35%)"],
+  sunset: ["hsl(20,80%,50%)", "hsl(340,70%,50%)"],
+  aurora: ["hsl(170,60%,40%)", "hsl(220,60%,50%)"],
+  royal: ["hsl(45,90%,50%)", "hsl(280,40%,30%)"],
+  lol: ["hsl(45,100%,50%)", "hsl(200,60%,40%)"],
+  cyberpunk: ["hsl(320,100%,50%)", "hsl(180,100%,50%)"],
+};
 
-export default function OnboardingFlow({ onComplete }: { onComplete: (categories: string[]) => void }) {
+type Step = "welcome" | "pick" | "theme";
+
+interface OnboardingFlowProps {
+  onComplete: (categories: string[]) => void;
+  skipToTheme?: boolean;
+}
+
+export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFlowProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>(skipToTheme ? "theme" : "welcome");
   const [selected, setSelected] = useState<string[]>([]);
+  const [chosenTheme, setChosenTheme] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const toggleCategory = (cat: string) => {
@@ -41,18 +58,30 @@ export default function OnboardingFlow({ onComplete }: { onComplete: (categories
   };
 
   const handleFinish = async () => {
-    if (selected.length < 3 || !user) return;
+    if (!skipToTheme && (selected.length < 3 || !user)) return;
     setSaving(true);
-    await supabase
-      .from("profiles")
-      .update({
-        onboarding_completed: true,
-        preferred_categories: selected,
-      })
-      .eq("user_id", user.id);
+
+    if (chosenTheme) {
+      localStorage.setItem("mogsy-chosen-free-theme", chosenTheme);
+      localStorage.setItem("mogsy-active-theme", chosenTheme);
+    }
+
+    if (!skipToTheme && user) {
+      await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          preferred_categories: selected,
+          custom_theme: chosenTheme || "default",
+        })
+        .eq("user_id", user.id);
+    }
+
     setSaving(false);
     onComplete(selected);
   };
+
+  const proThemes = profileThemes.filter((t) => t.isPro);
 
   return (
     <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center px-4">
@@ -137,18 +166,94 @@ export default function OnboardingFlow({ onComplete }: { onComplete: (categories
 
             <div className="flex flex-col items-center gap-2">
               <Button
-                onClick={handleFinish}
-                disabled={selected.length < 3 || saving}
+                onClick={() => setStep("theme")}
+                disabled={selected.length < 3}
                 className="gap-2 rounded-full px-8"
                 size="lg"
               >
-                {saving ? "Saving..." : "Continue"}
-                <ChevronRight className="h-4 w-4" />
+                Continue <ChevronRight className="h-4 w-4" />
               </Button>
               {selected.length < 3 && (
                 <p className="text-xs text-muted-foreground">
                   {selected.length}/3 selected
                 </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {step === "theme" && (
+          <motion.div
+            key="theme"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col items-center text-center max-w-md w-full"
+          >
+            <Palette className="h-8 w-8 text-primary mb-4" />
+            <h2 className="text-2xl font-extrabold text-foreground mb-2">
+              Choose Your Vibe
+            </h2>
+            <p className="text-muted-foreground text-sm mb-2">
+              Pick <span className="font-bold text-primary">1 premium theme</span> to try for free.
+            </p>
+            <p className="text-muted-foreground text-xs mb-6 flex items-center gap-1">
+              <Crown className="h-3 w-3 text-yellow-500" /> Pro users unlock all themes
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              {proThemes.map((theme, i) => {
+                const colors = THEME_COLORS[theme.id] || ["#333", "#555"];
+                const isChosen = chosenTheme === theme.id;
+                return (
+                  <motion.button
+                    key={theme.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.06 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setChosenTheme(isChosen ? null : theme.id)}
+                    className={`flex flex-col items-center gap-2 group`}
+                  >
+                    <div
+                      className={`w-14 h-14 rounded-full border-3 transition-all ${
+                        isChosen
+                          ? "border-primary ring-4 ring-primary/30 shadow-lg scale-110"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      style={{
+                        background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`,
+                        borderWidth: 3,
+                      }}
+                    />
+                    <span className={`text-xs font-semibold ${isChosen ? "text-primary" : "text-muted-foreground"}`}>
+                      {theme.label}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                onClick={handleFinish}
+                disabled={saving}
+                className="gap-2 rounded-full px-8"
+                size="lg"
+              >
+                {saving ? "Saving..." : skipToTheme ? "Done" : "Let's Go!"}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              {!chosenTheme && (
+                <button
+                  onClick={handleFinish}
+                  disabled={saving}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Skip for now
+                </button>
               )}
             </div>
           </motion.div>

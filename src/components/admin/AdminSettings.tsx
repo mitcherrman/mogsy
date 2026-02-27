@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import OnboardingFlow from "@/components/OnboardingFlow";
 
 interface SettingsState {
   require_auth: boolean;
@@ -29,6 +30,7 @@ export default function AdminSettings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showThemePreview, setShowThemePreview] = useState(false);
 
   useEffect(() => {
     supabase
@@ -214,7 +216,28 @@ export default function AdminSettings() {
           checked={settings.sitewide_themes_enabled}
           onChange={() => toggleSetting("sitewide_themes_enabled", "sitewide_themes_enabled")}
         />
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div>
+            <Label className="text-sm font-medium">Preview Theme Picker</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">Preview the onboarding theme selection dialog that new users see</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowThemePreview(true)}
+            className="text-xs gap-1"
+          >
+            <Palette className="h-3 w-3" /> Preview
+          </Button>
+        </div>
       </div>
+
+      {showThemePreview && (
+        <OnboardingFlow
+          skipToTheme
+          onComplete={() => setShowThemePreview(false)}
+        />
+      )}
     </div>
   );
 }

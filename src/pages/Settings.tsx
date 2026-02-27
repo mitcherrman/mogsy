@@ -1,42 +1,13 @@
 import { motion } from "framer-motion";
-import { Sun, Moon, Monitor, LogOut, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
 
-type Theme = "light" | "dark" | "system";
-
-function getStoredTheme(): Theme {
-  return (localStorage.getItem("mogsy-theme") as Theme) || "system";
-}
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === "system") {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    root.classList.toggle("dark", prefersDark);
-  } else {
-    root.classList.toggle("dark", theme === "dark");
-  }
-  localStorage.setItem("mogsy-theme", theme);
-}
-
-const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
-];
-
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<Theme>(getStoredTheme);
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -54,30 +25,9 @@ export default function Settings() {
           <h1 className="text-3xl font-extrabold text-foreground">Settings</h1>
         </div>
 
-        {/* Theme */}
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-border bg-card p-6 mb-6"
-        >
-          <h2 className="font-bold text-foreground mb-4">Appearance</h2>
-          <div className="flex gap-3">
-            {themeOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setTheme(opt.value)}
-                className={`flex-1 flex flex-col items-center gap-2 rounded-xl border p-4 transition-all duration-200 ${
-                  theme === opt.value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:border-primary/30"
-                }`}
-              >
-                <opt.icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.section>
+        <p className="text-sm text-muted-foreground mb-6">
+          Use the <span className="font-semibold text-primary">theme button</span> in the bottom-right corner to change your app appearance.
+        </p>
 
         {/* Account */}
         {user && (
