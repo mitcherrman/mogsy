@@ -12,14 +12,14 @@ function getImageUrl(item: CardItem): string {
 export default function VaporizeAnimation({ winnerSide, items, onComplete }: Props) {
   const [phase, setPhase] = useState<"idle" | "dissolve" | "done">("idle");
 
-  const reset = useCallback(() => { setPhase("idle"); onComplete(); }, [onComplete]);
+  const finish = useCallback(() => { setPhase("done"); onComplete(); }, [onComplete]);
 
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("dissolve");
-    const t = setTimeout(reset, 900);
+    const t = setTimeout(finish, 900);
     return () => clearTimeout(t);
-  }, [winnerSide, reset]);
+  }, [winnerSide, finish]);
 
   const particles = useMemo(() =>
     Array.from({ length: 30 }).map(() => ({
@@ -32,7 +32,7 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
       dur: 0.4 + Math.random() * 0.3,
     })), []);
 
-  if (winnerSide === null || phase === "idle" || items.length < 2) return null;
+  if (winnerSide === null || items.length < 2) return null;
 
   const loserIdx = winnerSide === 0 ? 1 : 0;
 

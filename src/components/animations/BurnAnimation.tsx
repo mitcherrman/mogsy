@@ -12,17 +12,17 @@ function getImageUrl(item: CardItem): string {
 export default function BurnAnimation({ winnerSide, items, onComplete }: Props) {
   const [phase, setPhase] = useState<"idle" | "glow" | "burn" | "done">("idle");
 
-  const reset = useCallback(() => { setPhase("idle"); onComplete(); }, [onComplete]);
+  const finish = useCallback(() => { setPhase("done"); onComplete(); }, [onComplete]);
 
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("glow");
     const t1 = setTimeout(() => setPhase("burn"), 200);
-    const t2 = setTimeout(reset, 900);
+    const t2 = setTimeout(finish, 900);
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [winnerSide, reset]);
+  }, [winnerSide, finish]);
 
-  if (winnerSide === null || phase === "idle" || items.length < 2) return null;
+  if (winnerSide === null || items.length < 2) return null;
 
   const loserIdx = winnerSide === 0 ? 1 : 0;
 
