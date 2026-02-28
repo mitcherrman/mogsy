@@ -15,7 +15,7 @@ import {
   Search, ChevronDown, ChevronRight, User, Crown, Shield, Diamond,
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
-  MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift,
+  MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
 } from "lucide-react";
 
 interface Profile {
@@ -105,7 +105,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [emailMap, setEmailMap] = useState<Record<string, string>>({});
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
 
-  const [adminNotes, setAdminNotes] = useState("");
+  const [noteEntries, setNoteEntries] = useState<{ id: string; text: string; created_at: string; updated_at?: string }[]>([]);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
   const [referralData, setReferralData] = useState<UserReferralData | null>(null);
@@ -198,7 +201,19 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
     setDetailTab("overview");
-    setAdminNotes(profile.admin_notes || "");
+    // Parse notes from admin_notes JSON
+    try {
+      const parsed = JSON.parse(profile.admin_notes || "[]");
+      setNoteEntries(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      // Legacy: convert old plain text note to an entry
+      if (profile.admin_notes && profile.admin_notes.trim()) {
+        setNoteEntries([{ id: crypto.randomUUID(), text: profile.admin_notes, created_at: profile.created_at }]);
+      } else {
+        setNoteEntries([]);
+      }
+    }
+    setNewNoteText("");
     const formData = {
       display_name: profile.display_name,
       is_pro: profile.is_pro,
@@ -323,18 +338,39 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setSelectedUser({ ...selectedUser, ...editForm } as Profile);
   };
 
-  const saveAdminNotes = async () => {
+  const saveNotesToDb = async (entries: typeof noteEntries) => {
     if (!selectedUser) return;
     setSavingNotes(true);
+    const serialized = JSON.stringify(entries);
     const { error } = await supabase
       .from("profiles")
-      .update({ admin_notes: adminNotes } as any)
+      .update({ admin_notes: serialized } as any)
       .eq("id", selectedUser.id);
     setSavingNotes(false);
-    if (error) { toast.error("Failed to save notes"); return; }
-    toast.success("Notes saved");
-    setSelectedUser({ ...selectedUser, admin_notes: adminNotes } as Profile);
-    setProfiles((prev) => prev.map((p) => p.id === selectedUser.id ? { ...p, admin_notes: adminNotes } : p));
+    if (error) { toast.error("Failed to save notes"); return false; }
+    setSelectedUser({ ...selectedUser, admin_notes: serialized } as Profile);
+    setProfiles((prev) => prev.map((p) => p.id === selectedUser.id ? { ...p, admin_notes: serialized } : p));
+    return true;
+  };
+
+  const addNote = async () => {
+    if (!newNoteText.trim()) return;
+    const entry = { id: crypto.randomUUID(), text: newNoteText.trim(), created_at: new Date().toISOString() };
+    const updated = [entry, ...noteEntries];
+    const ok = await saveNotesToDb(updated);
+    if (ok) { setNoteEntries(updated); setNewNoteText(""); toast.success("Note added"); }
+  };
+
+  const updateNote = async (noteId: string, newText: string) => {
+    const updated = noteEntries.map(n => n.id === noteId ? { ...n, text: newText, updated_at: new Date().toISOString() } : n);
+    const ok = await saveNotesToDb(updated);
+    if (ok) { setNoteEntries(updated); setEditingNoteId(null); toast.success("Note updated"); }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    const updated = noteEntries.filter(n => n.id !== noteId);
+    const ok = await saveNotesToDb(updated);
+    if (ok) { setNoteEntries(updated); toast.success("Note deleted"); }
   };
 
   const deleteUser = async (profile: Profile) => {
@@ -589,21 +625,79 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         )}
 
         {detailTab === "notes" && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <StickyNote className="h-4 w-4 text-primary" />
               <h4 className="font-bold text-sm text-foreground">Admin Notes</h4>
+              <Badge variant="outline" className="text-[10px]">{noteEntries.length}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">Private notes about this user. Only visible to admins.</p>
-            <Textarea
-              placeholder="Add notes about this user (e.g. warnings, VIP status, behavior issues)…"
-              value={adminNotes}
-              onChange={(e) => setAdminNotes(e.target.value)}
-              rows={6}
-            />
-            <Button onClick={saveAdminNotes} disabled={savingNotes} size="sm">
-              {savingNotes ? "Saving…" : "Save Notes"}
-            </Button>
+
+            {/* Add new note */}
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Add a note about this user (e.g. warnings, VIP status, behavior issues)…"
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                rows={3}
+              />
+              <Button onClick={addNote} disabled={savingNotes || !newNoteText.trim()} size="sm">
+                {savingNotes ? "Saving…" : "Add Note"}
+              </Button>
+            </div>
+
+            {/* Notes thread */}
+            {noteEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No notes yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {noteEntries.map((note) => (
+                  <div key={note.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                    {editingNoteId === note.id ? (
+                      <>
+                        <Textarea
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => updateNote(note.id, editingNoteText)} disabled={savingNotes || !editingNoteText.trim()}>
+                            {savingNotes ? "Saving…" : "Save"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditingNoteId(null)}>Cancel</Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-foreground whitespace-pre-wrap break-words">{note.text}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                          <span>{new Date(note.created_at).toLocaleString()}</span>
+                          {note.updated_at && <span className="italic">edited {new Date(note.updated_at).toLocaleString()}</span>}
+                          <div className="ml-auto flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => { setEditingNoteId(note.id); setEditingNoteText(note.text); }}
+                            >
+                              <Pencil className="h-3 w-3 mr-1" /> Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                              onClick={() => deleteNote(note.id)}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" /> Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
