@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Sparkles, Palette, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { profileThemes } from "@/lib/profile-themes";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
-const ALL_CATEGORIES = [
-  "Anime",
-  "Movies",
-  "Video Games",
-  "Celebrities",
-  "Sports",
-  "Food",
-  "Other",
-];
-
-const CATEGORY_EMOJIS: Record<string, string> = {
+const DEFAULT_CATEGORY_EMOJIS: Record<string, string> = {
   Anime: "🎌",
   Movies: "🎬",
   "Video Games": "🎮",
@@ -50,6 +40,41 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
   const [selected, setSelected] = useState<string[]>([]);
   const [chosenTheme, setChosenTheme] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<{ name: string; emoji: string }[]>([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      // Try to load from app_settings first
+      const { data: settingsData } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "onboarding_categories")
+        .single();
+
+      if (settingsData?.value && Array.isArray((settingsData.value as any)?.categories)) {
+        const cats = (settingsData.value as any).categories as { name: string; emoji: string }[];
+        if (cats.length > 0) {
+          setCategories(cats);
+          return;
+        }
+      }
+
+      // Fallback: get distinct categories from leagues
+      const { data: leagues } = await supabase
+        .from("leagues")
+        .select("category")
+        .not("category", "is", null);
+
+      if (leagues) {
+        const unique = [...new Set(leagues.map(l => l.category).filter(Boolean))] as string[];
+        setCategories(unique.map(name => ({
+          name,
+          emoji: DEFAULT_CATEGORY_EMOJIS[name] || "📁",
+        })));
+      }
+    };
+    loadCategories();
+  }, []);
 
   const toggleCategory = (cat: string) => {
     setSelected((prev) =>
@@ -140,25 +165,25 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
             </p>
 
             <div className="flex flex-wrap justify-center gap-3 mb-8">
-              {ALL_CATEGORIES.map((cat, i) => {
-                const isSelected = selected.includes(cat);
+              {categories.map((cat, i) => {
+                const isSelected = selected.includes(cat.name);
                 return (
                   <motion.button
-                    key={cat}
+                    key={cat.name}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => toggleCategory(cat)}
+                    onClick={() => toggleCategory(cat.name)}
                     className={`flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold border-2 transition-all ${
                       isSelected
                         ? "border-primary bg-primary/15 text-primary shadow-md"
                         : "border-border bg-card text-foreground hover:border-primary/30"
                     }`}
                   >
-                    <span className="text-lg">{CATEGORY_EMOJIS[cat]}</span>
-                    {cat}
+                    <span className="text-lg">{cat.emoji}</span>
+                    {cat.name}
                   </motion.button>
                 );
               })}

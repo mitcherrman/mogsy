@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart, Palette } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Wrench, Heart, Palette, Sparkles, Plus, Trash2, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import OnboardingFlow from "@/components/OnboardingFlow";
@@ -32,6 +32,13 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [showThemePreview, setShowThemePreview] = useState(false);
 
+  // Onboarding categories state
+  const [onboardingCategories, setOnboardingCategories] = useState<{ name: string; emoji: string }[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatEmoji, setNewCatEmoji] = useState("📁");
+  const [savingCategories, setSavingCategories] = useState(false);
+
   useEffect(() => {
     supabase
       .from("app_settings")
@@ -49,11 +56,28 @@ export default function AdminSettings() {
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
               case "sitewide_themes_enabled": s.sitewide_themes_enabled = val?.enabled ?? false; break;
+              case "onboarding_categories":
+                if (val?.categories && Array.isArray(val.categories)) {
+                  setOnboardingCategories(val.categories);
+                }
+                break;
             }
           }
           setSettings(s);
         }
         setLoading(false);
+      });
+
+    // Load available categories from leagues
+    supabase
+      .from("leagues")
+      .select("category")
+      .not("category", "is", null)
+      .then(({ data }) => {
+        if (data) {
+          const unique = [...new Set(data.map(l => l.category).filter(Boolean))] as string[];
+          setAvailableCategories(unique.sort());
+        }
       });
   }, []);
 
@@ -230,6 +254,119 @@ export default function AdminSettings() {
             <Palette className="h-3 w-3" /> Preview
           </Button>
         </div>
+      </div>
+
+      {/* Onboarding Categories */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="h-3.5 w-3.5" /> Onboarding Categories
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Manage which categories new users can pick during onboarding. These are sourced from your available collections.
+        </p>
+
+        {/* Current categories */}
+        <div className="space-y-2">
+          {onboardingCategories.map((cat, idx) => (
+            <div key={idx} className="flex items-center gap-2 rounded-xl border border-border bg-card p-3">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={cat.emoji}
+                onChange={(e) => {
+                  const updated = [...onboardingCategories];
+                  updated[idx] = { ...updated[idx], emoji: e.target.value };
+                  setOnboardingCategories(updated);
+                }}
+                className="w-16 text-center"
+                maxLength={4}
+              />
+              <span className="text-sm font-medium text-foreground flex-1">{cat.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={() => setOnboardingCategories(prev => prev.filter((_, i) => i !== idx))}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Add from available */}
+        {availableCategories.filter(c => !onboardingCategories.some(oc => oc.name === c)).length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-muted-foreground self-center mr-1">Add:</span>
+            {availableCategories
+              .filter(c => !onboardingCategories.some(oc => oc.name === c))
+              .map(cat => (
+                <Button
+                  key={cat}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 gap-1"
+                  onClick={() => setOnboardingCategories(prev => [...prev, { name: cat, emoji: "📁" }])}
+                >
+                  <Plus className="h-3 w-3" /> {cat}
+                </Button>
+              ))}
+          </div>
+        )}
+
+        {/* Custom category */}
+        <div className="flex items-center gap-2">
+          <Input
+            value={newCatEmoji}
+            onChange={(e) => setNewCatEmoji(e.target.value)}
+            className="w-16 text-center"
+            maxLength={4}
+            placeholder="📁"
+          />
+          <Input
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            className="flex-1"
+            placeholder="Custom category name…"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            disabled={!newCatName.trim()}
+            onClick={() => {
+              setOnboardingCategories(prev => [...prev, { name: newCatName.trim(), emoji: newCatEmoji || "📁" }]);
+              setNewCatName("");
+              setNewCatEmoji("📁");
+            }}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+
+        <Button
+          size="sm"
+          disabled={savingCategories}
+          onClick={async () => {
+            setSavingCategories(true);
+            // Upsert the onboarding_categories setting
+            const { error } = await supabase
+              .from("app_settings")
+              .upsert({
+                key: "onboarding_categories",
+                value: { categories: onboardingCategories } as any,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: "key" });
+            setSavingCategories(false);
+            if (error) {
+              toast.error("Failed to save categories");
+              return;
+            }
+            toast.success("Onboarding categories saved");
+          }}
+          className="w-full"
+        >
+          {savingCategories ? "Saving…" : "Save Onboarding Categories"}
+        </Button>
       </div>
 
       {showThemePreview && (
