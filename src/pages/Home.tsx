@@ -239,9 +239,9 @@ export default function Home() {
     });
 
     const buildSection = (catNames: string[]): CategorySection["categories"] => {
-      return catNames.slice(0, 3).map((catName) => {
+      return catNames.slice(0, 2).map((catName) => {
         const catData = categoryMap.get(catName);
-        const subs = catData ? Array.from(catData.subcategories).slice(0, 2) : [];
+        const subs = catData ? Array.from(catData.subcategories).slice(0, 1) : [];
         return {
           name: catName,
           image: getCategoryImage(catName),
@@ -563,8 +563,8 @@ export default function Home() {
                     {section.icon}
                     <span className="text-xs font-bold text-foreground">{section.title}</span>
                   </div>
-                  {/* Category bubbles */}
-                  <div className="flex flex-col items-center gap-2">
+                  {/* 2x2 grid: top 2 categories, bottom 2 subcategories */}
+                  <div className="grid grid-cols-2 gap-2 place-items-center">
                     {section.categories.map((cat, i) => (
                       <motion.div
                         key={cat.name}
@@ -573,37 +573,32 @@ export default function Home() {
                         transition={{ delay: sectionIdx * 0.08 + i * 0.04 }}
                       >
                         <CategoryBubble
-                          size={80}
+                          size={72}
                           onClick={() => handleCategoryClick(cat.name)}
                           imageUrl={cat.image}
                           label={cat.name}
                         />
                       </motion.div>
                     ))}
+                    {section.categories.flatMap((cat) =>
+                      cat.subcategories.map((sub, j) => (
+                        <motion.div
+                          key={`${cat.name}-${sub.name}`}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: sectionIdx * 0.08 + 0.12 + j * 0.03 }}
+                        >
+                          <CategoryBubble
+                            size={56}
+                            onClick={() => handleSubcategoryClick(cat.name, sub.name)}
+                            imageUrl={sub.image}
+                            label={sub.name}
+                            variant="accent"
+                          />
+                        </motion.div>
+                      ))
+                    )}
                   </div>
-                  {/* Subcategory bubbles - smaller */}
-                  {section.categories.some((c) => c.subcategories.length > 0) && (
-                    <div className="flex flex-wrap justify-center gap-1.5">
-                      {section.categories.flatMap((cat) =>
-                        cat.subcategories.map((sub, j) => (
-                          <motion.div
-                            key={`${cat.name}-${sub.name}`}
-                            initial={{ opacity: 0, scale: 0.7 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: sectionIdx * 0.08 + 0.15 + j * 0.03 }}
-                          >
-                            <CategoryBubble
-                              size={52}
-                              onClick={() => handleSubcategoryClick(cat.name, sub.name)}
-                              imageUrl={sub.image}
-                              label={sub.name}
-                              variant="accent"
-                            />
-                          </motion.div>
-                        ))
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
