@@ -16,6 +16,7 @@ import {
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
+  KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info,
 } from "lucide-react";
 
 interface Profile {
@@ -86,7 +87,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "account" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
   const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
 
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
@@ -112,6 +113,20 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [savingNotes, setSavingNotes] = useState(false);
 
   const [referralData, setReferralData] = useState<UserReferralData | null>(null);
+
+  // Account tools state
+  const [authInfo, setAuthInfo] = useState<{
+    email: string | null;
+    email_confirmed: boolean;
+    email_confirmed_at: string | null;
+    created_at: string;
+    last_sign_in_at: string | null;
+    is_anonymous: boolean;
+    banned_until: string | null;
+    provider: string;
+  } | null>(null);
+  const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
   // Check if form has changes
   const hasChanges = useMemo(() => {
@@ -312,6 +327,33 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     });
   };
 
+  const loadAuthInfo = async (userId: string) => {
+    setAuthInfo(null);
+    setGeneratedLink(null);
+    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
+      body: { action: "get_auth_info", target_user_id: userId },
+    });
+    if (data?.auth_info) setAuthInfo(data.auth_info);
+  };
+
+  const executeAccountAction = async (action: string) => {
+    if (!selectedUser) return;
+    setAccountActionLoading(action);
+    setGeneratedLink(null);
+    const { data, error } = await supabase.functions.invoke("admin-user-actions", {
+      body: { action, target_user_id: selectedUser.user_id },
+    });
+    setAccountActionLoading(null);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Action failed");
+      return;
+    }
+    toast.success(data?.message || "Action completed");
+    if (data?.link) setGeneratedLink(data.link);
+    // Refresh auth info
+    loadAuthInfo(selectedUser.user_id);
+  };
+
   const saveUser = async () => {
     if (!selectedUser) return;
     setSaving(true);
@@ -506,10 +548,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
         {/* Tab navigation */}
         <div className="flex gap-1 rounded-lg bg-secondary p-1 overflow-x-auto">
-          {(["overview", "notes", "leagues", "matches", "purchases", "comments", "referrals"] as const).map((tab) => (
+          {(["overview", "account", "notes", "leagues", "matches", "purchases", "comments", "referrals"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setDetailTab(tab)}
+              onClick={() => {
+                setDetailTab(tab);
+                if (tab === "account" && !authInfo) loadAuthInfo(selectedUser.user_id);
+              }}
               className={`flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
                 detailTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -621,6 +666,140 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <Trash2 className="h-3 w-3 mr-1" /> Delete User
               </Button>
             </div>
+          </div>
+        )}
+
+        {detailTab === "account" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <h4 className="font-bold text-sm text-foreground">Account Tools</h4>
+            </div>
+            <p className="text-xs text-muted-foreground">Manage this user's authentication and account status.</p>
+
+            {/* Auth Info */}
+            {authInfo ? (
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <h5 className="text-xs font-bold text-foreground flex items-center gap-1"><Info className="h-3 w-3" /> Auth Details</h5>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-muted-foreground">Email:</span> <span className="text-foreground font-medium">{authInfo.email || "None"}</span></div>
+                  <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground font-medium capitalize">{authInfo.provider}</span></div>
+                  <div><span className="text-muted-foreground">Confirmed:</span> <span className={`font-medium ${authInfo.email_confirmed ? "text-green-500" : "text-destructive"}`}>{authInfo.email_confirmed ? "Yes" : "No"}</span></div>
+                  <div><span className="text-muted-foreground">Anonymous:</span> <span className="text-foreground font-medium">{authInfo.is_anonymous ? "Yes" : "No"}</span></div>
+                  <div><span className="text-muted-foreground">Last Sign In:</span> <span className="text-foreground font-medium">{authInfo.last_sign_in_at ? new Date(authInfo.last_sign_in_at).toLocaleString() : "Never"}</span></div>
+                  <div><span className="text-muted-foreground">Banned:</span> <span className={`font-medium ${authInfo.banned_until ? "text-destructive" : "text-foreground"}`}>{authInfo.banned_until ? `Until ${new Date(authInfo.banned_until).toLocaleString()}` : "No"}</span></div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading auth info…
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold text-foreground">Actions</h5>
+
+              {/* Password Reset */}
+              <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Send Password Reset</p>
+                  <p className="text-xs text-muted-foreground">Generate a password reset link for this user</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!accountActionLoading || authInfo?.is_anonymous === true}
+                  onClick={() => executeAccountAction("send_password_reset")}
+                >
+                  {accountActionLoading === "send_password_reset" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <KeyRound className="h-3 w-3 mr-1" />}
+                  Reset
+                </Button>
+              </div>
+
+              {/* Resend Verification */}
+              {authInfo && !authInfo.email_confirmed && !authInfo.is_anonymous && (
+                <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Resend Verification Email</p>
+                    <p className="text-xs text-muted-foreground">Generate a new email verification link</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!accountActionLoading}
+                    onClick={() => executeAccountAction("resend_verification")}
+                  >
+                    {accountActionLoading === "resend_verification" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MailCheck className="h-3 w-3 mr-1" />}
+                    Resend
+                  </Button>
+                </div>
+              )}
+
+              {/* Confirm Email Manually */}
+              {authInfo && !authInfo.email_confirmed && !authInfo.is_anonymous && (
+                <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Confirm Email Manually</p>
+                    <p className="text-xs text-muted-foreground">Mark this user's email as verified without sending an email</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!accountActionLoading}
+                    onClick={() => executeAccountAction("confirm_email")}
+                  >
+                    {accountActionLoading === "confirm_email" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserCheck className="h-3 w-3 mr-1" />}
+                    Confirm
+                  </Button>
+                </div>
+              )}
+
+              {/* Ban / Unban */}
+              <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{authInfo?.banned_until ? "Unban User" : "Ban User"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {authInfo?.banned_until ? "Restore this user's access to sign in" : "Prevent this user from signing in"}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={authInfo?.banned_until ? "outline" : "destructive"}
+                  disabled={!!accountActionLoading}
+                  onClick={() => executeAccountAction(authInfo?.banned_until ? "unban_user" : "ban_user")}
+                >
+                  {(accountActionLoading === "ban_user" || accountActionLoading === "unban_user") ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Ban className="h-3 w-3 mr-1" />
+                  )}
+                  {authInfo?.banned_until ? "Unban" : "Ban"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Generated Link Display */}
+            {generatedLink && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                <p className="text-xs font-bold text-foreground">Generated Link</p>
+                <p className="text-xs text-muted-foreground">Copy and send this link to the user:</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-[10px] bg-secondary rounded p-2 text-foreground break-all select-all">{generatedLink}</code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedLink);
+                      toast.success("Link copied to clipboard");
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
