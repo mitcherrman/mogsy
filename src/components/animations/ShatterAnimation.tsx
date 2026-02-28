@@ -20,14 +20,14 @@ function getImageUrl(item: CardItem): string {
 export default function ShatterAnimation({ winnerSide, items, onComplete }: Props) {
   const [phase, setPhase] = useState<"idle" | "shatter" | "done">("idle");
 
-  const reset = useCallback(() => { setPhase("idle"); onComplete(); }, [onComplete]);
+  const finish = useCallback(() => { setPhase("done"); onComplete(); }, [onComplete]);
 
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("shatter");
-    const t = setTimeout(reset, 800);
+    const t = setTimeout(finish, 800);
     return () => clearTimeout(t);
-  }, [winnerSide, reset]);
+  }, [winnerSide, finish]);
 
   const fragments = useMemo(() => {
     const cols = 4, rows = 5;
@@ -51,7 +51,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
     return frags;
   }, []);
 
-  if (winnerSide === null || phase === "idle" || items.length < 2) return null;
+  if (winnerSide === null || items.length < 2) return null;
 
   const loserIdx = winnerSide === 0 ? 1 : 0;
 
