@@ -1,0 +1,1 @@
+ALTER TABLE public.preset_items ADD COLUMN subtitle text DEFAULT '' NOT NULL;

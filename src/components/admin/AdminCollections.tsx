@@ -19,6 +19,7 @@ import { toast } from "sonner";
 interface PresetItem {
   id: string;
   name: string;
+  subtitle: string;
   image_url: string | null;
   elo: number;
   league_id: string;
@@ -75,7 +76,7 @@ export default function AdminCollections() {
   const [selectedLeague, setSelectedLeague] = useState<string>("");
   const [items, setItems] = useState<PresetItem[]>([]);
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [newItem, setNewItem] = useState({ name: "", image_url: "" });
+  const [newItem, setNewItem] = useState({ name: "", subtitle: "", image_url: "" });
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
@@ -200,17 +201,17 @@ export default function AdminCollections() {
     if (!newItem.name.trim()) return;
     const { data, error } = await supabase
       .from("preset_items")
-      .insert({ league_id: selectedLeague, name: newItem.name, image_url: newItem.image_url || null })
+      .insert({ league_id: selectedLeague, name: newItem.name, subtitle: newItem.subtitle, image_url: newItem.image_url || null })
       .select().single();
     if (error) { toast.error(error.message, { duration: Infinity }); return; }
     if (data) pushUndo({ type: "add", item: data });
     toast.success("Item added");
-    setNewItem({ name: "", image_url: "" });
+    setNewItem({ name: "", subtitle: "", image_url: "" });
     loadItems(selectedLeague);
   };
 
   const handleUpdateItem = async (item: PresetItem, prev: PresetItem) => {
-    const { error } = await supabase.from("preset_items").update({ name: item.name, image_url: item.image_url }).eq("id", item.id);
+    const { error } = await supabase.from("preset_items").update({ name: item.name, subtitle: item.subtitle, image_url: item.image_url }).eq("id", item.id);
     if (error) { toast.error(error.message, { duration: Infinity }); return; }
     pushUndo({ type: "update", item, previousState: prev });
     toast.success("Updated");
@@ -363,6 +364,7 @@ export default function AdminCollections() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-foreground text-lg">{selectedItem.name}</h3>
+            {selectedItem.subtitle && <p className="text-sm text-muted-foreground">{selectedItem.subtitle}</p>}
             <div className="flex items-center gap-3 mt-1">
               <Badge variant="outline" className="gap-1"><Trophy className="h-3 w-3" /> Rank #{rank}</Badge>
               <Badge variant="secondary">Elo: {selectedItem.elo}</Badge>
@@ -645,8 +647,9 @@ export default function AdminCollections() {
             <h3 className="font-bold text-foreground flex items-center gap-2">
               <Plus className="h-4 w-4" /> Add Item to {selectedLeagueData.name}
             </h3>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-4">
               <div className="space-y-1"><Label className="text-xs">Name</Label><Input value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder="Item name" /></div>
+              <div className="space-y-1"><Label className="text-xs">Subtitle</Label><Input value={newItem.subtitle} onChange={(e) => setNewItem({ ...newItem, subtitle: e.target.value })} placeholder="e.g. Dragon Ball Z" /></div>
               <div className="space-y-1"><Label className="text-xs">Image URL</Label><Input value={newItem.image_url} onChange={(e) => setNewItem({ ...newItem, image_url: e.target.value })} placeholder="https://..." /></div>
               <div className="flex items-end"><Button onClick={handleAddItem} className="w-full">Add</Button></div>
             </div>
@@ -668,7 +671,8 @@ export default function AdminCollections() {
                   </button>
                   {editingItem === item.id ? (
                     <div className="flex-1 flex gap-2">
-                      <Input defaultValue={item.name} onChange={(e) => { item.name = e.target.value; }} className="text-sm" />
+                      <Input defaultValue={item.name} onChange={(e) => { item.name = e.target.value; }} className="text-sm" placeholder="Name" />
+                      <Input defaultValue={item.subtitle || ""} onChange={(e) => { item.subtitle = e.target.value; }} placeholder="Subtitle" className="text-sm" />
                       <Input defaultValue={item.image_url || ""} onChange={(e) => { item.image_url = e.target.value; }} placeholder="Image URL" className="text-sm" />
                       <Button size="sm" variant="ghost" onClick={() => handleUpdateItem(item, snapshot)}><Save className="h-4 w-4" /></Button>
                     </div>
@@ -677,6 +681,7 @@ export default function AdminCollections() {
                       <button onClick={() => openItemDetail(item)} className="flex-1 text-left cursor-pointer hover:opacity-80 transition-opacity">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-medium text-foreground">{item.name}</p>
+                          {item.subtitle && <span className="text-xs text-muted-foreground">— {item.subtitle}</span>}
                           {item.image_url ? (
                             <ImageIcon className="h-3 w-3 text-primary shrink-0" />
                           ) : (
