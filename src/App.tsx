@@ -27,6 +27,7 @@ const Shop = lazy(() => import("./pages/Shop"));
 const EloCheck = lazy(() => import("./pages/EloCheck"));
 const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Suspense fallback={<LazyFallback />}><Auth /></Suspense>} />
+                <Route path="/reset-password" element={<Suspense fallback={<LazyFallback />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
                   <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                   <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
