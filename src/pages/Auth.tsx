@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,12 +9,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import SEOHead from "@/components/SEOHead";
+import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+
+type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const { user, signIn, signUp, linkAnonymousAccount } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -23,12 +29,19 @@ export default function Auth() {
 
   const isAnonymous = user?.is_anonymous === true;
 
-  // Store invite code in localStorage so we can redeem after signup
+  // Store invite code
   useEffect(() => {
     if (inviteCode) {
       localStorage.setItem("mogsy-invite-code", inviteCode);
     }
   }, [inviteCode]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const redeemInvite = async (userId: string) => {
     const code = localStorage.getItem("mogsy-invite-code");
@@ -42,12 +55,9 @@ export default function Auth() {
       .single();
 
     if (!invite) return;
-
-    // Check expiry & max uses
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) return;
-    if (invite.max_uses && invite.times_used >= invite.max_uses) return;
+    if (invite.max_uses && (invite.times_used ?? 0) >= invite.max_uses) return;
 
-    // Get profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
@@ -55,41 +65,33 @@ export default function Auth() {
       .single();
     if (!profile) return;
 
-    // Apply rewards
     const updates: Record<string, any> = {};
     if (invite.grant_pro) updates.is_pro = true;
-    if (invite.grant_diamonds > 0) updates.diamonds = invite.grant_diamonds;
-    if (invite.grant_boost_credits > 0) updates.boost_credits = invite.grant_boost_credits;
-    if (invite.grant_elo_shields > 0) updates.elo_shields = invite.grant_elo_shields;
-    if (invite.grant_reveals > 0) updates.reveals = invite.grant_reveals;
-    if (invite.grant_rewinds > 0) updates.rewinds = invite.grant_rewinds;
+    if ((invite.grant_diamonds ?? 0) > 0) updates.diamonds = invite.grant_diamonds;
+    if ((invite.grant_boost_credits ?? 0) > 0) updates.boost_credits = invite.grant_boost_credits;
+    if ((invite.grant_elo_shields ?? 0) > 0) updates.elo_shields = invite.grant_elo_shields;
+    if ((invite.grant_reveals ?? 0) > 0) updates.reveals = invite.grant_reveals;
+    if ((invite.grant_rewinds ?? 0) > 0) updates.rewinds = invite.grant_rewinds;
 
-    // Set recommended categories as preferred
     const cats = invite.recommended_categories as string[];
-    if (cats && cats.length > 0) {
-      updates.preferred_categories = cats;
-    }
+    if (cats && cats.length > 0) updates.preferred_categories = cats;
 
     if (Object.keys(updates).length > 0) {
       await supabase.from("profiles").update(updates).eq("id", profile.id);
     }
 
-    // Grant admin role if specified
     if (invite.grant_admin) {
       await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
     }
 
-    // Record redemption
     await supabase.from("invite_redemptions").insert({
       invite_link_id: invite.id,
       redeemed_by_user_id: userId,
       referrer_user_id: invite.type === "user" ? invite.created_by_user_id : null,
     });
 
-    // Increment usage
-    await supabase.from("invite_links").update({ times_used: invite.times_used + 1 }).eq("id", invite.id);
+    await supabase.from("invite_links").update({ times_used: (invite.times_used ?? 0) + 1 }).eq("id", invite.id);
 
-    // If user-type invite, reward the referrer
     if (invite.type === "user") {
       const { data: settings } = await supabase.from("user_invite_settings").select("*").limit(1).single();
       if (settings && settings.is_enabled) {
@@ -110,61 +112,276 @@ export default function Auth() {
     localStorage.removeItem("mogsy-invite-code");
   };
 
+  const handleResendConfirmation = async () => {
+    if (!email || resendCooldown > 0) return;
+    setResendLoading(true);
+    // Re-signup with same email triggers a new confirmation email
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setResendLoading(false);
+    if (error) {
+      toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Email sent!", description: "Check your inbox (and spam folder)." });
+      setResendCooldown(60);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setMode("reset-sent");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (isAnonymous) {
+      if (password !== confirmPassword) {
+        toast({ title: "Passwords don't match", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await linkAnonymousAccount(email, password);
       if (error) {
         toast({ title: "Linking failed", description: error.message, variant: "destructive" });
       } else {
-        toast({ title: "Account created!", description: "Your anonymous progress has been saved to your new account." });
+        toast({ title: "Account created!", description: "Your progress has been saved." });
         if (user) await redeemInvite(user.id);
         navigate("/swipe");
       }
-    } else if (isLogin) {
+      setLoading(false);
+      return;
+    }
+
+    if (mode === "signin") {
       const { error } = await signIn(email, password);
       if (error) {
-        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+        if (error.message?.includes("Email not confirmed")) {
+          toast({
+            title: "Email not confirmed",
+            description: "Check your inbox for a confirmation link, or resend it below.",
+            variant: "destructive",
+          });
+          setMode("confirm-sent");
+        } else if (error.message?.includes("Invalid login credentials")) {
+          toast({
+            title: "Invalid credentials",
+            description: "Wrong email or password. Need an account? Switch to Sign Up.",
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Login failed", description: error.message, variant: "destructive" });
+        }
       } else {
         navigate("/swipe");
       }
-    } else {
+    } else if (mode === "signup") {
+      if (password !== confirmPassword) {
+        toast({ title: "Passwords don't match", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      if (password.length < 6) {
+        toast({ title: "Password too short", description: "Minimum 6 characters.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password);
       if (error) {
-        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        if (error.message?.includes("already been registered")) {
+          toast({
+            title: "Account already exists",
+            description: "Try signing in instead, or reset your password.",
+            variant: "destructive",
+          });
+          setMode("signin");
+        } else {
+          toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        }
       } else {
-        toast({ title: "Check your email", description: "We sent you a confirmation link." });
+        setMode("confirm-sent");
       }
     }
+
     setLoading(false);
   };
 
+  // Confirmation sent / Reset sent screens
+  if (mode === "confirm-sent" || mode === "reset-sent") {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <SEOHead title="Check Your Email — Mogsy" description="Confirm your email to finish signing up for Mogsy." />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center"
+        >
+          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">
+            {mode === "confirm-sent" ? "Confirm your email" : "Check your email"}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-1">
+            We sent an email to
+          </p>
+          <p className="text-sm font-semibold text-foreground mb-4">{email}</p>
+          <p className="text-xs text-muted-foreground mb-6">
+            {mode === "confirm-sent"
+              ? "Click the link in the email to activate your account. Check your spam folder if you don't see it."
+              : "Click the link to reset your password."}
+          </p>
+
+          {mode === "confirm-sent" && (
+            <div className="space-y-3 mb-6">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleResendConfirmation}
+                disabled={resendLoading || resendCooldown > 0}
+              >
+                {resendLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend confirmation email"}
+              </Button>
+            </div>
+          )}
+
+          <Button
+            variant="ghost"
+            className="gap-2"
+            onClick={() => setMode("signin")}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to sign in
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Forgot password screen
+  if (mode === "forgot") {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <SEOHead title="Reset Password — Mogsy" description="Reset your Mogsy password." />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md rounded-2xl border border-border bg-card p-8"
+        >
+          <div className="mb-6 text-center">
+            <Link to="/" className="inline-block mb-4">
+              <img src={mogsyLogo} alt="Mogsy" className="h-12 mx-auto" />
+            </Link>
+            <h2 className="text-xl font-bold text-foreground">Reset your password</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter your email and we'll send a reset link
+            </p>
+          </div>
+
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Send Reset Link
+            </Button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <Button variant="ghost" className="gap-2 text-sm" onClick={() => setMode("signin")}>
+              <ArrowLeft className="h-4 w-4" /> Back to sign in
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Main sign in / sign up form
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <SEOHead title="Sign In — Mogsy" description="Sign in or create your Mogsy account. Start voting, ranking, and competing in head-to-head leagues." />
+      <SEOHead
+        title={mode === "signup" ? "Sign Up — Mogsy" : "Sign In — Mogsy"}
+        description="Sign in or create your Mogsy account. Start voting, ranking, and competing."
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md rounded-2xl border border-border bg-card p-8"
       >
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <Link to="/" className="inline-block mb-4">
             <img src={mogsyLogo} alt="Mogsy" className="h-14 mx-auto" />
           </Link>
-          <h2 className="text-xl font-bold text-foreground">
-            {isAnonymous ? "Claim your account" : isLogin ? "Welcome back" : "Create your account"}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isAnonymous
-              ? "Create an account to keep all your progress, matches, and settings"
-              : isLogin ? "Log in to continue ranking" : "Start climbing the ranks"}
-          </p>
-          {inviteCode && !isLogin && (
+          {isAnonymous ? (
+            <>
+              <h2 className="text-xl font-bold text-foreground">Claim your account</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Keep all your progress, matches, and settings
+              </p>
+            </>
+          ) : (
+            <h2 className="text-xl font-bold text-foreground">
+              {mode === "signin" ? "Welcome back" : "Create your account"}
+            </h2>
+          )}
+          {inviteCode && mode === "signup" && (
             <p className="text-xs text-primary font-medium mt-2">🎁 You've been invited! Sign up to claim your rewards.</p>
           )}
         </div>
+
+        {/* Sign In / Sign Up toggle tabs */}
+        {!isAnonymous && (
+          <div className="flex rounded-lg bg-muted p-1 mb-6">
+            <button
+              onClick={() => setMode("signin")}
+              className={`flex-1 rounded-md py-2 text-sm font-bold transition-all ${
+                mode === "signin"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setMode("signup")}
+              className={`flex-1 rounded-md py-2 text-sm font-bold transition-all ${
+                mode === "signup"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
 
         {isAnonymous && (
           <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 p-3">
@@ -177,24 +394,98 @@ export default function Auth() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            />
           </div>
+
+          {/* Confirm password for signup / anonymous linking */}
+          <AnimatePresence>
+            {(mode === "signup" || isAnonymous) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2 overflow-hidden"
+              >
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {mode === "signup" && (
+            <p className="text-[10px] text-muted-foreground">
+              Password must be at least 6 characters
+            </p>
+          )}
+
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
-            {loading ? "Loading…" : isAnonymous ? "Create Account & Keep Progress" : isLogin ? "Log In" : "Sign Up"}
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {isAnonymous
+              ? "Create Account & Keep Progress"
+              : mode === "signin"
+              ? "Sign In"
+              : "Create Account"}
           </Button>
         </form>
 
+        {/* Quick switch hint at bottom */}
         {!isAnonymous && (
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-semibold hover:underline">
-              {isLogin ? "Sign up" : "Log in"}
-            </button>
-          </div>
+          <p className="mt-5 text-center text-xs text-muted-foreground">
+            {mode === "signin" ? (
+              <>New to Mogsy?{" "}
+                <button onClick={() => setMode("signup")} className="text-primary font-semibold hover:underline">
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>Already have an account?{" "}
+                <button onClick={() => setMode("signin")} className="text-primary font-semibold hover:underline">
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
         )}
       </motion.div>
     </div>
