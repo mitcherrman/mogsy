@@ -334,6 +334,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     if (error) { toast.error("Failed to save notes"); return; }
     toast.success("Notes saved");
     setSelectedUser({ ...selectedUser, admin_notes: adminNotes } as Profile);
+    setProfiles((prev) => prev.map((p) => p.id === selectedUser.id ? { ...p, admin_notes: adminNotes } : p));
   };
 
   const deleteUser = async (profile: Profile) => {
