@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, useCallback, useId } from "react";
+import { useEffect, useState, useCallback, useId, useMemo } from "react";
 
 interface CardItem {
   imageUrl: string | null;
@@ -15,8 +15,13 @@ interface SliceBattleAnimationProps {
 /**
  * Full-screen opaque overlay that renders BOTH cards as replicas.
  * The loser side gets a jagged tear animation.
- * The winner side stays static (no scale/lift).
- * This completely hides the real cards underneath during the animation.
+ * The winner side stays static.
+ *
+ * Best-practice behavior:
+ * - Overlay visibility is controlled ONLY by winnerSide (parent).
+ * - Internal phase NEVER causes the overlay to unmount early.
+ * - onComplete fires once per animation run, and parent clears winnerSide later.
+ * - Prevents "flash" of underlying pre-animation cards between animation end and next pair commit.
  */
 
 function generateTearPoints(width: number, height: number, teeth: number = 14) {
@@ -47,66 +52,75 @@ function generateTearPoints(width: number, height: number, teeth: number = 14) {
 }
 
 function getImageUrl(item: CardItem): string {
-  return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
+  return (
+    item.imageUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`
+  );
 }
 
-export default function SliceBattleAnimation({
-  winnerSide,
-  items,
-  onComplete,
-}: SliceBattleAnimationProps) {
+export default function SliceBattleAnimation({ winnerSide, items, onComplete }: SliceBattleAnimationProps) {
   const [phase, setPhase] = useState<"idle" | "slash" | "split" | "done">("idle");
+
+  // Stable, unique clip IDs per mounted instance
   const clipId = useId();
 
-  const reset = useCallback(() => {
-    setPhase("idle");
+  // Precompute tear points once (they don't depend on runtime state)
+  const W = 1000;
+  const H = 1400;
+  const { topPoints, bottomPoints } = useMemo(() => generateTearPoints(W, H), []);
+  const topClipId = `tear-top-${clipId}`;
+  const bottomClipId = `tear-bottom-${clipId}`;
+
+  // Drives only the internal animation phases.
+  // IMPORTANT: We do NOT set phase to "idle" after completion; overlay stays mounted
+  // until the parent clears winnerSide.
+  const finish = useCallback(() => {
+    setPhase("done");
     onComplete();
   }, [onComplete]);
 
   useEffect(() => {
+    // Parent cleared winnerSide -> fully reset internal phase
     if (winnerSide === null) {
       setPhase("idle");
       return;
     }
 
+    // Start a new run
     setPhase("slash");
-    const t1 = setTimeout(() => setPhase("split"), 150);
-    const t2 = setTimeout(reset, 700);
+    const t1 = window.setTimeout(() => setPhase("split"), 150);
+    const t2 = window.setTimeout(finish, 700);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
     };
-  }, [winnerSide, reset]);
+  }, [winnerSide, finish]);
 
-  if (winnerSide === null || phase === "idle" || items.length < 2) return null;
+  // Overlay existence is controlled ONLY by winnerSide and valid items.
+  if (winnerSide === null || items.length < 2) return null;
 
   const loserIdx = winnerSide === 0 ? 1 : 0;
   const loserOnRight = winnerSide === 0;
 
-  const W = 1000;
-  const H = 1400;
-  const { topPoints, bottomPoints } = generateTearPoints(W, H);
-  const topClipId = `tear-top-${clipId}`;
-  const bottomClipId = `tear-bottom-${clipId}`;
-
   return (
     <AnimatePresence>
       <motion.div
+        // Keep the overlay mounted (opaque) until parent clears winnerSide.
+        // Exit fade happens only when this component is removed (winnerSide -> null).
         className="absolute inset-0 z-50 pointer-events-none bg-background"
         initial={{ opacity: 1 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.05 }}
+        transition={{ duration: 0.08 }}
       >
         {/* Hidden SVG defs for jagged clip-paths */}
         <svg className="absolute w-0 h-0" aria-hidden="true">
           <defs>
-            <clipPath id={topClipId} clipPathUnits="objectBoundingBox"
-              transform={`scale(${1/W}, ${1/H})`}>
+            <clipPath id={topClipId} clipPathUnits="objectBoundingBox" transform={`scale(${1 / W}, ${1 / H})`}>
               <polygon points={topPoints} />
             </clipPath>
-            <clipPath id={bottomClipId} clipPathUnits="objectBoundingBox"
-              transform={`scale(${1/W}, ${1/H})`}>
+            <clipPath id={bottomClipId} clipPathUnits="objectBoundingBox" transform={`scale(${1 / W}, ${1 / H})`}>
               <polygon points={bottomPoints} />
             </clipPath>
           </defs>
@@ -133,7 +147,9 @@ export default function SliceBattleAnimation({
                     </div>
                   </div>
                   <div className="pt-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">
+                      {item.name}
+                    </h3>
                   </div>
                 </div>
               );
@@ -164,7 +180,12 @@ export default function SliceBattleAnimation({
                     }}
                   >
                     <div className="w-full h-full bg-white">
-                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                      <img
+                        src={imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-contain bg-white"
+                        draggable={false}
+                      />
                     </div>
                   </motion.div>
 
@@ -189,13 +210,20 @@ export default function SliceBattleAnimation({
                     }}
                   >
                     <div className="w-full h-full bg-white">
-                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                      <img
+                        src={imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-contain bg-white"
+                        draggable={false}
+                      />
                     </div>
                   </motion.div>
                 </div>
 
                 <div className="pt-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">
+                    {item.name}
+                  </h3>
                 </div>
               </div>
             );
@@ -204,7 +232,9 @@ export default function SliceBattleAnimation({
 
         {/* VS badge replica */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">VS</span>
+          <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">
+            VS
+          </span>
         </div>
 
         {/* Diagonal slash flash */}
