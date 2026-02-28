@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 
 interface LeagueInfo {
@@ -50,11 +51,22 @@ interface BannerItem {
   type: "user" | "preset";
 }
 
+interface PreviewImage {
+  league_id: string;
+  category: string;
+  image_url: string;
+}
+
+interface CategorySection {
+  title: string;
+  icon: React.ReactNode;
+  categories: { name: string; image: string | null; subcategories: { name: string; image: string | null }[] }[];
+}
+
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
-  const [suggestedLeagues, setSuggestedLeagues] = useState<LeagueInfo[]>([]);
   const [recentSwipes, setRecentSwipes] = useState<RecentSwipe[]>([]);
   const [topComments, setTopComments] = useState<TopComment[]>([]);
   const [bannerItems, setBannerItems] = useState<BannerItem[]>([]);
@@ -64,6 +76,8 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
   const [hasLeagues, setHasLeagues] = useState(false);
+  const [categorySections, setCategorySections] = useState<CategorySection[]>([]);
+  const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -77,6 +91,11 @@ export default function Home() {
     }, bannerDelay);
     return () => clearInterval(bannerTimer.current);
   }, [bannerItems.length, bannerDelay]);
+
+  const getCategoryImage = useCallback((category: string) => {
+    const catImages = previewImages.filter((img) => img.category === category);
+    return catImages[0]?.image_url || null;
+  }, [previewImages]);
 
   const checkOnboardingAndLoad = async () => {
     if (!user) return;
@@ -115,8 +134,8 @@ export default function Home() {
   const loadData = async (profileId: string, cats: string[]) => {
     setLoading(true);
 
-    // Start banner loading immediately in parallel with everything else
     const bannerPromise = loadBannerItems();
+    const imagesPromise = loadPreviewImages();
 
     const [
       { data: allLeagues },
@@ -124,7 +143,7 @@ export default function Home() {
       { data: userMatches },
       { data: presetMatches },
     ] = await Promise.all([
-      supabase.from("leagues").select("id, name, type, category"),
+      supabase.from("leagues").select("id, name, type, category, subcategory"),
       supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profileId),
       supabase.from("matches")
         .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
@@ -190,21 +209,95 @@ export default function Home() {
     setLeagues(userOwnLeagues.slice(0, 6));
     setHasLeagues(userOwnLeagues.length > 0);
 
-    // Build suggested leagues from preferred categories
-    if (cats.length > 0) {
-      const suggested = (allLeagues || [])
-        .filter((l) => l.type === "preset" && l.category && cats.includes(l.category))
-        .map((l) => ({
-          id: l.id,
-          name: l.name,
-          type: l.type,
-          elo: 1200,
-          matchesPlayed: 0,
-          lastSwipedAt: null,
-          category: l.category,
-        }));
-      setSuggestedLeagues(suggested.slice(0, 5));
+    // Wait for images before building category sections
+    await imagesPromise;
+
+    // Build category sections
+    const presetLeagues = (allLeagues || []).filter((l) => l.type === "preset");
+    const categoryMap = new Map<string, { subcategories: Set<string> }>();
+    presetLeagues.forEach((l) => {
+      const cat = l.category || "Other";
+      if (!categoryMap.has(cat)) categoryMap.set(cat, { subcategories: new Set() });
+      if (l.subcategory) categoryMap.get(cat)!.subcategories.add(l.subcategory);
+    });
+
+    const allCategoryNames = Array.from(categoryMap.keys()).filter(c => c !== "Other");
+    
+    // User's most-played categories
+    const userCategoryPlayCount = new Map<string, number>();
+    userOwnLeagues.forEach((l) => {
+      if (l.category && l.type === "preset") {
+        userCategoryPlayCount.set(l.category, (userCategoryPlayCount.get(l.category) || 0) + l.matchesPlayed);
+      }
+    });
+    // Also count from matches in preset leagues
+    allMatches.forEach((m) => {
+      const league = leagueMap.get(m.league_id);
+      if (league?.type === "preset" && league.category) {
+        userCategoryPlayCount.set(league.category, (userCategoryPlayCount.get(league.category) || 0) + 1);
+      }
+    });
+
+    const buildSection = (catNames: string[]): CategorySection["categories"] => {
+      return catNames.slice(0, 3).map((catName) => {
+        const catData = categoryMap.get(catName);
+        const subs = catData ? Array.from(catData.subcategories).slice(0, 2) : [];
+        return {
+          name: catName,
+          image: getCategoryImage(catName),
+          subcategories: subs.map((s) => ({ name: s, image: null })),
+        };
+      });
+    };
+
+    const sections: CategorySection[] = [];
+
+    // 1. Suggested For You — from preferred categories
+    const suggestedCats = cats.length > 0
+      ? allCategoryNames.filter((c) => cats.includes(c))
+      : allCategoryNames.slice(0, 3);
+    if (suggestedCats.length > 0) {
+      // Fill to 3 if needed
+      const filled = [...suggestedCats];
+      allCategoryNames.forEach((c) => { if (filled.length < 3 && !filled.includes(c)) filled.push(c); });
+      sections.push({
+        title: "Suggested For You",
+        icon: <Star className="h-5 w-5 text-primary" />,
+        categories: buildSection(filled),
+      });
     }
+
+    // 2. Your Top Categories — most played
+    const topPlayedCats = Array.from(userCategoryPlayCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat)
+      .filter((c) => c !== "Other");
+    if (topPlayedCats.length > 0) {
+      const filled = [...topPlayedCats];
+      allCategoryNames.forEach((c) => { if (filled.length < 3 && !filled.includes(c)) filled.push(c); });
+      sections.push({
+        title: "Your Top Categories",
+        icon: <TrendingUp className="h-5 w-5 text-primary" />,
+        categories: buildSection(filled),
+      });
+    }
+
+    // 3. Recommended — categories user hasn't engaged with much
+    const usedCats = new Set([...suggestedCats, ...topPlayedCats]);
+    const recommendedCats = allCategoryNames.filter((c) => !usedCats.has(c));
+    // If not enough unused, just pick any remaining
+    if (recommendedCats.length < 3) {
+      allCategoryNames.forEach((c) => { if (recommendedCats.length < 3 && !recommendedCats.includes(c)) recommendedCats.push(c); });
+    }
+    if (recommendedCats.length > 0) {
+      sections.push({
+        title: "Recommended",
+        icon: <Sparkles className="h-5 w-5 text-primary" />,
+        categories: buildSection(recommendedCats),
+      });
+    }
+
+    setCategorySections(sections);
 
     // Build recent swipes
     const recentMatchesSlice = allMatches.slice(0, 5);
@@ -259,6 +352,32 @@ export default function Home() {
     setLoading(false);
   };
 
+  const loadPreviewImages = async () => {
+    const { data: items } = await supabase
+      .from("preset_items")
+      .select("id, league_id, image_url, leagues!inner(category)")
+      .not("image_url", "is", null)
+      .not("image_url", "eq", "");
+
+    if (!items) return;
+
+    const images: PreviewImage[] = items
+      .filter((item: any) => item.image_url && item.leagues?.category)
+      .map((item: any) => ({
+        league_id: item.league_id,
+        category: item.leagues.category,
+        image_url: item.image_url,
+      }));
+
+    // Shuffle for randomness
+    for (let i = images.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [images[i], images[j]] = [images[j], images[i]];
+    }
+
+    setPreviewImages(images);
+  };
+
   const loadTopComments = async () => {
     const { data: commentsData } = await supabase
       .from("comments")
@@ -311,7 +430,6 @@ export default function Home() {
   };
 
   const loadBannerItems = async () => {
-    // Load config from app_settings
     const { data: configData } = await supabase
       .from("app_settings")
       .select("value")
@@ -326,7 +444,6 @@ export default function Home() {
       return;
     }
 
-    // Auto mode (existing logic)
     const { data: topPresets } = await supabase
       .from("preset_items")
       .select("name, image_url, elo, league_id, leagues!inner(name)")
@@ -373,18 +490,23 @@ export default function Home() {
     setBannerItems(prioritized.slice(0, 8));
   };
 
+  const handleCategoryClick = (categoryName: string) => {
+    navigate("/play", { state: { restoreCategory: categoryName } });
+  };
+
+  const handleSubcategoryClick = (categoryName: string, subcategoryName: string) => {
+    navigate("/play", { state: { restoreCategory: categoryName, restoreSubcategory: subcategoryName } });
+  };
+
   if (showOnboarding) {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background" />
-    );
+    return <div className="min-h-screen bg-background" />;
   }
 
   const currentBanner = bannerItems[bannerIndex];
-  const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -427,39 +549,61 @@ export default function Home() {
           </section>
         )}
 
-        {/* Suggested Leagues (from preferences, shown when no own leagues) */}
-        {showSuggested && (
-          <section className="mb-10">
+        {/* Category Bubble Sections */}
+        {categorySections.map((section, sectionIdx) => (
+          <section key={section.title} className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Star className="h-5 w-5 text-primary" /> Suggested For You
+                {section.icon} {section.title}
               </h2>
               <Link to="/play" className="text-xs text-primary hover:underline">Browse all</Link>
             </div>
-            <div className="flex flex-wrap gap-3 justify-center">
-              {suggestedLeagues.map((league, i) => (
-                <motion.div
-                  key={league.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Link to={`/swipe/preset/${league.id}`}>
-                    <motion.div
-                      whileHover={{ scale: 1.06 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors"
-                    >
-                      <Star className="h-4 w-4 text-primary" />
-                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
-                      <span className="text-[8px] text-muted-foreground">{league.category}</span>
-                    </motion.div>
-                  </Link>
-                </motion.div>
-              ))}
+            <div className="flex flex-col items-center gap-4">
+              {/* Category bubbles - larger */}
+              <div className="flex flex-wrap justify-center gap-4">
+                {section.categories.map((cat, i) => (
+                  <motion.div
+                    key={cat.name}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: sectionIdx * 0.1 + i * 0.05 }}
+                    className="flex flex-col items-center gap-1"
+                  >
+                    <CategoryBubble
+                      size={96}
+                      onClick={() => handleCategoryClick(cat.name)}
+                      imageUrl={cat.image}
+                      label={cat.name}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+              {/* Subcategory bubbles - smaller, underneath */}
+              {section.categories.some((c) => c.subcategories.length > 0) && (
+                <div className="flex flex-wrap justify-center gap-3">
+                  {section.categories.flatMap((cat) =>
+                    cat.subcategories.map((sub, j) => (
+                      <motion.div
+                        key={`${cat.name}-${sub.name}`}
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: sectionIdx * 0.1 + 0.2 + j * 0.04 }}
+                      >
+                        <CategoryBubble
+                          size={68}
+                          onClick={() => handleSubcategoryClick(cat.name, sub.name)}
+                          imageUrl={sub.image}
+                          label={sub.name}
+                          variant="accent"
+                        />
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </section>
-        )}
+        ))}
 
         {/* Your Leagues - Bubble Style */}
         {hasLeagues && (
@@ -500,7 +644,7 @@ export default function Home() {
         )}
 
         {/* No leagues fallback if also no suggestions */}
-        {!hasLeagues && suggestedLeagues.length === 0 && (
+        {!hasLeagues && categorySections.length === 0 && (
           <section className="mb-10">
             <div className="rounded-2xl border border-border bg-card p-6 text-center">
               <p className="text-muted-foreground text-sm">No leagues yet. Start swiping to join!</p>
