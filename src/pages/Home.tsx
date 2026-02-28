@@ -239,15 +239,47 @@ export default function Home() {
     });
 
     const buildSection = (catNames: string[]): CategorySection["categories"] => {
-      return catNames.slice(0, 2).map((catName) => {
+      const cats = catNames.slice(0, 2).map((catName) => {
         const catData = categoryMap.get(catName);
-        const subs = catData ? Array.from(catData.subcategories).slice(0, 1) : [];
+        const subs = catData ? Array.from(catData.subcategories) : [];
         return {
           name: catName,
           image: getCategoryImage(catName),
           subcategories: subs.map((s) => ({ name: s, image: null })),
         };
       });
+
+      // Ensure exactly 2 subcategories total across the section
+      const allSubs = cats.flatMap((c) => c.subcategories.map((s) => ({ catName: c.name, sub: s })));
+      if (allSubs.length < 2) {
+        // Fill missing slots with extra categories as subcategory-sized bubbles
+        const usedNames = new Set([...cats.map((c) => c.name), ...allSubs.map((s) => s.sub.name)]);
+        const extraCats = allCategoryNames.filter((c) => !usedNames.has(c));
+        let idx = 0;
+        while (allSubs.length < 2 && idx < extraCats.length) {
+          const extraName = extraCats[idx++];
+          // Add as a subcategory-like entry on the first category
+          cats[0].subcategories.push({ name: extraName, image: getCategoryImage(extraName) });
+          allSubs.push({ catName: cats[0].name, sub: { name: extraName, image: getCategoryImage(extraName) } });
+        }
+      }
+      // Trim to max 2 subcategories total (1 per category preferred)
+      let subCount = 0;
+      cats.forEach((c) => {
+        const allowed = Math.min(c.subcategories.length, 2 - subCount);
+        c.subcategories = c.subcategories.slice(0, Math.max(allowed, 0));
+        subCount += c.subcategories.length;
+      });
+
+      // If we still need exactly 2 categories, fill from available
+      while (cats.length < 2) {
+        const usedNames = new Set(cats.map((c) => c.name));
+        const extra = allCategoryNames.find((c) => !usedNames.has(c));
+        if (!extra) break;
+        cats.push({ name: extra, image: getCategoryImage(extra), subcategories: [] });
+      }
+
+      return cats;
     };
 
     const sections: CategorySection[] = [];
@@ -280,12 +312,19 @@ export default function Home() {
         icon: <TrendingUp className="h-5 w-5 text-primary" />,
         categories: buildSection(filled),
       });
+    } else if (allCategoryNames.length >= 4) {
+      // Fill with categories not used in "For You"
+      const usedInSuggested = new Set(suggestedCats.slice(0, 2));
+      const remaining = allCategoryNames.filter((c) => !usedInSuggested.has(c));
+      sections.push({
+        title: "Top Picks",
+        icon: <TrendingUp className="h-5 w-5 text-primary" />,
+        categories: buildSection(remaining),
+      });
     }
-
     // 3. Recommended — categories user hasn't engaged with much
     const usedCats = new Set([...suggestedCats, ...topPlayedCats]);
     const recommendedCats = allCategoryNames.filter((c) => !usedCats.has(c));
-    // If not enough unused, just pick any remaining
     if (recommendedCats.length < 3) {
       allCategoryNames.forEach((c) => { if (recommendedCats.length < 3 && !recommendedCats.includes(c)) recommendedCats.push(c); });
     }
