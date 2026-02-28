@@ -21,6 +21,7 @@ import { toast } from "sonner";
 interface PresetItem {
   id: string;
   name: string;
+  subtitle: string;
   image_url: string | null;
   elo: number;
   league_id: string;
@@ -422,7 +423,10 @@ export default function SwipePreset() {
                     </span>
                   )}
                 </div>
-                <span className="font-semibold text-foreground flex-1 truncate">{item.name}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-foreground truncate block">{item.name}</span>
+                  {item.subtitle && <span className="text-[10px] text-muted-foreground truncate block">{item.subtitle}</span>}
+                </div>
                 {eloVisible && <span className="text-sm text-primary font-bold">{item.elo}</span>}
                 <TierBadge tier={getTierFromElo(item.elo)} />
               </div>
@@ -632,6 +636,7 @@ export default function SwipePreset() {
                         {/* Name & stats below image */}
                         <div className="pt-1.5 text-center flex-shrink-0">
                           <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                          {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
                           <div className="flex items-center justify-center gap-2 mt-0.5">
                             {rankVisible && rank && (
                               <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>
@@ -752,6 +757,7 @@ function GauntletCard({
       )}
       <div className="pt-1.5 text-center flex-shrink-0">
         <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+        {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
         <div className="flex items-center justify-center gap-2 mt-0.5">
           {rankVisible && rank && <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>}
           {eloVisible && <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>}
