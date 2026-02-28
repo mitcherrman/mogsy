@@ -71,6 +71,126 @@ const CATEGORY_ICONS: Record<string, string> = {
   Food: "🍕",
 };
 
+function ItemDetailHeader({ item, rank, wins, losses, onUpdate }: {
+  item: PresetItem;
+  rank: number;
+  wins: number;
+  losses: number;
+  onUpdate: (updated: PresetItem) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(item.name);
+  const [subtitle, setSubtitle] = useState(item.subtitle || "");
+  const [imageUrl, setImageUrl] = useState(item.image_url || "");
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setName(item.name);
+    setSubtitle(item.subtitle || "");
+    setImageUrl(item.image_url || "");
+  }, [item]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("preset_items")
+      .update({ name, subtitle, image_url: imageUrl || null })
+      .eq("id", item.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Item updated");
+    onUpdate({ ...item, name, subtitle, image_url: imageUrl || null });
+    setEditing(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
+    const ext = file.name.split(".").pop();
+    const path = `preset-items/${item.id}/profile-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
+    if (uploadError) { toast.error(uploadError.message); return; }
+    const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
+    setImageUrl(urlData.publicUrl);
+    toast.success("Image uploaded — click Save to apply");
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="space-y-2">
+            <div className="h-20 w-20 rounded-lg bg-secondary overflow-hidden flex-shrink-0 relative group">
+              {imageUrl ? (
+                <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-muted-foreground">{name.charAt(0)}</div>
+              )}
+              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageUpload} className="hidden" />
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Subtitle</Label>
+              <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="e.g. Dragon Ball Z" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Image URL</Label>
+              <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { setEditing(false); setName(item.name); setSubtitle(item.subtitle || ""); setImageUrl(item.image_url || ""); }}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+      <div className="h-14 w-14 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-lg font-bold text-muted-foreground">{item.name.charAt(0)}</div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-bold text-foreground text-lg">{item.name}</h3>
+        {item.subtitle && <p className="text-sm text-muted-foreground">{item.subtitle}</p>}
+        <div className="flex items-center gap-3 mt-1">
+          <Badge variant="outline" className="gap-1"><Trophy className="h-3 w-3" /> Rank #{rank}</Badge>
+          <Badge variant="secondary">Elo: {item.elo}</Badge>
+          <Badge variant="outline">{wins}W / {losses}L ({wins + losses} total)</Badge>
+        </div>
+      </div>
+      <Button size="icon" variant="ghost" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground shrink-0">
+        <Pencil className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminCollections() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [selectedLeague, setSelectedLeague] = useState<string>("");
@@ -354,24 +474,16 @@ export default function AdminCollections() {
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Items
         </Button>
 
-        <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
-          <div className="h-14 w-14 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
-            {selectedItem.image_url ? (
-              <img src={selectedItem.image_url} alt={selectedItem.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-lg font-bold text-muted-foreground">{selectedItem.name.charAt(0)}</div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-foreground text-lg">{selectedItem.name}</h3>
-            {selectedItem.subtitle && <p className="text-sm text-muted-foreground">{selectedItem.subtitle}</p>}
-            <div className="flex items-center gap-3 mt-1">
-              <Badge variant="outline" className="gap-1"><Trophy className="h-3 w-3" /> Rank #{rank}</Badge>
-              <Badge variant="secondary">Elo: {selectedItem.elo}</Badge>
-              <Badge variant="outline">{wins}W / {losses}L ({wins + losses} total)</Badge>
-            </div>
-          </div>
-        </div>
+        <ItemDetailHeader
+          item={selectedItem}
+          rank={rank}
+          wins={wins}
+          losses={losses}
+          onUpdate={(updated) => {
+            setSelectedItem(updated);
+            setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+          }}
+        />
 
         {/* Images section with management */}
         <div className="space-y-4">
