@@ -37,6 +37,7 @@ interface TopComment {
   league_name: string;
   reaction_count: number;
   top_emojis: string[];
+  profile_id: string;
   profile_name: string;
   profile_avatar: string;
 }
@@ -299,6 +300,7 @@ export default function Home() {
         league_name: c.league_id ? leagueMap2.get(c.league_id) || "" : "",
         reaction_count: rd?.count || 0,
         top_emojis: topEmojis,
+        profile_id: c.profile_id,
         profile_name: prof?.name || "User",
         profile_avatar: prof?.avatar || "",
       };
@@ -555,8 +557,12 @@ export default function Home() {
               {topComments.map((c) => (
                 <div key={c.id} className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <UserAvatar src={c.profile_avatar} name={c.profile_name} size="sm" />
-                    <span className="text-xs font-semibold text-foreground">{c.profile_name}</span>
+                    <button onClick={() => navigate(`/user/${c.profile_id}`)} className="flex-shrink-0">
+                      <UserAvatar src={c.profile_avatar} name={c.profile_name} size="sm" />
+                    </button>
+                    <button onClick={() => navigate(`/user/${c.profile_id}`)} className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
+                      {c.profile_name}
+                    </button>
                     {c.league_name && (
                       <span className="text-[10px] text-muted-foreground ml-auto truncate">in {c.league_name}</span>
                     )}
