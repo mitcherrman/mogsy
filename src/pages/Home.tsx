@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Maximize2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
@@ -18,6 +18,7 @@ interface LeagueInfo {
   matchesPlayed: number;
   lastSwipedAt: string | null;
   category: string | null;
+  subcategory: string | null;
 }
 
 interface RecentSwipe {
@@ -50,11 +51,21 @@ interface BannerItem {
   type: "user" | "preset";
 }
 
+interface CategoryGroup {
+  category: string;
+  subcategories: string[];
+  leagues: LeagueInfo[];
+}
+
+type DiscoverTab = "suggested" | "top" | "recommended";
+
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
-  const [suggestedLeagues, setSuggestedLeagues] = useState<LeagueInfo[]>([]);
+  const [suggestedGroups, setSuggestedGroups] = useState<CategoryGroup[]>([]);
+  const [topGroups, setTopGroups] = useState<CategoryGroup[]>([]);
+  const [recommendedGroups, setRecommendedGroups] = useState<CategoryGroup[]>([]);
   const [recentSwipes, setRecentSwipes] = useState<RecentSwipe[]>([]);
   const [topComments, setTopComments] = useState<TopComment[]>([]);
   const [bannerItems, setBannerItems] = useState<BannerItem[]>([]);
@@ -64,6 +75,8 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
   const [hasLeagues, setHasLeagues] = useState(false);
+  const [activeTab, setActiveTab] = useState<DiscoverTab>("suggested");
+  const [expandedPanel, setExpandedPanel] = useState<"swipes" | "comments" | null>(null);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -115,7 +128,6 @@ export default function Home() {
   const loadData = async (profileId: string, cats: string[]) => {
     setLoading(true);
 
-    // Start banner loading immediately in parallel with everything else
     const bannerPromise = loadBannerItems();
 
     const [
@@ -124,7 +136,7 @@ export default function Home() {
       { data: userMatches },
       { data: presetMatches },
     ] = await Promise.all([
-      supabase.from("leagues").select("id, name, type, category"),
+      supabase.from("leagues").select("id, name, type, category, subcategory"),
       supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profileId),
       supabase.from("matches")
         .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
@@ -177,6 +189,7 @@ export default function Home() {
         matchesPlayed: membership?.matches_played || matchInfo?.count || 0,
         lastSwipedAt: membership?.last_active_at || matchInfo?.lastDate || null,
         category: league.category,
+        subcategory: (league as any).subcategory ?? null,
       });
     });
 
@@ -190,21 +203,27 @@ export default function Home() {
     setLeagues(userOwnLeagues.slice(0, 6));
     setHasLeagues(userOwnLeagues.length > 0);
 
-    // Build suggested leagues from preferred categories
-    if (cats.length > 0) {
-      const suggested = (allLeagues || [])
-        .filter((l) => l.type === "preset" && l.category && cats.includes(l.category))
-        .map((l) => ({
-          id: l.id,
-          name: l.name,
-          type: l.type,
-          elo: 1200,
-          matchesPlayed: 0,
-          lastSwipedAt: null,
-          category: l.category,
-        }));
-      setSuggestedLeagues(suggested.slice(0, 5));
-    }
+    // Build category groups for all 3 tabs
+    const allPresetLeagues: LeagueInfo[] = (allLeagues || []).map((l) => ({
+      id: l.id, name: l.name, type: l.type, elo: 1200, matchesPlayed: 0, lastSwipedAt: null,
+      category: l.category, subcategory: (l as any).subcategory ?? null,
+    })).filter((l) => l.type === "preset" && l.category);
+
+    // Suggested: leagues from preferred categories
+    const suggestedCats = cats.length > 0
+      ? [...new Set(allPresetLeagues.filter((l) => l.category && cats.includes(l.category)).map((l) => l.category!))]
+      : [...new Set(allPresetLeagues.map((l) => l.category!))];
+    setSuggestedGroups(buildCategoryGroups(allPresetLeagues, suggestedCats.slice(0, 3)));
+
+    // Top: leagues user has most matches in
+    const userCats = [...new Set(userOwnLeagues.filter((l) => l.category).map((l) => l.category!))];
+    const topCats = userCats.length > 0 ? userCats : suggestedCats;
+    setTopGroups(buildCategoryGroups(allPresetLeagues, topCats.slice(0, 3)));
+
+    // Recommended: random categories not in suggested
+    const otherCats = [...new Set(allPresetLeagues.map((l) => l.category!))].filter((c) => !suggestedCats.includes(c));
+    const recCats = otherCats.length >= 3 ? otherCats.slice(0, 3) : [...otherCats, ...suggestedCats].slice(0, 3);
+    setRecommendedGroups(buildCategoryGroups(allPresetLeagues, recCats));
 
     // Build recent swipes
     const recentMatchesSlice = allMatches.slice(0, 5);
@@ -259,6 +278,14 @@ export default function Home() {
     setLoading(false);
   };
 
+  const buildCategoryGroups = (allLeagues: LeagueInfo[], categories: string[]): CategoryGroup[] => {
+    return categories.map((cat) => {
+      const leaguesInCat = allLeagues.filter((l) => l.category === cat);
+      const subcategories = [...new Set(leaguesInCat.filter((l) => l.subcategory).map((l) => l.subcategory!))];
+      return { category: cat, subcategories: subcategories.slice(0, 2), leagues: leaguesInCat };
+    });
+  };
+
   const loadTopComments = async () => {
     const { data: commentsData } = await supabase
       .from("comments")
@@ -311,7 +338,6 @@ export default function Home() {
   };
 
   const loadBannerItems = async () => {
-    // Load config from app_settings
     const { data: configData } = await supabase
       .from("app_settings")
       .select("value")
@@ -326,7 +352,6 @@ export default function Home() {
       return;
     }
 
-    // Auto mode (existing logic)
     const { data: topPresets } = await supabase
       .from("preset_items")
       .select("name, image_url, elo, league_id, leagues!inner(name)")
@@ -378,47 +403,51 @@ export default function Home() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background" />
-    );
+    return <div className="min-h-screen bg-background" />;
   }
 
   const currentBanner = bannerItems[bannerIndex];
-  const showSuggested = !hasLeagues && suggestedLeagues.length > 0;
+
+  const activeGroups = activeTab === "suggested" ? suggestedGroups : activeTab === "top" ? topGroups : recommendedGroups;
+
+  const tabs: { key: DiscoverTab; label: string; icon: React.ReactNode }[] = [
+    { key: "suggested", label: "Suggested", icon: <Star className="h-3.5 w-3.5" /> },
+    { key: "top", label: "Your Top", icon: <TrendingUp className="h-3.5 w-3.5" /> },
+    { key: "recommended", label: "Recommended", icon: <Sparkles className="h-3.5 w-3.5" /> },
+  ];
 
   return (
-    <div className="min-h-screen px-4 py-8">
+    <div className="min-h-screen px-4 py-2">
       <div className="container mx-auto max-w-3xl">
-        {/* Mogsy Logo */}
-        <div className="flex justify-center mb-2">
-          <img src={mogsyLogo} alt="Mogsy" className="h-28 sm:h-36 md:h-44 -mb-6 object-cover" style={{ clipPath: 'inset(15% 0 15% 0)' }} />
+        {/* Mogsy Logo — tight, no buffer */}
+        <div className="flex justify-center -mt-2 -mb-4">
+          <img src={mogsyLogo} alt="Mogsy" className="h-20 sm:h-24 object-cover" style={{ clipPath: 'inset(18% 0 18% 0)' }} />
         </div>
 
-        {/* Rotating ELO Banner */}
+        {/* Condensed Rotating ELO Banner */}
         {bannerItems.length > 0 && currentBanner && (
-          <section className="mb-8">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden relative h-28 sm:h-32">
+          <section className="mb-4">
+            <div className="rounded-xl border border-border bg-card/80 overflow-hidden relative h-14 sm:h-16">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={bannerIndex}
-                  initial={{ opacity: 0, x: 30 }}
+                  initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -30 }}
-                  transition={{ duration: 0.4 }}
-                  className="absolute inset-0 flex items-center gap-3 sm:gap-4 px-3 sm:px-5"
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.35 }}
+                  className="absolute inset-0 flex items-center gap-2.5 px-3"
                 >
-                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full overflow-hidden border border-primary/30 flex-shrink-0">
                     <img src={currentBanner.image} alt={currentBanner.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Crown className="h-4 w-4 text-primary" />
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Top Rated</span>
+                    <div className="flex items-center gap-1.5">
+                      <Crown className="h-3 w-3 text-primary flex-shrink-0" />
+                      <span className="text-xs font-extrabold text-foreground truncate">{currentBanner.name}</span>
                     </div>
-                    <p className="font-extrabold text-base sm:text-lg text-foreground truncate">{currentBanner.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-sm font-bold text-primary">{currentBanner.elo} ELO</span>
-                      <span className="text-xs text-muted-foreground truncate">in {currentBanner.leagueName}</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] font-bold text-primary">{currentBanner.elo}</span>
+                      <span className="text-[10px] text-muted-foreground truncate">in {currentBanner.leagueName}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -427,70 +456,113 @@ export default function Home() {
           </section>
         )}
 
-        {/* Suggested Leagues (from preferences, shown when no own leagues) */}
-        {showSuggested && (
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Star className="h-5 w-5 text-primary" /> Suggested For You
-              </h2>
-              <Link to="/play" className="text-xs text-primary hover:underline">Browse all</Link>
-            </div>
-            <div className="flex flex-wrap gap-3 justify-center">
-              {suggestedLeagues.map((league, i) => (
-                <motion.div
-                  key={league.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <Link to={`/swipe/preset/${league.id}`}>
-                    <motion.div
-                      whileHover={{ scale: 1.06 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors"
-                    >
-                      <Star className="h-4 w-4 text-primary" />
-                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
-                      <span className="text-[8px] text-muted-foreground">{league.category}</span>
-                    </motion.div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Tabbed Discover Section */}
+        <section className="mb-6">
+          {/* Tab bar */}
+          <div className="flex rounded-xl bg-secondary/50 p-0.5 mb-3">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === tab.key
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Your Leagues - Bubble Style */}
+          {/* Category groups */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeGroups.length === 0 ? (
+                <div className="rounded-xl border border-border bg-card p-4 text-center">
+                  <p className="text-muted-foreground text-xs">No categories found. Start swiping to discover more!</p>
+                  <Link to="/play" className="text-primary text-xs mt-1 inline-block hover:underline">Browse all →</Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeGroups.map((group) => (
+                    <div key={group.category} className="rounded-xl border border-border bg-card p-3">
+                      {/* Category header circle */}
+                      <Link to="/play" className="flex items-center gap-2.5 mb-2">
+                        <div className="h-11 w-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                          <Star className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{group.category}</p>
+                          <p className="text-[10px] text-muted-foreground">{group.leagues.length} leagues</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto flex-shrink-0" />
+                      </Link>
+
+                      {/* Subcategory circles */}
+                      {group.subcategories.length > 0 && (
+                        <div className="flex gap-2 pl-2">
+                          {group.subcategories.map((sub) => {
+                            const subLeague = group.leagues.find((l) => l.subcategory === sub);
+                            return (
+                              <Link key={sub} to={subLeague ? `/swipe/preset/${subLeague.id}` : "/play"}>
+                                <motion.div
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="h-9 rounded-full px-3 bg-secondary/60 border border-border flex items-center gap-1.5 cursor-pointer hover:border-primary/30 transition-colors"
+                                >
+                                  <span className="text-[10px] font-semibold text-foreground truncate max-w-[80px]">{sub}</span>
+                                </motion.div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </section>
+
+        {/* Your Leagues */}
         {hasLeagues && (
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" /> Your Leagues
+          <section className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Trophy className="h-4 w-4 text-primary" /> Your Leagues
               </h2>
-              <Link to="/leagues" className="text-xs text-primary hover:underline">View all</Link>
+              <Link to="/leagues" className="text-[10px] text-primary hover:underline">View all</Link>
             </div>
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-2.5 justify-center">
               {leagues.map((league, i) => (
                 <motion.div
                   key={league.id}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: i * 0.04 }}
                 >
                   <Link to={`/leaderboard/${league.id}`}>
                     <motion.div
                       whileHover={{ scale: 1.06 }}
                       whileTap={{ scale: 0.95 }}
-                      className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors"
+                      className="w-20 h-20 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-0.5 cursor-pointer hover:border-primary/30 transition-colors"
                     >
                       {league.type !== "preset" ? (
                         <TierBadge tier={getTierFromElo(league.elo)} />
                       ) : (
-                        <Star className="h-4 w-4 text-primary" />
+                        <Star className="h-3.5 w-3.5 text-primary" />
                       )}
-                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
-                      <span className="text-[8px] text-muted-foreground">{league.matchesPlayed} swipes</span>
+                      <span className="text-[9px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
+                      <span className="text-[7px] text-muted-foreground">{league.matchesPlayed} swipes</span>
                     </motion.div>
                   </Link>
                 </motion.div>
@@ -499,88 +571,152 @@ export default function Home() {
           </section>
         )}
 
-        {/* No leagues fallback if also no suggestions */}
-        {!hasLeagues && suggestedLeagues.length === 0 && (
-          <section className="mb-10">
-            <div className="rounded-2xl border border-border bg-card p-6 text-center">
-              <p className="text-muted-foreground text-sm">No leagues yet. Start swiping to join!</p>
-              <Link to="/play" className="text-primary text-sm mt-2 inline-block hover:underline">Start Swiping →</Link>
+        {/* No leagues fallback */}
+        {!hasLeagues && suggestedGroups.length === 0 && (
+          <section className="mb-6">
+            <div className="rounded-xl border border-border bg-card p-4 text-center">
+              <p className="text-muted-foreground text-xs">No leagues yet. Start swiping to join!</p>
+              <Link to="/play" className="text-primary text-xs mt-1 inline-block hover:underline">Start Swiping →</Link>
             </div>
           </section>
         )}
 
-        {/* Recent Swipes */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
-            <Swords className="h-5 w-5 text-primary" /> Recent Swipes
-          </h2>
-
-          {recentSwipes.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-6 text-center">
-              <p className="text-muted-foreground text-sm">No swipes yet.</p>
+        {/* Recent Swipes & Top Comments — Side by Side, Condensed */}
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          {/* Recent Swipes */}
+          <div className="rounded-xl border border-border bg-card p-2.5 min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                <Swords className="h-3 w-3 text-primary" /> Recent
+              </h3>
+              <button onClick={() => setExpandedPanel("swipes")} className="text-muted-foreground hover:text-foreground transition-colors">
+                <Maximize2 className="h-3 w-3" />
+              </button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {recentSwipes.map((swipe, i) => (
-                <motion.div
-                  key={swipe.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <UserAvatar src={swipe.winnerImage} name={swipe.winnerName} size="sm" />
-                    <span className="font-medium text-foreground truncate">{swipe.winnerName}</span>
-                    <Swords className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    <UserAvatar src={swipe.loserImage} name={swipe.loserName} size="sm" />
-                    <span className="font-medium text-foreground truncate">{swipe.loserName}</span>
+            {recentSwipes.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground text-center py-2">No swipes yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {recentSwipes.slice(0, 3).map((swipe) => (
+                  <div key={swipe.id} className="flex items-center gap-1 text-[9px]">
+                    <UserAvatar src={swipe.winnerImage} name={swipe.winnerName} size="xs" />
+                    <span className="font-medium text-foreground truncate flex-1">{swipe.winnerName}</span>
+                    <Swords className="h-2.5 w-2.5 text-primary flex-shrink-0" />
+                    <span className="font-medium text-muted-foreground truncate flex-1">{swipe.loserName}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-shrink-0 ml-2">
-                    <span className="truncate max-w-[80px]">{swipe.leagueName}</span>
-                    <span>·</span>
-                    <span>{new Date(swipe.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Top Comments */}
-        {topComments.length > 0 && (
-          <section className="mb-10">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
-              <MessageSquare className="h-5 w-5 text-primary" /> Top Comments
-            </h2>
-            <div className="space-y-2">
-              {topComments.map((c) => (
-                <div key={c.id} className="rounded-xl border border-border bg-card p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <button onClick={() => navigate(`/user/${c.profile_id}`)} className="flex-shrink-0">
-                      <UserAvatar src={c.profile_avatar} name={c.profile_name} size="sm" />
-                    </button>
-                    <button onClick={() => navigate(`/user/${c.profile_id}`)} className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
-                      {c.profile_name}
-                    </button>
-                    {c.league_name && (
-                      <span className="text-[10px] text-muted-foreground ml-auto truncate">in {c.league_name}</span>
-                    )}
+          {/* Top Comments */}
+          <div className="rounded-xl border border-border bg-card p-2.5 min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[11px] font-bold text-foreground flex items-center gap-1">
+                <MessageSquare className="h-3 w-3 text-primary" /> Comments
+              </h3>
+              <button onClick={() => setExpandedPanel("comments")} className="text-muted-foreground hover:text-foreground transition-colors">
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            </div>
+            {topComments.length === 0 ? (
+              <p className="text-[10px] text-muted-foreground text-center py-2">No comments yet</p>
+            ) : (
+              <div className="space-y-1.5">
+                {topComments.slice(0, 3).map((c) => (
+                  <div key={c.id} className="text-[9px]">
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <button onClick={() => navigate(`/user/${c.profile_id}`)} className="flex-shrink-0">
+                        <UserAvatar src={c.profile_avatar} name={c.profile_name} size="xs" />
+                      </button>
+                      <span className="font-semibold text-foreground truncate">{c.profile_name}</span>
+                      {c.top_emojis.length > 0 && <span className="text-[8px] ml-auto">{c.top_emojis[0]}</span>}
+                    </div>
+                    <p className="text-muted-foreground line-clamp-1 pl-4">{c.content}</p>
                   </div>
-                  <p className="text-xs text-foreground break-words">{c.content}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {c.top_emojis.length > 0 && (
-                      <span className="text-[10px]">{c.top_emojis.join(" ")}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded Panel Overlay */}
+        <AnimatePresence>
+          {expandedPanel && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+              onClick={() => setExpandedPanel(null)}
+            >
+              <motion.div
+                initial={{ y: 60, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 60, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    {expandedPanel === "swipes" ? (
+                      <><Swords className="h-4 w-4 text-primary" /> Recent Swipes</>
+                    ) : (
+                      <><MessageSquare className="h-4 w-4 text-primary" /> Top Comments</>
                     )}
-                    {c.reaction_count > 0 && (
-                      <span className="text-[10px] text-primary font-medium">{c.reaction_count} reactions</span>
-                    )}
-                  </div>
+                  </h2>
+                  <button onClick={() => setExpandedPanel(null)} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+
+                {expandedPanel === "swipes" ? (
+                  recentSwipes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No swipes yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentSwipes.map((swipe) => (
+                        <div key={swipe.id} className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2 text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <UserAvatar src={swipe.winnerImage} name={swipe.winnerName} size="sm" />
+                            <span className="font-medium text-foreground truncate">{swipe.winnerName}</span>
+                            <Swords className="h-3 w-3 text-primary flex-shrink-0" />
+                            <UserAvatar src={swipe.loserImage} name={swipe.loserName} size="sm" />
+                            <span className="font-medium text-foreground truncate">{swipe.loserName}</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">{swipe.leagueName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  topComments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No comments yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {topComments.map((c) => (
+                        <div key={c.id} className="rounded-lg bg-secondary/40 p-2.5">
+                          <div className="flex items-center gap-2 mb-1">
+                            <button onClick={() => navigate(`/user/${c.profile_id}`)} className="flex-shrink-0">
+                              <UserAvatar src={c.profile_avatar} name={c.profile_name} size="sm" />
+                            </button>
+                            <span className="text-xs font-semibold text-foreground truncate">{c.profile_name}</span>
+                            {c.league_name && <span className="text-[10px] text-muted-foreground ml-auto truncate">in {c.league_name}</span>}
+                          </div>
+                          <p className="text-xs text-foreground break-words">{c.content}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {c.top_emojis.length > 0 && <span className="text-[10px]">{c.top_emojis.join(" ")}</span>}
+                            {c.reaction_count > 0 && <span className="text-[10px] text-primary font-medium">{c.reaction_count} reactions</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
