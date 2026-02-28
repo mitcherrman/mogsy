@@ -1,39 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Problem
+### The Pattern Difference
 
-After the slice animation completes, there's a visible "blink" where the old cards reappear briefly before the new cards load. This happens because of **two competing transition systems**:
+**SliceBattleAnimation (correct):**
 
-1. **SliceBattleAnimation** — opaque overlay that covers cards during the tear animation (700ms)
-2. **AnimatePresence mode="wait"** — wraps the card pair with a 250ms fade-out exit, then 250ms fade-in enter
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-When `executeChoice` runs, it batches: new pair state + `setSliceWinner(null)`. React removes the overlay and sees the AnimatePresence key change in the same render. With `mode="wait"`, the OLD pair plays its exit animation (250ms fade-out) before the new pair enters — that exit is the "blink" showing the same cards again momentarily.
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-Additionally, in `Swipe.tsx`, the underlying cards have redundant `animate` props that scale/fade based on `sliceWinner` — but those are invisible under the opaque overlay.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-## Plan
+### Implementation Plan
 
-### 1. SwipePreset.tsx — Remove AnimatePresence exit delay (standard mode)
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-Replace `<AnimatePresence mode="wait">` with just rendering the `motion.div` directly (no AnimatePresence). Keep the `key` for remounting and the `initial/animate` for a quick fade-in of new cards — but eliminate the exit animation entirely. The slice overlay already provides the visual transition.
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-**Lines ~556-561**: Remove `<AnimatePresence mode="wait">` opening tag
-**Line ~661**: Remove closing `</AnimatePresence>`
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
-### 2. Swipe.tsx — Same fix for user profile cards
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
 
-Replace `<AnimatePresence mode="wait">` (line 331) with no wrapper. Remove closing tag (line 388). Keep `motion.div` with key, initial, animate — but no exit.
+### Files Modified
 
-Also remove the redundant `animate` props on the left/right card `motion.div`s (lines 341-350 and 364-372) that scale/fade based on `sliceWinner` — these are invisible under the overlay and only cause a flash when the overlay is removed.
-
-### 3. Both files — Clear `eloChanges` timing
-
-In `SwipePreset.tsx`, `eloChanges` is set then immediately cleared in `executeChoice` (lines 252-277), meaning the indicators never display. This is a separate existing issue but not causing the blink — noting for awareness.
-
-### Summary of changes
-
-| File | Change |
-|------|--------|
-| `SwipePreset.tsx` | Remove `AnimatePresence mode="wait"` wrapper around standard-mode cards |
-| `Swipe.tsx` | Remove `AnimatePresence mode="wait"` wrapper; remove redundant `sliceWinner`-based animate props on card wrappers |
-
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
