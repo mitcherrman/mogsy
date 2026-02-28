@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Swords } from "lucide-react";
@@ -530,7 +530,7 @@ export default function SwipePreset() {
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
               {gauntletMode ? (
                 /* Gauntlet: render champion stable, only challenger animates */
-                <div className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1">
+                <div className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1">
                   {pair.map((item, idx) => {
                     const isChampion = gauntletChampion && item.id === gauntletChampion.id;
                     return (
@@ -562,7 +562,7 @@ export default function SwipePreset() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
+                  className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
                 >
                   {pair.map((item, idx) => {
                     const displayImage = getDisplayImage(item);
@@ -572,101 +572,111 @@ export default function SwipePreset() {
                     const isLoser = chosen !== null && chosen !== idx;
 
                     return (
-                      <div key={item.id} className="relative flex flex-col flex-1 min-h-0">
-                        <motion.button
-                          onClick={() => handleChoose(idx as 0 | 1)}
-                          drag={chosen === null ? "x" : false}
-                          dragConstraints={{ left: 0, right: 0 }}
-                          dragElastic={0.3}
-                          onDragEnd={(_e, info) => {
-                            if (Math.abs(info.offset.x) > 60) {
-                              handleChoose(idx as 0 | 1);
-                            }
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                          className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
-                          isWinner
-                              ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
-                              : isLoser
-                              ? "opacity-50 scale-[0.97]"
-                              : "hover:scale-[1.01]"
-                          }`}
-                        >
-                          {/* Image container - fills available space */}
-                          <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
-                            {displayImage ? (
-                              <img
-                                src={displayImage}
-                                alt={item.name}
-                                className="w-full h-full object-contain bg-white"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                                }}
-                              />
-                            ) : (
-                              <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
-                                {item.name.charAt(0)}
-                              </span>
-                            )}
+                      <React.Fragment key={item.id}>
+                        {/* VS badge between cards (after first card) */}
+                        {idx === 1 && (
+                          <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
+                            <span className="text-xs md:text-base lg:text-lg font-black text-muted-foreground/60 select-none">VS</span>
                           </div>
-
-                          {/* Winner crown */}
-                          {isWinner && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
-                            >
-                              <Crown className="h-4 w-4" />
-                            </motion.div>
-                          )}
-                        </motion.button>
-
-                        {/* Report button */}
-                        {hasMultipleImages && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors z-10"
-                            title="Report image as not representative"
+                        )}
+                        <div className="flex flex-col flex-1 min-h-0">
+                          <motion.button
+                            onClick={() => handleChoose(idx as 0 | 1)}
+                            drag={chosen === null ? "x" : false}
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.3}
+                            onDragEnd={(_e, info) => {
+                              if (Math.abs(info.offset.x) > 60) {
+                                handleChoose(idx as 0 | 1);
+                              }
+                            }}
+                            whileTap={{ scale: 0.97 }}
+                            className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
+                            isWinner
+                                ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
+                                : isLoser
+                                ? "opacity-50 scale-[0.97]"
+                                : "hover:scale-[1.01]"
+                            }`}
                           >
-                            <Flag className="h-3 w-3" />
-                          </button>
-                        )}
+                            {/* Image container */}
+                            <div className="w-full h-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
+                              {displayImage ? (
+                                <img
+                                  src={displayImage}
+                                  alt={item.name}
+                                  className="w-full h-full object-contain bg-white"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+                                  }}
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
+                                  {item.name.charAt(0)}
+                                </span>
+                              )}
+                            </div>
 
-                        {/* Name & stats below image */}
-                        <div className="pt-1.5 text-center flex-shrink-0">
-                          <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                          {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
-                          <div className="flex items-center justify-center gap-2 mt-0.5">
-                            {rankVisible && rank && (
-                              <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>
+                            {/* Winner crown */}
+                            {isWinner && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
+                              >
+                                <Crown className="h-4 w-4" />
+                              </motion.div>
                             )}
-                            {eloVisible && (
-                              <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                            )}
+                          </motion.button>
+
+                          {/* Name & stats + report button below image */}
+                          <div className="pt-1 flex-shrink-0">
+                            <div className="flex items-center justify-center gap-1">
+                              <div className="flex-1 min-w-0" />
+                              <div className="text-center min-w-0">
+                                <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                                {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+                              </div>
+                              <div className="flex-1 min-w-0 flex justify-end">
+                                {hasMultipleImages && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+                                    className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
+                                    title="Report image as not representative"
+                                  >
+                                    <Flag className="h-2.5 w-2.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mt-0.5">
+                              {rankVisible && rank && (
+                                <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>
+                              )}
+                              {eloVisible && (
+                                <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Elo change indicator */}
+                          {chosen !== null && (
+                            <div className="flex justify-center mt-0.5 flex-shrink-0">
+                              <EloChangeIndicator
+                                change={eloChanges.get(item.id) ?? null}
+                                oldRank={rankChanges.get(item.id)?.old ?? null}
+                                newRank={rankChanges.get(item.id)?.new ?? null}
+                              />
+                            </div>
+                          )}
                         </div>
-
-                        {/* Elo change indicator */}
-                        {chosen !== null && (
-                          <div className="flex justify-center mt-0.5 flex-shrink-0">
-                            <EloChangeIndicator
-                              change={eloChanges.get(item.id) ?? null}
-                              oldRank={rankChanges.get(item.id)?.old ?? null}
-                              newRank={rankChanges.get(item.id)?.new ?? null}
-                            />
-                          </div>
-                        )}
-                      </div>
+                      </React.Fragment>
                     );
                   })}
                 </motion.div>
               )}
 
-              {/* VS badge centered between cards */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-sm md:text-base lg:text-lg font-black text-muted-foreground bg-background/90 border border-border rounded-full px-2.5 py-1 md:px-4 md:py-1.5 shadow-md z-10">VS</span>
-              </div>
+              {/* VS badge removed from overlay - now inline between cards */}
 
               {/* Slice battle animation */}
               <SliceBattleAnimation
@@ -712,7 +722,7 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className="relative flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0">
       <motion.button
         onClick={() => handleChoose(idx as 0 | 1)}
         drag={chosen === null ? "x" : false}
@@ -732,7 +742,7 @@ function GauntletCard({
             : "hover:scale-[1.01]"
         }`}
       >
-        <div className="w-full h-full min-h-[140px] portrait:aspect-[4/3] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
+        <div className="w-full h-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-white"
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
@@ -748,16 +758,24 @@ function GauntletCard({
           </motion.div>
         )}
       </motion.button>
-      {hasMultipleImages && (
-        <button onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/70 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors z-10"
-          title="Report image as not representative">
-          <Flag className="h-3 w-3" />
-        </button>
-      )}
-      <div className="pt-1.5 text-center flex-shrink-0">
-        <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-        {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+      {/* Name & stats + report button below image */}
+      <div className="pt-1 flex-shrink-0">
+        <div className="flex items-center justify-center gap-1">
+          <div className="flex-1 min-w-0" />
+          <div className="text-center min-w-0">
+            <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+            {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+          </div>
+          <div className="flex-1 min-w-0 flex justify-end">
+            {hasMultipleImages && (
+              <button onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
+                className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
+                title="Report image as not representative">
+                <Flag className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        </div>
         <div className="flex items-center justify-center gap-2 mt-0.5">
           {rankVisible && rank && <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>}
           {eloVisible && <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>}
