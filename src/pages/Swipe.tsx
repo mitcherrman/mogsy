@@ -7,10 +7,12 @@ import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
-import SliceBattleAnimation from "@/components/SliceBattleAnimation";
+import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
+import { useAnimationSound } from "@/hooks/useAnimationSound";
+import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -56,8 +58,12 @@ export default function Swipe() {
   const [gauntletChampion, setGauntletChampion] = useState<SwipeProfile | null>(null);
   const [gauntletStreak, setGauntletStreak] = useState(0);
   const { playSwipeSound } = useSwipeSound();
+  const { playAnimationSound, preloadSounds } = useAnimationSound();
+  const { swipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const pendingChoose = useRef<(() => void) | null>(null);
+
+  useEffect(() => { preloadSounds(); }, [preloadSounds]);
 
   useEffect(() => {
     loadProfiles();
@@ -206,6 +212,8 @@ export default function Swipe() {
     (winnerIndex: 0 | 1) => {
       if (!pair || sliceWinner !== null) return;
       playSwipeSound();
+      playAnimationSound(swipeAnimation);
+      logUsage(swipeAnimation, "swipe");
       setSliceWinner(winnerIndex);
       pendingChoose.current = () => executeChoice(winnerIndex);
     },
@@ -356,8 +364,9 @@ export default function Swipe() {
                   </div>
                 </div>
 
-                {/* Slice battle animation overlay */}
-                <SliceBattleAnimation
+                {/* Card animation overlay */}
+                <CardAnimationRouter
+                  animationId={swipeAnimation}
                   winnerSide={sliceWinner}
                   items={pair ? pair.map(p => ({ imageUrl: p.avatarUrl, name: p.displayName })) : []}
                   onComplete={handleSliceComplete}

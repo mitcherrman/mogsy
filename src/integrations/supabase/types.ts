@@ -44,6 +44,45 @@ export type Database = {
         }
         Relationships: []
       }
+      animation_usage_logs: {
+        Row: {
+          animation_id: string
+          context: string
+          created_at: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          animation_id: string
+          context?: string
+          created_at?: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          animation_id?: string
+          context?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animation_usage_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animation_usage_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
@@ -833,6 +872,7 @@ export type Database = {
           diamonds: number | null
           display_name: string
           elo_shields: number | null
+          elocheck_animation: string | null
           id: string
           is_anonymous: boolean | null
           is_bot: boolean | null
@@ -847,6 +887,7 @@ export type Database = {
           rewinds: number | null
           socials: Json | null
           status_message: string | null
+          swipe_animation: string | null
           updated_at: string
           user_id: string
         }
@@ -862,6 +903,7 @@ export type Database = {
           diamonds?: number | null
           display_name?: string
           elo_shields?: number | null
+          elocheck_animation?: string | null
           id?: string
           is_anonymous?: boolean | null
           is_bot?: boolean | null
@@ -876,6 +918,7 @@ export type Database = {
           rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
+          swipe_animation?: string | null
           updated_at?: string
           user_id: string
         }
@@ -891,6 +934,7 @@ export type Database = {
           diamonds?: number | null
           display_name?: string
           elo_shields?: number | null
+          elocheck_animation?: string | null
           id?: string
           is_anonymous?: boolean | null
           is_bot?: boolean | null
@@ -905,6 +949,7 @@ export type Database = {
           rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
+          swipe_animation?: string | null
           updated_at?: string
           user_id?: string
         }
