@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
+import { useCardAnimation } from "@/hooks/useCardAnimation";
+import { CARD_ANIMATIONS } from "@/lib/card-animations";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { useAuth } from "@/hooks/useAuth";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
@@ -31,6 +35,19 @@ export default function Play() {
   const navigate = useNavigate();
   const location = useLocation();
   const { playSwipeSound } = useSwipeSound();
+  const { user } = useAuth();
+  const { swipeAnimation, setSwipeAnimation, loading: animLoading } = useCardAnimation();
+  const [isPro, setIsPro] = useState(false);
+  const [animConfig, setAnimConfig] = useState<Record<string, { enabled: boolean; pro_only: boolean }>>({});
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("profiles").select("is_pro").eq("user_id", user.id).single()
+        .then(({ data }) => { if (data?.is_pro) setIsPro(true); });
+    }
+    supabase.from("app_settings").select("value").eq("key", "card_animations").single()
+      .then(({ data }) => { if (data?.value) setAnimConfig(data.value as any); });
+  }, [user]);
 
   // Read restore state eagerly to avoid intermediate render flash
   const restoreState = location.state as { restoreCategory?: string; restoreSubcategory?: string } | null;
@@ -425,6 +442,47 @@ export default function Play() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>
+          {user && !animLoading && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Sparkles className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1.5">Card Animation</p>
+                {CARD_ANIMATIONS.filter(a => {
+                  const cfg = animConfig[a.id];
+                  if (cfg && !cfg.enabled) return false;
+                  return a.contexts.includes("swipe");
+                }).map(anim => {
+                  const cfg = animConfig[anim.id];
+                  const isProOnly = cfg?.pro_only;
+                  const locked = isProOnly && !isPro;
+                  const selected = swipeAnimation === anim.id;
+                  return (
+                    <button
+                      key={anim.id}
+                      onClick={() => !locked && setSwipeAnimation(anim.id)}
+                      disabled={locked}
+                      className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors text-sm ${
+                        selected
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : locked
+                          ? "text-muted-foreground/50 cursor-not-allowed"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <span>{anim.icon}</span>
+                      <span className="flex-1 text-xs">{anim.name}</span>
+                      {isProOnly && !isPro && <span className="text-[8px] bg-muted rounded px-1 py-0.5 font-bold">PRO</span>}
+                      {selected && <span className="text-primary text-xs">✓</span>}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
         <div className="flex justify-center mt-8">
           {renderContent()}
