@@ -149,12 +149,18 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
     if (data && data.length > 0) {
       const userIds = data.map((p) => p.user_id);
-      const { data: emailData } = await supabase.functions.invoke("admin-get-emails", {
-        body: { user_ids: userIds },
-      });
-      if (emailData?.emails) {
-        setEmailMap(emailData.emails);
+      const BATCH_SIZE = 50;
+      const allEmails: Record<string, string> = {};
+      for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+        const batch = userIds.slice(i, i + BATCH_SIZE);
+        const { data: emailData } = await supabase.functions.invoke("admin-get-emails", {
+          body: { user_ids: batch },
+        });
+        if (emailData?.emails) {
+          Object.assign(allEmails, emailData.emails);
+        }
       }
+      setEmailMap(allEmails);
     }
 
     const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
