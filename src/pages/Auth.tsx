@@ -162,7 +162,7 @@ export default function Auth() {
       } else {
         toast({ title: "Account created!", description: "Your progress has been saved." });
         if (user) await redeemInvite(user.id);
-        navigate("/swipe");
+        navigate("/home");
       }
       setLoading(false);
       return;
@@ -192,7 +192,7 @@ export default function Auth() {
           toast({ title: "Login failed", description: error.message, variant: "destructive" });
         }
       } else {
-        navigate("/swipe");
+        navigate("/home");
       }
     } else if (mode === "signup") {
       if (password !== confirmPassword) {
