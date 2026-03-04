@@ -445,8 +445,9 @@ export default function Play() {
           {user && !animLoading && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Sparkles className="h-5 w-5" />
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-xs font-medium hidden sm:inline">Animation</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-2">
