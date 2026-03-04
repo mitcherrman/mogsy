@@ -20,6 +20,7 @@ import AdminAds from "@/components/admin/AdminAds";
 import AdminBanners from "@/components/admin/AdminBanners";
 import AdminPushNotifications from "@/components/admin/AdminPushNotifications";
 import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
+import AdminSounds from "@/components/admin/AdminSounds";
 
 const allTabs = [
   { value: "users", label: "Users", masterOnly: false },
@@ -33,6 +34,7 @@ const allTabs = [
   { value: "ads", label: "Ads", masterOnly: false },
   { value: "banners", label: "Banners", masterOnly: false },
   { value: "animations", label: "Animations", masterOnly: false },
+  { value: "sounds", label: "Sounds", masterOnly: false },
   { value: "settings", label: "Settings", masterOnly: true },
 ];
 
@@ -162,6 +164,7 @@ export default function Admin() {
           <TabsContent value="ads"><AdminAds /></TabsContent>
           <TabsContent value="banners"><AdminBanners /></TabsContent>
           <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
+          <TabsContent value="sounds"><AdminSounds /></TabsContent>
           {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}
         </Tabs>
       </div>
