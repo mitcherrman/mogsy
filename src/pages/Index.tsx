@@ -1,13 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import SEOHead from "@/components/SEOHead";
+import { useSoundSettings, SoundSettings } from "@/hooks/useSoundSettings";
 
 export default function Landing() {
   const navigate = useNavigate();
   const ctxRef = useRef<AudioContext | null>(null);
+  const { soundSettings } = useSoundSettings();
+  const settingsRef = useRef<SoundSettings>(soundSettings);
+  useEffect(() => { settingsRef.current = soundSettings; }, [soundSettings]);
 
   const playLaunchSound = useCallback(() => {
+    if (!settingsRef.current.launch_chime) return;
     try {
       const ctx = ctxRef.current || new AudioContext();
       ctxRef.current = ctx;
