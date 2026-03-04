@@ -28,6 +28,7 @@ export default function Auth() {
   const inviteCode = searchParams.get("invite");
 
   const isAnonymous = user?.is_anonymous === true;
+  const [showLinkFlow, setShowLinkFlow] = useState(false);
 
   // Store invite code
   useEffect(() => {
@@ -149,7 +150,7 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
-    if (isAnonymous) {
+    if (isAnonymous && showLinkFlow) {
       if (password !== confirmPassword) {
         toast({ title: "Passwords don't match", variant: "destructive" });
         setLoading(false);
@@ -168,6 +169,10 @@ export default function Auth() {
     }
 
     if (mode === "signin") {
+      // Sign out anonymous session first so we can sign in as a real user
+      if (isAnonymous) {
+        await supabase.auth.signOut();
+      }
       const { error } = await signIn(email, password);
       if (error) {
         if (error.message?.includes("Email not confirmed")) {
@@ -199,6 +204,10 @@ export default function Auth() {
         toast({ title: "Password too short", description: "Minimum 6 characters.", variant: "destructive" });
         setLoading(false);
         return;
+      }
+      // Sign out anonymous session first
+      if (isAnonymous) {
+        await supabase.auth.signOut();
       }
       const { error } = await signUp(email, password);
       if (error) {
@@ -340,7 +349,7 @@ export default function Auth() {
           <Link to="/" className="inline-block mb-4">
             <img src={mogsyLogo} alt="Mogsy" className="h-14 mx-auto" />
           </Link>
-          {isAnonymous ? (
+          {isAnonymous && showLinkFlow ? (
             <>
               <h2 className="text-xl font-bold text-foreground">Claim your account</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -352,13 +361,13 @@ export default function Auth() {
               {mode === "signin" ? "Welcome back" : "Create your account"}
             </h2>
           )}
-          {inviteCode && mode === "signup" && (
+          {inviteCode && mode === "signup" && !showLinkFlow && (
             <p className="text-xs text-primary font-medium mt-2">🎁 You've been invited! Sign up to claim your rewards.</p>
           )}
         </div>
 
         {/* Sign In / Sign Up toggle tabs */}
-        {!isAnonymous && (
+        {!showLinkFlow && (
           <div className="flex rounded-lg bg-muted p-1 mb-6">
             <button
               onClick={() => setMode("signin")}
@@ -383,7 +392,7 @@ export default function Auth() {
           </div>
         )}
 
-        {isAnonymous && (
+        {isAnonymous && showLinkFlow && (
           <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 p-3">
             <p className="text-xs text-primary font-medium">
               ✨ Your match history, Elo ratings, diamonds, and settings will all be preserved!
@@ -431,7 +440,7 @@ export default function Auth() {
 
           {/* Confirm password for signup / anonymous linking */}
           <AnimatePresence>
-            {(mode === "signup" || isAnonymous) && (
+            {(mode === "signup" || showLinkFlow) && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -453,7 +462,7 @@ export default function Auth() {
             )}
           </AnimatePresence>
 
-          {mode === "signup" && (
+          {(mode === "signup" || showLinkFlow) && (
             <p className="text-[10px] text-muted-foreground">
               Password must be at least 6 characters
             </p>
@@ -461,7 +470,7 @@ export default function Auth() {
 
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {isAnonymous
+            {showLinkFlow
               ? "Create Account & Keep Progress"
               : mode === "signin"
               ? "Sign In"
@@ -470,7 +479,7 @@ export default function Auth() {
         </form>
 
         {/* Quick switch hint at bottom */}
-        {!isAnonymous && (
+        {!showLinkFlow && (
           <p className="mt-5 text-center text-xs text-muted-foreground">
             {mode === "signin" ? (
               <>New to Mogsy?{" "}
@@ -485,6 +494,23 @@ export default function Auth() {
                 </button>
               </>
             )}
+          </p>
+        )}
+
+        {/* Link for anonymous users to keep progress */}
+        {isAnonymous && !showLinkFlow && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Want to keep your current progress?{" "}
+            <button onClick={() => setShowLinkFlow(true)} className="text-primary font-semibold hover:underline">
+              Link your account
+            </button>
+          </p>
+        )}
+        {showLinkFlow && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            <button onClick={() => { setShowLinkFlow(false); setMode("signin"); }} className="text-primary font-semibold hover:underline">
+              ← Back to Sign In
+            </button>
           </p>
         )}
       </motion.div>
