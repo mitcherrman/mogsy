@@ -1,11 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCallback, useRef, useEffect } from "react";
+import { LogIn, LogOut } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { useSoundSettings, SoundSettings } from "@/hooks/useSoundSettings";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const ctxRef = useRef<AudioContext | null>(null);
   const { soundSettings } = useSoundSettings();
   const settingsRef = useRef<SoundSettings>(soundSettings);
@@ -18,7 +22,6 @@ export default function Landing() {
       ctxRef.current = ctx;
       const t = ctx.currentTime;
 
-      // Bright ascending chime
       const osc1 = ctx.createOscillator();
       const g1 = ctx.createGain();
       osc1.type = "sine";
@@ -31,7 +34,6 @@ export default function Landing() {
       osc1.start(t);
       osc1.stop(t + 0.35);
 
-      // Harmonic shimmer
       const osc2 = ctx.createOscillator();
       const g2 = ctx.createGain();
       osc2.type = "triangle";
@@ -50,12 +52,15 @@ export default function Landing() {
 
   const handleLogoClick = () => {
     playLaunchSound();
-    // Small delay so sound plays before navigating
-    setTimeout(() => navigate("/home"), 250);
+    setTimeout(() => navigate("/home", { replace: true }), 250);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative">
       <SEOHead
         title="Mogsy — Vote, Rank, Compete"
         description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top."
@@ -119,7 +124,6 @@ export default function Landing() {
           className="h-28 sm:h-36 md:h-44 object-contain drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]"
           width={264}
           height={176}
-          fetchPriority="high"
           animate={{
             y: [0, -6, 0],
             filter: [
@@ -145,6 +149,36 @@ export default function Landing() {
       >
         tap to enter
       </motion.p>
+
+      {/* Bottom-right auth button */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+        className="fixed bottom-6 right-6 z-20"
+      >
+        {user && !user.is_anonymous ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="gap-2 text-muted-foreground hover:text-foreground bg-card/60 backdrop-blur-sm border border-border/50"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-xs">Sign Out</span>
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/auth")}
+            className="gap-2 text-muted-foreground hover:text-foreground bg-card/60 backdrop-blur-sm border border-border/50"
+          >
+            <LogIn className="h-4 w-4" />
+            <span className="text-xs">Sign In</span>
+          </Button>
+        )}
+      </motion.div>
     </div>
   );
 }
