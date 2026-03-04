@@ -1,74 +1,145 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, Play, User, Settings } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useCallback, useRef } from "react";
 import SEOHead from "@/components/SEOHead";
 
-const navButtons = [
-  { path: "/home", label: "Home", icon: Home },
-  { path: "/play", label: "Play", icon: Play },
-  { path: "/profile", label: "Profile", icon: User },
-  { path: "/settings", label: "Settings", icon: Settings },
-];
-
 export default function Landing() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const ctxRef = useRef<AudioContext | null>(null);
+
+  const playLaunchSound = useCallback(() => {
+    try {
+      const ctx = ctxRef.current || new AudioContext();
+      ctxRef.current = ctx;
+      const t = ctx.currentTime;
+
+      // Bright ascending chime
+      const osc1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(600, t);
+      osc1.frequency.exponentialRampToValueAtTime(1200, t + 0.15);
+      g1.gain.setValueAtTime(0.12, t);
+      g1.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      osc1.connect(g1);
+      g1.connect(ctx.destination);
+      osc1.start(t);
+      osc1.stop(t + 0.35);
+
+      // Harmonic shimmer
+      const osc2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(900, t + 0.05);
+      osc2.frequency.exponentialRampToValueAtTime(1800, t + 0.2);
+      g2.gain.setValueAtTime(0.06, t + 0.05);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc2.connect(g2);
+      g2.connect(ctx.destination);
+      osc2.start(t + 0.05);
+      osc2.stop(t + 0.4);
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  const handleLogoClick = () => {
+    playLaunchSound();
+    // Small delay so sound plays before navigating
+    setTimeout(() => navigate("/home"), 250);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <SEOHead title="Mogsy — Vote, Rank, Compete" description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top." />
-      {/* Logo */}
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden">
+      <SEOHead
+        title="Mogsy — Vote, Rank, Compete"
+        description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top."
+      />
+
+      {/* Pulsing glow backdrop */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 280,
+          height: 280,
+          background: "radial-gradient(circle, hsl(var(--primary) / 0.25) 0%, hsl(var(--primary) / 0.08) 50%, transparent 70%)",
+          filter: "blur(40px)",
+        }}
+        animate={{
+          scale: [1, 1.15, 1],
+          opacity: [0.6, 1, 0.6],
+        }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Secondary accent glow */}
+      <motion.div
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 200,
+          height: 200,
+          background: "radial-gradient(circle, hsl(var(--ring) / 0.15) 0%, transparent 60%)",
+          filter: "blur(30px)",
+        }}
+        animate={{
+          scale: [1.1, 1, 1.1],
+          opacity: [0.4, 0.8, 0.4],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 0.5,
+        }}
+      />
+
+      {/* Logo — clickable */}
+      <motion.button
+        onClick={handleLogoClick}
+        initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.95 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="mb-16"
+        className="relative z-10 cursor-pointer focus:outline-none"
+        aria-label="Enter Mogsy"
       >
-        <img src="/mogsy-logo-text.png" alt="" className="h-28 sm:h-36 md:h-44 object-contain" width={264} height={176} sizes="(min-width: 768px) 264px, (min-width: 640px) 216px, 168px" fetchPriority="high" />
-      </motion.div>
+        <motion.img
+          src="/mogsy-logo-text.png"
+          alt="Mogsy"
+          className="h-28 sm:h-36 md:h-44 object-contain drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]"
+          width={264}
+          height={176}
+          fetchPriority="high"
+          animate={{
+            y: [0, -6, 0],
+            filter: [
+              "drop-shadow(0 0 20px hsl(var(--primary) / 0.3))",
+              "drop-shadow(0 0 35px hsl(var(--primary) / 0.5))",
+              "drop-shadow(0 0 20px hsl(var(--primary) / 0.3))",
+            ],
+          }}
+          transition={{
+            duration: 2.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </motion.button>
 
-      {/* 4 Icon buttons */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="flex gap-8 sm:gap-12"
+      {/* Hint text */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 0.8 }}
+        className="mt-8 text-xs text-muted-foreground/60 tracking-wider relative z-10"
       >
-        {navButtons.map((item, i) => (
-          <motion.div
-            key={item.path}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 + i * 0.1 }}
-          >
-            <Link
-              to={item.path === "/profile" && !user ? "/auth" : item.path}
-              className="flex flex-col items-center gap-2 group"
-            >
-              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-border bg-card transition-all duration-200 group-hover:border-primary/50 group-hover:shadow-[0_0_20px_hsl(210_80%_60%/0.15)] group-hover:scale-105 active:scale-95">
-                <item.icon className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground transition-colors group-hover:text-primary" />
-              </div>
-              <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                {item.label}
-              </span>
-            </Link>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Auth prompt */}
-      {!user && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12"
-        >
-          <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-            Sign in to get started →
-          </Link>
-        </motion.div>
-      )}
+        tap to enter
+      </motion.p>
     </div>
   );
 }
