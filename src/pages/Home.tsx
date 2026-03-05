@@ -222,6 +222,67 @@ export default function Home() {
     setLeagues(userOwnLeagues.slice(0, 6));
     setHasLeagues(userOwnLeagues.length > 0);
 
+    // Build most-played section
+    const userPresetLeagues = userOwnLeagues.filter((l) => l.type === "preset").sort((a, b) => b.matchesPlayed - a.matchesPlayed);
+    const userCompeteLeagues = userOwnLeagues.filter((l) => l.type === "user").sort((a, b) => b.matchesPlayed - a.matchesPlayed);
+
+    // Get global most-played as fallback
+    const globalLeagueMatchCount = new Map<string, number>();
+    allMatches.forEach((m) => {
+      globalLeagueMatchCount.set(m.league_id, (globalLeagueMatchCount.get(m.league_id) || 0) + 1);
+    });
+
+    const globalPresetLeagues = (allLeagues || [])
+      .filter((l) => l.type === "preset")
+      .map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 }))
+      .sort((a, b) => b.globalPlays - a.globalPlays);
+
+    const globalCompeteLeagues = (allLeagues || [])
+      .filter((l) => l.type === "user")
+      .map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 }))
+      .sort((a, b) => b.globalPlays - a.globalPlays);
+
+    // Fetch preview image for the top collection league
+    const topCollectionLeague = userPresetLeagues[0] || (globalPresetLeagues[0] ? { id: globalPresetLeagues[0].id, name: globalPresetLeagues[0].name, type: "preset", matchesPlayed: globalPresetLeagues[0].globalPlays, category: globalPresetLeagues[0].category } : null);
+    const topCompeteLeague = userCompeteLeagues[0] || (globalCompeteLeagues[0] ? { id: globalCompeteLeagues[0].id, name: globalCompeteLeagues[0].name, type: "user", matchesPlayed: globalCompeteLeagues[0].globalPlays, category: globalCompeteLeagues[0].category } : null);
+
+    // Get images for these leagues
+    const playLeagueIds = [topCollectionLeague?.id, topCompeteLeague?.id].filter(Boolean) as string[];
+    let playLeagueImages = new Map<string, string>();
+    if (playLeagueIds.length > 0) {
+      const { data: playItems } = await supabase
+        .from("preset_items")
+        .select("league_id, image_url")
+        .in("league_id", playLeagueIds)
+        .not("image_url", "is", null)
+        .not("image_url", "eq", "")
+        .limit(10);
+      playItems?.forEach((pi) => {
+        if (!playLeagueImages.has(pi.league_id)) playLeagueImages.set(pi.league_id, pi.image_url!);
+      });
+    }
+
+    if (topCollectionLeague) {
+      setMostPlayedCollection({
+        id: topCollectionLeague.id,
+        name: topCollectionLeague.name,
+        type: "preset",
+        matchesPlayed: topCollectionLeague.matchesPlayed,
+        image: playLeagueImages.get(topCollectionLeague.id) || null,
+        category: topCollectionLeague.category || null,
+      });
+    }
+    if (topCompeteLeague) {
+      setMostPlayedCompete({
+        id: topCompeteLeague.id,
+        name: topCompeteLeague.name,
+        type: "user",
+        matchesPlayed: topCompeteLeague.matchesPlayed,
+        image: null,
+        category: topCompeteLeague.category || null,
+      });
+    }
+
     // Wait for images before building category sections
     await imagesPromise;
 
