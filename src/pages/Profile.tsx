@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2 } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -347,18 +347,29 @@ export default function Profile() {
               </Button>
               <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
             </div>
-            {profileId && (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/user/${profileId}`)}
-                className="gap-1.5 text-xs"
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/settings")}
+                className="text-muted-foreground hover:text-foreground"
               >
-                <User className="h-3.5 w-3.5" />
-                Preview Profile
+                <Settings className="h-4 w-4" />
               </Button>
-            )}
+              {profileId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/user/${profileId}`)}
+                  className="gap-1.5 text-xs"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Preview Profile
+                </Button>
+              )}
+            </div>
           </div>
 
 
