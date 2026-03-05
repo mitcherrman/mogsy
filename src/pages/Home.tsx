@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TierBadge from "@/components/TierBadge";
@@ -66,6 +67,7 @@ interface CategorySection {
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
   const [recentSwipes, setRecentSwipes] = useState<RecentSwipe[]>([]);
   const [topComments, setTopComments] = useState<TopComment[]>([]);
@@ -595,51 +597,72 @@ export default function Home() {
               <h2 className="text-lg font-bold text-foreground">Explore</h2>
               <Link to="/play" className="text-xs text-primary hover:underline">Browse all</Link>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {categorySections.map((section, sectionIdx) => (
-                <div key={section.title} className="flex flex-col items-center gap-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    {section.icon}
-                    <span className="text-xs font-bold text-foreground">{section.title}</span>
-                  </div>
-                  {/* 2x2 grid: top 2 categories, bottom 2 subcategories */}
-                  <div className="grid grid-cols-2 gap-2 place-items-center">
-                    {section.categories.map((cat, i) => (
-                      <motion.div
-                        key={cat.name}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: sectionIdx * 0.08 + i * 0.04 }}
-                      >
-                        <CategoryBubble
-                          size={72}
-                          onClick={() => handleCategoryClick(cat.name)}
-                          imageUrl={cat.image}
-                          label={cat.name}
-                        />
-                      </motion.div>
-                    ))}
-                    {section.categories.flatMap((cat) =>
-                      cat.subcategories.map((sub, j) => (
+            <div className="grid grid-cols-3 gap-3 sm:gap-2">
+              {categorySections.map((section, sectionIdx) => {
+                // On mobile: show only 1 category + 1 subcategory per column
+                const displayCats = isMobile ? section.categories.slice(0, 1) : section.categories;
+                const allSubs = section.categories.flatMap((cat) =>
+                  cat.subcategories.map((sub) => ({ catName: cat.name, sub }))
+                );
+                const displaySubs = isMobile ? allSubs.slice(0, 1) : allSubs;
+
+                return (
+                  <div key={section.title} className="flex flex-col items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
+                      {section.icon}
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground whitespace-nowrap">{section.title}</span>
+                    </div>
+                    <div className={`flex flex-col items-center gap-2 ${!isMobile ? "grid grid-cols-2 place-items-center" : ""}`}>
+                      {displayCats.map((cat, i) => (
                         <motion.div
-                          key={`${cat.name}-${sub.name}`}
+                          key={cat.name}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: sectionIdx * 0.08 + i * 0.04 }}
+                        >
+                          <CategoryBubble
+                            size={isMobile ? 68 : 72}
+                            onClick={() => handleCategoryClick(cat.name)}
+                            imageUrl={cat.image}
+                            label={cat.name}
+                          />
+                        </motion.div>
+                      ))}
+                      {!isMobile && displayCats.length < 2 && section.categories.slice(1, 2).map((cat, i) => (
+                        <motion.div
+                          key={cat.name}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: sectionIdx * 0.08 + (i + 1) * 0.04 }}
+                        >
+                          <CategoryBubble
+                            size={72}
+                            onClick={() => handleCategoryClick(cat.name)}
+                            imageUrl={cat.image}
+                            label={cat.name}
+                          />
+                        </motion.div>
+                      ))}
+                      {displaySubs.map(({ catName, sub }, j) => (
+                        <motion.div
+                          key={`${catName}-${sub.name}`}
                           initial={{ opacity: 0, scale: 0.7 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: sectionIdx * 0.08 + 0.12 + j * 0.03 }}
                         >
                           <CategoryBubble
-                            size={56}
-                            onClick={() => handleSubcategoryClick(cat.name, sub.name)}
+                            size={isMobile ? 52 : 56}
+                            onClick={() => handleSubcategoryClick(catName, sub.name)}
                             imageUrl={sub.image}
                             label={sub.name}
                             variant="accent"
                           />
                         </motion.div>
-                      ))
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
