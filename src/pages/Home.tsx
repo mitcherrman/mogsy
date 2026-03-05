@@ -89,6 +89,8 @@ export default function Home() {
   const [hasLeagues, setHasLeagues] = useState(false);
   const [categorySections, setCategorySections] = useState<CategorySection[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
+  const [mostPlayedCollection, setMostPlayedCollection] = useState<MostPlayedLeague | null>(null);
+  const [mostPlayedCompete, setMostPlayedCompete] = useState<MostPlayedLeague | null>(null);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
