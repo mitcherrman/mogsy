@@ -64,6 +64,15 @@ interface CategorySection {
   categories: { name: string; image: string | null; subcategories: { name: string; image: string | null }[] }[];
 }
 
+interface MostPlayedLeague {
+  id: string;
+  name: string;
+  type: string;
+  matchesPlayed: number;
+  image: string | null;
+  category: string | null;
+}
+
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
