@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Home, Play, User, Settings, ShoppingBag, Diamond, Gift } from "lucide-react";
+import { Home, Play, User, Diamond, Gift, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
@@ -11,10 +11,8 @@ import UserNotificationBell from "./UserNotificationBell";
 const navItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/play", label: "Play", icon: Play },
-  { path: "/shop", label: "Shop", icon: ShoppingBag },
   { path: "/profile", label: "Profile", icon: User },
   { path: "/referral", label: "Invite", icon: Gift },
-  { path: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Navbar({ themeId }: { themeId?: string }) {
@@ -76,10 +74,11 @@ export default function Navbar({ themeId }: { themeId?: string }) {
           {diamonds !== null && (
             <Link
               to="/shop"
-              className="ml-1 flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+              className="ml-1 flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-all hover:scale-105 active:scale-95 border border-primary/20 hover:border-primary/40"
             >
               <Diamond className="h-3.5 w-3.5" />
-              {diamonds.toLocaleString()}
+              <span>{diamonds.toLocaleString()}</span>
+              <ChevronRight className="h-3 w-3 opacity-60" />
             </Link>
           )}
         </div>
