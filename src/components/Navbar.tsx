@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Home, Play, User, Diamond, Gift, ChevronRight } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
@@ -12,7 +12,6 @@ const navItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/play", label: "Play", icon: Play },
   { path: "/profile", label: "Profile", icon: User },
-  { path: "/referral", label: "Invite", icon: Gift },
 ];
 
 export default function Navbar({ themeId }: { themeId?: string }) {
