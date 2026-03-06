@@ -37,7 +37,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl"
-      style={hasTheme ? { background: "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.1)" } : undefined}
+      style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
     >
       <div className="container mx-auto flex h-14 items-center px-4 gap-1">
         <Link to="/" className="flex items-center shrink-0">
