@@ -1,10 +1,12 @@
 import { User } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface UserAvatarProps {
   src?: string | null;
   name?: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
+  profileFrame?: string | null;
 }
 
 const sizeClasses = {
@@ -23,11 +25,22 @@ const iconSizes = {
   xl: "h-12 w-12",
 };
 
-export default function UserAvatar({ src, name, size = "sm", className = "" }: UserAvatarProps) {
+const frameClassMap: Record<string, string> = {
+  vines: "frame-vines",
+  inferno: "frame-inferno",
+  frost: "frame-frost",
+  holiday: "frame-holiday",
+  patriot: "frame-patriot",
+  royal: "frame-royal",
+  neon: "frame-neon",
+};
+
+export default function UserAvatar({ src, name, size = "sm", className = "", profileFrame }: UserAvatarProps) {
   const hasValidSrc = src && !src.includes("dicebear.com") && !src.includes("api.dicebear");
+  const frameStyle = profileFrame && profileFrame !== "default" ? frameClassMap[profileFrame] : "";
 
   return (
-    <div className={`${sizeClasses[size]} rounded-full overflow-hidden flex-shrink-0 bg-muted ${className}`}>
+    <div className={cn(sizeClasses[size], "rounded-full overflow-hidden flex-shrink-0 bg-muted", frameStyle, className)}>
       {hasValidSrc ? (
         <img src={src} alt={name || ""} className="w-full h-full object-cover" />
       ) : (
