@@ -4,7 +4,7 @@ import { Palette, Lock, Crown, Check } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { supabase } from "@/integrations/supabase/client";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 interface ThemeConfig {
   free_themes: string[];
@@ -89,68 +89,70 @@ export default function FloatingThemeSwitcher() {
   };
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-center gap-2">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col items-center gap-2.5 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
-          >
-            {visibleThemes.map((theme) => {
-              const locked = !canUseTheme(theme.id);
-              const isActive = themeId === theme.id;
-              const pro = isThemePro(theme.id);
-              const bg = getCircleGradient(theme);
+    <TooltipProvider delayDuration={400}>
+      <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-center gap-2">
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center gap-2.5 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
+            >
+              {visibleThemes.map((theme) => {
+                const locked = !canUseTheme(theme.id);
+                const isActive = themeId === theme.id;
+                const pro = isThemePro(theme.id);
+                const bg = getCircleGradient(theme);
 
-              return (
-                <Tooltip key={theme.id} delayDuration={400}>
-                  <TooltipTrigger asChild>
-                    <motion.button
-                      whileHover={{ scale: locked ? 1 : 1.15 }}
-                      whileTap={{ scale: locked ? 1 : 0.9 }}
-                      onClick={() => !locked && handleSelect(theme.id)}
-                      className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
-                        isActive
-                          ? "border-primary ring-2 ring-primary/40 shadow-lg"
-                          : locked
-                          ? "border-border opacity-50 cursor-not-allowed"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                      style={{ background: bg }}
-                    >
-                      {isActive && (
-                        <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
-                      )}
-                      {locked && !isActive && (
-                        <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
-                      )}
-                      {pro && !locked && !isActive && (
-                        <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
-                      )}
-                    </motion.button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" align="center" className="text-xs font-medium mr-2" avoidCollisions={true} collisionPadding={8}>
-                    {theme.label}{locked ? " (Pro)" : ""}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                return (
+                  <Tooltip key={theme.id}>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        whileHover={{ scale: locked ? 1 : 1.15 }}
+                        whileTap={{ scale: locked ? 1 : 0.9 }}
+                        onClick={() => !locked && handleSelect(theme.id)}
+                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
+                          isActive
+                            ? "border-primary ring-2 ring-primary/40 shadow-lg"
+                            : locked
+                            ? "border-border opacity-50 cursor-not-allowed"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                        style={{ background: bg }}
+                      >
+                        {isActive && (
+                          <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
+                        )}
+                        {locked && !isActive && (
+                          <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
+                        )}
+                        {pro && !locked && !isActive && (
+                          <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
+                        )}
+                      </motion.button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="text-xs font-medium z-[70]" sideOffset={12}>
+                      {theme.label}{locked ? " (Pro)" : ""}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Main FAB */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setOpen((o) => !o)}
-        className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
-      >
-        <Palette className="h-5 w-5" />
-      </motion.button>
-    </div>
+        {/* Main FAB */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setOpen((o) => !o)}
+          className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
+        >
+          <Palette className="h-5 w-5" />
+        </motion.button>
+      </div>
+    </TooltipProvider>
   );
 }
