@@ -21,11 +21,22 @@ interface Comment {
   created_at: string;
   display_name: string;
   avatar_url: string | null;
+  profile_frame: string | null;
   reactions: Record<string, { count: number; reacted: boolean }>;
   total_reactions: number;
   parent_comment_id: string | null;
   replies: Comment[];
 }
+
+const frameNameColors: Record<string, string> = {
+  vines: "text-green-500",
+  inferno: "text-orange-500",
+  frost: "text-cyan-400",
+  holiday: "text-red-500",
+  patriot: "text-blue-500",
+  royal: "text-yellow-500",
+  neon: "text-fuchsia-500",
+};
 
 interface SwipeCommentsProps {
   leagueId: string;
@@ -83,11 +94,11 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     const profileIds = [...new Set(commentsData.map((c) => c.profile_id))];
     const { data: profiles } = await supabase
       .from("public_profiles")
-      .select("id, display_name, avatar_url")
+      .select("id, display_name, avatar_url, profile_frame")
       .in("id", profileIds);
 
     const profileMap = new Map(
-      (profiles || []).map((p) => [p.id, { display_name: p.display_name || "Anonymous", avatar_url: p.avatar_url }])
+      (profiles || []).map((p) => [p.id, { display_name: p.display_name || "Anonymous", avatar_url: p.avatar_url, profile_frame: p.profile_frame }])
     );
 
     const commentIds = commentsData.map((c) => c.id);
@@ -113,6 +124,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
         ...c,
         display_name: profile?.display_name || "Anonymous",
         avatar_url: profile?.avatar_url || null,
+        profile_frame: profile?.profile_frame || null,
         reactions: rxns,
         total_reactions: total,
         replies: [],
@@ -182,6 +194,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
       created_at: new Date().toISOString(),
       display_name: myProfile?.display_name || "You",
       avatar_url: myProfile?.avatar_url || null,
+      profile_frame: myProfile?.profile_frame || null,
       reactions: {},
       total_reactions: 0,
       parent_comment_id: replyingTo?.id || null,
@@ -463,7 +476,23 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <button onClick={() => navigate(`/user/${comment.profile_id}`)} className="text-xs font-semibold text-foreground truncate hover:text-primary transition-colors">
+          <button onClick={() => navigate(`/user/${comment.profile_id}`)} className={cn(
+            "text-xs font-semibold truncate transition-colors",
+            comment.profile_frame && comment.profile_frame !== "default" && frameNameColors[comment.profile_frame]
+              ? frameNameColors[comment.profile_frame]
+              : "text-foreground hover:text-primary"
+          )}>
+            {comment.profile_frame && comment.profile_frame !== "default" && frameNameColors[comment.profile_frame] && (
+              <span className="mr-0.5 text-[10px]">
+                {comment.profile_frame === "vines" && "🌿"}
+                {comment.profile_frame === "inferno" && "🔥"}
+                {comment.profile_frame === "frost" && "❄️"}
+                {comment.profile_frame === "holiday" && "🎄"}
+                {comment.profile_frame === "patriot" && "🇺🇸"}
+                {comment.profile_frame === "royal" && "👑"}
+                {comment.profile_frame === "neon" && "💜"}
+              </span>
+            )}
             {comment.display_name}
           </button>
           <span className="text-[10px] text-muted-foreground">{timeAgo(comment.created_at)}</span>
