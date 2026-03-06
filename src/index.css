@@ -174,6 +174,143 @@
   }
 }
 
+/* ── Profile Frame Styles ── */
+
+/* Vines & Leaves */
+.frame-vines {
+  border: 3px solid hsl(140, 50%, 40%);
+  box-shadow:
+    0 0 0 3px hsl(140, 40%, 30%),
+    0 0 0 6px hsl(100, 50%, 45%),
+    inset 0 0 8px hsl(140, 60%, 30% / 0.3),
+    0 0 15px hsl(100, 60%, 40% / 0.25);
+  background-image:
+    radial-gradient(circle at 15% 10%, hsl(120, 60%, 45% / 0.6) 2px, transparent 2px),
+    radial-gradient(circle at 85% 15%, hsl(100, 55%, 50% / 0.5) 3px, transparent 3px),
+    radial-gradient(circle at 10% 85%, hsl(130, 60%, 40% / 0.6) 2px, transparent 2px),
+    radial-gradient(circle at 90% 80%, hsl(110, 50%, 45% / 0.5) 3px, transparent 3px),
+    radial-gradient(circle at 50% 5%, hsl(140, 55%, 48% / 0.4) 2px, transparent 2px),
+    radial-gradient(circle at 50% 95%, hsl(120, 55%, 42% / 0.4) 2px, transparent 2px);
+}
+
+/* Inferno */
+@keyframes inferno-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px hsl(15, 100%, 45%),
+      0 -4px 12px hsl(30, 100%, 50% / 0.7),
+      4px 0 12px hsl(15, 100%, 45% / 0.5),
+      -4px 0 12px hsl(40, 100%, 55% / 0.5),
+      0 4px 8px hsl(5, 100%, 40% / 0.4),
+      0 0 25px hsl(25, 100%, 50% / 0.3);
+  }
+  33% {
+    box-shadow:
+      0 0 0 3px hsl(25, 100%, 50%),
+      0 -6px 16px hsl(40, 100%, 55% / 0.8),
+      5px -2px 14px hsl(20, 100%, 48% / 0.6),
+      -5px -2px 14px hsl(35, 100%, 52% / 0.6),
+      0 4px 10px hsl(10, 100%, 42% / 0.5),
+      0 0 30px hsl(30, 100%, 50% / 0.35);
+  }
+  66% {
+    box-shadow:
+      0 0 0 3px hsl(20, 100%, 48%),
+      0 -5px 14px hsl(35, 100%, 52% / 0.75),
+      3px -3px 12px hsl(10, 100%, 45% / 0.55),
+      -3px -1px 12px hsl(45, 100%, 58% / 0.55),
+      0 4px 8px hsl(0, 100%, 38% / 0.4),
+      0 0 28px hsl(20, 100%, 48% / 0.3);
+  }
+}
+
+.frame-inferno {
+  border: 3px solid hsl(20, 100%, 50%);
+  animation: inferno-pulse 1.8s ease-in-out infinite;
+}
+
+/* Frost / Ice */
+.frame-frost {
+  border: 3px solid hsl(200, 80%, 75%);
+  box-shadow:
+    0 0 0 2px hsl(200, 60%, 85%),
+    0 0 0 5px hsl(210, 70%, 70% / 0.4),
+    inset 0 0 10px hsl(200, 90%, 85% / 0.3),
+    0 0 20px hsl(195, 80%, 75% / 0.25),
+    0 0 40px hsl(200, 70%, 80% / 0.1);
+  background-image:
+    radial-gradient(circle at 20% 20%, hsl(200, 100%, 95% / 0.5) 1px, transparent 1px),
+    radial-gradient(circle at 80% 30%, hsl(195, 100%, 90% / 0.4) 1px, transparent 1px),
+    radial-gradient(circle at 30% 80%, hsl(210, 90%, 92% / 0.5) 1px, transparent 1px),
+    radial-gradient(circle at 70% 75%, hsl(200, 100%, 95% / 0.4) 1px, transparent 1px);
+}
+
+/* Holiday Wreath */
+.frame-holiday {
+  border: 4px solid hsl(145, 55%, 35%);
+  box-shadow:
+    0 0 0 3px hsl(145, 50%, 30%),
+    0 0 0 6px hsl(0, 70%, 50% / 0.5),
+    0 0 12px hsl(145, 60%, 35% / 0.3);
+  background-image:
+    radial-gradient(circle at 50% 0%, hsl(0, 75%, 50%) 4px, transparent 4px),
+    radial-gradient(circle at 100% 50%, hsl(0, 70%, 55%) 3px, transparent 3px),
+    radial-gradient(circle at 0% 50%, hsl(0, 70%, 55%) 3px, transparent 3px),
+    radial-gradient(circle at 50% 100%, hsl(45, 90%, 55%) 3px, transparent 3px),
+    radial-gradient(circle at 25% 10%, hsl(0, 75%, 48%) 2px, transparent 2px),
+    radial-gradient(circle at 75% 10%, hsl(0, 75%, 48%) 2px, transparent 2px),
+    radial-gradient(circle at 15% 75%, hsl(45, 85%, 50%) 2px, transparent 2px),
+    radial-gradient(circle at 85% 75%, hsl(45, 85%, 50%) 2px, transparent 2px);
+}
+
+/* Patriot (flag-inspired red/white/blue) */
+.frame-patriot {
+  border: 3px solid hsl(0, 0%, 100%);
+  box-shadow:
+    0 0 0 3px hsl(220, 70%, 45%),
+    0 0 0 6px hsl(0, 75%, 50%),
+    0 0 0 8px hsl(220, 70%, 45%),
+    0 0 15px hsl(220, 70%, 50% / 0.3);
+}
+
+/* Royal Crown */
+.frame-royal {
+  border: 3px solid hsl(45, 90%, 55%);
+  box-shadow:
+    0 0 0 2px hsl(280, 50%, 30%),
+    0 0 0 5px hsl(45, 85%, 50% / 0.6),
+    0 0 0 7px hsl(280, 50%, 25%),
+    0 0 20px hsl(45, 90%, 55% / 0.25),
+    inset 0 0 8px hsl(45, 80%, 50% / 0.2);
+  background-image:
+    radial-gradient(circle at 50% 5%, hsl(45, 90%, 60%) 3px, transparent 3px),
+    radial-gradient(circle at 30% 8%, hsl(45, 85%, 55%) 2px, transparent 2px),
+    radial-gradient(circle at 70% 8%, hsl(45, 85%, 55%) 2px, transparent 2px);
+}
+
+/* Neon Pulse */
+@keyframes neon-flicker {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px hsl(300, 100%, 60%),
+      0 0 8px hsl(300, 100%, 60% / 0.6),
+      0 0 20px hsl(180, 100%, 50% / 0.3),
+      inset 0 0 8px hsl(300, 100%, 60% / 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px hsl(180, 100%, 55%),
+      0 0 12px hsl(180, 100%, 55% / 0.7),
+      0 0 25px hsl(300, 100%, 60% / 0.35),
+      inset 0 0 10px hsl(180, 100%, 55% / 0.25);
+  }
+}
+
+.frame-neon {
+  border: 2px solid hsl(300, 100%, 60%);
+  animation: neon-flicker 2s ease-in-out infinite;
+}
+
 /* On-fire border animation for streaks */
 @keyframes fire-glow {
   0%, 100% {
