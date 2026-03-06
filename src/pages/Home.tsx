@@ -675,7 +675,7 @@ export default function Home() {
                 <div className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
                     size={isMobile ? 100 : 120}
-                    onClick={() => navigate(`/swipe-preset/${mostPlayedCollection.id}`)}
+                    onClick={() => navigate(`/swipe/preset/${mostPlayedCollection.id}`)}
                     imageUrl={mostPlayedCollection.image}
                     label={mostPlayedCollection.name}
                     sublabel="Collection"
@@ -688,7 +688,7 @@ export default function Home() {
                 <div className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
                     size={isMobile ? 100 : 120}
-                    onClick={() => navigate(`/swipe-leagues/${mostPlayedCompete.id}`)}
+                    onClick={() => navigate(`/swipe-leagues`, { state: { leagueId: mostPlayedCompete.id } })}
                     imageUrl={mostPlayedCompete.image}
                     label={mostPlayedCompete.name}
                     sublabel="Compete"
