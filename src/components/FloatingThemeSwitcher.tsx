@@ -3,7 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Palette, Lock, Crown, Check } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+
+interface ThemeConfig {
+  free_themes: string[];
+  pro_themes: string[];
+  disabled_themes: string[];
+}
 
 function getCircleGradient(theme: typeof profileThemes[number]): string {
   if (theme.id === "default") return "linear-gradient(135deg, hsl(210,80%,60%), hsl(270,60%,65%))";
@@ -15,6 +22,29 @@ export default function FloatingThemeSwitcher() {
   const [open, setOpen] = useState(false);
   const { themeId, isPro, setActiveTheme, chosenFreeTheme } = useSitewideTheme();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
+
+  // Load theme config from DB
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "theme_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setThemeConfig(data.value as any);
+      });
+  }, []);
+
+  // Listen for admin updates
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const config = (e as CustomEvent).detail;
+      if (config) setThemeConfig(config);
+    };
+    window.addEventListener("theme-config-updated", handler);
+    return () => window.removeEventListener("theme-config-updated", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -26,10 +56,22 @@ export default function FloatingThemeSwitcher() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Filter out disabled themes
+  const visibleThemes = profileThemes.filter((t) => {
+    if (t.id === "default") return true;
+    if (themeConfig?.disabled_themes?.includes(t.id)) return false;
+    return true;
+  });
+
   const canUseTheme = (id: string) => {
     if (id === "default") return true;
     if (isPro) return true;
     if (chosenFreeTheme === id) return true;
+    // If admin config exists, use it
+    if (themeConfig) {
+      if (themeConfig.free_themes?.includes(id)) return true;
+      return false;
+    }
     const theme = profileThemes.find((t) => t.id === id);
     if (theme && !theme.isPro) return true;
     return false;
@@ -51,7 +93,7 @@ export default function FloatingThemeSwitcher() {
             transition={{ duration: 0.2 }}
             className="flex flex-col items-center gap-2.5 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
           >
-            {profileThemes.map((theme) => {
+            {visibleThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
               const bg = getCircleGradient(theme);
