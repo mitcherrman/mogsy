@@ -4,7 +4,7 @@ import { Palette, Lock, Crown, Check } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { supabase } from "@/integrations/supabase/client";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 interface ThemeConfig {
   free_themes: string[];
