@@ -56,10 +56,22 @@ export default function FloatingThemeSwitcher() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Filter out disabled themes
+  const visibleThemes = profileThemes.filter((t) => {
+    if (t.id === "default") return true;
+    if (themeConfig?.disabled_themes?.includes(t.id)) return false;
+    return true;
+  });
+
   const canUseTheme = (id: string) => {
     if (id === "default") return true;
     if (isPro) return true;
     if (chosenFreeTheme === id) return true;
+    // If admin config exists, use it
+    if (themeConfig) {
+      if (themeConfig.free_themes?.includes(id)) return true;
+      return false;
+    }
     const theme = profileThemes.find((t) => t.id === id);
     if (theme && !theme.isPro) return true;
     return false;
