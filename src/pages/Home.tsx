@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Play } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,8 +89,8 @@ export default function Home() {
   const [hasLeagues, setHasLeagues] = useState(false);
   const [categorySections, setCategorySections] = useState<CategorySection[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
-  const [mostPlayedCollection, setMostPlayedCollection] = useState<MostPlayedLeague | null>(null);
-  const [mostPlayedCompete, setMostPlayedCompete] = useState<MostPlayedLeague | null>(null);
+  const [playCollections, setPlayCollections] = useState<MostPlayedLeague[]>([]);
+  const [playCompetes, setPlayCompetes] = useState<MostPlayedLeague[]>([]);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -243,11 +243,23 @@ export default function Home() {
       .sort((a, b) => b.globalPlays - a.globalPlays);
 
     // Fetch preview image for the top collection league
-    const topCollectionLeague = userPresetLeagues[0] || (globalPresetLeagues[0] ? { id: globalPresetLeagues[0].id, name: globalPresetLeagues[0].name, type: "preset", matchesPlayed: globalPresetLeagues[0].globalPlays, category: globalPresetLeagues[0].category } : null);
-    const topCompeteLeague = userCompeteLeagues[0] || (globalCompeteLeagues[0] ? { id: globalCompeteLeagues[0].id, name: globalCompeteLeagues[0].name, type: "user", matchesPlayed: globalCompeteLeagues[0].globalPlays, category: globalCompeteLeagues[0].category } : null);
+    // Pick top 2 collection and top 2 compete leagues
+    const toPlayLeague = (l: any, type: string): MostPlayedLeague => ({
+      id: l.id, name: l.name, type, matchesPlayed: l.matchesPlayed ?? l.globalPlays ?? 0, image: null, category: l.category || null,
+    });
+
+    const topCollections: MostPlayedLeague[] = [];
+    const usedCollectionIds = new Set<string>();
+    userPresetLeagues.forEach((l) => { if (topCollections.length < 2) { topCollections.push(toPlayLeague(l, "preset")); usedCollectionIds.add(l.id); } });
+    globalPresetLeagues.forEach((l) => { if (topCollections.length < 2 && !usedCollectionIds.has(l.id)) { topCollections.push(toPlayLeague(l, "preset")); usedCollectionIds.add(l.id); } });
+
+    const topCompetes: MostPlayedLeague[] = [];
+    const usedCompeteIds = new Set<string>();
+    userCompeteLeagues.forEach((l) => { if (topCompetes.length < 2) { topCompetes.push(toPlayLeague(l, "user")); usedCompeteIds.add(l.id); } });
+    globalCompeteLeagues.forEach((l) => { if (topCompetes.length < 2 && !usedCompeteIds.has(l.id)) { topCompetes.push(toPlayLeague(l, "user")); usedCompeteIds.add(l.id); } });
 
     // Get images for these leagues
-    const playLeagueIds = [topCollectionLeague?.id, topCompeteLeague?.id].filter(Boolean) as string[];
+    const playLeagueIds = [...topCollections, ...topCompetes].map((l) => l.id);
     let playLeagueImages = new Map<string, string>();
     if (playLeagueIds.length > 0) {
       const { data: playItems } = await supabase
@@ -256,32 +268,15 @@ export default function Home() {
         .in("league_id", playLeagueIds)
         .not("image_url", "is", null)
         .not("image_url", "eq", "")
-        .limit(10);
+        .limit(20);
       playItems?.forEach((pi) => {
         if (!playLeagueImages.has(pi.league_id)) playLeagueImages.set(pi.league_id, pi.image_url!);
       });
     }
 
-    if (topCollectionLeague) {
-      setMostPlayedCollection({
-        id: topCollectionLeague.id,
-        name: topCollectionLeague.name,
-        type: "preset",
-        matchesPlayed: topCollectionLeague.matchesPlayed,
-        image: playLeagueImages.get(topCollectionLeague.id) || null,
-        category: topCollectionLeague.category || null,
-      });
-    }
-    if (topCompeteLeague) {
-      setMostPlayedCompete({
-        id: topCompeteLeague.id,
-        name: topCompeteLeague.name,
-        type: "user",
-        matchesPlayed: topCompeteLeague.matchesPlayed,
-        image: null,
-        category: topCompeteLeague.category || null,
-      });
-    }
+    topCollections.forEach((l) => { l.image = playLeagueImages.get(l.id) || null; });
+    setPlayCollections(topCollections);
+    setPlayCompetes(topCompetes);
 
     // Wait for images before building category sections
     await imagesPromise;
@@ -663,40 +658,40 @@ export default function Home() {
         )}
 
         {/* Play Section */}
-        {(mostPlayedCollection || mostPlayedCompete) && (
+        {(playCollections.length > 0 || playCompetes.length > 0) && (
           <section className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Play className="h-5 w-5 text-primary fill-primary" /> Play
+              <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">
+                Play Now
               </h2>
             </div>
-            <div className="flex items-center justify-center gap-4 sm:gap-6">
-              {mostPlayedCollection && (
-                <div className="flex flex-col items-center gap-1.5">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
+              {playCollections.map((col) => (
+                <div key={col.id} className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
                     size={isMobile ? 100 : 120}
-                    onClick={() => navigate(`/swipe/preset/${mostPlayedCollection.id}`)}
-                    imageUrl={mostPlayedCollection.image}
-                    label={mostPlayedCollection.name}
+                    onClick={() => navigate(`/swipe/preset/${col.id}`)}
+                    imageUrl={col.image}
+                    label={col.name}
                     sublabel="Collection"
                     variant="accent"
                   />
-                  <span className="text-[10px] text-muted-foreground">{mostPlayedCollection.matchesPlayed} swipes</span>
+                  <span className="text-[10px] text-muted-foreground">{col.matchesPlayed} swipes</span>
                 </div>
-              )}
-              {mostPlayedCompete && (
-                <div className="flex flex-col items-center gap-1.5">
+              ))}
+              {playCompetes.map((comp) => (
+                <div key={comp.id} className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
                     size={isMobile ? 100 : 120}
-                    onClick={() => navigate(`/swipe-leagues`, { state: { leagueId: mostPlayedCompete.id } })}
-                    imageUrl={mostPlayedCompete.image}
-                    label={mostPlayedCompete.name}
+                    onClick={() => navigate(`/swipe-leagues`, { state: { leagueId: comp.id } })}
+                    imageUrl={comp.image}
+                    label={comp.name}
                     sublabel="Compete"
                     variant="accent"
                   />
-                  <span className="text-[10px] text-muted-foreground">{mostPlayedCompete.matchesPlayed} swipes</span>
+                  <span className="text-[10px] text-muted-foreground">{comp.matchesPlayed} swipes</span>
                 </div>
-              )}
+              ))}
             </div>
           </section>
         )}
