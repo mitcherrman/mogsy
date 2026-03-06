@@ -63,11 +63,17 @@ export default function FloatingThemeSwitcher() {
     return true;
   });
 
+  const isThemePro = (id: string) => {
+    if (id === "default") return false;
+    if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
+    const theme = profileThemes.find((t) => t.id === id);
+    return theme?.isPro ?? false;
+  };
+
   const canUseTheme = (id: string) => {
     if (id === "default") return true;
     if (isPro) return true;
     if (chosenFreeTheme === id) return true;
-    // If admin config exists, use it
     if (themeConfig) {
       if (themeConfig.free_themes?.includes(id)) return true;
       return false;
@@ -96,39 +102,40 @@ export default function FloatingThemeSwitcher() {
             {visibleThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
+              const pro = isThemePro(theme.id);
               const bg = getCircleGradient(theme);
 
               return (
-                  <Tooltip key={theme.id}>
-                    <TooltipTrigger asChild>
-                      <motion.button
-                        whileHover={{ scale: locked ? 1 : 1.15 }}
-                        whileTap={{ scale: locked ? 1 : 0.9 }}
-                        onClick={() => !locked && handleSelect(theme.id)}
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
-                          isActive
-                            ? "border-primary ring-2 ring-primary/40 shadow-lg"
-                            : locked
-                            ? "border-border opacity-50 cursor-not-allowed"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                        style={{ background: bg }}
-                      >
-                        {isActive && (
-                          <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
-                        )}
-                        {locked && !isActive && (
-                          <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
-                        )}
-                        {theme.isPro && !locked && !isActive && (
-                          <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
-                        )}
-                      </motion.button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="text-xs font-medium">
-                      {theme.label}{locked ? " (Pro)" : ""}
-                    </TooltipContent>
-                  </Tooltip>
+                <Tooltip key={theme.id} delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <motion.button
+                      whileHover={{ scale: locked ? 1 : 1.15 }}
+                      whileTap={{ scale: locked ? 1 : 0.9 }}
+                      onClick={() => !locked && handleSelect(theme.id)}
+                      className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative shrink-0 ${
+                        isActive
+                          ? "border-primary ring-2 ring-primary/40 shadow-lg"
+                          : locked
+                          ? "border-border opacity-50 cursor-not-allowed"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      style={{ background: bg }}
+                    >
+                      {isActive && (
+                        <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
+                      )}
+                      {locked && !isActive && (
+                        <Lock className="h-3 w-3 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />
+                      )}
+                      {pro && !locked && !isActive && (
+                        <Crown className="h-3 w-3 drop-shadow absolute -top-1 -right-1" style={{ color: "hsl(45,100%,55%)" }} />
+                      )}
+                    </motion.button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="text-xs font-medium">
+                    {theme.label}{locked ? " (Pro)" : ""}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </motion.div>
