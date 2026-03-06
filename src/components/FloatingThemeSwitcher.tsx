@@ -132,7 +132,7 @@ export default function FloatingThemeSwitcher() {
                       )}
                     </motion.button>
                   </TooltipTrigger>
-                  <TooltipContent side="left" align="center" className="text-xs font-medium mr-2" avoidCollisions={true} collisionPadding={8}>
+                  <TooltipContent side="left" align="center" className="text-xs font-medium z-[70]" sideOffset={8} avoidCollisions>
                     {theme.label}{locked ? " (Pro)" : ""}
                   </TooltipContent>
                 </Tooltip>
