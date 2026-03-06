@@ -93,7 +93,7 @@ export default function FloatingThemeSwitcher() {
             transition={{ duration: 0.2 }}
             className="flex flex-col items-center gap-2.5 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
           >
-            {profileThemes.map((theme) => {
+            {visibleThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
               const bg = getCircleGradient(theme);
