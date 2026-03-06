@@ -275,8 +275,8 @@
   --muted-foreground: 220 10% 40%;
   --accent: 210 40% 96%;
   --accent-foreground: 222 47% 11%;
-  --border: 220 20% 18%;
-  --input: 220 20% 30%;
+    --border: 220 15% 80%;
+    --input: 220 15% 75%;
   --ring: 210 80% 50%;
 }
 
