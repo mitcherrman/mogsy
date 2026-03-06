@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Play } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
