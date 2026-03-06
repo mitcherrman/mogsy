@@ -68,10 +68,13 @@ const socialConfig: Record<string, { icon: React.ElementType; label: string }> =
 
 const frameClasses: Record<string, string> = {
   default: "",
-  gold: "ring-4 ring-yellow-400/60",
-  neon: "ring-4 ring-primary/60 shadow-[0_0_20px_hsl(210_80%_60%/0.4)]",
-  fire: "ring-4 ring-orange-500/60 shadow-[0_0_20px_hsl(25_100%_50%/0.4)]",
-  diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
+  vines: "frame-vines",
+  inferno: "frame-inferno",
+  frost: "frame-frost",
+  holiday: "frame-holiday",
+  patriot: "frame-patriot",
+  royal: "frame-royal",
+  neon: "frame-neon",
 };
 
 export default function UserProfile() {
