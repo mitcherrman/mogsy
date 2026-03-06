@@ -9,6 +9,8 @@ import { profileThemes } from "@/lib/profile-themes";
 import OnboardingFlow from "@/components/OnboardingFlow";
 
 const THEME_COLORS: Record<string, [string, string]> = {
+  light: ["hsl(209,40%,96%)", "hsl(210,80%,60%)"],
+  dark: ["hsl(222,47%,11%)", "hsl(210,80%,65%)"],
   midnight: ["hsl(250,50%,25%)", "hsl(260,60%,50%)"],
   forest: ["hsl(150,40%,25%)", "hsl(130,50%,35%)"],
   sunset: ["hsl(20,80%,50%)", "hsl(340,70%,50%)"],
