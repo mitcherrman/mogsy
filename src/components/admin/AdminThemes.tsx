@@ -86,6 +86,8 @@ export default function AdminThemes() {
       return;
     }
     toast.success("Theme settings saved");
+    // Notify theme picker to refresh
+    window.dispatchEvent(new CustomEvent("theme-config-updated", { detail: config }));
   };
 
   const getThemeStatus = (id: string): "free" | "pro" | "disabled" => {
