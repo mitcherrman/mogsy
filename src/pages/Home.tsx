@@ -670,56 +670,32 @@ export default function Home() {
                 <Play className="h-5 w-5 text-primary fill-primary" /> Play
               </h2>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-center gap-4 sm:gap-6">
               {mostPlayedCollection && (
-                <Link to={`/swipe-preset/${mostPlayedCollection.id}`}>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-xl border border-border bg-card overflow-hidden cursor-pointer group"
-                  >
-                    <div className="relative h-24 sm:h-32 bg-muted">
-                      {mostPlayedCollection.image ? (
-                        <img src={mostPlayedCollection.image} alt={mostPlayedCollection.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Star className="h-8 w-8 text-muted-foreground/40" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <span className="text-[9px] uppercase tracking-wider text-white/70 font-bold">Collection</span>
-                        <p className="text-xs sm:text-sm font-extrabold text-white truncate">{mostPlayedCollection.name}</p>
-                      </div>
-                    </div>
-                    <div className="px-2.5 py-2 flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground">{mostPlayedCollection.matchesPlayed} swipes</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                  </motion.div>
-                </Link>
+                <div className="flex flex-col items-center gap-1.5">
+                  <CategoryBubble
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe-preset/${mostPlayedCollection.id}`)}
+                    imageUrl={mostPlayedCollection.image}
+                    label={mostPlayedCollection.name}
+                    sublabel="Collection"
+                    variant="accent"
+                  />
+                  <span className="text-[10px] text-muted-foreground">{mostPlayedCollection.matchesPlayed} swipes</span>
+                </div>
               )}
               {mostPlayedCompete && (
-                <Link to={`/swipe-leagues/${mostPlayedCompete.id}`}>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="rounded-xl border border-border bg-card overflow-hidden cursor-pointer group"
-                  >
-                    <div className="relative h-24 sm:h-32 bg-muted flex items-center justify-center">
-                      <Swords className="h-8 w-8 text-muted-foreground/40" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <span className="text-[9px] uppercase tracking-wider text-white/70 font-bold">Compete</span>
-                        <p className="text-xs sm:text-sm font-extrabold text-white truncate">{mostPlayedCompete.name}</p>
-                      </div>
-                    </div>
-                    <div className="px-2.5 py-2 flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground">{mostPlayedCompete.matchesPlayed} swipes</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                  </motion.div>
-                </Link>
+                <div className="flex flex-col items-center gap-1.5">
+                  <CategoryBubble
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe-leagues/${mostPlayedCompete.id}`)}
+                    imageUrl={mostPlayedCompete.image}
+                    label={mostPlayedCompete.name}
+                    sublabel="Compete"
+                    variant="accent"
+                  />
+                  <span className="text-[10px] text-muted-foreground">{mostPlayedCompete.matchesPlayed} swipes</span>
+                </div>
               )}
             </div>
           </section>
