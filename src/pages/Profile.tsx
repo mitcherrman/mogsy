@@ -19,14 +19,11 @@ import FavoritesEditor from "@/components/FavoritesEditor";
 
 
 const frameOptions = [
-  { id: "default", label: "None", preview: "" },
-  { id: "vines", label: "🌿 Vines", preview: "frame-vines" },
-  { id: "inferno", label: "🔥 Inferno", preview: "frame-inferno" },
-  { id: "frost", label: "❄️ Frost", preview: "frame-frost" },
-  { id: "holiday", label: "🎄 Holiday", preview: "frame-holiday" },
-  { id: "patriot", label: "🇺🇸 Patriot", preview: "frame-patriot" },
-  { id: "royal", label: "👑 Royal", preview: "frame-royal" },
-  { id: "neon", label: "💜 Neon", preview: "frame-neon" },
+  { id: "default", label: "Default", preview: "" },
+  { id: "gold", label: "Gold", preview: "ring-4 ring-yellow-400/60" },
+  { id: "neon", label: "Neon", preview: "ring-4 ring-blue-500/60 shadow-[0_0_15px_hsl(210_80%_60%/0.4)]" },
+  { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
+  { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
 ];
 
 const SOCIAL_PLACEHOLDERS: Record<string, string> = {
