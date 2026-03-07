@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCallback, useRef, useEffect } from "react";
-import { LogIn, LogOut } from "lucide-react";
+import { User } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { useSoundSettings, SoundSettings } from "@/hooks/useSoundSettings";
 import { useAuth } from "@/hooks/useAuth";
@@ -150,35 +150,17 @@ export default function Landing() {
         tap to enter
       </motion.p>
 
-      {/* Bottom-right auth button */}
-      <motion.div
+      {/* Bottom-right profile icon */}
+      <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.6 }}
-        className="fixed bottom-6 right-6 z-20"
+        transition={{ delay: 2.5, duration: 0.8 }}
+        onClick={() => navigate(user && !user.is_anonymous ? "/profile" : "/auth")}
+        className="fixed bottom-6 right-6 z-20 w-9 h-9 rounded-full bg-card/60 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card/80 transition-colors"
+        aria-label="Profile"
       >
-        {user && !user.is_anonymous ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="gap-2 text-muted-foreground hover:text-foreground bg-card/60 backdrop-blur-sm border border-border/50"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="text-xs">Sign Out</span>
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/auth")}
-            className="gap-2 text-muted-foreground hover:text-foreground bg-card/60 backdrop-blur-sm border border-border/50"
-          >
-            <LogIn className="h-4 w-4" />
-            <span className="text-xs">Sign In</span>
-          </Button>
-        )}
-      </motion.div>
+        <User className="h-4 w-4" />
+      </motion.button>
     </div>
   );
 }
