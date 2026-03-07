@@ -5,7 +5,7 @@ import { User } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { useSoundSettings, SoundSettings } from "@/hooks/useSoundSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -55,9 +55,7 @@ export default function Landing() {
     setTimeout(() => navigate("/home", { replace: true }), 250);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative">
