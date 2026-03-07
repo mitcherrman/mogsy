@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const ctxRef = useRef<AudioContext | null>(null);
   const { soundSettings } = useSoundSettings();
   const settingsRef = useRef<SoundSettings>(soundSettings);
