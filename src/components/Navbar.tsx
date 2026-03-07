@@ -41,7 +41,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
     >
       <div className="container mx-auto flex h-14 items-center px-4 gap-1">
         <Link to="/" className="flex items-center shrink-0">
-          <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12" />
+          <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12 -ml-2 sm:ml-0" />
         </Link>
 
         <NavBanner />
