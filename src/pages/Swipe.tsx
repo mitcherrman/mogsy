@@ -482,7 +482,7 @@ export default function Swipe() {
 
                 {/* Card animation overlay */}
                 <CardAnimationRouter
-                  animationId={swipeAnimation}
+                  animationId={effectiveAnim}
                   winnerSide={sliceWinner}
                   items={pair ? pair.map(p => ({
                     imageUrl: p.avatarUrl,
