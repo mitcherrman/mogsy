@@ -84,6 +84,9 @@ export default function FloatingThemeSwitcher() {
     return !themeConfig?.disabled_themes?.includes(t.id);
   });
 
+  const totalPages = Math.ceil(visibleThemes.length / PAGE_SIZE);
+  const currentThemes = visibleThemes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const isThemePro = (id: string) => {
     if (id === "default") return false;
     if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
