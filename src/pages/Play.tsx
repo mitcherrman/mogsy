@@ -233,6 +233,31 @@ export default function Play() {
     return renderCategoryContent();
   };
 
+  /* ─── Desktop rectangular pill for sub-sub items ─── */
+  const RectPill = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
+    <motion.button
+      onClick={onClick}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...ease, delay }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={`relative flex items-center gap-3 px-5 py-3 rounded-xl border-2 cursor-pointer select-none overflow-hidden transition-colors ${
+        variant === "accent"
+          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+          : "border-border bg-card text-foreground hover:bg-muted"
+      }`}
+    >
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover rounded-xl" loading="lazy" />
+          <div className="absolute inset-0 bg-black/50 rounded-xl" />
+        </>
+      )}
+      <span className={`relative z-10 text-sm font-extrabold tracking-wide leading-tight text-center line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+    </motion.button>
+  );
+
   /* ─── Shared: category/league drill-down (used by both mobile sub-view and desktop inline) ─── */
   const renderCategoryContent = () => {
     const categoryKeys = Object.keys(currentCategories).sort((a, b) => {
@@ -254,6 +279,11 @@ export default function Play() {
           <div className="flex flex-wrap items-center justify-center gap-4">
             {categoryKeys.map((cat, i) => {
               const catImage = getCategoryImage(cat);
+              if (!isMobile) {
+                return (
+                  <RectPill key={cat} onClick={() => handleBubbleClick(() => onCatSelect(cat))} imageUrl={catImage} label={cat} delay={i * 0.04} />
+                );
+              }
               return (
                 <motion.div key={cat} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
                   <Bubble size={112} onClick={() => handleBubbleClick(() => onCatSelect(cat))} active={false} variant="card" imageUrl={catImage}>
@@ -278,12 +308,19 @@ export default function Play() {
         const isLol = selectedSubcategory === "League of Legends";
         return (
           <motion.div key={`subcat-${selectedSubcategory}`} {...fadeIn} className={`flex flex-col items-center gap-5 ${isLol ? "theme-lol" : ""}`}>
-            <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} active variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage}>
-              <span className="text-sm font-extrabold tracking-wide">{selectedSubcategory}</span>
-            </Bubble>
+            {isMobile ? (
+              <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} active variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage}>
+                <span className="text-sm font-extrabold tracking-wide">{selectedSubcategory}</span>
+              </Bubble>
+            ) : (
+              <RectPill onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage} label={selectedSubcategory} variant="accent" />
+            )}
             <div className="flex flex-wrap items-center justify-center gap-4">
               {subLeagues.map((league, i) => {
                 const leagueImage = getLeagueImage(league.id);
+                if (!isMobile) {
+                  return <RectPill key={league.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} imageUrl={leagueImage} label={league.name} delay={i * 0.04} variant={isLol ? "accent" : "card"} />;
+                }
                 return (
                   <motion.div key={league.id} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
                     <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} active={false} variant={isLol ? "accent" : "card"} imageUrl={leagueImage}>
@@ -309,6 +346,26 @@ export default function Play() {
         ...sortedLeagues.map(l => ({ type: 'league' as const, id: l.id, name: l.name, league: l })),
       ];
 
+      // Desktop: simple flex wrap, no pyramid
+      if (!isMobile) {
+        return (
+          <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
+            <RectPill onClick={() => handleBubbleClick(() => setSelectedCategory(null))} imageUrl={catImage} label={selectedCategory} variant="accent" />
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {allItems.map((entry, i) => {
+                if (entry.type === 'subcategory') {
+                  const isLol = entry.name === "League of Legends";
+                  return <RectPill key={entry.id} onClick={() => handleBubbleClick(() => setSelectedSubcategory(entry.name))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : undefined} label={`${isLol ? "⚔️" : "📁"} ${entry.name}`} delay={i * 0.04} />;
+                }
+                const leagueImage = getLeagueImage(entry.id);
+                return <RectPill key={entry.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(entry.league!))} imageUrl={leagueImage} label={entry.name} delay={i * 0.04} />;
+              })}
+            </div>
+          </motion.div>
+        );
+      }
+
+      // Mobile: pyramid layout
       const MAX_ROW = 3;
       const pyramidRows: typeof allItems[] = [];
       let idx = 0;
@@ -369,6 +426,9 @@ export default function Play() {
         <div className="flex flex-wrap items-center justify-center gap-4">
           {allLeagues.map((league, i) => {
             const leagueImage = getLeagueImage(league.id);
+            if (!isMobile) {
+              return <RectPill key={league.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} imageUrl={leagueImage} label={league.name} delay={i * 0.04} />;
+            }
             return (
               <motion.div key={league.id} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
                 <Bubble size={100} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} active={false} variant="card" imageUrl={leagueImage}>
