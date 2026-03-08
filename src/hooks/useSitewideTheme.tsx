@@ -103,8 +103,17 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
 
   const isCycling = themeId === "cycle";
   const visualThemeId = isCycling
-    ? (cyclableThemes[cycleIndex % cyclableThemes.length]?.id ?? "default")
+    ? (cycleIndex >= 0 && cycleIndex < cyclableThemes.length ? cyclableThemes[cycleIndex].id : "default")
     : themeId;
+
+  const pickRandomIndex = useCallback(() => {
+    if (cyclableThemes.length <= 1) return 0;
+    let next: number;
+    do {
+      next = Math.floor(Math.random() * cyclableThemes.length);
+    } while (next === cycleIndex && cyclableThemes.length > 1);
+    return next;
+  }, [cycleIndex]);
 
   useEffect(() => {
     if (!isCycling) {
