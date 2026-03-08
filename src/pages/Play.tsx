@@ -110,6 +110,7 @@ export default function Play() {
       const images: PreviewImage[] = items
         .filter((item: any) => item.image_url && item.leagues?.category)
         .map((item: any) => ({
+          item_id: item.id,
           league_id: item.league_id,
           category: item.leagues.category,
           image_url: item.image_url,
