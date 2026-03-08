@@ -50,7 +50,7 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       
       {/* Photo section */}
       <div className={`relative w-full aspect-[3/4] overflow-hidden ${frame}`}>
-        {profile.avatarUrl && !profile.avatarUrl.includes("dicebear") ? (
+        {profile.avatarUrl && !profile.avatarUrl.includes("dicebear") && !profile.avatarUrl.includes("placeholder") ? (
           <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
