@@ -140,6 +140,7 @@ export default function Leagues() {
                   name: p.display_name || "Unknown",
                   imageUrl: p.avatar_url || "",
                   elo,
+                  tier: getTierFromElo(elo),
                 };
               });
           }
