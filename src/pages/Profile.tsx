@@ -468,7 +468,7 @@ export default function Profile() {
                         </button>
                       </div>
                     ))}
-                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
+                    <label className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
                       <Plus className="h-5 w-5 text-muted-foreground" />
                       <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                     </label>
