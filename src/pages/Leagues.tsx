@@ -164,8 +164,8 @@ export default function Leagues() {
     return <div className="min-h-screen" />;
   }
 
-  const userLeagues = leagues.filter((l) => l.type === "user");
-  const presetLeagues = leagues.filter((l) => l.type === "preset");
+  const title = isCompete ? "Compete" : "Collections";
+  const SectionIcon = isCompete ? Users : Layers;
 
   return (
     <div className="min-h-screen px-4 py-8 pb-24">
@@ -176,39 +176,21 @@ export default function Leagues() {
           </Button>
           <div>
             <h1 className="text-3xl font-extrabold text-foreground flex items-center gap-2">
-              <Trophy className="h-8 w-8 text-primary" /> Leaderboard
+              <Trophy className="h-8 w-8 text-primary" /> {title} Leaderboard
             </h1>
             <p className="text-muted-foreground text-sm mt-1">{leagues.length} leagues</p>
           </div>
         </div>
 
-        {userLeagues.length > 0 && (
-          <section className="mb-10">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <Users className="h-4 w-4" /> Compete
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {userLeagues.map((league, i) => (
-                <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
-              ))}
-            </div>
-          </section>
+        {leagues.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {leagues.map((league, i) => (
+              <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No leagues available yet.</p>
         )}
-
-        {presetLeagues.length > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <Layers className="h-4 w-4" /> Collections
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {presetLeagues.map((league, i) => (
-                <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {leagues.length === 0 && <p className="text-center text-muted-foreground py-8">No leagues available yet.</p>}
       </div>
     </div>
   );
