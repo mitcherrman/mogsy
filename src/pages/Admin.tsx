@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, ChevronRight, ChevronLeft, Bell } from "lucide-react";
+import { Shield, ChevronRight, ChevronLeft, Bell, Download, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -23,7 +23,7 @@ import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
-import { useNavigate as useNav } from "react-router-dom";
+import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
   { value: "users", label: "Users", masterOnly: false },
@@ -52,6 +52,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("users");
+  const [csvExporting, setCsvExporting] = useState(false);
   const [tabPage, setTabPage] = useState(0);
 
   const TABS_PER_PAGE = 4;
@@ -108,12 +109,27 @@ export default function Admin() {
             <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Master</span>
           )}
           {isMasterAdmin && (
-            <button
-              onClick={() => navigate("/admin/play")}
-              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
-            >
-              Play Layout
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => navigate("/admin/play")}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              >
+                Play Layout
+              </button>
+              <button
+                onClick={() => navigate("/admin/data")}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              >
+                <BarChart3 className="h-3 w-3" /> Data
+              </button>
+              <button
+                disabled={csvExporting}
+                onClick={async () => { setCsvExporting(true); try { await exportAdminCSV(); toast.success("CSV exported"); } catch { toast.error("Export failed"); } finally { setCsvExporting(false); } }}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-muted-foreground text-[10px] sm:text-xs font-bold hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                <Download className="h-3 w-3" /> {csvExporting ? "..." : "CSV"}
+              </button>
+            </div>
           )}
           <button
             onClick={() => setActiveTab("notifications")}
