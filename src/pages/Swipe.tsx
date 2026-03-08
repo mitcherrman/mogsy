@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords, Globe } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
@@ -387,19 +387,6 @@ export default function Swipe() {
                 title="Save snapshot"
               >
                 <Camera className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={gauntletMode ? "default" : "ghost"}
-                size="icon"
-                onClick={() => {
-                  setGauntletMode(!gauntletMode);
-                  setGauntletChampion(null);
-                  setGauntletStreak(0);
-                }}
-                className={`h-8 w-8 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-              >
-                <Swords className="h-4 w-4" />
               </Button>
               {lastMatch && myRewinds > 0 && (
                 <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
