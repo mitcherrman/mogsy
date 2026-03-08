@@ -1,43 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Add Red Heart Pop-Up on Winner Card (All Animations)
+### The Pattern Difference
 
-Every animation has a `!isLoser` winner card block. We'll add a heart emoji/icon that pops up with a scale+fade animation on the winner card's image area when the phase leaves "idle".
+**SliceBattleAnimation (correct):**
 
-### Implementation
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-Add a `motion.div` inside the winner card's image container (after the `<img>`) across all 9 animation files. The heart will:
-- Start at scale 0, opacity 0
-- Spring up to scale 1, opacity 1
-- Then fade out slightly (opacity ~0.8) and settle
-- Positioned center of the image area, z-20 so it sits above everything
-- Use a red heart character `❤️` styled with text-red-500, text-3xl/4xl
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-**Reusable snippet** (same in every file):
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-```tsx
-{phase !== "idle" && (
-  <motion.div
-    className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-    initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: [0, 1.3, 1], opacity: [0, 1, 0.85] }}
-    transition={{ duration: 0.45, delay: 0.05, ease: "easeOut" }}
-  >
-    <span className="text-4xl md:text-5xl drop-shadow-lg select-none">❤️</span>
-  </motion.div>
-)}
-```
+### Implementation Plan
 
-### Files to modify (9 total)
-Each file gets the heart snippet added inside the winner card's image `<div>` (the `portrait:aspect-[5/4]` container), right after the `<img>`:
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-1. `src/components/animations/DefaultFadeAnimation.tsx`
-2. `src/components/animations/ShatterAnimation.tsx`
-3. `src/components/animations/BurnAnimation.tsx`
-4. `src/components/animations/VaporizeAnimation.tsx`
-5. `src/components/animations/CrushAnimation.tsx`
-6. `src/components/animations/ChopAnimation.tsx`
-7. `src/components/animations/MoggedAnimation.tsx`
-8. `src/components/animations/SgtDoakesAnimation.tsx`
-9. `src/components/SliceBattleAnimation.tsx`
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
