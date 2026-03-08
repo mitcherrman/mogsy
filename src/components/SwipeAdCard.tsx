@@ -27,12 +27,14 @@ interface SwipeAdCardProps {
   profileId?: string;
 }
 
-export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId }: SwipeAdCardProps) {
+export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId, placement = "swipe", adSource = "custom", profileId }: SwipeAdCardProps) {
   const duration = creative?.view_duration_seconds ?? 5;
   const [countdown, setCountdown] = useState(duration);
+  const logged = useRef(false);
 
   useEffect(() => {
     setCountdown(duration);
+    logged.current = false;
     const timer = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
@@ -44,6 +46,14 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
     }, 1000);
     return () => clearInterval(timer);
   }, [creative?.id, duration, adsenseSlot]);
+
+  // Log impression once
+  useEffect(() => {
+    if (!logged.current) {
+      logged.current = true;
+      logAdEvent({ eventType: "impression", creativeId: creative?.id, placement, adMode: "in_swipe", adSource, profileId });
+    }
+  }, [creative?.id, adsenseSlot]);
 
   const isAdsense = !!adsenseSlot;
 
