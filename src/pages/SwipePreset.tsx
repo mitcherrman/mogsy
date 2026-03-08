@@ -428,7 +428,7 @@ export default function SwipePreset() {
       setSliceWinner(winnerIndex);
       pendingAction.current = () => executeChoice(winnerIndex);
     },
-    [pair, chosen, sliceWinner, playSwipeSound, executeChoice]
+    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice]
   );
 
   const handleSliceComplete = useCallback(() => {
