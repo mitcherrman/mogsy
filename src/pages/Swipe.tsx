@@ -375,7 +375,7 @@ export default function Swipe() {
               <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
             <p className="text-muted-foreground text-xs shrink-0">
-              Matches: <span className="text-primary font-bold">{matchCount}</span>
+              <span className="text-primary font-bold">{matchCount}</span>
               {gauntletMode && gauntletStreak > 0 && (
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
@@ -412,8 +412,8 @@ export default function Swipe() {
                 </span>
               )}
               {globalLeagueId && (
-                <Button variant="outline" size="sm" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="gap-1 h-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" /> Leaderboard
+                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
+                  <Trophy className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
