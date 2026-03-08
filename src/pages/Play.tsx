@@ -11,6 +11,7 @@ import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
