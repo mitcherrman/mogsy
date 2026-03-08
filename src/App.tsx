@@ -74,6 +74,7 @@ const App = () => (
                   <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Moderator /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<LazyFallback />}><SecretRoom /></Suspense>} />
+                <Route path="/:slug" element={<Suspense fallback={<LazyFallback />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
           </BrowserRouter>

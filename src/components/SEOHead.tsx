@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { SITE_URL } from "@/lib/site-config";
 
 interface SEOHeadProps {
   title: string;

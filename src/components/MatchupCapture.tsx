@@ -30,7 +30,7 @@ const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
 
         {/* Footer watermark */}
         <div className="flex items-center justify-center mt-2 pt-1.5 border-t border-border/50">
-          <span className="text-[9px] text-muted-foreground font-medium">mogsy.lovable.app</span>
+          <span className="text-[9px] text-muted-foreground font-medium">{SITE_DOMAIN}</span>
         </div>
       </div>
     );

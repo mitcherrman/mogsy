@@ -13,4 +13,5 @@ Allow: /
 User-agent: *
 Allow: /
 
+# DOMAIN CONFIG: Update domain below when changing domain
 Sitemap: https://mogsy.com/sitemap.xml
