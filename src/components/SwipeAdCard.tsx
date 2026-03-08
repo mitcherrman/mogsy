@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/AdBanner";
+import { logAdEvent } from "@/lib/ad-analytics";
 
 export interface AdCreative {
   id: string;
