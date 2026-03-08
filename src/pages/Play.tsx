@@ -129,16 +129,32 @@ export default function Play() {
   }, []);
 
   const getCategoryImage = useCallback((category: string) => {
+    // Check for configured cover item
+    if (publishedConfig) {
+      const catConfig = publishedConfig.categories?.find(c => c.key === category);
+      if (catConfig?.coverItemId) {
+        const coverImg = previewImages.find(img => img.item_id === catConfig.coverItemId);
+        if (coverImg) return coverImg.image_url;
+      }
+    }
     const catImages = previewImages.filter((img) => img.category === category);
     if (catImages.length === 0) return null;
     return catImages[0]?.image_url || null;
-  }, [previewImages]);
+  }, [previewImages, publishedConfig]);
 
   const getLeagueImage = useCallback((leagueId: string) => {
+    // Check for configured cover item
+    if (publishedConfig) {
+      const leagueConfig = publishedConfig.leagues?.find(l => l.id === leagueId);
+      if (leagueConfig?.coverItemId) {
+        const coverImg = previewImages.find(img => img.item_id === leagueConfig.coverItemId);
+        if (coverImg) return coverImg.image_url;
+      }
+    }
     const leagueImages = previewImages.filter((img) => img.league_id === leagueId);
     if (leagueImages.length === 0) return null;
     return leagueImages[0]?.image_url || null;
-  }, [previewImages]);
+  }, [previewImages, publishedConfig]);
 
   const handleBubbleClick = (action: () => void) => {
     playSwipeSound();
