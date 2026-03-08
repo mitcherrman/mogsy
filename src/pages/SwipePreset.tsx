@@ -590,7 +590,7 @@ export default function SwipePreset() {
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
                 <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" /> Rankings
+                  <Trophy className="h-3.5 w-3.5" /> Leaderboard
                 </Button>
               </Link>
             </div>

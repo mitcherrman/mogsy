@@ -99,7 +99,7 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       </div>
 
       <div className="text-[10px] sm:text-xs font-bold text-muted-foreground mt-auto">
-        ELO {profile.elo}
+        AURA {profile.elo}
       </div>
     </div>
   );

@@ -190,7 +190,7 @@ export default function AdminCardAnimations() {
                   {/* Usage stats */}
                   <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
                     <span>Swipe: <strong className="text-foreground">{swipeUsage}</strong> plays · <strong className="text-foreground">{swipeUsers}</strong> users</span>
-                    <span>Elo Check: <strong className="text-foreground">{eloUsage}</strong> plays · <strong className="text-foreground">{eloUsers}</strong> users</span>
+                    <span>Aura Check: <strong className="text-foreground">{eloUsage}</strong> plays · <strong className="text-foreground">{eloUsers}</strong> users</span>
                   </div>
                 </div>
 

@@ -76,7 +76,7 @@ export default function AdminLeagueSettings() {
                 <span className="text-sm font-medium text-foreground truncate flex-1">{l.name}</span>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5">
-                    <Label className="text-[10px] text-muted-foreground">Elo</Label>
+                    <Label className="text-[10px] text-muted-foreground">Aura</Label>
                     <Switch checked={l.show_elo} onCheckedChange={(v) => updateLeague(l.id, "show_elo", v)} />
                   </div>
                   <div className="flex items-center gap-1.5">

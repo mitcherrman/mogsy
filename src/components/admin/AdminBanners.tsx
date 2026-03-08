@@ -272,7 +272,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-medium text-foreground truncate">{r.name}</p>
-                      <p className="text-[9px] text-muted-foreground">{r.elo} ELO · {r.league_name} · {r.type}</p>
+                      <p className="text-[9px] text-muted-foreground">{r.elo} Aura · {r.league_name} · {r.type}</p>
                     </div>
                     <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
                   </button>

@@ -735,9 +735,9 @@ export default function AdminCollections() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Reset all Elo & Rankings?</AlertDialogTitle>
+                  <AlertDialogTitle>Reset all Aura & Leaderboard?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will set <strong>all items and user memberships</strong> in "{selectedLeagueData.name}" back to the default Elo of 1200. This action can be undone.
+                    This will set <strong>all items and user memberships</strong> in "{selectedLeagueData.name}" back to the default Aura of 1200. This action can be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -199,7 +199,7 @@ export default function Shop() {
 
   return (
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
-      <SEOHead title="Shop — Mogsy" description="Get diamonds, boosts, shields, and premium items in the Mogsy shop. Power up your ranking experience." />
+      <SEOHead title="Shop — Mogsy" description="Get diamonds, boosts, shields, and premium items in the Mogsy shop. Power up your leaderboard experience." />
       <div className="container mx-auto max-w-3xl">
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8">

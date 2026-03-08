@@ -122,7 +122,7 @@ export default function AdminEloCheck() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Toggle which leagues appear in the Elo Check game. Unchecked leagues won't have their items shown.
+        Toggle which leagues appear in the Aura Check game. Unchecked leagues won't have their items shown.
       </p>
       <Tabs defaultValue="preset-items" className="w-full">
         <TabsList className="w-full">

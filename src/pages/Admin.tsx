@@ -29,7 +29,7 @@ const allTabs = [
   { value: "collections", label: "Collections", masterOnly: false },
   { value: "bots", label: "Bots", masterOnly: false },
   { value: "promoted", label: "Promoted", masterOnly: false },
-  { value: "elo-check", label: "Elo Check", masterOnly: false },
+  { value: "elo-check", label: "Aura Check", masterOnly: false },
   { value: "comments", label: "Comments", masterOnly: false },
   { value: "invite-links", label: "Invites", masterOnly: false },
   { value: "push", label: "Push", masterOnly: false },

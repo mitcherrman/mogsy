@@ -452,7 +452,7 @@ export default function UserProfile() {
             transition={{ delay: 0.2 }}
             className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>League Rankings</h2>
+            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>League Leaderboard</h2>
             <div className="space-y-2">
               {leagueStats.map((stat) => (
                 <button

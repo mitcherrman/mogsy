@@ -61,7 +61,7 @@ export default function Landing() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative">
       <SEOHead
         title="Mogsy — Vote, Rank, Compete"
-        description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Elo leaderboards, compete in leagues, and see who comes out on top."
+        description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Aura leaderboards, compete in leagues, and see who comes out on top."
       />
 
       {/* Pulsing glow backdrop */}
