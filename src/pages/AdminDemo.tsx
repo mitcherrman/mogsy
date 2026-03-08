@@ -66,6 +66,12 @@ export default function AdminDemo() {
   const isMobile = useIsMobile();
   const captureRef = useRef<HTMLDivElement>(null);
   const { capture } = useScreenshot(captureRef);
+  const { recordGif, isRecording, progress } = useGifExport(captureRef, {
+    scale: 2,
+    fps: 20,
+    maxColors: 255,
+    duration: 3000,
+  });
   const { playAnimationSound } = useAnimationSound();
 
   const [mode, setMode] = useState<DemoMode>("swipe-collections");
