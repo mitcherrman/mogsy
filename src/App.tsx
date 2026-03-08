@@ -28,6 +28,7 @@ const EloCheck = lazy(() => import("./pages/EloCheck"));
 const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
                   <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
                   <Route path="/user/:profileId" element={<UserProfile />} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                  <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

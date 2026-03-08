@@ -21,6 +21,7 @@ import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
+import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 
 interface PresetItem {
@@ -87,6 +88,8 @@ export default function SwipePreset() {
   const { playAnimationSound, preloadSounds } = useAnimationSound();
   const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
+  const { rules: animRules } = useLeagueAnimationRules(leagueId);
+  const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
   const pendingAction = useRef<(() => void) | null>(null);
@@ -422,13 +425,17 @@ export default function SwipePreset() {
     (winnerIndex: 0 | 1) => {
       if (!pair || chosen !== null || sliceWinner !== null) return;
       setChosen(winnerIndex);
-      if (swipeAnimation === "default") playSwipeSound();
-      playAnimationSound(swipeAnimation);
-      logUsage(swipeAnimation, "swipe");
+      // Check for animation override from league rules
+      const override = getAnimationOverride(matchCount + 1, animRules);
+      const animToUse = override || swipeAnimation;
+      if (animToUse === "default") playSwipeSound();
+      playAnimationSound(animToUse);
+      logUsage(animToUse, "swipe");
+      setEffectiveAnim(animToUse);
       setSliceWinner(winnerIndex);
       pendingAction.current = () => executeChoice(winnerIndex);
     },
-    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice]
+    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
   );
 
   const handleSliceComplete = useCallback(() => {
@@ -791,7 +798,7 @@ export default function SwipePreset() {
 
               {/* Card animation */}
               <CardAnimationRouter
-                animationId={swipeAnimation}
+                animationId={effectiveAnim}
                 winnerSide={sliceWinner}
                 items={pair ? pair.map(item => ({
                   imageUrl: getDisplayImage(item),
