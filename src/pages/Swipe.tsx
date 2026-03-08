@@ -289,7 +289,24 @@ export default function Swipe() {
     toast({ title: "⏪ Rewind used!", description: "Vote again on the same pair." });
   };
 
-  if (loading) {
+  const globalRankMap = useMemo(() => {
+    const sorted = [...profiles].sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    sorted.forEach((p, idx) => map.set(p.id, idx + 1));
+    return map;
+  }, [profiles]);
+
+  const localRankMap = useMemo(() => {
+    const entries = profiles.map(p => ({
+      id: p.id,
+      elo: localElos.get(p.id) ?? 1200,
+    }));
+    entries.sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    entries.forEach((e, idx) => map.set(e.id, idx + 1));
+    return map;
+  }, [profiles, localElos]);
+
     return <div className="min-h-screen" />;
   }
 
