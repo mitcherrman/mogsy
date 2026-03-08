@@ -420,7 +420,7 @@ export default function Profile() {
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
               {/* Left sidebar: Exposure Boost */}
               <div className="lg:w-56 shrink-0 order-2 lg:order-1">
-                <div className="sticky top-20 rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Boost</h3>
