@@ -137,8 +137,8 @@ export default function AdminDemo() {
 
   const themeStyle = theme.styles.pageBg ? { background: theme.styles.pageBg } : {};
 
-  // Card control form for one side
-  const CardControls = ({ card, setCard, side }: { card: CardData; setCard: React.Dispatch<React.SetStateAction<CardData>>; side: "a" | "b" }) => (
+  // Render card controls inline (not as a component, to preserve focus)
+  const renderCardControls = (card: CardData, setCard: React.Dispatch<React.SetStateAction<CardData>>, side: "a" | "b") => (
     <div className="space-y-3">
       <h3 className="text-sm font-bold text-foreground">Card {side.toUpperCase()}</h3>
 
@@ -216,7 +216,6 @@ export default function AdminDemo() {
             checked={card.isWinner}
             onCheckedChange={(v) => {
               setCard(prev => ({ ...prev, isWinner: v }));
-              // Toggle the other card
               const otherSetter = side === "a" ? setCardB : setCardA;
               otherSetter(prev => ({ ...prev, isWinner: !v }));
             }}
@@ -233,7 +232,6 @@ export default function AdminDemo() {
         </Select>
       </div>
 
-      {/* Users mode extras */}
       {mode === "swipe-users" && (
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -265,7 +263,6 @@ export default function AdminDemo() {
         </div>
       )}
 
-      {/* Aura Check extras */}
       {mode === "aura-check" && (
         <div>
           <Label className="text-xs">League Label</Label>
