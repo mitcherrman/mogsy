@@ -144,7 +144,7 @@ export default function Play() {
 
   const toggle = (key: ModeKey) => {
     if (expanded === key) { setExpanded(null); setSubExpanded(null); setSelectedCategory(null); setSelectedSubcategory(null); }
-    else { setExpanded(key); setSubExpanded(null); setSelectedCategory(null); setSelectedSubcategory(null); }
+    else { setExpanded(key); setSubExpanded("swipe"); setSelectedCategory(null); setSelectedSubcategory(null); }
   };
 
   const handleSubToggle = (sub: SubKey) => {
