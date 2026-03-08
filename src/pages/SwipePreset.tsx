@@ -430,7 +430,7 @@ export default function SwipePreset() {
 
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
-      if (!pair || chosen !== null || sliceWinner !== null) return;
+      if (!pair || chosen !== null || sliceWinner !== null || readyDelay) return;
       setChosen(winnerIndex);
       // Check for animation override from league rules
       const override = getAnimationOverride(matchCount + 1, animRules);
