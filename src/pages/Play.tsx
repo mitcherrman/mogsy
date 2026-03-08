@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePlayLayout } from "@/hooks/usePlayLayout";
 
-type ModeKey = "collections" | "compete" | null;
+type ModeKey = "collections" | "compete" | "elocheck" | null;
 type SubKey = "swipe" | "elocheck" | null;
 type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles";
 
