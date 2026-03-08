@@ -1,40 +1,20 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
+## Percentile-Based Rank System (Implemented)
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### The Pattern Difference
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-**SliceBattleAnimation (correct):**
-
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
-
-**Shatter/Burn/Vaporize/Crush (buggy):**
-
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
-
-### Implementation Plan
-
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
-
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
-
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
-
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
