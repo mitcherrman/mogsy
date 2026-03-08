@@ -309,8 +309,8 @@ export default function Play() {
     </motion.button>
   );
 
-  /* ─── Render a single desktop item based on current layout ─── */
-  const renderDesktopItem = (
+  /* ─── Render a single item based on current layout ─── */
+  const renderLayoutItem = (
     key: string,
     onClick: () => void,
     label: string,
@@ -323,7 +323,7 @@ export default function Play() {
       case "bubbles":
         return (
           <motion.div key={key} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: delay || 0 }}>
-            <Bubble size={100} onClick={onClick} active={false} variant={variant || "card"} imageUrl={imageUrl}>
+            <Bubble size={isMobile ? 80 : 100} onClick={onClick} active={false} variant={variant || "card"} imageUrl={imageUrl}>
               <span className="text-xs font-extrabold tracking-wide leading-tight text-center px-1 line-clamp-2">{label}</span>
             </Bubble>
           </motion.div>
