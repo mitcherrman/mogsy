@@ -80,10 +80,20 @@ export default function FloatingThemeSwitcher() {
     setHoveredId(null);
   }, []);
 
-  const visibleThemes = profileThemes.filter((t) => {
-    if (t.id === "default") return true;
-    return !themeConfig?.disabled_themes?.includes(t.id);
-  });
+  const visibleThemes = (() => {
+    const filtered = profileThemes.filter((t) => {
+      if (t.id === "default") return true;
+      if (t.id === "cycle") return !themeConfig?.disabled_themes?.includes(t.id);
+      return !themeConfig?.disabled_themes?.includes(t.id);
+    });
+    // Move cycle to end
+    const cycleIdx = filtered.findIndex((t) => t.id === "cycle");
+    if (cycleIdx > -1) {
+      const [cycleTheme] = filtered.splice(cycleIdx, 1);
+      filtered.push(cycleTheme);
+    }
+    return filtered;
+  })();
 
   const totalPages = Math.ceil(visibleThemes.length / PAGE_SIZE);
   const currentThemes = visibleThemes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);

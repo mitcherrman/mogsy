@@ -3,8 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getThemeById, profileThemes, ProfileTheme } from "@/lib/profile-themes";
 
-const CYCLE_INTERVAL = 8000;
-const FADE_DURATION = 600;
+const DEFAULT_CYCLE_INTERVAL = 8000;
+const DEFAULT_FADE_DURATION = 600;
+
+interface CycleConfig {
+  cycle_interval: number;
+  cycle_fade_duration: number;
+}
 
 interface SitewideThemeContextType {
   theme: ProfileTheme;
@@ -42,16 +47,42 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
   const [cycleIndex, setCycleIndex] = useState(0);
   const [isCycleFading, setIsCycleFading] = useState(false);
   const cycleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [cycleConfig, setCycleConfig] = useState<CycleConfig>({
+    cycle_interval: DEFAULT_CYCLE_INTERVAL,
+    cycle_fade_duration: DEFAULT_FADE_DURATION,
+  });
 
+  // Load admin settings
   useEffect(() => {
     supabase
       .from("app_settings")
       .select("key, value")
-      .eq("key", "sitewide_themes_enabled")
-      .maybeSingle()
+      .in("key", ["sitewide_themes_enabled", "theme_config"])
       .then(({ data }) => {
-        if (data) setIsEnabled((data.value as any)?.enabled ?? true);
+        if (data) {
+          for (const row of data) {
+            if (row.key === "sitewide_themes_enabled") {
+              setIsEnabled((row.value as any)?.enabled ?? true);
+            }
+            if (row.key === "theme_config") {
+              const val = row.value as any;
+              if (val?.cycle_interval) setCycleConfig((c) => ({ ...c, cycle_interval: val.cycle_interval }));
+              if (val?.cycle_fade_duration) setCycleConfig((c) => ({ ...c, cycle_fade_duration: val.cycle_fade_duration }));
+            }
+          }
+        }
       });
+  }, []);
+
+  // Listen for admin config updates
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const config = (e as CustomEvent).detail;
+      if (config?.cycle_interval) setCycleConfig((c) => ({ ...c, cycle_interval: config.cycle_interval }));
+      if (config?.cycle_fade_duration) setCycleConfig((c) => ({ ...c, cycle_fade_duration: config.cycle_fade_duration }));
+    };
+    window.addEventListener("theme-config-updated", handler);
+    return () => window.removeEventListener("theme-config-updated", handler);
   }, []);
 
   useEffect(() => {
@@ -83,18 +114,20 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const fadeDuration = cycleConfig.cycle_fade_duration;
+
     cycleTimerRef.current = setInterval(() => {
       setIsCycleFading(true);
       setTimeout(() => {
         setCycleIndex((i) => (i + 1) % cyclableThemes.length);
         setTimeout(() => setIsCycleFading(false), 50);
-      }, FADE_DURATION);
-    }, CYCLE_INTERVAL);
+      }, fadeDuration);
+    }, cycleConfig.cycle_interval);
 
     return () => {
       if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
     };
-  }, [isCycling]);
+  }, [isCycling, cycleConfig.cycle_interval, cycleConfig.cycle_fade_duration]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Palette, Crown, Eye, Lock, Unlock } from "lucide-react";
+import { Palette, Crown, Eye, Lock, Unlock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { profileThemes } from "@/lib/profile-themes";
+import { Slider } from "@/components/ui/slider";
 import OnboardingFlow from "@/components/OnboardingFlow";
 
 const THEME_COLORS: Record<string, [string, string]> = {
@@ -23,19 +24,23 @@ const THEME_COLORS: Record<string, [string, string]> = {
 interface ThemeConfig {
   enabled: boolean;
   sitewide_enabled: boolean;
-  free_themes: string[]; // theme ids available to everyone
-  pro_themes: string[]; // theme ids only for pro
-  disabled_themes: string[]; // themes hidden entirely
+  free_themes: string[];
+  pro_themes: string[];
+  disabled_themes: string[];
   default_theme: string;
+  cycle_interval: number;
+  cycle_fade_duration: number;
 }
 
 const DEFAULT_CONFIG: ThemeConfig = {
   enabled: true,
   sitewide_enabled: false,
   free_themes: ["default", "midnight", "forest"],
-  pro_themes: ["sunset", "aurora", "royal", "lol", "cyberpunk"],
+  pro_themes: ["sunset", "aurora", "royal", "lol", "cyberpunk", "cycle"],
   disabled_themes: [],
   default_theme: "default",
+  cycle_interval: 8000,
+  cycle_fade_duration: 600,
 };
 
 export default function AdminThemes() {
@@ -86,7 +91,6 @@ export default function AdminThemes() {
       return;
     }
     toast.success("Theme settings saved");
-    // Notify theme picker to refresh
     window.dispatchEvent(new CustomEvent("theme-config-updated", { detail: config }));
   };
 
@@ -97,15 +101,13 @@ export default function AdminThemes() {
   };
 
   const cycleThemeStatus = (id: string) => {
-    if (id === "default") return; // default can't be changed
+    if (id === "default") return;
     const current = getThemeStatus(id);
     setConfig((prev) => {
       const next = { ...prev };
-      // Remove from all lists
       next.free_themes = next.free_themes.filter((t) => t !== id);
       next.pro_themes = next.pro_themes.filter((t) => t !== id);
       next.disabled_themes = next.disabled_themes.filter((t) => t !== id);
-      // Cycle: free -> pro -> disabled -> free
       if (current === "free") next.pro_themes.push(id);
       else if (current === "pro") next.disabled_themes.push(id);
       else next.free_themes.push(id);
@@ -115,7 +117,8 @@ export default function AdminThemes() {
 
   if (loading) return null;
 
-  const nonDefaultThemes = profileThemes.filter((t) => t.id !== "default");
+  const nonDefaultThemes = profileThemes.filter((t) => t.id !== "default" && t.id !== "cycle");
+  const cycleStatus = getThemeStatus("cycle");
 
   return (
     <div className="space-y-6">
@@ -156,10 +159,67 @@ export default function AdminThemes() {
             onChange={(e) => setConfig((c) => ({ ...c, default_theme: e.target.value }))}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           >
-            {profileThemes.map((t) => (
+            {profileThemes.filter((t) => t.id !== "cycle").map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* Cycle All Theme Settings */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <RefreshCw className="h-3.5 w-3.5" /> Cycle All Theme
+        </h4>
+        <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Availability</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Click to cycle: Free → Pro → Disabled</p>
+            </div>
+            <button
+              onClick={() => cycleThemeStatus("cycle")}
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-colors ${
+                cycleStatus === "free" ? "bg-green-500/20 text-green-500" :
+                cycleStatus === "pro" ? "bg-yellow-500/20 text-yellow-500" :
+                "bg-destructive/20 text-destructive"
+              }`}
+            >
+              {cycleStatus === "free" ? "Everyone" : cycleStatus === "pro" ? "Pro Only" : "Hidden"}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Cycle Speed</Label>
+              <span className="text-xs text-muted-foreground font-mono">{(config.cycle_interval / 1000).toFixed(1)}s</span>
+            </div>
+            <Slider
+              value={[config.cycle_interval]}
+              onValueChange={([v]) => setConfig((c) => ({ ...c, cycle_interval: v }))}
+              min={3000}
+              max={30000}
+              step={500}
+              className="w-full"
+            />
+            <p className="text-[10px] text-muted-foreground">Time each theme is displayed before transitioning</p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Fade Duration</Label>
+              <span className="text-xs text-muted-foreground font-mono">{config.cycle_fade_duration}ms</span>
+            </div>
+            <Slider
+              value={[config.cycle_fade_duration]}
+              onValueChange={([v]) => setConfig((c) => ({ ...c, cycle_fade_duration: v }))}
+              min={200}
+              max={2000}
+              step={50}
+              className="w-full"
+            />
+            <p className="text-[10px] text-muted-foreground">How long the fade transition takes between themes</p>
+          </div>
         </div>
       </div>
 
@@ -227,7 +287,6 @@ export default function AdminThemes() {
               onChange={(e) => {
                 const val = e.target.value;
                 setPreviewTheme(val || null);
-                // Apply temporary theme class
                 document.documentElement.classList.remove(
                   ...profileThemes.map((t) => `theme-${t.id}`).filter((c) => c !== "theme-default")
                 );
@@ -238,7 +297,7 @@ export default function AdminThemes() {
               className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
             >
               <option value="">None</option>
-              {profileThemes.map((t) => (
+              {profileThemes.filter((t) => t.id !== "cycle").map((t) => (
                 <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>
