@@ -53,7 +53,7 @@ export default function DefaultFadeAnimation({ winnerSide, items, onComplete }: 
                   } : {}}
                   transition={{ duration: 0.5, delay: 0.05 }}
                 >
-                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                     {phase !== "idle" && (
                       <motion.div
