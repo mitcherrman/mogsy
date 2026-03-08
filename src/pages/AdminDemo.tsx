@@ -868,6 +868,31 @@ export default function AdminDemo() {
                   <Play className="h-3.5 w-3.5" /> Play Animation
                 </Button>
               )}
+              {mode !== "aura-check" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isRecording}
+                  onClick={() => {
+                    recordGif(() => {
+                      const winner = cardA.isWinner ? 0 : 1;
+                      playAnimationSound(animationId);
+                      setAnimWinner(winner as 0 | 1);
+                    });
+                  }}
+                >
+                  {isRecording ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%
+                    </>
+                  ) : (
+                    <>
+                      <Film className="h-3.5 w-3.5" /> GIF
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
