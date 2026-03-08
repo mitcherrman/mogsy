@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ThemeOverlayProps {
@@ -636,6 +636,79 @@ function CyberpunkOverlay() {
 }
 
 /* ────────────────────────────────────
+   MOGGED – Gigachad fade-in with sound
+   ──────────────────────────────────── */
+function MoggedOverlay() {
+  const [show, setShow] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Small delay then fade in + play sound
+    const t = setTimeout(() => {
+      setShow(true);
+      try {
+        const audio = new Audio("/sounds/mogged.mp3");
+        audio.volume = 0.6;
+        audio.play().catch(() => {});
+        audioRef.current = audio;
+      } catch {}
+    }, 300);
+
+    return () => {
+      clearTimeout(t);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <>
+      {/* Vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse at center, transparent 30%, hsl(0,0%,0%) 100%)",
+          opacity: 0.7,
+        }}
+      />
+
+      {/* Gigachad image */}
+      <div
+        className="absolute bottom-0 right-0 pointer-events-none transition-all duration-[2000ms] ease-out"
+        style={{
+          opacity: show ? 0.35 : 0,
+          transform: show ? "translateY(0) scale(1)" : "translateY(40px) scale(0.95)",
+          width: "min(60%, 400px)",
+          height: "auto",
+        }}
+      >
+        <img
+          src="/images/gigachad-nobg.png"
+          alt=""
+          className="w-full h-auto grayscale"
+          style={{ maskImage: "linear-gradient(to top, black 40%, transparent 100%)" }}
+        />
+      </div>
+
+      {/* "MOGGED" text watermark */}
+      <div
+        className="absolute top-[15%] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-[2500ms]"
+        style={{ opacity: show ? 0.06 : 0 }}
+      >
+        <span
+          className="text-[8rem] sm:text-[12rem] font-black tracking-[0.3em] select-none"
+          style={{ color: "hsl(0,0%,100%)", fontFamily: "Impact, sans-serif" }}
+        >
+          MOGGED
+        </span>
+      </div>
+    </>
+  );
+}
+
+/* ────────────────────────────────────
    Main overlay switch
    ──────────────────────────────────── */
 export default function ThemeOverlay({ themeId }: ThemeOverlayProps) {
@@ -648,6 +721,7 @@ export default function ThemeOverlay({ themeId }: ThemeOverlayProps) {
       {themeId === "royal" && <RoyalOverlay />}
       {themeId === "lol" && <LolOverlay />}
       {themeId === "cyberpunk" && <CyberpunkOverlay />}
+      {themeId === "mogged" && <MoggedOverlay />}
     </div>
   );
 }
