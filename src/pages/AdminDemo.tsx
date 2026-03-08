@@ -458,7 +458,7 @@ export default function AdminDemo() {
         >
           <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden ${frame}`}>
             {card.imageUrl ? (
-              <img src={card.imageUrl} alt={card.name} className="w-full h-full object-cover" />
+              <img src={card.imageUrl} alt={card.name} className="w-full h-full object-contain" />
             ) : isUserMode ? (
               <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
                 <User className="h-12 w-12 text-muted-foreground/70" />
