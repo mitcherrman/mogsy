@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminStats from "@/components/admin/AdminStats";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminRankSettings from "@/components/admin/AdminRankSettings";
 import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";

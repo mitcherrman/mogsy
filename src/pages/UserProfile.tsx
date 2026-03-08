@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/UserAvatar";
 import TierBadge from "@/components/TierBadge";
 import SEOHead from "@/components/SEOHead";
-import { getTierFromElo } from "@/lib/mock-data";
+import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, getTierIcon, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/mock-data";
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
