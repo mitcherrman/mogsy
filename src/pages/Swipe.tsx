@@ -419,7 +419,7 @@ export default function Swipe() {
           </div>
 
           {/* Capturable matchup area */}
-          <MatchupCapture ref={captureRef} leagueName="Who's Better?">
+          <MatchupCapture ref={captureRef} leagueName="Swipe On Who Mogs">
               <motion.div
                 key={`pair-${pair[0].id}-${pair[1].id}-${matchCount}`}
                 initial={{ opacity: 0 }}
