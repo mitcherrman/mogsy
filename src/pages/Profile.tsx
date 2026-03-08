@@ -52,6 +52,7 @@ export default function Profile() {
   const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
