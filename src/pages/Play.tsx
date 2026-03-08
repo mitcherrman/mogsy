@@ -39,7 +39,7 @@ const LAYOUT_OPTIONS: { id: DesktopLayout; icon: React.ReactNode; label: string 
   { id: "pills", icon: <RectangleHorizontal className="h-3.5 w-3.5" />, label: "Pills" },
   { id: "grid", icon: <LayoutGrid className="h-3.5 w-3.5" />, label: "Grid" },
   { id: "list", icon: <List className="h-3.5 w-3.5" />, label: "List" },
-  { id: "tiles", icon: <Square className="h-3.5 w-3.5" />, label: "Tiles" },
+  
 ];
 
 export default function Play() {
