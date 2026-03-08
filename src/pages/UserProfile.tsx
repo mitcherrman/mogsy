@@ -158,6 +158,24 @@ export default function UserProfile() {
   const loadProfile = async () => {
     setLoading(true);
 
+    // Load rank config
+    const { data: rankData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "rank_tiers")
+      .maybeSingle();
+    let localTierConfig = DEFAULT_TIER_CONFIG;
+    let localRankEnabled = true;
+    if (rankData?.value) {
+      const val = rankData.value as any;
+      localRankEnabled = val.enabled ?? true;
+      if (Array.isArray(val.tiers) && val.tiers.length > 0) {
+        localTierConfig = val.tiers;
+      }
+    }
+    setTierConfig(localTierConfig);
+    setRankEnabled(localRankEnabled);
+
     // Fetch profile
     const { data: profileData } = await supabase
       .from("public_profiles")
