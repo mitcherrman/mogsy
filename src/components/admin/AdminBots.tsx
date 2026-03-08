@@ -49,7 +49,7 @@ export default function AdminBots() {
     const { error } = await supabase.from("profiles").insert({
       user_id: crypto.randomUUID(),
       display_name: newBot.display_name,
-      avatar_url: newBot.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${newBot.display_name}`,
+      avatar_url: newBot.avatar_url || `https://i.pravatar.cc/500?u=${newBot.display_name}`,
       age: newBot.age ? parseInt(newBot.age) : null,
       location: newBot.location || null,
       status_message: newBot.status_message || null,
