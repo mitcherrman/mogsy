@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Gift } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import OnboardingFlow from "@/components/OnboardingFlow";
 import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
+import { getCuratedConfig, clearCuratedConfig } from "@/pages/CustomLink";
 
 interface LeagueInfo {
   id: string;
@@ -92,6 +93,7 @@ export default function Home() {
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
   const [playCollections, setPlayCollections] = useState<MostPlayedLeague[]>([]);
   const [playCompetes, setPlayCompetes] = useState<MostPlayedLeague[]>([]);
+  const [curatedLeagues, setCuratedLeagues] = useState<{ id: string; name: string; image: string | null }[]>([]);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -131,6 +133,30 @@ export default function Home() {
     const cats = (profile.preferred_categories as string[]) || [];
     setPreferredCategories(cats);
     await loadData(profile.id, cats);
+
+    // Load curated leagues from custom link if present
+    const curated = getCuratedConfig();
+    if (curated && curated.recommended_league_ids.length > 0) {
+      const { data: curatedData } = await supabase
+        .from("leagues")
+        .select("id, name")
+        .in("id", curated.recommended_league_ids);
+      if (curatedData && curatedData.length > 0) {
+        // Get preview images for these leagues
+        const leagueIds = curatedData.map(l => l.id);
+        const { data: items } = await supabase
+          .from("preset_items")
+          .select("league_id, image_url")
+          .in("league_id", leagueIds)
+          .not("image_url", "is", null)
+          .not("image_url", "eq", "")
+          .limit(20);
+        const imgMap = new Map<string, string>();
+        items?.forEach(i => { if (!imgMap.has(i.league_id)) imgMap.set(i.league_id, i.image_url!); });
+        setCuratedLeagues(curatedData.map(l => ({ id: l.id, name: l.name, image: imgMap.get(l.id) || null })));
+      }
+      clearCuratedConfig();
+    }
   };
 
   const handleOnboardingComplete = async (categories: string[]) => {
@@ -654,6 +680,30 @@ export default function Home() {
                   </div>
                 </motion.div>
               </AnimatePresence>
+            </div>
+          </section>
+        )}
+
+        {/* Curated "Recommended for you" from custom link */}
+        {curatedLeagues.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Gift className="h-5 w-5 text-primary" />
+              <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">Recommended for You</h2>
+            </div>
+            <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
+              {curatedLeagues.map((league) => (
+                <div key={league.id} className="flex flex-col items-center gap-1.5">
+                  <CategoryBubble
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe/preset/${league.id}`)}
+                    imageUrl={league.image}
+                    label={league.name}
+                    sublabel="Curated"
+                    variant="accent"
+                  />
+                </div>
+              ))}
             </div>
           </section>
         )}
