@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/AdBanner";
+import { logAdEvent } from "@/lib/ad-analytics";
 
 export interface AdCreative {
   id: string;
@@ -21,14 +22,19 @@ interface SwipeAdCardProps {
   /** When set, renders a Google AdSense unit instead of a custom creative */
   adsenseSlot?: string;
   adsenseClientId?: string;
+  placement?: string;
+  adSource?: string;
+  profileId?: string;
 }
 
-export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId }: SwipeAdCardProps) {
+export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId, placement = "swipe", adSource = "custom", profileId }: SwipeAdCardProps) {
   const duration = creative?.view_duration_seconds ?? 5;
   const [countdown, setCountdown] = useState(duration);
+  const logged = useRef(false);
 
   useEffect(() => {
     setCountdown(duration);
+    logged.current = false;
     const timer = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
@@ -40,6 +46,14 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
     }, 1000);
     return () => clearInterval(timer);
   }, [creative?.id, duration, adsenseSlot]);
+
+  // Log impression once
+  useEffect(() => {
+    if (!logged.current) {
+      logged.current = true;
+      logAdEvent({ eventType: "impression", creativeId: creative?.id, placement, adMode: "in_swipe", adSource, profileId });
+    }
+  }, [creative?.id, adsenseSlot]);
 
   const isAdsense = !!adsenseSlot;
 
@@ -115,7 +129,10 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
                 size="sm"
                 variant="outline"
                 className="flex-1 text-xs h-7"
-                onClick={() => window.open(creative.destination_url, "_blank")}
+                onClick={() => {
+                  logAdEvent({ eventType: "cta_click", creativeId: creative.id, placement, adMode: "in_swipe", adSource, profileId });
+                  window.open(creative.destination_url, "_blank");
+                }}
               >
                 <ExternalLink className="h-3 w-3 mr-1" /> {creative.cta_text}
               </Button>
@@ -124,7 +141,10 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
               size="sm"
               variant="secondary"
               className={`text-xs h-7 ${isAdsense ? "w-full" : "flex-1"}`}
-              onClick={onSkip}
+              onClick={() => {
+                logAdEvent({ eventType: "skip", creativeId: creative?.id, placement, adMode: "in_swipe", adSource, profileId });
+                onSkip();
+              }}
             >
               Skip
             </Button>

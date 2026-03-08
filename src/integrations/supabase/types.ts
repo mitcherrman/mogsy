@@ -56,6 +56,47 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_events: {
+        Row: {
+          ad_mode: string
+          ad_source: string
+          created_at: string
+          creative_id: string | null
+          event_type: string
+          id: string
+          placement: string
+          profile_id: string | null
+        }
+        Insert: {
+          ad_mode?: string
+          ad_source?: string
+          created_at?: string
+          creative_id?: string | null
+          event_type?: string
+          id?: string
+          placement?: string
+          profile_id?: string | null
+        }
+        Update: {
+          ad_mode?: string
+          ad_source?: string
+          created_at?: string
+          creative_id?: string | null
+          event_type?: string
+          id?: string
+          placement?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_events_creative_id_fkey"
+            columns: ["creative_id"]
+            isOneToOne: false
+            referencedRelation: "ad_creatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notifications: {
         Row: {
           created_at: string

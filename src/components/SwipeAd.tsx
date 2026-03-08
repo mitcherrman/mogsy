@@ -1,24 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AdBanner from "@/components/AdBanner";
+import { logAdEvent } from "@/lib/ad-analytics";
 
 interface SwipeAdProps {
   onClose: () => void;
   isPro: boolean;
-  /** When set, renders a Google AdSense unit instead of the placeholder */
   adsenseSlot?: string;
   adsenseClientId?: string;
+  placement?: string;
+  adSource?: string;
+  profileId?: string;
 }
 
-export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId }: SwipeAdProps) {
+export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId, placement = "swipe", adSource = "custom", profileId }: SwipeAdProps) {
   const [countdown, setCountdown] = useState(5);
+  const logged = useRef(false);
 
   useEffect(() => {
     if (isPro) {
       onClose();
       return;
+    }
+    if (!logged.current) {
+      logged.current = true;
+      logAdEvent({ eventType: "impression", placement, adMode: "popup", adSource, profileId });
     }
     const timer = setInterval(() => {
       setCountdown((c) => {
@@ -76,7 +84,10 @@ export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId }
               Continue in <span className="font-bold text-foreground">{countdown}s</span>
             </p>
           ) : (
-            <Button onClick={onClose} variant="outline" className="w-full">
+            <Button onClick={() => {
+              logAdEvent({ eventType: "skip", placement, adMode: "popup", adSource, profileId });
+              onClose();
+            }} variant="outline" className="w-full">
               <X className="h-4 w-4 mr-1" /> Continue Swiping
             </Button>
           )}

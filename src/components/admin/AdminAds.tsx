@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import SwipeAdCard from "@/components/SwipeAdCard";
 import type { AdCreative } from "@/components/SwipeAdCard";
+import AdminAdAnalytics from "@/components/admin/AdminAdAnalytics";
 
 /* ───── Types ───── */
 
@@ -753,6 +754,9 @@ export default function AdminAds() {
           );
         })}
       </div>
+
+      {/* ═══════ Ad Analytics ═══════ */}
+      <AdminAdAnalytics />
 
       {/* Per-user search */}
       <div className="space-y-3">

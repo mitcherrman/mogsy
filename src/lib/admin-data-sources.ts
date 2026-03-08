@@ -511,6 +511,97 @@ const sources: DataSourceDef[] = [
       return { labels: b.labels, datasets: [{ label: "Leagues", values: b.counts }] };
     },
   },
+  // ─── ADS ───
+  {
+    id: "ad_impressions_over_time",
+    name: "Ad Impressions Over Time",
+    category: "Ads",
+    description: "Daily ad impression count",
+    fetch: async ({ days = 30 } = {}) => {
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+      const { data } = await supabase.from("ad_events").select("created_at").eq("event_type", "impression").gte("created_at", since);
+      const b = bucketByDay((data || []).map((r: any) => r.created_at), days);
+      return { labels: b.labels, datasets: [{ label: "Impressions", values: b.counts }] };
+    },
+  },
+  {
+    id: "ad_clicks_over_time",
+    name: "Ad Clicks Over Time",
+    category: "Ads",
+    description: "Daily ad click count (CTA + skip)",
+    fetch: async ({ days = 30 } = {}) => {
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+      const { data } = await supabase.from("ad_events").select("created_at, event_type").in("event_type", ["click", "cta_click", "skip"]).gte("created_at", since);
+      const clicks = (data || []).filter((r: any) => r.event_type !== "skip");
+      const skips = (data || []).filter((r: any) => r.event_type === "skip");
+      const bClicks = bucketByDay(clicks.map((r: any) => r.created_at), days);
+      const bSkips = bucketByDay(skips.map((r: any) => r.created_at), days);
+      return { labels: bClicks.labels, datasets: [{ label: "CTA Clicks", values: bClicks.counts }, { label: "Skips", values: bSkips.counts }] };
+    },
+  },
+  {
+    id: "ad_impressions_by_placement",
+    name: "Ad Impressions by Placement",
+    category: "Ads",
+    description: "Impression count grouped by placement",
+    fetch: async () => {
+      const { data } = await supabase.from("ad_events").select("placement").eq("event_type", "impression");
+      const b = countField(data || [], "placement");
+      return { labels: b.labels, datasets: [{ label: "Impressions", values: b.counts }] };
+    },
+  },
+  {
+    id: "ad_mode_distribution",
+    name: "Ad Mode Distribution",
+    category: "Ads",
+    description: "Popup vs In-Swipe impressions",
+    fetch: async () => {
+      const { data } = await supabase.from("ad_events").select("ad_mode").eq("event_type", "impression");
+      const b = countField(data || [], "ad_mode");
+      return { labels: b.labels, datasets: [{ label: "Impressions", values: b.counts }] };
+    },
+  },
+  {
+    id: "ad_source_distribution",
+    name: "Ad Source Distribution",
+    category: "Ads",
+    description: "Custom vs AdSense vs Hybrid impressions",
+    fetch: async () => {
+      const { data } = await supabase.from("ad_events").select("ad_source").eq("event_type", "impression");
+      const b = countField(data || [], "ad_source");
+      return { labels: b.labels, datasets: [{ label: "Impressions", values: b.counts }] };
+    },
+  },
+  {
+    id: "ad_ctr_over_time",
+    name: "Ad CTR Over Time",
+    category: "Ads",
+    description: "Click-through rate per day",
+    fetch: async ({ days = 30 } = {}) => {
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+      const { data } = await supabase.from("ad_events").select("created_at, event_type").gte("created_at", since);
+      const dayImpressions = new Map<string, number>();
+      const dayClicks = new Map<string, number>();
+      const numDays = days;
+      for (let i = numDays - 1; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        dayImpressions.set(key, 0);
+        dayClicks.set(key, 0);
+      }
+      for (const e of data || []) {
+        const key = (e as any).created_at.slice(0, 10);
+        if ((e as any).event_type === "impression") dayImpressions.set(key, (dayImpressions.get(key) || 0) + 1);
+        if ((e as any).event_type === "cta_click" || (e as any).event_type === "click") dayClicks.set(key, (dayClicks.get(key) || 0) + 1);
+      }
+      const labels = Array.from(dayImpressions.keys());
+      const values = labels.map(l => {
+        const imp = dayImpressions.get(l) || 0;
+        return imp > 0 ? Math.round(((dayClicks.get(l) || 0) / imp) * 1000) / 10 : 0;
+      });
+      return { labels, datasets: [{ label: "CTR %", values }] };
+    },
+  },
 ];
 
 export function getDataSources(): DataSourceDef[] {
