@@ -578,6 +578,9 @@ export default function SwipePreset() {
             >
               <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
+            <p className="text-muted-foreground text-xs shrink-0">
+              <span className="text-primary font-bold">{matchCount}</span>
+            </p>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
               {leagueName}
             </span>
