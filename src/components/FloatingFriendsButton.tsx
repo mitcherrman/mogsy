@@ -62,7 +62,7 @@ export default function FloatingFriendsButton() {
           >
             <Users className="h-4 w-4" />
             {pendingRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {pendingRequests.length}
               </span>
             )}
