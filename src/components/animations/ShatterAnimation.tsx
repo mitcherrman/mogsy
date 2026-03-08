@@ -60,7 +60,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
               return (
                 <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </div>
                   <AnimationCardStats item={item} />
                 </div>
@@ -81,7 +81,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
                       } : {}}
                       transition={{ duration: 0.5, delay: f.delay, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                     </motion.div>
                   ))}
                 </div>
