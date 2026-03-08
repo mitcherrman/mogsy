@@ -623,9 +623,9 @@ export default function Profile() {
                 </div>
 
                 {/* Social links */}
-                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-                  <Label className="text-base font-bold block">Social Links</Label>
-                  <p className="text-xs text-muted-foreground">Paste the full link to your profile. Usernames and @ handles won't be accepted.</p>
+                <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 space-y-3">
+                  <Label className="text-sm sm:text-base font-bold block">Social Links</Label>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Paste the full link to your profile. Usernames and @ handles won't be accepted.</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {["instagram", "tiktok", "youtube", "x", "twitch", "website"].map((s) => (
                       <div key={s} className="space-y-1">
