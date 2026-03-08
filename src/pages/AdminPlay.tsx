@@ -604,6 +604,7 @@ function DragItem({
   expandable,
   expanded,
   onExpand,
+  onViewItems,
 }: {
   label: string;
   sublabel?: string;
@@ -614,6 +615,7 @@ function DragItem({
   expandable?: boolean;
   expanded?: boolean;
   onExpand?: () => void;
+  onViewItems?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
@@ -628,6 +630,11 @@ function DragItem({
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
+      {onViewItems && (
+        <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
+          <ImageIcon className="h-3.5 w-3.5 text-primary" />
+        </button>
+      )}
       <button onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
         {hidden ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-foreground" />}
       </button>
