@@ -16,6 +16,10 @@ interface SettingsState {
   favorites_mode: "auto" | "manual";
   swipe_timer_enabled: boolean;
   swipe_timer_duration: number;
+  shop_ad_enabled: boolean;
+  shop_ad_type: "pro" | "diamonds";
+  shop_ad_headline: string;
+  shop_ad_subtext: string;
 }
 
 export default function AdminSettings() {
