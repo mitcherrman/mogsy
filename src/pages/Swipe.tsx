@@ -358,21 +358,20 @@ export default function Swipe() {
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="flex-1 text-center">
-              <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
-            </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-xs shrink-0">
               Matches: <span className="text-primary font-bold">{matchCount}</span>
               {gauntletMode && gauntletStreak > 0 && (
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
+            <div className="flex-1 text-center">
+              <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
+            </div>
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {user && (
                 <SwipeAnimationPicker
                   currentAnimation={swipeAnimation}
