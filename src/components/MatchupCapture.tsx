@@ -5,10 +5,11 @@ import { SITE_DOMAIN } from "@/lib/site-config";
 interface MatchupCaptureProps {
   leagueName: string;
   children: ReactNode;
+  centerSlot?: ReactNode;
 }
 
 const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
-  ({ leagueName, children }, ref) => {
+  ({ leagueName, children, centerSlot }, ref) => {
     return (
       <div
         ref={ref}
@@ -20,6 +21,11 @@ const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
             <img src={mogsyLogo} alt="Mogsy" className="h-5 w-5 rounded-md" />
             <span className="text-xs font-extrabold text-foreground tracking-tight">MOGSY</span>
           </div>
+          {centerSlot && (
+            <div className="flex items-center justify-center">
+              {centerSlot}
+            </div>
+          )}
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {leagueName}
           </span>
