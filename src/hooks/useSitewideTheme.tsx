@@ -156,7 +156,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     if (!valid) return;
     localStorage.setItem("mogsy-active-theme", id);
     setThemeId(id);
-    if (id === "cycle") setCycleIndex(0);
+    if (id === "cycle") setCycleIndex(Math.floor(Math.random() * cyclableThemes.length));
     if (user) {
       supabase
         .from("profiles")
