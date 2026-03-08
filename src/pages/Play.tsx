@@ -332,10 +332,8 @@ export default function Play() {
         return <RectPill {...props} />;
       case "grid":
         return <GridCard {...props} />;
-      case "list":
+       case "list":
         return <ListRow {...props} />;
-      case "tiles":
-        return <TileSquare {...props} />;
     }
   };
 
