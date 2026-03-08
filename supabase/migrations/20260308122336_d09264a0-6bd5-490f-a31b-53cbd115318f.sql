@@ -1,0 +1,1 @@
+INSERT INTO public.app_settings (key, value) VALUES ('swipe_timer', '{"enabled": false, "duration_seconds": 10}'::jsonb) ON CONFLICT (key) DO NOTHING;
