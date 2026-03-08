@@ -24,6 +24,8 @@ export default function FloatingThemeSwitcher() {
   const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 5;
 
   // Load theme config
   useEffect(() => {
