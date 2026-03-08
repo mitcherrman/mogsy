@@ -195,7 +195,7 @@ export function useAnimationSound() {
       if (!doakesBufferRef.current) await loadDoakesSound();
       if (doakesBufferRef.current) {
         const dur = doakesBufferRef.current.duration;
-        const trimmed = Math.max(0, dur - 0.2);
+        const trimmed = Math.max(0, dur - 0.25);
         const s2 = ctx.createBufferSource();
         const g2 = ctx.createGain();
         g2.gain.value = 0.6;
