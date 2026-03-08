@@ -634,7 +634,7 @@ export default function Play() {
           )}
         </div>
         {/* Layout toggle below header */}
-        {subExpanded && (
+        {subExpanded && selectedCategory && (
           <div className="flex items-center justify-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50 w-fit mx-auto mb-4">
             {LAYOUT_OPTIONS.map(opt => (
               <button
