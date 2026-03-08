@@ -8,18 +8,16 @@ function getImageUrl(item: AnimationCardItem): string {
   return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
 }
 
-/** Among Us backstab — loser gets stabbed and fades to red, GIF flashes over them */
 export default function AmongUsAnimation({ winnerSide, items, onComplete }: Props) {
-  const [phase, setPhase] = useState<"idle" | "stab" | "dead" | "done">("idle");
+  const [phase, setPhase] = useState<"idle" | "stab" | "done">("idle");
 
   const finish = useCallback(() => { setPhase("done"); onComplete(); }, [onComplete]);
 
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("stab");
-    const t1 = setTimeout(() => setPhase("dead"), 400);
-    const t2 = setTimeout(finish, 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t = setTimeout(finish, 1500);
+    return () => { clearTimeout(t); };
   }, [winnerSide, finish]);
 
   if (winnerSide === null || items.length < 2) return null;
@@ -68,55 +66,31 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
             return (
               <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
                 <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
-                  {/* Loser image fades and turns red */}
-                  <motion.div className="absolute inset-0"
-                    initial={{ opacity: 1 }}
-                    animate={phase === "stab" ? { opacity: 0.7 } : phase === "dead" ? { opacity: 0 } : {}}
-                    transition={{ duration: phase === "dead" ? 0.5 : 0.2 }}
-                  >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
-                  </motion.div>
+                  <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
 
-                  {/* Red blood overlay */}
-                  {(phase === "stab" || phase === "dead") && (
-                    <motion.div
-                      className="absolute inset-0 bg-red-600/60"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: phase === "dead" ? 0.8 : 0.4 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
-
-                  {/* Among Us GIF overlay — appears on stab */}
-                  {(phase === "stab" || phase === "dead") && (
-                    <motion.div
-                      className="absolute inset-0 flex items-center justify-center z-10"
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: phase === "dead" ? 0 : 1 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                    >
-                      <img
-                        src="/images/amongus-backstab.gif"
-                        alt="Among Us backstab"
-                        className="w-3/4 h-3/4 object-contain drop-shadow-2xl"
-                        draggable={false}
+                  {/* Red overlay + GIF play simultaneously */}
+                  {phase === "stab" && (
+                    <>
+                      <motion.div
+                        className="absolute inset-0 bg-red-600/30"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
                       />
-                    </motion.div>
-                  )}
-
-                  {/* "EJECTED" text */}
-                  {phase === "dead" && (
-                    <motion.div
-                      className="absolute inset-0 flex items-center justify-center z-20"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                    >
-                      <span className="text-2xl md:text-3xl font-black text-white tracking-widest drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] select-none"
-                        style={{ textShadow: "0 0 20px rgba(255,0,0,0.6)" }}>
-                        EJECTED
-                      </span>
-                    </motion.div>
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center z-10"
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                      >
+                        <img
+                          src="/images/amongus-backstab.gif"
+                          alt="Among Us backstab"
+                          className="w-3/4 h-3/4 object-contain drop-shadow-2xl"
+                          draggable={false}
+                        />
+                      </motion.div>
+                    </>
                   )}
                 </div>
                 <AnimationCardStats item={item} />
