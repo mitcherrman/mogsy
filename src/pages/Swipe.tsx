@@ -402,7 +402,16 @@ export default function Swipe() {
                 {/* Left / Top card */}
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-                  <div className="flex justify-center mt-1">
+                  <div className="flex items-center justify-center gap-3 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
+                      <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(pair[0].id)}</span>
+                      <span className="mx-1 text-muted-foreground/30">|</span>
+                      <span className="font-semibold text-blue-400">{pair[0].elo}</span>
+                      <span className="ml-0.5 text-blue-400/70">#{globalRankMap.get(pair[0].id)}</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-center mt-0.5">
                     <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                   </div>
                 </div>
@@ -415,7 +424,16 @@ export default function Swipe() {
                 {/* Right / Bottom card */}
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
-                  <div className="flex justify-center mt-1">
+                  <div className="flex items-center justify-center gap-3 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
+                      <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
+                      <span className="mx-1 text-muted-foreground/30">|</span>
+                      <span className="font-semibold text-blue-400">{pair[1].elo}</span>
+                      <span className="ml-0.5 text-blue-400/70">#{globalRankMap.get(pair[1].id)}</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-center mt-0.5">
                     <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                   </div>
                 </div>
