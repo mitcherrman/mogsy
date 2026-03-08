@@ -334,6 +334,8 @@ export default function Play() {
         return <GridCard {...props} />;
        case "list":
         return <ListRow {...props} />;
+      case "tiles":
+        return <TileSquare {...props} />;
     }
   };
 
