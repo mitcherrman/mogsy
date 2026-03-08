@@ -93,13 +93,18 @@ export default function AdminDemo() {
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
   const { visualThemeId: sitewideThemeId } = useSitewideTheme();
 
-  // Override the sitewide theme on <html> with the demo-selected theme
+  // Save the sitewide theme classes on mount, restore on unmount
+  const savedClassesRef = useRef<string>("");
+  useEffect(() => {
+    savedClassesRef.current = document.documentElement.className;
+    return () => {
+      document.documentElement.className = savedClassesRef.current;
+    };
+  }, []);
+
+  // Override <html> with the demo-selected theme, ignoring sitewide cycle changes
   useEffect(() => {
     const root = document.documentElement;
-    // Save current theme classes to restore later
-    const savedClasses = root.className;
-
-    // Remove existing theme classes
     root.className = root.className.replace(/theme-\S+/g, "").trim();
 
     if (themeId === "default") {
@@ -109,15 +114,26 @@ export default function AdminDemo() {
       root.classList.add("dark");
       root.classList.add(`theme-${themeId}`);
     }
+  }, [themeId]);
 
-    return () => {
-      // Restore original theme on unmount
-      root.className = root.className.replace(/theme-\S+/g, "").trim();
-      if (sitewideThemeId && sitewideThemeId !== "default") {
-        root.classList.add("dark");
-        root.classList.add(`theme-${sitewideThemeId}`);
+  // Block sitewide cycle theme from overriding the demo page
+  useEffect(() => {
+    if (!sitewideThemeId || sitewideThemeId === "default") return;
+    // When the cycle changes the root classes, re-apply demo theme
+    const observer = new MutationObserver(() => {
+      const root = document.documentElement;
+      const hasWrongTheme = Array.from(root.classList).some(
+        c => c.startsWith("theme-") && c !== `theme-${themeId}`
+      );
+      if (hasWrongTheme) {
+        root.className = root.className.replace(/theme-\S+/g, "").trim();
+        if (themeId !== "default") {
+          root.classList.add("dark", `theme-${themeId}`);
+        }
       }
-    };
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
   }, [themeId, sitewideThemeId]);
 
   const searchItems = useCallback(async (query: string) => {
