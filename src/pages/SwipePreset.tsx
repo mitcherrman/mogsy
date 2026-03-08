@@ -45,7 +45,7 @@ interface ItemImage {
   sort_order: number;
 }
 
-const AD_INTERVAL = 10;
+const AD_INTERVAL_FALLBACK = 10;
 
 function generateMatchups(items: PresetItem[]): [PresetItem, PresetItem][] {
   const pairs: [PresetItem, PresetItem][] = [];
