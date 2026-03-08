@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Crown, CheckCircle2, XCircle, Search,
-  Smartphone, Monitor, Play, Globe, User, Maximize2, X
+  Smartphone, Monitor, Play, Globe, User, Maximize2, X, Film, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useScreenshot } from "@/hooks/useScreenshot";
+import { useGifExport } from "@/hooks/useGifExport";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
@@ -65,6 +66,12 @@ export default function AdminDemo() {
   const isMobile = useIsMobile();
   const captureRef = useRef<HTMLDivElement>(null);
   const { capture } = useScreenshot(captureRef);
+  const { recordGif, isRecording, progress } = useGifExport(captureRef, {
+    scale: 2,
+    fps: 20,
+    maxColors: 255,
+    duration: 3000,
+  });
   const { playAnimationSound } = useAnimationSound();
 
   const [mode, setMode] = useState<DemoMode>("swipe-collections");
@@ -694,6 +701,31 @@ export default function AdminDemo() {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
             <Camera className="h-3.5 w-3.5" /> Screenshot
           </Button>
+          {mode !== "aura-check" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={isRecording}
+              onClick={() => {
+                recordGif(() => {
+                  const winner = cardA.isWinner ? 0 : 1;
+                  playAnimationSound(animationId);
+                  setAnimWinner(winner as 0 | 1);
+                });
+              }}
+            >
+              {isRecording ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%
+                </>
+              ) : (
+                <>
+                  <Film className="h-3.5 w-3.5" /> GIF
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {isMobile ? (
@@ -834,6 +866,31 @@ export default function AdminDemo() {
                   }}
                 >
                   <Play className="h-3.5 w-3.5" /> Play Animation
+                </Button>
+              )}
+              {mode !== "aura-check" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isRecording}
+                  onClick={() => {
+                    recordGif(() => {
+                      const winner = cardA.isWinner ? 0 : 1;
+                      playAnimationSound(animationId);
+                      setAnimWinner(winner as 0 | 1);
+                    });
+                  }}
+                >
+                  {isRecording ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%
+                    </>
+                  ) : (
+                    <>
+                      <Film className="h-3.5 w-3.5" /> GIF
+                    </>
+                  )}
                 </Button>
               )}
             </div>
