@@ -670,7 +670,7 @@ export default function SwipePreset() {
                                 handleChoose(idx as 0 | 1);
                               }
                             }}
-                            whileTap={{ scale: 0.97 }}
+                            whileTap={{ scale: 0.99 }}
                             className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
                             isWinner
                                 ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
