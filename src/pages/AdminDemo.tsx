@@ -660,7 +660,7 @@ export default function AdminDemo() {
   );
 
   return (
-    <div className="min-h-screen px-3 py-4">
+    <div className="min-h-screen px-3 py-4" style={themeStyle}>
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
