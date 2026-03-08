@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ExternalLink, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import AdBanner from "@/components/AdBanner";
 
 export interface AdCreative {
   id: string;
@@ -15,15 +16,19 @@ export interface AdCreative {
 }
 
 interface SwipeAdCardProps {
-  creative: AdCreative;
+  creative?: AdCreative | null;
   onSkip: () => void;
+  /** When set, renders a Google AdSense unit instead of a custom creative */
+  adsenseSlot?: string;
+  adsenseClientId?: string;
 }
 
-export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
-  const [countdown, setCountdown] = useState(creative.view_duration_seconds);
+export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId }: SwipeAdCardProps) {
+  const duration = creative?.view_duration_seconds ?? 5;
+  const [countdown, setCountdown] = useState(duration);
 
   useEffect(() => {
-    setCountdown(creative.view_duration_seconds);
+    setCountdown(duration);
     const timer = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
@@ -34,7 +39,9 @@ export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [creative.id, creative.view_duration_seconds]);
+  }, [creative?.id, duration, adsenseSlot]);
+
+  const isAdsense = !!adsenseSlot;
 
   return (
     <motion.div
@@ -49,12 +56,21 @@ export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
         </Badge>
       </div>
 
-      {/* Image area */}
+      {/* Content area */}
       <div className="w-full aspect-[3/4] sm:aspect-[3/4] bg-muted/30 overflow-hidden relative">
-        {creative.image_url ? (
+        {isAdsense ? (
+          <div className="w-full h-full flex items-center justify-center p-2">
+            <AdBanner
+              slot={adsenseSlot}
+              format="rectangle"
+              clientId={adsenseClientId}
+              className="w-full h-full"
+            />
+          </div>
+        ) : creative?.image_url ? (
           <img
             src={creative.image_url}
-            alt={creative.title}
+            alt={creative?.title || "Ad"}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -78,8 +94,15 @@ export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
 
       {/* Info section */}
       <div className="p-3 space-y-2 flex-shrink-0">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">{creative.brand_name}</p>
-        <h3 className="text-sm font-extrabold text-foreground truncate">{creative.title}</h3>
+        {!isAdsense && creative && (
+          <>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{creative.brand_name}</p>
+            <h3 className="text-sm font-extrabold text-foreground truncate">{creative.title}</h3>
+          </>
+        )}
+        {isAdsense && (
+          <p className="text-[10px] text-muted-foreground text-center">Advertisement</p>
+        )}
 
         {countdown > 0 ? (
           <p className="text-[10px] text-muted-foreground text-center">
@@ -87,7 +110,7 @@ export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
           </p>
         ) : (
           <div className="flex gap-2">
-            {creative.destination_url && (
+            {!isAdsense && creative?.destination_url && (
               <Button
                 size="sm"
                 variant="outline"
@@ -100,7 +123,7 @@ export default function SwipeAdCard({ creative, onSkip }: SwipeAdCardProps) {
             <Button
               size="sm"
               variant="secondary"
-              className="flex-1 text-xs h-7"
+              className={`text-xs h-7 ${isAdsense ? "w-full" : "flex-1"}`}
               onClick={onSkip}
             >
               Skip

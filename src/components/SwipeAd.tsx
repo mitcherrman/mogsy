@@ -2,13 +2,17 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AdBanner from "@/components/AdBanner";
 
 interface SwipeAdProps {
   onClose: () => void;
   isPro: boolean;
+  /** When set, renders a Google AdSense unit instead of the placeholder */
+  adsenseSlot?: string;
+  adsenseClientId?: string;
 }
 
-export default function SwipeAd({ onClose, isPro }: SwipeAdProps) {
+export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId }: SwipeAdProps) {
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
@@ -30,6 +34,8 @@ export default function SwipeAd({ onClose, isPro }: SwipeAdProps) {
 
   if (isPro) return null;
 
+  const isAdsense = !!adsenseSlot;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -45,13 +51,24 @@ export default function SwipeAd({ onClose, isPro }: SwipeAdProps) {
         >
           <div className="mb-6">
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Sponsored</p>
-            <div className="h-60 rounded-xl bg-secondary flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-4xl mb-2">📢</p>
-                <p className="text-sm text-muted-foreground">Ad space</p>
-                <p className="text-xs text-muted-foreground mt-1">Google AdSense will display here</p>
+            {isAdsense ? (
+              <div className="h-60 rounded-xl overflow-hidden">
+                <AdBanner
+                  slot={adsenseSlot}
+                  format="rectangle"
+                  clientId={adsenseClientId}
+                  className="w-full h-full"
+                />
               </div>
-            </div>
+            ) : (
+              <div className="h-60 rounded-xl bg-secondary flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-4xl mb-2">📢</p>
+                  <p className="text-sm text-muted-foreground">Ad space</p>
+                  <p className="text-xs text-muted-foreground mt-1">Google AdSense will display here</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {countdown > 0 ? (
