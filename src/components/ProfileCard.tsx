@@ -49,9 +49,21 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       className="flex-1 cursor-pointer rounded-2xl bg-card overflow-hidden flex flex-col transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] min-w-0 border border-border">
       
       {/* Photo section */}
-      <div className={`relative w-full aspect-[3/4] overflow-hidden ${frame}`}>
+      <div className={`relative w-full aspect-[3/4] overflow-hidden bg-muted ${frame}`}>
         {profile.avatarUrl && !profile.avatarUrl.includes("dicebear") && !profile.avatarUrl.includes("placeholder") ? (
-          <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+          <img
+            src={profile.avatarUrl}
+            alt={profile.displayName}
+            className="w-full h-full object-contain sm:object-cover"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              // If image is high enough res, use cover; otherwise keep contain to avoid blur
+              if (img.naturalWidth >= 300 && img.naturalHeight >= 300) {
+                img.classList.remove("object-contain");
+                img.classList.add("object-cover");
+              }
+            }}
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
             <User className="h-12 w-12 sm:h-20 sm:w-20 text-muted-foreground/70" />

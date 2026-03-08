@@ -189,6 +189,21 @@ export default function Profile() {
     setCitySuggestions([]);
   };
 
+  const checkImageResolution = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => {
+        resolve({ width: 0, height: 0 });
+        URL.revokeObjectURL(img.src);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !profileId || !user) return;
     const file = e.target.files[0];
@@ -213,6 +228,23 @@ export default function Profile() {
     if (!allowedExtensions.includes(ext)) {
       toast({ title: "Invalid file extension", description: "Only .jpg, .png, .webp and .gif files are allowed.", variant: "destructive" });
       return;
+    }
+
+    // Check image resolution
+    const { width, height } = await checkImageResolution(file);
+    const MIN_RECOMMENDED = 400;
+    const MIN_ALLOWED = 150;
+
+    if (width < MIN_ALLOWED || height < MIN_ALLOWED) {
+      toast({ title: "Image too small", description: `Minimum resolution is ${MIN_ALLOWED}×${MIN_ALLOWED}px. Your image is ${width}×${height}px.`, variant: "destructive" });
+      return;
+    }
+
+    if (width < MIN_RECOMMENDED || height < MIN_RECOMMENDED) {
+      toast({
+        title: "⚠️ Low resolution image",
+        description: `Your image (${width}×${height}px) may appear blurry on profile cards. We recommend at least ${MIN_RECOMMENDED}×${MIN_RECOMMENDED}px for the best quality.`,
+      });
     }
 
     // Use sanitized filename
