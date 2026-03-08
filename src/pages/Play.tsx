@@ -340,7 +340,22 @@ export default function Play() {
   };
 
   /* ─── Container classes per layout mode ─── */
-  const getDesktopContainerClass = () => {
+  const getContainerClass = () => {
+    if (isMobile) {
+      switch (desktopLayout) {
+        case "grid":
+        case "tiles":
+          return "grid grid-cols-2 gap-3 w-full";
+        case "list":
+          return "flex flex-col gap-1 w-full";
+        case "bubbles":
+          return "grid grid-cols-2 gap-3 justify-items-center w-full";
+        case "pills":
+          return "grid grid-cols-2 gap-2 w-full";
+        default:
+          return "grid grid-cols-2 gap-3 w-full";
+      }
+    }
     switch (desktopLayout) {
       case "grid":
         return "grid grid-cols-3 gap-3";
