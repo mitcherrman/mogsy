@@ -29,6 +29,7 @@ const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPlay = lazy(() => import("./pages/AdminPlay"));
+const AdminData = lazy(() => import("./pages/AdminData"));
 
 const queryClient = new QueryClient();
 
