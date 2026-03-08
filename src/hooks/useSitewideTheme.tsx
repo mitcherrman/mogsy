@@ -1,36 +1,48 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getThemeById, profileThemes, ProfileTheme } from "@/lib/profile-themes";
 
+const CYCLE_INTERVAL = 8000;
+const FADE_DURATION = 600;
+
 interface SitewideThemeContextType {
   theme: ProfileTheme;
   themeId: string;
+  visualThemeId: string;
   isEnabled: boolean;
   isPro: boolean;
   chosenFreeTheme: string | null;
   setActiveTheme: (id: string) => void;
+  isCycleFading: boolean;
 }
 
 const SitewideThemeContext = createContext<SitewideThemeContextType>({
   theme: getThemeById("default"),
   themeId: "default",
+  visualThemeId: "default",
   isEnabled: false,
   isPro: false,
   chosenFreeTheme: null,
   setActiveTheme: () => {},
+  isCycleFading: false,
 });
+
+const cyclableThemes = profileThemes.filter((t) => t.id !== "cycle" && t.id !== "default");
 
 export function SitewideThemeProvider({ children }: { children: ReactNode }) {
   let authUser: ReturnType<typeof useAuth>["user"] = null;
-  try { authUser = useAuth().user; } catch { /* gracefully handle missing AuthProvider during HMR */ }
+  try { authUser = useAuth().user; } catch {}
   const user = authUser;
   const [themeId, setThemeId] = useState(() => localStorage.getItem("mogsy-active-theme") || "default");
   const [isEnabled, setIsEnabled] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [chosenFreeTheme, setChosenFreeTheme] = useState<string | null>(null);
 
-  // Load admin setting
+  const [cycleIndex, setCycleIndex] = useState(0);
+  const [isCycleFading, setIsCycleFading] = useState(false);
+  const cycleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     supabase
       .from("app_settings")
@@ -42,7 +54,6 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Load user profile
   useEffect(() => {
     if (!user) return;
     supabase
@@ -59,30 +70,51 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       });
   }, [user]);
 
-  // Apply theme CSS class on <html>
+  const isCycling = themeId === "cycle";
+  const visualThemeId = isCycling
+    ? (cyclableThemes[cycleIndex % cyclableThemes.length]?.id ?? "default")
+    : themeId;
+
+  useEffect(() => {
+    if (!isCycling) {
+      if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
+      cycleTimerRef.current = null;
+      setIsCycleFading(false);
+      return;
+    }
+
+    cycleTimerRef.current = setInterval(() => {
+      setIsCycleFading(true);
+      setTimeout(() => {
+        setCycleIndex((i) => (i + 1) % cyclableThemes.length);
+        setTimeout(() => setIsCycleFading(false), 50);
+      }, FADE_DURATION);
+    }, CYCLE_INTERVAL);
+
+    return () => {
+      if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
+    };
+  }, [isCycling]);
+
   useEffect(() => {
     const root = document.documentElement;
-    // Remove all old theme classes
     root.className = root.className.replace(/theme-\S+/g, "").trim();
 
-    if (themeId === "default") {
-      // Default: use system dark mode preference
+    if (visualThemeId === "default") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       root.classList.toggle("dark", prefersDark);
     } else {
-      // All custom profile themes use dark base
       root.classList.add("dark");
-      root.classList.add(`theme-${themeId}`);
+      root.classList.add(`theme-${visualThemeId}`);
     }
-  }, [themeId]);
+  }, [visualThemeId]);
 
   const setActiveTheme = useCallback((id: string) => {
-    // Validate it's an actual profile theme
     const valid = profileThemes.some((t) => t.id === id);
     if (!valid) return;
     localStorage.setItem("mogsy-active-theme", id);
     setThemeId(id);
-    // Save to profile if logged in
+    if (id === "cycle") setCycleIndex(0);
     if (user) {
       supabase
         .from("profiles")
@@ -91,18 +123,20 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const theme = getThemeById(themeId);
-  const hasCustomTheme = isEnabled && themeId !== "default";
+  const theme = getThemeById(visualThemeId);
+  const hasCustomTheme = isEnabled && visualThemeId !== "default";
 
   return (
     <SitewideThemeContext.Provider
       value={{
         theme: hasCustomTheme ? theme : getThemeById("default"),
         themeId,
+        visualThemeId,
         isEnabled: hasCustomTheme,
         isPro,
         chosenFreeTheme,
         setActiveTheme,
+        isCycleFading,
       }}
     >
       {children}
