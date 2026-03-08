@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
@@ -442,6 +442,9 @@ export default function Play() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>
+          <Button variant="outline" size="sm" onClick={() => navigate("/leagues")} className="gap-1.5 h-8 text-xs">
+            <Trophy className="h-3.5 w-3.5" /> Leaderboard
+          </Button>
           {user && !animLoading && (
             <Popover>
               <PopoverTrigger asChild>
