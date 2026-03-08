@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, UserPlus, UserCheck, UserX, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +22,13 @@ export default function FloatingFriendsButton() {
   const navigate = useNavigate();
   const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId } = useFriends();
   const [open, setOpen] = useState(false);
+
+  // Listen for mobile nav trigger
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-friends-panel", handler);
+    return () => window.removeEventListener("open-friends-panel", handler);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -58,7 +65,7 @@ export default function FloatingFriendsButton() {
           <motion.button
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="fixed bottom-[4.5rem] sm:bottom-6 left-3 sm:left-6 z-40 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+            className="fixed bottom-6 left-6 z-40 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg hidden sm:flex items-center justify-center hover:bg-primary/90 transition-colors"
           >
             <Users className="h-4 w-4" />
             {pendingRequests.length > 0 && (

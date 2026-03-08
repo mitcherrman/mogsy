@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Home, Play, User, Diamond, ChevronRight } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight, Users, Palette } from "lucide-react";
+import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
@@ -14,10 +15,29 @@ const navItems = [
   { path: "/profile", label: "Profile", icon: User },
 ];
 
+function MobileNavButton({ icon: Icon, label, hasTheme, themeId, onClick, badge }: {
+  icon: React.ElementType; label: string; hasTheme: boolean; themeId?: string; onClick: () => void; badge?: number;
+}) {
+  return (
+    <button onClick={onClick} className="relative flex flex-col items-center gap-0.5 py-1 px-2">
+      <div className="relative">
+        <Icon className="h-5 w-5 text-muted-foreground" style={hasTheme ? { color: "hsl(0,0%,70%)" } : undefined} />
+        {badge && badge > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center">
+            {badge}
+          </span>
+        )}
+      </div>
+      <span className="text-[10px] font-medium text-muted-foreground" style={hasTheme ? { color: "hsl(0,0%,70%)" } : undefined}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export default function Navbar({ themeId }: { themeId?: string }) {
   const location = useLocation();
   const { user } = useAuth();
-  const [diamonds, setDiamonds] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) loadDiamonds();
@@ -31,6 +51,9 @@ export default function Navbar({ themeId }: { themeId?: string }) {
       .single();
     if (data) setDiamonds(data.diamonds ?? 0);
   };
+  const [diamonds, setDiamonds] = useState<number | null>(null);
+  const { pendingRequests } = useFriends();
+  const pendingCount = pendingRequests.length;
 
   const hasTheme = themeId && themeId !== "default";
 
@@ -94,7 +117,17 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-border bg-background/80 backdrop-blur-xl"
         style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
       >
-        <div className="flex items-center justify-center gap-8 h-14 px-4">
+        <div className="flex items-center justify-center gap-4 h-14 px-4">
+          {/* Friends button */}
+          <MobileNavButton
+            icon={Users}
+            label="Friends"
+            hasTheme={!!hasTheme}
+            themeId={themeId}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
+            badge={pendingCount > 0 ? pendingCount : undefined}
+          />
+
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -113,6 +146,15 @@ export default function Navbar({ themeId }: { themeId?: string }) {
               </Link>
             );
           })}
+
+          {/* Theme button */}
+          <MobileNavButton
+            icon={Palette}
+            label="Theme"
+            hasTheme={!!hasTheme}
+            themeId={themeId}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-theme-picker"))}
+          />
         </div>
       </div>
     </>
