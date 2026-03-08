@@ -627,7 +627,7 @@ export default function Home() {
         {/* Rotating Aura Banner */}
         {bannerItems.length > 0 && currentBanner && (
           <section className="mb-6">
-            <div className="rounded-2xl border border-border bg-card overflow-hidden relative h-28 sm:h-32">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden relative h-28 sm:h-32 cursor-pointer" onClick={() => navigate("/leagues/collections")}>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={bannerIndex}
