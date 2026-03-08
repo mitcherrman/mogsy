@@ -638,34 +638,12 @@ function CyberpunkOverlay() {
 /* ────────────────────────────────────
    MOGGED – Gigachad fade-in with sound
    ──────────────────────────────────── */
-let moggedSoundPlayed = false;
-
 function MoggedOverlay() {
   const [show, setShow] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Small delay then fade in + play sound (only once per page load)
-    const t = setTimeout(() => {
-      setShow(true);
-      if (!moggedSoundPlayed) {
-        try {
-          const audio = new Audio("/sounds/mogged.mp3");
-          audio.volume = 0.6;
-          audio.play().catch(() => {});
-          audioRef.current = audio;
-          moggedSoundPlayed = true;
-        } catch {}
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(t);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+    const t = setTimeout(() => setShow(true), 300);
+    return () => clearTimeout(t);
   }, []);
 
   return (

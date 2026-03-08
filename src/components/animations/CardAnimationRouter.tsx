@@ -7,6 +7,7 @@ const BurnAnimation = lazy(() => import("@/components/animations/BurnAnimation")
 const VaporizeAnimation = lazy(() => import("@/components/animations/VaporizeAnimation"));
 const CrushAnimation = lazy(() => import("@/components/animations/CrushAnimation"));
 const ChopAnimation = lazy(() => import("@/components/animations/ChopAnimation"));
+const MoggedAnimation = lazy(() => import("@/components/animations/MoggedAnimation"));
 const DefaultFadeAnimation = lazy(() => import("@/components/animations/DefaultFadeAnimation"));
 
 interface Props {
@@ -29,8 +30,9 @@ export default function CardAnimationRouter({ animationId, winnerSide, items, on
       {animationId === "vaporize" && <VaporizeAnimation {...commonProps} />}
       {animationId === "crush" && <CrushAnimation {...commonProps} />}
       {animationId === "chop" && <ChopAnimation {...commonProps} />}
+      {animationId === "mogged" && <MoggedAnimation {...commonProps} />}
       {animationId === "default" && <DefaultFadeAnimation {...commonProps} />}
-      {!["slice", "shatter", "burn", "vaporize", "crush", "chop", "default"].includes(animationId) && (
+      {!["slice", "shatter", "burn", "vaporize", "crush", "chop", "mogged", "default"].includes(animationId) && (
         <DefaultFadeAnimation {...commonProps} />
       )}
     </Suspense>
