@@ -33,9 +33,11 @@ export default function Leagues() {
   }, []);
 
   const loadLeagues = async () => {
+    const filterType = isCompete ? "user" : "preset";
     const { data: allLeagues } = await supabase
       .from("leagues")
       .select("id, name, type")
+      .eq("type", filterType)
       .order("created_at", { ascending: true });
 
     if (!allLeagues) { setLoading(false); return; }
