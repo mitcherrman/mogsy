@@ -89,6 +89,22 @@ export default function Swipe() {
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);
+
+        // Fetch local rankings for global league
+        if (league) {
+          const { data: localRanks } = await supabase
+            .from("local_rankings")
+            .select("target_profile_id, local_elo")
+            .eq("profile_id", myProfile.id)
+            .eq("league_id", league.id);
+          if (localRanks) {
+            const map = new Map<string, number>();
+            localRanks.forEach((r: any) => {
+              if (r.target_profile_id) map.set(r.target_profile_id, r.local_elo);
+            });
+            setLocalElos(map);
+          }
+        }
       }
     }
 
