@@ -730,7 +730,7 @@ export default function AdminCollections() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive" className="gap-1 text-xs h-7">
-                  <RotateCcw className="h-3 w-3" /> Reset Elo
+                  <RotateCcw className="h-3 w-3" /> Reset Aura
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
