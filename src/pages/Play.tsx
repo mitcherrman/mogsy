@@ -232,7 +232,7 @@ export default function Play() {
           <div className="absolute inset-0 bg-black/50" />
         </>
       )}
-      <span className={`relative z-10 text-xs font-extrabold tracking-wide leading-tight text-center px-2 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+      <span className={`relative z-10 text-[10px] font-bold tracking-wide leading-tight text-center px-1.5 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
     </motion.button>
   );
 
