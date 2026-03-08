@@ -345,6 +345,8 @@ export default function Play() {
       switch (desktopLayout) {
         case "grid":
           return "grid grid-cols-3 gap-2 w-full";
+        case "tiles":
+          return "grid grid-cols-2 gap-3 w-full";
         case "list":
           return "flex flex-col gap-1 w-full";
         case "bubbles":
