@@ -1,40 +1,44 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-### The Pattern Difference
+# Fix: Animation Overlay Cards Appearing Larger Than Actual Cards
 
-**SliceBattleAnimation (correct):**
+## Root Cause
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+**Classic Fade (`DefaultFadeAnimation`)** renders `null` — it shows nothing. The user only ever sees the parent's properly-sized cards (with borders, padding, name/stats section). No overlay = no sizing mismatch.
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+**All other animations** (Shatter, Burn, Vaporize, Crush, Slice) render a **full-screen overlay** (`absolute inset-0 z-50 bg-background`) containing their own duplicate `<img>` tags. These overlay images use `flex-1` to fill available space with no borders, no padding, and no stats section below — so the images are **taller/larger** than the parent's actual cards (which reserve space for name, Elo stats, borders, etc.). This creates the brief "zoom" flash when the overlay appears.
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+```text
+Parent card layout:              Animation overlay layout:
+┌─ border ──────────┐            ┌─ no border ──────────┐
+│ ┌──────────────┐  │            │                      │
+│ │   IMAGE      │  │            │                      │
+│ │  (aspect     │  │            │     IMAGE             │
+│ │   ratio)     │  │            │   (fills ALL          │
+│ └──────────────┘  │            │    flex space)        │
+│  Name              │            │                      │
+│  Local 1200 #3     │            │                      │
+│  🌐 Global 1180 #5│            └──────────────────────┘
+│  EloChangeIndicator│             Name (small text below)
+└───────────────────┘
+```
 
-### Implementation Plan
+## Fix
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+Update all 5 animation components (Shatter, Burn, Vaporize, Crush, Slice) so their card replicas match the parent's structure:
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+1. **Add matching border container**: Wrap each card in `rounded-2xl border border-border bg-card overflow-hidden`
+2. **Constrain image area**: Use the same aspect ratio constraint (`portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4]`) instead of letting the image fill all flex space
+3. **Reserve space for name/stats below image**: Include a simple name text block so the overlay's total card height matches the parent's
 
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+This ensures when the overlay appears, it's pixel-matched to the parent cards — no size jump.
 
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
+## Files to Modify
 - `src/components/animations/ShatterAnimation.tsx`
 - `src/components/animations/BurnAnimation.tsx`
 - `src/components/animations/VaporizeAnimation.tsx`
 - `src/components/animations/CrushAnimation.tsx`
+- `src/components/SliceBattleAnimation.tsx`
+
+Each file gets the same structural fix: replace the current simple `flex-1 > rounded-2xl > img` layout with a bordered card that constrains the image area and includes a name/stats placeholder section.
+
