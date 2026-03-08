@@ -361,6 +361,19 @@ export default function Swipe() {
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
+            <Button
+              variant={gauntletMode ? "default" : "ghost"}
+              size="icon"
+              onClick={() => {
+                setGauntletMode(!gauntletMode);
+                setGauntletChampion(null);
+                setGauntletStreak(0);
+              }}
+              className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+              title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+            >
+              <Sword className="h-4 w-4" fill="currentColor" />
+            </Button>
             <p className="text-muted-foreground text-xs shrink-0">
               Matches: <span className="text-primary font-bold">{matchCount}</span>
               {gauntletMode && gauntletStreak > 0 && (
