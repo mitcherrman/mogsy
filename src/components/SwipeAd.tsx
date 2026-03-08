@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AdBanner from "@/components/AdBanner";
+import { logAdEvent } from "@/lib/ad-analytics";
 
 interface SwipeAdProps {
   onClose: () => void;
