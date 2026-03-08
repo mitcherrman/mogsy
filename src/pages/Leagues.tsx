@@ -23,8 +23,10 @@ interface LeagueWithTop5 {
 
 export default function Leagues() {
   const navigate = useNavigate();
+  const { type: leagueType } = useParams<{ type: string }>();
   const [leagues, setLeagues] = useState<LeagueWithTop5[]>([]);
   const [loading, setLoading] = useState(true);
+  const isCompete = leagueType === "compete";
 
   useEffect(() => {
     loadLeagues();
