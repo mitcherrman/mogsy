@@ -663,7 +663,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
             {/* Admin role management */}
             {isMasterAdmin && !isSelectedMaster && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium">Admin Privileges</Label>
@@ -680,6 +680,25 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <><ShieldOff className="h-3 w-3 mr-1" /> Remove Admin</>
                     ) : (
                       <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Admin</>
+                    )}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <div>
+                    <Label className="text-sm font-medium">Moderator</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSelectedMod ? "This user has moderator access" : "Grant moderator access (Play Layout + Mod panel)"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isSelectedMod ? "destructive" : "outline"}
+                    onClick={() => toggleModeratorRole(selectedUser.user_id)}
+                  >
+                    {isSelectedMod ? (
+                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Mod</>
+                    ) : (
+                      <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Mod</>
                     )}
                   </Button>
                 </div>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift, ShieldCheck } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
