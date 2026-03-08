@@ -22,6 +22,9 @@ interface SwipeAdCardProps {
   /** When set, renders a Google AdSense unit instead of a custom creative */
   adsenseSlot?: string;
   adsenseClientId?: string;
+  placement?: string;
+  adSource?: string;
+  profileId?: string;
 }
 
 export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId }: SwipeAdCardProps) {
