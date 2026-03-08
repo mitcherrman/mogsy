@@ -293,7 +293,7 @@ export default function Play() {
       transition={{ ...ease, delay }}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex items-center gap-3 px-5 py-3 rounded-xl border-2 cursor-pointer select-none overflow-hidden transition-colors ${
+      className={`relative flex items-center gap-3 px-5 py-3 rounded-xl border-2 cursor-pointer select-none overflow-hidden transition-colors w-full ${
         variant === "accent"
           ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
           : "border-border bg-card text-foreground hover:bg-muted"
