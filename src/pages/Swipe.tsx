@@ -41,8 +41,6 @@ interface SwipeProfile {
   isBoosted: boolean;
 }
 
-const AD_INTERVAL = 10;
-
 export default function Swipe() {
   const { user } = useAuth();
   const navigate = useNavigate();
