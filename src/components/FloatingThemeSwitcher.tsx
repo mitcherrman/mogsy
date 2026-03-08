@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Palette, Lock, Crown, Check } from "lucide-react";
+import { Palette, Lock, Crown, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,8 @@ export default function FloatingThemeSwitcher() {
   const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 5;
 
   // Load theme config
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function FloatingThemeSwitcher() {
   // Click outside
   useEffect(() => {
     if (!open) return;
+    setPage(0);
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -81,6 +84,9 @@ export default function FloatingThemeSwitcher() {
     return !themeConfig?.disabled_themes?.includes(t.id);
   });
 
+  const totalPages = Math.ceil(visibleThemes.length / PAGE_SIZE);
+  const currentThemes = visibleThemes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const isThemePro = (id: string) => {
     if (id === "default") return false;
     if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
@@ -110,9 +116,17 @@ export default function FloatingThemeSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.85 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex flex-col items-center gap-2 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
+            className="flex flex-col items-center gap-2 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl"
           >
-            {visibleThemes.map((theme) => {
+            {page > 0 && (
+              <button
+                onClick={() => setPage((p) => p - 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+            )}
+            {currentThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
               const pro = isThemePro(theme.id);
@@ -121,7 +135,6 @@ export default function FloatingThemeSwitcher() {
 
               return (
                 <div key={theme.id} className="relative shrink-0">
-                  {/* Custom tooltip label */}
                   <AnimatePresence>
                     {showLabel && (
                       <motion.div
@@ -170,6 +183,14 @@ export default function FloatingThemeSwitcher() {
                 </div>
               );
             })}
+            {page < totalPages - 1 && (
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

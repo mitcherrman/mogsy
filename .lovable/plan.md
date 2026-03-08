@@ -1,31 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Plan: Paginated Theme Switcher (5 per page)
+### The Pattern Difference
 
-### What changes
-Replace the scrollable theme list in `FloatingThemeSwitcher.tsx` with a paginated view showing 5 theme circles at a time, with a small "more" button (e.g., ChevronUp/ChevronDown) to navigate between pages.
+**SliceBattleAnimation (correct):**
 
-### Implementation (single file: `src/components/FloatingThemeSwitcher.tsx`)
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-1. **Add page state**: `const [page, setPage] = useState(0)` — reset to 0 when menu opens
-2. **Compute pages**: `const PAGE_SIZE = 5`, slice `visibleThemes` into `visibleThemes.slice(page * 5, page * 5 + 5)`
-3. **Total pages**: `Math.ceil(visibleThemes.length / 5)`
-4. **Render**: Show 5 theme circles for current page. Add a small chevron button at the top (to go to previous page) and bottom (to go to next page) of the theme list, only when there are more pages in that direction
-5. **Remove** `max-h-[70vh] overflow-y-auto` from the container since pagination replaces scrolling
-6. **Reset page to 0** when `open` changes to `true`
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-### UI structure
-```text
-  [▲]  (if page > 0)
-  ○ theme 1
-  ○ theme 2
-  ○ theme 3
-  ○ theme 4
-  ○ theme 5
-  [▼]  (if more pages)
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+
+### Implementation Plan
+
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
   
-  [🎨 FAB]
-```
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
-Chevron buttons will be small (w-6 h-6), styled subtly with `text-muted-foreground hover:text-foreground`.
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
 
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
