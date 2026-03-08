@@ -18,6 +18,7 @@ interface BannerConfig {
 }
 
 export default function NavBanner() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<BannerItem[]>([]);
   const [index, setIndex] = useState(0);
   const [delay, setDelay] = useState(7000);
