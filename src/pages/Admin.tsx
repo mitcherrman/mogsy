@@ -23,6 +23,7 @@ import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
+import { useNavigate as useNav } from "react-router-dom";
 
 const allTabs = [
   { value: "users", label: "Users", masterOnly: false },
