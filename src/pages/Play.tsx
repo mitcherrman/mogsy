@@ -518,67 +518,55 @@ export default function Play() {
                 {expanded === "compete" && renderDesktopSubContent()}
               </AnimatePresence>
             </div>
+            {/* Aura Check column */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-2">
+                <Bubble size={148} onClick={() => handleBubbleClick(() => navigate("/elo-check"))} active={false} variant="card">
+                  <span className="h-10 w-10 flex items-center justify-center"><Zap className="h-10 w-10" /></span>
+                  <span className="text-sm font-extrabold tracking-wide">Aura Check</span>
+                </Bubble>
+                <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
+              </div>
+            </div>
           </div>
         </div>
       );
     }
 
-    // ─── MOBILE: original step-by-step navigation ───
+    // ─── MOBILE: step-by-step navigation ───
     if (!expanded) {
       return (
         <AnimatePresence mode="wait">
-          <motion.div key="top-level" {...fadeIn} className="flex items-center justify-center gap-10">
-            <div className="flex flex-col items-center gap-2">
-              <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("collections"))} active={false} variant="card">
-                <span className="h-10 w-10 flex items-center justify-center"><LayoutGrid className="h-10 w-10" /></span>
-                <span className="text-sm font-extrabold tracking-wide">Collections</span>
-              </Bubble>
-              <FadeLabel delay={0.5}>Vote on curated matchups</FadeLabel>
+          <motion.div key="top-level" {...fadeIn} className="flex flex-col items-center gap-6">
+            <div className="flex items-center justify-center gap-10">
+              <div className="flex flex-col items-center gap-2">
+                <Bubble size={128} onClick={() => handleBubbleClick(() => toggle("collections"))} active={false} variant="card">
+                  <span className="h-10 w-10 flex items-center justify-center"><LayoutGrid className="h-10 w-10" /></span>
+                  <span className="text-sm font-extrabold tracking-wide">Collections</span>
+                </Bubble>
+                <FadeLabel delay={0.5}>Vote on curated matchups</FadeLabel>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Bubble size={128} onClick={() => handleBubbleClick(() => toggle("compete"))} active={false} variant="card">
+                  <span className="h-10 w-10 flex items-center justify-center"><Users className="h-10 w-10" /></span>
+                  <span className="text-sm font-extrabold tracking-wide">Compete</span>
+                </Bubble>
+                <FadeLabel delay={0.5}>Go head-to-head with others</FadeLabel>
+              </div>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("compete"))} active={false} variant="card">
-                <span className="h-10 w-10 flex items-center justify-center"><Users className="h-10 w-10" /></span>
-                <span className="text-sm font-extrabold tracking-wide">Compete</span>
+              <Bubble size={100} onClick={() => handleBubbleClick(() => navigate("/elo-check"))} active={false} variant="accent">
+                <Zap className="h-7 w-7" />
+                <span className="text-xs font-extrabold tracking-wide">Aura Check</span>
               </Bubble>
-              <FadeLabel delay={0.5}>Go head-to-head with others</FadeLabel>
+              <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
             </div>
           </motion.div>
         </AnimatePresence>
       );
     }
 
-    if (!subExpanded) {
-      const modeLabel = expanded === "collections" ? "Collections" : "Compete";
-      const modeIcon = expanded === "collections" ? <LayoutGrid className="h-10 w-10" /> : <Users className="h-10 w-10" />;
-      return (
-        <AnimatePresence mode="wait">
-          <motion.div key="mode-selected" {...fadeIn} className="flex flex-col items-center gap-5">
-            <Bubble size={148} onClick={() => handleBubbleClick(() => toggle(expanded))} active variant="card">
-              <span className="h-10 w-10 flex items-center justify-center">{modeIcon}</span>
-              <span className="text-sm font-extrabold tracking-wide">{modeLabel}</span>
-            </Bubble>
-            <div className="flex items-center justify-center gap-6">
-              <div className="flex flex-col items-center gap-2">
-                <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active={false} variant="accent">
-                  <Shuffle className="h-7 w-7" />
-                  <span className="text-xs font-extrabold tracking-wide">Swipe</span>
-                </Bubble>
-                <FadeLabel delay={0.5}>Pick your favorite</FadeLabel>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("elocheck"))} active={false} variant="accent">
-                  <Zap className="h-7 w-7" />
-                  <span className="text-xs font-extrabold tracking-wide">Aura Check</span>
-                </Bubble>
-                <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      );
-    }
-
-    // Mobile: category drill-down wrapped in AnimatePresence
+    // Mobile: category drill-down (skip swipe/aura submenu)
     return (
       <AnimatePresence mode="wait">
         {renderCategoryContent()}
