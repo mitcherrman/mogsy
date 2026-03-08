@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
+import SwipeAdCard from "@/components/SwipeAdCard";
+import type { AdCreative } from "@/components/SwipeAdCard";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
@@ -22,6 +24,7 @@ import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeague
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAdSystem } from "@/hooks/useAdSystem";
 
 interface SwipeProfile {
   id: string;
@@ -38,8 +41,6 @@ interface SwipeProfile {
   isBoosted: boolean;
 }
 
-const AD_INTERVAL = 10;
-
 export default function Swipe() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ export default function Swipe() {
   const [loading, setLoading] = useState(true);
   const [globalLeagueId, setGlobalLeagueId] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(false);
+  const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [lastMatch, setLastMatch] = useState<{ winner: SwipeProfile; loser: SwipeProfile; prevWinnerElo: number; prevLoserElo: number } | null>(null);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export default function Swipe() {
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const [readyDelay, setReadyDelay] = useState(true);
+  const { shouldShowAd, getRandomCreative } = useAdSystem("swipe");
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
@@ -251,7 +254,11 @@ export default function Swipe() {
           if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
           return 1;
         });
-        if (!isPro && newCount % AD_INTERVAL === 0) {
+        const adType = shouldShowAd(newCount, isPro);
+        if (adType === "in_swipe") {
+          const creative = getRandomCreative();
+          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+        } else if (adType === "popup") {
           setShowAd(true);
         } else {
           const others = profiles.filter(p => p.id !== winner.id);
@@ -259,14 +266,22 @@ export default function Swipe() {
           const winnerWasLeft = pair[0].id === winner.id;
           setPair(winnerWasLeft ? [winner, challenger] : [challenger, winner]);
         }
-      } else if (!isPro && newCount % AD_INTERVAL === 0) {
-        setShowAd(true);
-        setEloChanges(new Map());
-        setGlobalDirections(new Map());
       } else {
-        setEloChanges(new Map());
-        setGlobalDirections(new Map());
-        setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+        const adType = shouldShowAd(newCount, isPro);
+        if (adType === "in_swipe") {
+          const creative = getRandomCreative();
+          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
+        } else if (adType === "popup") {
+          setShowAd(true);
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
+        } else {
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
+          setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+        }
       }
 
       // Clear slice overlay AFTER new pair state is committed
@@ -436,6 +451,37 @@ export default function Swipe() {
 
           {/* Capturable matchup area */}
           <MatchupCapture ref={captureRef} leagueName="Swipe On Who Mogs">
+            {showInSwipeAd ? (
+              <motion.div
+                key={`ad-${showInSwipeAd.id}-${matchCount}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]"
+              >
+                {/* Real card */}
+                <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
+                  <ProfileCard profile={pair[0]} side="left" onChoose={() => {}} />
+                </div>
+                <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
+                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                </div>
+                {/* Ad card */}
+                <SwipeAdCard
+                  creative={showInSwipeAd}
+                  onSkip={() => {
+                    setShowInSwipeAd(null);
+                    if (gauntletMode && gauntletChampion) {
+                      const others = profiles.filter(p => p.id !== gauntletChampion.id);
+                      const challenger = others[Math.floor(Math.random() * others.length)];
+                      setPair([gauntletChampion, challenger]);
+                    } else {
+                      setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+                    }
+                  }}
+                />
+              </motion.div>
+            ) : (
               <motion.div
                 key={`pair-${pair[0].id}-${pair[1].id}-${matchCount}`}
                 initial={{ opacity: 0 }}
@@ -463,7 +509,7 @@ export default function Swipe() {
                   </div>
                 </div>
 
-                {/* VS badge - positioned between cards */}
+                {/* VS badge */}
                 <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
                   <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
                 </div>
@@ -507,7 +553,7 @@ export default function Swipe() {
                   onComplete={handleSliceComplete}
                 />
               </motion.div>
-            
+            )}
           </MatchupCapture>
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">

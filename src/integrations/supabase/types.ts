@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_creatives: {
+        Row: {
+          brand_name: string
+          created_at: string
+          cta_text: string
+          destination_url: string
+          id: string
+          image_url: string
+          is_enabled: boolean
+          placement: string
+          title: string
+          updated_at: string
+          view_duration_seconds: number
+        }
+        Insert: {
+          brand_name?: string
+          created_at?: string
+          cta_text?: string
+          destination_url?: string
+          id?: string
+          image_url?: string
+          is_enabled?: boolean
+          placement?: string
+          title?: string
+          updated_at?: string
+          view_duration_seconds?: number
+        }
+        Update: {
+          brand_name?: string
+          created_at?: string
+          cta_text?: string
+          destination_url?: string
+          id?: string
+          image_url?: string
+          is_enabled?: boolean
+          placement?: string
+          title?: string
+          updated_at?: string
+          view_duration_seconds?: number
+        }
+        Relationships: []
+      }
       admin_notifications: {
         Row: {
           created_at: string
