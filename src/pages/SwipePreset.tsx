@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Swords } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Swords, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
@@ -659,7 +659,7 @@ export default function SwipePreset() {
                             <span className="text-xs md:text-base lg:text-lg font-black text-muted-foreground/60 select-none">VS</span>
                           </div>
                         )}
-                        <div className="flex flex-col flex-1 min-h-0">
+                        <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
                           <motion.button
                             onClick={() => handleChoose(idx as 0 | 1)}
                             drag={chosen === null ? "x" : false}
@@ -671,16 +671,16 @@ export default function SwipePreset() {
                               }
                             }}
                             whileTap={{ scale: 0.97 }}
-                            className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
+                            className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
                             isWinner
-                                ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
+                                ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
                                 : isLoser
-                                ? "opacity-50 scale-[0.97]"
-                                : "hover:scale-[1.01]"
+                                ? "opacity-50"
+                                : ""
                             }`}
                           >
                             {/* Image container */}
-                            <div className="w-full h-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
+                            <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
                               {displayImage ? (
                                 <img
                                   src={displayImage}
@@ -709,8 +709,8 @@ export default function SwipePreset() {
                             )}
                           </motion.button>
 
-                          {/* Name & stats + report button below image */}
-                          <div className="pt-1 flex-shrink-0">
+                          {/* Name & stats — always visible, outside animation area */}
+                          <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
                             <div className="flex items-center justify-center gap-1">
                               <div className="flex-1 min-w-0" />
                               <div className="text-center min-w-0">
@@ -731,32 +731,33 @@ export default function SwipePreset() {
                             </div>
                             <div className="flex items-center justify-center gap-3 mt-0.5">
                               {eloVisible && (
-                                <span className="text-[10px] md:text-xs text-muted-foreground">
+                                <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
                                   <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
                                   {rankVisible && localRankMap.get(item.id) && (
-                                    <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
+                                    <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
                                   )}
                                   <span className="mx-1 text-muted-foreground/30">|</span>
+                                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
                                   <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
                                   {rankVisible && rank && (
-                                    <span className="ml-0.5 text-blue-400/70">#{rank}</span>
+                                    <span className="text-blue-400/70">#{rank}</span>
                                   )}
                                 </span>
                               )}
                             </div>
-                          </div>
 
-                          {/* Elo change indicator */}
-                          {chosen !== null && (
-                            <div className="flex justify-center mt-0.5 flex-shrink-0">
-                              <EloChangeIndicator
-                                change={eloChanges.get(item.id) ?? null}
-                                oldRank={rankChanges.get(item.id)?.old ?? null}
-                                newRank={rankChanges.get(item.id)?.new ?? null}
-                                globalDirection={globalDirections.get(item.id)}
-                              />
-                            </div>
-                          )}
+                            {/* Elo change indicator */}
+                            {chosen !== null && (
+                              <div className="flex justify-center mt-0.5">
+                                <EloChangeIndicator
+                                  change={eloChanges.get(item.id) ?? null}
+                                  oldRank={rankChanges.get(item.id)?.old ?? null}
+                                  newRank={rankChanges.get(item.id)?.new ?? null}
+                                  globalDirection={globalDirections.get(item.id)}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </React.Fragment>
                     );
@@ -811,7 +812,7 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
       <motion.button
         onClick={() => handleChoose(idx as 0 | 1)}
         drag={chosen === null ? "x" : false}
@@ -821,17 +822,17 @@ function GauntletCard({
           if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
         }}
         whileTap={{ scale: 0.97 }}
-        className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 flex-1 ${
+        className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
           isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
         } ${
           isWinner
-            ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)] scale-[1.02]"
+            ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
             : isLoser
-            ? "opacity-50 scale-[0.97]"
-            : "hover:scale-[1.01]"
+            ? "opacity-50"
+            : ""
         }`}
       >
-        <div className="w-full h-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
+        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-white"
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
@@ -847,8 +848,7 @@ function GauntletCard({
           </motion.div>
         )}
       </motion.button>
-      {/* Name & stats + report button below image */}
-      <div className="pt-1 flex-shrink-0">
+      <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
         <div className="flex items-center justify-center gap-1">
           <div className="flex-1 min-w-0" />
           <div className="text-center min-w-0">
@@ -867,25 +867,26 @@ function GauntletCard({
         </div>
         <div className="flex items-center justify-center gap-3 mt-0.5">
           {eloVisible && (
-            <span className="text-[10px] md:text-xs text-muted-foreground">
+            <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
               <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
               {rankVisible && localRankMap.get(item.id) && (
-                <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
+                <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
               )}
               <span className="mx-1 text-muted-foreground/30">|</span>
+              <Globe className="h-2.5 w-2.5 text-blue-400/70" />
               <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
               {rankVisible && rank && (
-                <span className="ml-0.5 text-blue-400/70">#{rank}</span>
+                <span className="text-blue-400/70">#{rank}</span>
               )}
             </span>
           )}
         </div>
+        {chosen !== null && (
+          <div className="flex justify-center mt-0.5">
+            <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
+          </div>
+        )}
       </div>
-      {chosen !== null && (
-        <div className="flex justify-center mt-0.5 flex-shrink-0">
-          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
-        </div>
-      )}
     </div>
   );
 

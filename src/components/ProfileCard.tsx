@@ -46,7 +46,7 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
   return (
     <div
       onClick={onChoose}
-      className="flex-1 cursor-pointer rounded-2xl border border-border bg-card p-3 sm:p-4 flex flex-col items-center text-center gap-2 transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] min-w-0"
+      className="flex-1 cursor-pointer rounded-2xl bg-card p-3 sm:p-4 flex flex-col items-center text-center gap-2 transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] min-w-0"
     >
       <div className="relative">
         <div
