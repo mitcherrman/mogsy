@@ -3,9 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AdCreative } from "@/components/SwipeAdCard";
 
 type AdMode = "popup" | "in_swipe" | "both" | "off";
+type AdSource = "custom" | "adsense" | "hybrid";
 
 interface AdSystemState {
   adMode: AdMode;
+  adSource: AdSource;
+  adsenseClientId: string;
+  adsenseSlot: string;
   creatives: AdCreative[];
   frequency: number;
   shouldShowAd: (matchCount: number, isPro: boolean) => false | "popup" | "in_swipe";
@@ -14,6 +18,9 @@ interface AdSystemState {
 
 export function useAdSystem(placement: string = "swipe"): AdSystemState {
   const [adMode, setAdMode] = useState<AdMode>("popup");
+  const [adSource, setAdSource] = useState<AdSource>("custom");
+  const [adsenseClientId, setAdsenseClientId] = useState("");
+  const [adsenseSlot, setAdsenseSlot] = useState("");
   const [creatives, setCreatives] = useState<AdCreative[]>([]);
   const [frequency, setFrequency] = useState(10);
   const lastAdType = useRef<"popup" | "in_swipe">("popup");
@@ -33,10 +40,15 @@ export function useAdSystem(placement: string = "swipe"): AdSystemState {
             setAdMode("off");
             return;
           }
+          // Global AdSense client ID
+          if (val?.adsense_client_id) setAdsenseClientId(val.adsense_client_id);
+
           const placementConfig = val?.placements?.[placement];
           if (placementConfig) {
             setAdMode(placementConfig.ad_mode || "popup");
+            setAdSource(placementConfig.ad_source || "custom");
             setFrequency(placementConfig.frequency || 10);
+            if (placementConfig.adsense_slot) setAdsenseSlot(placementConfig.adsense_slot);
             if (!placementConfig.enabled) setAdMode("off");
           }
         }
@@ -72,19 +84,20 @@ export function useAdSystem(placement: string = "swipe"): AdSystemState {
 
       if (adMode === "popup") return "popup";
       if (adMode === "in_swipe") {
+        // For adsense source, we don't need creatives
+        if (adSource === "adsense" || adSource === "hybrid") return "in_swipe";
         if (creatives.length === 0) return "popup"; // fallback
         return "in_swipe";
       }
       if (adMode === "both") {
-        // Alternate
         const next = lastAdType.current === "popup" ? "in_swipe" : "popup";
-        if (next === "in_swipe" && creatives.length === 0) return "popup";
+        if (next === "in_swipe" && adSource === "custom" && creatives.length === 0) return "popup";
         lastAdType.current = next;
         return next;
       }
       return false;
     },
-    [adMode, frequency, creatives.length]
+    [adMode, adSource, frequency, creatives.length]
   );
 
   const getRandomCreative = useCallback((): AdCreative | null => {
@@ -92,5 +105,5 @@ export function useAdSystem(placement: string = "swipe"): AdSystemState {
     return creatives[Math.floor(Math.random() * creatives.length)];
   }, [creatives]);
 
-  return { adMode, creatives, frequency, shouldShowAd, getRandomCreative };
+  return { adMode, adSource, adsenseClientId, adsenseSlot, creatives, frequency, shouldShowAd, getRandomCreative };
 }

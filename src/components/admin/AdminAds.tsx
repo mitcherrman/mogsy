@@ -33,10 +33,13 @@ interface PlacementConfig {
   days_active: string[];
   ab_variant: string;
   ad_mode: string; // "popup" | "in_swipe" | "both" | "off"
+  ad_source: string; // "custom" | "adsense" | "hybrid"
+  adsense_slot: string;
 }
 
 interface AdSettings {
   global_enabled: boolean;
+  adsense_client_id: string;
   placements: Record<string, PlacementConfig>;
 }
 
@@ -68,6 +71,8 @@ const PLACEMENT_DEFAULTS: PlacementConfig = {
   days_active: [],
   ab_variant: "control",
   ad_mode: "popup",
+  ad_source: "custom",
+  adsense_slot: "",
 };
 
 const PLACEMENTS = [
@@ -85,6 +90,12 @@ const AD_MODES = [
   { value: "in_swipe", label: "In-Swipe Card" },
   { value: "both", label: "Both (Alternate)" },
   { value: "off", label: "Off" },
+];
+
+const AD_SOURCES = [
+  { value: "custom", label: "Custom Creatives", description: "Your own ad images and CTA links" },
+  { value: "adsense", label: "Google AdSense", description: "Google serves ads automatically" },
+  { value: "hybrid", label: "Hybrid", description: "Custom creatives with AdSense fallback" },
 ];
 
 const FORMATS = [
@@ -130,6 +141,7 @@ interface SearchResult {
 
 const defaultSettings: AdSettings = {
   global_enabled: true,
+  adsense_client_id: "",
   placements: Object.fromEntries(PLACEMENTS.map(p => [p.key, { ...PLACEMENT_DEFAULTS }])),
 };
 
@@ -163,6 +175,7 @@ export default function AdminAds() {
       if (val && typeof val === "object" && val.placements) {
         setSettings({
           global_enabled: val.global_enabled ?? val.enabled ?? true,
+          adsense_client_id: val.adsense_client_id ?? "",
           placements: {
             ...defaultSettings.placements,
             ...Object.fromEntries(
@@ -176,6 +189,7 @@ export default function AdminAds() {
       } else {
         setSettings({
           global_enabled: val?.enabled ?? true,
+          adsense_client_id: val?.adsense_client_id ?? "",
           placements: {
             ...defaultSettings.placements,
             swipe: {
@@ -334,7 +348,33 @@ export default function AdminAds() {
         />
       </div>
 
-      {/* Quick Actions */}
+      {/* Google AdSense Configuration */}
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/50 text-primary">AdSense</Badge>
+          <Label className="text-sm font-medium">Google AdSense Configuration</Label>
+        </div>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">
+          Enter your AdSense Publisher ID to enable Google-served ads. Each placement can use Custom Creatives, AdSense, or Hybrid mode.
+        </p>
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground font-semibold">Publisher ID (Client ID)</Label>
+            <Input
+              placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+              value={settings.adsense_client_id}
+              onChange={(e) => setSettings(s => ({ ...s, adsense_client_id: e.target.value }))}
+              onBlur={() => save(settings)}
+              className="h-8 text-xs font-mono"
+            />
+            <span className="text-[9px] text-muted-foreground">Find this in your Google AdSense dashboard → Account → Publisher ID</span>
+          </div>
+        </div>
+        {settings.adsense_client_id && settings.adsense_client_id !== "ca-pub-XXXXXXXXXXXXXXXX" && (
+          <Badge className="text-[10px] bg-primary/10 text-primary border-primary/30">✓ AdSense configured</Badge>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={randomizeVariants} disabled={saving} className="text-xs">
           <Shuffle className="h-3 w-3 mr-1" /> Randomize A/B
@@ -555,6 +595,35 @@ export default function AdminAds() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+
+                    {/* Row 1.5: Ad Source + AdSense Slot */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground font-semibold">Ad Source</Label>
+                        <Select value={config.ad_source || "custom"} onValueChange={(v) => updatePlacement(key, { ad_source: v })}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {AD_SOURCES.map(s => <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-[9px] text-muted-foreground">
+                          {AD_SOURCES.find(s => s.value === (config.ad_source || "custom"))?.description}
+                        </span>
+                      </div>
+                      {(config.ad_source === "adsense" || config.ad_source === "hybrid") && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground font-semibold">AdSense Slot ID</Label>
+                          <Input
+                            placeholder="1234567890"
+                            value={config.adsense_slot || ""}
+                            onChange={(e) => setSettings(s => ({ ...s, placements: { ...s.placements, [key]: { ...s.placements[key], adsense_slot: e.target.value } } }))}
+                            onBlur={() => save(settings)}
+                            className="h-7 text-xs font-mono"
+                          />
+                          <span className="text-[9px] text-muted-foreground">From AdSense → Ads → By ad unit</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Row 2: Size + Frequency + Cooldown */}

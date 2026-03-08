@@ -75,7 +75,7 @@ export default function Swipe() {
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const [readyDelay, setReadyDelay] = useState(true);
-  const { shouldShowAd, getRandomCreative } = useAdSystem("swipe");
+  const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
@@ -371,6 +371,8 @@ export default function Swipe() {
       {showAd && (
         <SwipeAd
           isPro={isPro}
+          adsenseSlot={adSource !== "custom" ? adsenseSlot : undefined}
+          adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
           onClose={() => {
             setShowAd(false);
             if (gauntletMode && gauntletChampion) {
@@ -469,6 +471,8 @@ export default function Swipe() {
                 {/* Ad card */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
+                  adsenseSlot={adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined}
+                  adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
                   onSkip={() => {
                     setShowInSwipeAd(null);
                     if (gauntletMode && gauntletChampion) {
