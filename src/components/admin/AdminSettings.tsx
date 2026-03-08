@@ -204,6 +204,52 @@ export default function AdminSettings() {
           </div>
         </div>
       </div>
+
+      {/* Shop Ad */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Megaphone className="h-3.5 w-3.5" /> Shop Ad Banner
+        </h4>
+        <SettingToggle
+          label="Enable Shop Ad"
+          description="Show a promotional banner in the shop for non-Pro users"
+          checked={settings.shop_ad_enabled}
+          onChange={async () => {
+            const newVal = !settings.shop_ad_enabled;
+            setSettings(s => ({ ...s, shop_ad_enabled: newVal }));
+            await updateSetting("shop_ad_config", { enabled: newVal, type: settings.shop_ad_type, headline: settings.shop_ad_headline, subtext: settings.shop_ad_subtext });
+          }}
+        />
+        {settings.shop_ad_enabled && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+              <div>
+                <Label className="text-sm font-medium">Ad Type</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">What the ad promotes</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant={settings.shop_ad_type === "pro" ? "default" : "outline"} onClick={() => setSettings(s => ({ ...s, shop_ad_type: "pro" }))} className="text-xs">Pro</Button>
+                <Button size="sm" variant={settings.shop_ad_type === "diamonds" ? "default" : "outline"} onClick={() => setSettings(s => ({ ...s, shop_ad_type: "diamonds" }))} className="text-xs">Diamonds</Button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div>
+                <Label className="text-xs">Headline</Label>
+                <Input value={settings.shop_ad_headline} onChange={e => setSettings(s => ({ ...s, shop_ad_headline: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Subtext</Label>
+                <Input value={settings.shop_ad_subtext} onChange={e => setSettings(s => ({ ...s, shop_ad_subtext: e.target.value }))} />
+              </div>
+              <Button size="sm" variant="outline" disabled={saving} onClick={async () => {
+                setSaving(true);
+                await updateSetting("shop_ad_config", { enabled: settings.shop_ad_enabled, type: settings.shop_ad_type, headline: settings.shop_ad_headline, subtext: settings.shop_ad_subtext });
+                setSaving(false);
+              }}>Save Ad Config</Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
