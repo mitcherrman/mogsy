@@ -119,7 +119,7 @@ export default function FloatingThemeSwitcher() {
   };
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2">
+    <div ref={menuRef} className="fixed bottom-[4.5rem] sm:bottom-6 right-3 sm:right-6 z-[60] flex flex-col items-end gap-2">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -169,7 +169,7 @@ export default function FloatingThemeSwitcher() {
                     onClick={() => handleSelect(theme.id)}
                     onMouseEnter={() => handleMouseEnter(theme.id)}
                     onMouseLeave={handleMouseLeave}
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all relative ${
                       isActive
                         ? "border-primary ring-2 ring-primary/40 shadow-lg"
                         : locked
@@ -214,9 +214,9 @@ export default function FloatingThemeSwitcher() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setOpen((o) => !o)}
-        className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
+        className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
       >
-        <Palette className="h-5 w-5" />
+        <Palette className="h-4 w-4 sm:h-5 sm:w-5" />
       </motion.button>
     </div>
   );

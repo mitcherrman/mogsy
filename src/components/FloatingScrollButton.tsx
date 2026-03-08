@@ -39,7 +39,7 @@ export default function FloatingScrollButton() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleClick}
-        className="fixed bottom-6 left-6 z-[60] w-10 h-10 rounded-full bg-card/90 backdrop-blur-xl border border-border shadow-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        className="fixed bottom-[4.5rem] sm:bottom-6 left-1/2 -translate-x-1/2 z-[60] w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-card/90 backdrop-blur-xl border border-border shadow-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
       >
         {atBottom ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
       </motion.button>
