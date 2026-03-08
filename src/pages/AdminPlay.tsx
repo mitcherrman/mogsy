@@ -343,11 +343,54 @@ export default function AdminPlay() {
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex-1">Play Layout</h1>
+
+          {/* Presets popover */}
+          <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Bookmark className="h-3.5 w-3.5" /> Presets
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3 space-y-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Save Current as Preset</p>
+              <div className="flex gap-1.5">
+                <Input
+                  value={newPresetName}
+                  onChange={e => setNewPresetName(e.target.value)}
+                  placeholder="Preset name…"
+                  className="h-8 text-xs flex-1"
+                  onKeyDown={e => e.key === "Enter" && handleSavePreset()}
+                />
+                <Button size="sm" className="h-8 gap-1 text-xs" onClick={handleSavePreset} disabled={saving}>
+                  <Plus className="h-3 w-3" /> Save
+                </Button>
+              </div>
+              {presets.length > 0 && (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">Load Preset</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {presets.map(p => (
+                      <div key={p.id} className="flex items-center gap-1.5 p-1.5 rounded-md border border-border bg-muted/30 hover:bg-muted/60 transition-colors">
+                        <button onClick={() => handleLoadPreset(p.id)} className="flex-1 text-left text-xs font-semibold text-foreground truncate">
+                          <FolderOpen className="h-3 w-3 inline mr-1.5 text-muted-foreground" />
+                          {p.name}
+                        </button>
+                        <button onClick={() => handleDeletePreset(p.id)} className="shrink-0 p-1 rounded hover:bg-destructive/10 transition-colors">
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
+
           <Button variant="outline" size="sm" onClick={handleReset} disabled={saving} className="gap-1.5 text-xs">
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
