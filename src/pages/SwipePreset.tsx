@@ -123,9 +123,6 @@ export default function SwipePreset() {
 
   const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
 
-  // Multi-image state
-  const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
-  const [currentImageIndex, setCurrentImageIndex] = useState<Map<string, number>>(new Map());
 
   // Apply theme immediately from navigation state (before data loads) to prevent flash
   useEffect(() => {
