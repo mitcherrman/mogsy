@@ -59,6 +59,7 @@ export default function SwipePreset() {
   const captureRef = useRef<HTMLDivElement>(null);
   const { capture } = useScreenshot(captureRef);
   const [items, setItems] = useState<PresetItem[]>([]);
+  const [localElos, setLocalElos] = useState<Map<string, number>>(new Map());
   const [matchups, setMatchups] = useState<[PresetItem, PresetItem][]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
@@ -75,7 +76,10 @@ export default function SwipePreset() {
   const [userShowElo, setUserShowElo] = useState(true);
   const [userShowRank, setUserShowRank] = useState(true);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
+  const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
   const { swipeAnimation, logUsage } = useCardAnimation();
