@@ -1,40 +1,82 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-### The Pattern Difference
+## Friend System Implementation Plan
 
-**SliceBattleAnimation (correct):**
+### Database
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+**New table: `friendships`**
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK, default gen_random_uuid() |
+| requester_id | uuid | references profiles(id) on delete cascade |
+| addressee_id | uuid | references profiles(id) on delete cascade |
+| status | text | `pending`, `accepted`, `declined` — default `pending` |
+| created_at | timestamptz | default now() |
+| updated_at | timestamptz | default now() |
+| UNIQUE | | (requester_id, addressee_id) |
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+**RLS policies:**
+- SELECT: authenticated users see rows where they are requester or addressee (via security definer helper)
+- INSERT: user can insert where requester_id matches their profile
+- UPDATE: addressee can update status
+- DELETE: either party can delete
 
-### Implementation Plan
+**Security definer function** `is_friendship_party` to check if current user owns a profile_id without recursive RLS on profiles.
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+**Seed data:** Insert ~4 accepted friendships between existing bot profiles so the Home section has content to display.
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+### Frontend Files
 
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+**1. `src/hooks/useFriends.ts`** — Core hook
+- `sendRequest(targetProfileId)` — insert pending
+- `acceptRequest(friendshipId)` — update to accepted
+- `declineRequest(friendshipId)` — delete row
+- `removeFriend(friendshipId)` — delete row
+- `useFriendStatus(targetProfileId)` — returns `none | pending_sent | pending_received | friends`
+- `useFriendsList()` — returns accepted friends with profile data
+- `usePendingRequests()` — incoming pending requests
 
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+**2. `src/components/FloatingFriendsButton.tsx`** — Floating action button
+- Fixed bottom-right (above mobile nav on mobile, above scroll button)
+- Users icon with unread pending count badge
+- Opens a slide-up sheet/drawer with:
+  - **Friends tab**: list of friends (avatar, name, link to profile, unfriend button)
+  - **Requests tab**: pending incoming requests with accept/decline
+  - **Search**: simple text input to search profiles by display_name and send requests
+- Uses the `useFriends` hook
 
-### Files Modified
+**3. `src/components/HomeFriendsSection.tsx`** — Home page section
+- Shows between "Play Now" and "Explore" sections
+- Horizontal scroll of friend avatars with names
+- "See all" link opens the floating friends panel
+- If no friends, shows a prompt to add friends
 
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
+**4. `src/pages/UserProfile.tsx`** — Add friend button
+- Context-aware button: "Add Friend" / "Pending" / "Friends ✓" / "Accept Request"
+- Uses `useFriendStatus` hook
+
+**5. `src/components/Layout.tsx`** — Mount FloatingFriendsButton
+
+**6. `src/pages/Home.tsx`** — Add HomeFriendsSection
+
+**7. `src/App.tsx`** — No route changes needed (friends UI is a floating panel)
+
+### Friend Features
+- **Send/accept/decline/remove** friend requests
+- **Pending request badge** on floating button (real-time feel via refetch)
+- **Friend activity** on home (see friends' avatars)
+- **Quick profile access** from friends list
+- **Search users** to send requests from the friends panel
+
+### Files changed
+| File | Action |
+|------|--------|
+| Migration SQL | Create `friendships` table, RLS, helper fn, seed bot friendships |
+| `src/hooks/useFriends.ts` | Create |
+| `src/components/FloatingFriendsButton.tsx` | Create |
+| `src/components/HomeFriendsSection.tsx` | Create |
+| `src/pages/UserProfile.tsx` | Edit — add friend button |
+| `src/pages/Home.tsx` | Edit — add friends section |
+| `src/components/Layout.tsx` | Edit — mount floating button |
+
