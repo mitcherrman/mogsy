@@ -58,9 +58,9 @@ export default function AdminPlay() {
       .eq("user_id", user.id)
       .then(({ data }) => {
         const roles = data?.map(r => r.role as string) || [];
-        if (!roles.includes("master_admin")) {
-          navigate("/admin");
-          toast.error("Access denied — master admin only");
+        if (!roles.includes("master_admin") && !roles.includes("admin") && !roles.includes("moderator")) {
+          navigate("/");
+          toast.error("Access denied");
           return;
         }
         setAuthorized(true);
