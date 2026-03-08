@@ -754,6 +754,9 @@ export default function AdminAds() {
         })}
       </div>
 
+      {/* ═══════ Ad Analytics ═══════ */}
+      <AdminAdAnalytics />
+
       {/* Per-user search */}
       <div className="space-y-3">
         <h4 className="text-sm font-semibold text-foreground">Per-User Ad Control</h4>
