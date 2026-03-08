@@ -194,13 +194,15 @@ export default function Play() {
   }
 
   /* ─── Desktop: renders sub-options inline below top-level bubbles ─── */
+  const desktopAlign = expanded === "collections" ? "items-end" : "items-start";
+
   const renderDesktopSubContent = () => {
     if (!expanded) return null;
 
     // Mode selected but no sub — show Swipe & Aura Check
     if (!subExpanded) {
       return (
-        <motion.div key="desktop-sub" {...fadeIn} className="flex items-center justify-center gap-4">
+        <motion.div key="desktop-sub" {...fadeIn} className={`flex flex-col ${desktopAlign} gap-4`}>
           <div className="flex flex-col items-center gap-2">
             <motion.button
               onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))}
