@@ -695,7 +695,86 @@ function MoggedOverlay() {
 /* ────────────────────────────────────
    AMONG US – pencil-drawn spaceships, buildings, crewmate GIF
    ──────────────────────────────────── */
-function AmongUsThemeOverlay() {
+function AmongUsDecorations() {
+  const stars = Array.from({ length: 40 }, (_, i) => ({
+    id: i, x: rand(0, 100), y: rand(0, 100), size: rand(1, 3), delay: rand(0, 4), dur: rand(2, 5),
+  }));
+
+  return (
+    <>
+      <style>{`
+        @keyframes auTwinkle { 0%,100%{opacity:.15} 50%{opacity:.8} }
+        @keyframes shipDrift1 { 0%{transform:translate(0,0) rotate(-5deg)} 50%{transform:translate(15px,-10px) rotate(5deg)} 100%{transform:translate(0,0) rotate(-5deg)} }
+        @keyframes shipDrift2 { 0%{transform:translate(0,0) rotate(3deg)} 50%{transform:translate(-12px,8px) rotate(-4deg)} 100%{transform:translate(0,0) rotate(3deg)} }
+      `}</style>
+
+      {stars.map(s => (
+        <div key={s.id} className="absolute rounded-full pointer-events-none"
+          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size,
+            background: "hsl(200,60%,80%)", animation: `auTwinkle ${s.dur}s ${s.delay}s ease-in-out infinite` }} />
+      ))}
+
+      <svg className="absolute top-[8%] right-[8%] w-20 h-14 pointer-events-none opacity-30"
+        viewBox="0 0 80 50" fill="none" style={{ animation: "shipDrift1 12s ease-in-out infinite" }}>
+        <path d="M10,30 Q15,10 40,8 Q65,6 70,25 Q65,40 40,42 Q15,44 10,30Z" stroke="hsl(180,60%,55%)" strokeWidth="3" fill="hsl(230,30%,15%)" />
+        <ellipse cx="40" cy="22" rx="10" ry="7" stroke="hsl(180,70%,60%)" strokeWidth="2.5" fill="hsl(180,40%,25%)" />
+        <path d="M68,25 L78,20 L76,30Z" stroke="hsl(0,60%,50%)" strokeWidth="2" fill="hsl(0,50%,35%)" />
+        <circle cx="25" cy="30" r="2" fill="hsl(180,50%,50%)" />
+        <circle cx="55" cy="28" r="2" fill="hsl(180,50%,50%)" />
+      </svg>
+
+      <svg className="absolute top-[35%] left-[5%] w-16 h-12 pointer-events-none opacity-25"
+        viewBox="0 0 60 40" fill="none" style={{ animation: "shipDrift2 15s 2s ease-in-out infinite" }}>
+        <path d="M8,22 Q10,8 30,5 Q50,8 52,22 Q50,34 30,36 Q10,34 8,22Z" stroke="hsl(0,60%,50%)" strokeWidth="3" fill="hsl(230,25%,14%)" />
+        <ellipse cx="30" cy="18" rx="8" ry="5" stroke="hsl(0,50%,55%)" strokeWidth="2" fill="hsl(0,35%,22%)" />
+        <line x1="15" y1="32" x2="12" y2="38" stroke="hsl(45,60%,50%)" strokeWidth="2" />
+        <line x1="45" y1="32" x2="48" y2="38" stroke="hsl(45,60%,50%)" strokeWidth="2" />
+      </svg>
+
+      <svg className="absolute top-[5%] left-[40%] w-14 h-10 pointer-events-none opacity-20"
+        viewBox="0 0 50 35" fill="none" style={{ animation: "shipDrift1 18s 4s ease-in-out infinite" }}>
+        <path d="M5,20 Q8,6 25,4 Q42,6 45,20 Q42,30 25,32 Q8,30 5,20Z" stroke="hsl(120,50%,45%)" strokeWidth="2.5" fill="hsl(230,20%,12%)" />
+        <ellipse cx="25" cy="16" rx="7" ry="5" stroke="hsl(120,40%,50%)" strokeWidth="2" fill="hsl(120,30%,20%)" />
+      </svg>
+
+      <div className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none">
+        <svg viewBox="0 0 800 120" preserveAspectRatio="none" className="w-full h-full" fill="none">
+          <rect x="20" y="30" width="60" height="90" rx="3" stroke="hsl(230,25%,30%)" strokeWidth="3.5" fill="hsl(230,30%,10%)" />
+          <rect x="30" y="45" width="15" height="12" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
+          <rect x="52" y="45" width="15" height="12" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
+          <circle cx="50" cy="78" r="8" stroke="hsl(0,50%,45%)" strokeWidth="2.5" fill="hsl(0,40%,20%)" />
+          <path d="M35,30 L50,15 L65,30" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,30%,10%)" />
+          <rect x="120" y="50" width="80" height="70" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
+          <rect x="135" y="62" width="20" height="15" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
+          <rect x="165" y="62" width="20" height="15" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
+          <rect x="148" y="95" width="18" height="25" rx="1" stroke="hsl(0,40%,40%)" strokeWidth="2" fill="hsl(0,30%,18%)" />
+          <line x1="120" y1="50" x2="200" y2="50" stroke="hsl(0,50%,40%)" strokeWidth="2" />
+          <rect x="260" y="55" width="100" height="65" rx="3" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
+          <path d="M260,55 Q310,20 360,55" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,25%,13%)" />
+          <circle cx="290" cy="80" r="5" fill="hsl(180,40%,35%)" />
+          <circle cx="330" cy="80" r="5" fill="hsl(180,40%,35%)" />
+          <rect x="300" y="97" width="20" height="23" rx="1" stroke="hsl(0,40%,40%)" strokeWidth="2" fill="hsl(0,30%,18%)" />
+          <rect x="420" y="60" width="70" height="60" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
+          <path d="M445,72 L465,72 M455,62 L455,82" stroke="hsl(0,60%,50%)" strokeWidth="3" />
+          <rect x="440" y="100" width="15" height="20" rx="1" stroke="hsl(180,35%,35%)" strokeWidth="2" fill="hsl(180,25%,15%)" />
+          <rect x="550" y="40" width="50" height="80" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
+          <line x1="575" y1="40" x2="575" y2="15" stroke="hsl(0,50%,45%)" strokeWidth="2.5" />
+          <circle cx="575" cy="12" r="4" fill="hsl(0,50%,45%)" />
+          <rect x="560" y="55" width="12" height="10" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="1.5" fill="hsl(180,30%,18%)" />
+          <rect x="578" y="55" width="12" height="10" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="1.5" fill="hsl(180,30%,18%)" />
+          <line x1="80" y1="90" x2="120" y2="90" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
+          <line x1="200" y1="85" x2="260" y2="85" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
+          <line x1="360" y1="88" x2="420" y2="88" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
+          <line x1="490" y1="85" x2="550" y2="85" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
+          <line x1="0" y1="120" x2="800" y2="120" stroke="hsl(230,20%,25%)" strokeWidth="3" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
+/** Clickable crewmate GIF — rendered OUTSIDE the overflow-hidden overlay */
+function AmongUsCrewmateGif() {
   const navigate = useNavigate();
   const [gifVisible, setGifVisible] = useState(false);
   const [gifPos, setGifPos] = useState({ x: 50, y: 50 });
@@ -709,128 +788,34 @@ function AmongUsThemeOverlay() {
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     const cycle = () => {
-      // Fade in
       randomisePos();
       setGifVisible(true);
       appearanceCount.current += 1;
       const clickable = appearanceCount.current % 3 === 0;
       setIsClickable(clickable);
-
-      // Stay visible 3s, then fade out
       timeout = setTimeout(() => {
         setGifVisible(false);
-        // Wait 2s before next cycle
         timeout = setTimeout(cycle, 2000);
       }, 3000);
     };
-
-    // Initial delay
     timeout = setTimeout(cycle, 1500);
     return () => clearTimeout(timeout);
   }, [randomisePos]);
 
-  const stars = Array.from({ length: 40 }, (_, i) => ({
-    id: i, x: rand(0, 100), y: rand(0, 100), size: rand(1, 3), delay: rand(0, 4), dur: rand(2, 5),
-  }));
-
   return (
     <>
       <style>{`
-        @keyframes auTwinkle { 0%,100%{opacity:.15} 50%{opacity:.8} }
-        @keyframes shipDrift1 { 0%{transform:translate(0,0) rotate(-5deg)} 50%{transform:translate(15px,-10px) rotate(5deg)} 100%{transform:translate(0,0) rotate(-5deg)} }
-        @keyframes shipDrift2 { 0%{transform:translate(0,0) rotate(3deg)} 50%{transform:translate(-12px,8px) rotate(-4deg)} 100%{transform:translate(0,0) rotate(3deg)} }
         @keyframes secretGlow { 0%,100%{box-shadow:0 0 8px hsl(180,80%,50%,.4), 0 0 20px hsl(0,70%,50%,.2)} 50%{box-shadow:0 0 16px hsl(180,80%,50%,.7), 0 0 40px hsl(0,70%,50%,.4)} }
       `}</style>
-
-      {/* Stars */}
-      {stars.map(s => (
-        <div key={s.id} className="absolute rounded-full pointer-events-none"
-          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size,
-            background: "hsl(200,60%,80%)", animation: `auTwinkle ${s.dur}s ${s.delay}s ease-in-out infinite` }} />
-      ))}
-
-      {/* Pencil-drawn spaceship 1 — top right */}
-      <svg className="absolute top-[8%] right-[8%] w-20 h-14 pointer-events-none opacity-30"
-        viewBox="0 0 80 50" fill="none" style={{ animation: "shipDrift1 12s ease-in-out infinite" }}>
-        <path d="M10,30 Q15,10 40,8 Q65,6 70,25 Q65,40 40,42 Q15,44 10,30Z" stroke="hsl(180,60%,55%)" strokeWidth="3" fill="hsl(230,30%,15%)" />
-        <ellipse cx="40" cy="22" rx="10" ry="7" stroke="hsl(180,70%,60%)" strokeWidth="2.5" fill="hsl(180,40%,25%)" />
-        <path d="M68,25 L78,20 L76,30Z" stroke="hsl(0,60%,50%)" strokeWidth="2" fill="hsl(0,50%,35%)" />
-        <circle cx="25" cy="30" r="2" fill="hsl(180,50%,50%)" />
-        <circle cx="55" cy="28" r="2" fill="hsl(180,50%,50%)" />
-      </svg>
-
-      {/* Pencil-drawn spaceship 2 — left */}
-      <svg className="absolute top-[35%] left-[5%] w-16 h-12 pointer-events-none opacity-25"
-        viewBox="0 0 60 40" fill="none" style={{ animation: "shipDrift2 15s 2s ease-in-out infinite" }}>
-        <path d="M8,22 Q10,8 30,5 Q50,8 52,22 Q50,34 30,36 Q10,34 8,22Z" stroke="hsl(0,60%,50%)" strokeWidth="3" fill="hsl(230,25%,14%)" />
-        <ellipse cx="30" cy="18" rx="8" ry="5" stroke="hsl(0,50%,55%)" strokeWidth="2" fill="hsl(0,35%,22%)" />
-        <line x1="15" y1="32" x2="12" y2="38" stroke="hsl(45,60%,50%)" strokeWidth="2" />
-        <line x1="45" y1="32" x2="48" y2="38" stroke="hsl(45,60%,50%)" strokeWidth="2" />
-      </svg>
-
-      {/* Pencil-drawn spaceship 3 — center top */}
-      <svg className="absolute top-[5%] left-[40%] w-14 h-10 pointer-events-none opacity-20"
-        viewBox="0 0 50 35" fill="none" style={{ animation: "shipDrift1 18s 4s ease-in-out infinite" }}>
-        <path d="M5,20 Q8,6 25,4 Q42,6 45,20 Q42,30 25,32 Q8,30 5,20Z" stroke="hsl(120,50%,45%)" strokeWidth="2.5" fill="hsl(230,20%,12%)" />
-        <ellipse cx="25" cy="16" rx="7" ry="5" stroke="hsl(120,40%,50%)" strokeWidth="2" fill="hsl(120,30%,20%)" />
-      </svg>
-
-      {/* Pencil-drawn buildings along bottom — Among Us Skeld style */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none">
-        <svg viewBox="0 0 800 120" preserveAspectRatio="none" className="w-full h-full" fill="none">
-          {/* Building 1 — tall reactor */}
-          <rect x="20" y="30" width="60" height="90" rx="3" stroke="hsl(230,25%,30%)" strokeWidth="3.5" fill="hsl(230,30%,10%)" />
-          <rect x="30" y="45" width="15" height="12" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
-          <rect x="52" y="45" width="15" height="12" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
-          <circle cx="50" cy="78" r="8" stroke="hsl(0,50%,45%)" strokeWidth="2.5" fill="hsl(0,40%,20%)" />
-          <path d="M35,30 L50,15 L65,30" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,30%,10%)" />
-
-          {/* Building 2 — admin */}
-          <rect x="120" y="50" width="80" height="70" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
-          <rect x="135" y="62" width="20" height="15" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
-          <rect x="165" y="62" width="20" height="15" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="2" fill="hsl(180,30%,18%)" />
-          <rect x="148" y="95" width="18" height="25" rx="1" stroke="hsl(0,40%,40%)" strokeWidth="2" fill="hsl(0,30%,18%)" />
-          <line x1="120" y1="50" x2="200" y2="50" stroke="hsl(0,50%,40%)" strokeWidth="2" />
-
-          {/* Building 3 — cafeteria dome */}
-          <rect x="260" y="55" width="100" height="65" rx="3" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
-          <path d="M260,55 Q310,20 360,55" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,25%,13%)" />
-          <circle cx="290" cy="80" r="5" fill="hsl(180,40%,35%)" />
-          <circle cx="330" cy="80" r="5" fill="hsl(180,40%,35%)" />
-          <rect x="300" y="97" width="20" height="23" rx="1" stroke="hsl(0,40%,40%)" strokeWidth="2" fill="hsl(0,30%,18%)" />
-
-          {/* Building 4 — medbay */}
-          <rect x="420" y="60" width="70" height="60" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
-          <path d="M445,72 L465,72 M455,62 L455,82" stroke="hsl(0,60%,50%)" strokeWidth="3" />
-          <rect x="440" y="100" width="15" height="20" rx="1" stroke="hsl(180,35%,35%)" strokeWidth="2" fill="hsl(180,25%,15%)" />
-
-          {/* Building 5 — comms tower */}
-          <rect x="550" y="40" width="50" height="80" rx="2" stroke="hsl(230,25%,30%)" strokeWidth="3" fill="hsl(230,28%,11%)" />
-          <line x1="575" y1="40" x2="575" y2="15" stroke="hsl(0,50%,45%)" strokeWidth="2.5" />
-          <circle cx="575" cy="12" r="4" fill="hsl(0,50%,45%)" />
-          <rect x="560" y="55" width="12" height="10" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="1.5" fill="hsl(180,30%,18%)" />
-          <rect x="578" y="55" width="12" height="10" rx="1" stroke="hsl(180,40%,40%)" strokeWidth="1.5" fill="hsl(180,30%,18%)" />
-
-          {/* Connecting pipes between buildings */}
-          <line x1="80" y1="90" x2="120" y2="90" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
-          <line x1="200" y1="85" x2="260" y2="85" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
-          <line x1="360" y1="88" x2="420" y2="88" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
-          <line x1="490" y1="85" x2="550" y2="85" stroke="hsl(230,20%,25%)" strokeWidth="2.5" strokeDasharray="4,3" />
-
-          {/* Ground line */}
-          <line x1="0" y1="120" x2="800" y2="120" stroke="hsl(230,20%,25%)" strokeWidth="3" />
-        </svg>
-      </div>
-
-      {/* Crewmate GIF — fading in/out, every 3rd is clickable */}
       <AnimatePresence>
         {gifVisible && (
           <motion.div
+            key="crewmate-gif"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className={isClickable ? "fixed z-[100]" : "absolute z-20"}
+            className="fixed z-[100]"
             style={{
               left: `${gifPos.x}%`,
               top: `${gifPos.y}%`,
