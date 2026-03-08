@@ -306,7 +306,7 @@ export default function Leaderboard() {
         );
       })}
       {list.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">No rankings yet. Start swiping to populate the leaderboard!</p>
+        <p className="text-center text-muted-foreground py-8">No entries yet. Start swiping to populate the leaderboard!</p>
       )}
     </div>
   );
