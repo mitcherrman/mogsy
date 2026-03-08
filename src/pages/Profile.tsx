@@ -417,7 +417,7 @@ export default function Profile() {
 
 
           <form onSubmit={handleSave}>
-            <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
               {/* Left sidebar: Exposure Boost */}
               <div className="lg:w-56 shrink-0 order-2 lg:order-1">
                 <div className="sticky top-20 rounded-2xl border border-border bg-card p-4 space-y-3">
