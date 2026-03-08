@@ -309,7 +309,7 @@ export default function Play() {
         const subLeagues = leaguesInCat.filter(l => l.subcategory === selectedSubcategory);
         const isLol = selectedSubcategory === "League of Legends";
         return (
-          <motion.div key={`subcat-${selectedSubcategory}`} {...fadeIn} className={`flex flex-col items-center gap-5 ${isLol ? "theme-lol" : ""}`}>
+          <motion.div key={`subcat-${selectedSubcategory}`} {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5 ${isLol ? "theme-lol" : ""}`}>
             {isMobile ? (
               <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} active variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage}>
                 <span className="text-sm font-extrabold tracking-wide">{selectedSubcategory}</span>
