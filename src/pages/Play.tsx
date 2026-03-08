@@ -200,19 +200,29 @@ export default function Play() {
     // Mode selected but no sub — show Swipe & Aura Check
     if (!subExpanded) {
       return (
-        <motion.div key="desktop-sub" {...fadeIn} className="flex items-center justify-center gap-6">
+        <motion.div key="desktop-sub" {...fadeIn} className="flex items-center justify-center gap-4">
           <div className="flex flex-col items-center gap-2">
-            <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active={false} variant="accent">
-              <Shuffle className="h-7 w-7" />
-              <span className="text-xs font-extrabold tracking-wide">Swipe</span>
-            </Bubble>
+            <motion.button
+              onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="flex items-center gap-3 px-6 py-3 rounded-xl border-2 border-primary/30 bg-primary/5 text-primary cursor-pointer select-none transition-colors hover:bg-primary/10"
+            >
+              <Shuffle className="h-5 w-5" />
+              <span className="text-sm font-extrabold tracking-wide">Swipe</span>
+            </motion.button>
             <FadeLabel delay={0.5}>Pick your favorite</FadeLabel>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("elocheck"))} active={false} variant="accent">
-              <Zap className="h-7 w-7" />
-              <span className="text-xs font-extrabold tracking-wide">Aura Check</span>
-            </Bubble>
+            <motion.button
+              onClick={() => handleBubbleClick(() => handleSubToggle("elocheck"))}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="flex items-center gap-3 px-6 py-3 rounded-xl border-2 border-primary/30 bg-primary/5 text-primary cursor-pointer select-none transition-colors hover:bg-primary/10"
+            >
+              <Zap className="h-5 w-5" />
+              <span className="text-sm font-extrabold tracking-wide">Aura Check</span>
+            </motion.button>
             <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
           </div>
         </motion.div>
