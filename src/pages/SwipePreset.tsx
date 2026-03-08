@@ -91,6 +91,12 @@ export default function SwipePreset() {
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const { rules: animRules } = useLeagueAnimationRules(leagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
+  const [readyDelay, setReadyDelay] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReadyDelay(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
   const pendingAction = useRef<(() => void) | null>(null);
