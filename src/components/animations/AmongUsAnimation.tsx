@@ -83,16 +83,16 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                       >
-                        <div className="relative w-full h-full overflow-hidden"
+                        <div className="relative w-full h-full overflow-hidden rounded-2xl"
                           style={{
-                            maskImage: "radial-gradient(ellipse 70% 70% at center, black 50%, transparent 100%)",
-                            WebkitMaskImage: "radial-gradient(ellipse 70% 70% at center, black 50%, transparent 100%)",
+                            maskImage: "radial-gradient(ellipse 50% 55% at center 60%, black 25%, transparent 80%)",
+                            WebkitMaskImage: "radial-gradient(ellipse 50% 55% at center 60%, black 25%, transparent 80%)",
                           }}
                         >
                           <img
                             src="/images/amongus-backstab.gif"
                             alt="Among Us backstab"
-                            className="w-full h-full object-contain drop-shadow-2xl scale-[1.18]"
+                            className="w-full h-full object-cover object-bottom scale-[1.3] origin-bottom drop-shadow-2xl"
                             draggable={false}
                           />
                         </div>
