@@ -271,7 +271,7 @@ export default function Play() {
 
     if (!selectedCategory && hasMultipleCategories) {
       return (
-        <motion.div key="swipe-categories-inline" {...fadeIn} className="flex flex-col items-center gap-5">
+        <motion.div key="swipe-categories-inline" {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5`}>
           {isMobile && (
             <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
               <Shuffle className="h-10 w-10" />
