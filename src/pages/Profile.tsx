@@ -450,7 +450,7 @@ export default function Profile() {
               </div>
 
               {/* Center: Main profile form */}
-              <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-6">
+              <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-4 sm:space-y-6">
                 {/* Photos */}
                 <div className="rounded-2xl border border-border bg-card p-5">
                   <Label className="text-base font-bold mb-3 block">Photos</Label>
