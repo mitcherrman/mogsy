@@ -349,7 +349,7 @@ export default function Play() {
         case "list":
           return "flex flex-col gap-1 w-full";
         case "bubbles":
-          return "grid grid-cols-2 gap-3 justify-items-center w-full";
+          return "flex flex-wrap items-start justify-center gap-4 w-full";
         case "pills":
           return "grid grid-cols-2 gap-2 w-full";
         default:
@@ -633,25 +633,7 @@ export default function Play() {
               <Globe className="h-3.5 w-3.5" /> Leaderboard
             </Button>
           )}
-          {/* Layout toggle */}
-          {subExpanded && (
-            <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50">
-              {LAYOUT_OPTIONS.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setDesktopLayout(opt.id)}
-                  title={opt.label}
-                  className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
-                    desktopLayout === opt.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {opt.icon}
-                </button>
-              ))}
-            </div>
-          )}
+          
           {user && !animLoading && (
             <Popover>
               <PopoverTrigger asChild>
@@ -695,6 +677,25 @@ export default function Play() {
             </Popover>
           )}
         </div>
+        {/* Layout toggle below header */}
+        {subExpanded && (
+          <div className="flex items-center justify-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50 w-fit mx-auto mb-4">
+            {LAYOUT_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setDesktopLayout(opt.id)}
+                title={opt.label}
+                className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
+                  desktopLayout === opt.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {opt.icon}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex justify-center mt-8">
           {renderContent()}
         </div>
