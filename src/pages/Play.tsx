@@ -355,7 +355,7 @@ export default function Play() {
     }
     switch (desktopLayout) {
       case "grid":
-        return "grid grid-cols-3 gap-3";
+        return "grid grid-cols-4 gap-2";
       case "list":
         return "flex flex-col gap-1 w-full";
       default:
