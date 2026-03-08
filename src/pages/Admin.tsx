@@ -52,6 +52,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState("users");
+  const [csvExporting, setCsvExporting] = useState(false);
   const [tabPage, setTabPage] = useState(0);
 
   const TABS_PER_PAGE = 4;
