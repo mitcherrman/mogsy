@@ -77,6 +77,14 @@ export const CARD_ANIMATIONS: CardAnimationDef[] = [
     contexts: ["swipe", "elocheck"],
     defaultProOnly: true,
   },
+  {
+    id: "doakes",
+    name: "Sgt Doakes",
+    description: "Surprise! Sgt Doakes walks in on the loser.",
+    icon: "😠",
+    contexts: ["swipe", "elocheck"],
+    defaultProOnly: true,
+  },
 ];
 
 export function getAnimationDef(id: string): CardAnimationDef {

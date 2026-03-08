@@ -187,6 +187,7 @@ export function useAnimationSound() {
       case "crush": playCrushSound(); break;
       case "chop": playChopSound(); break;
       case "mogged": playMoggedSound(); break;
+      case "doakes": playMoggedSound(); break;
       default: break;
     }
   }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound]);
