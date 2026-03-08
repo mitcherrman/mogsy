@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
