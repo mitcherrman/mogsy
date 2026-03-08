@@ -49,7 +49,7 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
       className="flex-1 cursor-pointer rounded-2xl bg-card overflow-hidden flex flex-col transition-transform duration-200 hover:scale-[1.01] active:scale-[0.98] min-w-0 border border-border">
       
       {/* Photo section */}
-      <div className={`relative w-full aspect-[3/4] overflow-hidden bg-muted ${frame}`}>
+      <div className={`profile-photo relative w-full aspect-[3/4] overflow-hidden bg-muted ${frame}`}>
         {profile.avatarUrl && !profile.avatarUrl.includes("dicebear") && !profile.avatarUrl.includes("placeholder") ? (
           <img
             src={profile.avatarUrl}
