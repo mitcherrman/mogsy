@@ -91,6 +91,24 @@ export default function SwipePreset() {
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
   const pendingAction = useRef<(() => void) | null>(null);
 
+  const handleTimerTimeout = useCallback(() => {
+    if (!items.length || sliceWinner !== null) return;
+    if (gauntletMode && gauntletChampion) {
+      const challenger = items.filter(i => i.id !== gauntletChampion.id)[Math.floor(Math.random() * (items.length - 1))];
+      setGauntletPair([gauntletChampion, challenger]);
+    } else {
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= matchups.length) {
+        setFinished(true);
+      } else {
+        setCurrentIndex(nextIndex);
+      }
+    }
+    setMatchCount(c => c + 1);
+  }, [items, sliceWinner, gauntletMode, gauntletChampion, currentIndex, matchups.length]);
+
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
+
   // Gauntlet mode
   const [gauntletMode, setGauntletMode] = useState(false);
   const [gauntletChampion, setGauntletChampion] = useState<PresetItem | null>(null);
