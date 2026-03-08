@@ -452,9 +452,9 @@ export default function Profile() {
               {/* Center: Main profile form */}
               <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-4 sm:space-y-6">
                 {/* Photos */}
-                <div className="rounded-2xl border border-border bg-card p-5">
-                  <Label className="text-base font-bold mb-3 block">Photos</Label>
-                  <div className="flex gap-3 flex-wrap">
+                <div className="rounded-2xl border border-border bg-card p-3 sm:p-5">
+                  <Label className="text-sm sm:text-base font-bold mb-2 sm:mb-3 block">Photos</Label>
+                  <div className="flex gap-2 sm:gap-3 flex-wrap">
                     {photos.map((photo, i) => (
                       <div key={i} className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 ${i < 3 ? "border-primary/60 ring-2 ring-primary/20" : "border-border"}`}>
                         <img src={photo.url} alt="" className="w-full h-full object-cover" />
