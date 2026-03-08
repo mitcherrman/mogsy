@@ -20,6 +20,8 @@ import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
+import ScrollToCommentsHint from "@/components/ScrollToCommentsHint";
+import SwipeInventoryButton from "@/components/SwipeInventoryButton";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -438,10 +440,8 @@ export default function Swipe() {
                   <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
                 </Button>
               )}
-              {myShields > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Shield className="h-3 w-3" /> {myShields}
-                </span>
+              {user && (
+                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
               {globalLeagueId && (
                 <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
@@ -565,6 +565,8 @@ export default function Swipe() {
               ? "Tap to choose · Winner stays on screen"
               : "Tap the profile you prefer · Aura updates instantly"}
           </p>
+
+          <ScrollToCommentsHint />
 
           {/* Comments section */}
           {globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}

@@ -24,6 +24,7 @@ import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
+import ScrollToCommentsHint from "@/components/ScrollToCommentsHint";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 import { useAdSystem } from "@/hooks/useAdSystem";
@@ -906,6 +907,8 @@ export default function SwipePreset() {
               {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
             </Button>
           </div>
+
+          <ScrollToCommentsHint />
 
           {/* Comments section */}
           {leagueId && <SwipeComments leagueId={leagueId} />}
