@@ -14,6 +14,9 @@ export function useAnimationSound() {
     return ctxRef.current;
   };
 
+  const chopBufferRef = useRef<AudioBuffer | null>(null);
+  const chopLoadingRef = useRef(false);
+
   const loadRipSound = useCallback(async () => {
     if (ripBufferRef.current || loadingRef.current) return;
     loadingRef.current = true;
@@ -24,6 +27,18 @@ export function useAnimationSound() {
       ripBufferRef.current = await ctx.decodeAudioData(buf);
     } catch {}
     loadingRef.current = false;
+  }, []);
+
+  const loadChopSound = useCallback(async () => {
+    if (chopBufferRef.current || chopLoadingRef.current) return;
+    chopLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/youre-chopped.mp3");
+      const buf = await res.arrayBuffer();
+      chopBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    chopLoadingRef.current = false;
   }, []);
 
   const playRipSound = useCallback(async () => {
