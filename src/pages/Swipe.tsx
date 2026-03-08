@@ -54,6 +54,8 @@ export default function Swipe() {
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
+  const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [gauntletMode, setGauntletMode] = useState(false);
   const [gauntletChampion, setGauntletChampion] = useState<SwipeProfile | null>(null);
   const [gauntletStreak, setGauntletStreak] = useState(0);
