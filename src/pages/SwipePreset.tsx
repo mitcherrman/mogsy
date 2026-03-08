@@ -798,7 +798,7 @@ export default function SwipePreset() {
 
               {/* Card animation */}
               <CardAnimationRouter
-                animationId={swipeAnimation}
+                animationId={effectiveAnim}
                 winnerSide={sliceWinner}
                 items={pair ? pair.map(item => ({
                   imageUrl: getDisplayImage(item),
