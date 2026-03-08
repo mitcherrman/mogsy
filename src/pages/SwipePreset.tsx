@@ -622,7 +622,7 @@ export default function SwipePreset() {
 
           {gauntletMode ? (
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Swords className="h-3.5 w-3.5 text-primary" />
+              <Sword className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-bold text-primary">Gauntlet</span>
               {gauntletStreak > 0 && (
                 <span className="text-[10px] font-bold text-muted-foreground">
