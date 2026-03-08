@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
+import AnimationCardStats, { type AnimationCardItem } from "./AnimationCardStats";
 
-interface CardItem { imageUrl: string | null; name: string; }
-interface Props { winnerSide: 0 | 1 | null; items: CardItem[]; onComplete: () => void; }
+interface Props { winnerSide: 0 | 1 | null; items: AnimationCardItem[]; onComplete: () => void; }
 
-function getImageUrl(item: CardItem): string {
+function getImageUrl(item: AnimationCardItem): string {
   return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
 }
 
@@ -41,9 +41,7 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="px-2 py-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                  </div>
+                  <AnimationCardStats item={item} />
                 </div>
               );
             }
@@ -51,7 +49,6 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
             return (
               <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
                 <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
-                  {/* Main image with burn effect */}
                   <motion.div
                     className="absolute inset-0"
                     initial={{ opacity: 1, scale: 1, filter: "brightness(1)" }}
@@ -62,29 +59,20 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
                         ? { opacity: 0, scale: 1.02, filter: "brightness(3) saturate(0)" }
                         : {}
                     }
-                    transition={{
-                      duration: phase === "glow" ? 0.2 : 0.5,
-                      ease: "easeOut",
-                    }}
+                    transition={{ duration: phase === "glow" ? 0.2 : 0.5, ease: "easeOut" }}
                   >
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
 
-                  {/* Golden overlay */}
                   <motion.div
                     className="absolute inset-0 rounded-2xl"
                     style={{ background: "radial-gradient(circle, hsla(45, 100%, 60%, 0.6), hsla(30, 100%, 50%, 0.3), transparent)" }}
                     initial={{ opacity: 0 }}
-                    animate={
-                      phase === "glow" ? { opacity: 0.8 }
-                        : phase === "burn" ? { opacity: 0 }
-                        : { opacity: 0 }
-                    }
+                    animate={phase === "glow" ? { opacity: 0.8 } : { opacity: 0 }}
                     transition={{ duration: 0.3 }}
                   />
 
-                  {/* Embers */}
-                  {(phase === "burn") && (
+                  {phase === "burn" && (
                     <>
                       {Array.from({ length: 12 }).map((_, i) => (
                         <motion.div
@@ -103,9 +91,7 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
                     </>
                   )}
                 </div>
-                <div className="px-2 py-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                </div>
+                <AnimationCardStats item={item} />
               </div>
             );
           })}

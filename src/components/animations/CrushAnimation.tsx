@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
+import AnimationCardStats, { type AnimationCardItem } from "./AnimationCardStats";
 
-interface CardItem { imageUrl: string | null; name: string; }
-interface Props { winnerSide: 0 | 1 | null; items: CardItem[]; onComplete: () => void; }
+interface Props { winnerSide: 0 | 1 | null; items: AnimationCardItem[]; onComplete: () => void; }
 
-function getImageUrl(item: CardItem): string {
+function getImageUrl(item: AnimationCardItem): string {
   return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
 }
 
@@ -41,9 +41,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="px-2 py-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                  </div>
+                  <AnimationCardStats item={item} />
                 </div>
               );
             }
@@ -69,11 +67,8 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
 
-                  {/* Shockwave ring */}
                   {(phase === "impact" || phase === "crush") && (
-                    <motion.div
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
+                    <motion.div className="absolute inset-0 flex items-center justify-center">
                       <motion.div
                         className="rounded-full border-2 border-foreground/20"
                         initial={{ width: 10, height: 10, opacity: 0.8 }}
@@ -83,9 +78,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                     </motion.div>
                   )}
                 </div>
-                <div className="px-2 py-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                </div>
+                <AnimationCardStats item={item} />
               </div>
             );
           })}
