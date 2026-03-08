@@ -388,19 +388,6 @@ export default function Swipe() {
               >
                 <Camera className="h-4 w-4" />
               </Button>
-              <Button
-                variant={gauntletMode ? "default" : "ghost"}
-                size="icon"
-                onClick={() => {
-                  setGauntletMode(!gauntletMode);
-                  setGauntletChampion(null);
-                  setGauntletStreak(0);
-                }}
-                className={`h-8 w-8 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-              >
-                <Swords className="h-4 w-4" />
-              </Button>
               {lastMatch && myRewinds > 0 && (
                 <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
                   <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
