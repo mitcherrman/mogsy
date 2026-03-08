@@ -12,7 +12,7 @@ import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, ge
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
-  UserPlus, UserCheck, Clock,
+  UserPlus, UserCheck, Clock, Bookmark, BookmarkCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
@@ -76,6 +76,43 @@ const frameClasses: Record<string, string> = {
   diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
 };
 
+function SaveButton({ profileId, userId }: { profileId: string; userId: string }) {
+  const [saved, setSaved] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("saved_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("saved_profile_id", profileId)
+      .maybeSingle()
+      .then(({ data }) => {
+        setSaved(!!data);
+        setLoading(false);
+      });
+  }, [userId, profileId]);
+
+  const toggle = async () => {
+    if (saved) {
+      await supabase.from("saved_profiles").delete().eq("user_id", userId).eq("saved_profile_id", profileId);
+      setSaved(false);
+    } else {
+      await supabase.from("saved_profiles").insert({ user_id: userId, saved_profile_id: profileId });
+      setSaved(true);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <Button variant={saved ? "outline" : "secondary"} size="sm" onClick={toggle}>
+      {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+      <span className="ml-1">{saved ? "Saved" : "Save"}</span>
+    </Button>
+  );
+}
+
 function FriendButton({ profileId, friendStatus, friendshipId, refreshFriend, userId }: {
   profileId: string;
   friendStatus: string;
@@ -85,20 +122,10 @@ function FriendButton({ profileId, friendStatus, friendshipId, refreshFriend, us
 }) {
   const [acting, setActing] = useState(false);
 
-  // Check if viewing own profile
-  const [isOwnProfile, setIsOwnProfile] = useState<boolean | null>(null);
-  useEffect(() => {
-    supabase.from("profiles").select("id").eq("user_id", userId).single().then(({ data }) => {
-      setIsOwnProfile(data?.id === profileId);
-    });
-  }, [userId, profileId]);
-
-  if (isOwnProfile === null || isOwnProfile) return null;
-
   const handleAction = async () => {
     setActing(true);
     if (friendStatus === "none") {
-      const { data: myProfile } = await supabase.from("profiles").select("id").eq("user_id", userId).single();
+      const { data: myProfile } = await supabase.from("profiles").select("id, display_name").eq("user_id", userId).single();
       if (myProfile) {
         await supabase.from("friendships").insert({ requester_id: myProfile.id, addressee_id: profileId });
       }
@@ -124,13 +151,43 @@ function FriendButton({ profileId, friendStatus, friendshipId, refreshFriend, us
     <Button
       variant={c.variant}
       size="sm"
-      className="mt-3"
       onClick={handleAction}
       disabled={acting || friendStatus === "pending_sent"}
     >
       {c.icon}
       <span className="ml-1">{c.label}</span>
     </Button>
+  );
+}
+
+function ProfileActions({ profileId, friendStatus, friendshipId, refreshFriend, userId }: {
+  profileId: string;
+  friendStatus: string;
+  friendshipId: string | null;
+  refreshFriend: () => void;
+  userId: string;
+}) {
+  const [isOwnProfile, setIsOwnProfile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.from("profiles").select("id").eq("user_id", userId).single().then(({ data }) => {
+      setIsOwnProfile(data?.id === profileId);
+    });
+  }, [userId, profileId]);
+
+  if (isOwnProfile === null || isOwnProfile) return null;
+
+  return (
+    <div className="flex items-center gap-2 mt-3">
+      <FriendButton
+        profileId={profileId}
+        friendStatus={friendStatus}
+        friendshipId={friendshipId}
+        refreshFriend={refreshFriend}
+        userId={userId}
+      />
+      <SaveButton profileId={profileId} userId={userId} />
+    </div>
   );
 }
 
@@ -510,9 +567,9 @@ export default function UserProfile() {
               </motion.p>
             )}
 
-            {/* Friend Button */}
+            {/* Friend & Save Buttons */}
             {user && profileId && (
-              <FriendButton
+              <ProfileActions
                 profileId={profileId}
                 friendStatus={friendStatus}
                 friendshipId={friendshipId}
