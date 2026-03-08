@@ -720,6 +720,117 @@ export default function AdminDemo() {
           </div>
         )}
       </div>
+
+      {/* Fullscreen swipe-game preview */}
+      <AnimatePresence>
+        {fullscreenPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col"
+            style={themeStyle}
+          >
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+              <span className="text-sm font-bold text-foreground truncate">{leagueName}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFullscreenPreview(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Card area */}
+            <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" style={{ background: theme?.styles?.pageBg || "hsl(var(--background))" }}>
+              <div className={`w-full ${deviceFrame === "phone" ? "max-w-[375px]" : "max-w-[600px]"}`}>
+                {mode === "aura-check" ? (
+                  <div>
+                    <div className="flex items-center justify-center gap-6 mb-4">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Score</p>
+                        <p className="text-2xl font-black text-primary">{auraScore}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Streak</p>
+                        <p className="text-2xl font-black text-foreground">{auraStreak}🔥</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Best</p>
+                        <p className="text-2xl font-black text-muted-foreground">{auraBest}</p>
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-muted-foreground mb-3">Who's ranked higher in their league?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {renderAuraCard(cardA, 0)}
+                      {renderAuraCard(cardB, 1)}
+                    </div>
+                    {auraRevealed && (
+                      <motion.p
+                        initial={{ scale: 0.5 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                        className={`text-lg font-black text-center mt-3 ${
+                          cardA.aura >= cardB.aura ? "text-emerald-400" : "text-red-400"
+                        }`}
+                      >
+                        {cardA.aura >= cardB.aura ? "Correct! 🎉" : "Wrong! 😬"}
+                      </motion.p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex gap-1 relative">
+                    {renderSwipeCard(cardA, 0)}
+                    <div className="flex items-center justify-center shrink-0">
+                      <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+                    </div>
+                    {renderSwipeCard(cardB, 1)}
+                    <CardAnimationRouter
+                      animationId={animationId}
+                      winnerSide={animWinner}
+                      items={[cardA, cardB].map(c => ({
+                        imageUrl: c.imageUrl || null,
+                        name: c.name,
+                        subtitle: c.subtitle,
+                        localElo: c.aura,
+                        localRank: c.rank,
+                        globalElo: c.aura,
+                        globalRank: c.rank,
+                        eloVisible: true,
+                        rankVisible: true,
+                        eloChange: c.eloDelta,
+                        rankOld: null,
+                        rankNew: null,
+                        globalDirection: c.globalDirection,
+                      }))}
+                      onComplete={handleAnimComplete}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom bar */}
+            <div className="flex items-center justify-center gap-4 px-4 py-3 border-t border-border bg-card/80 backdrop-blur-sm">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
+                <Camera className="h-3.5 w-3.5" /> Screenshot
+              </Button>
+              {mode !== "aura-check" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const winner = cardA.isWinner ? 0 : 1;
+                    setAnimWinner(winner as 0 | 1);
+                    playAnimationSound(animationId);
+                  }}
+                >
+                  <Play className="h-3.5 w-3.5" /> Play Animation
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
