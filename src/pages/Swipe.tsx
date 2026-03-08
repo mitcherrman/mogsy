@@ -278,7 +278,7 @@ export default function Swipe() {
 
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
-      if (!pair || sliceWinner !== null) return;
+      if (!pair || sliceWinner !== null || readyDelay) return;
       // Check for animation override from league rules
       const override = getAnimationOverride(matchCount + 1, animRules);
       const animToUse = override || swipeAnimation;
