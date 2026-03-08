@@ -54,7 +54,7 @@ const App = () => (
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/referral" element={<ProtectedRoute><Referral /></ProtectedRoute>} />
                   <Route path="/swipe" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
-                  <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
+                  <Route path="/leagues/:type" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
                   <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
                   <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
                   <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
