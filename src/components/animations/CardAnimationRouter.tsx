@@ -34,8 +34,9 @@ export default function CardAnimationRouter({ animationId, winnerSide, items, on
       {animationId === "chop" && <ChopAnimation {...commonProps} />}
       {animationId === "mogged" && <MoggedAnimation {...commonProps} />}
       {animationId === "doakes" && <SgtDoakesAnimation {...commonProps} />}
+      {animationId === "amongus" && <AmongUsAnimation {...commonProps} />}
       {animationId === "default" && <DefaultFadeAnimation {...commonProps} />}
-      {!["slice", "shatter", "burn", "vaporize", "crush", "chop", "mogged", "doakes", "default"].includes(animationId) && (
+      {!["slice", "shatter", "burn", "vaporize", "crush", "chop", "mogged", "doakes", "amongus", "default"].includes(animationId) && (
         <DefaultFadeAnimation {...commonProps} />
       )}
     </Suspense>

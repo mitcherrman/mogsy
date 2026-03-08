@@ -262,9 +262,10 @@ export function useAnimationSound() {
       case "chop": playChopSound(); break;
       case "mogged": playMoggedSound(); break;
       case "doakes": playDoakesSound(); break;
+      case "amongus": playAmongusSound(); break;
       default: break;
     }
-  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound, playDoakesSound]);
+  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound, playDoakesSound, playAmongusSound]);
 
   return { playAnimationSound, preloadSounds: loadRipSound };
 }
