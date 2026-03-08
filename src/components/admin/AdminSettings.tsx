@@ -32,6 +32,10 @@ export default function AdminSettings() {
     favorites_mode: "auto",
     swipe_timer_enabled: false,
     swipe_timer_duration: 10,
+    shop_ad_enabled: false,
+    shop_ad_type: "pro",
+    shop_ad_headline: "Upgrade to Pro!",
+    shop_ad_subtext: "Unlock premium themes, animations, and more.",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
