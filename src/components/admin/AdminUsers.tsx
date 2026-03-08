@@ -201,6 +201,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
       case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
+      case "moderators": list = list.filter(p => (roles[p.user_id] || []).includes("moderator")); break;
       case "has_avatar": list = list.filter(p => !!p.avatar_url); break;
       case "no_avatar": list = list.filter(p => !p.avatar_url); break;
       case "underage": list = list.filter(p => p.is_flagged_underage); break;
