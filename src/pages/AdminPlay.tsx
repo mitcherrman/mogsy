@@ -67,17 +67,25 @@ export default function AdminPlay() {
   }, [user]);
 
   const loadData = async () => {
-    const [{ data: leagueData }, { data: draftData }] = await Promise.all([
+    const [{ data: leagueData }, { data: draftData }, { data: presetData }] = await Promise.all([
       supabase.from("leagues").select("id, name, category, type, subcategory"),
       supabase.from("play_layout_config").select("config").eq("id", "draft").single(),
+      supabase.from("play_layout_config").select("id, updated_at").like("id", "preset__%"),
     ]);
 
     const fetchedLeagues = (leagueData as LeagueItem[]) || [];
     setLeagues(fetchedLeagues);
 
+    if (presetData) {
+      setPresets(presetData.map(p => ({
+        id: p.id,
+        name: p.id.replace("preset__", ""),
+        updated_at: p.updated_at,
+      })));
+    }
+
     if (draftData?.config && typeof draftData.config === "object") {
       const saved = draftData.config as unknown as PlayLayoutConfig;
-      // Merge: auto-include new leagues/categories not in config
       const merged = mergeConfig(saved, fetchedLeagues);
       setConfig(merged);
     } else {
