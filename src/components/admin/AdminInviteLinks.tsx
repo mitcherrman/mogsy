@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Link2, Copy, Trash2, Users, Shield, Plus, ChevronDown, ChevronUp, Gift, Clock, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import AdminCustomLinks from "./AdminCustomLinks";
 
 interface InviteLink {
   id: string;
