@@ -20,6 +20,8 @@ export function useAnimationSound() {
   const moggedLoadingRef = useRef(false);
   const doakesBufferRef = useRef<AudioBuffer | null>(null);
   const doakesLoadingRef = useRef(false);
+  const amongusBufferRef = useRef<AudioBuffer | null>(null);
+  const amongusLoadingRef = useRef(false);
 
   const loadRipSound = useCallback(async () => {
     if (ripBufferRef.current || loadingRef.current) return;
@@ -224,6 +226,32 @@ export function useAnimationSound() {
     } catch {}
   }, [loadChopSound]);
 
+  const loadAmongusSound = useCallback(async () => {
+    if (amongusBufferRef.current || amongusLoadingRef.current) return;
+    amongusLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/amongus-death.mp3");
+      const buf = await res.arrayBuffer();
+      amongusBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    amongusLoadingRef.current = false;
+  }, []);
+
+  const playAmongusSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      if (!amongusBufferRef.current) await loadAmongusSound();
+      if (!amongusBufferRef.current) return;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.buffer = amongusBufferRef.current;
+      source.connect(gain); gain.connect(ctx.destination);
+      source.start();
+    } catch {}
+  }, [loadAmongusSound]);
+
   const playAnimationSound = useCallback((animationId: string) => {
     switch (animationId) {
       case "slice": playRipSound(); break;
@@ -234,9 +262,10 @@ export function useAnimationSound() {
       case "chop": playChopSound(); break;
       case "mogged": playMoggedSound(); break;
       case "doakes": playDoakesSound(); break;
+      case "amongus": playAmongusSound(); break;
       default: break;
     }
-  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound, playDoakesSound]);
+  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound, playDoakesSound, playAmongusSound]);
 
   return { playAnimationSound, preloadSounds: loadRipSound };
 }

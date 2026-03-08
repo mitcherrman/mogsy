@@ -85,6 +85,14 @@ export const CARD_ANIMATIONS: CardAnimationDef[] = [
     contexts: ["swipe", "elocheck"],
     defaultProOnly: true,
   },
+  {
+    id: "amongus",
+    name: "Among Us",
+    description: "Impostor backstabs the loser. They were ejected.",
+    icon: "🔴",
+    contexts: ["swipe", "elocheck"],
+    defaultProOnly: true,
+  },
 ];
 
 export function getAnimationDef(id: string): CardAnimationDef {
