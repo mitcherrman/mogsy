@@ -26,6 +26,8 @@ export default function AdminSettings() {
     default_diamonds: 0,
     allow_anonymous_browsing: true,
     favorites_mode: "auto",
+    swipe_timer_enabled: false,
+    swipe_timer_duration: 10,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
