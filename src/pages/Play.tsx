@@ -349,7 +349,7 @@ export default function Play() {
         case "list":
           return "flex flex-col gap-1 w-full";
         case "bubbles":
-          return "grid grid-cols-2 gap-3 justify-items-center w-full";
+          return "flex flex-wrap items-start justify-center gap-4 w-full";
         case "pills":
           return "grid grid-cols-2 gap-2 w-full";
         default:
