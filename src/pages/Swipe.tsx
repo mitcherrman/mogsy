@@ -306,7 +306,7 @@ export default function Swipe() {
     entries.forEach((e, idx) => map.set(e.id, idx + 1));
     return map;
   }, [profiles, localElos]);
-
+  if (loading) {
     return <div className="min-h-screen" />;
   }
 
