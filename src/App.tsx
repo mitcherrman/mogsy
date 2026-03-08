@@ -30,6 +30,7 @@ const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 const AdminData = lazy(() => import("./pages/AdminData"));
+const AdminDemo = lazy(() => import("./pages/AdminDemo"));
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                   <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
