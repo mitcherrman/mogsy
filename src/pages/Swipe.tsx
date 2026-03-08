@@ -371,6 +371,8 @@ export default function Swipe() {
       {showAd && (
         <SwipeAd
           isPro={isPro}
+          adsenseSlot={adSource !== "custom" ? adsenseSlot : undefined}
+          adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
           onClose={() => {
             setShowAd(false);
             if (gauntletMode && gauntletChampion) {
