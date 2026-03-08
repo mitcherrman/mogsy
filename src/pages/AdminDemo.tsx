@@ -685,6 +685,9 @@ export default function AdminDemo() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(true)}>
+            <Maximize2 className="h-3.5 w-3.5" /> Preview
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
             <Camera className="h-3.5 w-3.5" /> Screenshot
           </Button>
