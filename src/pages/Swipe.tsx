@@ -415,6 +415,9 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
+            {user && (
+              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+            )}
             <div className="flex-1 text-center">
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
@@ -436,9 +439,6 @@ export default function Swipe() {
               >
                 <Camera className="h-4 w-4" />
               </Button>
-              {user && (
-                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-              )}
               {globalLeagueId && (
                 <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
                   <Trophy className="h-3.5 w-3.5" />

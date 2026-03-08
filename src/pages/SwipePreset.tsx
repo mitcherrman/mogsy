@@ -25,6 +25,7 @@ import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import ScrollToCommentsHint from "@/components/ScrollToCommentsHint";
+import SwipeInventoryButton from "@/components/SwipeInventoryButton";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 import { useAdSystem } from "@/hooks/useAdSystem";
@@ -90,6 +91,9 @@ export default function SwipePreset() {
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [myRewinds, setMyRewinds] = useState(0);
+  const [myShields, setMyShields] = useState(0);
+  const [myReveals, setMyReveals] = useState(0);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
   const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
@@ -202,10 +206,13 @@ export default function SwipePreset() {
 
     if (user) {
       const { data: profile } = await supabase
-        .from("profiles").select("id, is_pro").eq("user_id", user.id).single();
+        .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
         if (profile.is_pro) setIsPro(true);
         setMyProfileId(profile.id);
+        setMyRewinds(profile.rewinds ?? 0);
+        setMyShields(profile.elo_shields ?? 0);
+        setMyReveals(profile.reveals ?? 0);
 
         // Fetch local rankings for this league
         const { data: localRanks } = await supabase
@@ -615,6 +622,9 @@ export default function SwipePreset() {
               <Swords className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-primary font-bold">{matchCount}</span>
             </p>
+            {user && (
+              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+            )}
             <div className="flex-1 text-center">
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
