@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Palette, Lock, Crown, Check } from "lucide-react";
+import { Palette, Lock, Crown, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { profileThemes } from "@/lib/profile-themes";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { supabase } from "@/integrations/supabase/client";
