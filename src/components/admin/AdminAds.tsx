@@ -33,10 +33,13 @@ interface PlacementConfig {
   days_active: string[];
   ab_variant: string;
   ad_mode: string; // "popup" | "in_swipe" | "both" | "off"
+  ad_source: string; // "custom" | "adsense" | "hybrid"
+  adsense_slot: string;
 }
 
 interface AdSettings {
   global_enabled: boolean;
+  adsense_client_id: string;
   placements: Record<string, PlacementConfig>;
 }
 
