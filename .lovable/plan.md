@@ -1,37 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Plan: Wire Published Layout Config into Public Play Tab
+### The Pattern Difference
 
-The Admin Play Tab saves layout config to the database but Play.tsx doesn't read it yet. This plan connects the two so publishing in APT actually controls what users see.
+**SliceBattleAnimation (correct):**
 
-### Changes to `src/pages/Play.tsx`
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-1. **Import and fetch published config** — Add `usePlayLayout("published")` hook call at the top of the component.
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-2. **Apply top-level ordering** — Use the config's `topLevel` array to control which top-level buttons (Collections, Compete, Aura Check) appear and in what order. Hidden items are filtered out.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-3. **Apply category ordering** — When building `presetCategories`, if a published config exists, sort categories by their `config.categories[].order` and filter out hidden ones. Use `customLabel` for display if set.
+### Implementation Plan
 
-4. **Apply league ordering** — Within each category, sort leagues by their `config.leagues[].order` and filter out hidden ones. Use `customLabel` for display if set.
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-5. **Fallback** — If no published config exists (`config === null`), keep current behavior unchanged (alphabetical sort, "Other" at end).
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-### Implementation Detail
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
-The key integration point is after line 172 where `presetCategories` is built. After building the raw map, we'll re-sort its keys and entries using the published config:
-
-```typescript
-// After building presetCategories from DB data:
-if (publishedConfig) {
-  // Filter hidden categories
-  // Sort categories by config order
-  // Within each category, sort leagues by config order
-  // Filter hidden leagues
-}
-```
-
-Similarly, the top-level bubble rendering (Collections/Compete/Aura Check) will read from `publishedConfig.topLevel` to determine order and visibility.
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
 
 ### Files Modified
-- `src/pages/Play.tsx` — Import `usePlayLayout`, apply ordering/visibility/labels from published config
 
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
