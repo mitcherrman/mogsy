@@ -76,6 +76,64 @@ const frameClasses: Record<string, string> = {
   diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
 };
 
+function FriendButton({ profileId, friendStatus, friendshipId, refreshFriend, userId }: {
+  profileId: string;
+  friendStatus: string;
+  friendshipId: string | null;
+  refreshFriend: () => void;
+  userId: string;
+}) {
+  const [acting, setActing] = useState(false);
+
+  // Check if viewing own profile
+  const [isOwnProfile, setIsOwnProfile] = useState<boolean | null>(null);
+  useEffect(() => {
+    supabase.from("profiles").select("id").eq("user_id", userId).single().then(({ data }) => {
+      setIsOwnProfile(data?.id === profileId);
+    });
+  }, [userId, profileId]);
+
+  if (isOwnProfile === null || isOwnProfile) return null;
+
+  const handleAction = async () => {
+    setActing(true);
+    if (friendStatus === "none") {
+      const { data: myProfile } = await supabase.from("profiles").select("id").eq("user_id", userId).single();
+      if (myProfile) {
+        await supabase.from("friendships").insert({ requester_id: myProfile.id, addressee_id: profileId });
+      }
+    } else if (friendStatus === "pending_received" && friendshipId) {
+      await supabase.from("friendships").update({ status: "accepted" }).eq("id", friendshipId);
+    } else if (friendshipId) {
+      await supabase.from("friendships").delete().eq("id", friendshipId);
+    }
+    refreshFriend();
+    setActing(false);
+  };
+
+  const config: Record<string, { label: string; icon: React.ReactNode; variant: "default" | "outline" | "ghost" }> = {
+    none: { label: "Add Friend", icon: <UserPlus className="h-4 w-4" />, variant: "default" },
+    pending_sent: { label: "Pending", icon: <Clock className="h-4 w-4" />, variant: "outline" },
+    pending_received: { label: "Accept", icon: <UserCheck className="h-4 w-4" />, variant: "default" },
+    friends: { label: "Friends ✓", icon: <UserCheck className="h-4 w-4" />, variant: "outline" },
+  };
+
+  const c = config[friendStatus] || config.none;
+
+  return (
+    <Button
+      variant={c.variant}
+      size="sm"
+      className="mt-3"
+      onClick={handleAction}
+      disabled={acting || friendStatus === "pending_sent"}
+    >
+      {c.icon}
+      <span className="ml-1">{c.label}</span>
+    </Button>
+  );
+}
+
 export default function UserProfile() {
   const { profileId } = useParams<{ profileId: string }>();
   const navigate = useNavigate();
