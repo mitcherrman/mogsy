@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
@@ -40,6 +42,9 @@ export default function AdminPlay() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["topLevel"]));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [presets, setPresets] = useState<{ id: string; name: string; updated_at: string }[]>([]);
+  const [newPresetName, setNewPresetName] = useState("");
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
 
   // Auth gate
@@ -62,17 +67,25 @@ export default function AdminPlay() {
   }, [user]);
 
   const loadData = async () => {
-    const [{ data: leagueData }, { data: draftData }] = await Promise.all([
+    const [{ data: leagueData }, { data: draftData }, { data: presetData }] = await Promise.all([
       supabase.from("leagues").select("id, name, category, type, subcategory"),
       supabase.from("play_layout_config").select("config").eq("id", "draft").single(),
+      supabase.from("play_layout_config").select("id, updated_at").like("id", "preset__%"),
     ]);
 
     const fetchedLeagues = (leagueData as LeagueItem[]) || [];
     setLeagues(fetchedLeagues);
 
+    if (presetData) {
+      setPresets(presetData.map(p => ({
+        id: p.id,
+        name: p.id.replace("preset__", ""),
+        updated_at: p.updated_at,
+      })));
+    }
+
     if (draftData?.config && typeof draftData.config === "object") {
       const saved = draftData.config as unknown as PlayLayoutConfig;
-      // Merge: auto-include new leagues/categories not in config
       const merged = mergeConfig(saved, fetchedLeagues);
       setConfig(merged);
     } else {
@@ -240,6 +253,43 @@ export default function AdminPlay() {
     toast.success("Reset to default");
   };
 
+  const handleSavePreset = async () => {
+    const name = newPresetName.trim();
+    if (!name) { toast.error("Enter a preset name"); return; }
+    const presetId = `preset__${name}`;
+    setSaving(true);
+    await supabase.from("play_layout_config").upsert({
+      id: presetId,
+      config: config as any,
+      updated_at: new Date().toISOString(),
+    });
+    setPresets(prev => {
+      const existing = prev.find(p => p.id === presetId);
+      if (existing) return prev.map(p => p.id === presetId ? { ...p, updated_at: new Date().toISOString() } : p);
+      return [...prev, { id: presetId, name, updated_at: new Date().toISOString() }];
+    });
+    setSaving(false);
+    setNewPresetName("");
+    toast.success(`Preset "${name}" saved`);
+  };
+
+  const handleLoadPreset = async (presetId: string) => {
+    const { data } = await supabase.from("play_layout_config").select("config").eq("id", presetId).single();
+    if (data?.config && typeof data.config === "object") {
+      const loaded = mergeConfig(data.config as unknown as PlayLayoutConfig, leagues);
+      setConfig(loaded);
+      hasUnsavedChanges.current = true;
+      toast.success(`Loaded preset "${presetId.replace("preset__", "")}"`);
+      setPresetPopoverOpen(false);
+    }
+  };
+
+  const handleDeletePreset = async (presetId: string) => {
+    await supabase.from("play_layout_config").delete().eq("id", presetId);
+    setPresets(prev => prev.filter(p => p.id !== presetId));
+    toast.success("Preset deleted");
+  };
+
   const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null }) => {
     if (!editingItem) return;
     const { itemType, itemKey } = editingItem;
@@ -293,11 +343,54 @@ export default function AdminPlay() {
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex-1">Play Layout</h1>
+
+          {/* Presets popover */}
+          <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Bookmark className="h-3.5 w-3.5" /> Presets
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3 space-y-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Save Current as Preset</p>
+              <div className="flex gap-1.5">
+                <Input
+                  value={newPresetName}
+                  onChange={e => setNewPresetName(e.target.value)}
+                  placeholder="Preset name…"
+                  className="h-8 text-xs flex-1"
+                  onKeyDown={e => e.key === "Enter" && handleSavePreset()}
+                />
+                <Button size="sm" className="h-8 gap-1 text-xs" onClick={handleSavePreset} disabled={saving}>
+                  <Plus className="h-3 w-3" /> Save
+                </Button>
+              </div>
+              {presets.length > 0 && (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">Load Preset</p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {presets.map(p => (
+                      <div key={p.id} className="flex items-center gap-1.5 p-1.5 rounded-md border border-border bg-muted/30 hover:bg-muted/60 transition-colors">
+                        <button onClick={() => handleLoadPreset(p.id)} className="flex-1 text-left text-xs font-semibold text-foreground truncate">
+                          <FolderOpen className="h-3 w-3 inline mr-1.5 text-muted-foreground" />
+                          {p.name}
+                        </button>
+                        <button onClick={() => handleDeletePreset(p.id)} className="shrink-0 p-1 rounded hover:bg-destructive/10 transition-colors">
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
+
           <Button variant="outline" size="sm" onClick={handleReset} disabled={saving} className="gap-1.5 text-xs">
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
