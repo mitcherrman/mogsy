@@ -426,7 +426,7 @@ export default function Swipe() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch"
+                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]"
               >
                 {/* Left / Top card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
