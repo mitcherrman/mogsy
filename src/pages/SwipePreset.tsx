@@ -160,8 +160,26 @@ export default function SwipePreset() {
 
     if (user) {
       const { data: profile } = await supabase
-        .from("profiles").select("is_pro").eq("user_id", user.id).single();
-      if (profile?.is_pro) setIsPro(true);
+        .from("profiles").select("id, is_pro").eq("user_id", user.id).single();
+      if (profile) {
+        if (profile.is_pro) setIsPro(true);
+        setMyProfileId(profile.id);
+
+        // Fetch local rankings for this league
+        const { data: localRanks } = await supabase
+          .from("local_rankings")
+          .select("item_id, local_elo")
+          .eq("profile_id", profile.id)
+          .eq("league_id", leagueId!);
+
+        if (localRanks) {
+          const map = new Map<string, number>();
+          localRanks.forEach((r: any) => {
+            if (r.item_id) map.set(r.item_id, r.local_elo);
+          });
+          setLocalElos(map);
+        }
+      }
     }
 
     setLoading(false);
