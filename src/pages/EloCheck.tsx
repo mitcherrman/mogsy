@@ -414,7 +414,7 @@ export default function EloCheck() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-extrabold text-foreground flex-1">Aura Check</h1>
+          <h1 className="text-2xl font-extrabold text-foreground flex-1"><span className="uppercase tracking-wider">Aura</span> Check</h1>
         </div>
 
         <Tabs value={mainTab} onValueChange={setMainTab} className="flex-1 flex flex-col">
