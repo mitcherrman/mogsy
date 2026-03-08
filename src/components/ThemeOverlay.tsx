@@ -833,7 +833,7 @@ function AmongUsCrewmateGif() {
               alt=""
               className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-lg"
               draggable={false}
-              style={{ filter: isClickable ? "brightness(1.3)" : "none" }}
+              style={{ filter: isClickable ? "brightness(1.3)" : "none", transform: gifPos.flipped ? "scaleX(-1)" : "none" }}
             />
           </motion.div>
         )}
