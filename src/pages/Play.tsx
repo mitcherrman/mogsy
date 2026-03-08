@@ -27,6 +27,7 @@ interface LeagueItem {
 }
 
 interface PreviewImage {
+  item_id: string;
   league_id: string;
   category: string;
   image_url: string;
