@@ -156,8 +156,7 @@ export default function Play() {
   const handleBack = () => {
     if (selectedSubcategory) setSelectedSubcategory(null);
     else if (selectedCategory) setSelectedCategory(null);
-    else if (subExpanded) setSubExpanded(null);
-    else if (expanded) setExpanded(null);
+    else if (expanded) { setExpanded(null); setSubExpanded(null); }
     else navigate("/home");
   };
 
