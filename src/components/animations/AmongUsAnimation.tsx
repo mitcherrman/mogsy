@@ -16,7 +16,7 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("stab");
-    const t = setTimeout(finish, 1500);
+    const t = setTimeout(finish, 1000);
     return () => { clearTimeout(t); };
   }, [winnerSide, finish]);
 
@@ -78,7 +78,7 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                         transition={{ duration: 0.3 }}
                       />
                       <motion.div
-                        className="absolute bottom-0 left-0 right-0 h-3/4 flex items-end justify-center z-10 overflow-hidden"
+                        className="absolute bottom-0 left-1/4 right-1/4 h-1/2 flex items-end justify-center z-10 overflow-hidden"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
