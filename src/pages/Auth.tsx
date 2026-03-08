@@ -338,7 +338,7 @@ export default function Auth() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <SEOHead
         title={mode === "signup" ? "Sign Up — Mogsy" : "Sign In — Mogsy"}
-        description="Sign in or create your Mogsy account. Start voting, ranking, and competing."
+        description="Sign in or create your Mogsy account. Start voting, competing, and climbing the leaderboard."
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}

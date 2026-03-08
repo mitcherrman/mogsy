@@ -215,7 +215,7 @@ export default function Play() {
       );
     }
 
-    // Mode selected but no sub — show the selected mode bubble + Swipe & Elo Check
+    // Mode selected but no sub — show the selected mode bubble + Swipe & Aura Check
     if (!subExpanded) {
       const modeLabel = expanded === "collections" ? "Collections" : "Compete";
       const modeIcon = expanded === "collections" ? <LayoutGrid className="h-10 w-10" /> : <Users className="h-10 w-10" />;
@@ -237,7 +237,7 @@ export default function Play() {
               <div className="flex flex-col items-center gap-2">
                 <Bubble size={100} onClick={() => handleBubbleClick(() => handleSubToggle("elocheck"))} active={false} variant="accent">
                   <Zap className="h-7 w-7" />
-                  <span className="text-xs font-extrabold tracking-wide">Elo Check</span>
+                  <span className="text-xs font-extrabold tracking-wide">Aura Check</span>
                 </Bubble>
                 <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
               </div>

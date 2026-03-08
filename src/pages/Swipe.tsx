@@ -477,7 +477,7 @@ export default function Swipe() {
           <p className="text-center text-[10px] text-muted-foreground mt-2">
             {gauntletMode
               ? "Tap to choose · Winner stays on screen"
-              : "Tap the profile you prefer · ELO updates instantly"}
+              : "Tap the profile you prefer · Aura updates instantly"}
           </p>
 
           {/* Comments section */}

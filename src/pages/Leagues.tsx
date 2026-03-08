@@ -125,7 +125,7 @@ export default function Leagues() {
               {league.type === "user" && (
                 <>
                   <TierBadge tier={getTierFromElo(league.elo)} />
-                  <span>ELO {league.elo}</span>
+                  <span>Aura {league.elo}</span>
                   <span>·</span>
                 </>
               )}
@@ -157,7 +157,7 @@ export default function Leagues() {
         {userLeagues.length > 0 && (
           <section className="mb-10">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4" /> Player Rankings
+              <Users className="h-4 w-4" /> Player Leaderboard
             </h2>
             <div className="space-y-3">
               {userLeagues.map((league, i) => <LeagueCard key={league.id} league={league} i={i} />)}

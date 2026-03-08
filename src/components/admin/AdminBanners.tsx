@@ -173,7 +173,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
         <div>
           <Label className="text-xs">Manual curation</Label>
           <p className="text-[10px] text-muted-foreground">
-            {config.mode === "manual" ? "Showing your curated list" : "Auto-showing top ELO items"}
+            {config.mode === "manual" ? "Showing your curated list" : "Auto-showing top Aura items"}
           </p>
         </div>
         <Switch
@@ -223,7 +223,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-medium text-foreground truncate">{item.name}</p>
-                  <p className="text-[9px] text-muted-foreground">{item.elo} ELO · {item.league_name} · {item.type}</p>
+                  <p className="text-[9px] text-muted-foreground">{item.elo} Aura · {item.league_name} · {item.type}</p>
                 </div>
                 <div className="flex gap-0.5 shrink-0">
                   <button onClick={() => moveItem(idx, -1)} disabled={idx === 0} className="p-1 rounded hover:bg-secondary disabled:opacity-30">
@@ -272,7 +272,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-medium text-foreground truncate">{r.name}</p>
-                      <p className="text-[9px] text-muted-foreground">{r.elo} ELO · {r.league_name} · {r.type}</p>
+                      <p className="text-[9px] text-muted-foreground">{r.elo} Aura · {r.league_name} · {r.type}</p>
                     </div>
                     <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
                   </button>

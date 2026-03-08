@@ -408,13 +408,13 @@ export default function EloCheck() {
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] px-4 py-4 flex flex-col">
-      <SEOHead title="Elo Check — Mogsy" description="Guess who's ranked higher in Mogsy's Elo Check game. Test your knowledge across all leagues and prove your ranking instincts." />
+      <SEOHead title="Aura Check — Mogsy" description="Guess who's ranked higher in Mogsy's Aura Check game. Test your knowledge across all leagues and prove your ranking instincts." />
       <div className="container mx-auto max-w-2xl flex flex-col flex-1">
         <div className="flex items-center gap-3 mb-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-extrabold text-foreground flex-1">Elo Check</h1>
+          <h1 className="text-2xl font-extrabold text-foreground flex-1">Aura Check</h1>
         </div>
 
         <Tabs value={mainTab} onValueChange={setMainTab} className="flex-1 flex flex-col">
@@ -550,7 +550,7 @@ export default function EloCheck() {
                                       transition={{ delay: 0.2 }}
                                       className="mt-2 rounded-full bg-background/80 backdrop-blur-sm px-3 py-1"
                                     >
-                                      <span className="text-sm font-bold text-foreground">Elo: {item.elo}</span>
+                                      <span className="text-sm font-bold text-foreground">Aura: {item.elo}</span>
                                     </motion.div>
                                   </motion.div>
                                 )}

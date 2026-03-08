@@ -300,13 +300,13 @@ export default function Leaderboard() {
             </div>
             <div className="text-right">
               <div className={`text-lg font-black ${getTierColor(entry.tier)}`}>{entry.elo}</div>
-              <div className="text-xs text-muted-foreground">ELO</div>
+              <div className="text-xs text-muted-foreground">AURA</div>
             </div>
           </motion.div>
         );
       })}
       {list.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">No rankings yet. Start swiping to populate the leaderboard!</p>
+        <p className="text-center text-muted-foreground py-8">No entries yet. Start swiping to populate the leaderboard!</p>
       )}
     </div>
   );
@@ -317,7 +317,7 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen px-4 py-8">
-      <SEOHead title={`${leagueName || "Leaderboard"} — Mogsy`} description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Elo leaderboard.`} />
+      <SEOHead title={`${leagueName || "Leaderboard"} — Mogsy`} description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Aura leaderboard.`} />
       <div className="container mx-auto max-w-2xl">
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-xl pb-4 mb-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -346,7 +346,7 @@ export default function Leaderboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="global" className="flex-1">Global</TabsTrigger>
-            <TabsTrigger value="yours" className="flex-1">Your Rankings</TabsTrigger>
+            <TabsTrigger value="yours" className="flex-1">Your Leaderboard</TabsTrigger>
           </TabsList>
 
           <TabsContent value="global">
@@ -358,7 +358,7 @@ export default function Leaderboard() {
               renderEntries(localEntries)
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                {user ? "Start swiping to build your personal rankings!" : "Sign in to track your personal rankings."}
+                {user ? "Start swiping to build your personal leaderboard!" : "Sign in to track your personal leaderboard."}
               </p>
             )}
           </TabsContent>

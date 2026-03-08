@@ -295,7 +295,7 @@ export default function AdminCollections() {
       for (const mem of action.resetData.memberships) {
         await supabase.from("league_memberships").update({ elo: mem.previousElo }).eq("id", mem.id);
       }
-      toast.success("Undo: Elo & rankings restored");
+      toast.success("Undo: Aura & leaderboard restored");
     }
     setUndoStack((prev) => prev.slice(0, -1));
     loadItems(selectedLeague);
@@ -730,14 +730,14 @@ export default function AdminCollections() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="destructive" className="gap-1 text-xs h-7">
-                  <RotateCcw className="h-3 w-3" /> Reset Elo
+                  <RotateCcw className="h-3 w-3" /> Reset Aura
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Reset all Elo & Rankings?</AlertDialogTitle>
+                  <AlertDialogTitle>Reset all Aura & Leaderboard?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will set <strong>all items and user memberships</strong> in "{selectedLeagueData.name}" back to the default Elo of 1200. This action can be undone.
+                    This will set <strong>all items and user memberships</strong> in "{selectedLeagueData.name}" back to the default Aura of 1200. This action can be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
