@@ -533,7 +533,7 @@ export default function AdminDemo() {
       >
         <div className="aspect-[3/4] w-full bg-muted overflow-hidden relative">
           {card.imageUrl ? (
-            <img src={card.imageUrl} alt={card.name} className="w-full h-full object-cover" />
+            <img src={card.imageUrl} alt={card.name} className="w-full h-full object-contain" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-5xl font-black text-muted-foreground/20">
               {card.name.charAt(0)}
