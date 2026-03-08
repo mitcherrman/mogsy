@@ -166,7 +166,10 @@ export default function FloatingThemeSwitcher() {
                         ? "border-border opacity-50 cursor-not-allowed"
                         : "border-border hover:border-primary/50"
                     }`}
-                    style={{ background: bg }}
+                    style={{
+                      background: bg,
+                      ...(theme.id === "cycle" && isActive ? { animation: "spin 4s linear infinite" } : {}),
+                    }}
                   >
                     {isActive && (
                       <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
