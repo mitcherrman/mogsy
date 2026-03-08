@@ -821,7 +821,7 @@ function GauntletCard({
         onDragEnd={(_e: any, info: any) => {
           if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
         }}
-        whileTap={{ scale: 0.97 }}
+        whileTap={{ scale: 0.99 }}
         className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
           isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
         } ${
