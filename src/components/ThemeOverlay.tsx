@@ -777,14 +777,14 @@ function AmongUsDecorations() {
 function AmongUsCrewmateGif() {
   const navigate = useNavigate();
   const [gifVisible, setGifVisible] = useState(false);
-  const [gifPos, setGifPos] = useState({ x: 50, y: 50 });
+  const [gifPos, setGifPos] = useState({ x: 50, y: 50, flipped: false });
   const appearanceCount = useRef(0);
   const [isClickable, setIsClickable] = useState(false);
 
   const randomisePos = useCallback(() => {
     // Only show on left or right edges so it doesn't overlap center content
     const side = Math.random() < 0.5 ? rand(2, 12) : rand(80, 95);
-    setGifPos({ x: side, y: rand(15, 70) });
+    setGifPos({ x: side, y: rand(15, 70), flipped: Math.random() < 0.5 });
   }, []);
 
   useEffect(() => {
@@ -833,7 +833,7 @@ function AmongUsCrewmateGif() {
               alt=""
               className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-lg"
               draggable={false}
-              style={{ filter: isClickable ? "brightness(1.3)" : "none" }}
+              style={{ filter: isClickable ? "brightness(1.3)" : "none", transform: gifPos.flipped ? "scaleX(-1)" : "none" }}
             />
           </motion.div>
         )}
