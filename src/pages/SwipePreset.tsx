@@ -91,6 +91,20 @@ export default function SwipePreset() {
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
   const pendingAction = useRef<(() => void) | null>(null);
 
+  // Gauntlet mode
+  const [gauntletMode, setGauntletMode] = useState(false);
+  const [gauntletChampion, setGauntletChampion] = useState<PresetItem | null>(null);
+  const [gauntletStreak, setGauntletStreak] = useState(0);
+  const [gauntletPair, setGauntletPair] = useState<[PresetItem, PresetItem] | null>(null);
+
+  // Multi-image state
+  const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
+  const [currentImageIndex, setCurrentImageIndex] = useState<Map<string, number>>(new Map());
+
+  const pair = gauntletMode
+    ? gauntletPair
+    : (currentIndex < matchups.length ? matchups[currentIndex] : null);
+
   const handleTimerTimeout = useCallback(() => {
     if (!items.length || sliceWinner !== null) return;
     if (gauntletMode && gauntletChampion) {
@@ -108,12 +122,6 @@ export default function SwipePreset() {
   }, [items, sliceWinner, gauntletMode, gauntletChampion, currentIndex, matchups.length]);
 
   const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
-
-  // Gauntlet mode
-  const [gauntletMode, setGauntletMode] = useState(false);
-  const [gauntletChampion, setGauntletChampion] = useState<PresetItem | null>(null);
-  const [gauntletStreak, setGauntletStreak] = useState(0);
-  const [gauntletPair, setGauntletPair] = useState<[PresetItem, PresetItem] | null>(null);
 
   // Multi-image state
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
