@@ -850,8 +850,8 @@ export default function Home() {
                   </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-2 flex-shrink-0 ml-2">
                     <span className="truncate max-w-[80px]">{swipe.leagueName}</span>
-                    <span>·</span>
-                    <span>{new Date(swipe.createdAt).toLocaleDateString()}</span>
+                    <span className="hidden sm:inline">·</span>
+                    <span className="hidden sm:inline">{new Date(swipe.createdAt).toLocaleDateString()}</span>
                   </div>
                 </motion.div>
               ))}
