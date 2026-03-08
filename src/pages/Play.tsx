@@ -444,7 +444,7 @@ export default function Play() {
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>
           {expanded && (
-            <Button variant="outline" size="sm" onClick={() => navigate("/leagues")} className="gap-1.5 h-8 text-xs">
+            <Button variant="outline" size="sm" onClick={() => navigate(expanded === "collections" ? "/leagues/collections" : "/leagues/compete")} className="gap-1.5 h-8 text-xs">
               <Globe className="h-3.5 w-3.5" /> Leaderboard
             </Button>
           )}
