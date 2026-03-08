@@ -132,6 +132,16 @@ export default function SecretRoom() {
       >
         shhh... don't tell anyone
       </p>
+
+      {/* Twerking Among Us GIF */}
+      <div className="mt-8">
+        <img
+          src="/images/twerking-amongus.gif"
+          alt="secret crewmate"
+          className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg"
+          draggable={false}
+        />
+      </div>
     </div>
   );
 }
