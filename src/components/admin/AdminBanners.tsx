@@ -173,7 +173,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
         <div>
           <Label className="text-xs">Manual curation</Label>
           <p className="text-[10px] text-muted-foreground">
-            {config.mode === "manual" ? "Showing your curated list" : "Auto-showing top ELO items"}
+            {config.mode === "manual" ? "Showing your curated list" : "Auto-showing top Aura items"}
           </p>
         </div>
         <Switch
