@@ -53,7 +53,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState("users");
   const [tabPage, setTabPage] = useState(0);
 
-  const TABS_PER_PAGE = isMobile ? 5 : 7;
+  const TABS_PER_PAGE = 4;
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
