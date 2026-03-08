@@ -254,7 +254,11 @@ export default function Swipe() {
           if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
           return 1;
         });
-        if (!isPro && newCount % AD_INTERVAL === 0) {
+        const adType = shouldShowAd(newCount, isPro);
+        if (adType === "in_swipe") {
+          const creative = getRandomCreative();
+          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+        } else if (adType === "popup") {
           setShowAd(true);
         } else {
           const others = profiles.filter(p => p.id !== winner.id);
@@ -262,10 +266,17 @@ export default function Swipe() {
           const winnerWasLeft = pair[0].id === winner.id;
           setPair(winnerWasLeft ? [winner, challenger] : [challenger, winner]);
         }
-      } else if (!isPro && newCount % AD_INTERVAL === 0) {
-        setShowAd(true);
-        setEloChanges(new Map());
-        setGlobalDirections(new Map());
+      } else {
+        const adType = shouldShowAd(newCount, isPro);
+        if (adType === "in_swipe") {
+          const creative = getRandomCreative();
+          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
+        } else if (adType === "popup") {
+          setShowAd(true);
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
       } else {
         setEloChanges(new Map());
         setGlobalDirections(new Map());
