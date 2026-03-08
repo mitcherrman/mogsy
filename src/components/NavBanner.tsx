@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ interface BannerConfig {
 }
 
 export default function NavBanner() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<BannerItem[]>([]);
   const [index, setIndex] = useState(0);
   const [delay, setDelay] = useState(7000);
@@ -95,7 +97,8 @@ export default function NavBanner() {
 
   return (
     <div
-      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60"
+      onClick={() => navigate("/leagues/collections")}
+      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60 cursor-pointer"
     >
       {current && (
         <AnimatePresence mode="wait">
