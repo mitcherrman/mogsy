@@ -56,9 +56,9 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                     initial={{ scaleX: 1, scaleY: 1, opacity: 1, rotateX: 0 }}
                     animate={
                       phase === "impact"
-                        ? { scaleX: 1.05, scaleY: 0.95, opacity: 1, rotateX: 0 }
+                        ? { scaleX: 1.01, scaleY: 0.99, opacity: 1, rotateX: 0 }
                         : phase === "crush"
-                        ? { scaleX: 0.1, scaleY: 0.05, opacity: 0, rotateX: 20 }
+                        ? { scaleX: 0.3, scaleY: 0.15, opacity: 0, rotateX: 10 }
                         : {}
                     }
                     transition={{

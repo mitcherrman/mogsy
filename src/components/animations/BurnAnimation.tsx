@@ -57,9 +57,9 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
                     initial={{ opacity: 1, scale: 1, filter: "brightness(1)" }}
                     animate={
                       phase === "glow"
-                        ? { opacity: 1, scale: 1.02, filter: "brightness(1.8) saturate(1.5)" }
+                        ? { opacity: 1, scale: 1.005, filter: "brightness(1.8) saturate(1.5)" }
                         : phase === "burn"
-                        ? { opacity: 0, scale: 1.08, filter: "brightness(3) saturate(0)" }
+                        ? { opacity: 0, scale: 1.02, filter: "brightness(3) saturate(0)" }
                         : {}
                     }
                     transition={{

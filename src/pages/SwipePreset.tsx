@@ -900,9 +900,9 @@ function GauntletCard({
     <AnimatePresence mode="wait">
       <motion.div
         key={`challenger-${item.id}-${matchCount}`}
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.25 }}
         className="flex flex-col flex-1 min-h-0"
       >
