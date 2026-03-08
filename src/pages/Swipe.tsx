@@ -448,7 +448,18 @@ export default function Swipe() {
                 <CardAnimationRouter
                   animationId={swipeAnimation}
                   winnerSide={sliceWinner}
-                  items={pair ? pair.map(p => ({ imageUrl: p.avatarUrl, name: p.displayName })) : []}
+                  items={pair ? pair.map(p => ({
+                    imageUrl: p.avatarUrl,
+                    name: p.displayName,
+                    localElo: localElos.get(p.id) ?? 1200,
+                    localRank: localRankMap.get(p.id),
+                    globalElo: p.elo,
+                    globalRank: globalRankMap.get(p.id),
+                    eloVisible: true,
+                    rankVisible: true,
+                    eloChange: eloChanges.get(p.id) ?? null,
+                    globalDirection: globalDirections.get(p.id),
+                  })) : []}
                   onComplete={handleSliceComplete}
                 />
               </motion.div>
