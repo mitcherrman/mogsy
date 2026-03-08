@@ -194,12 +194,14 @@ export function useAnimationSound() {
       // Play surprise sound slightly delayed
       if (!doakesBufferRef.current) await loadDoakesSound();
       if (doakesBufferRef.current) {
+        const dur = doakesBufferRef.current.duration;
+        const trimmed = Math.max(0, dur - 0.2);
         const s2 = ctx.createBufferSource();
         const g2 = ctx.createGain();
         g2.gain.value = 0.6;
         s2.buffer = doakesBufferRef.current;
         s2.connect(g2); g2.connect(ctx.destination);
-        s2.start(ctx.currentTime + 0.15);
+        s2.start(ctx.currentTime + 0.15, 0, trimmed);
       }
     } catch {}
   }, [loadMoggedSound, loadDoakesSound]);
