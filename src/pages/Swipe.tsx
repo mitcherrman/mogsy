@@ -277,10 +277,11 @@ export default function Swipe() {
           setShowAd(true);
           setEloChanges(new Map());
           setGlobalDirections(new Map());
-      } else {
-        setEloChanges(new Map());
-        setGlobalDirections(new Map());
-        setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+        } else {
+          setEloChanges(new Map());
+          setGlobalDirections(new Map());
+          setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+        }
       }
 
       // Clear slice overlay AFTER new pair state is committed
