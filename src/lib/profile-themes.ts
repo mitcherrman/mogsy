@@ -35,6 +35,26 @@ export interface ProfileTheme {
 
 export const profileThemes: ProfileTheme[] = [
   {
+    id: "cycle",
+    label: "Cycle All",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(0,80%,60%)] via-[hsl(120,60%,50%)] via-[hsl(240,70%,60%)] to-[hsl(0,80%,60%)]",
+    styles: {
+      heroBg: "",
+      cardBg: "",
+      accentRing: "",
+      textAccent: "",
+      iconAccent: "",
+      statBg: "",
+      headingColor: "",
+      nameColor: "",
+      textColor: "",
+      mutedColor: "",
+      innerBg: "",
+      innerBorder: "",
+    },
+  },
+  {
     id: "default",
     label: "Default",
     isPro: false,
