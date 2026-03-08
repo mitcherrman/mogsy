@@ -6,6 +6,7 @@ const ShatterAnimation = lazy(() => import("@/components/animations/ShatterAnima
 const BurnAnimation = lazy(() => import("@/components/animations/BurnAnimation"));
 const VaporizeAnimation = lazy(() => import("@/components/animations/VaporizeAnimation"));
 const CrushAnimation = lazy(() => import("@/components/animations/CrushAnimation"));
+const ChopAnimation = lazy(() => import("@/components/animations/ChopAnimation"));
 const DefaultFadeAnimation = lazy(() => import("@/components/animations/DefaultFadeAnimation"));
 
 interface Props {
