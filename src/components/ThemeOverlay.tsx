@@ -777,7 +777,7 @@ function AmongUsDecorations() {
 function AmongUsCrewmateGif() {
   const navigate = useNavigate();
   const [gifVisible, setGifVisible] = useState(false);
-  const [gifPos, setGifPos] = useState({ x: 50, y: 50 });
+  const [gifPos, setGifPos] = useState({ x: 50, y: 50, flipped: false });
   const appearanceCount = useRef(0);
   const [isClickable, setIsClickable] = useState(false);
 
