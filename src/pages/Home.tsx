@@ -133,6 +133,30 @@ export default function Home() {
     const cats = (profile.preferred_categories as string[]) || [];
     setPreferredCategories(cats);
     await loadData(profile.id, cats);
+
+    // Load curated leagues from custom link if present
+    const curated = getCuratedConfig();
+    if (curated && curated.recommended_league_ids.length > 0) {
+      const { data: curatedData } = await supabase
+        .from("leagues")
+        .select("id, name")
+        .in("id", curated.recommended_league_ids);
+      if (curatedData && curatedData.length > 0) {
+        // Get preview images for these leagues
+        const leagueIds = curatedData.map(l => l.id);
+        const { data: items } = await supabase
+          .from("preset_items")
+          .select("league_id, image_url")
+          .in("league_id", leagueIds)
+          .not("image_url", "is", null)
+          .not("image_url", "eq", "")
+          .limit(20);
+        const imgMap = new Map<string, string>();
+        items?.forEach(i => { if (!imgMap.has(i.league_id)) imgMap.set(i.league_id, i.image_url!); });
+        setCuratedLeagues(curatedData.map(l => ({ id: l.id, name: l.name, image: imgMap.get(l.id) || null })));
+      }
+      clearCuratedConfig();
+    }
   };
 
   const handleOnboardingComplete = async (categories: string[]) => {
