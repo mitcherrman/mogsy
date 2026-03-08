@@ -69,6 +69,21 @@ export default function Swipe() {
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const pendingChoose = useRef<(() => void) | null>(null);
 
+  const handleTimerTimeout = useCallback(() => {
+    if (!pair || sliceWinner !== null) return;
+    // Random skip — just advance to next pair
+    if (gauntletMode && gauntletChampion) {
+      const others = profiles.filter(p => p.id !== gauntletChampion.id);
+      const challenger = others[Math.floor(Math.random() * others.length)];
+      setPair([gauntletChampion, challenger]);
+    } else {
+      setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+    }
+    setMatchCount(c => c + 1);
+  }, [pair, sliceWinner, profiles, gauntletMode, gauntletChampion]);
+
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null);
+
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
 
   useEffect(() => {
