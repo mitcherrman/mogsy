@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords } from "lucide-react";
@@ -53,6 +53,7 @@ export default function Swipe() {
   const [myRewinds, setMyRewinds] = useState(0);
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
+  const [localElos, setLocalElos] = useState<Map<string, number>>(new Map());
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
