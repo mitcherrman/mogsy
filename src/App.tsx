@@ -31,6 +31,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 const AdminData = lazy(() => import("./pages/AdminData"));
 const AdminDemo = lazy(() => import("./pages/AdminDemo"));
+const SecretRoom = lazy(() => import("./pages/SecretRoom"));
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
                 </Route>
+                <Route path="/secret-room" element={<Suspense fallback={<LazyFallback />}><SecretRoom /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
           </BrowserRouter>

@@ -284,6 +284,27 @@ export const profileThemes: ProfileTheme[] = [
       innerBorder: "border-[hsl(0,0%,22%)/0.4]",
     },
   },
+  {
+    id: "amongus",
+    label: "Among Us",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(230,50%,12%)] via-[hsl(0,70%,45%)] to-[hsl(180,80%,40%)]",
+    styles: {
+      pageBg: "linear-gradient(180deg, hsl(230,40%,8%) 0%, hsl(240,30%,6%) 100%)",
+      heroBg: "bg-gradient-to-b from-[hsl(0,70%,45%)/0.25] via-[hsl(230,40%,15%)/0.3] to-transparent",
+      cardBg: "border-[hsl(0,50%,35%)/0.4] bg-[hsl(230,30%,12%)/0.7]",
+      accentRing: "ring-[hsl(180,80%,50%)/0.6]",
+      textAccent: "text-[hsl(180,80%,60%)]",
+      iconAccent: "text-[hsl(0,70%,55%)]",
+      statBg: "bg-[hsl(230,30%,14%)/0.7] border-[hsl(0,50%,35%)/0.3]",
+      headingColor: "text-[hsl(180,60%,65%)]",
+      nameColor: "text-[hsl(0,60%,92%)]",
+      textColor: "text-[hsl(230,20%,82%)]",
+      mutedColor: "text-[hsl(230,15%,52%)]",
+      innerBg: "bg-[hsl(230,25%,15%)/0.6]",
+      innerBorder: "border-[hsl(0,40%,30%)/0.4]",
+    },
+  },
 ];
 
 export function getThemeById(id: string): ProfileTheme {
