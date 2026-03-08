@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
-type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles";
+type DesktopLayout = "bubbles" | "pills" | "grid" | "list";
 
 interface LeagueItem {
   id: string;
@@ -39,7 +39,7 @@ const LAYOUT_OPTIONS: { id: DesktopLayout; icon: React.ReactNode; label: string 
   { id: "pills", icon: <RectangleHorizontal className="h-3.5 w-3.5" />, label: "Pills" },
   { id: "grid", icon: <LayoutGrid className="h-3.5 w-3.5" />, label: "Grid" },
   { id: "list", icon: <List className="h-3.5 w-3.5" />, label: "List" },
-  { id: "tiles", icon: <Square className="h-3.5 w-3.5" />, label: "Tiles" },
+  
 ];
 
 export default function Play() {
@@ -332,10 +332,8 @@ export default function Play() {
         return <RectPill {...props} />;
       case "grid":
         return <GridCard {...props} />;
-      case "list":
+       case "list":
         return <ListRow {...props} />;
-      case "tiles":
-        return <TileSquare {...props} />;
     }
   };
 
@@ -344,7 +342,6 @@ export default function Play() {
     if (isMobile) {
       switch (desktopLayout) {
         case "grid":
-        case "tiles":
           return "grid grid-cols-2 gap-3 w-full";
         case "list":
           return "flex flex-col gap-1 w-full";
