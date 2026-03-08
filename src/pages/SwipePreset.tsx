@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Globe } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
@@ -611,7 +611,8 @@ export default function SwipePreset() {
             >
               <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
-            <p className="text-muted-foreground text-xs shrink-0">
+            <p className="text-muted-foreground text-xs shrink-0 flex items-center gap-1">
+              <Swords className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-primary font-bold">{matchCount}</span>
             </p>
             <div className="flex-1 text-center">
