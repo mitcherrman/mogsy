@@ -732,6 +732,8 @@ export default function SwipePreset() {
                                 change={eloChanges.get(item.id) ?? null}
                                 oldRank={rankChanges.get(item.id)?.old ?? null}
                                 newRank={rankChanges.get(item.id)?.new ?? null}
+                                globalDirection={globalDirections.get(item.id)}
+                              />
                               />
                             </div>
                           )}
@@ -850,7 +852,7 @@ function GauntletCard({
       </div>
       {chosen !== null && (
         <div className="flex justify-center mt-0.5 flex-shrink-0">
-          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} />
+          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
         </div>
       )}
     </div>
