@@ -622,12 +622,12 @@ export default function SwipePreset() {
               <Swords className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-primary font-bold">{matchCount}</span>
             </p>
-            {user && (
-              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-            )}
             <div className="flex-1 text-center">
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
+            {user && (
+              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+            )}
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1 shrink-0">
               {user && (

@@ -415,12 +415,12 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
-            {user && (
-              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-            )}
             <div className="flex-1 text-center">
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
+            {user && (
+              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+            )}
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1 shrink-0">
               {user && (
