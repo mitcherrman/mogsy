@@ -257,6 +257,17 @@ export default function SwipePreset() {
     return map;
   }, [items]);
 
+  const localRankMap = useMemo(() => {
+    const entries = items.map(item => ({
+      id: item.id,
+      elo: localElos.get(item.id) ?? 1200,
+    }));
+    entries.sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    entries.forEach((e, idx) => map.set(e.id, idx + 1));
+    return map;
+  }, [items, localElos]);
+
   const executeChoice = useCallback(
     async (winnerIndex: 0 | 1) => {
       if (!pair) return;
