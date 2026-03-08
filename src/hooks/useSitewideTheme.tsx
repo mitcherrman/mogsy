@@ -136,7 +136,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     return () => {
       if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
     };
-  }, [isCycling, cycleConfig.cycle_interval, cycleConfig.cycle_fade_duration]);
+  }, [isCycling, cycleConfig.cycle_interval, cycleConfig.cycle_fade_duration, pickRandomIndex]);
 
   useEffect(() => {
     const root = document.documentElement;
