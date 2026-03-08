@@ -166,6 +166,44 @@ export function useAnimationSound() {
     } catch {}
   }, [loadMoggedSound]);
 
+  const loadDoakesSound = useCallback(async () => {
+    if (doakesBufferRef.current || doakesLoadingRef.current) return;
+    doakesLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/surprise-motherfucker.mp3");
+      const buf = await res.arrayBuffer();
+      doakesBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    doakesLoadingRef.current = false;
+  }, []);
+
+  const playDoakesSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      // Play mogged sound
+      if (!moggedBufferRef.current) await loadMoggedSound();
+      if (moggedBufferRef.current) {
+        const s1 = ctx.createBufferSource();
+        const g1 = ctx.createGain();
+        g1.gain.value = 0.4;
+        s1.buffer = moggedBufferRef.current;
+        s1.connect(g1); g1.connect(ctx.destination);
+        s1.start();
+      }
+      // Play surprise sound slightly delayed
+      if (!doakesBufferRef.current) await loadDoakesSound();
+      if (doakesBufferRef.current) {
+        const s2 = ctx.createBufferSource();
+        const g2 = ctx.createGain();
+        g2.gain.value = 0.6;
+        s2.buffer = doakesBufferRef.current;
+        s2.connect(g2); g2.connect(ctx.destination);
+        s2.start(ctx.currentTime + 0.15);
+      }
+    } catch {}
+  }, [loadMoggedSound, loadDoakesSound]);
+
   const playChopSound = useCallback(async () => {
     try {
       const ctx = getCtx();
