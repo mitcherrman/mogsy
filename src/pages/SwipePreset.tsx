@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Swords, Globe } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
@@ -566,14 +566,23 @@ export default function SwipePreset() {
         <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-1.5">
-            <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={gauntletMode ? "default" : "outline"}
+              size="icon"
+              onClick={handleToggleGauntlet}
+              className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+              title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+            >
+              <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
               {leagueName}
             </span>
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {user && (
                 <SwipeAnimationPicker
                   currentAnimation={swipeAnimation}
@@ -582,7 +591,7 @@ export default function SwipePreset() {
                 />
               )}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={capture}
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
@@ -591,16 +600,7 @@ export default function SwipePreset() {
                 <Camera className="h-4 w-4" />
               </Button>
               <Button
-                variant={gauntletMode ? "default" : "ghost"}
-                size="icon"
-                onClick={handleToggleGauntlet}
-                className={`h-8 w-8 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-              >
-                <Swords className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={() => {
                   const next = !(userShowElo && userShowRank);
@@ -613,8 +613,8 @@ export default function SwipePreset() {
                 {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
-                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" /> Leaderboard
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                  <Trophy className="h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
@@ -622,7 +622,7 @@ export default function SwipePreset() {
 
           {gauntletMode ? (
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Swords className="h-3.5 w-3.5 text-primary" />
+              <Sword className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-bold text-primary">Gauntlet</span>
               {gauntletStreak > 0 && (
                 <span className="text-[10px] font-bold text-muted-foreground">
