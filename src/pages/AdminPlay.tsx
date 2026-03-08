@@ -49,6 +49,8 @@ export default function AdminPlay() {
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
 
+  const [isModerator, setIsModerator] = useState(false);
+
   // Auth gate
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -63,6 +65,8 @@ export default function AdminPlay() {
           toast.error("Access denied");
           return;
         }
+        const isModOnly = roles.includes("moderator") && !roles.includes("admin") && !roles.includes("master_admin");
+        setIsModerator(isModOnly);
         setAuthorized(true);
         loadData();
       });
@@ -361,7 +365,7 @@ export default function AdminPlay() {
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(isModerator ? "/moderator" : "/admin")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex-1">Play Layout</h1>

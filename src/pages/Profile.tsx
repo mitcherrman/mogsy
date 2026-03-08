@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift, ShieldCheck } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +52,7 @@ export default function Profile() {
   const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
@@ -97,6 +98,11 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     loadProfile();
+    // Check if user is a moderator
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      const roles = data?.map(r => r.role as string) || [];
+      setIsModerator(roles.includes("moderator") || roles.includes("admin") || roles.includes("master_admin"));
+    });
   }, [user]);
 
   const loadProfile = async () => {
@@ -380,6 +386,18 @@ export default function Profile() {
               <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Edit Profile</h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {isModerator && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/moderator")}
+                  className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8 sm:h-10 sm:w-10"
+                  title="Moderator Panel"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"

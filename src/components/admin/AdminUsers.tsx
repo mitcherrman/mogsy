@@ -201,6 +201,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
       case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
+      case "moderators": list = list.filter(p => (roles[p.user_id] || []).includes("moderator")); break;
       case "has_avatar": list = list.filter(p => !!p.avatar_url); break;
       case "no_avatar": list = list.filter(p => !p.avatar_url); break;
       case "underage": list = list.filter(p => p.is_flagged_underage); break;
@@ -497,6 +498,29 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
   };
 
+  const toggleModeratorRole = async (userId: string) => {
+    const currentRoles = userRoles[userId] || [];
+    const isCurrentlyMod = currentRoles.includes("moderator");
+
+    if (isCurrentlyMod) {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "moderator" as any);
+      if (error) { toast.error("Failed to remove moderator role"); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: (prev[userId] || []).filter((r) => r !== "moderator"),
+      }));
+      toast.success("Moderator role removed");
+    } else {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "moderator" as any });
+      if (error) { toast.error("Failed to grant moderator role: " + error.message); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: [...(prev[userId] || []), "moderator"],
+      }));
+      toast.success("Moderator role granted");
+    }
+  };
+
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleString() : "Never";
   const timeAgo = (d: string | null) => {
     if (!d) return "Never";
@@ -514,6 +538,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     const selectedRoles = userRoles[selectedUser.user_id] || [];
     const isSelectedAdmin = selectedRoles.includes("admin");
     const isSelectedMaster = selectedRoles.includes("master_admin");
+    const isSelectedMod = selectedRoles.includes("moderator");
 
     return (
       <div className="space-y-4">
@@ -546,6 +571,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           <div className="flex gap-2 flex-wrap">
             {selectedRoles.includes("master_admin") && <Badge className="bg-primary/20 text-primary border-primary/30"><ShieldCheck className="h-3 w-3 mr-1" /> Master</Badge>}
             {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
+            {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
             {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
@@ -638,7 +664,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
             {/* Admin role management */}
             {isMasterAdmin && !isSelectedMaster && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-medium">Admin Privileges</Label>
@@ -655,6 +681,25 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <><ShieldOff className="h-3 w-3 mr-1" /> Remove Admin</>
                     ) : (
                       <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Admin</>
+                    )}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <div>
+                    <Label className="text-sm font-medium">Moderator</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSelectedMod ? "This user has moderator access" : "Grant moderator access (Play Layout + Mod panel)"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isSelectedMod ? "destructive" : "outline"}
+                    onClick={() => toggleModeratorRole(selectedUser.user_id)}
+                  >
+                    {isSelectedMod ? (
+                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Mod</>
+                    ) : (
+                      <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Mod</>
                     )}
                   </Button>
                 </div>
@@ -1145,6 +1190,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="ads_on">Ads On</SelectItem>
             <SelectItem value="ads_off">Ads Off</SelectItem>
             <SelectItem value="admins">Admins</SelectItem>
+            <SelectItem value="moderators">Moderators</SelectItem>
             <SelectItem value="has_avatar">Has Avatar</SelectItem>
             <SelectItem value="no_avatar">No Avatar</SelectItem>
             <SelectItem value="underage">Flagged Underage</SelectItem>
