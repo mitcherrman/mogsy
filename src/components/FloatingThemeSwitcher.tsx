@@ -169,7 +169,7 @@ export default function FloatingThemeSwitcher() {
                     onClick={() => handleSelect(theme.id)}
                     onMouseEnter={() => handleMouseEnter(theme.id)}
                     onMouseLeave={handleMouseLeave}
-                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all relative ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all relative ${
                       isActive
                         ? "border-primary ring-2 ring-primary/40 shadow-lg"
                         : locked
