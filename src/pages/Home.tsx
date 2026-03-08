@@ -11,6 +11,7 @@ import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import HomeFriendsSection from "@/components/HomeFriendsSection";
 
 interface LeagueInfo {
   id: string;
