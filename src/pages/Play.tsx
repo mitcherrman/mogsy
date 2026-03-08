@@ -351,7 +351,7 @@ export default function Play() {
         return (
           <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
             <RectPill onClick={() => handleBubbleClick(() => setSelectedCategory(null))} imageUrl={catImage} label={selectedCategory} variant="accent" />
-            <div className="flex flex-wrap items-end justify-end gap-3">
+            <div className="flex flex-wrap items-start justify-start gap-3">
               {allItems.map((entry, i) => {
                 if (entry.type === 'subcategory') {
                   const isLol = entry.name === "League of Legends";
