@@ -393,7 +393,7 @@ export default function Swipe() {
                 />
               )}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={capture}
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
