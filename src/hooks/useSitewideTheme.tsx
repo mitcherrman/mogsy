@@ -103,8 +103,17 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
 
   const isCycling = themeId === "cycle";
   const visualThemeId = isCycling
-    ? (cyclableThemes[cycleIndex % cyclableThemes.length]?.id ?? "default")
+    ? (cycleIndex >= 0 && cycleIndex < cyclableThemes.length ? cyclableThemes[cycleIndex].id : "default")
     : themeId;
+
+  const pickRandomIndex = useCallback(() => {
+    if (cyclableThemes.length <= 1) return 0;
+    let next: number;
+    do {
+      next = Math.floor(Math.random() * cyclableThemes.length);
+    } while (next === cycleIndex && cyclableThemes.length > 1);
+    return next;
+  }, [cycleIndex]);
 
   useEffect(() => {
     if (!isCycling) {
@@ -119,7 +128,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     cycleTimerRef.current = setInterval(() => {
       setIsCycleFading(true);
       setTimeout(() => {
-        setCycleIndex((i) => (i + 1) % cyclableThemes.length);
+        setCycleIndex(pickRandomIndex());
         setTimeout(() => setIsCycleFading(false), 50);
       }, fadeDuration);
     }, cycleConfig.cycle_interval);
@@ -127,7 +136,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     return () => {
       if (cycleTimerRef.current) clearInterval(cycleTimerRef.current);
     };
-  }, [isCycling, cycleConfig.cycle_interval, cycleConfig.cycle_fade_duration]);
+  }, [isCycling, cycleConfig.cycle_interval, cycleConfig.cycle_fade_duration, pickRandomIndex]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -147,7 +156,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     if (!valid) return;
     localStorage.setItem("mogsy-active-theme", id);
     setThemeId(id);
-    if (id === "cycle") setCycleIndex(0);
+    if (id === "cycle") setCycleIndex(Math.floor(Math.random() * cyclableThemes.length));
     if (user) {
       supabase
         .from("profiles")
