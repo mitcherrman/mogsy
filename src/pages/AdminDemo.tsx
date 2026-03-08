@@ -77,6 +77,7 @@ export default function AdminDemo() {
 
   // Animation playback
   const [animWinner, setAnimWinner] = useState<0 | 1 | null>(null);
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
 
   // Aura Check state
   const [auraScore, setAuraScore] = useState(5);
