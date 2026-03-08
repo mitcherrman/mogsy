@@ -1190,6 +1190,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="ads_on">Ads On</SelectItem>
             <SelectItem value="ads_off">Ads Off</SelectItem>
             <SelectItem value="admins">Admins</SelectItem>
+            <SelectItem value="moderators">Moderators</SelectItem>
             <SelectItem value="has_avatar">Has Avatar</SelectItem>
             <SelectItem value="no_avatar">No Avatar</SelectItem>
             <SelectItem value="underage">Flagged Underage</SelectItem>
