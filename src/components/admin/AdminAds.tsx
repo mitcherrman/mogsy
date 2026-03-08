@@ -71,6 +71,8 @@ const PLACEMENT_DEFAULTS: PlacementConfig = {
   days_active: [],
   ab_variant: "control",
   ad_mode: "popup",
+  ad_source: "custom",
+  adsense_slot: "",
 };
 
 const PLACEMENTS = [
