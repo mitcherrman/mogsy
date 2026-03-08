@@ -72,6 +72,12 @@ export default function Swipe() {
   const pendingChoose = useRef<(() => void) | null>(null);
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
+  const [readyDelay, setReadyDelay] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReadyDelay(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleTimerTimeout = useCallback(() => {
     if (!pair || sliceWinner !== null) return;
