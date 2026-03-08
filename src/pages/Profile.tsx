@@ -678,7 +678,7 @@ export default function Profile() {
 
               {/* Right sidebar: Profile Frame */}
               <div className="lg:w-56 shrink-0 order-3">
-                <div className="sticky top-20 rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Frame</h3>
