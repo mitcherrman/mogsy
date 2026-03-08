@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import type { AnimationCardItem } from "./AnimationCardStats";
 
 const SliceBattleAnimation = lazy(() => import("@/components/SliceBattleAnimation"));
 const ShatterAnimation = lazy(() => import("@/components/animations/ShatterAnimation"));
@@ -7,17 +8,14 @@ const VaporizeAnimation = lazy(() => import("@/components/animations/VaporizeAni
 const CrushAnimation = lazy(() => import("@/components/animations/CrushAnimation"));
 const DefaultFadeAnimation = lazy(() => import("@/components/animations/DefaultFadeAnimation"));
 
-interface CardItem {
-  imageUrl: string | null;
-  name: string;
-}
-
 interface Props {
   animationId: string;
   winnerSide: 0 | 1 | null;
-  items: CardItem[];
+  items: AnimationCardItem[];
   onComplete: () => void;
 }
+
+export type { AnimationCardItem };
 
 export default function CardAnimationRouter({ animationId, winnerSide, items, onComplete }: Props) {
   const commonProps = { winnerSide, items, onComplete };

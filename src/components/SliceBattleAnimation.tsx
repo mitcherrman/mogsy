@@ -1,14 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback, useId, useMemo } from "react";
-
-interface CardItem {
-  imageUrl: string | null;
-  name: string;
-}
+import AnimationCardStats, { type AnimationCardItem } from "./animations/AnimationCardStats";
 
 interface SliceBattleAnimationProps {
   winnerSide: 0 | 1 | null;
-  items: CardItem[];
+  items: AnimationCardItem[];
   onComplete: () => void;
 }
 
@@ -51,7 +47,7 @@ function generateTearPoints(width: number, height: number, teeth: number = 14) {
   return { topPoints, bottomPoints };
 }
 
-function getImageUrl(item: CardItem): string {
+function getImageUrl(item: AnimationCardItem): string {
   return (
     item.imageUrl ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`
@@ -138,9 +134,7 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="px-2 py-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                  </div>
+                  <AnimationCardStats item={item} />
                 </div>
               );
             }
@@ -194,9 +188,7 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
                 </div>
-                <div className="px-2 py-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                </div>
+                <AnimationCardStats item={item} />
               </div>
             );
           })}

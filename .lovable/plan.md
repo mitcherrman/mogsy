@@ -1,58 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-# Show Elo/Rank Stats in Animation Overlays
+### The Pattern Difference
 
-## Problem
-The animation overlays (Burn, Shatter, Vaporize, Crush, Slice) render at `z-50` and cover the entire card area including the stats section. They only show item names — no Elo, rank, globe icon, or `EloChangeIndicator`. Classic Fade works because it renders `null`, so the parent's stats are always visible.
+**SliceBattleAnimation (correct):**
 
-## Solution
-Pass Elo/rank/change data through `CardAnimationRouter` to all animation components. Each animation's card replica will render the full stats section matching the parent layout.
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-### Data flow
-1. **Extend `CardItem` interface** across all animation components to include:
-   - `localElo`, `localRank`, `globalElo`, `globalRank`
-   - `eloChange`, `globalDirection`, `rankOld`, `rankNew`
-   - `subtitle?`, `eloVisible`, `rankVisible`
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-2. **Update `CardAnimationRouter`** props to accept the enriched `CardItem[]`.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-3. **Update `SwipePreset.tsx` and `Swipe.tsx`** — when building the items array passed to `CardAnimationRouter`, include the Elo/rank data from current state.
+### Implementation Plan
 
-4. **Update all 5 animation components** — replace the simple name-only footer with the full stats section:
-   - Item name + subtitle
-   - Local Elo + rank, divider, Globe icon + global Elo + rank
-   - `EloChangeIndicator` with change/rank/globalDirection
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-### Stats section template (shared across all animations)
-```tsx
-<div className="px-2 py-1.5 flex-shrink-0 relative z-20">
-  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate text-center">{item.name}</h3>
-  {item.subtitle && <p className="text-[10px] text-muted-foreground truncate text-center">{item.subtitle}</p>}
-  {item.eloVisible && (
-    <div className="flex items-center justify-center gap-3 mt-0.5">
-      <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
-        <span className="font-semibold text-primary">{item.localElo}</span>
-        {item.rankVisible && item.localRank && <span className="text-muted-foreground/70">#{item.localRank}</span>}
-        <span className="mx-1 text-muted-foreground/30">|</span>
-        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-        <span className="font-semibold text-blue-400">{item.globalElo}</span>
-        {item.rankVisible && item.globalRank && <span className="text-blue-400/70">#{item.globalRank}</span>}
-      </span>
-    </div>
-  )}
-  <div className="flex justify-center mt-0.5">
-    <EloChangeIndicator change={item.eloChange} oldRank={item.rankOld} newRank={item.rankNew} globalDirection={item.globalDirection} />
-  </div>
-</div>
-```
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-### Files to modify
-- `src/components/animations/CardAnimationRouter.tsx` — extend `CardItem` interface and props
-- `src/components/animations/BurnAnimation.tsx` — use enriched stats footer
-- `src/components/animations/ShatterAnimation.tsx` — same
-- `src/components/animations/VaporizeAnimation.tsx` — same
-- `src/components/animations/CrushAnimation.tsx` — same
-- `src/components/SliceBattleAnimation.tsx` — same
-- `src/pages/SwipePreset.tsx` — pass enriched item data to `CardAnimationRouter`
-- `src/pages/Swipe.tsx` — pass enriched item data to `CardAnimationRouter`
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`

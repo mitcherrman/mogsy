@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback, useMemo } from "react";
+import AnimationCardStats, { type AnimationCardItem } from "./AnimationCardStats";
 
-interface CardItem { imageUrl: string | null; name: string; }
-interface Props { winnerSide: 0 | 1 | null; items: CardItem[]; onComplete: () => void; }
+interface Props { winnerSide: 0 | 1 | null; items: AnimationCardItem[]; onComplete: () => void; }
 
-function getImageUrl(item: CardItem): string {
+function getImageUrl(item: AnimationCardItem): string {
   return item.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`;
 }
 
@@ -51,9 +51,7 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="px-2 py-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                  </div>
+                  <AnimationCardStats item={item} />
                 </div>
               );
             }
@@ -61,7 +59,6 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
             return (
               <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
                 <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
-                  {/* Fading card */}
                   <motion.div className="absolute inset-0"
                     initial={{ opacity: 1 }}
                     animate={phase === "dissolve" ? { opacity: 0 } : {}}
@@ -70,26 +67,18 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
 
-                  {/* Dust particles */}
                   {phase === "dissolve" && particles.map((p, i) => (
                     <motion.div
                       key={i}
                       className="absolute rounded-full bg-muted-foreground/40"
-                      style={{
-                        width: p.size,
-                        height: p.size,
-                        left: `${p.x}%`,
-                        top: `${p.y}%`,
-                      }}
+                      style={{ width: p.size, height: p.size, left: `${p.x}%`, top: `${p.y}%` }}
                       initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
                       animate={{ opacity: 0, x: p.dx, y: p.dy, scale: 0.2 }}
                       transition={{ duration: p.dur, delay: p.delay, ease: "easeOut" }}
                     />
                   ))}
                 </div>
-                <div className="px-2 py-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                </div>
+                <AnimationCardStats item={item} />
               </div>
             );
           })}

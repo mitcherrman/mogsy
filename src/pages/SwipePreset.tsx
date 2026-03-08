@@ -771,7 +771,21 @@ export default function SwipePreset() {
               <CardAnimationRouter
                 animationId={swipeAnimation}
                 winnerSide={sliceWinner}
-                items={pair ? pair.map(item => ({ imageUrl: getDisplayImage(item), name: item.name })) : []}
+                items={pair ? pair.map(item => ({
+                  imageUrl: getDisplayImage(item),
+                  name: item.name,
+                  subtitle: item.subtitle,
+                  localElo: localElos.get(item.id) ?? 1200,
+                  localRank: localRankMap.get(item.id),
+                  globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
+                  globalRank: rankMap.get(item.id),
+                  eloVisible,
+                  rankVisible,
+                  eloChange: eloChanges.get(item.id) ?? null,
+                  rankOld: rankChanges.get(item.id)?.old ?? null,
+                  rankNew: rankChanges.get(item.id)?.new ?? null,
+                  globalDirection: globalDirections.get(item.id),
+                })) : []}
                 onComplete={handleSliceComplete}
               />
             </MatchupCapture>
