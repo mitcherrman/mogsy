@@ -62,7 +62,7 @@ export default function AdminLeagueSettings() {
       <h3 className="font-bold text-foreground flex items-center gap-2">
         <Eye className="h-4 w-4" /> League Display Settings
       </h3>
-      <p className="text-xs text-muted-foreground">Control whether Elo scores and ranks are visible on swipe cards for each league.</p>
+      <p className="text-xs text-muted-foreground">Control whether Aura scores and ranks are visible on swipe cards for each league.</p>
 
       {Object.entries(grouped).sort().map(([cat, list]) => (
         <Collapsible key={cat} open={openCats.has(cat)} onOpenChange={() => toggleCat(cat)}>
