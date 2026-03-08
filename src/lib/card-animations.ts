@@ -61,6 +61,14 @@ export const CARD_ANIMATIONS: CardAnimationDef[] = [
     contexts: ["swipe", "elocheck"],
     defaultProOnly: true,
   },
+  {
+    id: "chop",
+    name: "You're Chopped",
+    description: "Card gets cleaved in half with a brutal chop.",
+    icon: "🔪",
+    contexts: ["swipe", "elocheck"],
+    defaultProOnly: true,
+  },
 ];
 
 export function getAnimationDef(id: string): CardAnimationDef {

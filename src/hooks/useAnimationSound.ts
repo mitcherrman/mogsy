@@ -14,6 +14,9 @@ export function useAnimationSound() {
     return ctxRef.current;
   };
 
+  const chopBufferRef = useRef<AudioBuffer | null>(null);
+  const chopLoadingRef = useRef(false);
+
   const loadRipSound = useCallback(async () => {
     if (ripBufferRef.current || loadingRef.current) return;
     loadingRef.current = true;
@@ -24,6 +27,18 @@ export function useAnimationSound() {
       ripBufferRef.current = await ctx.decodeAudioData(buf);
     } catch {}
     loadingRef.current = false;
+  }, []);
+
+  const loadChopSound = useCallback(async () => {
+    if (chopBufferRef.current || chopLoadingRef.current) return;
+    chopLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/youre-chopped.mp3");
+      const buf = await res.arrayBuffer();
+      chopBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    chopLoadingRef.current = false;
   }, []);
 
   const playRipSound = useCallback(async () => {
@@ -121,6 +136,20 @@ export function useAnimationSound() {
     } catch {}
   }, []);
 
+  const playChopSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      if (!chopBufferRef.current) await loadChopSound();
+      if (!chopBufferRef.current) return;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.buffer = chopBufferRef.current;
+      source.connect(gain); gain.connect(ctx.destination);
+      source.start();
+    } catch {}
+  }, [loadChopSound]);
+
   const playAnimationSound = useCallback((animationId: string) => {
     switch (animationId) {
       case "slice": playRipSound(); break;
@@ -128,9 +157,10 @@ export function useAnimationSound() {
       case "burn": playBurnSound(); break;
       case "vaporize": playVaporizeSound(); break;
       case "crush": playCrushSound(); break;
+      case "chop": playChopSound(); break;
       default: break;
     }
-  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound]);
+  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound]);
 
   return { playAnimationSound, preloadSounds: loadRipSound };
 }
