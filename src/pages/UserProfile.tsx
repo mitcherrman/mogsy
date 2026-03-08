@@ -87,6 +87,7 @@ export default function UserProfile() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [topComment, setTopComment] = useState<{ content: string; league_name: string } | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const { status: friendStatus, friendshipId, refresh: refreshFriend } = useFriendStatus(profileId);
 
   useEffect(() => {
     if (!profileId) return;
