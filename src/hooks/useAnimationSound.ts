@@ -226,6 +226,32 @@ export function useAnimationSound() {
     } catch {}
   }, [loadChopSound]);
 
+  const loadAmongusSound = useCallback(async () => {
+    if (amongusBufferRef.current || amongusLoadingRef.current) return;
+    amongusLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/amongus-death.mp3");
+      const buf = await res.arrayBuffer();
+      amongusBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    amongusLoadingRef.current = false;
+  }, []);
+
+  const playAmongusSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      if (!amongusBufferRef.current) await loadAmongusSound();
+      if (!amongusBufferRef.current) return;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.buffer = amongusBufferRef.current;
+      source.connect(gain); gain.connect(ctx.destination);
+      source.start();
+    } catch {}
+  }, [loadAmongusSound]);
+
   const playAnimationSound = useCallback((animationId: string) => {
     switch (animationId) {
       case "slice": playRipSound(); break;
