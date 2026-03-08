@@ -443,9 +443,15 @@ export default function Play() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>
-          <Button variant="outline" size="sm" onClick={() => navigate("/leagues")} className="gap-1.5 h-8 text-xs">
-            <Trophy className="h-3.5 w-3.5" /> Leaderboard
-          </Button>
+          {(() => {
+            const globalLeague = leagues.find(l => l.name === "Global Rankings");
+            if (!globalLeague) return null;
+            return (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/leaderboard/${globalLeague.id}`)} className="gap-1.5 h-8 text-xs">
+                <Trophy className="h-3.5 w-3.5" /> Leaderboard
+              </Button>
+            );
+          })()}
           {user && !animLoading && (
             <Popover>
               <PopoverTrigger asChild>
