@@ -1,14 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback, useId, useMemo } from "react";
-
-interface CardItem {
-  imageUrl: string | null;
-  name: string;
-}
+import AnimationCardStats, { type AnimationCardItem } from "./animations/AnimationCardStats";
 
 interface SliceBattleAnimationProps {
   winnerSide: 0 | 1 | null;
-  items: CardItem[];
+  items: AnimationCardItem[];
   onComplete: () => void;
 }
 
