@@ -135,12 +135,12 @@ export default function Admin() {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <TabsList className="flex-1 flex gap-1 overflow-hidden h-auto bg-transparent p-0">
+            <TabsList className="flex-1 flex gap-1 h-auto bg-transparent p-0">
               {paginatedTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="flex-1 text-[10px] sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all whitespace-nowrap"
+                  className="flex-1 min-w-0 text-[10px] sm:text-sm px-1 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all truncate"
                 >
                   {tab.label}
                 </TabsTrigger>
