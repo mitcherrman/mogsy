@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useScreenshot } from "@/hooks/useScreenshot";
+import { useGifExport } from "@/hooks/useGifExport";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
