@@ -1,43 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Enhanced Onboarding Flow
+### The Pattern Difference
 
-### Current Flow
-`welcome` → `pick categories` → `choose theme` → done
+**SliceBattleAnimation (correct):**
 
-### New Flow
-`welcome` → `profile setup` → `pick categories` → `choose theme` → done
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-The new **"profile setup"** step sits between welcome and categories. It contains three optional fields:
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-1. **Username** — text input, saves to `profiles.display_name`
-2. **Photo upload** — single photo upload tile using existing profile-photos bucket, saves to `profile_photos` table and sets `profiles.avatar_url`
-3. **Email + password** — for anonymous users, links their account via `linkAnonymousAccount` (already in useAuth). For non-anonymous users, this section is hidden.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-All fields are **optional** — a "Skip for now" link always visible. A subtle banner reminds: "Sign up to save your progress and unlock full features."
+### Implementation Plan
 
-### Additional Onboarding Features Worth Adding
-- **Age input** — already validated by the existing `auto_flag_underage` trigger; useful to collect early
-- **Location** — city autocomplete (existing cities-data.ts); helps with local leaderboards
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-These two fields can sit alongside username on the same profile setup step without bloating it.
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-### Files Changed
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
-| File | Action |
-|------|--------|
-| `src/components/OnboardingFlow.tsx` | Add "profile" step with username, photo, email/password, age, location fields. Wire up photo upload to storage bucket, profile update, and account linking. |
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
 
-### Implementation Details
+### Files Modified
 
-- **Step type** expands: `"welcome" | "profile" | "pick" | "theme"`
-- **Photo upload**: reuse existing `profile-photos` bucket logic — upload file, get public URL, insert into `profile_photos`, update `profiles.avatar_url`
-- **Account linking**: for anonymous users, show email + password fields. On submit, call `linkAnonymousAccount(email, password)` from useAuth. Show success/error inline.
-- **Username**: simple Input with profanity filter (existing `profanity-filter.ts`)
-- **Age**: numeric input, min 13
-- **Location**: text input with autocomplete from `cities-data.ts`
-- **All optional**: continue button always enabled on profile step. Each filled field saves immediately or batched on "Continue".
-- **Progress dots**: add a step indicator (4 dots) at bottom of each screen so users know where they are
-
-No database changes needed — all fields already exist on the profiles table.
-
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`

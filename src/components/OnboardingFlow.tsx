@@ -1,35 +1,13 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Sparkles, Palette, Crown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { profileThemes } from "@/lib/profile-themes";
-import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import OnboardingWelcome from "./onboarding/OnboardingWelcome";
+import OnboardingProfile from "./onboarding/OnboardingProfile";
+import OnboardingCategories from "./onboarding/OnboardingCategories";
+import OnboardingTheme from "./onboarding/OnboardingTheme";
 
-const DEFAULT_CATEGORY_EMOJIS: Record<string, string> = {
-  Anime: "🎌",
-  Movies: "🎬",
-  "Video Games": "🎮",
-  Celebrities: "⭐",
-  Sports: "⚽",
-  Food: "🍔",
-  Other: "🌈",
-};
-
-const THEME_COLORS: Record<string, [string, string]> = {
-  light: ["hsl(209,40%,96%)", "hsl(210,80%,60%)"],
-  dark: ["hsl(222,47%,11%)", "hsl(210,80%,65%)"],
-  midnight: ["hsl(250,50%,25%)", "hsl(260,60%,50%)"],
-  forest: ["hsl(150,40%,25%)", "hsl(130,50%,35%)"],
-  sunset: ["hsl(20,80%,50%)", "hsl(340,70%,50%)"],
-  aurora: ["hsl(170,60%,40%)", "hsl(220,60%,50%)"],
-  royal: ["hsl(45,90%,50%)", "hsl(280,40%,30%)"],
-  lol: ["hsl(45,100%,50%)", "hsl(200,60%,40%)"],
-  cyberpunk: ["hsl(320,100%,50%)", "hsl(180,100%,50%)"],
-};
-
-type Step = "welcome" | "pick" | "theme";
+type Step = "welcome" | "profile" | "pick" | "theme";
 
 interface OnboardingFlowProps {
   onComplete: (categories: string[]) => void;
@@ -42,47 +20,6 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
   const [selected, setSelected] = useState<string[]>([]);
   const [chosenTheme, setChosenTheme] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState<{ name: string; emoji: string }[]>([]);
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      // Try to load from app_settings first
-      const { data: settingsData } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "onboarding_categories")
-        .single();
-
-      if (settingsData?.value && Array.isArray((settingsData.value as any)?.categories)) {
-        const cats = (settingsData.value as any).categories as { name: string; emoji: string }[];
-        if (cats.length > 0) {
-          setCategories(cats);
-          return;
-        }
-      }
-
-      // Fallback: get distinct categories from leagues
-      const { data: leagues } = await supabase
-        .from("leagues")
-        .select("category")
-        .not("category", "is", null);
-
-      if (leagues) {
-        const unique = [...new Set(leagues.map(l => l.category).filter(Boolean))] as string[];
-        setCategories(unique.map(name => ({
-          name,
-          emoji: DEFAULT_CATEGORY_EMOJIS[name] || "📁",
-        })));
-      }
-    };
-    loadCategories();
-  }, []);
-
-  const toggleCategory = (cat: string) => {
-    setSelected((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    );
-  };
 
   const handleFinish = async () => {
     if (!skipToTheme && (selected.length < 3 || !user)) return;
@@ -108,182 +45,30 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
     onComplete(selected);
   };
 
-  const proThemes = profileThemes.filter((t) => t.isPro);
-
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center px-4 overflow-y-auto py-8">
       <AnimatePresence mode="wait">
         {step === "welcome" && (
-          <motion.div
-            key="welcome"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center text-center max-w-sm"
-          >
-            <motion.img
-              src={mogsyLogo}
-              alt="Mogsy"
-              className="h-20 sm:h-28 mb-6"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
-            />
-            <h1 className="text-3xl font-extrabold text-foreground mb-3">
-              Welcome to Mogsy!
-            </h1>
-            <p className="text-muted-foreground text-sm mb-2">
-              Swipe, rank, and discover who (or what) comes out on top.
-            </p>
-            <p className="text-muted-foreground text-xs mb-8">
-              Pick your favorite in head-to-head matchups across collections — or compete against other users to climb the leaderboard.
-            </p>
-            <Button
-              onClick={() => setStep("pick")}
-              className="gap-2 rounded-full px-8"
-              size="lg"
-            >
-              Let's Go <ChevronRight className="h-4 w-4" />
-            </Button>
-          </motion.div>
+          <OnboardingWelcome onNext={() => setStep("profile")} />
         )}
-
+        {step === "profile" && (
+          <OnboardingProfile onNext={() => setStep("pick")} />
+        )}
         {step === "pick" && (
-          <motion.div
-            key="pick"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center text-center max-w-md w-full"
-          >
-            <Sparkles className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-2xl font-extrabold text-foreground mb-2">
-              What are you into?
-            </h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              Pick at least <span className="font-bold text-primary">3 categories</span> to personalize your experience.
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
-              {categories.map((cat, i) => {
-                const isSelected = selected.includes(cat.name);
-                return (
-                  <motion.button
-                    key={cat.name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => toggleCategory(cat.name)}
-                    className={`flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold border-2 transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/15 text-primary shadow-md"
-                        : "border-border bg-card text-foreground hover:border-primary/30"
-                    }`}
-                  >
-                    <span className="text-lg">{cat.emoji}</span>
-                    {cat.name}
-                  </motion.button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-col items-center gap-2">
-              <Button
-                onClick={() => setStep("theme")}
-                disabled={selected.length < 3}
-                className="gap-2 rounded-full px-8"
-                size="lg"
-              >
-                Continue <ChevronRight className="h-4 w-4" />
-              </Button>
-              {selected.length < 3 && (
-                <p className="text-xs text-muted-foreground">
-                  {selected.length}/3 selected
-                </p>
-              )}
-            </div>
-          </motion.div>
+          <OnboardingCategories
+            selected={selected}
+            setSelected={setSelected}
+            onNext={() => setStep("theme")}
+          />
         )}
-
         {step === "theme" && (
-          <motion.div
-            key="theme"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center text-center max-w-md w-full"
-          >
-            <Palette className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-2xl font-extrabold text-foreground mb-2">
-              Choose Your Vibe
-            </h2>
-            <p className="text-muted-foreground text-sm mb-2">
-              Pick <span className="font-bold text-primary">1 premium theme</span> to try for free.
-            </p>
-            <p className="text-muted-foreground text-xs mb-6 flex items-center gap-1">
-              <Crown className="h-3 w-3 text-yellow-500" /> Pro users unlock all themes
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              {proThemes.map((theme, i) => {
-                const colors = THEME_COLORS[theme.id] || ["#333", "#555"];
-                const isChosen = chosenTheme === theme.id;
-                return (
-                  <motion.button
-                    key={theme.id}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.06 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setChosenTheme(isChosen ? null : theme.id)}
-                    className={`flex flex-col items-center gap-2 group`}
-                  >
-                    <div
-                      className={`w-14 h-14 rounded-full border-3 transition-all ${
-                        isChosen
-                          ? "border-primary ring-4 ring-primary/30 shadow-lg scale-110"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                      style={{
-                        background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`,
-                        borderWidth: 3,
-                      }}
-                    />
-                    <span className={`text-xs font-semibold ${isChosen ? "text-primary" : "text-muted-foreground"}`}>
-                      {theme.label}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-col items-center gap-2">
-              <Button
-                onClick={handleFinish}
-                disabled={saving}
-                className="gap-2 rounded-full px-8"
-                size="lg"
-              >
-                {saving ? "Saving..." : skipToTheme ? "Done" : "Let's Go!"}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              {!chosenTheme && (
-                <button
-                  onClick={handleFinish}
-                  disabled={saving}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Skip for now
-                </button>
-              )}
-            </div>
-          </motion.div>
+          <OnboardingTheme
+            chosenTheme={chosenTheme}
+            setChosenTheme={setChosenTheme}
+            onFinish={handleFinish}
+            saving={saving}
+            skipToTheme={skipToTheme}
+          />
         )}
       </AnimatePresence>
     </div>
