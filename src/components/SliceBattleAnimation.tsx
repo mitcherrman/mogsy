@@ -188,9 +188,7 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
                 </div>
-                <div className="px-2 py-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                </div>
+                <AnimationCardStats item={item} />
               </div>
             );
           })}
