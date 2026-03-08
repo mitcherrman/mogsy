@@ -38,6 +38,7 @@ export default function Play() {
   const location = useLocation();
   const { playSwipeSound } = useSwipeSound();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const { swipeAnimation, setSwipeAnimation, loading: animLoading } = useCardAnimation();
   const [isPro, setIsPro] = useState(false);
   const [animConfig, setAnimConfig] = useState<Record<string, { enabled: boolean; pro_only: boolean }>>({});
