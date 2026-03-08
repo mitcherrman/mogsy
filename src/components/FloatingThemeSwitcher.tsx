@@ -52,6 +52,7 @@ export default function FloatingThemeSwitcher() {
   // Click outside
   useEffect(() => {
     if (!open) return;
+    setPage(0);
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false);
