@@ -726,6 +726,9 @@ export default function AdminDemo() {
               )}
             </Button>
           )}
+        </div>
+
+        {isMobile ? (
           /* Mobile: sheet for controls, full preview */
           <div>
             <Sheet>
