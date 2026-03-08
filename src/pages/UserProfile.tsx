@@ -475,8 +475,22 @@ export default function UserProfile() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-2">
-              <TierBadge tier={overallTier} />
+            {/* Prominent rank badge */}
+            <div className="flex items-center gap-2 mt-3">
+              {rankEnabled && bestCompeteTier !== "unranked" && (
+                <div className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-extrabold uppercase tracking-wider border-2",
+                  getTierBgColor(bestCompeteTier),
+                  getTierColor(bestCompeteTier)
+                )}>
+                  <span className="text-lg">{getTierIcon(bestCompeteTier)}</span>
+                  <span>{bestCompeteTier}</span>
+                  <Trophy className="h-4 w-4" />
+                </div>
+              )}
+              {rankEnabled && bestCompeteTier === "unranked" && leagueStats.length > 0 && (
+                <TierBadge tier="unranked" />
+              )}
               {profile.is_pro && (
                 <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold", theme.styles.textAccent || "text-primary", "bg-primary/10 border border-primary/30")}>
                   <Crown className="h-3 w-3" /> PRO
