@@ -361,6 +361,7 @@ export default function Swipe() {
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </Button>
+            <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             <p className="text-muted-foreground text-xs">
               Matches: <span className="text-primary font-bold">{matchCount}</span>
               {gauntletMode && gauntletStreak > 0 && (
