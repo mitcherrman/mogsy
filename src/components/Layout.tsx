@@ -25,7 +25,7 @@ export default function Layout() {
     >
       <Navbar themeId={isEnabled ? themeId : undefined} />
       {isEnabled && <ThemeOverlay themeId={themeId} />}
-      <main className="pt-14 relative z-20">
+      <main className="pt-14 pb-16 sm:pb-0 relative z-20">
         <Suspense fallback={<div className="min-h-screen" />}>
           <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? themeId : null }} />
         </Suspense>
