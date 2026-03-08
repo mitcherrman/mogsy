@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,6 +16,10 @@ interface SettingsState {
   favorites_mode: "auto" | "manual";
   swipe_timer_enabled: boolean;
   swipe_timer_duration: number;
+  shop_ad_enabled: boolean;
+  shop_ad_type: "pro" | "diamonds";
+  shop_ad_headline: string;
+  shop_ad_subtext: string;
 }
 
 export default function AdminSettings() {
@@ -28,6 +32,10 @@ export default function AdminSettings() {
     favorites_mode: "auto",
     swipe_timer_enabled: false,
     swipe_timer_duration: 10,
+    shop_ad_enabled: false,
+    shop_ad_type: "pro",
+    shop_ad_headline: "Upgrade to Pro!",
+    shop_ad_subtext: "Unlock premium themes, animations, and more.",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +57,7 @@ export default function AdminSettings() {
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
               case "swipe_timer": s.swipe_timer_enabled = val?.enabled ?? false; s.swipe_timer_duration = val?.duration_seconds ?? 10; break;
+              case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Pro!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium themes, animations, and more."; break;
             }
           }
           setSettings(s);
@@ -194,6 +203,52 @@ export default function AdminSettings() {
             <Button type="button" size="sm" variant={settings.favorites_mode === "manual" ? "default" : "outline"} onClick={async () => { setSettings((s) => ({ ...s, favorites_mode: "manual" })); await updateSetting("favorites_mode", { mode: "manual" }); }} className="text-xs">Manual</Button>
           </div>
         </div>
+      </div>
+
+      {/* Shop Ad */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Megaphone className="h-3.5 w-3.5" /> Shop Ad Banner
+        </h4>
+        <SettingToggle
+          label="Enable Shop Ad"
+          description="Show a promotional banner in the shop for non-Pro users"
+          checked={settings.shop_ad_enabled}
+          onChange={async () => {
+            const newVal = !settings.shop_ad_enabled;
+            setSettings(s => ({ ...s, shop_ad_enabled: newVal }));
+            await updateSetting("shop_ad_config", { enabled: newVal, type: settings.shop_ad_type, headline: settings.shop_ad_headline, subtext: settings.shop_ad_subtext });
+          }}
+        />
+        {settings.shop_ad_enabled && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+              <div>
+                <Label className="text-sm font-medium">Ad Type</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">What the ad promotes</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant={settings.shop_ad_type === "pro" ? "default" : "outline"} onClick={() => setSettings(s => ({ ...s, shop_ad_type: "pro" }))} className="text-xs">Pro</Button>
+                <Button size="sm" variant={settings.shop_ad_type === "diamonds" ? "default" : "outline"} onClick={() => setSettings(s => ({ ...s, shop_ad_type: "diamonds" }))} className="text-xs">Diamonds</Button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div>
+                <Label className="text-xs">Headline</Label>
+                <Input value={settings.shop_ad_headline} onChange={e => setSettings(s => ({ ...s, shop_ad_headline: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs">Subtext</Label>
+                <Input value={settings.shop_ad_subtext} onChange={e => setSettings(s => ({ ...s, shop_ad_subtext: e.target.value }))} />
+              </div>
+              <Button size="sm" variant="outline" disabled={saving} onClick={async () => {
+                setSaving(true);
+                await updateSetting("shop_ad_config", { enabled: settings.shop_ad_enabled, type: settings.shop_ad_type, headline: settings.shop_ad_headline, subtext: settings.shop_ad_subtext });
+                setSaving(false);
+              }}>Save Ad Config</Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
