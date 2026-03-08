@@ -358,11 +358,11 @@ export default function Swipe() {
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+            <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <Button
-              variant={gauntletMode ? "default" : "ghost"}
+              variant={gauntletMode ? "default" : "outline"}
               size="icon"
               onClick={() => {
                 setGauntletMode(!gauntletMode);
@@ -393,7 +393,7 @@ export default function Swipe() {
                 />
               )}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={capture}
                 className="h-8 w-8 text-muted-foreground hover:text-primary"
