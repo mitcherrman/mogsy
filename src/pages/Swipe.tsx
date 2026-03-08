@@ -414,14 +414,8 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
-            <div className="flex-1 flex justify-center">
-              {lastMatch && myRewinds > 0 ? (
-                <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
-                  <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
-                </Button>
-              ) : (
-                <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
-              )}
+            <div className="flex-1 text-center">
+              <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1 shrink-0">
@@ -453,7 +447,15 @@ export default function Swipe() {
           </div>
 
           {/* Capturable matchup area */}
-          <MatchupCapture ref={captureRef} leagueName="Swipe On Who Mogs">
+          <MatchupCapture
+            ref={captureRef}
+            leagueName="Swipe On Who Mogs"
+            centerSlot={lastMatch && myRewinds > 0 ? (
+              <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-7 text-xs">
+                <Undo2 className="h-3 w-3" /> {myRewinds}
+              </Button>
+            ) : undefined}
+          >
             {showInSwipeAd ? (
               <motion.div
                 key={`ad-${showInSwipeAd.id}-${matchCount}`}
