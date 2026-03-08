@@ -358,7 +358,7 @@ export default function Leaderboard() {
               renderEntries(localEntries)
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                {user ? "Start swiping to build your personal rankings!" : "Sign in to track your personal rankings."}
+                {user ? "Start swiping to build your personal leaderboard!" : "Sign in to track your personal leaderboard."}
               </p>
             )}
           </TabsContent>
