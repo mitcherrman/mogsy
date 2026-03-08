@@ -346,7 +346,7 @@ export default function Leaderboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="global" className="flex-1">Global</TabsTrigger>
-            <TabsTrigger value="yours" className="flex-1">Your Rankings</TabsTrigger>
+            <TabsTrigger value="yours" className="flex-1">Your Leaderboard</TabsTrigger>
           </TabsList>
 
           <TabsContent value="global">
