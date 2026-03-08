@@ -42,6 +42,9 @@ export default function AdminPlay() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["topLevel"]));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [presets, setPresets] = useState<{ id: string; name: string; updated_at: string }[]>([]);
+  const [newPresetName, setNewPresetName] = useState("");
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
 
   // Auth gate
