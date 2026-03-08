@@ -371,7 +371,7 @@ export default function Swipe() {
               )}
             </p>
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            <div className="flex-1" />
+            
             <div className="flex items-center gap-1">
               {user && (
                 <SwipeAnimationPicker
