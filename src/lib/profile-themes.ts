@@ -263,6 +263,27 @@ export const profileThemes: ProfileTheme[] = [
       innerBorder: "border-[hsl(320,80%,40%)/0.3]",
     },
   },
+  {
+    id: "mogged",
+    label: "Mogged",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(0,0%,5%)] via-[hsl(0,0%,15%)] to-[hsl(0,0%,5%)]",
+    styles: {
+      pageBg: "linear-gradient(180deg, hsl(0,0%,4%) 0%, hsl(0,0%,8%) 100%)",
+      heroBg: "bg-gradient-to-b from-[hsl(0,0%,20%)/0.3] via-[hsl(0,0%,10%)/0.2] to-transparent",
+      cardBg: "border-[hsl(0,0%,25%)/0.4] bg-[hsl(0,0%,10%)/0.7]",
+      accentRing: "ring-[hsl(0,0%,60%)/0.5]",
+      textAccent: "text-[hsl(0,0%,90%)]",
+      iconAccent: "text-[hsl(0,0%,80%)]",
+      statBg: "bg-[hsl(0,0%,12%)/0.8] border-[hsl(0,0%,25%)/0.3]",
+      headingColor: "text-[hsl(0,0%,95%)]",
+      nameColor: "text-[hsl(0,0%,98%)]",
+      textColor: "text-[hsl(0,0%,85%)]",
+      mutedColor: "text-[hsl(0,0%,50%)]",
+      innerBg: "bg-[hsl(0,0%,14%)/0.7]",
+      innerBorder: "border-[hsl(0,0%,22%)/0.4]",
+    },
+  },
 ];
 
 export function getThemeById(id: string): ProfileTheme {
