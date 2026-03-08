@@ -813,11 +813,26 @@ export default function SwipePreset() {
             </MatchupCapture>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-1.5">
-            {gauntletMode
-              ? `Tap to choose · Winner stays · ${matchCount} votes`
-              : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
-          </p>
+          <div className="flex items-center mt-1.5">
+            <p className="flex-1 text-center text-[10px] text-muted-foreground">
+              {gauntletMode
+                ? `Tap to choose · Winner stays · ${matchCount} votes`
+                : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
+            </p>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const next = !(userShowElo && userShowRank);
+                setUserShowElo(next);
+                setUserShowRank(next);
+              }}
+              className="h-7 w-7 text-muted-foreground shrink-0"
+              title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
+            >
+              {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
 
           {/* Comments section */}
           {leagueId && <SwipeComments leagueId={leagueId} />}
