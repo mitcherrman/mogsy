@@ -380,6 +380,68 @@ export type Database = {
           },
         ]
       }
+      custom_links: {
+        Row: {
+          created_at: string | null
+          created_by_user_id: string
+          default_swipe_animation: string | null
+          default_theme: string | null
+          destination_type: string
+          grant_diamonds: number | null
+          grant_pro: boolean | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          league_id: string | null
+          recommended_categories: string[] | null
+          recommended_league_ids: string[] | null
+          slug: string
+          visits: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_user_id: string
+          default_swipe_animation?: string | null
+          default_theme?: string | null
+          destination_type?: string
+          grant_diamonds?: number | null
+          grant_pro?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          league_id?: string | null
+          recommended_categories?: string[] | null
+          recommended_league_ids?: string[] | null
+          slug: string
+          visits?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_user_id?: string
+          default_swipe_animation?: string | null
+          default_theme?: string | null
+          destination_type?: string
+          grant_diamonds?: number | null
+          grant_pro?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          league_id?: string | null
+          recommended_categories?: string[] | null
+          recommended_league_ids?: string[] | null
+          slug?: string
+          visits?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_links_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_global_sessions: {
         Row: {
           created_at: string
