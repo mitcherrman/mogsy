@@ -497,6 +497,29 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
   };
 
+  const toggleModeratorRole = async (userId: string) => {
+    const currentRoles = userRoles[userId] || [];
+    const isCurrentlyMod = currentRoles.includes("moderator");
+
+    if (isCurrentlyMod) {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "moderator" as any);
+      if (error) { toast.error("Failed to remove moderator role"); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: (prev[userId] || []).filter((r) => r !== "moderator"),
+      }));
+      toast.success("Moderator role removed");
+    } else {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "moderator" as any });
+      if (error) { toast.error("Failed to grant moderator role: " + error.message); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: [...(prev[userId] || []), "moderator"],
+      }));
+      toast.success("Moderator role granted");
+    }
+  };
+
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleString() : "Never";
   const timeAgo = (d: string | null) => {
     if (!d) return "Never";
