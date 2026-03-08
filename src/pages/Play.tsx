@@ -27,6 +27,7 @@ interface LeagueItem {
 }
 
 interface PreviewImage {
+  item_id: string;
   league_id: string;
   category: string;
   image_url: string;
@@ -79,6 +80,7 @@ export default function Play() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreState?.restoreSubcategory || null);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
+  const { config: publishedConfig } = usePlayLayout("published");
 
   // Fetch leagues
   useEffect(() => {
@@ -109,6 +111,7 @@ export default function Play() {
       const images: PreviewImage[] = items
         .filter((item: any) => item.image_url && item.leagues?.category)
         .map((item: any) => ({
+          item_id: item.id,
           league_id: item.league_id,
           category: item.leagues.category,
           image_url: item.image_url,
@@ -127,16 +130,32 @@ export default function Play() {
   }, []);
 
   const getCategoryImage = useCallback((category: string) => {
+    // Check for configured cover item
+    if (publishedConfig) {
+      const catConfig = publishedConfig.categories?.find(c => c.key === category);
+      if (catConfig?.coverItemId) {
+        const coverImg = previewImages.find(img => img.item_id === catConfig.coverItemId);
+        if (coverImg) return coverImg.image_url;
+      }
+    }
     const catImages = previewImages.filter((img) => img.category === category);
     if (catImages.length === 0) return null;
     return catImages[0]?.image_url || null;
-  }, [previewImages]);
+  }, [previewImages, publishedConfig]);
 
   const getLeagueImage = useCallback((leagueId: string) => {
+    // Check for configured cover item
+    if (publishedConfig) {
+      const leagueConfig = publishedConfig.leagues?.find(l => l.id === leagueId);
+      if (leagueConfig?.coverItemId) {
+        const coverImg = previewImages.find(img => img.item_id === leagueConfig.coverItemId);
+        if (coverImg) return coverImg.image_url;
+      }
+    }
     const leagueImages = previewImages.filter((img) => img.league_id === leagueId);
     if (leagueImages.length === 0) return null;
     return leagueImages[0]?.image_url || null;
-  }, [previewImages]);
+  }, [previewImages, publishedConfig]);
 
   const handleBubbleClick = (action: () => void) => {
     playSwipeSound();
@@ -167,7 +186,7 @@ export default function Play() {
     else navigate("/swipe");
   };
 
-  const { config: publishedConfig } = usePlayLayout("published");
+  // publishedConfig already declared above
 
   const presetLeagues = leagues.filter((l) => l.type === "preset");
   const userLeagues = leagues.filter((l) => l.type === "user");

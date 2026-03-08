@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
+import AdminPlayLeagueItems from "@/components/admin/AdminPlayLeagueItems";
 import type { PlayLayoutConfig, LayoutTopLevel, LayoutCategory, LayoutLeague } from "@/hooks/usePlayLayout";
 
 interface LeagueItem {
@@ -39,6 +40,7 @@ export default function AdminPlay() {
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [config, setConfig] = useState<PlayLayoutConfig>({ topLevel: [], categories: [], leagues: [] });
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingLeague, setViewingLeague] = useState<{ id: string; name: string } | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["topLevel"]));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -290,7 +292,7 @@ export default function AdminPlay() {
     toast.success("Preset deleted");
   };
 
-  const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null }) => {
+  const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null; coverItemId?: string | null }) => {
     if (!editingItem) return;
     const { itemType, itemKey } = editingItem;
 
@@ -302,12 +304,12 @@ export default function AdminPlay() {
     } else if (itemType === "category") {
       setConfig(prev => ({
         ...prev,
-        categories: prev.categories.map(c => c.key === itemKey ? { ...c, hidden: updates.hidden, customLabel: updates.customLabel } : c),
+        categories: prev.categories.map(c => c.key === itemKey ? { ...c, hidden: updates.hidden, customLabel: updates.customLabel, coverItemId: updates.coverItemId !== undefined ? updates.coverItemId : c.coverItemId } : c),
       }));
     } else {
       setConfig(prev => ({
         ...prev,
-        leagues: prev.leagues.map(l => l.id === itemKey ? { ...l, hidden: updates.hidden, customLabel: updates.customLabel } : l),
+        leagues: prev.leagues.map(l => l.id === itemKey ? { ...l, hidden: updates.hidden, customLabel: updates.customLabel, coverItemId: updates.coverItemId !== undefined ? updates.coverItemId : l.coverItemId } : l),
       }));
     }
     hasUnsavedChanges.current = true;
@@ -325,6 +327,21 @@ export default function AdminPlay() {
   };
 
   if (loading || !authorized) return <div className="min-h-screen" />;
+
+  // League items detail view
+  if (viewingLeague) {
+    return (
+      <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+        <div className="container mx-auto max-w-2xl">
+          <AdminPlayLeagueItems
+            leagueId={viewingLeague.id}
+            leagueName={viewingLeague.name}
+            onClose={() => setViewingLeague(null)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order);
   const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order);
@@ -445,7 +462,7 @@ export default function AdminPlay() {
                     onEdit={() => setEditingItem({
                       itemType: "category",
                       itemKey: cat.key,
-                      item: { key: cat.key, label: getCategoryLabel(cat.key), hidden: cat.hidden, customLabel: cat.customLabel, type: "category" as const },
+                      item: { key: cat.key, label: getCategoryLabel(cat.key), hidden: cat.hidden, customLabel: cat.customLabel, coverItemId: cat.coverItemId, type: "category" as const },
                     })}
                     expandable
                     expanded={expandedCategories.has(cat.key)}
@@ -479,10 +496,12 @@ export default function AdminPlay() {
                                     label: getLeagueName(league.id),
                                     hidden: league.hidden,
                                     customLabel: league.customLabel,
+                                    coverItemId: league.coverItemId,
                                     type: "league" as const,
                                     leagueId: league.id,
                                   },
                                 })}
+                                onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                               />
                             </Reorder.Item>
                           ))}
@@ -527,10 +546,12 @@ export default function AdminPlay() {
                       label: getLeagueName(league.id),
                       hidden: league.hidden,
                       customLabel: league.customLabel,
+                      coverItemId: league.coverItemId,
                       type: "league" as const,
                       leagueId: league.id,
                     },
                   })}
+                  onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                 />
               </Reorder.Item>
             ))}
@@ -585,6 +606,7 @@ function DragItem({
   expandable,
   expanded,
   onExpand,
+  onViewItems,
 }: {
   label: string;
   sublabel?: string;
@@ -595,6 +617,7 @@ function DragItem({
   expandable?: boolean;
   expanded?: boolean;
   onExpand?: () => void;
+  onViewItems?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
@@ -609,6 +632,11 @@ function DragItem({
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
+      {onViewItems && (
+        <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
+          <ImageIcon className="h-3.5 w-3.5 text-primary" />
+        </button>
+      )}
       <button onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
         {hidden ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-foreground" />}
       </button>

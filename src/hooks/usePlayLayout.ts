@@ -15,6 +15,7 @@ export interface LayoutCategory {
   hidden: boolean;
   order: number;
   customLabel: string | null;
+  coverItemId?: string | null;
 }
 
 export interface LayoutLeague {
@@ -22,6 +23,7 @@ export interface LayoutLeague {
   hidden: boolean;
   order: number;
   customLabel: string | null;
+  coverItemId?: string | null;
 }
 
 export interface PlayLayoutConfig {
