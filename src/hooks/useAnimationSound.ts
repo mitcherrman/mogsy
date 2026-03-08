@@ -16,6 +16,8 @@ export function useAnimationSound() {
 
   const chopBufferRef = useRef<AudioBuffer | null>(null);
   const chopLoadingRef = useRef(false);
+  const moggedBufferRef = useRef<AudioBuffer | null>(null);
+  const moggedLoadingRef = useRef(false);
 
   const loadRipSound = useCallback(async () => {
     if (ripBufferRef.current || loadingRef.current) return;
