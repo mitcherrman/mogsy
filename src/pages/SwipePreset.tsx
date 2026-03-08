@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
+import SwipeAdCard from "@/components/SwipeAdCard";
+import type { AdCreative } from "@/components/SwipeAdCard";
 import TierBadge from "@/components/TierBadge";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
