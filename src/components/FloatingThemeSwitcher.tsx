@@ -127,6 +127,40 @@ export default function FloatingThemeSwitcher() {
 
   return (
     <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] hidden sm:flex flex-col items-end gap-2">
+      {/* Mobile theme picker (triggered from nav) */}
+      <AnimatePresence>
+        {open && (
+          <div className="sm:hidden fixed inset-0 z-[70]" onClick={() => setOpen(false)}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed bottom-16 right-3 flex flex-col items-center gap-2 p-3 rounded-2xl bg-card/95 backdrop-blur-xl border border-border shadow-xl z-[70]"
+            >
+              {visibleThemes.map((theme) => {
+                const locked = !canUseTheme(theme.id);
+                const isActive = themeId === theme.id;
+                const bg = getCircleGradient(theme);
+                return (
+                  <motion.button
+                    key={theme.id}
+                    whileTap={{ scale: locked ? 1 : 0.92 }}
+                    onClick={() => { if (!locked) { handleSelect(theme.id); setOpen(false); } }}
+                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all relative ${
+                      isActive ? "border-primary ring-2 ring-primary/40 shadow-lg" : locked ? "border-border opacity-50" : "border-border"
+                    }`}
+                    style={{ background: bg }}
+                  >
+                    {isActive && <Check className="h-3.5 w-3.5 drop-shadow-md" style={{ color: "white" }} />}
+                    {locked && !isActive && <Lock className="h-2.5 w-2.5 drop-shadow" style={{ color: "rgba(255,255,255,0.8)" }} />}
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {open && (
           <motion.div
