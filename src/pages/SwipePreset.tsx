@@ -517,7 +517,7 @@ export default function SwipePreset() {
             </Button>
             <Link to={`/leaderboard/${leagueId}`} className="flex-1">
               <Button className="w-full gap-2">
-                <Trophy className="h-4 w-4" /> Full Rankings
+                <Trophy className="h-4 w-4" /> Full Leaderboard
               </Button>
             </Link>
           </div>
