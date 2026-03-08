@@ -40,6 +40,7 @@ export default function AdminPlay() {
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [config, setConfig] = useState<PlayLayoutConfig>({ topLevel: [], categories: [], leagues: [] });
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingLeague, setViewingLeague] = useState<{ id: string; name: string } | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["topLevel"]));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
