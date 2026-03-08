@@ -411,7 +411,7 @@ export default function Swipe() {
               )}
               {globalLeagueId && (
                 <Button variant="outline" size="sm" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="gap-1 h-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" /> Board
+                  <Trophy className="h-3.5 w-3.5" /> Leaderboard
                 </Button>
               )}
             </div>
