@@ -26,6 +26,7 @@ import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
+import { useAdSystem } from "@/hooks/useAdSystem";
 
 interface PresetItem {
   id: string;
