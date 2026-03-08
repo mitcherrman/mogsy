@@ -581,9 +581,9 @@ export default function SwipePreset() {
             <p className="text-muted-foreground text-xs shrink-0">
               <span className="text-primary font-bold">{matchCount}</span>
             </p>
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
-              {leagueName}
-            </span>
+            <div className="flex-1 text-center">
+              <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
+            </div>
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1 shrink-0">
               {user && (
@@ -601,19 +601,6 @@ export default function SwipePreset() {
                 title="Save snapshot"
               >
                 <Camera className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  const next = !(userShowElo && userShowRank);
-                  setUserShowElo(next);
-                  setUserShowRank(next);
-                }}
-                className="h-8 w-8 text-muted-foreground"
-                title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
-              >
-                {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
                 <Button variant="outline" size="icon" className="h-8 w-8">
@@ -826,11 +813,26 @@ export default function SwipePreset() {
             </MatchupCapture>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-1.5">
-            {gauntletMode
-              ? `Tap to choose · Winner stays · ${matchCount} votes`
-              : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
-          </p>
+          <div className="flex items-center mt-1.5">
+            <p className="flex-1 text-center text-[10px] text-muted-foreground">
+              {gauntletMode
+                ? `Tap to choose · Winner stays · ${matchCount} votes`
+                : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
+            </p>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const next = !(userShowElo && userShowRank);
+                setUserShowElo(next);
+                setUserShowRank(next);
+              }}
+              className="h-7 w-7 text-muted-foreground shrink-0"
+              title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
+            >
+              {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
 
           {/* Comments section */}
           {leagueId && <SwipeComments leagueId={leagueId} />}
