@@ -4,6 +4,7 @@ import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import FloatingScrollButton from "./FloatingScrollButton";
+import FloatingFriendsButton from "./FloatingFriendsButton";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
