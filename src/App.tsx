@@ -28,6 +28,7 @@ const EloCheck = lazy(() => import("./pages/EloCheck"));
 const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 
 const queryClient = new QueryClient();
 
