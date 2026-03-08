@@ -734,7 +734,6 @@ export default function SwipePreset() {
                                 newRank={rankChanges.get(item.id)?.new ?? null}
                                 globalDirection={globalDirections.get(item.id)}
                               />
-                              />
                             </div>
                           )}
                         </div>
