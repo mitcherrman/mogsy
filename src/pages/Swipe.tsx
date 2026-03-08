@@ -278,6 +278,7 @@ export default function Swipe() {
       if (animToUse === "default") playSwipeSound();
       playAnimationSound(animToUse);
       logUsage(animToUse, "swipe");
+      setEffectiveAnim(animToUse);
       setSliceWinner(winnerIndex);
       pendingChoose.current = () => executeChoice(winnerIndex);
     },
