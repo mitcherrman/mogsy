@@ -40,6 +40,7 @@ const allTabs = [
   { value: "animations", label: "Animations", masterOnly: false },
   { value: "sounds", label: "Sounds", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
+  { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
   { value: "settings", label: "Settings", masterOnly: true },
 ];
