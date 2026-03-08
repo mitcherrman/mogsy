@@ -131,7 +131,7 @@ export default function SwipePreset() {
     setMatchCount(c => c + 1);
   }, [items, sliceWinner, gauntletMode, gauntletChampion, currentIndex, matchups.length]);
 
-  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null || readyDelay);
 
 
   // Apply theme immediately from navigation state (before data loads) to prevent flash
