@@ -411,6 +411,7 @@ export default function SwipePreset() {
 
       // Clear slice overlay AFTER new pair state is committed
       setSliceWinner(null);
+      resetTimer();
     },
     [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
