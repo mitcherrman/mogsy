@@ -78,7 +78,7 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                         transition={{ duration: 0.3 }}
                       />
                       <motion.div
-                        className="absolute bottom-0 left-[30%] right-[30%] h-[40%] flex items-end justify-center z-10 overflow-hidden"
+                        className="absolute bottom-0 left-[15%] right-[15%] h-[40%] flex items-end justify-center z-10 overflow-hidden"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
