@@ -8,9 +8,11 @@ import { logAdEvent } from "@/lib/ad-analytics";
 interface SwipeAdProps {
   onClose: () => void;
   isPro: boolean;
-  /** When set, renders a Google AdSense unit instead of the placeholder */
   adsenseSlot?: string;
   adsenseClientId?: string;
+  placement?: string;
+  adSource?: string;
+  profileId?: string;
 }
 
 export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId }: SwipeAdProps) {
