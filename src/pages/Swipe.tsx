@@ -63,7 +63,7 @@ export default function Swipe() {
   const [gauntletStreak, setGauntletStreak] = useState(0);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
-  const { swipeAnimation, logUsage } = useCardAnimation();
+  const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const pendingChoose = useRef<(() => void) | null>(null);
 

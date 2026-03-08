@@ -83,7 +83,7 @@ export default function SwipePreset() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
-  const { swipeAnimation, logUsage } = useCardAnimation();
+  const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
