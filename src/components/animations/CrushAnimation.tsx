@@ -37,12 +37,22 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    scale: [1, 1.02, 1],
+                    boxShadow: [
+                      "0 0 0px 0px hsl(0 0% 100% / 0)",
+                      "0 0 24px 8px hsl(0 0% 100% / 0.5)",
+                      "0 0 0px 0px hsl(0 0% 100% / 0)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 

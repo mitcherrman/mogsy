@@ -58,12 +58,35 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    boxShadow: [
+                      "0 0 0px 0px hsl(0 0% 100% / 0)",
+                      "0 0 20px 4px hsl(0 0% 100% / 0.4)",
+                      "0 0 8px 2px hsl(0 0% 100% / 0.15)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                >
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                    {/* Diamond sparkle particles */}
+                    {phase !== "idle" && Array.from({ length: 8 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1.5 h-1.5 bg-foreground/60 rounded-full"
+                        style={{
+                          left: `${10 + (i * 12)}%`,
+                          top: i % 2 === 0 ? "5%" : "90%",
+                        }}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: [0, 1, 0], scale: [0, 1.2, 0], y: i % 2 === 0 ? -8 : 8 }}
+                        transition={{ duration: 0.5, delay: 0.1 + i * 0.05, ease: "easeOut" }}
+                      />
+                    ))}
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 

@@ -37,12 +37,24 @@ export default function SgtDoakesAnimation({ winnerSide, items, onComplete }: Pr
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    boxShadow: [
+                      "0 0 0px 0px hsla(0, 100%, 50%, 0)",
+                      "0 0 16px 4px hsla(0, 100%, 50%, 0.5)",
+                      "0 0 16px 4px hsla(230, 100%, 50%, 0.5)",
+                      "0 0 16px 4px hsla(0, 100%, 50%, 0.4)",
+                      "0 0 16px 4px hsla(230, 100%, 50%, 0.4)",
+                      "0 0 6px 2px hsla(230, 100%, 50%, 0.15)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.8, delay: 0.15 }}
+                >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 
