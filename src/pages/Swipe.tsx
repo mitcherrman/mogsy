@@ -15,6 +15,8 @@ import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
+import { useSwipeTimer } from "@/hooks/useSwipeTimer";
+import SwipeTimer from "@/components/SwipeTimer";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +68,21 @@ export default function Swipe() {
   const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const pendingChoose = useRef<(() => void) | null>(null);
+
+  const handleTimerTimeout = useCallback(() => {
+    if (!pair || sliceWinner !== null) return;
+    // Random skip — just advance to next pair
+    if (gauntletMode && gauntletChampion) {
+      const others = profiles.filter(p => p.id !== gauntletChampion.id);
+      const challenger = others[Math.floor(Math.random() * others.length)];
+      setPair([gauntletChampion, challenger]);
+    } else {
+      setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+    }
+    setMatchCount(c => c + 1);
+  }, [pair, sliceWinner, profiles, gauntletMode, gauntletChampion]);
+
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
 
@@ -244,6 +261,7 @@ export default function Swipe() {
 
       // Clear slice overlay AFTER new pair state is committed
       setSliceWinner(null);
+      resetTimer();
     },
     [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields, gauntletMode, gauntletChampion]
   );
@@ -349,6 +367,7 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
+            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex-1" />
             <div className="flex items-center gap-1">
               {user && (

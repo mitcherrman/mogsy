@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Heart } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,6 +14,8 @@ interface SettingsState {
   default_diamonds: number;
   allow_anonymous_browsing: boolean;
   favorites_mode: "auto" | "manual";
+  swipe_timer_enabled: boolean;
+  swipe_timer_duration: number;
 }
 
 export default function AdminSettings() {
@@ -24,6 +26,8 @@ export default function AdminSettings() {
     default_diamonds: 0,
     allow_anonymous_browsing: true,
     favorites_mode: "auto",
+    swipe_timer_enabled: false,
+    swipe_timer_duration: 10,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +48,7 @@ export default function AdminSettings() {
               case "default_diamonds": s.default_diamonds = val?.count ?? 0; break;
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
+              case "swipe_timer": s.swipe_timer_enabled = val?.enabled ?? false; s.swipe_timer_duration = val?.duration_seconds ?? 10; break;
             }
           }
           setSettings(s);
@@ -122,6 +127,54 @@ export default function AdminSettings() {
             <Button size="sm" variant="outline" disabled={saving} onClick={() => saveNumericSetting("default_diamonds", "default_diamonds")}>Save</Button>
           </div>
         </div>
+      </div>
+
+      {/* Swipe Timer */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Timer className="h-3.5 w-3.5" /> Swipe Timer
+        </h4>
+        <SettingToggle
+          label="Enable Swipe Timer"
+          description="Players have a set time to choose or the match auto-skips"
+          checked={settings.swipe_timer_enabled}
+          onChange={async () => {
+            const newVal = !settings.swipe_timer_enabled;
+            setSettings(s => ({ ...s, swipe_timer_enabled: newVal }));
+            const ok = await updateSetting("swipe_timer", { enabled: newVal, duration_seconds: settings.swipe_timer_duration });
+            if (!ok) setSettings(s => ({ ...s, swipe_timer_enabled: !newVal }));
+          }}
+        />
+        {settings.swipe_timer_enabled && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <div>
+              <Label className="text-sm font-medium">Timer Duration (seconds)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">How long players have to make a choice</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={3}
+                max={60}
+                value={settings.swipe_timer_duration}
+                onChange={(e) => setSettings(s => ({ ...s, swipe_timer_duration: parseInt(e.target.value) || 10 }))}
+                className="w-20"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  await updateSetting("swipe_timer", { enabled: settings.swipe_timer_enabled, duration_seconds: settings.swipe_timer_duration });
+                  setSaving(false);
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Profile Favorites */}

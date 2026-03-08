@@ -19,6 +19,8 @@ import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
+import { useSwipeTimer } from "@/hooks/useSwipeTimer";
+import SwipeTimer from "@/components/SwipeTimer";
 import { toast } from "sonner";
 
 interface PresetItem {
@@ -98,6 +100,29 @@ export default function SwipePreset() {
   // Multi-image state
   const [itemImages, setItemImages] = useState<Map<string, ItemImage[]>>(new Map());
   const [currentImageIndex, setCurrentImageIndex] = useState<Map<string, number>>(new Map());
+
+  const pair = gauntletMode
+    ? gauntletPair
+    : (currentIndex < matchups.length ? matchups[currentIndex] : null);
+
+  const handleTimerTimeout = useCallback(() => {
+    if (!items.length || sliceWinner !== null) return;
+    if (gauntletMode && gauntletChampion) {
+      const challenger = items.filter(i => i.id !== gauntletChampion.id)[Math.floor(Math.random() * (items.length - 1))];
+      setGauntletPair([gauntletChampion, challenger]);
+    } else {
+      const nextIndex = currentIndex + 1;
+      if (nextIndex >= matchups.length) {
+        setFinished(true);
+      } else {
+        setCurrentIndex(nextIndex);
+      }
+    }
+    setMatchCount(c => c + 1);
+  }, [items, sliceWinner, gauntletMode, gauntletChampion, currentIndex, matchups.length]);
+
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
+
 
   // Apply theme immediately from navigation state (before data loads) to prevent flash
   useEffect(() => {
@@ -246,9 +271,6 @@ export default function SwipePreset() {
     return others[Math.floor(Math.random() * others.length)];
   }, [items]);
 
-  const pair = gauntletMode
-    ? gauntletPair
-    : (currentIndex < matchups.length ? matchups[currentIndex] : null);
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
   const rankMap = useMemo(() => {
@@ -391,6 +413,7 @@ export default function SwipePreset() {
 
       // Clear slice overlay AFTER new pair state is committed
       setSliceWinner(null);
+      resetTimer();
     },
     [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
@@ -549,6 +572,7 @@ export default function SwipePreset() {
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
               {leagueName}
             </span>
+            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1">
               {user && (
                 <SwipeAnimationPicker
