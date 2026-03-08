@@ -1,40 +1,46 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-### The Pattern Difference
+## Among Us Theme Implementation Plan
 
-**SliceBattleAnimation (correct):**
+### Overview
+Add a new "Among Us" profile theme with hand-drawn spaceship/building decorations, a fading crewmate GIF with a secret clickable mechanic, and a hidden secret room page.
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+### What gets built
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+**1. Copy the uploaded GIF into the project**
+- Copy `user-uploads://color_change_amongus.gif` → `public/images/amongus-crewmate.gif`
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+**2. New "Among Us" theme in `src/lib/profile-themes.ts`**
+- Add an `amongus` entry with space-themed dark blue/purple/red color palette (Pro theme)
+- Dark space background, red/cyan accents matching Among Us aesthetics
 
-### Implementation Plan
+**3. Among Us overlay in `src/components/ThemeOverlay.tsx`**
+- **Pencil-drawn SVG spaceships** (3-4) floating/drifting at various positions with thick stroke, hand-drawn style (rough edges, visible stroke)
+- **Pencil-drawn SVG buildings** along the bottom — blocky Among Us map-style structures (Skeld/Polus inspired) with thick outlines
+- **Stars** scattered in background (small dots)
+- **Crewmate GIF** (`/images/amongus-crewmate.gif`):
+  - Appears at random screen positions
+  - Fades in over ~1s, stays visible ~3s, fades out over ~1s
+  - Repeats on a ~6s cycle
+  - Internal counter tracks appearances. Every 3rd appearance, the GIF becomes `pointer-events-auto` (clickable) with a subtle glow hint
+  - Clicking navigates to `/secret-room`
+- Register `"amongus"` in the ThemeOverlay switch
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+**4. Secret Room page — `src/pages/SecretRoom.tsx`**
+- Simple page with a pencil-drawn SVG room containing a couch
+- Dark background, thick stroke SVG art of a room interior with a couch in the center
+- Minimal text like "You found the secret room..." 
+- A back/home button
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+**5. Route registration in `src/App.tsx`**
+- Add `/secret-room` route (lazy loaded, no auth required so it stays mysterious)
 
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+### Files changed
+| File | Action |
+|------|--------|
+| `public/images/amongus-crewmate.gif` | Copy from upload |
+| `src/lib/profile-themes.ts` | Add `amongus` theme entry |
+| `src/components/ThemeOverlay.tsx` | Add `AmongUsOverlay` function + register |
+| `src/pages/SecretRoom.tsx` | Create new page |
+| `src/App.tsx` | Add `/secret-room` route |
 
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
