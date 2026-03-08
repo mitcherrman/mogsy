@@ -440,10 +440,8 @@ export default function Swipe() {
                   <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
                 </Button>
               )}
-              {myShields > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Shield className="h-3 w-3" /> {myShields}
-                </span>
+              {user && (
+                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
               {globalLeagueId && (
                 <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
