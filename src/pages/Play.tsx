@@ -278,7 +278,7 @@ export default function Play() {
               <span className="text-sm font-extrabold tracking-wide">Swipe</span>
             </Bubble>
           )}
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className={`flex flex-wrap ${!isMobile ? desktopAlign : "items-center"} justify-center gap-4`}>
             {categoryKeys.map((cat, i) => {
               const catImage = getCategoryImage(cat);
               if (!isMobile) {
