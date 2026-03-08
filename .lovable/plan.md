@@ -1,27 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Fix: Blurry Profile Images
+### The Pattern Difference
 
-### Root Cause
-The bot avatars use `randomuser.me/api/portraits/` URLs which serve **128×128px** images. The new card layout stretches these across a much larger area (`aspect-[3/4]`, roughly 200–400px wide), causing visible blur.
+**SliceBattleAnimation (correct):**
 
-### Solution
-Update the 10 bot avatar URLs in the database to use higher-resolution stock photo sources. Options:
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-- **`thispersondoesnotexist.com`** — AI-generated faces, 1024×1024
-- **`xsgames.co/randomusers`** — higher-res stock photos
-- **`pravatar.cc`** — supports size parameter (`pravatar.cc/500?img=X`)
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-**Recommended: `pravatar.cc/500?img=X`** — simple, reliable, 500×500px, good enough for mobile cards.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-### Changes
+### Implementation Plan
 
-**Database migration** — Update `avatar_url` for all 10 bot profiles:
-```sql
-UPDATE profiles SET avatar_url = 'https://i.pravatar.cc/500?img=N' WHERE id = '...';
-```
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-Each bot gets a unique `?img=` number (1–70 range) for distinct faces.
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-**No code changes needed** — the card component already uses `object-cover` which will handle the larger images well.
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
