@@ -183,7 +183,7 @@ export default function Leagues() {
         </div>
 
         {leagues.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {leagues.map((league, i) => (
               <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
             ))}
