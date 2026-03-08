@@ -54,6 +54,8 @@ export default function Swipe() {
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
+  const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [gauntletMode, setGauntletMode] = useState(false);
   const [gauntletChampion, setGauntletChampion] = useState<SwipeProfile | null>(null);
   const [gauntletStreak, setGauntletStreak] = useState(0);
@@ -139,7 +141,7 @@ export default function Swipe() {
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
       if (globalLeagueId && myProfileId) {
-        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_user_match", {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_dual_user_match", {
           _league_id: globalLeagueId,
           _winner_profile_id: winner.id,
           _loser_profile_id: loser.id,
@@ -147,13 +149,11 @@ export default function Swipe() {
         });
 
         if (rpcError) {
-          console.error("Match RPC error:", rpcError);
+          console.error("Dual match RPC error:", rpcError);
           return;
         }
 
-        const result = rpcResult as { newWinnerElo: number; newLoserElo: number; shieldUsed: boolean };
-        const newWinnerElo = result.newWinnerElo;
-        const finalLoserElo = result.newLoserElo;
+        const result = rpcResult as any;
 
         if (result.shieldUsed) {
           setMyShields((s) => s - 1);
@@ -163,9 +163,20 @@ export default function Swipe() {
         setLastMatch({ winner, loser, prevWinnerElo: winner.elo, prevLoserElo: loser.elo });
 
         setEloChanges(new Map([
-          [winner.id, newWinnerElo - winner.elo],
-          [loser.id, finalLoserElo - loser.elo],
+          [winner.id, result.localWinnerChange],
+          [loser.id, result.localLoserChange],
         ]));
+        setGlobalDirections(new Map([
+          [winner.id, result.globalDirectionWinner as "up" | "down" | "none"],
+          [loser.id, result.globalDirectionLoser as "up" | "down" | "none"],
+        ]));
+        if (countsTowardGlobal === null) {
+          setCountsTowardGlobal(result.countsTowardGlobal);
+        }
+
+        // Still update profile state with global elo for display consistency
+        const newWinnerElo = result.countsTowardGlobal ? winner.elo + Math.abs(result.localWinnerChange) : winner.elo;
+        const finalLoserElo = result.countsTowardGlobal ? loser.elo - Math.abs(result.localLoserChange) : loser.elo;
 
         setProfiles((prev) =>
           prev.map((p) => {
@@ -181,6 +192,7 @@ export default function Swipe() {
 
       if (gauntletMode) {
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
         setGauntletChampion(winner);
         setGauntletStreak(prev => {
           if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
@@ -197,8 +209,10 @@ export default function Swipe() {
       } else if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
       } else {
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
         setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
       }
 
@@ -347,7 +361,7 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
                   <div className="flex justify-center mt-1">
-                    <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+                    <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                   </div>
                 </div>
 
@@ -360,7 +374,7 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
                   <div className="flex justify-center mt-1">
-                    <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                    <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                   </div>
                 </div>
 

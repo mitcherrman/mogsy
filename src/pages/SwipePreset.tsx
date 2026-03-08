@@ -59,6 +59,7 @@ export default function SwipePreset() {
   const captureRef = useRef<HTMLDivElement>(null);
   const { capture } = useScreenshot(captureRef);
   const [items, setItems] = useState<PresetItem[]>([]);
+  const [localElos, setLocalElos] = useState<Map<string, number>>(new Map());
   const [matchups, setMatchups] = useState<[PresetItem, PresetItem][]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
@@ -75,7 +76,10 @@ export default function SwipePreset() {
   const [userShowElo, setUserShowElo] = useState(true);
   const [userShowRank, setUserShowRank] = useState(true);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
+  const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
+  const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
   const { swipeAnimation, logUsage } = useCardAnimation();
@@ -156,8 +160,26 @@ export default function SwipePreset() {
 
     if (user) {
       const { data: profile } = await supabase
-        .from("profiles").select("is_pro").eq("user_id", user.id).single();
-      if (profile?.is_pro) setIsPro(true);
+        .from("profiles").select("id, is_pro").eq("user_id", user.id).single();
+      if (profile) {
+        if (profile.is_pro) setIsPro(true);
+        setMyProfileId(profile.id);
+
+        // Fetch local rankings for this league
+        const { data: localRanks } = await supabase
+          .from("local_rankings")
+          .select("item_id, local_elo")
+          .eq("profile_id", profile.id)
+          .eq("league_id", leagueId!);
+
+        if (localRanks) {
+          const map = new Map<string, number>();
+          localRanks.forEach((r: any) => {
+            if (r.item_id) map.set(r.item_id, r.local_elo);
+          });
+          setLocalElos(map);
+        }
+      }
     }
 
     setLoading(false);
@@ -241,6 +263,56 @@ export default function SwipePreset() {
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
+      if (myProfileId) {
+        // Use dual Elo RPC
+        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_dual_preset_match", {
+          _league_id: leagueId!,
+          _winner_item_id: winner.id,
+          _loser_item_id: loser.id,
+          _caller_profile_id: myProfileId,
+        });
+
+        if (rpcError) {
+          console.error("Dual preset match RPC error:", rpcError);
+        } else {
+          const result = rpcResult as any;
+          setEloChanges(new Map([
+            [winner.id, result.localWinnerChange],
+            [loser.id, result.localLoserChange],
+          ]));
+          setGlobalDirections(new Map([
+            [winner.id, result.globalDirectionWinner as "up" | "down" | "none"],
+            [loser.id, result.globalDirectionLoser as "up" | "down" | "none"],
+          ]));
+          if (countsTowardGlobal === null) {
+            setCountsTowardGlobal(result.countsTowardGlobal);
+          }
+          // Update local elos
+          setLocalElos(prev => {
+            const next = new Map(prev);
+            next.set(winner.id, result.localWinnerElo);
+            next.set(loser.id, result.localLoserElo);
+            return next;
+          });
+        }
+      } else {
+        // Fallback: use old RPC for unauthenticated
+        const currentWinner = items.find(i => i.id === winner.id)!;
+        const currentLoser = items.find(i => i.id === loser.id)!;
+        const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
+        setEloChanges(new Map([
+          [winner.id, newWinnerElo - currentWinner.elo],
+          [loser.id, newLoserElo - currentLoser.elo],
+        ]));
+
+        await supabase.rpc("record_preset_match", {
+          _league_id: leagueId!,
+          _winner_item_id: winner.id,
+          _loser_item_id: loser.id,
+        });
+      }
+
+      // Update local items state with local elo for display
       const currentWinner = items.find(i => i.id === winner.id)!;
       const currentLoser = items.find(i => i.id === loser.id)!;
       const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
@@ -256,24 +328,10 @@ export default function SwipePreset() {
       const newRanks = new Map<string, number>();
       [...updatedItems].sort((a, b) => b.elo - a.elo).forEach((item, idx) => newRanks.set(item.id, idx + 1));
 
-      setEloChanges(new Map([
-        [winner.id, newWinnerElo - currentWinner.elo],
-        [loser.id, newLoserElo - currentLoser.elo],
-      ]));
       setRankChanges(new Map([
         [winner.id, { old: oldRanks.get(winner.id)!, new: newRanks.get(winner.id)! }],
         [loser.id, { old: oldRanks.get(loser.id)!, new: newRanks.get(loser.id)! }],
       ]));
-
-      const { error: rpcError } = await supabase.rpc("record_preset_match", {
-        _league_id: leagueId!,
-        _winner_item_id: winner.id,
-        _loser_item_id: loser.id,
-      });
-
-      if (rpcError) {
-        console.error("Preset match RPC error:", rpcError);
-      }
 
       setItems(updatedItems);
 
@@ -282,6 +340,7 @@ export default function SwipePreset() {
       setMatchCount(newCount);
       setChosen(null);
       setEloChanges(new Map());
+      setGlobalDirections(new Map());
       setRankChanges(new Map());
       setCurrentImageIndex(prev => {
         const next = new Map(prev);
@@ -555,6 +614,7 @@ export default function SwipePreset() {
                         rankVisible={rankVisible}
                         items={items}
                         eloChanges={eloChanges}
+                        globalDirections={globalDirections}
                         rankChanges={rankChanges}
                         getDisplayImage={getDisplayImage}
                         handleChoose={handleChoose}
@@ -673,6 +733,7 @@ export default function SwipePreset() {
                                 change={eloChanges.get(item.id) ?? null}
                                 oldRank={rankChanges.get(item.id)?.old ?? null}
                                 newRank={rankChanges.get(item.id)?.new ?? null}
+                                globalDirection={globalDirections.get(item.id)}
                               />
                             </div>
                           )}
@@ -712,13 +773,13 @@ export default function SwipePreset() {
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, itemImages, currentImageIndex,
-  eloVisible, rankVisible, items, eloChanges, rankChanges, getDisplayImage, handleChoose, handleReportImage,
+  eloVisible, rankVisible, items, eloChanges, globalDirections, rankChanges, getDisplayImage, handleChoose, handleReportImage,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>;
   itemImages: Map<string, ItemImage[]>; currentImageIndex: Map<string, number>;
   eloVisible: boolean; rankVisible: boolean; items: PresetItem[];
-  eloChanges: Map<string, number>; rankChanges: Map<string, { old: number; new: number }>;
+  eloChanges: Map<string, number>; globalDirections: Map<string, "up" | "down" | "none">; rankChanges: Map<string, { old: number; new: number }>;
   getDisplayImage: (item: PresetItem) => string | null;
   handleChoose: (idx: 0 | 1) => void;
   handleReportImage: (item: PresetItem) => void;
@@ -791,7 +852,7 @@ function GauntletCard({
       </div>
       {chosen !== null && (
         <div className="flex justify-center mt-0.5 flex-shrink-0">
-          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} />
+          <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
         </div>
       )}
     </div>

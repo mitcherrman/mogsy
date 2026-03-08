@@ -297,6 +297,30 @@ export type Database = {
           },
         ]
       }
+      daily_global_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          profile_id: string
+          session_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          profile_id: string
+          session_date?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          profile_id?: string
+          session_date?: string
+        }
+        Relationships: []
+      }
       elo_check_games: {
         Row: {
           actual_higher_id: string
@@ -396,6 +420,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      global_elo_snapshots: {
+        Row: {
+          elo: number
+          id: string
+          item_id: string | null
+          league_id: string
+          profile_id: string | null
+          snapshot_at: string
+        }
+        Insert: {
+          elo: number
+          id?: string
+          item_id?: string | null
+          league_id: string
+          profile_id?: string | null
+          snapshot_at?: string
+        }
+        Update: {
+          elo?: number
+          id?: string
+          item_id?: string | null
+          league_id?: string
+          profile_id?: string | null
+          snapshot_at?: string
+        }
+        Relationships: []
       }
       image_reports: {
         Row: {
@@ -630,6 +681,39 @@ export type Database = {
           show_rank?: boolean | null
           subcategory?: string | null
           type?: string
+        }
+        Relationships: []
+      }
+      local_rankings: {
+        Row: {
+          id: string
+          item_id: string | null
+          league_id: string
+          local_elo: number
+          matches_played: number
+          profile_id: string
+          target_profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          item_id?: string | null
+          league_id: string
+          local_elo?: number
+          matches_played?: number
+          profile_id: string
+          target_profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string | null
+          league_id?: string
+          local_elo?: number
+          matches_played?: number
+          profile_id?: string
+          target_profile_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1257,6 +1341,24 @@ export type Database = {
           _diamond_cost: number
           _powerup_field: string
           _profile_id: string
+        }
+        Returns: Json
+      }
+      record_dual_preset_match: {
+        Args: {
+          _caller_profile_id: string
+          _league_id: string
+          _loser_item_id: string
+          _winner_item_id: string
+        }
+        Returns: Json
+      }
+      record_dual_user_match: {
+        Args: {
+          _caller_profile_id: string
+          _league_id: string
+          _loser_profile_id: string
+          _winner_profile_id: string
         }
         Returns: Json
       }
