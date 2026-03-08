@@ -223,7 +223,7 @@ function BannerEditor({ configKey, label, icon: Icon }: { configKey: string; lab
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-medium text-foreground truncate">{item.name}</p>
-                  <p className="text-[9px] text-muted-foreground">{item.elo} ELO · {item.league_name} · {item.type}</p>
+                  <p className="text-[9px] text-muted-foreground">{item.elo} Aura · {item.league_name} · {item.type}</p>
                 </div>
                 <div className="flex gap-0.5 shrink-0">
                   <button onClick={() => moveItem(idx, -1)} disabled={idx === 0} className="p-1 rounded hover:bg-secondary disabled:opacity-30">
