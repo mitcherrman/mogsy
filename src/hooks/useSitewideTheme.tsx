@@ -128,7 +128,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     cycleTimerRef.current = setInterval(() => {
       setIsCycleFading(true);
       setTimeout(() => {
-        setCycleIndex((i) => (i + 1) % cyclableThemes.length);
+        setCycleIndex(pickRandomIndex());
         setTimeout(() => setIsCycleFading(false), 50);
       }, fadeDuration);
     }, cycleConfig.cycle_interval);
