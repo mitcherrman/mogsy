@@ -456,7 +456,7 @@ export default function Profile() {
                   <Label className="text-sm sm:text-base font-bold mb-2 sm:mb-3 block">Photos</Label>
                   <div className="flex gap-2 sm:gap-3 flex-wrap">
                     {photos.map((photo, i) => (
-                      <div key={i} className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 ${i < 3 ? "border-primary/60 ring-2 ring-primary/20" : "border-border"}`}>
+                      <div key={i} className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 ${i < 3 ? "border-primary/60 ring-2 ring-primary/20" : "border-border"}`}>
                         <img src={photo.url} alt="" className="w-full h-full object-cover" />
                         {i < 3 && (
                           <div className="absolute top-0.5 left-0.5">
