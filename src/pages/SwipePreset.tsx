@@ -685,6 +685,8 @@ export default function SwipePreset() {
                 {/* Ad card */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
+                  adsenseSlot={adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined}
+                  adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
                   onSkip={() => {
                     setShowInSwipeAd(null);
                     if (!gauntletMode) {
