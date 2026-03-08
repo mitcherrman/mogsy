@@ -367,6 +367,7 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
+            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex-1" />
             <div className="flex items-center gap-1">
               {user && (
