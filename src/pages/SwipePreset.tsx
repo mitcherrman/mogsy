@@ -908,6 +908,8 @@ export default function SwipePreset() {
             </Button>
           </div>
 
+          <ScrollToCommentsHint />
+
           {/* Comments section */}
           {leagueId && <SwipeComments leagueId={leagueId} />}
         </div>
