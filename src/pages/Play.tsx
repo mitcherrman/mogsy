@@ -413,6 +413,12 @@ export default function Play() {
   /* ─── Shared: category/league drill-down (used by both mobile and desktop) ─── */
   const renderCategoryContent = () => {
     const categoryKeys = Object.keys(currentCategories).sort((a, b) => {
+      if (publishedConfig) {
+        const catConfigs = publishedConfig.categories || [];
+        const aOrder = catConfigs.find(c => c.key === a || c.customLabel === a)?.order ?? 9999;
+        const bOrder = catConfigs.find(c => c.key === b || c.customLabel === b)?.order ?? 9999;
+        return aOrder - bOrder;
+      }
       if (a === "Other") return 1;
       if (b === "Other") return -1;
       return a.localeCompare(b);
