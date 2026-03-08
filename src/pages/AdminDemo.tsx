@@ -378,10 +378,10 @@ export default function AdminDemo() {
       )}
 
       <div className="border-t border-border pt-3">
-        <CardControls card={cardA} setCard={setCardA} side="a" />
+        {renderCardControls(cardA, setCardA, "a")}
       </div>
       <div className="border-t border-border pt-3">
-        <CardControls card={cardB} setCard={setCardB} side="b" />
+        {renderCardControls(cardB, setCardB, "b")}
       </div>
     </div>
   );
