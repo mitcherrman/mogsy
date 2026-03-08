@@ -15,13 +15,18 @@ interface SwipeAdProps {
   profileId?: string;
 }
 
-export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId }: SwipeAdProps) {
+export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId, placement = "swipe", adSource = "custom", profileId }: SwipeAdProps) {
   const [countdown, setCountdown] = useState(5);
+  const logged = useRef(false);
 
   useEffect(() => {
     if (isPro) {
       onClose();
       return;
+    }
+    if (!logged.current) {
+      logged.current = true;
+      logAdEvent({ eventType: "impression", placement, adMode: "popup", adSource, profileId });
     }
     const timer = setInterval(() => {
       setCountdown((c) => {
