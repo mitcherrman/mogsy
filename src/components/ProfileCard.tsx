@@ -99,4 +99,3 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
     </div>
   );
 }
-}
