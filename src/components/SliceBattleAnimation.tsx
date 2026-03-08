@@ -47,7 +47,7 @@ function generateTearPoints(width: number, height: number, teeth: number = 14) {
   return { topPoints, bottomPoints };
 }
 
-function getImageUrl(item: CardItem): string {
+function getImageUrl(item: AnimationCardItem): string {
   return (
     item.imageUrl ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=400`
