@@ -51,6 +51,9 @@ export default function Navbar({ themeId }: { themeId?: string }) {
       .single();
     if (data) setDiamonds(data.diamonds ?? 0);
   };
+  const [diamonds, setDiamonds] = useState<number | null>(null);
+  const { pendingRequests } = useFriends();
+  const pendingCount = pendingRequests.length;
 
   const hasTheme = themeId && themeId !== "default";
 
