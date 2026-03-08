@@ -1,40 +1,37 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-### The Pattern Difference
+## Plan: Photo-dominant Profile Cards
 
-**SliceBattleAnimation (correct):**
+### Current State
+`ProfileCard.tsx` shows a small circle avatar (80px mobile / 128px desktop) centered above user info. The card is vertically stacked: circle photo → name/age/location → status → socials.
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+### New Layout
+Replace the circular avatar with a large rectangular photo that fills most of the card, with user info overlaid or placed below.
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+**Structure:**
+```text
+┌──────────────────┐
+│                  │
+│   LARGE PHOTO    │  ← ~60-70% of card height, full width, rounded top
+│   (object-cover) │
+│                  │
+│  [Pro] [Boosted] │  ← badges overlaid on photo corners
+├──────────────────┤
+│ Name        Tier │  ← info section below photo
+│ Age · Location   │
+│ "Status message" │
+│ 📷 🎥 🎮        │  ← social icons
+└──────────────────┘
+```
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+### Changes — `src/components/ProfileCard.tsx`
 
-### Implementation Plan
+1. **Photo section**: Replace the `w-20 h-20 sm:w-32 sm:h-32 rounded-full` circle with a full-width rectangular image area (`w-full aspect-[3/4] rounded-t-2xl overflow-hidden`). Image uses `object-cover` to fill.
+2. **Fallback**: Keep the User icon fallback for missing photos, but in the rectangular shape.
+3. **Badges**: Pro crown and boost badges positioned as absolute overlays on the photo (top-right, bottom-right).
+4. **Profile frame**: Apply frame ring/shadow classes to the photo container instead of the circle.
+5. **Info section**: Name, age/location, tier badge, status, and socials placed below the photo in a compact section with left-aligned or center-aligned text, padding `p-3`.
+6. **Card container**: Remove centered flex layout padding, use `overflow-hidden` with `rounded-2xl` so the photo bleeds to edges.
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+Only file changed: `src/components/ProfileCard.tsx`.
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
-
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
-
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
