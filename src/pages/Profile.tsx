@@ -368,24 +368,24 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-8">
+    <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8">
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
       <div className="container mx-auto max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-5 w-5" />
+          <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-              <h1 className="text-3xl font-extrabold text-foreground">Edit Profile</h1>
+              <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Edit Profile</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/referral")}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
               >
                 <Gift className="h-4 w-4" />
               </Button>
@@ -394,7 +394,7 @@ export default function Profile() {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/settings")}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -404,10 +404,11 @@ export default function Profile() {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate(`/user/${profileId}`)}
-                  className="gap-1.5 text-xs"
+                  className="gap-1 text-[10px] sm:text-xs h-8 px-2 sm:px-3"
                 >
-                  <User className="h-3.5 w-3.5" />
-                  Preview Profile
+                  <User className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden xs:inline">Preview</span>
+                  <span className="xs:hidden"><User className="h-3 w-3" /></span>
                 </Button>
               )}
             </div>
