@@ -77,7 +77,7 @@ export default function AdminBots() {
       bots.push({
         user_id: crypto.randomUUID(),
         display_name: name,
-        avatar_url: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}${Date.now()}`,
+        avatar_url: `https://i.pravatar.cc/500?u=${name}${Date.now()}`,
         age: 18 + Math.floor(Math.random() * 30),
         location: RANDOM_LOCATIONS[Math.floor(Math.random() * RANDOM_LOCATIONS.length)],
         status_message: RANDOM_STATUSES[Math.floor(Math.random() * RANDOM_STATUSES.length)],
