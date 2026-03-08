@@ -12,6 +12,7 @@ interface ThemeConfig {
 }
 
 function getCircleGradient(theme: typeof profileThemes[number]): string {
+  if (theme.id === "cycle") return "conic-gradient(hsl(0,80%,60%), hsl(60,80%,55%), hsl(120,60%,50%), hsl(180,70%,50%), hsl(240,70%,60%), hsl(300,70%,55%), hsl(0,80%,60%))";
   if (theme.id === "default") return "linear-gradient(135deg, hsl(210,80%,60%), hsl(270,60%,65%))";
   if (theme.styles.pageBg) return theme.styles.pageBg;
   return "hsl(210,80%,60%)";
@@ -165,7 +166,10 @@ export default function FloatingThemeSwitcher() {
                         ? "border-border opacity-50 cursor-not-allowed"
                         : "border-border hover:border-primary/50"
                     }`}
-                    style={{ background: bg }}
+                    style={{
+                      background: bg,
+                      ...(theme.id === "cycle" && isActive ? { animation: "spin 4s linear infinite" } : {}),
+                    }}
                   >
                     {isActive && (
                       <Check className="h-4 w-4 drop-shadow-md" style={{ color: "white" }} />
