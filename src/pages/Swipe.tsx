@@ -8,6 +8,7 @@ import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
+import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
