@@ -342,7 +342,6 @@ export default function Play() {
     if (isMobile) {
       switch (desktopLayout) {
         case "grid":
-        case "tiles":
           return "grid grid-cols-2 gap-3 w-full";
         case "list":
           return "flex flex-col gap-1 w-full";
