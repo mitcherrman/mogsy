@@ -138,6 +138,32 @@ export function useAnimationSound() {
     } catch {}
   }, []);
 
+  const loadMoggedSound = useCallback(async () => {
+    if (moggedBufferRef.current || moggedLoadingRef.current) return;
+    moggedLoadingRef.current = true;
+    try {
+      const ctx = getCtx();
+      const res = await fetch("/sounds/mogged.mp3");
+      const buf = await res.arrayBuffer();
+      moggedBufferRef.current = await ctx.decodeAudioData(buf);
+    } catch {}
+    moggedLoadingRef.current = false;
+  }, []);
+
+  const playMoggedSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      if (!moggedBufferRef.current) await loadMoggedSound();
+      if (!moggedBufferRef.current) return;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.buffer = moggedBufferRef.current;
+      source.connect(gain); gain.connect(ctx.destination);
+      source.start();
+    } catch {}
+  }, [loadMoggedSound]);
+
   const playChopSound = useCallback(async () => {
     try {
       const ctx = getCtx();
@@ -160,9 +186,10 @@ export function useAnimationSound() {
       case "vaporize": playVaporizeSound(); break;
       case "crush": playCrushSound(); break;
       case "chop": playChopSound(); break;
+      case "mogged": playMoggedSound(); break;
       default: break;
     }
-  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound]);
+  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound, playMoggedSound]);
 
   return { playAnimationSound, preloadSounds: loadRipSound };
 }

@@ -69,6 +69,14 @@ export const CARD_ANIMATIONS: CardAnimationDef[] = [
     contexts: ["swipe", "elocheck"],
     defaultProOnly: true,
   },
+  {
+    id: "mogged",
+    name: "Mogged",
+    description: "Gigachad appears and mogs the loser into oblivion.",
+    icon: "🗿",
+    contexts: ["swipe", "elocheck"],
+    defaultProOnly: true,
+  },
 ];
 
 export function getAnimationDef(id: string): CardAnimationDef {
