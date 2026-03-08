@@ -191,6 +191,14 @@ export default function Swipe() {
           setCountsTowardGlobal(result.countsTowardGlobal);
         }
 
+        // Update local elos
+        setLocalElos(prev => {
+          const next = new Map(prev);
+          next.set(winner.id, result.localWinnerElo);
+          next.set(loser.id, result.localLoserElo);
+          return next;
+        });
+
         // Still update profile state with global elo for display consistency
         const newWinnerElo = result.countsTowardGlobal ? winner.elo + Math.abs(result.localWinnerChange) : winner.elo;
         const finalLoserElo = result.countsTowardGlobal ? loser.elo - Math.abs(result.localLoserChange) : loser.elo;
