@@ -670,7 +670,7 @@ export default function SwipePreset() {
                                 handleChoose(idx as 0 | 1);
                               }
                             }}
-                            whileTap={{ scale: 0.97 }}
+                            whileTap={{ scale: 0.99 }}
                             className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
                             isWinner
                                 ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
@@ -821,7 +821,7 @@ function GauntletCard({
         onDragEnd={(_e: any, info: any) => {
           if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
         }}
-        whileTap={{ scale: 0.97 }}
+        whileTap={{ scale: 0.99 }}
         className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
           isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
         } ${
@@ -900,9 +900,9 @@ function GauntletCard({
     <AnimatePresence mode="wait">
       <motion.div
         key={`challenger-${item.id}-${matchCount}`}
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.25 }}
         className="flex flex-col flex-1 min-h-0"
       >
