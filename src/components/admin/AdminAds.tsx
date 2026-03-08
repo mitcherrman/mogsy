@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import SwipeAdCard from "@/components/SwipeAdCard";
 import type { AdCreative } from "@/components/SwipeAdCard";
+import AdminAdAnalytics from "@/components/admin/AdminAdAnalytics";
 
 /* ───── Types ───── */
 

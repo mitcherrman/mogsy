@@ -84,7 +84,10 @@ export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId, 
               Continue in <span className="font-bold text-foreground">{countdown}s</span>
             </p>
           ) : (
-            <Button onClick={onClose} variant="outline" className="w-full">
+            <Button onClick={() => {
+              logAdEvent({ eventType: "skip", placement, adMode: "popup", adSource, profileId });
+              onClose();
+            }} variant="outline" className="w-full">
               <X className="h-4 w-4 mr-1" /> Continue Swiping
             </Button>
           )}

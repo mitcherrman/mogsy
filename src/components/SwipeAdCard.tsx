@@ -141,7 +141,10 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
               size="sm"
               variant="secondary"
               className={`text-xs h-7 ${isAdsense ? "w-full" : "flex-1"}`}
-              onClick={onSkip}
+              onClick={() => {
+                logAdEvent({ eventType: "skip", creativeId: creative?.id, placement, adMode: "in_swipe", adSource, profileId });
+                onSkip();
+              }}
             >
               Skip
             </Button>
