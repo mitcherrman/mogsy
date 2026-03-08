@@ -98,6 +98,11 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     loadProfile();
+    // Check if user is a moderator
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      const roles = data?.map(r => r.role as string) || [];
+      setIsModerator(roles.includes("moderator") || roles.includes("admin") || roles.includes("master_admin"));
+    });
   }, [user]);
 
   const loadProfile = async () => {
