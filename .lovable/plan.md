@@ -1,40 +1,25 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-### The Pattern Difference
+## Plan: Banner Navigation + "AURA" Uppercase + Mogged Sound Bug Fix
 
-**SliceBattleAnimation (correct):**
+### 1. Banner Click → Leaderboard (`src/components/NavBanner.tsx`)
+- Import `useNavigate`, add `onClick={() => navigate('/leagues/collections')}` and `cursor-pointer` to the outer div
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+### 2. Home Banner Click → Leaderboard (`src/pages/Home.tsx`)
+- Wrap the home banner section (lines 630-656) with navigation to `/leagues/collections` on click, add `cursor-pointer`
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+### 3. "Aura" → Uppercase Treatment
+Apply `uppercase tracking-wider` styling to all user-facing "Aura" text:
+- **`src/pages/Home.tsx`** line 650: `"{elo} Aura"` → styled uppercase
+- **`src/pages/EloCheck.tsx`** line 417: `"Aura Check"` title, line 553: `"Aura: {elo}"`
+- **`src/pages/UserProfile.tsx`** line 432: `"Best Aura"`
+- **`src/pages/Leaderboard.tsx`** line 303: already "AURA" (no change)
+- **`src/pages/Leagues.tsx`** line 256: already "AURA" (no change)
+- **`src/pages/Play.tsx`**: check for instances
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+### 4. Mogged Sound Bug Fix (`src/components/ThemeOverlay.tsx`)
 
-### Implementation Plan
+**Root cause**: `MoggedOverlay` plays the sound in a `useEffect` with `[]` deps — so every time the cycle theme lands on "mogged", the component mounts and plays the sound again. During rapid cycling this causes random-seeming playback.
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+**Fix**: Track whether the sound has already been played this session using a module-level variable (`let moggedSoundPlayed = false`). Only play the sound on first mount. Reset it when the component unmounts after a longer period (or not at all — play once per page load). This prevents the sound from firing on every cycle rotation through the mogged theme.
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
-
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
-
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
