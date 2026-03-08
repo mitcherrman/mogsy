@@ -199,7 +199,8 @@ export default function UserNotificationBell() {
     await supabase.from("user_notification_reads").insert(inserts);
   };
 
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+  const unreadFriendCount = friendNotifs.filter(n => !readFriendIds.has(n.id)).length;
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length + unreadFriendCount;
 
   if (!user || !loaded) return null;
 
