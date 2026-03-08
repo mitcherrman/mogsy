@@ -194,13 +194,15 @@ export default function Play() {
   }
 
   /* ─── Desktop: renders sub-options inline below top-level bubbles ─── */
+  const desktopAlign = expanded === "collections" ? "items-end" : "items-start";
+
   const renderDesktopSubContent = () => {
     if (!expanded) return null;
 
     // Mode selected but no sub — show Swipe & Aura Check
     if (!subExpanded) {
       return (
-        <motion.div key="desktop-sub" {...fadeIn} className="flex items-center justify-center gap-4">
+        <motion.div key="desktop-sub" {...fadeIn} className={`flex flex-col ${desktopAlign} gap-4`}>
           <div className="flex flex-col items-center gap-2">
             <motion.button
               onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))}
@@ -269,14 +271,14 @@ export default function Play() {
 
     if (!selectedCategory && hasMultipleCategories) {
       return (
-        <motion.div key="swipe-categories-inline" {...fadeIn} className="flex flex-col items-center gap-5">
+        <motion.div key="swipe-categories-inline" {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5`}>
           {isMobile && (
             <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
               <Shuffle className="h-10 w-10" />
               <span className="text-sm font-extrabold tracking-wide">Swipe</span>
             </Bubble>
           )}
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className={`flex flex-wrap ${!isMobile ? desktopAlign : "items-center"} justify-center gap-4`}>
             {categoryKeys.map((cat, i) => {
               const catImage = getCategoryImage(cat);
               if (!isMobile) {
@@ -307,7 +309,7 @@ export default function Play() {
         const subLeagues = leaguesInCat.filter(l => l.subcategory === selectedSubcategory);
         const isLol = selectedSubcategory === "League of Legends";
         return (
-          <motion.div key={`subcat-${selectedSubcategory}`} {...fadeIn} className={`flex flex-col items-center gap-5 ${isLol ? "theme-lol" : ""}`}>
+          <motion.div key={`subcat-${selectedSubcategory}`} {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5 ${isLol ? "theme-lol" : ""}`}>
             {isMobile ? (
               <Bubble size={148} onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} active variant="card" imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage}>
                 <span className="text-sm font-extrabold tracking-wide">{selectedSubcategory}</span>
@@ -315,7 +317,7 @@ export default function Play() {
             ) : (
               <RectPill onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage} label={selectedSubcategory} variant="accent" />
             )}
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className={`flex flex-wrap ${!isMobile ? desktopAlign : "items-center"} justify-center gap-4`}>
               {subLeagues.map((league, i) => {
                 const leagueImage = getLeagueImage(league.id);
                 if (!isMobile) {
@@ -349,9 +351,9 @@ export default function Play() {
       // Desktop: simple flex wrap, no pyramid
       if (!isMobile) {
         return (
-          <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
+          <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className={`flex flex-col ${desktopAlign} gap-5`}>
             <RectPill onClick={() => handleBubbleClick(() => setSelectedCategory(null))} imageUrl={catImage} label={selectedCategory} variant="accent" />
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className={`flex flex-wrap ${desktopAlign} justify-center gap-3`}>
               {allItems.map((entry, i) => {
                 if (entry.type === 'subcategory') {
                   const isLol = entry.name === "League of Legends";
@@ -416,14 +418,14 @@ export default function Play() {
     // Single category — show league bubbles directly
     const allLeagues = Object.keys(currentCategories).flatMap((cat) => currentCategories[cat]);
     return (
-      <motion.div key="swipe-leagues-direct" {...fadeIn} className="flex flex-col items-center gap-5">
+      <motion.div key="swipe-leagues-direct" {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5`}>
         {isMobile && (
           <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
             <Shuffle className="h-10 w-10" />
             <span className="text-sm font-extrabold tracking-wide">Swipe</span>
           </Bubble>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className={`flex flex-wrap ${!isMobile ? desktopAlign : "items-center"} justify-center gap-4`}>
           {allLeagues.map((league, i) => {
             const leagueImage = getLeagueImage(league.id);
             if (!isMobile) {
