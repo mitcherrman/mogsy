@@ -295,7 +295,7 @@ export default function AdminCollections() {
       for (const mem of action.resetData.memberships) {
         await supabase.from("league_memberships").update({ elo: mem.previousElo }).eq("id", mem.id);
       }
-      toast.success("Undo: Elo & rankings restored");
+      toast.success("Undo: Aura & leaderboard restored");
     }
     setUndoStack((prev) => prev.slice(0, -1));
     loadItems(selectedLeague);
