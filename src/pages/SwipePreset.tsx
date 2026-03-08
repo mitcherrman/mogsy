@@ -95,7 +95,7 @@ export default function SwipePreset() {
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const { rules: animRules } = useLeagueAnimationRules(leagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
-  const { shouldShowAd, getRandomCreative } = useAdSystem("swipe");
+  const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [readyDelay, setReadyDelay] = useState(true);
 
   useEffect(() => {
