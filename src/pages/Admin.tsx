@@ -107,6 +107,14 @@ export default function Admin() {
           {isMasterAdmin && (
             <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Master</span>
           )}
+          {isMasterAdmin && (
+            <button
+              onClick={() => navigate("/admin/play")}
+              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+            >
+              Play Layout
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("notifications")}
             className={`shrink-0 ml-auto flex items-center justify-center h-8 w-8 rounded-lg border transition-colors relative ${
