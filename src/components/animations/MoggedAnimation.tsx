@@ -37,12 +37,31 @@ export default function MoggedAnimation({ winnerSide, items, onComplete }: Props
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    boxShadow: [
+                      "0 0 0px 0px hsla(45, 100%, 50%, 0)",
+                      "0 0 30px 8px hsla(45, 100%, 50%, 0.5)",
+                      "0 0 15px 4px hsla(45, 100%, 50%, 0.25)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                >
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                    {/* Golden crown halo at top */}
+                    {phase !== "idle" && (
+                      <motion.div
+                        className="absolute top-0 left-0 right-0 h-16 pointer-events-none"
+                        style={{ background: "linear-gradient(to bottom, hsla(45, 100%, 55%, 0.35), transparent)" }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 0.6] }}
+                        transition={{ duration: 0.6, delay: 0.25 }}
+                      />
+                    )}
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 

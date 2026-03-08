@@ -37,12 +37,21 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    boxShadow: [
+                      "0 0 0px 0px hsla(45, 100%, 50%, 0)",
+                      "0 0 25px 6px hsla(45, 100%, 50%, 0.5)",
+                      "0 0 12px 3px hsla(45, 100%, 50%, 0.2)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.7, delay: 0.15 }}
+                >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 

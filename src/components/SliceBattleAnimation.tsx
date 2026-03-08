@@ -130,12 +130,34 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                <motion.div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+                  animate={phase !== "idle" ? {
+                    boxShadow: [
+                      "0 0 0px 0px hsl(0 0% 100% / 0)",
+                      "0 0 14px 3px hsl(0 0% 100% / 0.35)",
+                      "0 0 6px 2px hsl(0 0% 100% / 0.1)",
+                    ],
+                  } : {}}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                    {/* Steel gleam sweep */}
+                    {phase !== "idle" && (
+                      <motion.div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: "linear-gradient(120deg, transparent 30%, hsl(0 0% 100% / 0.25) 48%, hsl(0 0% 100% / 0.4) 50%, hsl(0 0% 100% / 0.25) 52%, transparent 70%)",
+                          backgroundSize: "200% 100%",
+                        }}
+                        initial={{ backgroundPosition: "200% 0" }}
+                        animate={{ backgroundPosition: "-200% 0" }}
+                        transition={{ duration: 0.6, delay: 0.1, ease: "easeInOut" }}
+                      />
+                    )}
                   </div>
                   <AnimationCardStats item={item} />
-                </div>
+                </motion.div>
               );
             }
 
