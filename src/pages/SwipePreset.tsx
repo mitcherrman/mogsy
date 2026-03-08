@@ -550,6 +550,13 @@ export default function SwipePreset() {
               {leagueName}
             </span>
             <div className="flex items-center gap-1">
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
               <Button
                 variant="ghost"
                 size="icon"

@@ -351,6 +351,13 @@ export default function Swipe() {
             </p>
             <div className="flex-1" />
             <div className="flex items-center gap-1">
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
               <Button
                 variant="ghost"
                 size="icon"
