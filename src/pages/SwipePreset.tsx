@@ -619,6 +619,8 @@ export default function SwipePreset() {
                         matchCount={matchCount}
                         chosen={chosen}
                         rankMap={rankMap}
+                        localRankMap={localRankMap}
+                        localElos={localElos}
                         itemImages={itemImages}
                         currentImageIndex={currentImageIndex}
                         eloVisible={eloVisible}
@@ -790,11 +792,11 @@ export default function SwipePreset() {
 
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
-  item, idx, isChampion, matchCount, chosen, rankMap, itemImages, currentImageIndex,
+  item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
   eloVisible, rankVisible, items, eloChanges, globalDirections, rankChanges, getDisplayImage, handleChoose, handleReportImage,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
-  chosen: 0 | 1 | null; rankMap: Map<string, number>;
+  chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
   itemImages: Map<string, ItemImage[]>; currentImageIndex: Map<string, number>;
   eloVisible: boolean; rankVisible: boolean; items: PresetItem[];
   eloChanges: Map<string, number>; globalDirections: Map<string, "up" | "down" | "none">; rankChanges: Map<string, { old: number; new: number }>;
