@@ -16,7 +16,7 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
   useEffect(() => {
     if (winnerSide === null) { setPhase("idle"); return; }
     setPhase("stab");
-    const t = setTimeout(finish, 1500);
+    const t = setTimeout(finish, 1000);
     return () => { clearTimeout(t); };
   }, [winnerSide, finish]);
 
