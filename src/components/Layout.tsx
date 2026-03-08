@@ -24,7 +24,7 @@ export default function Layout() {
       className="min-h-screen bg-background relative animate-page-fade-in"
       style={{
         ...(isEnabled && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
-        transition: "opacity 0.6s ease-in-out",
+        transition: isCycleFading ? "opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)" : "opacity 1s cubic-bezier(0.0, 0, 0.2, 1)",
         opacity: isCycleFading ? 0 : 1,
       }}
     >

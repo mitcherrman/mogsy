@@ -129,7 +129,9 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       setIsCycleFading(true);
       setTimeout(() => {
         setCycleIndex(pickRandomIndex());
-        setTimeout(() => setIsCycleFading(false), 50);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setIsCycleFading(false));
+        });
       }, fadeDuration);
     }, cycleConfig.cycle_interval);
 
