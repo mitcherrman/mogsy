@@ -8,6 +8,7 @@ import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
+import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
@@ -62,7 +63,7 @@ export default function Swipe() {
   const [gauntletStreak, setGauntletStreak] = useState(0);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
-  const { swipeAnimation, logUsage } = useCardAnimation();
+  const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const pendingChoose = useRef<(() => void) | null>(null);
 
@@ -350,6 +351,13 @@ export default function Swipe() {
             </p>
             <div className="flex-1" />
             <div className="flex items-center gap-1">
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
               <Button
                 variant="ghost"
                 size="icon"

@@ -10,6 +10,7 @@ import TierBadge from "@/components/TierBadge";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
+import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,7 +83,7 @@ export default function SwipePreset() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
-  const { swipeAnimation, logUsage } = useCardAnimation();
+  const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
@@ -549,6 +550,13 @@ export default function SwipePreset() {
               {leagueName}
             </span>
             <div className="flex items-center gap-1">
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
               <Button
                 variant="ghost"
                 size="icon"
