@@ -399,6 +399,12 @@ export default function AdminInviteLinks() {
           </div>
         </div>
       )}
+
+      {/* ─── Divider ─── */}
+      <div className="border-t border-border" />
+
+      {/* ─── SECTION 4: Custom URL Slugs ─── */}
+      <AdminCustomLinks />
     </div>
   );
 }
