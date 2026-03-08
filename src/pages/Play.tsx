@@ -633,8 +633,8 @@ export default function Play() {
               <Globe className="h-3.5 w-3.5" /> Leaderboard
             </Button>
           )}
-          {/* Desktop layout toggle */}
-          {!isMobile && subExpanded && (
+          {/* Layout toggle */}
+          {subExpanded && (
             <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50">
               {LAYOUT_OPTIONS.map(opt => (
                 <button
