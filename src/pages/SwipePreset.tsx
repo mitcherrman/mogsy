@@ -570,6 +570,7 @@ export default function SwipePreset() {
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest truncate flex-1 text-center">
               {leagueName}
             </span>
+            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
             <div className="flex items-center gap-1">
               {user && (
                 <SwipeAnimationPicker
