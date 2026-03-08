@@ -99,21 +99,4 @@ export default function ProfileCard({ profile, side, onChoose }: ProfileCardProp
     </div>
   );
 }
-      <div className="flex gap-2 sm:gap-3">
-        {Object.entries(profile.socials || {}).map(([key, value]) => {
-          const Icon = socialIcons[key];
-          if (!Icon || !value) return null;
-          return (
-            <a key={key} href={`https://${key === "x" ? "x.com" : key === "website" ? "" : key + ".com"}/${value}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-primary transition-colors">
-              <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-            </a>);
-
-        })}
-      </div>
-
-      
-
-      
-    </div>);
-
 }
