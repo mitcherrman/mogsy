@@ -167,15 +167,50 @@ export default function Play() {
     else navigate("/swipe");
   };
 
+  const { config: publishedConfig } = usePlayLayout("published");
+
   const presetLeagues = leagues.filter((l) => l.type === "preset");
   const userLeagues = leagues.filter((l) => l.type === "user");
 
-  const presetCategories = presetLeagues.reduce<Record<string, LeagueItem[]>>((acc, l) => {
-    const cat = l.category || "Other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(l);
-    return acc;
-  }, {});
+  const presetCategories = (() => {
+    const raw = presetLeagues.reduce<Record<string, LeagueItem[]>>((acc, l) => {
+      const cat = l.category || "Other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(l);
+      return acc;
+    }, {});
+
+    if (!publishedConfig) return raw;
+
+    // Filter hidden categories and leagues, sort by config order
+    const catConfigs = publishedConfig.categories || [];
+    const leagueConfigs = publishedConfig.leagues || [];
+
+    const result: Record<string, LeagueItem[]> = {};
+    for (const catKey of Object.keys(raw)) {
+      const catCfg = catConfigs.find(c => c.key === catKey);
+      if (catCfg?.hidden) continue; // skip hidden categories
+
+      let catLeagues = raw[catKey];
+      // Filter hidden leagues
+      catLeagues = catLeagues.filter(l => {
+        const lCfg = leagueConfigs.find(lc => lc.id === l.id);
+        return !lCfg?.hidden;
+      });
+      // Sort leagues by config order
+      catLeagues.sort((a, b) => {
+        const aOrder = leagueConfigs.find(lc => lc.id === a.id)?.order ?? 9999;
+        const bOrder = leagueConfigs.find(lc => lc.id === b.id)?.order ?? 9999;
+        return aOrder - bOrder;
+      });
+
+      if (catLeagues.length > 0) {
+        const displayKey = catCfg?.customLabel || catKey;
+        result[displayKey] = catLeagues;
+      }
+    }
+    return result;
+  })();
 
   const currentCategories =
     expanded === "collections" ? presetCategories : { Leagues: userLeagues };
