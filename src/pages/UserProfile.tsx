@@ -218,14 +218,13 @@ export default function UserProfile() {
       const leagueIds = membershipsRes.data.map((m) => m.league_id);
       const { data: leagues } = await supabase
         .from("leagues")
-        .select("id, name")
+        .select("id, name, type")
         .in("id", leagueIds);
 
-      const leagueMap = new Map((leagues || []).map((l) => [l.id, l.name]));
+      const leagueMap = new Map((leagues || []).map((l) => [l.id, { name: l.name, type: l.type }]));
 
       // Get ranks for each league
       const statsPromises = membershipsRes.data.map(async (m) => {
-        // Count how many members have higher elo
         const { count: higherCount } = await supabase
           .from("league_memberships")
           .select("*", { count: "exact", head: true })
@@ -237,19 +236,37 @@ export default function UserProfile() {
           .select("*", { count: "exact", head: true })
           .eq("league_id", m.league_id);
 
+        const leagueInfo = leagueMap.get(m.league_id);
+        const rank = (higherCount || 0) + 1;
+        const total = totalCount || 0;
+        const isCompete = leagueInfo?.type === "user";
+
+        // Use percentile tier for compete leagues, elo-based for collections
+        const tier = (isCompete && localRankEnabled)
+          ? getTierFromPercentile(rank - 1, total, localTierConfig)
+          : getTierFromElo(m.elo);
+
         return {
           league_id: m.league_id,
-          league_name: leagueMap.get(m.league_id) || "Unknown",
+          league_name: leagueInfo?.name || "Unknown",
           elo: m.elo,
           matches_played: m.matches_played,
-          rank: (higherCount || 0) + 1,
-          total_members: totalCount || 0,
-          tier: getTierFromElo(m.elo),
+          rank,
+          total_members: total,
+          tier,
         };
       });
 
       const stats = await Promise.all(statsPromises);
       setLeagueStats(stats.sort((a, b) => b.elo - a.elo));
+
+      // Determine best compete league tier
+      const competeTiers = stats
+        .filter(s => leagueMap.get(s.league_id)?.type === "user")
+        .map(s => s.tier);
+      const tierRank: Record<string, number> = { diamond: 5, gold: 4, silver: 3, bronze: 2, unranked: 1 };
+      const best = competeTiers.reduce((best, t) => (tierRank[t] || 0) > (tierRank[best] || 0) ? t : best, "unranked");
+      setBestCompeteTier(best);
     }
 
     // Top comment
