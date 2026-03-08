@@ -85,8 +85,8 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                       >
                         <div className="relative w-full h-full overflow-hidden rounded-2xl"
                           style={{
-                            maskImage: "radial-gradient(ellipse 50% 55% at center 60%, black 25%, transparent 80%)",
-                            WebkitMaskImage: "radial-gradient(ellipse 50% 55% at center 60%, black 25%, transparent 80%)",
+                            maskImage: "radial-gradient(ellipse 55% 60% at center 60%, black 40%, transparent 90%)",
+                            WebkitMaskImage: "radial-gradient(ellipse 55% 60% at center 60%, black 40%, transparent 90%)",
                           }}
                         >
                           <img
