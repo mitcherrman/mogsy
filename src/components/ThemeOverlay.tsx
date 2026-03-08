@@ -830,7 +830,7 @@ function AmongUsThemeOverlay() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className="absolute z-20"
+            className={isClickable ? "fixed z-[100]" : "absolute z-20"}
             style={{
               left: `${gifPos.x}%`,
               top: `${gifPos.y}%`,
