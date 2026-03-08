@@ -10,6 +10,7 @@ import TierBadge from "@/components/TierBadge";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
+import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
