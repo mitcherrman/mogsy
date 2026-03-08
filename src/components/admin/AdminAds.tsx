@@ -135,6 +135,7 @@ interface SearchResult {
 
 const defaultSettings: AdSettings = {
   global_enabled: true,
+  adsense_client_id: "",
   placements: Object.fromEntries(PLACEMENTS.map(p => [p.key, { ...PLACEMENT_DEFAULTS }])),
 };
 
