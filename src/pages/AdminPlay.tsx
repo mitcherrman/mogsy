@@ -328,6 +328,21 @@ export default function AdminPlay() {
 
   if (loading || !authorized) return <div className="min-h-screen" />;
 
+  // League items detail view
+  if (viewingLeague) {
+    return (
+      <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+        <div className="container mx-auto max-w-2xl">
+          <AdminPlayLeagueItems
+            leagueId={viewingLeague.id}
+            leagueName={viewingLeague.name}
+            onClose={() => setViewingLeague(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order);
   const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order);
 
