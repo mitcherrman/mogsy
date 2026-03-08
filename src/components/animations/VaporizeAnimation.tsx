@@ -47,11 +47,11 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
 
             if (!isLoser) {
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0">
-                  <div className="flex-1 rounded-2xl overflow-hidden">
+                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="pt-1.5 text-center flex-shrink-0">
+                  <div className="px-2 py-1.5 text-center flex-shrink-0">
                     <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                   </div>
                 </div>
@@ -59,8 +59,8 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
             }
 
             return (
-              <div key={idx} className="flex-1 flex flex-col min-h-0 relative">
-                <div className="flex-1 relative rounded-2xl overflow-hidden">
+              <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
                   {/* Fading card */}
                   <motion.div className="absolute inset-0"
                     initial={{ opacity: 1 }}
@@ -87,7 +87,7 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
                     />
                   ))}
                 </div>
-                <div className="pt-1.5 text-center flex-shrink-0">
+                <div className="px-2 py-1.5 text-center flex-shrink-0">
                   <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                 </div>
               </div>

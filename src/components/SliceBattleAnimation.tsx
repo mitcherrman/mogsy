@@ -128,40 +128,29 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
 
         {/* Full overlay with both cards side by side */}
         <div className="w-full h-full flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 p-0">
-          {items.map((item, idx) => {
+        {items.map((item, idx) => {
             const isLoser = idx === loserIdx;
             const imageUrl = getImageUrl(item);
 
             if (!isLoser) {
-              // Winner side: static replica
               return (
-                <div key={idx} className="flex-1 flex flex-col min-h-0">
-                  <div className="flex-1 rounded-2xl overflow-hidden">
-                    <div className="w-full h-full bg-white">
-                      <img
-                        src={imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-contain bg-white"
-                        draggable={false}
-                      />
-                    </div>
+                <div key={idx} className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </div>
-                  <div className="pt-1.5 text-center flex-shrink-0">
-                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">
-                      {item.name}
-                    </h3>
+                  <div className="px-2 py-1.5 text-center flex-shrink-0">
+                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                   </div>
                 </div>
               );
             }
 
-            // Loser side: torn into two jagged halves
             return (
-              <div key={idx} className="flex-1 flex flex-col min-h-0 relative">
-                <div className="flex-1 relative rounded-2xl overflow-hidden">
+              <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
                   {/* Top half */}
                   <motion.div
-                    className="absolute inset-0 overflow-hidden rounded-2xl"
+                    className="absolute inset-0 overflow-hidden"
                     style={{ clipPath: `url(#${topClipId})` }}
                     initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
                     animate={
@@ -179,19 +168,12 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                       ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
                     }}
                   >
-                    <div className="w-full h-full bg-white">
-                      <img
-                        src={imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-contain bg-white"
-                        draggable={false}
-                      />
-                    </div>
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
 
                   {/* Bottom half */}
                   <motion.div
-                    className="absolute inset-0 overflow-hidden rounded-2xl"
+                    className="absolute inset-0 overflow-hidden"
                     style={{ clipPath: `url(#${bottomClipId})` }}
                     initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
                     animate={
@@ -209,21 +191,11 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                       ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
                     }}
                   >
-                    <div className="w-full h-full bg-white">
-                      <img
-                        src={imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-contain bg-white"
-                        draggable={false}
-                      />
-                    </div>
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
                   </motion.div>
                 </div>
-
-                <div className="pt-1.5 text-center flex-shrink-0">
-                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">
-                    {item.name}
-                  </h3>
+                <div className="px-2 py-1.5 text-center flex-shrink-0">
+                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                 </div>
               </div>
             );
