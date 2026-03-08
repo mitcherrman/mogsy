@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info } from "lucide-react";
+import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface UserNotification {
   id: string;
@@ -15,6 +16,17 @@ interface UserNotification {
   target_league_ids: string[] | null;
   target_categories: string[] | null;
   metadata: any;
+  action_url: string | null;
+}
+
+interface FriendNotif {
+  id: string;
+  type: "request" | "accepted";
+  profile_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  friendship_id: string;
+  created_at: string;
 }
 
 const typeIcons: Record<string, typeof Bell> = {
@@ -26,6 +38,8 @@ const typeIcons: Record<string, typeof Bell> = {
   update: Zap,
   warning: AlertTriangle,
   spotlight: Crown,
+  friend_request: UserPlus,
+  friend_accepted: UserCheck,
 };
 
 export default function UserNotificationBell() {
