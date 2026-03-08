@@ -655,7 +655,46 @@ export default function SwipePreset() {
           )}
 
           {/* Matchup area */}
-          {pair && (
+          {pair && showInSwipeAd ? (
+            <MatchupCapture ref={captureRef} leagueName={leagueName}>
+              <motion.div
+                key={`ad-${showInSwipeAd.id}-${matchCount}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
+              >
+                {/* Real item card */}
+                <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
+                    {pair[0].image_url ? (
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain bg-muted/30" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5 text-center">
+                    <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
+                  <span className="text-xs md:text-base font-black text-muted-foreground/60 select-none">VS</span>
+                </div>
+                {/* Ad card */}
+                <SwipeAdCard
+                  creative={showInSwipeAd}
+                  onSkip={() => {
+                    setShowInSwipeAd(null);
+                    if (!gauntletMode) {
+                      setCurrentIndex(currentIndex + 1);
+                    } else if (gauntletChampion) {
+                      setGauntletPair([gauntletChampion, getGauntletChallenger(gauntletChampion)]);
+                    }
+                  }}
+                />
+              </motion.div>
+            </MatchupCapture>
+          ) : pair && (
             <MatchupCapture ref={captureRef} leagueName={leagueName}>
               {gauntletMode ? (
                 /* Gauntlet: render champion stable, only challenger animates */
