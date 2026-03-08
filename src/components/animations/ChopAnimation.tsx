@@ -79,6 +79,28 @@ export default function ChopAnimation({ winnerSide, items, onComplete }: Props) 
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </motion.div>
 
+                  {/* CHOPPED stamp */}
+                  {(phase === "strike" || phase === "split") && (
+                    <motion.div
+                      className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+                      initial={{ scale: 3, opacity: 0, rotate: -12 }}
+                      animate={{ scale: 1, opacity: 1, rotate: -12 }}
+                      transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <span
+                        className="text-4xl md:text-5xl lg:text-6xl font-black tracking-widest uppercase select-none"
+                        style={{
+                          color: "hsl(0 80% 50%)",
+                          textShadow: "0 2px 8px hsl(0 80% 30% / 0.5)",
+                          WebkitTextStroke: "1px hsl(0 60% 35%)",
+                          letterSpacing: "0.15em",
+                        }}
+                      >
+                        CHOPPED
+                      </span>
+                    </motion.div>
+                  )}
+
                   {/* Chop line flash */}
                   {(phase === "strike" || phase === "split") && (
                     <motion.div
