@@ -44,8 +44,11 @@ const typeIcons: Record<string, typeof Bell> = {
 
 export default function UserNotificationBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [friendNotifs, setFriendNotifs] = useState<FriendNotif[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [readFriendIds, setReadFriendIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,8 +56,9 @@ export default function UserNotificationBell() {
   useEffect(() => {
     if (!user) return;
     loadNotifications();
+    loadFriendNotifs();
 
-    // Real-time subscription
+    // Real-time subscription for system notifications
     const channel = supabase
       .channel("user-notifications")
       .on(
@@ -71,7 +75,20 @@ export default function UserNotificationBell() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Real-time for friendships
+    const friendChannel = supabase
+      .channel("friend-notifs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "friendships" },
+        () => { loadFriendNotifs(); }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(friendChannel);
+    };
   }, [user]);
 
   // Close dropdown on outside click
