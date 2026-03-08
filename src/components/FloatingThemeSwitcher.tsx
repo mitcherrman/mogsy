@@ -214,9 +214,9 @@ export default function FloatingThemeSwitcher() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setOpen((o) => !o)}
-        className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
+        className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
       >
-        <Palette className="h-5 w-5" />
+        <Palette className="h-4 w-4 sm:h-5 sm:w-5" />
       </motion.button>
     </div>
   );
