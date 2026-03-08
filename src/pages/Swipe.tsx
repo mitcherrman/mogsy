@@ -24,6 +24,7 @@ import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeague
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAdSystem } from "@/hooks/useAdSystem";
 
 interface SwipeProfile {
   id: string;
