@@ -361,7 +361,7 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
                   <div className="flex justify-center mt-1">
-                    <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+                    <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                   </div>
                 </div>
 
@@ -374,7 +374,7 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
                   <div className="flex justify-center mt-1">
-                    <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                    <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                   </div>
                 </div>
 
