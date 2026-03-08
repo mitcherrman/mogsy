@@ -58,7 +58,7 @@ export default function FloatingFriendsButton() {
           <motion.button
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="fixed bottom-[4.5rem] sm:bottom-6 left-3 sm:left-6 z-40 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+            className="fixed bottom-6 left-6 z-40 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg hidden sm:flex items-center justify-center hover:bg-primary/90 transition-colors"
           >
             <Users className="h-4 w-4" />
             {pendingRequests.length > 0 && (
