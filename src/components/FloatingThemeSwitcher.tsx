@@ -119,7 +119,7 @@ export default function FloatingThemeSwitcher() {
   };
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2">
+    <div ref={menuRef} className="fixed bottom-[4.5rem] sm:bottom-6 right-3 sm:right-6 z-[60] flex flex-col items-end gap-2">
       <AnimatePresence>
         {open && (
           <motion.div
