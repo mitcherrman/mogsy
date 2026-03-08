@@ -14,7 +14,7 @@ export interface MockProfile {
     website?: string;
   };
   elo: number;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: "bronze" | "silver" | "gold" | "diamond" | "unranked";
 }
 
 export interface MockLeague {
@@ -47,7 +47,7 @@ export const mockProfiles: MockProfile[] = [
     avatarUrl: `${avatarBase}NeonViper`,
     socials: { instagram: "neonviper", twitch: "neonviper" },
     elo: 1650,
-    tier: "platinum",
+    tier: "diamond",
   },
   {
     id: "2",
@@ -58,7 +58,7 @@ export const mockProfiles: MockProfile[] = [
     avatarUrl: `${avatarBase}CrystalFox`,
     socials: { instagram: "crystalfox", tiktok: "crystalfox" },
     elo: 1520,
-    tier: "platinum",
+    tier: "diamond",
   },
   {
     id: "3",
@@ -178,29 +178,87 @@ export const mockPresetItems: MockPresetItem[] = [
   { id: "f2", leagueId: "fastfood", name: "Chick-fil-A", imageUrl: `${avatarBase}chickfila`, elo: 1520 },
 ];
 
-export function getTierFromElo(elo: number): "bronze" | "silver" | "gold" | "platinum" {
-  if (elo >= 1500) return "platinum";
+// Absolute Elo-based tiers (used for preset/collection leagues)
+export function getTierFromElo(elo: number): "bronze" | "silver" | "gold" | "diamond" {
+  if (elo >= 1500) return "diamond";
   if (elo >= 1300) return "gold";
   if (elo >= 1100) return "silver";
   return "bronze";
 }
 
+// Percentile-based tiers (used for compete/user leagues)
+export interface TierConfig {
+  name: string;
+  min_percentile: number;
+  max_percentile: number;
+}
+
+export const DEFAULT_TIER_CONFIG: TierConfig[] = [
+  { name: "unranked", min_percentile: 0, max_percentile: 60 },
+  { name: "bronze", min_percentile: 60, max_percentile: 75 },
+  { name: "silver", min_percentile: 75, max_percentile: 90 },
+  { name: "gold", min_percentile: 90, max_percentile: 99 },
+  { name: "diamond", min_percentile: 99, max_percentile: 100 },
+];
+
+export function getTierFromPercentile(
+  rankIndex: number,
+  total: number,
+  tierConfig: TierConfig[] = DEFAULT_TIER_CONFIG
+): string {
+  if (total <= 0) return "unranked";
+  // rankIndex is 0-based, 0 = best
+  const percentile = ((total - rankIndex) / total) * 100;
+  // Find matching tier (check from highest to lowest)
+  const sorted = [...tierConfig].sort((a, b) => b.min_percentile - a.min_percentile);
+  for (const tier of sorted) {
+    if (percentile >= tier.min_percentile && percentile <= tier.max_percentile) {
+      return tier.name;
+    }
+  }
+  return "unranked";
+}
+
 export function getTierColor(tier: string): string {
   switch (tier) {
+    case "diamond": return "text-tier-diamond";
     case "platinum": return "text-tier-platinum";
     case "gold": return "text-tier-gold";
     case "silver": return "text-tier-silver";
     case "bronze": return "text-tier-bronze";
+    case "unranked": return "text-muted-foreground";
     default: return "text-muted-foreground";
   }
 }
 
 export function getTierBgColor(tier: string): string {
   switch (tier) {
+    case "diamond": return "bg-tier-diamond/20 border-tier-diamond/40";
     case "platinum": return "bg-tier-platinum/20 border-tier-platinum/40";
     case "gold": return "bg-tier-gold/20 border-tier-gold/40";
     case "silver": return "bg-tier-silver/20 border-tier-silver/40";
     case "bronze": return "bg-tier-bronze/20 border-tier-bronze/40";
+    case "unranked": return "bg-muted/30 border-border";
     default: return "bg-muted border-border";
+  }
+}
+
+export function getTierRowBg(tier: string): string {
+  switch (tier) {
+    case "diamond": return "bg-tier-diamond/10 border-l-2 border-l-tier-diamond";
+    case "gold": return "bg-tier-gold/10 border-l-2 border-l-tier-gold";
+    case "silver": return "bg-tier-silver/10 border-l-2 border-l-tier-silver";
+    case "bronze": return "bg-tier-bronze/10 border-l-2 border-l-tier-bronze";
+    default: return "";
+  }
+}
+
+export function getTierIcon(tier: string): string {
+  switch (tier) {
+    case "diamond": return "💎";
+    case "gold": return "🥇";
+    case "silver": return "🥈";
+    case "bronze": return "🥉";
+    default: return "";
   }
 }

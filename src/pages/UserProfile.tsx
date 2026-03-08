@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import UserAvatar from "@/components/UserAvatar";
 import TierBadge from "@/components/TierBadge";
 import SEOHead from "@/components/SEOHead";
-import { getTierFromElo } from "@/lib/mock-data";
+import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, getTierIcon, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/mock-data";
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
@@ -145,6 +145,9 @@ export default function UserProfile() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [topComment, setTopComment] = useState<{ content: string; league_name: string } | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [bestCompeteTier, setBestCompeteTier] = useState<string>("unranked");
+  const [tierConfig, setTierConfig] = useState<TierConfig[]>(DEFAULT_TIER_CONFIG);
+  const [rankEnabled, setRankEnabled] = useState(true);
   const { status: friendStatus, friendshipId, refresh: refreshFriend } = useFriendStatus(profileId);
 
   useEffect(() => {
@@ -154,6 +157,24 @@ export default function UserProfile() {
 
   const loadProfile = async () => {
     setLoading(true);
+
+    // Load rank config
+    const { data: rankData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "rank_tiers")
+      .maybeSingle();
+    let localTierConfig = DEFAULT_TIER_CONFIG;
+    let localRankEnabled = true;
+    if (rankData?.value) {
+      const val = rankData.value as any;
+      localRankEnabled = val.enabled ?? true;
+      if (Array.isArray(val.tiers) && val.tiers.length > 0) {
+        localTierConfig = val.tiers;
+      }
+    }
+    setTierConfig(localTierConfig);
+    setRankEnabled(localRankEnabled);
 
     // Fetch profile
     const { data: profileData } = await supabase
@@ -197,14 +218,13 @@ export default function UserProfile() {
       const leagueIds = membershipsRes.data.map((m) => m.league_id);
       const { data: leagues } = await supabase
         .from("leagues")
-        .select("id, name")
+        .select("id, name, type")
         .in("id", leagueIds);
 
-      const leagueMap = new Map((leagues || []).map((l) => [l.id, l.name]));
+      const leagueMap = new Map((leagues || []).map((l) => [l.id, { name: l.name, type: l.type }]));
 
       // Get ranks for each league
       const statsPromises = membershipsRes.data.map(async (m) => {
-        // Count how many members have higher elo
         const { count: higherCount } = await supabase
           .from("league_memberships")
           .select("*", { count: "exact", head: true })
@@ -216,19 +236,37 @@ export default function UserProfile() {
           .select("*", { count: "exact", head: true })
           .eq("league_id", m.league_id);
 
+        const leagueInfo = leagueMap.get(m.league_id);
+        const rank = (higherCount || 0) + 1;
+        const total = totalCount || 0;
+        const isCompete = leagueInfo?.type === "user";
+
+        // Use percentile tier for compete leagues, elo-based for collections
+        const tier = (isCompete && localRankEnabled)
+          ? getTierFromPercentile(rank - 1, total, localTierConfig)
+          : getTierFromElo(m.elo);
+
         return {
           league_id: m.league_id,
-          league_name: leagueMap.get(m.league_id) || "Unknown",
+          league_name: leagueInfo?.name || "Unknown",
           elo: m.elo,
           matches_played: m.matches_played,
-          rank: (higherCount || 0) + 1,
-          total_members: totalCount || 0,
-          tier: getTierFromElo(m.elo),
+          rank,
+          total_members: total,
+          tier,
         };
       });
 
       const stats = await Promise.all(statsPromises);
       setLeagueStats(stats.sort((a, b) => b.elo - a.elo));
+
+      // Determine best compete league tier
+      const competeTiers = stats
+        .filter(s => leagueMap.get(s.league_id)?.type === "user")
+        .map(s => s.tier);
+      const tierRank: Record<string, number> = { diamond: 5, gold: 4, silver: 3, bronze: 2, unranked: 1 };
+      const best = competeTiers.reduce((best, t) => (tierRank[t] || 0) > (tierRank[best] || 0) ? t : best, "unranked");
+      setBestCompeteTier(best);
     }
 
     // Top comment
@@ -437,8 +475,22 @@ export default function UserProfile() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 mt-2">
-              <TierBadge tier={overallTier} />
+            {/* Prominent rank badge */}
+            <div className="flex items-center gap-2 mt-3">
+              {rankEnabled && bestCompeteTier !== "unranked" && (
+                <div className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-extrabold uppercase tracking-wider border-2",
+                  getTierBgColor(bestCompeteTier),
+                  getTierColor(bestCompeteTier)
+                )}>
+                  <span className="text-lg">{getTierIcon(bestCompeteTier)}</span>
+                  <span>{bestCompeteTier}</span>
+                  <Trophy className="h-4 w-4" />
+                </div>
+              )}
+              {rankEnabled && bestCompeteTier === "unranked" && leagueStats.length > 0 && (
+                <TierBadge tier="unranked" />
+              )}
               {profile.is_pro && (
                 <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold", theme.styles.textAccent || "text-primary", "bg-primary/10 border border-primary/30")}>
                   <Crown className="h-3 w-3" /> PRO

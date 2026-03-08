@@ -17,7 +17,7 @@ interface LeagueWithTop5 {
     name: string;
     imageUrl: string;
     elo: number;
-    tier: "bronze" | "silver" | "gold" | "platinum";
+    tier: string;
   }[];
 }
 

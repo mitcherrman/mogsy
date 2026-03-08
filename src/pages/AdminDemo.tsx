@@ -296,7 +296,7 @@ export default function AdminDemo() {
             <Select value={card.tier} onValueChange={v => setCard(prev => ({ ...prev, tier: v }))}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {["bronze", "silver", "gold", "platinum"].map(t => (
+                {["bronze", "silver", "gold", "diamond"].map(t => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>

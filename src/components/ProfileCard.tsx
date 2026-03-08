@@ -10,7 +10,7 @@ interface ProfileCardProfile {
   avatarUrl: string;
   socials: Record<string, string>;
   elo: number;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: string;
   isPro?: boolean;
   profileFrame?: string;
   isBoosted?: boolean;

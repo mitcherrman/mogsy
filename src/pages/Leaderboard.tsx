@@ -5,7 +5,7 @@ import { Crown, ArrowLeft, Swords, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getTierFromElo, getTierColor } from "@/lib/mock-data";
+import { getTierFromElo, getTierFromPercentile, getTierColor, getTierRowBg, getTierIcon, DEFAULT_TIER_CONFIG, type TierConfig } from "@/lib/mock-data";
 import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import SEOHead from "@/components/SEOHead";
@@ -17,7 +17,7 @@ interface LeaderboardEntry {
   avatarUrl: string;
   location: string;
   elo: number;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: string;
   imageUrl?: string;
   isPresetItem?: boolean;
 }
@@ -33,10 +33,28 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [snapshotAge, setSnapshotAge] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("global");
+  const [tierConfig, setTierConfig] = useState<TierConfig[]>(DEFAULT_TIER_CONFIG);
+  const [rankEnabled, setRankEnabled] = useState(true);
 
   useEffect(() => {
+    loadRankConfig();
     loadLeaderboard();
   }, [leagueId]);
+
+  const loadRankConfig = async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "rank_tiers")
+      .maybeSingle();
+    if (data?.value) {
+      const val = data.value as any;
+      setRankEnabled(val.enabled ?? true);
+      if (Array.isArray(val.tiers) && val.tiers.length > 0) {
+        setTierConfig(val.tiers);
+      }
+    }
+  };
 
   const loadLeaderboard = async () => {
     if (!leagueId) return;
@@ -55,9 +73,7 @@ export default function Leaderboard() {
       await Promise.all([loadUserLeaderboard(), loadLocalRankings(type)]);
     }
 
-    // Load snapshot age
     await loadSnapshotAge();
-
     setLoading(false);
   };
 
@@ -79,7 +95,6 @@ export default function Leaderboard() {
   const loadPresetLeaderboard = async () => {
     if (!leagueId) return;
 
-    // Try snapshots first, fall back to live data
     const { data: snapshots } = await supabase
       .from("global_elo_snapshots")
       .select("item_id, elo, snapshot_at")
@@ -87,7 +102,6 @@ export default function Leaderboard() {
       .not("item_id", "is", null)
       .order("snapshot_at", { ascending: false });
 
-    // Get latest snapshot per item
     const latestByItem = new Map<string, number>();
     if (snapshots) {
       for (const s of snapshots) {
@@ -129,7 +143,6 @@ export default function Leaderboard() {
 
     if (!profiles || profiles.length === 0) return;
 
-    // Try snapshots first
     const { data: snapshots } = await supabase
       .from("global_elo_snapshots")
       .select("profile_id, elo, snapshot_at")
@@ -164,11 +177,24 @@ export default function Leaderboard() {
         avatarUrl: p.avatar_url || "",
         location: p.location || "",
         elo,
-        tier: getTierFromElo(elo),
+        tier: "unranked", // will be set after sorting
       };
     });
 
     mapped.sort((a, b) => b.elo - a.elo);
+
+    // Apply percentile-based tiers for user leagues
+    if (rankEnabled) {
+      const total = mapped.length;
+      mapped.forEach((entry, i) => {
+        entry.tier = getTierFromPercentile(i, total, tierConfig);
+      });
+    } else {
+      mapped.forEach((entry) => {
+        entry.tier = getTierFromElo(entry.elo);
+      });
+    }
+
     setEntries(mapped);
   };
 
@@ -233,7 +259,7 @@ export default function Leaderboard() {
         const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
         const mapped: LeaderboardEntry[] = localRanks
           .filter(r => r.target_profile_id && profileMap.has(r.target_profile_id))
-          .map(r => {
+          .map((r, i, arr) => {
             const p = profileMap.get(r.target_profile_id!)!;
             return {
               id: p.id,
@@ -241,7 +267,9 @@ export default function Leaderboard() {
               avatarUrl: p.avatar_url || "",
               location: p.location || "",
               elo: r.local_elo,
-              tier: getTierFromElo(r.local_elo),
+              tier: rankEnabled
+                ? getTierFromPercentile(i, arr.length, tierConfig)
+                : getTierFromElo(r.local_elo),
             };
           });
         setLocalEntries(mapped);
@@ -254,62 +282,89 @@ export default function Leaderboard() {
     return "/swipe";
   };
 
-  const renderEntries = (list: LeaderboardEntry[]) => (
-    <div className="space-y-6">
-      {list.map((entry, i) => {
-        const rank = i + 1;
-        const isTop3 = rank <= 3;
-        const size = isTop3 ? "w-24 h-24 sm:w-32 sm:h-32" : "w-16 h-16 sm:w-20 sm:h-20";
+  // Determine if this is a user/compete league for tier highlighting
+  const isCompeteLeague = leagueType === "user";
 
-        return (
-          <motion.div key={entry.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="flex items-center gap-4">
-            <div className="w-8 text-right">
-              {rank === 1 ? (
-                <Crown className="h-6 w-6 text-tier-gold inline" />
-              ) : (
-                <span className={`text-lg font-black ${rank <= 3 ? "text-tier-gold" : "text-muted-foreground"}`}>{rank}</span>
+  const renderEntries = (list: LeaderboardEntry[]) => {
+    // Group entries by tier for section headers (only compete leagues)
+    let lastTier = "";
+
+    return (
+      <div className="space-y-1">
+        {list.map((entry, i) => {
+          const rank = i + 1;
+          const isTop3 = rank <= 3;
+          const size = isTop3 ? "w-24 h-24 sm:w-32 sm:h-32" : "w-16 h-16 sm:w-20 sm:h-20";
+          const rowBg = isCompeteLeague && rankEnabled ? getTierRowBg(entry.tier) : "";
+          const showSectionHeader = isCompeteLeague && rankEnabled && entry.tier !== lastTier && entry.tier !== "unranked";
+          lastTier = entry.tier;
+
+          return (
+            <div key={entry.id}>
+              {showSectionHeader && (
+                <div className="flex items-center gap-2 pt-4 pb-1 px-2">
+                  <span className="text-sm">{getTierIcon(entry.tier)}</span>
+                  <span className={`text-xs font-bold uppercase tracking-wider ${getTierColor(entry.tier)}`}>
+                    {entry.tier}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
               )}
-            </div>
-            {entry.isPresetItem ? (
-              <div className={`${size} rounded-full overflow-hidden flex-shrink-0 ${isTop3 ? "avatar-ring" : "ring-1 ring-border"} transition-all`}>
-                {entry.imageUrl ? (
-                  <img src={entry.imageUrl} alt={entry.displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                    {entry.displayName.charAt(0)}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button onClick={() => navigate(`/user/${entry.id}`)} className="flex-shrink-0">
-                <UserAvatar src={entry.avatarUrl} name={entry.displayName} size={isTop3 ? "xl" : "lg"} className={`${isTop3 ? "avatar-ring" : "ring-1 ring-border"} hover:ring-primary/50 transition-all`} />
-              </button>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.03 }}
+                className={`flex items-center gap-4 rounded-lg px-3 py-3 ${rowBg}`}
+              >
+                <div className="w-8 text-right">
+                  {rank === 1 ? (
+                    <Crown className="h-6 w-6 text-tier-gold inline" />
+                  ) : (
+                    <span className={`text-lg font-black ${rank <= 3 ? "text-tier-gold" : "text-muted-foreground"}`}>{rank}</span>
+                  )}
+                </div>
                 {entry.isPresetItem ? (
-                  <span className="font-bold text-foreground truncate">{entry.displayName}</span>
+                  <div className={`${size} rounded-full overflow-hidden flex-shrink-0 ${isTop3 ? "avatar-ring" : "ring-1 ring-border"} transition-all`}>
+                    {entry.imageUrl ? (
+                      <img src={entry.imageUrl} alt={entry.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
+                        {entry.displayName.charAt(0)}
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <button onClick={() => navigate(`/user/${entry.id}`)} className="font-bold text-foreground truncate hover:text-primary transition-colors text-left">
-                    {entry.displayName}
+                  <button onClick={() => navigate(`/user/${entry.id}`)} className="flex-shrink-0">
+                    <UserAvatar src={entry.avatarUrl} name={entry.displayName} size={isTop3 ? "xl" : "lg"} className={`${isTop3 ? "avatar-ring" : "ring-1 ring-border"} hover:ring-primary/50 transition-all`} />
                   </button>
                 )}
-                <TierBadge tier={entry.tier} />
-              </div>
-              {entry.location && <div className="text-sm text-muted-foreground">{entry.location}</div>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {entry.isPresetItem ? (
+                      <span className="font-bold text-foreground truncate">{entry.displayName}</span>
+                    ) : (
+                      <button onClick={() => navigate(`/user/${entry.id}`)} className="font-bold text-foreground truncate hover:text-primary transition-colors text-left">
+                        {entry.displayName}
+                      </button>
+                    )}
+                    {entry.tier !== "unranked" && <TierBadge tier={entry.tier} />}
+                  </div>
+                  {entry.location && <div className="text-sm text-muted-foreground">{entry.location}</div>}
+                </div>
+                <div className="text-right">
+                  <div className={`text-lg font-black ${getTierColor(entry.tier)}`}>{entry.elo}</div>
+                  <div className="text-xs text-muted-foreground">AURA</div>
+                </div>
+              </motion.div>
             </div>
-            <div className="text-right">
-              <div className={`text-lg font-black ${getTierColor(entry.tier)}`}>{entry.elo}</div>
-              <div className="text-xs text-muted-foreground">AURA</div>
-            </div>
-          </motion.div>
-        );
-      })}
-      {list.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">No entries yet. Start swiping to populate the leaderboard!</p>
-      )}
-    </div>
-  );
+          );
+        })}
+        {list.length === 0 && (
+          <p className="text-center text-muted-foreground py-8">No entries yet. Start swiping to populate the leaderboard!</p>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return <div className="min-h-screen" />;
