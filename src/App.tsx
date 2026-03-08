@@ -70,6 +70,7 @@ const App = () => (
                   <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
+                  <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Moderator /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<LazyFallback />}><SecretRoom /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
