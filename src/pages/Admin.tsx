@@ -123,6 +123,12 @@ export default function Admin() {
                 <BarChart3 className="h-3 w-3" /> Data
               </button>
               <button
+                onClick={() => navigate("/admin/demo")}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              >
+                Demo
+              </button>
+              <button
                 disabled={csvExporting}
                 onClick={async () => { setCsvExporting(true); try { await exportAdminCSV(); toast.success("CSV exported"); } catch { toast.error("Export failed"); } finally { setCsvExporting(false); } }}
                 className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-muted-foreground text-[10px] sm:text-xs font-bold hover:bg-secondary transition-colors disabled:opacity-50"
