@@ -48,6 +48,7 @@ export default function AdminSettings() {
               case "default_diamonds": s.default_diamonds = val?.count ?? 0; break;
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
+              case "swipe_timer": s.swipe_timer_enabled = val?.enabled ?? false; s.swipe_timer_duration = val?.duration_seconds ?? 10; break;
             }
           }
           setSettings(s);
