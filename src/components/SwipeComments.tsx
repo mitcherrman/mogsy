@@ -457,8 +457,8 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
   const rest = sorted.slice(3);
 
   const renderComment = (comment: Comment, isReply = false) => (
-    <div key={comment.id} className={cn("flex gap-2 py-2 first:pt-0", isReply && "ml-6 border-l-2 border-border pl-2")}>
-      <button onClick={() => navigate(`/user/${comment.profile_id}`)} className="flex-shrink-0">
+    <div key={comment.id} className={cn("flex items-start gap-2 py-2 first:pt-0", isReply && "ml-6 border-l-2 border-border pl-2")}>
+      <button onClick={() => navigate(`/user/${comment.profile_id}`)} className="flex-shrink-0 mt-0.5">
         <UserAvatar src={comment.avatar_url} name={comment.display_name} size="sm" />
       </button>
       <div className="flex-1 min-w-0">
