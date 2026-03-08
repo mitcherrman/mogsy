@@ -80,6 +80,7 @@ export default function Play() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreState?.restoreSubcategory || null);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
+  const { config: publishedConfig } = usePlayLayout("published");
 
   // Fetch leagues
   useEffect(() => {
