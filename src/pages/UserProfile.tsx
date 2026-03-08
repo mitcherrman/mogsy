@@ -12,7 +12,7 @@ import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, ge
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
-  UserPlus, UserCheck, Clock,
+  UserPlus, UserCheck, Clock, Bookmark, BookmarkCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
