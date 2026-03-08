@@ -451,6 +451,37 @@ export default function Swipe() {
 
           {/* Capturable matchup area */}
           <MatchupCapture ref={captureRef} leagueName="Swipe On Who Mogs">
+            {showInSwipeAd ? (
+              <motion.div
+                key={`ad-${showInSwipeAd.id}-${matchCount}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]"
+              >
+                {/* Real card */}
+                <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
+                  <ProfileCard profile={pair[0]} side="left" onChoose={() => {}} />
+                </div>
+                <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
+                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                </div>
+                {/* Ad card */}
+                <SwipeAdCard
+                  creative={showInSwipeAd}
+                  onSkip={() => {
+                    setShowInSwipeAd(null);
+                    if (gauntletMode && gauntletChampion) {
+                      const others = profiles.filter(p => p.id !== gauntletChampion.id);
+                      const challenger = others[Math.floor(Math.random() * others.length)];
+                      setPair([gauntletChampion, challenger]);
+                    } else {
+                      setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
+                    }
+                  }}
+                />
+              </motion.div>
+            ) : (
               <motion.div
                 key={`pair-${pair[0].id}-${pair[1].id}-${matchCount}`}
                 initial={{ opacity: 0 }}
@@ -478,7 +509,7 @@ export default function Swipe() {
                   </div>
                 </div>
 
-                {/* VS badge - positioned between cards */}
+                {/* VS badge */}
                 <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
                   <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
                 </div>
@@ -522,7 +553,7 @@ export default function Swipe() {
                   onComplete={handleSliceComplete}
                 />
               </motion.div>
-            
+            )}
           </MatchupCapture>
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">
