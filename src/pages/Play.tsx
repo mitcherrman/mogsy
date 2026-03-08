@@ -633,25 +633,7 @@ export default function Play() {
               <Globe className="h-3.5 w-3.5" /> Leaderboard
             </Button>
           )}
-          {/* Layout toggle */}
-          {subExpanded && (
-            <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50">
-              {LAYOUT_OPTIONS.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setDesktopLayout(opt.id)}
-                  title={opt.label}
-                  className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
-                    desktopLayout === opt.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {opt.icon}
-                </button>
-              ))}
-            </div>
-          )}
+          
           {user && !animLoading && (
             <Popover>
               <PopoverTrigger asChild>
