@@ -462,7 +462,7 @@ export default function AdminPlay() {
                     onEdit={() => setEditingItem({
                       itemType: "category",
                       itemKey: cat.key,
-                      item: { key: cat.key, label: getCategoryLabel(cat.key), hidden: cat.hidden, customLabel: cat.customLabel, type: "category" as const },
+                      item: { key: cat.key, label: getCategoryLabel(cat.key), hidden: cat.hidden, customLabel: cat.customLabel, coverItemId: cat.coverItemId, type: "category" as const },
                     })}
                     expandable
                     expanded={expandedCategories.has(cat.key)}
