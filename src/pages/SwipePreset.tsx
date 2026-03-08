@@ -340,6 +340,7 @@ export default function SwipePreset() {
       setMatchCount(newCount);
       setChosen(null);
       setEloChanges(new Map());
+      setGlobalDirections(new Map());
       setRankChanges(new Map());
       setCurrentImageIndex(prev => {
         const next = new Map(prev);
