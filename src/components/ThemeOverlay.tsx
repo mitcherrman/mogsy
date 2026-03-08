@@ -840,21 +840,21 @@ function AmongUsCrewmateGif() {
   );
 }
 
-/* ────────────────────────────────────
-   Main overlay switch
-   ──────────────────────────────────── */
 export default function ThemeOverlay({ themeId }: ThemeOverlayProps) {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-      {themeId === "midnight" && <MidnightOverlay />}
-      {themeId === "forest" && <ForestOverlay />}
-      {themeId === "sunset" && <SunsetOverlay />}
-      {themeId === "aurora" && <AuroraOverlay />}
-      {themeId === "royal" && <RoyalOverlay />}
-      {themeId === "lol" && <LolOverlay />}
-      {themeId === "cyberpunk" && <CyberpunkOverlay />}
-      {themeId === "mogged" && <MoggedOverlay />}
-      {themeId === "amongus" && <AmongUsThemeOverlay />}
-    </div>
+    <>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
+        {themeId === "midnight" && <MidnightOverlay />}
+        {themeId === "forest" && <ForestOverlay />}
+        {themeId === "sunset" && <SunsetOverlay />}
+        {themeId === "aurora" && <AuroraOverlay />}
+        {themeId === "royal" && <RoyalOverlay />}
+        {themeId === "lol" && <LolOverlay />}
+        {themeId === "cyberpunk" && <CyberpunkOverlay />}
+        {themeId === "mogged" && <MoggedOverlay />}
+        {themeId === "amongus" && <AmongUsDecorations />}
+      </div>
+      {themeId === "amongus" && <AmongUsCrewmateGif />}
+    </>
   );
 }
