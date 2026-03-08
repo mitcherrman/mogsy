@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Users, Layers, ArrowLeft } from "lucide-react";
+import { Trophy, Users, Layers, ArrowLeft, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/UserAvatar";
+import TierBadge from "@/components/TierBadge";
+import { getTierFromElo, getTierColor } from "@/lib/mock-data";
 
 interface LeagueWithTop5 {
   id: string;
