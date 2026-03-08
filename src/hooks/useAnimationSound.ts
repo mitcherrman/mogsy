@@ -89,7 +89,7 @@ export function useAnimationSound() {
       for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
       const noise = ctx.createBufferSource(); noise.buffer = buffer;
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.08, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      gain.gain.setValueAtTime(0.35, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
       const filter = ctx.createBiquadFilter(); filter.type = "bandpass";
       filter.frequency.setValueAtTime(400, t); filter.frequency.exponentialRampToValueAtTime(2000, t + 0.3); filter.Q.value = 1;
       noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
