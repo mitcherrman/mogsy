@@ -727,12 +727,19 @@ export default function SwipePreset() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center justify-center gap-2 mt-0.5">
-                              {rankVisible && rank && (
-                                <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>
-                              )}
+                            <div className="flex items-center justify-center gap-3 mt-0.5">
                               {eloVisible && (
-                                <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                                <span className="text-[10px] md:text-xs text-muted-foreground">
+                                  <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
+                                  {rankVisible && localRankMap.get(item.id) && (
+                                    <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
+                                  )}
+                                  <span className="mx-1 text-muted-foreground/30">|</span>
+                                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                                  {rankVisible && rank && (
+                                    <span className="ml-0.5 text-blue-400/70">#{rank}</span>
+                                  )}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -856,9 +863,20 @@ function GauntletCard({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-center gap-2 mt-0.5">
-          {rankVisible && rank && <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">#{rank}</span>}
-          {eloVisible && <span className="text-[10px] md:text-xs font-bold text-primary">{items.find(i => i.id === item.id)?.elo || item.elo}</span>}
+        <div className="flex items-center justify-center gap-3 mt-0.5">
+          {eloVisible && (
+            <span className="text-[10px] md:text-xs text-muted-foreground">
+              <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
+              {rankVisible && localRankMap.get(item.id) && (
+                <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
+              )}
+              <span className="mx-1 text-muted-foreground/30">|</span>
+              <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+              {rankVisible && rank && (
+                <span className="ml-0.5 text-blue-400/70">#{rank}</span>
+              )}
+            </span>
+          )}
         </div>
       </div>
       {chosen !== null && (
