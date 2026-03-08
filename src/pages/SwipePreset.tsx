@@ -263,6 +263,56 @@ export default function SwipePreset() {
       const winner = pair[winnerIndex];
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
+      if (myProfileId) {
+        // Use dual Elo RPC
+        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_dual_preset_match", {
+          _league_id: leagueId!,
+          _winner_item_id: winner.id,
+          _loser_item_id: loser.id,
+          _caller_profile_id: myProfileId,
+        });
+
+        if (rpcError) {
+          console.error("Dual preset match RPC error:", rpcError);
+        } else {
+          const result = rpcResult as any;
+          setEloChanges(new Map([
+            [winner.id, result.localWinnerChange],
+            [loser.id, result.localLoserChange],
+          ]));
+          setGlobalDirections(new Map([
+            [winner.id, result.globalDirectionWinner as "up" | "down" | "none"],
+            [loser.id, result.globalDirectionLoser as "up" | "down" | "none"],
+          ]));
+          if (countsTowardGlobal === null) {
+            setCountsTowardGlobal(result.countsTowardGlobal);
+          }
+          // Update local elos
+          setLocalElos(prev => {
+            const next = new Map(prev);
+            next.set(winner.id, result.localWinnerElo);
+            next.set(loser.id, result.localLoserElo);
+            return next;
+          });
+        }
+      } else {
+        // Fallback: use old RPC for unauthenticated
+        const currentWinner = items.find(i => i.id === winner.id)!;
+        const currentLoser = items.find(i => i.id === loser.id)!;
+        const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
+        setEloChanges(new Map([
+          [winner.id, newWinnerElo - currentWinner.elo],
+          [loser.id, newLoserElo - currentLoser.elo],
+        ]));
+
+        await supabase.rpc("record_preset_match", {
+          _league_id: leagueId!,
+          _winner_item_id: winner.id,
+          _loser_item_id: loser.id,
+        });
+      }
+
+      // Update local items state with local elo for display
       const currentWinner = items.find(i => i.id === winner.id)!;
       const currentLoser = items.find(i => i.id === loser.id)!;
       const { newWinnerElo, newLoserElo } = calculateElo(currentWinner.elo, currentLoser.elo);
@@ -278,24 +328,10 @@ export default function SwipePreset() {
       const newRanks = new Map<string, number>();
       [...updatedItems].sort((a, b) => b.elo - a.elo).forEach((item, idx) => newRanks.set(item.id, idx + 1));
 
-      setEloChanges(new Map([
-        [winner.id, newWinnerElo - currentWinner.elo],
-        [loser.id, newLoserElo - currentLoser.elo],
-      ]));
       setRankChanges(new Map([
         [winner.id, { old: oldRanks.get(winner.id)!, new: newRanks.get(winner.id)! }],
         [loser.id, { old: oldRanks.get(loser.id)!, new: newRanks.get(loser.id)! }],
       ]));
-
-      const { error: rpcError } = await supabase.rpc("record_preset_match", {
-        _league_id: leagueId!,
-        _winner_item_id: winner.id,
-        _loser_item_id: loser.id,
-      });
-
-      if (rpcError) {
-        console.error("Preset match RPC error:", rpcError);
-      }
 
       setItems(updatedItems);
 
