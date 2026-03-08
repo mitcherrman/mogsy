@@ -21,6 +21,7 @@ import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
+import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 
 interface PresetItem {
