@@ -64,7 +64,7 @@ export default function VaporizeAnimation({ winnerSide, items, onComplete }: Pro
                     animate={phase === "dissolve" ? { opacity: 0 } : {}}
                     transition={{ duration: 0.6, delay: 0.1 }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-white" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
                   </motion.div>
 
                   {phase === "dissolve" && particles.map((p, i) => (

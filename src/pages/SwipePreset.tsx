@@ -854,9 +854,9 @@ function GauntletCard({
             : ""
         }`}
       >
-        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-white overflow-hidden">
+        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
           {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-white"
+            <img src={displayImage} alt={item.name} className="w-full h-full object-contain bg-muted/30"
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
             />
           ) : (
