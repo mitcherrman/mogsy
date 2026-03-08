@@ -20,6 +20,13 @@ function getCircleGradient(theme: typeof profileThemes[number]): string {
 
 export default function FloatingThemeSwitcher() {
   const [open, setOpen] = useState(false);
+
+  // Listen for mobile nav trigger
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-theme-picker", handler);
+    return () => window.removeEventListener("open-theme-picker", handler);
+  }, []);
   const { themeId, isPro, setActiveTheme, chosenFreeTheme } = useSitewideTheme();
   const menuRef = useRef<HTMLDivElement>(null);
   const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
