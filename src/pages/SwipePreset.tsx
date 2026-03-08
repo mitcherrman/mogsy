@@ -206,10 +206,13 @@ export default function SwipePreset() {
 
     if (user) {
       const { data: profile } = await supabase
-        .from("profiles").select("id, is_pro").eq("user_id", user.id).single();
+        .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
         if (profile.is_pro) setIsPro(true);
         setMyProfileId(profile.id);
+        setMyRewinds(profile.rewinds ?? 0);
+        setMyShields(profile.elo_shields ?? 0);
+        setMyReveals(profile.reveals ?? 0);
 
         // Fetch local rankings for this league
         const { data: localRanks } = await supabase
