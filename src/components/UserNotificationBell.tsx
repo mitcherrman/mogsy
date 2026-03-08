@@ -229,44 +229,97 @@ export default function UserNotificationBell() {
             )}
           </div>
 
-          {notifications.length === 0 ? (
+          {notifications.length === 0 && friendNotifs.length === 0 ? (
             <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
           ) : (
-            notifications.map(n => {
-              const Icon = typeIcons[n.type] || Bell;
-              const isRead = readIds.has(n.id);
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => markRead(n.id)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
-                    isRead ? "bg-card" : "bg-primary/5"
-                  } hover:bg-secondary`}
-                >
-                  <div className="flex items-start gap-2">
-                    {n.image_url ? (
-                      <img src={n.image_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
-                        {n.title}
-                      </p>
-                      {n.message && (
-                        <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+            <>
+              {/* Friend notifications */}
+              {friendNotifs.map(fn => {
+                const isRead = readFriendIds.has(fn.id);
+                const Icon = fn.type === "request" ? UserPlus : UserCheck;
+                return (
+                  <button
+                    key={fn.id}
+                    onClick={() => {
+                      setReadFriendIds(prev => new Set(prev).add(fn.id));
+                      setOpen(false);
+                      if (fn.type === "request") {
+                        window.dispatchEvent(new Event("open-friends-panel"));
+                      } else {
+                        navigate(`/user/${fn.profile_id}`);
+                      }
+                    }}
+                    className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
+                      isRead ? "bg-card" : "bg-primary/5"
+                    } hover:bg-secondary`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {fn.avatar_url ? (
+                        <img src={fn.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                       )}
-                      <p className="text-[9px] text-muted-foreground mt-0.5">
-                        {new Date(n.created_at).toLocaleDateString()}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                          {fn.type === "request"
+                            ? `${fn.display_name} sent you a friend request`
+                            : `${fn.display_name} accepted your friend request`}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          {new Date(fn.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {!isRead && (
+                        <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
+                      )}
                     </div>
-                    {!isRead && (
-                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
-                    )}
-                  </div>
-                </button>
-              );
-            })
+                  </button>
+                );
+              })}
+
+              {/* System notifications */}
+              {notifications.map(n => {
+                const Icon = typeIcons[n.type] || Bell;
+                const isRead = readIds.has(n.id);
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      markRead(n.id);
+                      if (n.action_url) {
+                        setOpen(false);
+                        navigate(n.action_url);
+                      }
+                    }}
+                    className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
+                      isRead ? "bg-card" : "bg-primary/5"
+                    } hover:bg-secondary`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {n.image_url ? (
+                        <img src={n.image_url} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                          {n.title}
+                        </p>
+                        {n.message && (
+                          <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                        )}
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          {new Date(n.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {!isRead && (
+                        <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </>
           )}
         </div>
       )}

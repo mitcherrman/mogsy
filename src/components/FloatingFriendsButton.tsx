@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Users, UserPlus, UserCheck, UserX, Search, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Users, UserPlus, UserCheck, UserX, Search, X, Bookmark } from "lucide-react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,13 @@ interface SearchResult {
   avatar_url: string | null;
 }
 
+interface SavedProfile {
+  id: string;
+  saved_profile_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export default function FloatingFriendsButton() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,10 +36,52 @@ export default function FloatingFriendsButton() {
     window.addEventListener("open-friends-panel", handler);
     return () => window.removeEventListener("open-friends-panel", handler);
   }, []);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+
+  // Load saved profiles when tab opens
+  const loadSaved = async () => {
+    if (!user) return;
+    setSavedLoading(true);
+    const { data: rows } = await supabase
+      .from("saved_profiles")
+      .select("id, saved_profile_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (rows && rows.length > 0) {
+      const profileIds = rows.map((r) => r.saved_profile_id);
+      const { data: profiles } = await supabase
+        .from("public_profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", profileIds);
+
+      const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+      setSavedProfiles(
+        rows.map((r) => {
+          const p = profileMap.get(r.saved_profile_id);
+          return {
+            id: r.id,
+            saved_profile_id: r.saved_profile_id,
+            display_name: p?.display_name || "User",
+            avatar_url: p?.avatar_url || null,
+          };
+        })
+      );
+    } else {
+      setSavedProfiles([]);
+    }
+    setSavedLoading(false);
+  };
+
+  useEffect(() => {
+    if (open && user) loadSaved();
+  }, [open, user]);
 
   if (!user) return null;
 
@@ -53,6 +102,11 @@ export default function FloatingFriendsButton() {
   const handleSendRequest = async (targetId: string) => {
     await sendRequest(targetId);
     setSentIds((prev) => new Set(prev).add(targetId));
+  };
+
+  const handleUnsave = async (savedId: string) => {
+    await supabase.from("saved_profiles").delete().eq("id", savedId);
+    setSavedProfiles((prev) => prev.filter((p) => p.id !== savedId));
   };
 
   const friendIds = new Set(friends.map((f) => f.profile.id));
@@ -93,6 +147,9 @@ export default function FloatingFriendsButton() {
                     {pendingRequests.length}
                   </span>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="flex-1">
+                <Bookmark className="h-3.5 w-3.5 mr-1" /> Saved
               </TabsTrigger>
               <TabsTrigger value="search" className="flex-1">
                 <Search className="h-3.5 w-3.5 mr-1" /> Find
@@ -162,6 +219,43 @@ export default function FloatingFriendsButton() {
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Saved Tab */}
+              <TabsContent value="saved" className="mt-0">
+                {savedLoading ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+                ) : savedProfiles.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Bookmark className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No saved profiles</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Save profiles from their page to view later</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {savedProfiles.map((s) => (
+                      <div key={s.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
+                        <button
+                          onClick={() => { setOpen(false); navigate(`/user/${s.saved_profile_id}`); }}
+                          className="flex items-center gap-2.5 min-w-0"
+                        >
+                          <UserAvatar src={s.avatar_url} name={s.display_name || ""} size="md" />
+                          <span className="text-sm font-semibold text-foreground truncate">
+                            {s.display_name || "User"}
+                          </span>
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUnsave(s.id)}
+                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>

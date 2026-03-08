@@ -567,9 +567,9 @@ export default function UserProfile() {
               </motion.p>
             )}
 
-            {/* Friend Button */}
+            {/* Friend & Save Buttons */}
             {user && profileId && (
-              <FriendButton
+              <ProfileActions
                 profileId={profileId}
                 friendStatus={friendStatus}
                 friendshipId={friendshipId}
