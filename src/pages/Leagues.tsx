@@ -221,37 +221,54 @@ function LeagueCard({ league, index, onClick }: { league: LeagueWithTop5; index:
       onClick={onClick}
       className="rounded-xl border border-border bg-card p-4 text-left card-hover w-full hover:border-primary/30 transition-colors"
     >
-      <h3 className="text-sm font-bold text-foreground truncate mb-3">{league.name}</h3>
+      <h3 className="text-sm font-bold text-foreground truncate mb-4">{league.name}</h3>
 
       {league.top5.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {league.top5.map((entry, i) => {
             const rank = i + 1;
             const isTop3 = rank <= 3;
-            const circleSize = isTop3 ? "w-10 h-10" : "w-8 h-8";
+            const circleSize = isTop3 ? "w-16 h-16" : "w-12 h-12";
 
             return (
-              <div key={entry.id} className="flex items-center gap-2">
-                <span className={`text-xs font-black w-4 text-right ${isTop3 ? "text-primary" : "text-muted-foreground"}`}>
-                  {rank}
-                </span>
+              <div key={entry.id} className="flex items-center gap-3">
+                <div className="w-5 text-right flex-shrink-0">
+                  {rank === 1 ? (
+                    <Crown className="h-4 w-4 text-tier-gold inline" />
+                  ) : (
+                    <span className={`text-xs font-black ${isTop3 ? "text-tier-gold" : "text-muted-foreground"}`}>
+                      {rank}
+                    </span>
+                  )}
+                </div>
                 {isUserLeague ? (
-                  <UserAvatar src={entry.imageUrl} name={entry.name} size={isTop3 ? "md" : "sm"} />
+                  <UserAvatar
+                    src={entry.imageUrl}
+                    name={entry.name}
+                    size={isTop3 ? "lg" : "md"}
+                    className={isTop3 ? "avatar-ring" : "ring-1 ring-border"}
+                  />
                 ) : (
-                  <div className={`${circleSize} rounded-full overflow-hidden flex-shrink-0 bg-muted`}>
+                  <div className={`${circleSize} rounded-full overflow-hidden flex-shrink-0 ${isTop3 ? "avatar-ring" : "ring-1 ring-border"}`}>
                     {entry.imageUrl ? (
                       <img src={entry.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
                         {entry.name.charAt(0)}
                       </div>
                     )}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{entry.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground truncate">{entry.name}</span>
+                    <TierBadge tier={entry.tier} className="text-[8px] px-1.5 py-0" />
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold text-muted-foreground">{entry.elo}</span>
+                <div className="text-right flex-shrink-0">
+                  <div className={`text-xs font-black ${getTierColor(entry.tier)}`}>{entry.elo}</div>
+                  <div className="text-[8px] text-muted-foreground">AURA</div>
+                </div>
               </div>
             );
           })}
