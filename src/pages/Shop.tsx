@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star } from "lucide-react";
+import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star, Plus, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import SEOHead from "@/components/SEOHead";
 import { useToast } from "@/hooks/use-toast";
 import { useShopSound } from "@/hooks/useShopSound";
+import ProCinematicAd from "@/components/ProCinematicAd";
 
 interface ProfileData {
   id: string;
@@ -77,12 +79,21 @@ export default function Shop() {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [sparklingPack, setSparklingPack] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminDiamondAmount, setAdminDiamondAmount] = useState("1000");
+  const [showAdminGrant, setShowAdminGrant] = useState(false);
+  const [needDiamondsPrompt, setNeedDiamondsPrompt] = useState<{ needed: number; have: number; name: string } | null>(null);
+  const [showProAd, setShowProAd] = useState(false);
+  const [shopAdConfig, setShopAdConfig] = useState<{ enabled: boolean; type: string; headline: string; subtext: string } | null>(null);
+  const diamondSectionRef = useRef<HTMLElement>(null);
   const { playPurchaseSound, playDiamondTap, playPowerUpSound } = useShopSound();
 
   useEffect(() => {
     if (user) {
       loadProfile();
       checkSubscription();
+      checkAdmin();
+      loadShopAdConfig();
     }
   }, [user]);
 
@@ -119,6 +130,21 @@ export default function Shop() {
         setIsTrial(data.is_trial || false);
       }
     } catch {}
+  };
+
+  const checkAdmin = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    if (data?.some(r => r.role === "admin" || r.role === "master_admin")) {
+      setIsAdmin(true);
+    }
+  };
+
+  const loadShopAdConfig = async () => {
+    const { data } = await supabase.from("app_settings").select("value").eq("key", "shop_ad_config").single();
+    if (data?.value) {
+      setShopAdConfig(data.value as any);
+    }
   };
 
   const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription") => {
@@ -164,7 +190,7 @@ export default function Shop() {
   const handlePowerUpPurchase = async (powerUp: typeof powerUps[0]) => {
     if (!profile) return;
     if ((profile.diamonds || 0) < powerUp.diamondCost) {
-      toast({ title: "Not enough diamonds", description: `You need ${powerUp.diamondCost} 💎 but have ${profile.diamonds || 0}.`, variant: "destructive" });
+      setNeedDiamondsPrompt({ needed: powerUp.diamondCost, have: profile.diamonds || 0, name: powerUp.name });
       return;
     }
     setPurchasing(powerUp.id);
@@ -193,6 +219,29 @@ export default function Shop() {
     setPurchasing(null);
   };
 
+  const scrollToDiamonds = () => {
+    setNeedDiamondsPrompt(null);
+    setTimeout(() => {
+      diamondSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const handleAdminGrantDiamonds = async () => {
+    if (!profile) return;
+    const amount = parseInt(adminDiamondAmount) || 0;
+    if (amount <= 0) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ diamonds: (profile.diamonds || 0) + amount })
+      .eq("id", profile.id);
+    if (error) {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    } else {
+      setProfile({ ...profile, diamonds: (profile.diamonds || 0) + amount });
+      toast({ title: `+${amount} 💎 granted`, description: `You now have ${(profile.diamonds || 0) + amount} diamonds.` });
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen" />;
   }
@@ -216,6 +265,65 @@ export default function Shop() {
             <span className="text-xs sm:text-sm font-bold text-primary">{(profile?.diamonds || 0).toLocaleString()}</span>
           </motion.div>
         </div>
+
+        {/* Admin Diamond Grant */}
+        {isAdmin && (
+          <div className="mb-4">
+            <Button variant="outline" size="sm" onClick={() => setShowAdminGrant(!showAdminGrant)} className="gap-1.5 text-xs border-primary/30 text-primary">
+              <Wrench className="h-3 w-3" /> Admin: Grant Diamonds
+            </Button>
+            <AnimatePresence>
+              {showAdminGrant && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <div className="flex items-center gap-2 mt-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={adminDiamondAmount}
+                      onChange={e => setAdminDiamondAmount(e.target.value)}
+                      className="w-32 h-8 text-sm"
+                      placeholder="Amount"
+                    />
+                    <Button size="sm" onClick={handleAdminGrantDiamonds} className="h-8 gap-1">
+                      <Plus className="h-3 w-3" /> Grant to myself
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Configurable Shop Ad Banner */}
+        {shopAdConfig?.enabled && !profile?.is_pro && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-card p-3 sm:p-4 cursor-pointer"
+            onClick={() => {
+              if (shopAdConfig.type === "pro") {
+                setShowProAd(true);
+              } else {
+                diamondSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0"
+              >
+                {shopAdConfig.type === "pro" ? <Crown className="h-5 w-5 text-primary" /> : <Diamond className="h-5 w-5 text-primary" />}
+              </motion.div>
+              <div>
+                <p className="text-sm font-bold text-foreground">{shopAdConfig.headline || "Upgrade to Pro!"}</p>
+                <p className="text-xs text-muted-foreground">{shopAdConfig.subtext || "Unlock themes, animations, and more."}</p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
+            </div>
+          </motion.div>
+        )}
 
         {/* 1. Power-Ups (moved to top) */}
         <section className="mb-6 sm:mb-10">
@@ -266,7 +374,7 @@ export default function Shop() {
                         size="sm"
                         className="h-6 px-2 text-[10px] sm:h-9 sm:px-3 sm:text-sm"
                         onClick={() => handlePowerUpPurchase(pu)}
-                        disabled={purchasing === pu.id || !canAfford}
+                        disabled={purchasing === pu.id}
                       >
                         {purchasing === pu.id ? "…" : canAfford ? "Buy" : "Need 💎"}
                       </Button>
@@ -279,7 +387,7 @@ export default function Shop() {
         </section>
 
         {/* 2. Buy Diamonds (middle) */}
-        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6 sm:mb-10">
+        <motion.section ref={diamondSectionRef} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6 sm:mb-10">
           <h2 className="text-sm sm:text-lg font-bold text-foreground flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-4">
             <Diamond className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-primary" /> Buy Diamonds
           </h2>
@@ -387,24 +495,85 @@ export default function Shop() {
                   </Button>
                 </div>
               ) : (
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Button
+                      variant="hero"
+                      size="lg"
+                      className="w-full sm:w-auto gap-1.5 sm:gap-2 h-9 text-xs sm:h-12 sm:text-base"
+                      onClick={() => handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription")}
+                      disabled={purchasing === STRIPE_PRO_PRICE_ID}
+                    >
+                      <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {purchasing === STRIPE_PRO_PRICE_ID ? "Opening checkout…" : "Start Free Trial — $9.99/mo"}
+                      <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    </Button>
+                  </motion.div>
                   <Button
-                    variant="hero"
-                    size="lg"
-                    className="w-full sm:w-auto gap-1.5 sm:gap-2 h-9 text-xs sm:h-12 sm:text-base"
-                    onClick={() => handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription")}
-                    disabled={purchasing === STRIPE_PRO_PRICE_ID}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-xs sm:h-12 sm:text-sm gap-1.5"
+                    onClick={() => setShowProAd(true)}
                   >
-                    <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    {purchasing === STRIPE_PRO_PRICE_ID ? "Opening checkout…" : "Start Free Trial — $9.99/mo"}
-                    <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Preview Pro
                   </Button>
-                </motion.div>
+                </div>
               )}
             </div>
           </div>
         </motion.section>
       </div>
+
+      {/* Insufficient Diamonds Prompt */}
+      <AnimatePresence>
+        {needDiamondsPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
+            onClick={() => setNeedDiamondsPrompt(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="rounded-2xl border border-border bg-card p-5 sm:p-6 max-w-sm w-full shadow-xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center mb-4">
+                <motion.div
+                  animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.2, 1] }}
+                  transition={{ duration: 0.6 }}
+                  className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/20 mb-3"
+                >
+                  <Diamond className="h-7 w-7 text-primary" />
+                </motion.div>
+                <h3 className="text-lg font-extrabold text-foreground">Need More Diamonds!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <span className="font-bold text-foreground">{needDiamondsPrompt.name}</span> costs{" "}
+                  <span className="text-primary font-bold">{needDiamondsPrompt.needed} 💎</span> but you only have{" "}
+                  <span className="text-primary font-bold">{needDiamondsPrompt.have} 💎</span>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Button className="w-full gap-2" onClick={scrollToDiamonds}>
+                  <Diamond className="h-4 w-4" /> Buy Diamonds
+                </Button>
+                <Button variant="ghost" className="w-full text-sm" onClick={() => setNeedDiamondsPrompt(null)}>
+                  Maybe later
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pro Cinematic Ad */}
+      <AnimatePresence>
+        {showProAd && <ProCinematicAd onClose={() => setShowProAd(false)} onSubscribe={() => { setShowProAd(false); handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription"); }} />}
+      </AnimatePresence>
     </div>
   );
 }
