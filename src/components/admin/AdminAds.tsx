@@ -597,6 +597,35 @@ export default function AdminAds() {
                       </div>
                     </div>
 
+                    {/* Row 1.5: Ad Source + AdSense Slot */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground font-semibold">Ad Source</Label>
+                        <Select value={config.ad_source || "custom"} onValueChange={(v) => updatePlacement(key, { ad_source: v })}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {AD_SOURCES.map(s => <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-[9px] text-muted-foreground">
+                          {AD_SOURCES.find(s => s.value === (config.ad_source || "custom"))?.description}
+                        </span>
+                      </div>
+                      {(config.ad_source === "adsense" || config.ad_source === "hybrid") && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground font-semibold">AdSense Slot ID</Label>
+                          <Input
+                            placeholder="1234567890"
+                            value={config.adsense_slot || ""}
+                            onChange={(e) => setSettings(s => ({ ...s, placements: { ...s.placements, [key]: { ...s.placements[key], adsense_slot: e.target.value } } }))}
+                            onBlur={() => save(settings)}
+                            className="h-7 text-xs font-mono"
+                          />
+                          <span className="text-[9px] text-muted-foreground">From AdSense → Ads → By ad unit</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Row 2: Size + Frequency + Cooldown */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-1">
