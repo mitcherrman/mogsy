@@ -91,6 +91,9 @@ export default function SwipePreset() {
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
   const [rankChanges, setRankChanges] = useState<Map<string, { old: number; new: number }>>(new Map());
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [myRewinds, setMyRewinds] = useState(0);
+  const [myShields, setMyShields] = useState(0);
+  const [myReveals, setMyReveals] = useState(0);
   const { playSwipeSound } = useSwipeSound();
   const { playAnimationSound, preloadSounds } = useAnimationSound();
   const { swipeAnimation, setSwipeAnimation, logUsage } = useCardAnimation();
