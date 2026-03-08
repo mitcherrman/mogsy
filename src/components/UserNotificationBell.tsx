@@ -115,6 +115,71 @@ export default function UserNotificationBell() {
     setLoaded(true);
   };
 
+  const loadFriendNotifs = async () => {
+    if (!user) return;
+    // Get my profile
+    const { data: myProfile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+    if (!myProfile) return;
+
+    // Pending requests TO me
+    const { data: pendingRows } = await supabase
+      .from("friendships")
+      .select("id, requester_id, created_at")
+      .eq("addressee_id", myProfile.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    // Recently accepted (where I was the requester)
+    const { data: acceptedRows } = await supabase
+      .from("friendships")
+      .select("id, addressee_id, created_at")
+      .eq("requester_id", myProfile.id)
+      .eq("status", "accepted")
+      .order("updated_at", { ascending: false })
+      .limit(5);
+
+    const otherIds = [
+      ...(pendingRows || []).map((r) => r.requester_id),
+      ...(acceptedRows || []).map((r) => r.addressee_id),
+    ];
+
+    let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+    if (otherIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("public_profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", otherIds);
+      (profiles || []).forEach((p) => {
+        if (p.id) profileMap.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
+      });
+    }
+
+    const items: FriendNotif[] = [
+      ...(pendingRows || []).map((r) => ({
+        id: `fr-${r.id}`,
+        type: "request" as const,
+        profile_id: r.requester_id,
+        display_name: profileMap.get(r.requester_id)?.display_name || "Someone",
+        avatar_url: profileMap.get(r.requester_id)?.avatar_url || null,
+        friendship_id: r.id,
+        created_at: r.created_at,
+      })),
+      ...(acceptedRows || []).map((r) => ({
+        id: `fa-${r.id}`,
+        type: "accepted" as const,
+        profile_id: r.addressee_id,
+        display_name: profileMap.get(r.addressee_id)?.display_name || "Someone",
+        avatar_url: profileMap.get(r.addressee_id)?.avatar_url || null,
+        friendship_id: r.id,
+        created_at: r.created_at,
+      })),
+    ];
+
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setFriendNotifs(items);
+  };
+
   const markRead = async (id: string) => {
     if (!user || readIds.has(id)) return;
     setReadIds(prev => new Set(prev).add(id));
