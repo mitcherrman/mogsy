@@ -136,6 +136,20 @@ export function useAnimationSound() {
     } catch {}
   }, []);
 
+  const playChopSound = useCallback(async () => {
+    try {
+      const ctx = getCtx();
+      if (!chopBufferRef.current) await loadChopSound();
+      if (!chopBufferRef.current) return;
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.buffer = chopBufferRef.current;
+      source.connect(gain); gain.connect(ctx.destination);
+      source.start();
+    } catch {}
+  }, [loadChopSound]);
+
   const playAnimationSound = useCallback((animationId: string) => {
     switch (animationId) {
       case "slice": playRipSound(); break;
@@ -143,9 +157,10 @@ export function useAnimationSound() {
       case "burn": playBurnSound(); break;
       case "vaporize": playVaporizeSound(); break;
       case "crush": playCrushSound(); break;
+      case "chop": playChopSound(); break;
       default: break;
     }
-  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound]);
+  }, [playRipSound, playShatterSound, playBurnSound, playVaporizeSound, playCrushSound, playChopSound]);
 
   return { playAnimationSound, preloadSounds: loadRipSound };
 }

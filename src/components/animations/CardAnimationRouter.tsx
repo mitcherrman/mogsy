@@ -28,8 +28,9 @@ export default function CardAnimationRouter({ animationId, winnerSide, items, on
       {animationId === "burn" && <BurnAnimation {...commonProps} />}
       {animationId === "vaporize" && <VaporizeAnimation {...commonProps} />}
       {animationId === "crush" && <CrushAnimation {...commonProps} />}
+      {animationId === "chop" && <ChopAnimation {...commonProps} />}
       {animationId === "default" && <DefaultFadeAnimation {...commonProps} />}
-      {!["slice", "shatter", "burn", "vaporize", "crush", "default"].includes(animationId) && (
+      {!["slice", "shatter", "burn", "vaporize", "crush", "chop", "default"].includes(animationId) && (
         <DefaultFadeAnimation {...commonProps} />
       )}
     </Suspense>
