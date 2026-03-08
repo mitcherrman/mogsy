@@ -351,9 +351,9 @@ export default function Play() {
       // Desktop: simple flex wrap, no pyramid
       if (!isMobile) {
         return (
-          <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
+          <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className={`flex flex-col ${desktopAlign} gap-5`}>
             <RectPill onClick={() => handleBubbleClick(() => setSelectedCategory(null))} imageUrl={catImage} label={selectedCategory} variant="accent" />
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className={`flex flex-wrap ${desktopAlign} justify-center gap-3`}>
               {allItems.map((entry, i) => {
                 if (entry.type === 'subcategory') {
                   const isLol = entry.name === "League of Legends";
