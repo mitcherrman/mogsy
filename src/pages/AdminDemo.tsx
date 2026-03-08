@@ -812,7 +812,10 @@ export default function AdminDemo() {
             </div>
 
             {/* Bottom bar */}
-            <div className="flex items-center justify-center gap-4 px-4 py-3 border-t border-border bg-card/80 backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-3 px-4 py-3 border-t border-border bg-card/80 backdrop-blur-sm">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(false)}>
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </Button>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
                 <Camera className="h-3.5 w-3.5" /> Screenshot
               </Button>
