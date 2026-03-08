@@ -412,17 +412,27 @@ export default function SwipePreset() {
         const challenger = getGauntletChallenger(updatedWinner);
         const winnerWasLeft = pair[0].id === winner.id;
         setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
-        if (!isPro && newCount % AD_INTERVAL === 0) {
+        const adType = shouldShowAd(newCount, isPro);
+        if (adType === "in_swipe") {
+          const creative = getRandomCreative();
+          if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+        } else if (adType === "popup") {
           setShowAd(true);
         }
       } else {
         const nextIndex = currentIndex + 1;
         if (nextIndex >= matchups.length) {
           setFinished(true);
-        } else if (!isPro && newCount % AD_INTERVAL === 0) {
-          setShowAd(true);
         } else {
-          setCurrentIndex(nextIndex);
+          const adType = shouldShowAd(newCount, isPro);
+          if (adType === "in_swipe") {
+            const creative = getRandomCreative();
+            if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+          } else if (adType === "popup") {
+            setShowAd(true);
+          } else {
+            setCurrentIndex(nextIndex);
+          }
         }
       }
 
