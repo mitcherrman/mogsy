@@ -399,6 +399,17 @@ export default function UserProfile() {
                 "{profile.status_message}"
               </motion.p>
             )}
+
+            {/* Friend Button */}
+            {user && profileId && (
+              <FriendButton
+                profileId={profileId}
+                friendStatus={friendStatus}
+                friendshipId={friendshipId}
+                refreshFriend={refreshFriend}
+                userId={user.id}
+              />
+            )}
           </motion.div>
         </div>
       </div>
