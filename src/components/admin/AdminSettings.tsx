@@ -14,6 +14,8 @@ interface SettingsState {
   default_diamonds: number;
   allow_anonymous_browsing: boolean;
   favorites_mode: "auto" | "manual";
+  swipe_timer_enabled: boolean;
+  swipe_timer_duration: number;
 }
 
 export default function AdminSettings() {
