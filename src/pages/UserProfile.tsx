@@ -145,6 +145,9 @@ export default function UserProfile() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [topComment, setTopComment] = useState<{ content: string; league_name: string } | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [bestCompeteTier, setBestCompeteTier] = useState<string>("unranked");
+  const [tierConfig, setTierConfig] = useState<TierConfig[]>(DEFAULT_TIER_CONFIG);
+  const [rankEnabled, setRankEnabled] = useState(true);
   const { status: friendStatus, friendshipId, refresh: refreshFriend } = useFriendStatus(profileId);
 
   useEffect(() => {
