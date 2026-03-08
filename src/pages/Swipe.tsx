@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
@@ -17,6 +17,7 @@ import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
+import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,12 @@ export default function Swipe() {
   const pendingChoose = useRef<(() => void) | null>(null);
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
+  const [readyDelay, setReadyDelay] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReadyDelay(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleTimerTimeout = useCallback(() => {
     if (!pair || sliceWinner !== null) return;
@@ -85,7 +92,7 @@ export default function Swipe() {
     setMatchCount(c => c + 1);
   }, [pair, sliceWinner, profiles, gauntletMode, gauntletChampion]);
 
-  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null);
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null || readyDelay);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
 
@@ -271,7 +278,7 @@ export default function Swipe() {
 
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
-      if (!pair || sliceWinner !== null) return;
+      if (!pair || sliceWinner !== null || readyDelay) return;
       // Check for animation override from league rules
       const override = getAnimationOverride(matchCount + 1, animRules);
       const animToUse = override || swipeAnimation;
@@ -282,7 +289,7 @@ export default function Swipe() {
       setSliceWinner(winnerIndex);
       pendingChoose.current = () => executeChoice(winnerIndex);
     },
-    [pair, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
+    [pair, sliceWinner, readyDelay, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
   );
 
   const handleSliceComplete = useCallback(() => {
@@ -361,7 +368,8 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] px-3 py-3 flex flex-col">
+      <div className="min-h-[calc(100dvh-4rem)] px-3 py-3 flex flex-col relative">
+        <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-2">

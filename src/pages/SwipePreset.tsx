@@ -21,6 +21,7 @@ import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { useScreenshot } from "@/hooks/useScreenshot";
 import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
+import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 
@@ -90,6 +91,12 @@ export default function SwipePreset() {
   const [sliceWinner, setSliceWinner] = useState<0 | 1 | null>(null);
   const { rules: animRules } = useLeagueAnimationRules(leagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
+  const [readyDelay, setReadyDelay] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReadyDelay(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
   const pendingAction = useRef<(() => void) | null>(null);
@@ -124,7 +131,7 @@ export default function SwipePreset() {
     setMatchCount(c => c + 1);
   }, [items, sliceWinner, gauntletMode, gauntletChampion, currentIndex, matchups.length]);
 
-  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null);
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || finished || !pair || sliceWinner !== null || readyDelay);
 
 
   // Apply theme immediately from navigation state (before data loads) to prevent flash
@@ -423,7 +430,7 @@ export default function SwipePreset() {
 
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
-      if (!pair || chosen !== null || sliceWinner !== null) return;
+      if (!pair || chosen !== null || sliceWinner !== null || readyDelay) return;
       setChosen(winnerIndex);
       // Check for animation override from league rules
       const override = getAnimationOverride(matchCount + 1, animRules);
@@ -435,7 +442,7 @@ export default function SwipePreset() {
       setSliceWinner(winnerIndex);
       pendingAction.current = () => executeChoice(winnerIndex);
     },
-    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
+    [pair, chosen, sliceWinner, readyDelay, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
   );
 
   const handleSliceComplete = useCallback(() => {
@@ -569,7 +576,8 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] px-3 py-2 md:px-6 md:py-4 flex flex-col">
+      <div className="min-h-[calc(100dvh-4rem)] px-3 py-2 md:px-6 md:py-4 flex flex-col relative">
+        <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
         <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
           <div className="flex items-center gap-2 mb-1.5">

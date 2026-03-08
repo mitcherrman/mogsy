@@ -1,37 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Initial Swipe Lock / "Get Ready" Feature
+### The Pattern Difference
 
-**Concept**: When a user enters a swiping game (first render of SwipePreset or SwipeLeagues), block all interactions for 1.5s with a visual countdown or "Get Ready" overlay.
+**SliceBattleAnimation (correct):**
 
-### Timing Thoughts
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-1.5s feels right — long enough to orient the user but short enough to not frustrate. Could also consider:
-- **1.0s** if users are returning/experienced
-- **2.0s** if there's a visual countdown (3-2-1 style)
-- Making it configurable in `app_settings` so you can tune it without code changes
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-### Similar Features Worth Considering
-
-1. **Countdown overlay** — Instead of just locking, show a "3...2...1...GO!" or a pulsing "Get Ready" text with animation. More engaging than a blank lock.
-
-2. **First-swipe-only vs every-entry** — Lock only on the very first matchup load per session, or every time they enter a league? First-time-only is less annoying for power users.
-
-3. **Minimum view time per card** — Prevent instant spam-swiping by requiring each matchup to be visible for at least 0.5-1s before a vote registers. Encourages actually looking at the cards.
-
-4. **Anti-spam cooldown** — After X rapid swipes in a row (e.g., 10 swipes under 5s), briefly slow them down with a "Slow down!" message.
-
-5. **Streak/combo indicator** — After a sequence of swipes, show a streak counter or combo animation to gamify the experience.
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
 ### Implementation Plan
 
-1. **Add a `readyDelay` state** to `SwipePreset` and `SwipeLeagues` pages — starts as `true`, flips to `false` after 1.5s via `useEffect` + `setTimeout`
-2. **Create a `SwipeReadyOverlay` component** — full-screen overlay with a short animation/text (e.g., "GET READY" that fades out), rendered when `readyDelay` is true
-3. **Disable swipe interactions** — pass `readyDelay` as a `disabled` prop to the swipe card area, preventing clicks/swipes while active
-4. **Also pause the swipe timer** — pass `readyDelay` into `useSwipeTimer`'s `paused` parameter so the countdown doesn't tick during the lock
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-Files to modify:
-- `src/pages/SwipePreset.tsx` — add ready state + overlay
-- `src/pages/SwipeLeagues.tsx` — same
-- New: `src/components/SwipeReadyOverlay.tsx` — the visual overlay component
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
