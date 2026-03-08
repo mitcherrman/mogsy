@@ -79,11 +79,10 @@ export default function AdminRankSettings() {
     setSaving(true);
     const { error } = await supabase
       .from("app_settings")
-      .update({ value: { enabled, tiers }, updated_at: new Date().toISOString() })
+      .update({ value: { enabled, tiers } as any, updated_at: new Date().toISOString() })
       .eq("key", "rank_tiers");
 
     if (error) {
-      // Try insert if not exists
       await supabase.from("app_settings").insert({ key: "rank_tiers", value: { enabled, tiers } as any });
     }
     toast.success("Rank settings saved");
