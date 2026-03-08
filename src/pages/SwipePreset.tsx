@@ -271,9 +271,6 @@ export default function SwipePreset() {
     return others[Math.floor(Math.random() * others.length)];
   }, [items]);
 
-  const pair = gauntletMode
-    ? gauntletPair
-    : (currentIndex < matchups.length ? matchups[currentIndex] : null);
   const progress = matchups.length > 0 ? (currentIndex / matchups.length) * 100 : 0;
 
   const rankMap = useMemo(() => {
