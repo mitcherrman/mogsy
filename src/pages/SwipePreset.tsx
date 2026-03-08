@@ -422,7 +422,7 @@ export default function SwipePreset() {
     (winnerIndex: 0 | 1) => {
       if (!pair || chosen !== null || sliceWinner !== null) return;
       setChosen(winnerIndex);
-      if (swipeAnimation !== "chop") playSwipeSound();
+      if (swipeAnimation === "default") playSwipeSound();
       playAnimationSound(swipeAnimation);
       logUsage(swipeAnimation, "swipe");
       setSliceWinner(winnerIndex);
