@@ -22,6 +22,13 @@ export default function FloatingFriendsButton() {
   const navigate = useNavigate();
   const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId } = useFriends();
   const [open, setOpen] = useState(false);
+
+  // Listen for mobile nav trigger
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("open-friends-panel", handler);
+    return () => window.removeEventListener("open-friends-panel", handler);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
