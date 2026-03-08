@@ -1,43 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Plan: Desktop Layout View Toggle (5 modes)
+### The Pattern Difference
 
-### Goal
-Add a toggle in the Play page header (desktop only) that lets you switch between 5 layout modes for subcategory items. The selected mode persists via localStorage.
+**SliceBattleAnimation (correct):**
 
-### Layout Modes
-1. **Bubbles** — Original circular bubbles (the `Bubble` component, pyramid-style)
-2. **Pills** — Current rectangular rounded pills (`RectPill`)
-3. **Grid Cards** — Fixed-width cards in a 3-column grid, uniform size, image thumbnail + centered label
-4. **List** — Full-width horizontal rows with icon/image on left, name on right
-5. **Tiles** — Equal-sized square tiles with image background and overlaid label
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-### Changes — `src/pages/Play.tsx`
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-1. **New state + localStorage persistence:**
-   - `type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles"`
-   - `const [desktopLayout, setDesktopLayout] = useState<DesktopLayout>(() => localStorage.getItem("play-desktop-layout") || "pills")`
-   - Sync to localStorage on change
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-2. **Layout toggle UI** (desktop only, next to Animation popover):
-   - Small segmented button group or dropdown with 5 icons (Circle, RectangleHorizontal, LayoutGrid, List, Square) from lucide-react
-   - Compact, fits in the header bar
+### Implementation Plan
 
-3. **New render components** (internal to Play.tsx):
-   - `GridCard` — 160×120px card with image bg, rounded-lg, label overlay, 3-column CSS grid
-   - `ListRow` — Full-width row, h-12, image thumbnail 32×32 on left, label on right, border-b
-   - `TileSquare` — 120×120px square, image bg, label overlay centered
-   - Existing `RectPill` stays for "pills" mode
-   - Existing `Bubble` component used for "bubbles" mode
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
-4. **Refactor item rendering:**
-   - Extract a `renderDesktopItem(item, index)` function that switches on `desktopLayout` to render the correct component
-   - Replace all desktop `RectPill` usages in `renderCategoryContent` and `renderDesktopSubContent` with this function
-   - For "bubbles" mode, use the same `Bubble` component with `size={100}` and flex-wrap layout (not pyramid)
-   - Container layout changes per mode:
-     - bubbles/pills/tiles: `flex flex-wrap gap-3`
-     - grid: `grid grid-cols-3 gap-3`
-     - list: `flex flex-col gap-1 w-full`
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
 
-### No changes to mobile — all layout toggle logic gated behind `!isMobile`.
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
 
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`

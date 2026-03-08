@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
@@ -15,6 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
+type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles";
 
 interface LeagueItem {
   id: string;
@@ -33,6 +34,14 @@ interface PreviewImage {
 const ease = { duration: 0.25, ease: [0.4, 0, 0.2, 1] as const };
 const fadeIn = { initial: { opacity: 0, scale: 0.85 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.85 }, transition: ease };
 
+const LAYOUT_OPTIONS: { id: DesktopLayout; icon: React.ReactNode; label: string }[] = [
+  { id: "bubbles", icon: <Circle className="h-3.5 w-3.5" />, label: "Bubbles" },
+  { id: "pills", icon: <RectangleHorizontal className="h-3.5 w-3.5" />, label: "Pills" },
+  { id: "grid", icon: <LayoutGrid className="h-3.5 w-3.5" />, label: "Grid" },
+  { id: "list", icon: <List className="h-3.5 w-3.5" />, label: "List" },
+  { id: "tiles", icon: <Square className="h-3.5 w-3.5" />, label: "Tiles" },
+];
+
 export default function Play() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,6 +51,15 @@ export default function Play() {
   const { swipeAnimation, setSwipeAnimation, loading: animLoading } = useCardAnimation();
   const [isPro, setIsPro] = useState(false);
   const [animConfig, setAnimConfig] = useState<Record<string, { enabled: boolean; pro_only: boolean }>>({});
+
+  const [desktopLayout, setDesktopLayout] = useState<DesktopLayout>(() => {
+    const stored = localStorage.getItem("play-desktop-layout");
+    return (stored as DesktopLayout) || "pills";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("play-desktop-layout", desktopLayout);
+  }, [desktopLayout]);
 
   useEffect(() => {
     if (user) {
@@ -193,6 +211,145 @@ export default function Play() {
     </div>;
   }
 
+  /* ─── Desktop layout item renderers ─── */
+  const GridCard = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
+    <motion.button
+      onClick={onClick}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...ease, delay }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={`relative flex flex-col items-center justify-center rounded-lg border-2 cursor-pointer select-none overflow-hidden transition-colors w-[160px] h-[120px] ${
+        variant === "accent"
+          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+          : "border-border bg-card text-foreground hover:bg-muted"
+      }`}
+    >
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          <div className="absolute inset-0 bg-black/50" />
+        </>
+      )}
+      <span className={`relative z-10 text-xs font-extrabold tracking-wide leading-tight text-center px-2 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+    </motion.button>
+  );
+
+  const ListRow = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
+    <motion.button
+      onClick={onClick}
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ ...ease, delay }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className={`w-full flex items-center gap-3 px-4 h-12 rounded-lg border cursor-pointer select-none transition-colors ${
+        variant === "accent"
+          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+          : "border-border bg-card text-foreground hover:bg-muted"
+      }`}
+    >
+      {imageUrl ? (
+        <img src={imageUrl} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" loading="lazy" />
+      ) : (
+        <div className={`w-8 h-8 rounded-md flex-shrink-0 ${variant === "accent" ? "bg-primary/10" : "bg-muted"}`} />
+      )}
+      <span className="text-sm font-bold tracking-wide leading-tight text-left line-clamp-1">{label}</span>
+    </motion.button>
+  );
+
+  const TileSquare = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
+    <motion.button
+      onClick={onClick}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ ...ease, delay }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={`relative flex items-center justify-center rounded-lg border-2 cursor-pointer select-none overflow-hidden transition-colors w-[120px] h-[120px] ${
+        variant === "accent"
+          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+          : "border-border bg-card text-foreground hover:bg-muted"
+      }`}
+    >
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          <div className="absolute inset-0 bg-black/50" />
+        </>
+      )}
+      <span className={`relative z-10 text-xs font-extrabold tracking-wide leading-tight text-center px-2 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+    </motion.button>
+  );
+
+  /* ─── Desktop rectangular pill for sub-sub items ─── */
+  const RectPill = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
+    <motion.button
+      onClick={onClick}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...ease, delay }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={`relative flex items-center gap-3 px-5 py-3 rounded-xl border-2 cursor-pointer select-none overflow-hidden transition-colors ${
+        variant === "accent"
+          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+          : "border-border bg-card text-foreground hover:bg-muted"
+      }`}
+    >
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover rounded-xl" loading="lazy" />
+          <div className="absolute inset-0 bg-black/50 rounded-xl" />
+        </>
+      )}
+      <span className={`relative z-10 text-sm font-extrabold tracking-wide leading-tight text-center line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+    </motion.button>
+  );
+
+  /* ─── Render a single desktop item based on current layout ─── */
+  const renderDesktopItem = (
+    key: string,
+    onClick: () => void,
+    label: string,
+    imageUrl?: string | null,
+    delay?: number,
+    variant?: "card" | "accent"
+  ) => {
+    const props = { key, onClick, imageUrl, label, delay, variant: variant || "card" as const };
+    switch (desktopLayout) {
+      case "bubbles":
+        return (
+          <motion.div key={key} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: delay || 0 }}>
+            <Bubble size={100} onClick={onClick} active={false} variant={variant || "card"} imageUrl={imageUrl}>
+              <span className="text-xs font-extrabold tracking-wide leading-tight text-center px-1 line-clamp-2">{label}</span>
+            </Bubble>
+          </motion.div>
+        );
+      case "pills":
+        return <RectPill {...props} />;
+      case "grid":
+        return <GridCard {...props} />;
+      case "list":
+        return <ListRow {...props} />;
+      case "tiles":
+        return <TileSquare {...props} />;
+    }
+  };
+
+  /* ─── Container classes per layout mode ─── */
+  const getDesktopContainerClass = () => {
+    switch (desktopLayout) {
+      case "grid":
+        return "grid grid-cols-3 gap-3";
+      case "list":
+        return "flex flex-col gap-1 w-full";
+      default:
+        return "flex flex-wrap items-start justify-start gap-3";
+    }
+  };
+
   /* ─── Desktop: renders sub-options inline below top-level bubbles ─── */
   const renderDesktopSubContent = () => {
     if (!expanded) return null;
@@ -233,31 +390,6 @@ export default function Play() {
     return renderCategoryContent();
   };
 
-  /* ─── Desktop rectangular pill for sub-sub items ─── */
-  const RectPill = ({ onClick, imageUrl, label, delay = 0, variant = "card" }: { onClick: () => void; imageUrl?: string | null; label: string; delay?: number; variant?: "card" | "accent" }) => (
-    <motion.button
-      onClick={onClick}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...ease, delay }}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      className={`relative flex items-center gap-3 px-5 py-3 rounded-xl border-2 cursor-pointer select-none overflow-hidden transition-colors ${
-        variant === "accent"
-          ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
-          : "border-border bg-card text-foreground hover:bg-muted"
-      }`}
-    >
-      {imageUrl && (
-        <>
-          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover rounded-xl" loading="lazy" />
-          <div className="absolute inset-0 bg-black/50 rounded-xl" />
-        </>
-      )}
-      <span className={`relative z-10 text-sm font-extrabold tracking-wide leading-tight text-center line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
-    </motion.button>
-  );
-
   /* ─── Shared: category/league drill-down (used by both mobile sub-view and desktop inline) ─── */
   const renderCategoryContent = () => {
     const categoryKeys = Object.keys(currentCategories).sort((a, b) => {
@@ -276,13 +408,11 @@ export default function Play() {
               <span className="text-sm font-extrabold tracking-wide">Swipe</span>
             </Bubble>
           )}
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className={isMobile ? "flex flex-wrap items-center justify-center gap-4" : getDesktopContainerClass()}>
             {categoryKeys.map((cat, i) => {
               const catImage = getCategoryImage(cat);
               if (!isMobile) {
-                return (
-                  <RectPill key={cat} onClick={() => handleBubbleClick(() => onCatSelect(cat))} imageUrl={catImage} label={cat} delay={i * 0.04} />
-                );
+                return renderDesktopItem(cat, () => handleBubbleClick(() => onCatSelect(cat)), cat, catImage, i * 0.04);
               }
               return (
                 <motion.div key={cat} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
@@ -315,11 +445,11 @@ export default function Play() {
             ) : (
               <RectPill onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage} label={selectedSubcategory} variant="accent" />
             )}
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className={isMobile ? "flex flex-wrap items-center justify-center gap-4" : getDesktopContainerClass()}>
               {subLeagues.map((league, i) => {
                 const leagueImage = getLeagueImage(league.id);
                 if (!isMobile) {
-                  return <RectPill key={league.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} imageUrl={leagueImage} label={league.name} delay={i * 0.04} variant={isLol ? "accent" : "card"} />;
+                  return renderDesktopItem(league.id, () => handleBubbleClick(() => handleLeagueSelect(league)), league.name, leagueImage, i * 0.04, isLol ? "accent" : "card");
                 }
                 return (
                   <motion.div key={league.id} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
@@ -346,19 +476,19 @@ export default function Play() {
         ...sortedLeagues.map(l => ({ type: 'league' as const, id: l.id, name: l.name, league: l })),
       ];
 
-      // Desktop: simple flex wrap, no pyramid
+      // Desktop: use layout-dependent rendering
       if (!isMobile) {
         return (
           <motion.div key={`cat-${selectedCategory}`} {...fadeIn} className="flex flex-col items-center gap-5">
             <RectPill onClick={() => handleBubbleClick(() => setSelectedCategory(null))} imageUrl={catImage} label={selectedCategory} variant="accent" />
-            <div className="flex flex-wrap items-start justify-start gap-3">
+            <div className={getDesktopContainerClass()}>
               {allItems.map((entry, i) => {
                 if (entry.type === 'subcategory') {
                   const isLol = entry.name === "League of Legends";
-                  return <RectPill key={entry.id} onClick={() => handleBubbleClick(() => setSelectedSubcategory(entry.name))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : undefined} label={`${isLol ? "⚔️" : "📁"} ${entry.name}`} delay={i * 0.04} />;
+                  return renderDesktopItem(entry.id, () => handleBubbleClick(() => setSelectedSubcategory(entry.name)), `${isLol ? "⚔️" : "📁"} ${entry.name}`, isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : undefined, i * 0.04);
                 }
                 const leagueImage = getLeagueImage(entry.id);
-                return <RectPill key={entry.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(entry.league!))} imageUrl={leagueImage} label={entry.name} delay={i * 0.04} />;
+                return renderDesktopItem(entry.id, () => handleBubbleClick(() => handleLeagueSelect(entry.league!)), entry.name, leagueImage, i * 0.04);
               })}
             </div>
           </motion.div>
@@ -423,11 +553,11 @@ export default function Play() {
             <span className="text-sm font-extrabold tracking-wide">Swipe</span>
           </Bubble>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className={isMobile ? "flex flex-wrap items-center justify-center gap-4" : getDesktopContainerClass()}>
           {allLeagues.map((league, i) => {
             const leagueImage = getLeagueImage(league.id);
             if (!isMobile) {
-              return <RectPill key={league.id} onClick={() => handleBubbleClick(() => handleLeagueSelect(league))} imageUrl={leagueImage} label={league.name} delay={i * 0.04} />;
+              return renderDesktopItem(league.id, () => handleBubbleClick(() => handleLeagueSelect(league)), league.name, leagueImage, i * 0.04);
             }
             return (
               <motion.div key={league.id} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...ease, delay: i * 0.04 }}>
@@ -557,6 +687,25 @@ export default function Play() {
             <Button variant="outline" size="sm" onClick={() => navigate(expanded === "collections" ? "/leagues/collections" : "/leagues/compete")} className="gap-1.5 h-8 text-xs">
               <Globe className="h-3.5 w-3.5" /> Leaderboard
             </Button>
+          )}
+          {/* Desktop layout toggle */}
+          {!isMobile && subExpanded && (
+            <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50">
+              {LAYOUT_OPTIONS.map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setDesktopLayout(opt.id)}
+                  title={opt.label}
+                  className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
+                    desktopLayout === opt.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
           )}
           {user && !animLoading && (
             <Popover>
