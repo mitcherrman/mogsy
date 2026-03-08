@@ -77,6 +77,7 @@ export default function SwipePreset() {
   const [loading, setLoading] = useState(true);
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
   const [showAd, setShowAd] = useState(false);
+  const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [finished, setFinished] = useState(false);
   const [showElo, setShowElo] = useState(true);
