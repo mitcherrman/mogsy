@@ -125,7 +125,7 @@ export default function Leagues() {
               {league.type === "user" && (
                 <>
                   <TierBadge tier={getTierFromElo(league.elo)} />
-                  <span>ELO {league.elo}</span>
+                  <span>Aura {league.elo}</span>
                   <span>·</span>
                 </>
               )}
