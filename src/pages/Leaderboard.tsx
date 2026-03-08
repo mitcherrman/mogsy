@@ -300,7 +300,7 @@ export default function Leaderboard() {
             </div>
             <div className="text-right">
               <div className={`text-lg font-black ${getTierColor(entry.tier)}`}>{entry.elo}</div>
-              <div className="text-xs text-muted-foreground">ELO</div>
+              <div className="text-xs text-muted-foreground">AURA</div>
             </div>
           </motion.div>
         );
