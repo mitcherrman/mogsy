@@ -129,7 +129,10 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
                 size="sm"
                 variant="outline"
                 className="flex-1 text-xs h-7"
-                onClick={() => window.open(creative.destination_url, "_blank")}
+                onClick={() => {
+                  logAdEvent({ eventType: "cta_click", creativeId: creative.id, placement, adMode: "in_swipe", adSource, profileId });
+                  window.open(creative.destination_url, "_blank");
+                }}
               >
                 <ExternalLink className="h-3 w-3 mr-1" /> {creative.cta_text}
               </Button>
