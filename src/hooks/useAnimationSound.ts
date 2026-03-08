@@ -199,6 +199,10 @@ export function useAnimationSound() {
         const s2 = ctx.createBufferSource();
         const g2 = ctx.createGain();
         g2.gain.value = 0.6;
+        // Fade out over the last 0.15 seconds
+        const fadeStart = ctx.currentTime + 0.15 + Math.max(0, trimmed - 0.15);
+        g2.gain.setValueAtTime(0.6, fadeStart);
+        g2.gain.linearRampToValueAtTime(0, fadeStart + 0.15);
         s2.buffer = doakesBufferRef.current;
         s2.connect(g2); g2.connect(ctx.destination);
         s2.start(ctx.currentTime + 0.15, 0, trimmed);
