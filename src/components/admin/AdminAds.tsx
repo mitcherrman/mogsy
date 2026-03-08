@@ -183,6 +183,7 @@ export default function AdminAds() {
       } else {
         setSettings({
           global_enabled: val?.enabled ?? true,
+          adsense_client_id: val?.adsense_client_id ?? "",
           placements: {
             ...defaultSettings.placements,
             swipe: {
