@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Home, Play, User, Diamond, ChevronRight } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight, Users, Palette } from "lucide-react";
+import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
