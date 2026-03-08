@@ -24,6 +24,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { toast } from "sonner";
 
 type DemoMode = "swipe-collections" | "swipe-users" | "aura-check";
@@ -90,6 +91,34 @@ export default function AdminDemo() {
   const [searchTarget, setSearchTarget] = useState<"a" | "b" | null>(null);
 
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
+  const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+
+  // Override the sitewide theme on <html> with the demo-selected theme
+  useEffect(() => {
+    const root = document.documentElement;
+    // Save current theme classes to restore later
+    const savedClasses = root.className;
+
+    // Remove existing theme classes
+    root.className = root.className.replace(/theme-\S+/g, "").trim();
+
+    if (themeId === "default") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", prefersDark);
+    } else {
+      root.classList.add("dark");
+      root.classList.add(`theme-${themeId}`);
+    }
+
+    return () => {
+      // Restore original theme on unmount
+      root.className = root.className.replace(/theme-\S+/g, "").trim();
+      if (sitewideThemeId && sitewideThemeId !== "default") {
+        root.classList.add("dark");
+        root.classList.add(`theme-${sitewideThemeId}`);
+      }
+    };
+  }, [themeId, sitewideThemeId]);
 
   const searchItems = useCallback(async (query: string) => {
     if (!query || query.length < 2) { setSearchResults([]); return; }
@@ -631,7 +660,7 @@ export default function AdminDemo() {
   );
 
   return (
-    <div className="min-h-screen px-3 py-4">
+    <div className="min-h-screen px-3 py-4" style={themeStyle}>
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
