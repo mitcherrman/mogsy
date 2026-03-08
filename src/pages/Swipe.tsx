@@ -441,11 +441,6 @@ export default function Swipe() {
               >
                 <Camera className="h-4 w-4" />
               </Button>
-              {lastMatch && myRewinds > 0 && (
-                <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-8 text-xs">
-                  <Undo2 className="h-3.5 w-3.5" /> {myRewinds}
-                </Button>
-              )}
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
