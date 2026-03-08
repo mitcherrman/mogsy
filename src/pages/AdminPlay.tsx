@@ -292,7 +292,7 @@ export default function AdminPlay() {
     toast.success("Preset deleted");
   };
 
-  const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null }) => {
+  const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null; coverItemId?: string | null }) => {
     if (!editingItem) return;
     const { itemType, itemKey } = editingItem;
 
@@ -304,12 +304,12 @@ export default function AdminPlay() {
     } else if (itemType === "category") {
       setConfig(prev => ({
         ...prev,
-        categories: prev.categories.map(c => c.key === itemKey ? { ...c, hidden: updates.hidden, customLabel: updates.customLabel } : c),
+        categories: prev.categories.map(c => c.key === itemKey ? { ...c, hidden: updates.hidden, customLabel: updates.customLabel, coverItemId: updates.coverItemId !== undefined ? updates.coverItemId : c.coverItemId } : c),
       }));
     } else {
       setConfig(prev => ({
         ...prev,
-        leagues: prev.leagues.map(l => l.id === itemKey ? { ...l, hidden: updates.hidden, customLabel: updates.customLabel } : l),
+        leagues: prev.leagues.map(l => l.id === itemKey ? { ...l, hidden: updates.hidden, customLabel: updates.customLabel, coverItemId: updates.coverItemId !== undefined ? updates.coverItemId : l.coverItemId } : l),
       }));
     }
     hasUnsavedChanges.current = true;
