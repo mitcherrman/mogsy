@@ -550,7 +550,7 @@ export default function EloCheck() {
                                       transition={{ delay: 0.2 }}
                                       className="mt-2 rounded-full bg-background/80 backdrop-blur-sm px-3 py-1"
                                     >
-                                      <span className="text-sm font-bold text-foreground">Aura: {item.elo}</span>
+                                      <span className="text-sm font-bold text-foreground"><span className="uppercase tracking-wider">Aura</span>: {item.elo}</span>
                                     </motion.div>
                                   </motion.div>
                                 )}

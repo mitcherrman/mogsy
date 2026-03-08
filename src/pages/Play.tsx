@@ -556,7 +556,7 @@ export default function Play() {
             <div className="flex flex-col items-center gap-2">
               <Bubble size={100} onClick={() => handleBubbleClick(() => navigate("/elo-check"))} active={false} variant="accent">
                 <Zap className="h-7 w-7" />
-                <span className="text-xs font-extrabold tracking-wide">Aura Check</span>
+                <span className="text-xs font-extrabold tracking-wide"><span className="uppercase tracking-wider">Aura</span> Check</span>
               </Bubble>
               <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
             </div>

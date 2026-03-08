@@ -647,7 +647,7 @@ export default function Home() {
                     </div>
                     <p className="font-extrabold text-base sm:text-lg text-foreground truncate">{currentBanner.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-sm font-bold text-primary">{currentBanner.elo} Aura</span>
+                      <span className="text-sm font-bold text-primary">{currentBanner.elo} <span className="uppercase tracking-wider">Aura</span></span>
                       <span className="text-xs text-muted-foreground truncate">in {currentBanner.leagueName}</span>
                     </div>
                   </div>

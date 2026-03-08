@@ -97,7 +97,8 @@ export default function NavBanner() {
 
   return (
     <div
-      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60"
+      onClick={() => navigate("/leagues/collections")}
+      className="relative h-9 sm:h-10 flex-1 mx-1 sm:mx-2 overflow-hidden rounded-lg border border-border bg-card/60 cursor-pointer"
     >
       {current && (
         <AnimatePresence mode="wait">
