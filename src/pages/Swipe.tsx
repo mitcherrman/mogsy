@@ -447,7 +447,15 @@ export default function Swipe() {
           </div>
 
           {/* Capturable matchup area */}
-          <MatchupCapture ref={captureRef} leagueName="Swipe On Who Mogs">
+          <MatchupCapture
+            ref={captureRef}
+            leagueName="Swipe On Who Mogs"
+            centerSlot={lastMatch && myRewinds > 0 ? (
+              <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-7 text-xs">
+                <Undo2 className="h-3 w-3" /> {myRewinds}
+              </Button>
+            ) : undefined}
+          >
             {showInSwipeAd ? (
               <motion.div
                 key={`ad-${showInSwipeAd.id}-${matchCount}`}
