@@ -192,6 +192,7 @@ export default function Swipe() {
 
       if (gauntletMode) {
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
         setGauntletChampion(winner);
         setGauntletStreak(prev => {
           if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
@@ -208,8 +209,10 @@ export default function Swipe() {
       } else if (!isPro && newCount % AD_INTERVAL === 0) {
         setShowAd(true);
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
       } else {
         setEloChanges(new Map());
+        setGlobalDirections(new Map());
         setPair(getRandomPair(profiles, [pair[0].id, pair[1].id]));
       }
 
