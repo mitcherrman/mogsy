@@ -1,25 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Plan: Leaderboard Hub — Side-by-Side League Panels
+### The Pattern Difference
 
-### What You Want
-The `/leagues` page should look like the individual leaderboard pages (`/leaderboard/:id`) — large circles with rank, name, tier badge, and aura score — but with all leagues displayed side by side in a 2-column scrollable grid on mobile, fitting to screen on desktop/iPad.
+**SliceBattleAnimation (correct):**
 
-### Changes
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-**`src/pages/Leagues.tsx`** — Redesign `LeagueCard` to match Leaderboard style
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-- Each league card becomes a mini version of the individual leaderboard page:
-  - League name as header
-  - Top 5 entries shown vertically with circle avatars, rank number, name, `TierBadge`, and aura score
-  - Top 3 entries get larger circles (`w-16 h-16`) vs ranks 4-5 (`w-12 h-12`)
-  - Rank 1 shows `Crown` icon instead of number (matching individual leaderboard)
-  - Each entry row mirrors the `renderEntries` layout from `Leaderboard.tsx`
-- Import `TierBadge`, `getTierFromElo`, `getTierColor` from existing utils
-- Keep existing data fetching logic (already fetches top 5 per league)
-- Extend the interface to include `tier` on each entry
-- Grid: `grid-cols-2` on mobile, `md:grid-cols-3 lg:grid-cols-4` on desktop
-- Clicking a card navigates to `/leaderboard/:id` (unchanged)
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-No changes to `Play.tsx` or data fetching — purely a visual redesign of the card component.
+### Implementation Plan
 
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`
