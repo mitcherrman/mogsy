@@ -76,7 +76,8 @@ export default {
   				bronze: 'hsl(30, 60%, 45%)',
   				silver: 'hsl(220, 10%, 65%)',
   				gold: 'hsl(45, 90%, 55%)',
-  				platinum: 'hsl(190, 80%, 60%)'
+  				platinum: 'hsl(190, 80%, 60%)',
+  				diamond: 'hsl(190, 80%, 60%)'
   			}
   		},
   		borderRadius: {
