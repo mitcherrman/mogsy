@@ -186,7 +186,7 @@ export default function Play() {
     else navigate("/swipe");
   };
 
-  const { config: publishedConfig } = usePlayLayout("published");
+  // publishedConfig already declared above
 
   const presetLeagues = leagues.filter((l) => l.type === "preset");
   const userLeagues = leagues.filter((l) => l.type === "user");
