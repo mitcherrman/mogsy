@@ -141,7 +141,7 @@ export default function Swipe() {
       const loser = pair[winnerIndex === 0 ? 1 : 0];
 
       if (globalLeagueId && myProfileId) {
-        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_user_match", {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc("record_dual_user_match", {
           _league_id: globalLeagueId,
           _winner_profile_id: winner.id,
           _loser_profile_id: loser.id,
@@ -149,13 +149,11 @@ export default function Swipe() {
         });
 
         if (rpcError) {
-          console.error("Match RPC error:", rpcError);
+          console.error("Dual match RPC error:", rpcError);
           return;
         }
 
-        const result = rpcResult as { newWinnerElo: number; newLoserElo: number; shieldUsed: boolean };
-        const newWinnerElo = result.newWinnerElo;
-        const finalLoserElo = result.newLoserElo;
+        const result = rpcResult as any;
 
         if (result.shieldUsed) {
           setMyShields((s) => s - 1);
@@ -165,9 +163,20 @@ export default function Swipe() {
         setLastMatch({ winner, loser, prevWinnerElo: winner.elo, prevLoserElo: loser.elo });
 
         setEloChanges(new Map([
-          [winner.id, newWinnerElo - winner.elo],
-          [loser.id, finalLoserElo - loser.elo],
+          [winner.id, result.localWinnerChange],
+          [loser.id, result.localLoserChange],
         ]));
+        setGlobalDirections(new Map([
+          [winner.id, result.globalDirectionWinner as "up" | "down" | "none"],
+          [loser.id, result.globalDirectionLoser as "up" | "down" | "none"],
+        ]));
+        if (countsTowardGlobal === null) {
+          setCountsTowardGlobal(result.countsTowardGlobal);
+        }
+
+        // Still update profile state with global elo for display consistency
+        const newWinnerElo = result.countsTowardGlobal ? winner.elo + Math.abs(result.localWinnerChange) : winner.elo;
+        const finalLoserElo = result.countsTowardGlobal ? loser.elo - Math.abs(result.localLoserChange) : loser.elo;
 
         setProfiles((prev) =>
           prev.map((p) => {
