@@ -418,7 +418,7 @@ export default function Play() {
     // Single category — show league bubbles directly
     const allLeagues = Object.keys(currentCategories).flatMap((cat) => currentCategories[cat]);
     return (
-      <motion.div key="swipe-leagues-direct" {...fadeIn} className="flex flex-col items-center gap-5">
+      <motion.div key="swipe-leagues-direct" {...fadeIn} className={`flex flex-col ${!isMobile ? desktopAlign : "items-center"} gap-5`}>
         {isMobile && (
           <Bubble size={148} onClick={() => handleBubbleClick(() => handleSubToggle("swipe"))} active variant="accent">
             <Shuffle className="h-10 w-10" />
