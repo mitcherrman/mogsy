@@ -578,6 +578,44 @@ export type Database = {
           },
         ]
       }
+      league_animation_rules: {
+        Row: {
+          animation_id: string
+          created_at: string
+          every_n_swipes: number
+          id: string
+          is_enabled: boolean
+          league_id: string
+          sort_order: number
+        }
+        Insert: {
+          animation_id: string
+          created_at?: string
+          every_n_swipes?: number
+          id?: string
+          is_enabled?: boolean
+          league_id: string
+          sort_order?: number
+        }
+        Update: {
+          animation_id?: string
+          created_at?: string
+          every_n_swipes?: number
+          id?: string
+          is_enabled?: boolean
+          league_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_animation_rules_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_memberships: {
         Row: {
           elo: number
@@ -782,6 +820,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      play_layout_config: {
+        Row: {
+          config: Json
+          id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       preset_item_images: {
         Row: {
