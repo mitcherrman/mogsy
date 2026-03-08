@@ -253,6 +253,43 @@ export default function AdminPlay() {
     toast.success("Reset to default");
   };
 
+  const handleSavePreset = async () => {
+    const name = newPresetName.trim();
+    if (!name) { toast.error("Enter a preset name"); return; }
+    const presetId = `preset__${name}`;
+    setSaving(true);
+    await supabase.from("play_layout_config").upsert({
+      id: presetId,
+      config: config as any,
+      updated_at: new Date().toISOString(),
+    });
+    setPresets(prev => {
+      const existing = prev.find(p => p.id === presetId);
+      if (existing) return prev.map(p => p.id === presetId ? { ...p, updated_at: new Date().toISOString() } : p);
+      return [...prev, { id: presetId, name, updated_at: new Date().toISOString() }];
+    });
+    setSaving(false);
+    setNewPresetName("");
+    toast.success(`Preset "${name}" saved`);
+  };
+
+  const handleLoadPreset = async (presetId: string) => {
+    const { data } = await supabase.from("play_layout_config").select("config").eq("id", presetId).single();
+    if (data?.config && typeof data.config === "object") {
+      const loaded = mergeConfig(data.config as unknown as PlayLayoutConfig, leagues);
+      setConfig(loaded);
+      hasUnsavedChanges.current = true;
+      toast.success(`Loaded preset "${presetId.replace("preset__", "")}"`);
+      setPresetPopoverOpen(false);
+    }
+  };
+
+  const handleDeletePreset = async (presetId: string) => {
+    await supabase.from("play_layout_config").delete().eq("id", presetId);
+    setPresets(prev => prev.filter(p => p.id !== presetId));
+    toast.success("Preset deleted");
+  };
+
   const handleItemEdit = (updates: { hidden: boolean; customLabel: string | null }) => {
     if (!editingItem) return;
     const { itemType, itemKey } = editingItem;
