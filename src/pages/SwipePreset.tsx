@@ -602,7 +602,6 @@ export default function SwipePreset() {
               >
                 <Camera className="h-4 w-4" />
               </Button>
-              </Button>
               <Link to={`/leaderboard/${leagueId}`}>
                 <Button variant="outline" size="icon" className="h-8 w-8">
                   <Trophy className="h-3.5 w-3.5" />
