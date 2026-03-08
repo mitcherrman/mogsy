@@ -24,10 +24,13 @@ export default function Layout() {
       className="min-h-screen bg-background relative animate-page-fade-in"
       style={{
         ...(isEnabled && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
-        transition: isCycleFading ? "opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)" : "opacity 1s cubic-bezier(0.0, 0, 0.2, 1)",
-        opacity: isCycleFading ? 0 : 1,
       }}
     >
+      {/* Fade-to-black overlay for cycle theme transitions */}
+      <div
+        className="fixed inset-0 bg-black pointer-events-none z-[55] transition-opacity duration-700 ease-in-out"
+        style={{ opacity: isCycleFading ? 1 : 0 }}
+      />
       <Navbar themeId={isEnabled ? visualThemeId : undefined} />
       {isEnabled && <ThemeOverlay themeId={visualThemeId} />}
       <main className="pt-14 pb-16 sm:pb-0 relative z-20">
