@@ -533,42 +533,50 @@ export default function Play() {
       return (
         <div className="flex flex-col items-center gap-8 w-full">
           <div className="flex items-start justify-center gap-10">
-            {/* Collections column */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("collections"))} active={expanded === "collections"} variant="card">
-                  <span className="h-10 w-10 flex items-center justify-center"><LayoutGrid className="h-10 w-10" /></span>
-                  <span className="text-sm font-extrabold tracking-wide">Collections</span>
-                </Bubble>
-                <FadeLabel delay={0.5}>Vote on curated matchups</FadeLabel>
+          {(() => {
+            const topLevelItems = [
+              { key: "collections" as ModeKey, label: "Collections", icon: <LayoutGrid className="h-10 w-10" />, desc: "Vote on curated matchups", action: () => toggle("collections"), hasExpand: true },
+              { key: "compete" as ModeKey, label: "Compete", icon: <Users className="h-10 w-10" />, desc: "Go head-to-head with others", action: () => toggle("compete"), hasExpand: true },
+              { key: "elocheck" as ModeKey, label: "Aura Check", icon: <Zap className="h-10 w-10" />, desc: "Guess who ranks higher", action: () => navigate("/elo-check"), hasExpand: false },
+            ];
+
+            // Apply config ordering/visibility
+            let orderedItems = topLevelItems;
+            if (publishedConfig?.topLevel) {
+              const tlConfig = publishedConfig.topLevel;
+              orderedItems = topLevelItems
+                .filter(item => {
+                  const cfg = tlConfig.find(t => t.key === item.key);
+                  return !cfg?.hidden;
+                })
+                .sort((a, b) => {
+                  const aOrder = tlConfig.find(t => t.key === a.key)?.order ?? 9999;
+                  const bOrder = tlConfig.find(t => t.key === b.key)?.order ?? 9999;
+                  return aOrder - bOrder;
+                })
+                .map(item => {
+                  const cfg = tlConfig.find(t => t.key === item.key);
+                  return cfg?.label ? { ...item, label: cfg.label } : item;
+                });
+            }
+
+            return orderedItems.map(item => (
+              <div key={item.key} className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <Bubble size={148} onClick={() => handleBubbleClick(item.action)} active={item.hasExpand && expanded === item.key} variant="card">
+                    <span className="h-10 w-10 flex items-center justify-center">{item.icon}</span>
+                    <span className="text-sm font-extrabold tracking-wide">{item.label}</span>
+                  </Bubble>
+                  <FadeLabel delay={0.5}>{item.desc}</FadeLabel>
+                </div>
+                {item.hasExpand && (
+                  <AnimatePresence mode="wait">
+                    {expanded === item.key && renderDesktopSubContent()}
+                  </AnimatePresence>
+                )}
               </div>
-              <AnimatePresence mode="wait">
-                {expanded === "collections" && renderDesktopSubContent()}
-              </AnimatePresence>
-            </div>
-            {/* Compete column */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <Bubble size={148} onClick={() => handleBubbleClick(() => toggle("compete"))} active={expanded === "compete"} variant="card">
-                  <span className="h-10 w-10 flex items-center justify-center"><Users className="h-10 w-10" /></span>
-                  <span className="text-sm font-extrabold tracking-wide">Compete</span>
-                </Bubble>
-                <FadeLabel delay={0.5}>Go head-to-head with others</FadeLabel>
-              </div>
-              <AnimatePresence mode="wait">
-                {expanded === "compete" && renderDesktopSubContent()}
-              </AnimatePresence>
-            </div>
-            {/* Aura Check column */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <Bubble size={148} onClick={() => handleBubbleClick(() => navigate("/elo-check"))} active={false} variant="card">
-                  <span className="h-10 w-10 flex items-center justify-center"><Zap className="h-10 w-10" /></span>
-                  <span className="text-sm font-extrabold tracking-wide"><span className="uppercase tracking-wider">Aura</span> Check</span>
-                </Bubble>
-                <FadeLabel delay={0.5}>Guess who ranks higher</FadeLabel>
-              </div>
-            </div>
+            ));
+          })()}
           </div>
         </div>
       );
