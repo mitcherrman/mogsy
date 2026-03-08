@@ -1,86 +1,150 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Trophy, Users, ChevronRight, Layers, Megaphone, ArrowLeft } from "lucide-react";
+import { Trophy, Users, Layers, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import TierBadge from "@/components/TierBadge";
-import { getTierFromElo } from "@/lib/mock-data";
+import UserAvatar from "@/components/UserAvatar";
 
-interface LeagueInfo {
+interface LeagueWithTop5 {
   id: string;
   name: string;
   type: string;
-  description: string;
-  elo: number;
-  matchesPlayed: number;
-  memberCount: number;
-  isSystem: boolean;
-  isPromoted: boolean;
-  promotedBrandName: string | null;
-  promotedBrandLogo: string | null;
+  top5: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    elo: number;
+  }[];
 }
 
 export default function Leagues() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [leagues, setLeagues] = useState<LeagueInfo[]>([]);
+  const [leagues, setLeagues] = useState<LeagueWithTop5[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadLeagues();
-  }, [user]);
+  }, []);
 
   const loadLeagues = async () => {
     const { data: allLeagues } = await supabase
       .from("leagues")
-      .select("id, name, type, description, is_system, is_promoted, promoted_brand_name, promoted_brand_logo")
+      .select("id, name, type")
       .order("created_at", { ascending: true });
 
     if (!allLeagues) { setLoading(false); return; }
 
-    let profileId: string | null = null;
-    if (user) {
-      const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
-      profileId = profile?.id || null;
-    }
+    const results: LeagueWithTop5[] = [];
 
-    let membershipMap = new Map<string, { elo: number; matches_played: number }>();
-    if (profileId) {
-      const { data: memberships } = await supabase.from("league_memberships").select("league_id, elo, matches_played").eq("profile_id", profileId);
-      memberships?.forEach((m) => membershipMap.set(m.league_id, { elo: m.elo, matches_played: m.matches_played }));
-    }
+    // Fetch top 5 for each league in parallel
+    const promises = allLeagues.map(async (league) => {
+      let top5: LeagueWithTop5["top5"] = [];
 
-    const presetLeagueIds = allLeagues.filter((l) => l.type === "preset").map((l) => l.id);
-    const { data: profileCount } = await supabase.from("public_profiles").select("id").neq("display_name", "");
-    const totalProfiles = profileCount?.length || 0;
+      if (league.type === "preset") {
+        // Try snapshots first for preset items
+        const { data: snapshots } = await supabase
+          .from("global_elo_snapshots")
+          .select("item_id, elo")
+          .eq("league_id", league.id)
+          .not("item_id", "is", null)
+          .order("elo", { ascending: false })
+          .limit(50);
 
-    const itemCountMap = new Map<string, number>();
-    if (presetLeagueIds.length > 0) {
-      const { data: items } = await supabase.from("preset_items").select("league_id").in("league_id", presetLeagueIds);
-      items?.forEach((item) => itemCountMap.set(item.league_id, (itemCountMap.get(item.league_id) || 0) + 1));
-    }
+        let eloMap = new Map<string, number>();
+        if (snapshots) {
+          for (const s of snapshots) {
+            if (s.item_id && !eloMap.has(s.item_id)) {
+              eloMap.set(s.item_id, s.elo);
+            }
+          }
+        }
 
-    const mapped: LeagueInfo[] = allLeagues.map((l) => {
-      const membership = membershipMap.get(l.id);
-      const isPreset = l.type === "preset";
-      return {
-        id: l.id, name: l.name, type: l.type,
-        description: l.description || "",
-        elo: membership?.elo || 1200,
-        matchesPlayed: membership?.matches_played || 0,
-        memberCount: isPreset ? (itemCountMap.get(l.id) || 0) : totalProfiles,
-        isSystem: l.is_system || false,
-        isPromoted: l.is_promoted || false,
-        promotedBrandName: l.promoted_brand_name,
-        promotedBrandLogo: l.promoted_brand_logo,
-      };
+        const { data: items } = await supabase
+          .from("preset_items")
+          .select("id, name, image_url, elo")
+          .eq("league_id", league.id)
+          .order("elo", { ascending: false })
+          .limit(5);
+
+        if (items) {
+          top5 = items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            imageUrl: item.image_url || "",
+            elo: eloMap.get(item.id) ?? item.elo,
+          }));
+          top5.sort((a, b) => b.elo - a.elo);
+          top5 = top5.slice(0, 5);
+        }
+      } else {
+        // User league: get top 5 from snapshots or memberships
+        const { data: snapshots } = await supabase
+          .from("global_elo_snapshots")
+          .select("profile_id, elo")
+          .eq("league_id", league.id)
+          .not("profile_id", "is", null)
+          .order("elo", { ascending: false })
+          .limit(50);
+
+        const eloMap = new Map<string, number>();
+        if (snapshots) {
+          for (const s of snapshots) {
+            if (s.profile_id && !eloMap.has(s.profile_id)) {
+              eloMap.set(s.profile_id, s.elo);
+            }
+          }
+        }
+
+        // Also get memberships as fallback
+        const { data: memberships } = await supabase
+          .from("league_memberships")
+          .select("profile_id, elo")
+          .eq("league_id", league.id)
+          .order("elo", { ascending: false })
+          .limit(20);
+
+        if (memberships) {
+          for (const m of memberships) {
+            if (!eloMap.has(m.profile_id)) {
+              eloMap.set(m.profile_id, m.elo);
+            }
+          }
+        }
+
+        // Get top 5 profile IDs by elo
+        const sorted = [...eloMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const profileIds = sorted.map(([id]) => id);
+
+        if (profileIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("public_profiles")
+            .select("id, display_name, avatar_url")
+            .in("id", profileIds);
+
+          if (profiles) {
+            const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+            top5 = sorted
+              .filter(([id]) => profileMap.has(id))
+              .map(([id, elo]) => {
+                const p = profileMap.get(id)!;
+                return {
+                  id: p.id,
+                  name: p.display_name || "Unknown",
+                  imageUrl: p.avatar_url || "",
+                  elo,
+                };
+              });
+          }
+        }
+      }
+
+      return { id: league.id, name: league.name, type: league.type, top5 };
     });
 
-    // Sort promoted first
-    mapped.sort((a, b) => (b.isPromoted ? 1 : 0) - (a.isPromoted ? 1 : 0));
-    setLeagues(mapped);
+    const resolved = await Promise.all(promises);
+    results.push(...resolved);
+    setLeagues(results);
     setLoading(false);
   };
 
@@ -91,87 +155,43 @@ export default function Leagues() {
   const userLeagues = leagues.filter((l) => l.type === "user");
   const presetLeagues = leagues.filter((l) => l.type === "preset");
 
-  const LeagueCard = ({ league, i }: { league: LeagueInfo; i: number }) => (
-    <motion.div
-      key={league.id}
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.05 }}
-    >
-      <Link
-        to={`/leaderboard/${league.id}`}
-        className={`flex items-center justify-between rounded-xl border bg-card p-5 card-hover ${
-          league.isPromoted ? "border-primary/40 shadow-[0_0_15px_hsl(210_80%_60%/0.1)]" : "border-border"
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          {league.promotedBrandLogo && (
-            <img src={league.promotedBrandLogo} alt="" className="h-10 w-10 rounded-lg object-contain bg-secondary p-1 flex-shrink-0" />
-          )}
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-foreground">{league.name}</h3>
-              {league.isPromoted && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-wider">
-                  <Megaphone className="h-3 w-3" /> Promoted
-                </span>
-              )}
-            </div>
-            {league.description && <p className="text-xs text-muted-foreground mt-0.5">{league.description}</p>}
-            {league.promotedBrandName && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">Sponsored by {league.promotedBrandName}</p>
-            )}
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-              {league.type === "user" && (
-                <>
-                  <TierBadge tier={getTierFromElo(league.elo)} />
-                  <span>Aura {league.elo}</span>
-                  <span>·</span>
-                </>
-              )}
-              <span>{league.memberCount} {league.type === "preset" ? "items" : "players"}</span>
-              {league.matchesPlayed > 0 && <><span>·</span><span>{league.matchesPlayed} swipes</span></>}
-            </div>
-          </div>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-      </Link>
-    </motion.div>
-  );
-
   return (
-    <div className="min-h-screen px-4 py-8">
-      <div className="container mx-auto max-w-3xl">
+    <div className="min-h-screen px-4 py-8 pb-24">
+      <div className="container mx-auto max-w-5xl">
         <div className="mb-8 flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <h1 className="text-3xl font-extrabold text-foreground flex items-center gap-2">
-              <Trophy className="h-8 w-8 text-primary" /> Browse Leagues
+              <Trophy className="h-8 w-8 text-primary" /> Leaderboard
             </h1>
-            <p className="text-muted-foreground text-sm mt-1">{leagues.length} leagues available</p>
+            <p className="text-muted-foreground text-sm mt-1">{leagues.length} leagues</p>
           </div>
         </div>
 
         {userLeagues.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4" /> Player Leaderboard
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+              <Users className="h-4 w-4" /> Compete
             </h2>
-            <div className="space-y-3">
-              {userLeagues.map((league, i) => <LeagueCard key={league.id} league={league} i={i} />)}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {userLeagues.map((league, i) => (
+                <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
+              ))}
             </div>
           </section>
         )}
 
         {presetLeagues.length > 0 && (
           <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-              <Layers className="h-4 w-4" /> Preset Leagues
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+              <Layers className="h-4 w-4" /> Collections
             </h2>
-            <div className="space-y-3">
-              {presetLeagues.map((league, i) => <LeagueCard key={league.id} league={league} i={i} />)}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {presetLeagues.map((league, i) => (
+                <LeagueCard key={league.id} league={league} index={i} onClick={() => navigate(`/leaderboard/${league.id}`)} />
+              ))}
             </div>
           </section>
         )}
@@ -179,5 +199,58 @@ export default function Leagues() {
         {leagues.length === 0 && <p className="text-center text-muted-foreground py-8">No leagues available yet.</p>}
       </div>
     </div>
+  );
+}
+
+function LeagueCard({ league, index, onClick }: { league: LeagueWithTop5; index: number; onClick: () => void }) {
+  const isUserLeague = league.type === "user";
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      onClick={onClick}
+      className="rounded-xl border border-border bg-card p-4 text-left card-hover w-full hover:border-primary/30 transition-colors"
+    >
+      <h3 className="text-sm font-bold text-foreground truncate mb-3">{league.name}</h3>
+
+      {league.top5.length > 0 ? (
+        <div className="space-y-2">
+          {league.top5.map((entry, i) => {
+            const rank = i + 1;
+            const isTop3 = rank <= 3;
+            const circleSize = isTop3 ? "w-10 h-10" : "w-8 h-8";
+
+            return (
+              <div key={entry.id} className="flex items-center gap-2">
+                <span className={`text-xs font-black w-4 text-right ${isTop3 ? "text-primary" : "text-muted-foreground"}`}>
+                  {rank}
+                </span>
+                {isUserLeague ? (
+                  <UserAvatar src={entry.imageUrl} name={entry.name} size={isTop3 ? "md" : "sm"} />
+                ) : (
+                  <div className={`${circleSize} rounded-full overflow-hidden flex-shrink-0 bg-muted`}>
+                    {entry.imageUrl ? (
+                      <img src={entry.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                        {entry.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{entry.name}</p>
+                </div>
+                <span className="text-[10px] font-bold text-muted-foreground">{entry.elo}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground py-4 text-center">No rankings yet</p>
+      )}
+    </motion.button>
   );
 }
