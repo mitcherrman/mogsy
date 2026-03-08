@@ -116,9 +116,17 @@ export default function FloatingThemeSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.85 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="flex flex-col items-center gap-2 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl max-h-[70vh] overflow-y-auto"
+            className="flex flex-col items-center gap-2 mb-2 p-3 rounded-2xl bg-card/90 backdrop-blur-xl border border-border shadow-xl"
           >
-            {visibleThemes.map((theme) => {
+            {page > 0 && (
+              <button
+                onClick={() => setPage((p) => p - 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+            )}
+            {currentThemes.map((theme) => {
               const locked = !canUseTheme(theme.id);
               const isActive = themeId === theme.id;
               const pro = isThemePro(theme.id);
@@ -127,7 +135,6 @@ export default function FloatingThemeSwitcher() {
 
               return (
                 <div key={theme.id} className="relative shrink-0">
-                  {/* Custom tooltip label */}
                   <AnimatePresence>
                     {showLabel && (
                       <motion.div
@@ -176,6 +183,14 @@ export default function FloatingThemeSwitcher() {
                 </div>
               );
             })}
+            {page < totalPages - 1 && (
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
