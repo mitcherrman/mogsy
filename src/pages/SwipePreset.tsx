@@ -424,13 +424,16 @@ export default function SwipePreset() {
     (winnerIndex: 0 | 1) => {
       if (!pair || chosen !== null || sliceWinner !== null) return;
       setChosen(winnerIndex);
-      if (swipeAnimation === "default") playSwipeSound();
-      playAnimationSound(swipeAnimation);
-      logUsage(swipeAnimation, "swipe");
+      // Check for animation override from league rules
+      const override = getAnimationOverride(matchCount + 1, animRules);
+      const animToUse = override || swipeAnimation;
+      if (animToUse === "default") playSwipeSound();
+      playAnimationSound(animToUse);
+      logUsage(animToUse, "swipe");
       setSliceWinner(winnerIndex);
       pendingAction.current = () => executeChoice(winnerIndex);
     },
-    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice]
+    [pair, chosen, sliceWinner, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
   );
 
   const handleSliceComplete = useCallback(() => {
