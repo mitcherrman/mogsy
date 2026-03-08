@@ -24,6 +24,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { toast } from "sonner";
 
 type DemoMode = "swipe-collections" | "swipe-users" | "aura-check";
