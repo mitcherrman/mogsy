@@ -33,6 +33,7 @@ const AdminData = lazy(() => import("./pages/AdminData"));
 const AdminDemo = lazy(() => import("./pages/AdminDemo"));
 const SecretRoom = lazy(() => import("./pages/SecretRoom"));
 const Moderator = lazy(() => import("./pages/Moderator"));
+const CustomLink = lazy(() => import("./pages/CustomLink"));
 
 const queryClient = new QueryClient();
 
