@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Swords } from "lucide-react";
@@ -53,6 +53,7 @@ export default function Swipe() {
   const [myRewinds, setMyRewinds] = useState(0);
   const [myShields, setMyShields] = useState(0);
   const [myReveals, setMyReveals] = useState(0);
+  const [localElos, setLocalElos] = useState<Map<string, number>>(new Map());
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
@@ -88,6 +89,22 @@ export default function Swipe() {
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);
+
+        // Fetch local rankings for global league
+        if (league) {
+          const { data: localRanks } = await supabase
+            .from("local_rankings")
+            .select("target_profile_id, local_elo")
+            .eq("profile_id", myProfile.id)
+            .eq("league_id", league.id);
+          if (localRanks) {
+            const map = new Map<string, number>();
+            localRanks.forEach((r: any) => {
+              if (r.target_profile_id) map.set(r.target_profile_id, r.local_elo);
+            });
+            setLocalElos(map);
+          }
+        }
       }
     }
 
@@ -173,6 +190,14 @@ export default function Swipe() {
         if (countsTowardGlobal === null) {
           setCountsTowardGlobal(result.countsTowardGlobal);
         }
+
+        // Update local elos
+        setLocalElos(prev => {
+          const next = new Map(prev);
+          next.set(winner.id, result.localWinnerElo);
+          next.set(loser.id, result.localLoserElo);
+          return next;
+        });
 
         // Still update profile state with global elo for display consistency
         const newWinnerElo = result.countsTowardGlobal ? winner.elo + Math.abs(result.localWinnerChange) : winner.elo;
@@ -264,6 +289,23 @@ export default function Swipe() {
     toast({ title: "⏪ Rewind used!", description: "Vote again on the same pair." });
   };
 
+  const globalRankMap = useMemo(() => {
+    const sorted = [...profiles].sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    sorted.forEach((p, idx) => map.set(p.id, idx + 1));
+    return map;
+  }, [profiles]);
+
+  const localRankMap = useMemo(() => {
+    const entries = profiles.map(p => ({
+      id: p.id,
+      elo: localElos.get(p.id) ?? 1200,
+    }));
+    entries.sort((a, b) => b.elo - a.elo);
+    const map = new Map<string, number>();
+    entries.forEach((e, idx) => map.set(e.id, idx + 1));
+    return map;
+  }, [profiles, localElos]);
   if (loading) {
     return <div className="min-h-screen" />;
   }
@@ -360,7 +402,16 @@ export default function Swipe() {
                 {/* Left / Top card */}
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-                  <div className="flex justify-center mt-1">
+                  <div className="flex items-center justify-center gap-3 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
+                      <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(pair[0].id)}</span>
+                      <span className="mx-1 text-muted-foreground/30">|</span>
+                      <span className="font-semibold text-blue-400">{pair[0].elo}</span>
+                      <span className="ml-0.5 text-blue-400/70">#{globalRankMap.get(pair[0].id)}</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-center mt-0.5">
                     <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                   </div>
                 </div>
@@ -373,7 +424,16 @@ export default function Swipe() {
                 {/* Right / Bottom card */}
                 <div className="flex flex-col flex-1 relative z-10">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
-                  <div className="flex justify-center mt-1">
+                  <div className="flex items-center justify-center gap-3 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">
+                      <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
+                      <span className="ml-0.5 text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
+                      <span className="mx-1 text-muted-foreground/30">|</span>
+                      <span className="font-semibold text-blue-400">{pair[1].elo}</span>
+                      <span className="ml-0.5 text-blue-400/70">#{globalRankMap.get(pair[1].id)}</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-center mt-0.5">
                     <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                   </div>
                 </div>
