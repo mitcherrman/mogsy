@@ -92,6 +92,12 @@ const AD_MODES = [
   { value: "off", label: "Off" },
 ];
 
+const AD_SOURCES = [
+  { value: "custom", label: "Custom Creatives", description: "Your own ad images and CTA links" },
+  { value: "adsense", label: "Google AdSense", description: "Google serves ads automatically" },
+  { value: "hybrid", label: "Hybrid", description: "Custom creatives with AdSense fallback" },
+];
+
 const FORMATS = [
   { value: "banner", label: "Banner" },
   { value: "interstitial", label: "Interstitial" },
