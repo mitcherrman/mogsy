@@ -169,6 +169,7 @@ export default function AdminAds() {
       if (val && typeof val === "object" && val.placements) {
         setSettings({
           global_enabled: val.global_enabled ?? val.enabled ?? true,
+          adsense_client_id: val.adsense_client_id ?? "",
           placements: {
             ...defaultSettings.placements,
             ...Object.fromEntries(
