@@ -71,12 +71,16 @@ export default function Leagues() {
           .limit(5);
 
         if (items) {
-          top5 = items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            imageUrl: item.image_url || "",
-            elo: eloMap.get(item.id) ?? item.elo,
-          }));
+          top5 = items.map((item) => {
+            const elo = eloMap.get(item.id) ?? item.elo;
+            return {
+              id: item.id,
+              name: item.name,
+              imageUrl: item.image_url || "",
+              elo,
+              tier: getTierFromElo(elo),
+            };
+          });
           top5.sort((a, b) => b.elo - a.elo);
           top5 = top5.slice(0, 5);
         }
