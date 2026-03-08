@@ -78,18 +78,21 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                         transition={{ duration: 0.3 }}
                       />
                       <motion.div
-                        className="absolute bottom-0 left-0 right-0 h-3/4 flex items-end justify-center z-10"
+                        className="absolute bottom-0 left-0 right-0 h-3/4 flex items-end justify-center z-10 overflow-hidden"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                       >
-                        <div className="relative w-full h-full">
-                          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/40 z-10 pointer-events-none" />
-                          <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
+                        <div className="relative w-full h-full overflow-hidden"
+                          style={{
+                            maskImage: "radial-gradient(ellipse 70% 70% at center, black 50%, transparent 100%)",
+                            WebkitMaskImage: "radial-gradient(ellipse 70% 70% at center, black 50%, transparent 100%)",
+                          }}
+                        >
                           <img
                             src="/images/amongus-backstab.gif"
                             alt="Among Us backstab"
-                            className="w-full h-full object-contain drop-shadow-2xl"
+                            className="w-full h-full object-contain drop-shadow-2xl scale-[1.18]"
                             draggable={false}
                           />
                         </div>
