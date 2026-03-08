@@ -92,7 +92,7 @@ export default function Swipe() {
     setMatchCount(c => c + 1);
   }, [pair, sliceWinner, profiles, gauntletMode, gauntletChampion]);
 
-  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null);
+  const { timerEnabled, timeLeft, duration, resetTimer } = useSwipeTimer(handleTimerTimeout, showAd || !pair || sliceWinner !== null || readyDelay);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
 
