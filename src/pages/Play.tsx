@@ -677,6 +677,25 @@ export default function Play() {
             </Popover>
           )}
         </div>
+        {/* Layout toggle below header */}
+        {subExpanded && (
+          <div className="flex items-center justify-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/50 w-fit mx-auto mb-4">
+            {LAYOUT_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setDesktopLayout(opt.id)}
+                title={opt.label}
+                className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors ${
+                  desktopLayout === opt.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {opt.icon}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex justify-center mt-8">
           {renderContent()}
         </div>
