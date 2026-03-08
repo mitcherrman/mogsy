@@ -482,9 +482,9 @@ export default function Profile() {
                 </div>
 
                 {/* Basic info */}
-                <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-                  <Label className="text-base font-bold block">Basic Info</Label>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 space-y-3 sm:space-y-4">
+                  <Label className="text-sm sm:text-base font-bold block">Basic Info</Label>
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                     {/* Display Name */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
