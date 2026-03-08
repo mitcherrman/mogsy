@@ -1,40 +1,38 @@
-## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
-The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
+## Plan: Desktop-Only Inline Expansion on Play Page
 
-### The Pattern Difference
+### Goal
+On **desktop only**, clicking Collections or Compete expands the sub-options (Swipe / Aura Check) directly below the clicked button on the same screen, rather than navigating to a new view. Mobile keeps the current full-screen navigation behavior.
 
-**SliceBattleAnimation (correct):**
+### Changes
 
-1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
-2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
-3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
-4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
+**`src/pages/Play.tsx`**
 
-**Shatter/Burn/Vaporize/Crush (buggy):**
+1. **Import `useIsMobile`** hook from `@/hooks/use-mobile`
 
-1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
-2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
-3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
+2. **Modify the initial view (`!expanded`)** to check for desktop:
+   - On desktop: Show Collections & Compete side by side, each with space below for inline expansion
+   - When a mode is clicked on desktop, toggle `expanded` state but render sub-buttons (Swipe/Aura Check) directly below the clicked bubble in the same view
+   - On mobile: Keep current behavior (full navigation to new view)
 
-### Implementation Plan
+3. **Restructure `renderContent()` for desktop:**
+   - When `!isMobile` and `!expanded`: Show both bubbles
+   - When `!isMobile` and `expanded` but `!subExpanded`: Instead of a separate screen, show both bubbles side by side with the selected one active and sub-options expanded below it
+   - Layout: The selected mode stays in place, sub-bubbles (Swipe/Aura Check) animate in below it
 
-For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
+4. **Mobile behavior unchanged** — continues to use the step-by-step navigation flow
 
-1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
-2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
-3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
-4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+### Visual Layout (Desktop)
+```text
+┌─────────────────────────────────────────┐
+│        Collections      Compete         │
+│           (active)                      │
+│                                         │
+│       ┌─────────┬─────────┐             │
+│       │ Swipe   │  Aura   │             │
+│       │         │  Check  │             │
+│       └─────────┴─────────┘             │
+└─────────────────────────────────────────┘
+```
 
-**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
-  
-Keep `"done"` as a “hold” state (overlay still rendered and opaque).
-
-- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
-
-### Files Modified
-
-- `src/components/animations/ShatterAnimation.tsx`
-- `src/components/animations/BurnAnimation.tsx`
-- `src/components/animations/VaporizeAnimation.tsx`
-- `src/components/animations/CrushAnimation.tsx`
+The sub-options appear below only the active mode, keeping both top-level bubbles visible.
