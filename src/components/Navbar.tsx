@@ -95,7 +95,17 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-border bg-background/80 backdrop-blur-xl"
         style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
       >
-        <div className="flex items-center justify-center gap-8 h-14 px-4">
+        <div className="flex items-center justify-center gap-4 h-14 px-4">
+          {/* Friends button */}
+          <MobileNavButton
+            icon={Users}
+            label="Friends"
+            hasTheme={!!hasTheme}
+            themeId={themeId}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
+            badge={pendingCount > 0 ? pendingCount : undefined}
+          />
+
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -114,6 +124,15 @@ export default function Navbar({ themeId }: { themeId?: string }) {
               </Link>
             );
           })}
+
+          {/* Theme button */}
+          <MobileNavButton
+            icon={Palette}
+            label="Theme"
+            hasTheme={!!hasTheme}
+            themeId={themeId}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-theme-picker"))}
+          />
         </div>
       </div>
     </>
