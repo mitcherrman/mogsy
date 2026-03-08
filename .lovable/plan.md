@@ -1,21 +1,40 @@
+## Changes Identified: SliceBattleAnimation Pattern vs Other Animations
 
+The SliceBattleAnimation uses a **flash-prevention pattern** that the other four animations (Shatter, Burn, Vaporize, Crush) do NOT use. This is the change to propagate.
 
-## Plan: Fade Only Background During Cycle Transitions
+### The Pattern Difference
 
-The current black overlay covers the entire screen (navbar, content, everything). Instead, we should only fade the theme background and overlay, leaving content, navbar, and floating buttons fully visible.
+**SliceBattleAnimation (correct):**
 
-### Changes
+1. `finish` callback sets phase to `"done"` (not `"idle"`), then calls `onComplete()`
+2. Render guard: `if (winnerSide === null || items.length < 2)` — no `phase === "idle"` check
+3. Overlay stays mounted at `phase === "done"` until parent clears `winnerSide`
+4. Phase resets to `"idle"` only when `winnerSide` becomes `null`
 
-**`src/components/Layout.tsx`**
+**Shatter/Burn/Vaporize/Crush (buggy):**
 
-1. Move the fade-to-black overlay to sit behind the content but covering only the theme background layer
-2. Wrap the background (`pageBg` style) and `ThemeOverlay` together in a container at `z-0`
-3. Place the black fade overlay inside that same container (or just above it at `z-[5]`), so it only obscures the decorative background — not the navbar (`z-50`), content (`z-20`), or floating buttons (`z-60`)
+1. `reset` callback sets phase to `"idle"` AND calls `onComplete()` simultaneously
+2. Render guard includes `|| phase === "idle"` — unmounts overlay immediately
+3. This causes a brief flash of old cards before the parent processes `onComplete` and updates state
 
-Specifically:
-- Change the black overlay from `z-[55]` to `z-[15]` (above ThemeOverlay at `z-10`, below content at `z-20`)
-- This means the background + theme particles fade to black while content stays fully visible
+### Implementation Plan
 
-### Result
-During cycle transitions, the decorative background (gradients, particles, overlays) fades to black and back, while the navbar, page content, and floating buttons remain fully visible and unaffected.
+For each of **ShatterAnimation**, **BurnAnimation**, **VaporizeAnimation**, **CrushAnimation**:
 
+1. **Replace `reset` with `finish**`: Change `setPhase("idle"); onComplete();` to `setPhase("done"); onComplete();`
+2. **Add idle reset on winnerSide null**: In the `useEffect`, when `winnerSide === null`, explicitly `setPhase("idle")` and return early (already present in most, just needs to stay)
+3. **Remove `phase === "idle"` from render guard**: Change `if (winnerSide === null || phase === "idle" || items.length < 2)` to `if (winnerSide === null || items.length < 2)`
+4. **Add `"done"` to phase type**: Add `"done"` to each animation's phase union type where missing, and handle it in animation targets (e.g., fade to opacity 0 during "done" phase)
+
+**DefaultFadeAnimation** is a no-op component (returns null always) — no changes needed.  
+  
+Keep `"done"` as a “hold” state (overlay still rendered and opaque).
+
+- Let unmount/fade happen only when **parent sets** `winnerSide` **to null**, not when phase becomes `"done"`.
+
+### Files Modified
+
+- `src/components/animations/ShatterAnimation.tsx`
+- `src/components/animations/BurnAnimation.tsx`
+- `src/components/animations/VaporizeAnimation.tsx`
+- `src/components/animations/CrushAnimation.tsx`

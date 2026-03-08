@@ -28,7 +28,7 @@ export default function Layout() {
     >
       {/* Fade-to-black overlay for cycle theme transitions */}
       <div
-        className="fixed inset-0 bg-black pointer-events-none z-[55] transition-opacity duration-700 ease-in-out"
+        className="fixed inset-0 bg-black pointer-events-none z-[15] transition-opacity duration-700 ease-in-out"
         style={{ opacity: isCycleFading ? 1 : 0 }}
       />
       <Navbar themeId={isEnabled ? visualThemeId : undefined} />
