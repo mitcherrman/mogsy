@@ -49,6 +49,8 @@ export default function AdminPlay() {
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
 
+  const [isModerator, setIsModerator] = useState(false);
+
   // Auth gate
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -63,6 +65,8 @@ export default function AdminPlay() {
           toast.error("Access denied");
           return;
         }
+        const isModOnly = roles.includes("moderator") && !roles.includes("admin") && !roles.includes("master_admin");
+        setIsModerator(isModOnly);
         setAuthorized(true);
         loadData();
       });
