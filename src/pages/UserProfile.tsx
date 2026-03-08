@@ -444,7 +444,7 @@ export default function UserProfile() {
         </motion.div>
 
 
-        {/* League Rankings */}
+        {/* League Leaderboard */}
         {leagueStats.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
