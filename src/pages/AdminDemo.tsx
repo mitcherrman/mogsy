@@ -442,8 +442,9 @@ export default function AdminDemo() {
   };
 
   const renderSwipeCard = (card: CardData, idx: 0 | 1) => {
-    const isWinner = card.isWinner;
-    const isLoser = !card.isWinner;
+    const isAnimating = animWinner !== null;
+    const isWinner = isAnimating && card.isWinner;
+    const isLoser = isAnimating && !card.isWinner;
     const isUserMode = mode === "swipe-users";
     const frame = isUserMode ? (frameClasses[card.profileFrame] || "") : "";
 
@@ -453,7 +454,9 @@ export default function AdminDemo() {
           className={`relative overflow-hidden transition-all duration-300 ${
             isWinner
               ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
-              : "opacity-50"
+              : isLoser
+              ? "opacity-50"
+              : ""
           }`}
         >
           <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden ${frame}`}>
