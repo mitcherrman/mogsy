@@ -269,7 +269,7 @@ export default function Swipe() {
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
       if (!pair || sliceWinner !== null) return;
-      if (swipeAnimation !== "chop") playSwipeSound();
+      if (swipeAnimation === "default") playSwipeSound();
       playAnimationSound(swipeAnimation);
       logUsage(swipeAnimation, "swipe");
       setSliceWinner(winnerIndex);
