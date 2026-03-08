@@ -429,7 +429,7 @@ export default function UserProfile() {
           <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
             <Trophy className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
             <p className={cn("text-lg font-extrabold", theme.styles.nameColor || "text-foreground")}>{bestElo}</p>
-            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Best ELO</p>
+            <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Best Aura</p>
           </div>
           <div className={cn("rounded-xl border p-3 text-center", theme.styles.statBg || "border-border bg-card")}>
             <Swords className={cn("h-4 w-4 mx-auto mb-1", theme.styles.iconAccent || "text-primary")} />
