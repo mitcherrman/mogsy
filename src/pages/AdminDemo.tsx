@@ -732,9 +732,12 @@ export default function AdminDemo() {
             style={themeStyle}
           >
             {/* Top bar */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
-              <span className="text-sm font-bold text-foreground truncate">{leagueName}</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFullscreenPreview(false)}>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-bold text-foreground truncate flex-1">{leagueName}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
