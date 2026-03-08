@@ -91,6 +91,34 @@ export default function AdminDemo() {
   const [searchTarget, setSearchTarget] = useState<"a" | "b" | null>(null);
 
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
+  const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+
+  // Override the sitewide theme on <html> with the demo-selected theme
+  useEffect(() => {
+    const root = document.documentElement;
+    // Save current theme classes to restore later
+    const savedClasses = root.className;
+
+    // Remove existing theme classes
+    root.className = root.className.replace(/theme-\S+/g, "").trim();
+
+    if (themeId === "default") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", prefersDark);
+    } else {
+      root.classList.add("dark");
+      root.classList.add(`theme-${themeId}`);
+    }
+
+    return () => {
+      // Restore original theme on unmount
+      root.className = root.className.replace(/theme-\S+/g, "").trim();
+      if (sitewideThemeId && sitewideThemeId !== "default") {
+        root.classList.add("dark");
+        root.classList.add(`theme-${sitewideThemeId}`);
+      }
+    };
+  }, [themeId, sitewideThemeId]);
 
   const searchItems = useCallback(async (query: string) => {
     if (!query || query.length < 2) { setSearchResults([]); return; }
