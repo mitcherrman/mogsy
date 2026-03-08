@@ -348,7 +348,33 @@ export default function AdminAds() {
         />
       </div>
 
-      {/* Quick Actions */}
+      {/* Google AdSense Configuration */}
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/50 text-primary">AdSense</Badge>
+          <Label className="text-sm font-medium">Google AdSense Configuration</Label>
+        </div>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">
+          Enter your AdSense Publisher ID to enable Google-served ads. Each placement can use Custom Creatives, AdSense, or Hybrid mode.
+        </p>
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground font-semibold">Publisher ID (Client ID)</Label>
+            <Input
+              placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+              value={settings.adsense_client_id}
+              onChange={(e) => setSettings(s => ({ ...s, adsense_client_id: e.target.value }))}
+              onBlur={() => save(settings)}
+              className="h-8 text-xs font-mono"
+            />
+            <span className="text-[9px] text-muted-foreground">Find this in your Google AdSense dashboard → Account → Publisher ID</span>
+          </div>
+        </div>
+        {settings.adsense_client_id && settings.adsense_client_id !== "ca-pub-XXXXXXXXXXXXXXXX" && (
+          <Badge className="text-[10px] bg-primary/10 text-primary border-primary/30">✓ AdSense configured</Badge>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={randomizeVariants} disabled={saving} className="text-xs">
           <Shuffle className="h-3 w-3 mr-1" /> Randomize A/B
