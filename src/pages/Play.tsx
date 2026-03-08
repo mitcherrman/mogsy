@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 type ModeKey = "collections" | "compete" | null;
 type SubKey = "swipe" | "elocheck" | null;
-type DesktopLayout = "bubbles" | "pills" | "grid" | "list";
+type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles";
 
 interface LeagueItem {
   id: string;
