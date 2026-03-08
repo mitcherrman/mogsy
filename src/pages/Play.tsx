@@ -220,7 +220,7 @@ export default function Play() {
       transition={{ ...ease, delay }}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex flex-col items-center justify-center rounded-lg border-2 cursor-pointer select-none overflow-hidden transition-colors w-full h-[120px] ${
+      className={`relative flex flex-col items-center justify-center rounded-md border cursor-pointer select-none overflow-hidden transition-colors w-full h-[56px] ${
         variant === "accent"
           ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
           : "border-border bg-card text-foreground hover:bg-muted"
@@ -232,7 +232,7 @@ export default function Play() {
           <div className="absolute inset-0 bg-black/50" />
         </>
       )}
-      <span className={`relative z-10 text-xs font-extrabold tracking-wide leading-tight text-center px-2 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
+      <span className={`relative z-10 text-[10px] font-bold tracking-wide leading-tight text-center px-1.5 line-clamp-2 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
     </motion.button>
   );
 
@@ -342,7 +342,7 @@ export default function Play() {
     if (isMobile) {
       switch (desktopLayout) {
         case "grid":
-          return "grid grid-cols-2 gap-3 w-full";
+          return "grid grid-cols-3 gap-2 w-full";
         case "list":
           return "flex flex-col gap-1 w-full";
         case "bubbles":
@@ -355,7 +355,7 @@ export default function Play() {
     }
     switch (desktopLayout) {
       case "grid":
-        return "grid grid-cols-3 gap-3";
+        return "grid grid-cols-4 gap-2";
       case "list":
         return "flex flex-col gap-1 w-full";
       default:
