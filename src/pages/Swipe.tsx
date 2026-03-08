@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
