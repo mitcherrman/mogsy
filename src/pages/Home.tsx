@@ -684,6 +684,30 @@ export default function Home() {
           </section>
         )}
 
+        {/* Curated "Recommended for you" from custom link */}
+        {curatedLeagues.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Gift className="h-5 w-5 text-primary" />
+              <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">Recommended for You</h2>
+            </div>
+            <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
+              {curatedLeagues.map((league) => (
+                <div key={league.id} className="flex flex-col items-center gap-1.5">
+                  <CategoryBubble
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe/preset/${league.id}`)}
+                    imageUrl={league.image}
+                    label={league.name}
+                    sublabel="Curated"
+                    variant="accent"
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Play Section */}
         {(playCollections.length > 0 || playCompetes.length > 0) && (
           <section className="mb-8">
