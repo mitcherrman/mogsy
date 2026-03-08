@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -7,6 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { AnimationRule } from "@/hooks/useLeagueAnimationRules";
+
+interface CoverItem {
+  id: string;
+  name: string;
+  image_url: string | null;
+}
 
 interface Props {
   item: {
@@ -17,8 +23,9 @@ interface Props {
     customLabel?: string | null;
     type: "topLevel" | "category" | "league";
     leagueId?: string;
+    coverItemId?: string | null;
   };
-  onSave: (updates: { hidden: boolean; customLabel: string | null }) => void;
+  onSave: (updates: { hidden: boolean; customLabel: string | null; coverItemId?: string | null }) => void;
   onClose: () => void;
 }
 
@@ -27,6 +34,9 @@ export default function AdminPlayItemEditor({ item, onSave, onClose }: Props) {
   const [customLabel, setCustomLabel] = useState(item.customLabel || "");
   const [rules, setRules] = useState<AnimationRule[]>([]);
   const [loadingRules, setLoadingRules] = useState(false);
+  const [coverItemId, setCoverItemId] = useState<string | null>(item.coverItemId || null);
+  const [coverItems, setCoverItems] = useState<CoverItem[]>([]);
+  const [loadingCover, setLoadingCover] = useState(false);
 
   // New rule state
   const [newAnimId, setNewAnimId] = useState(CARD_ANIMATIONS[1]?.id || "slice");
@@ -46,6 +56,47 @@ export default function AdminPlayItemEditor({ item, onSave, onClose }: Props) {
         });
     }
   }, [item.leagueId, item.type]);
+
+  // Load cover image candidates
+  useEffect(() => {
+    const loadCoverItems = async () => {
+      if (item.type === "topLevel") return;
+      setLoadingCover(true);
+
+      if (item.type === "league" && item.leagueId) {
+        const { data } = await supabase
+          .from("preset_items")
+          .select("id, name, image_url")
+          .eq("league_id", item.leagueId)
+          .not("image_url", "is", null)
+          .not("image_url", "eq", "")
+          .order("name")
+          .limit(100);
+        setCoverItems((data as CoverItem[]) || []);
+      } else if (item.type === "category" && item.key) {
+        // Get all leagues in this category, then their items
+        const { data: leagueData } = await supabase
+          .from("leagues")
+          .select("id")
+          .eq("category", item.key)
+          .eq("type", "preset");
+        if (leagueData && leagueData.length > 0) {
+          const leagueIds = leagueData.map(l => l.id);
+          const { data } = await supabase
+            .from("preset_items")
+            .select("id, name, image_url")
+            .in("league_id", leagueIds)
+            .not("image_url", "is", null)
+            .not("image_url", "eq", "")
+            .order("name")
+            .limit(100);
+          setCoverItems((data as CoverItem[]) || []);
+        }
+      }
+      setLoadingCover(false);
+    };
+    loadCoverItems();
+  }, [item.type, item.leagueId, item.key]);
 
   const handleAddRule = async () => {
     if (!item.leagueId) return;
@@ -85,6 +136,8 @@ export default function AdminPlayItemEditor({ item, onSave, onClose }: Props) {
 
   const getAnimDef = (id: string) => CARD_ANIMATIONS.find(a => a.id === id);
 
+  const selectedCoverItem = coverItems.find(c => c.id === coverItemId);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto p-5 space-y-5" onClick={e => e.stopPropagation()}>
@@ -112,6 +165,65 @@ export default function AdminPlayItemEditor({ item, onSave, onClose }: Props) {
           />
           <p className="text-[10px] text-muted-foreground">Leave empty to use default name</p>
         </div>
+
+        {/* Cover Image Picker (categories & leagues) */}
+        {(item.type === "category" || item.type === "league") && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <h4 className="text-sm font-bold text-foreground">Cover Image</h4>
+            <p className="text-[10px] text-muted-foreground">Choose which item's picture represents this {item.type}. Default picks a random one.</p>
+
+            {/* Random toggle */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-center gap-2">
+                <Shuffle className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">Use random image</span>
+              </div>
+              <Switch checked={!coverItemId} onCheckedChange={(useRandom) => setCoverItemId(useRandom ? null : (coverItems[0]?.id || null))} />
+            </div>
+
+            {/* Grid picker */}
+            {coverItemId !== null && (
+              <div className="space-y-2">
+                {loadingCover ? (
+                  <p className="text-xs text-muted-foreground">Loading items...</p>
+                ) : coverItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No items with images found.</p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 max-h-52 overflow-y-auto">
+                    {coverItems.map(ci => (
+                      <button
+                        key={ci.id}
+                        onClick={() => setCoverItemId(ci.id)}
+                        className={`relative rounded-lg border-2 overflow-hidden aspect-square transition-all ${
+                          coverItemId === ci.id
+                            ? "border-primary ring-2 ring-primary/30 scale-105"
+                            : "border-border hover:border-muted-foreground"
+                        }`}
+                      >
+                        <img src={ci.image_url!} alt={ci.name} className="w-full h-full object-cover" />
+                        {coverItemId === ci.id && (
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                              <span className="text-primary-foreground text-[10px] font-bold">✓</span>
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected preview */}
+                {selectedCoverItem && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
+                    <img src={selectedCoverItem.image_url!} alt="" className="h-8 w-8 rounded object-cover" />
+                    <span className="text-xs font-medium text-foreground">{selectedCoverItem.name}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Animation rules (leagues only) */}
         {item.type === "league" && item.leagueId && (
@@ -183,7 +295,14 @@ export default function AdminPlayItemEditor({ item, onSave, onClose }: Props) {
         {/* Save */}
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-          <Button className="flex-1" onClick={() => { onSave({ hidden, customLabel: customLabel.trim() || null }); onClose(); }}>
+          <Button className="flex-1" onClick={() => {
+            onSave({
+              hidden,
+              customLabel: customLabel.trim() || null,
+              coverItemId: (item.type === "category" || item.type === "league") ? coverItemId : undefined,
+            });
+            onClose();
+          }}>
             Save Changes
           </Button>
         </div>
