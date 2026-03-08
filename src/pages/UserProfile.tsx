@@ -12,6 +12,7 @@ import { getTierFromElo } from "@/lib/mock-data";
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
+  UserPlus, UserCheck, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
