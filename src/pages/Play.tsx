@@ -317,7 +317,7 @@ export default function Play() {
             ) : (
               <RectPill onClick={() => handleBubbleClick(() => setSelectedSubcategory(null))} imageUrl={isLol ? "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" : catImage} label={selectedSubcategory} variant="accent" />
             )}
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className={`flex flex-wrap ${!isMobile ? desktopAlign : "items-center"} justify-center gap-4`}>
               {subLeagues.map((league, i) => {
                 const leagueImage = getLeagueImage(league.id);
                 if (!isMobile) {
