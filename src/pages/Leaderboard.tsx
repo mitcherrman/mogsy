@@ -17,7 +17,7 @@ interface LeaderboardEntry {
   avatarUrl: string;
   location: string;
   elo: number;
-  tier: "bronze" | "silver" | "gold" | "platinum";
+  tier: string;
   imageUrl?: string;
   isPresetItem?: boolean;
 }
