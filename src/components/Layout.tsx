@@ -39,6 +39,7 @@ export default function Layout() {
           <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? visualThemeId : null }} />
         </Suspense>
       </main>
+      <FloatingFriendsButton />
       <FloatingThemeSwitcher />
       <FloatingScrollButton />
     </div>
