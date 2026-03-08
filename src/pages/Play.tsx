@@ -215,7 +215,7 @@ export default function Play() {
       );
     }
 
-    // Mode selected but no sub — show the selected mode bubble + Swipe & Elo Check
+    // Mode selected but no sub — show the selected mode bubble + Swipe & Aura Check
     if (!subExpanded) {
       const modeLabel = expanded === "collections" ? "Collections" : "Compete";
       const modeIcon = expanded === "collections" ? <LayoutGrid className="h-10 w-10" /> : <Users className="h-10 w-10" />;
