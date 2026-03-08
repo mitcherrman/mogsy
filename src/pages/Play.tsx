@@ -244,18 +244,19 @@ export default function Play() {
       transition={{ ...ease, delay }}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      className={`w-full flex items-center gap-3 px-4 h-12 rounded-lg border cursor-pointer select-none transition-colors ${
+      className={`relative w-full flex items-center h-12 rounded-lg border cursor-pointer select-none overflow-hidden transition-colors ${
         variant === "accent"
           ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
           : "border-border bg-card text-foreground hover:bg-muted"
       }`}
     >
-      {imageUrl ? (
-        <img src={imageUrl} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" loading="lazy" />
-      ) : (
-        <div className={`w-8 h-8 rounded-md flex-shrink-0 ${variant === "accent" ? "bg-primary/10" : "bg-muted"}`} />
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          <div className="absolute inset-0 bg-black/50" />
+        </>
       )}
-      <span className="text-sm font-bold tracking-wide leading-tight text-left line-clamp-1">{label}</span>
+      <span className={`relative z-10 px-4 text-sm font-bold tracking-wide leading-tight text-left line-clamp-1 ${imageUrl ? "text-white drop-shadow-lg" : ""}`}>{label}</span>
     </motion.button>
   );
 
