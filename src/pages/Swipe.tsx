@@ -126,7 +126,7 @@ export default function Swipe() {
       }
     }
 
-    const { data } = await supabase.from("public_profiles").select("id, display_name, avatar_url, age, location, status_message, socials, is_pro, profile_frame, active_boost_until").neq("display_name", "");
+    const { data } = await supabase.from("public_profiles").select("id, display_name, avatar_url, age, location, status_message, socials, is_pro, profile_frame, active_boost_until").neq("display_name", "").not("avatar_url", "is", null).neq("avatar_url", "").neq("is_anonymous", true);
 
     let eloMap = new Map<string, number>();
     if (league) {
