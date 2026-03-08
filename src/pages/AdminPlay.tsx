@@ -546,10 +546,12 @@ export default function AdminPlay() {
                       label: getLeagueName(league.id),
                       hidden: league.hidden,
                       customLabel: league.customLabel,
+                      coverItemId: league.coverItemId,
                       type: "league" as const,
                       leagueId: league.id,
                     },
                   })}
+                  onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                 />
               </Reorder.Item>
             ))}
