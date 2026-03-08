@@ -782,7 +782,9 @@ function AmongUsCrewmateGif() {
   const [isClickable, setIsClickable] = useState(false);
 
   const randomisePos = useCallback(() => {
-    setGifPos({ x: rand(10, 80), y: rand(15, 70) });
+    // Only show on left or right edges so it doesn't overlap center content
+    const side = Math.random() < 0.5 ? rand(2, 12) : rand(80, 95);
+    setGifPos({ x: side, y: rand(15, 70) });
   }, []);
 
   useEffect(() => {
