@@ -386,6 +386,18 @@ export default function Profile() {
               <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Edit Profile</h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {isModerator && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/moderator")}
+                  className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8 sm:h-10 sm:w-10"
+                  title="Moderator Panel"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
