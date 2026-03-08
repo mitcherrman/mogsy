@@ -566,6 +566,8 @@ export default function Swipe() {
               : "Tap the profile you prefer · Aura updates instantly"}
           </p>
 
+          <ScrollToCommentsHint />
+
           {/* Comments section */}
           {globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
         </div>
