@@ -40,6 +40,7 @@ const allTabs = [
   { value: "banners", label: "Banners", masterOnly: false },
   { value: "animations", label: "Animations", masterOnly: false },
   { value: "sounds", label: "Sounds", masterOnly: false },
+  { value: "multiplayer", label: "Multiplayer", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
