@@ -566,6 +566,112 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          admin_notes: string | null
+          body: string
+          category: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          page_reference: string | null
+          priority: string
+          profile_id: string
+          status: string
+          title: string
+          updated_at: string
+          upvotes: number
+        }
+        Insert: {
+          admin_notes?: string | null
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          page_reference?: string | null
+          priority?: string
+          profile_id: string
+          status?: string
+          title?: string
+          updated_at?: string
+          upvotes?: number
+        }
+        Update: {
+          admin_notes?: string | null
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          page_reference?: string | null
+          priority?: string
+          profile_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          upvotes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_upvotes: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_upvotes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_upvotes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_upvotes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           addressee_id: string
