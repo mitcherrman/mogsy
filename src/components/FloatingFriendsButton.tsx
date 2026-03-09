@@ -27,6 +27,55 @@ interface SavedProfile {
   avatar_url: string | null;
 }
 
+function BlockedUsersList({ 
+  blockedIds, 
+  onUnblock, 
+  navigate, 
+  setOpen 
+}: { 
+  blockedIds: Set<string>; 
+  onUnblock: (id: string) => Promise<void>; 
+  navigate: (path: string) => void; 
+  setOpen: (v: boolean) => void;
+}) {
+  const [profiles, setProfiles] = useState<{id: string; display_name: string | null; avatar_url: string | null}[]>([]);
+  
+  useEffect(() => {
+    if (blockedIds.size === 0) return;
+    supabase
+      .from("public_profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", Array.from(blockedIds))
+      .then(({ data }) => setProfiles(data || []));
+  }, [blockedIds]);
+
+  return (
+    <div className="space-y-2">
+      {profiles.map((p) => (
+        <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
+          <button
+            onClick={() => { setOpen(false); navigate(`/user/${p.id}`); }}
+            className="flex items-center gap-2.5 min-w-0"
+          >
+            <UserAvatar src={p.avatar_url} name={p.display_name || ""} size="md" />
+            <span className="text-sm font-semibold text-foreground truncate">
+              {p.display_name || "User"}
+            </span>
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onUnblock(p.id)}
+            className="h-8 text-xs"
+          >
+            Unblock
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FloatingFriendsButton() {
   const { user } = useAuth();
   const navigate = useNavigate();
