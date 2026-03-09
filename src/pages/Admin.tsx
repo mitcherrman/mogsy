@@ -43,6 +43,8 @@ const allTabs = [
   { value: "animations", label: "Animations", masterOnly: false },
   { value: "sounds", label: "Sounds", masterOnly: false },
   { value: "multiplayer", label: "Multiplayer", masterOnly: false },
+  { value: "reports", label: "Reports", masterOnly: false },
+  { value: "tutorials", label: "Tutorials", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
