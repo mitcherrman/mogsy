@@ -727,6 +727,25 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     )}
                   </Button>
                 </div>
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <div>
+                    <Label className="text-sm font-medium">Demo Studio Access</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSelectedDemo ? "This user can access the Demo Studio page" : "Grant access to Demo Studio only (no admin panels)"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={isSelectedDemo ? "destructive" : "outline"}
+                    onClick={() => toggleDemoAccess(selectedUser.user_id)}
+                  >
+                    {isSelectedDemo ? (
+                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Demo</>
+                    ) : (
+                      <><Film className="h-3 w-3 mr-1" /> Grant Demo</>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
 
