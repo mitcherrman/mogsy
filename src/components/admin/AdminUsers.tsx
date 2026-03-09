@@ -562,6 +562,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     const isSelectedAdmin = selectedRoles.includes("admin");
     const isSelectedMaster = selectedRoles.includes("master_admin");
     const isSelectedMod = selectedRoles.includes("moderator");
+    const isSelectedDemo = selectedRoles.includes("demo_access");
 
     return (
       <div className="space-y-4">
