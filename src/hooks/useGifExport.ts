@@ -117,7 +117,7 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
         const output = await encode({
           width,
           height,
-          frames: gifFrames,
+          frames: gifFrames as any,
           maxColors,
         });
 
