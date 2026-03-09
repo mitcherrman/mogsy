@@ -704,6 +704,17 @@ export default function AdminDemo() {
           </Button>
           {mode !== "aura-check" && (
             <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-xs text-muted-foreground"
+              onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
+              disabled={isRecording}
+            >
+              {gifFps}fps
+            </Button>
+          )}
+          {mode !== "aura-check" && (
+            <Button
               variant="outline"
               size="sm"
               className="gap-1.5"
