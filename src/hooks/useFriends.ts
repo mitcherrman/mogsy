@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends";
+export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "blocked";
 
 interface FriendProfile {
   id: string;
