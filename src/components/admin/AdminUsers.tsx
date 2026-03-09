@@ -16,7 +16,7 @@ import {
   Trash2, Undo2, Eye, Settings2, Trophy, Send, UserMinus, UserPlus,
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
-  KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info,
+  KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
 } from "lucide-react";
 
 interface Profile {
