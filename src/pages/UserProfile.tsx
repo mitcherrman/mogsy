@@ -463,7 +463,7 @@ export default function UserProfile() {
       {/* Hero header */}
       <div className="relative overflow-hidden">
         <div className={cn("absolute inset-0", theme.styles.heroBg)} />
-        <div className="relative container mx-auto max-w-2xl px-4 pt-6 pb-8 z-20">
+        <div className="relative container mx-auto max-w-2xl lg:max-w-3xl px-4 pt-6 pb-8 z-20">
             <Button
             variant="ghost"
             size="icon"

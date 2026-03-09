@@ -19,7 +19,7 @@ export default function Settings() {
   return (
     <div className="min-h-screen px-4 py-8">
       <SEOHead title="Settings — Mogsy" description="Manage your Mogsy settings. Change theme, sign out, and customize your experience." />
-      <div className="container mx-auto max-w-2xl">
+      <div className="container mx-auto max-w-2xl lg:max-w-3xl">
         <div className="flex items-center gap-3 mb-8">
           <Button variant="ghost" size="icon" onClick={() => navigate("/home")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
