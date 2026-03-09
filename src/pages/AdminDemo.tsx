@@ -726,7 +726,7 @@ export default function AdminDemo() {
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>

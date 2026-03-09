@@ -521,6 +521,29 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     }
   };
 
+  const toggleDemoAccess = async (userId: string) => {
+    const currentRoles = userRoles[userId] || [];
+    const hasDemo = currentRoles.includes("demo_access");
+
+    if (hasDemo) {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "demo_access" as any);
+      if (error) { toast.error("Failed to remove demo access"); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: (prev[userId] || []).filter((r) => r !== "demo_access"),
+      }));
+      toast.success("Demo access removed");
+    } else {
+      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "demo_access" as any });
+      if (error) { toast.error("Failed to grant demo access: " + error.message); return; }
+      setUserRoles((prev) => ({
+        ...prev,
+        [userId]: [...(prev[userId] || []), "demo_access"],
+      }));
+      toast.success("Demo access granted");
+    }
+  };
+
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleString() : "Never";
   const timeAgo = (d: string | null) => {
     if (!d) return "Never";
