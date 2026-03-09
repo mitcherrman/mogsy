@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Users, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
-import MultiplayerModeCard from "@/components/multiplayer/MultiplayerModeCard";
+import MultiplayerModeCard, { MODE_CONFIG } from "@/components/multiplayer/MultiplayerModeCard";
 import { useMultiplayerSettings, useMultiplayerGame, useAvailableGames, type MultiplayerMode } from "@/hooks/useMultiplayerGame";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +60,8 @@ export default function Multiplayer() {
     );
   }
 
+  const selectedConfig = selectedMode ? MODE_CONFIG[selectedMode] : null;
+
   return (
     <div className="px-4 py-6 max-w-2xl mx-auto">
       <SEOHead title="Multiplayer — Mogsy" description="Play 2v2 games with friends." />
@@ -76,56 +78,73 @@ export default function Multiplayer() {
         </div>
       </div>
 
-      {/* Mode selection */}
-      <div className="space-y-3 mb-6">
+      {/* Mode selection - Bubble grid */}
+      <div className="space-y-4 mb-6">
         <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Choose a Mode</h2>
         {settingsLoading ? (
-          <div className="space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
+          <div className="flex flex-wrap justify-center gap-4">
+            {[1,2,3,4,5].map(i => <div key={i} className="w-20 h-20 rounded-full bg-muted animate-pulse" />)}
           </div>
         ) : (
-          MODES.map(mode => (
-            <div key={mode} onClick={() => isEnabled(mode) && setSelectedMode(selectedMode === mode ? null : mode)}>
+          <div className="flex flex-wrap justify-center gap-4">
+            {MODES.map(mode => (
               <MultiplayerModeCard
+                key={mode}
                 mode={mode}
                 onClick={() => isEnabled(mode) && setSelectedMode(selectedMode === mode ? null : mode)}
                 disabled={!isEnabled(mode)}
+                selected={selectedMode === mode}
               />
-              {selectedMode === mode && isEnabled(mode) && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-2 p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3"
+            ))}
+          </div>
+        )}
+
+        {/* Description below bubbles */}
+        {selectedMode && selectedConfig && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mt-4"
+          >
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              {selectedConfig.description}
+            </p>
+          </motion.div>
+        )}
+
+        {/* League selection panel */}
+        {selectedMode && isEnabled(selectedMode) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3"
+          >
+            <p className="text-xs font-bold text-foreground">Select a League</p>
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+              {leagues.map(l => (
+                <button
+                  key={l.id}
+                  onClick={() => setSelectedLeague(selectedLeague === l.id ? null : l.id)}
+                  className={`p-2 rounded-lg border text-xs font-semibold text-left transition-all ${
+                    selectedLeague === l.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground hover:border-primary/40"
+                  }`}
                 >
-                  <p className="text-xs font-bold text-foreground">Select a League</p>
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                    {leagues.map(l => (
-                      <button
-                        key={l.id}
-                        onClick={() => setSelectedLeague(selectedLeague === l.id ? null : l.id)}
-                        className={`p-2 rounded-lg border text-xs font-semibold text-left transition-all ${
-                          selectedLeague === l.id
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-card text-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        {l.name}
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    onClick={handleCreateGame}
-                    disabled={!selectedLeague || creating}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {creating ? "Creating..." : "Create Game"}
-                  </Button>
-                </motion.div>
-              )}
+                  {l.name}
+                </button>
+              ))}
             </div>
-          ))
+            <Button
+              onClick={handleCreateGame}
+              disabled={!selectedLeague || creating}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {creating ? "Creating..." : "Create Game"}
+            </Button>
+          </motion.div>
         )}
       </div>
 
