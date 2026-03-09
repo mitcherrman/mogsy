@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, UserPlus, UserCheck, UserX, Search, X, Bookmark } from "lucide-react";
+import { Users, UserPlus, UserCheck, UserX, Search, X, Bookmark, Ban } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import UserAvatar from "@/components/UserAvatar";
+import FriendActionMenu from "@/components/FriendActionMenu";
 import { useFriends } from "@/hooks/useFriends";
+import { useBlocks } from "@/hooks/useBlocks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface SearchResult {
   id: string;
