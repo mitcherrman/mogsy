@@ -916,3 +916,29 @@ export default function AdminDemo() {
   );
 }
 
+  // Auth guard: allow admin, master_admin, or demo_access roles
+  useEffect(() => {
+    if (!user) { navigate("/auth"); return; }
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (!data || data.length === 0) {
+          navigate("/");
+          toast.error("Access denied");
+          return;
+        }
+        const roles = data.map((r) => r.role as string);
+        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access");
+        const fullAdmin = roles.includes("admin") || roles.includes("master_admin");
+        if (!hasAccess) {
+          navigate("/");
+          toast.error("Access denied");
+          return;
+        }
+        setAuthorized(true);
+        setIsFullAdmin(fullAdmin);
+        setAuthLoading(false);
+      });
+  }, [user, navigate]);
