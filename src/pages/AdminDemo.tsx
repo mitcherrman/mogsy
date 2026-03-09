@@ -219,6 +219,10 @@ export default function AdminDemo() {
     setTimeout(() => setAnimWinner(null), 300);
   }, []);
 
+  if (authLoading || !authorized) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   const themeStyle = theme.styles.pageBg ? { background: theme.styles.pageBg } : {};
 
   // Render card controls inline (not as a component, to preserve focus)
