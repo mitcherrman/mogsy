@@ -3,11 +3,11 @@ import html2canvas from "html2canvas";
 import { toast } from "sonner";
 
 interface UseGifExportOptions {
-  /** Scale factor for capture resolution (default 2 for high-res) */
+  /** Scale factor for capture resolution (default 1.5 for balance of quality/speed) */
   scale?: number;
-  /** Frames per second (default 20 for smooth animation) */
+  /** Target frames per second for playback (default 30) */
   fps?: number;
-  /** Max colors in GIF palette (default 255 for best quality) */
+  /** Max colors in GIF palette (default 256 for best quality) */
   maxColors?: number;
   /** Total recording duration in ms (default 3000) */
   duration?: number;
@@ -15,9 +15,9 @@ interface UseGifExportOptions {
 
 export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportOptions = {}) {
   const {
-    scale = 2,
-    fps = 20,
-    maxColors = 255,
+    scale = 1.5,
+    fps = 30,
+    maxColors = 256,
     duration = 3000,
   } = options;
 
@@ -34,74 +34,98 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
       const toastId = toast.loading("Recording animation...", { duration: 30000 });
 
       try {
-        const frameDelay = Math.round(1000 / fps);
-        const totalFrames = Math.ceil(duration / frameDelay);
-        const frames: { data: ImageData; delay: number }[] = [];
-
-        // Capture the element dimensions at scale
         const el = ref.current;
         const rect = el.getBoundingClientRect();
         const width = Math.round(rect.width * scale);
         const height = Math.round(rect.height * scale);
 
-        // Start animation after a small delay to let UI settle
+        // Start animation
         if (onStartAnimation) {
           onStartAnimation();
         }
 
-        // Small delay to let animation start rendering
-        await new Promise((r) => setTimeout(r, 50));
+        // Small delay to let animation begin rendering
+        await new Promise((r) => setTimeout(r, 30));
 
-        // Capture frames
-        for (let i = 0; i < totalFrames; i++) {
-          const canvas = await html2canvas(el, {
-            backgroundColor: null,
-            scale,
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            width: rect.width,
-            height: rect.height,
-          });
+        // Capture frames as fast as html2canvas allows, recording real timestamps
+        const rawFrames: { data: ImageData; timestamp: number }[] = [];
+        const startTime = performance.now();
+        const endTime = startTime + duration;
 
-          // Get ImageData from canvas
+        // Shared html2canvas options (reuse for perf)
+        const captureOpts = {
+          backgroundColor: null,
+          scale,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          width: rect.width,
+          height: rect.height,
+          // Skip expensive operations for speed
+          imageTimeout: 0,
+          removeContainer: true,
+        };
+
+        let frameCount = 0;
+        while (performance.now() < endTime) {
+          const frameStart = performance.now();
+
+          const canvas = await html2canvas(el, captureOpts);
           const ctx = canvas.getContext("2d");
           if (ctx) {
             const imageData = ctx.getImageData(0, 0, width, height);
-            frames.push({ data: imageData, delay: frameDelay });
+            rawFrames.push({ data: imageData, timestamp: frameStart - startTime });
           }
 
-          setProgress(Math.round(((i + 1) / totalFrames) * 50));
+          frameCount++;
+          setProgress(Math.round((performance.now() - startTime) / duration * 40));
 
-          // Wait for next frame
-          if (i < totalFrames - 1) {
-            await new Promise((r) => setTimeout(r, frameDelay));
-          }
+          // Yield to browser to let animations render
+          await new Promise((r) => requestAnimationFrame(r));
         }
 
-        toast.loading("Encoding GIF...", { id: toastId });
+        if (rawFrames.length < 2) {
+          toast.error("Too few frames captured", { id: toastId });
+          setIsRecording(false);
+          setProgress(0);
+          return;
+        }
+
+        toast.loading(`Encoding GIF (${rawFrames.length} frames)...`, { id: toastId });
+        setProgress(50);
+
+        // Build GIF frames with real timing delays
+        const targetDelay = Math.round(1000 / fps); // desired playback delay per frame
+        const gifFrames: { data: Uint8Array; delay: number }[] = [];
+
+        for (let i = 0; i < rawFrames.length; i++) {
+          const nextTimestamp = i < rawFrames.length - 1 ? rawFrames[i + 1].timestamp : rawFrames[i].timestamp + targetDelay;
+          const realDelay = Math.round(nextTimestamp - rawFrames[i].timestamp);
+          const clampedDelay = Math.max(10, Math.min(200, realDelay));
+
+          gifFrames.push({
+            data: new Uint8Array(rawFrames[i].data.data.buffer),
+            delay: clampedDelay,
+          });
+        }
+
         setProgress(60);
 
-        // Dynamically import modern-gif to keep bundle small
+        // Dynamically import modern-gif
         const { encode } = await import("modern-gif");
 
-        // Encode with high quality settings
         const output = await encode({
           width,
           height,
-          frames: frames.map((f) => ({
-            data: f.data.data,
-            delay: f.delay,
-          })),
+          frames: gifFrames as any,
           maxColors,
         });
 
         setProgress(90);
 
-        // Create blob and download
+        // Create blob and download/share
         const blob = new Blob([output], { type: "image/gif" });
 
-        // Try native share first (mobile)
         if (navigator.share && navigator.canShare) {
           const file = new File([blob], "mogsy-animation.gif", { type: "image/gif" });
           const shareData = { files: [file] };
@@ -118,7 +142,6 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
           }
         }
 
-        // Fallback: download
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -127,7 +150,8 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
         URL.revokeObjectURL(url);
 
         const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
-        toast.success(`GIF saved! (${sizeMB}MB, ${width}×${height}px)`, { id: toastId });
+        const actualFps = Math.round(rawFrames.length / (duration / 1000));
+        toast.success(`GIF saved! (${sizeMB}MB, ${width}×${height}px, ~${actualFps}fps, ${rawFrames.length} frames)`, { id: toastId });
         setProgress(100);
       } catch (err) {
         console.error("GIF export failed:", err);

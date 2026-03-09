@@ -66,10 +66,11 @@ export default function AdminDemo() {
   const isMobile = useIsMobile();
   const captureRef = useRef<HTMLDivElement>(null);
   const { capture } = useScreenshot(captureRef);
+  const [gifFps, setGifFps] = useState<30 | 60>(30);
   const { recordGif, isRecording, progress } = useGifExport(captureRef, {
-    scale: 2,
-    fps: 20,
-    maxColors: 255,
+    scale: 1.5,
+    fps: gifFps,
+    maxColors: 256,
     duration: 3000,
   });
   const { playAnimationSound } = useAnimationSound();
@@ -701,6 +702,17 @@ export default function AdminDemo() {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
             <Camera className="h-3.5 w-3.5" /> Screenshot
           </Button>
+          {mode !== "aura-check" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-xs text-muted-foreground"
+              onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
+              disabled={isRecording}
+            >
+              {gifFps}fps
+            </Button>
+          )}
           {mode !== "aura-check" && (
             <Button
               variant="outline"
