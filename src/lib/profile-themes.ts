@@ -305,6 +305,27 @@ export const profileThemes: ProfileTheme[] = [
       innerBorder: "border-[hsl(0,40%,30%)/0.4]",
     },
   },
+  {
+    id: "water",
+    label: "Water",
+    isPro: true,
+    preview: "bg-gradient-to-r from-[hsl(200,80%,30%)] via-[hsl(190,70%,45%)] to-[hsl(210,60%,55%)]",
+    styles: {
+      pageBg: "linear-gradient(180deg, hsl(200,40%,8%) 0%, hsl(195,30%,6%) 100%)",
+      heroBg: "bg-gradient-to-b from-[hsl(190,70%,40%)/0.35] via-[hsl(200,50%,25%)/0.2] to-transparent",
+      cardBg: "border-[hsl(195,40%,28%)/0.5] bg-[hsl(200,25%,12%)/0.7]",
+      accentRing: "ring-[hsl(190,80%,55%)/0.6]",
+      textAccent: "text-[hsl(190,80%,60%)]",
+      iconAccent: "text-[hsl(195,70%,55%)]",
+      statBg: "bg-[hsl(200,25%,14%)/0.7] border-[hsl(195,40%,28%)/0.4]",
+      headingColor: "text-[hsl(190,60%,70%)]",
+      nameColor: "text-[hsl(195,30%,92%)]",
+      textColor: "text-[hsl(200,20%,84%)]",
+      mutedColor: "text-[hsl(200,15%,55%)]",
+      innerBg: "bg-[hsl(200,20%,16%)/0.6]",
+      innerBorder: "border-[hsl(195,30%,26%)/0.5]",
+    },
+  },
 ];
 
 export function getThemeById(id: string): ProfileTheme {
