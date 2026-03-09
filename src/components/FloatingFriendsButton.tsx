@@ -99,7 +99,7 @@ export default function FloatingFriendsButton() {
       .neq("id", myProfileId)
       .eq("is_anonymous", false)
       .limit(10);
-    setSearchResults((data || []).filter((p) => p.id) as SearchResult[]);
+    setSearchResults((data || []).filter((p) => p.id && !isBlocked(p.id)) as SearchResult[]);
     setSearching(false);
   };
 
