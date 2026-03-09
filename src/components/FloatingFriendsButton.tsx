@@ -318,6 +318,18 @@ export default function FloatingFriendsButton() {
                   })}
                 </div>
               </TabsContent>
+
+              {/* Blocked Tab */}
+              <TabsContent value="blocked" className="mt-0">
+                {blockedIds.size === 0 ? (
+                  <div className="text-center py-8">
+                    <Ban className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No blocked users</p>
+                  </div>
+                ) : (
+                  <BlockedUsersList blockedIds={blockedIds} onUnblock={async (id) => { await unblockUser(id); toast.success("User unblocked"); }} navigate={navigate} setOpen={setOpen} />
+                )}
+              </TabsContent>
             </div>
           </Tabs>
         </SheetContent>
