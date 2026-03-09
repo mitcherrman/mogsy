@@ -12,8 +12,9 @@ import { getTierFromElo, getTierFromPercentile, getTierColor, getTierBgColor, ge
 import {
   ArrowLeft, MapPin, Crown, Zap, Trophy, Swords, Calendar,
   Instagram, Youtube, Twitch, Globe, Twitter, ExternalLink, MessageSquare, Shield, Heart,
-  UserPlus, UserCheck, Clock, Bookmark, BookmarkCheck,
+  UserPlus, UserCheck, Clock, Bookmark, BookmarkCheck, Ban,
 } from "lucide-react";
+import FriendActionMenu from "@/components/FriendActionMenu";
 import { cn } from "@/lib/utils";
 import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
 import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
@@ -177,6 +178,16 @@ function ProfileActions({ profileId, friendStatus, friendshipId, refreshFriend, 
 
   if (isOwnProfile === null || isOwnProfile) return null;
 
+  if (friendStatus === "blocked") {
+    return (
+      <div className="flex items-center gap-2 mt-3">
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <Ban className="h-3.5 w-3.5" /> Blocked
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 mt-3">
       <FriendButton
@@ -187,6 +198,12 @@ function ProfileActions({ profileId, friendStatus, friendshipId, refreshFriend, 
         userId={userId}
       />
       <SaveButton profileId={profileId} userId={userId} />
+      <FriendActionMenu
+        targetProfileId={profileId}
+        targetName="this user"
+        friendshipId={friendshipId || undefined}
+        onBlocked={refreshFriend}
+      />
     </div>
   );
 }

@@ -25,6 +25,8 @@ import AdminSounds from "@/components/admin/AdminSounds";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
+import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
+import AdminUserReports from "@/components/admin/AdminUserReports";
 import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
@@ -41,6 +43,8 @@ const allTabs = [
   { value: "animations", label: "Animations", masterOnly: false },
   { value: "sounds", label: "Sounds", masterOnly: false },
   { value: "multiplayer", label: "Multiplayer", masterOnly: false },
+  { value: "reports", label: "Reports", masterOnly: false },
+  { value: "tutorials", label: "Tutorials", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
@@ -205,6 +209,8 @@ export default function Admin() {
           <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
           <TabsContent value="sounds"><AdminSounds /></TabsContent>
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
+          <TabsContent value="reports"><AdminUserReports /></TabsContent>
+          <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
           {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}

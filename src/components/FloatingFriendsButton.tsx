@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, UserPlus, UserCheck, UserX, Search, X, Bookmark } from "lucide-react";
+import { Users, UserPlus, UserCheck, UserX, Search, X, Bookmark, Ban } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import UserAvatar from "@/components/UserAvatar";
+import FriendActionMenu from "@/components/FriendActionMenu";
 import { useFriends } from "@/hooks/useFriends";
+import { useBlocks } from "@/hooks/useBlocks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface SearchResult {
   id: string;
@@ -24,10 +27,60 @@ interface SavedProfile {
   avatar_url: string | null;
 }
 
+function BlockedUsersList({ 
+  blockedIds, 
+  onUnblock, 
+  navigate, 
+  setOpen 
+}: { 
+  blockedIds: Set<string>; 
+  onUnblock: (id: string) => Promise<void>; 
+  navigate: (path: string) => void; 
+  setOpen: (v: boolean) => void;
+}) {
+  const [profiles, setProfiles] = useState<{id: string; display_name: string | null; avatar_url: string | null}[]>([]);
+  
+  useEffect(() => {
+    if (blockedIds.size === 0) return;
+    supabase
+      .from("public_profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", Array.from(blockedIds))
+      .then(({ data }) => setProfiles(data || []));
+  }, [blockedIds]);
+
+  return (
+    <div className="space-y-2">
+      {profiles.map((p) => (
+        <div key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5">
+          <button
+            onClick={() => { setOpen(false); navigate(`/user/${p.id}`); }}
+            className="flex items-center gap-2.5 min-w-0"
+          >
+            <UserAvatar src={p.avatar_url} name={p.display_name || ""} size="md" />
+            <span className="text-sm font-semibold text-foreground truncate">
+              {p.display_name || "User"}
+            </span>
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onUnblock(p.id)}
+            className="h-8 text-xs"
+          >
+            Unblock
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FloatingFriendsButton() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId } = useFriends();
+  const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId, refresh: refreshFriends } = useFriends();
+  const { isBlocked, blockedIds, unblockUser } = useBlocks();
   const [open, setOpen] = useState(false);
 
   // Listen for mobile nav trigger
@@ -95,7 +148,7 @@ export default function FloatingFriendsButton() {
       .neq("id", myProfileId)
       .eq("is_anonymous", false)
       .limit(10);
-    setSearchResults((data || []).filter((p) => p.id) as SearchResult[]);
+    setSearchResults((data || []).filter((p) => p.id && !isBlocked(p.id)) as SearchResult[]);
     setSearching(false);
   };
 
@@ -136,11 +189,11 @@ export default function FloatingFriendsButton() {
           </SheetHeader>
 
           <Tabs defaultValue="friends" className="flex flex-col h-full">
-            <TabsList className="mx-4 mb-2">
-              <TabsTrigger value="friends" className="flex-1">
+            <TabsList className="mx-4 mb-2 flex-wrap h-auto gap-1">
+              <TabsTrigger value="friends" className="flex-1 text-xs">
                 Friends ({friends.length})
               </TabsTrigger>
-              <TabsTrigger value="requests" className="flex-1 relative">
+              <TabsTrigger value="requests" className="flex-1 text-xs relative">
                 Requests
                 {pendingRequests.length > 0 && (
                   <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
@@ -148,11 +201,14 @@ export default function FloatingFriendsButton() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="saved" className="flex-1">
+              <TabsTrigger value="saved" className="flex-1 text-xs">
                 <Bookmark className="h-3.5 w-3.5 mr-1" /> Saved
               </TabsTrigger>
-              <TabsTrigger value="search" className="flex-1">
+              <TabsTrigger value="search" className="flex-1 text-xs">
                 <Search className="h-3.5 w-3.5 mr-1" /> Find
+              </TabsTrigger>
+              <TabsTrigger value="blocked" className="flex-1 text-xs">
+                <Ban className="h-3.5 w-3.5 mr-1" /> Blocked
               </TabsTrigger>
             </TabsList>
 
@@ -180,14 +236,13 @@ export default function FloatingFriendsButton() {
                             {f.profile.display_name || "User"}
                           </span>
                         </button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFriend(f.id)}
-                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
+                        <FriendActionMenu
+                          targetProfileId={f.profile.id}
+                          targetName={f.profile.display_name || "User"}
+                          friendshipId={f.id}
+                          onRemoveFriend={removeFriend}
+                          onBlocked={refreshFriends}
+                        />
                       </div>
                     ))}
                   </div>
@@ -311,6 +366,18 @@ export default function FloatingFriendsButton() {
                     );
                   })}
                 </div>
+              </TabsContent>
+
+              {/* Blocked Tab */}
+              <TabsContent value="blocked" className="mt-0">
+                {blockedIds.size === 0 ? (
+                  <div className="text-center py-8">
+                    <Ban className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No blocked users</p>
+                  </div>
+                ) : (
+                  <BlockedUsersList blockedIds={blockedIds} onUnblock={async (id) => { await unblockUser(id); toast.success("User unblocked"); }} navigate={navigate} setOpen={setOpen} />
+                )}
               </TabsContent>
             </div>
           </Tabs>

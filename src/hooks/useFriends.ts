@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends";
+export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "blocked";
 
 interface FriendProfile {
   id: string;
@@ -45,6 +45,13 @@ export function useFriends() {
     if (!myProfileId) return;
     setLoading(true);
 
+    // Get blocked users to filter them out
+    const { data: blockedRows } = await supabase
+      .from("user_blocks")
+      .select("blocked_profile_id")
+      .eq("blocker_profile_id", myProfileId);
+    const blockedIds = new Set((blockedRows || []).map(b => b.blocked_profile_id));
+
     const { data: rows } = await supabase
       .from("friendships")
       .select("*")
@@ -57,8 +64,14 @@ export function useFriends() {
       return;
     }
 
-    // Collect all other profile IDs
-    const otherIds = rows.map((r) =>
+    // Filter out blocked users
+    const filteredRows = rows.filter(r => {
+      const otherId = r.requester_id === myProfileId ? r.addressee_id : r.requester_id;
+      return !blockedIds.has(otherId);
+    });
+
+    // Collect all other profile IDs from filtered rows
+    const otherIds = filteredRows.map((r) =>
       r.requester_id === myProfileId ? r.addressee_id : r.requester_id
     );
 
@@ -75,7 +88,7 @@ export function useFriends() {
       }
     }
 
-    const enriched = rows.map((r) => {
+    const enriched = filteredRows.map((r) => {
       const otherId = r.requester_id === myProfileId ? r.addressee_id : r.requester_id;
       return {
         ...r,
@@ -166,6 +179,21 @@ export function useFriendStatus(targetProfileId: string | undefined) {
     }
 
     const me = myProfile.id;
+
+    // Check if blocked
+    const { data: blockedRow } = await supabase
+      .from("user_blocks")
+      .select("id")
+      .eq("blocker_profile_id", me)
+      .eq("blocked_profile_id", targetProfileId)
+      .maybeSingle();
+
+    if (blockedRow) {
+      setStatus("blocked");
+      setFriendshipId(null);
+      setLoading(false);
+      return;
+    }
 
     const { data: rows } = await supabase
       .from("friendships")

@@ -5,6 +5,7 @@ import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import FloatingScrollButton from "./FloatingScrollButton";
 import FloatingFriendsButton from "./FloatingFriendsButton";
+import TutorialTipPopup from "./TutorialTipPopup";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -42,6 +43,7 @@ export default function Layout() {
       <FloatingFriendsButton />
       <FloatingThemeSwitcher />
       <FloatingScrollButton />
+      <TutorialTipPopup />
     </div>
   );
 }

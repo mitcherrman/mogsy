@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, ToggleLeft, ToggleRight, Save, BarChart3 } from "lucide-react";
+import { Users, ToggleLeft, ToggleRight, Save, BarChart3, XCircle, Eye, Trash2, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { MultiplayerMode, MultiplayerSettings } from "@/hooks/useMultiplayerGame";
+import type { MultiplayerMode, MultiplayerSettings, MultiplayerGame } from "@/hooks/useMultiplayerGame";
+import UserAvatar from "@/components/UserAvatar";
 
 const MODE_LABELS: Record<MultiplayerMode, { label: string; description: string; configFields: { key: string; label: string; type: "number"; min: number; max: number }[] }> = {
   tag_team: {
@@ -56,28 +57,82 @@ interface GameStats {
   active: number;
 }
 
+interface GameWithPlayers extends MultiplayerGame {
+  players: { id: string; profile_id: string; display_name: string | null; avatar_url: string | null }[];
+}
+
 export default function AdminMultiplayer() {
   const [settings, setSettings] = useState<MultiplayerSettings[]>([]);
   const [stats, setStats] = useState<GameStats>({ total: 0, byMode: {}, active: 0 });
+  const [activeGames, setActiveGames] = useState<GameWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [showGames, setShowGames] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      supabase.from("multiplayer_settings").select("*"),
-      supabase.from("multiplayer_games").select("id, mode, status"),
-    ]).then(([settingsRes, gamesRes]) => {
-      if (settingsRes.data) setSettings(settingsRes.data as MultiplayerSettings[]);
-      if (gamesRes.data) {
-        const total = gamesRes.data.length;
-        const active = gamesRes.data.filter(g => g.status === "active").length;
-        const byMode: Record<string, number> = {};
-        gamesRes.data.forEach(g => { byMode[g.mode] = (byMode[g.mode] || 0) + 1; });
-        setStats({ total, byMode, active });
-      }
-      setLoading(false);
-    });
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    const [settingsRes, gamesRes] = await Promise.all([
+      supabase.from("multiplayer_settings").select("*"),
+      supabase.from("multiplayer_games").select("id, mode, status, created_at"),
+    ]);
+
+    if (settingsRes.data) setSettings(settingsRes.data as MultiplayerSettings[]);
+    if (gamesRes.data) {
+      const total = gamesRes.data.length;
+      const active = gamesRes.data.filter(g => g.status === "waiting" || g.status === "active" || g.status === "picking").length;
+      const byMode: Record<string, number> = {};
+      gamesRes.data.forEach(g => { byMode[g.mode] = (byMode[g.mode] || 0) + 1; });
+      setStats({ total, byMode, active });
+    }
+    setLoading(false);
+  };
+
+  const loadActiveGames = async () => {
+    const { data: games } = await supabase
+      .from("multiplayer_games")
+      .select("*")
+      .in("status", ["waiting", "active", "picking"])
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (!games || games.length === 0) {
+      setActiveGames([]);
+      return;
+    }
+
+    // Load players for each game
+    const { data: allPlayers } = await supabase
+      .from("multiplayer_players")
+      .select("id, game_id, profile_id")
+      .in("game_id", games.map(g => g.id));
+
+    const profileIds = [...new Set((allPlayers || []).map(p => p.profile_id))];
+    const { data: profiles } = await supabase
+      .from("public_profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", profileIds);
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+    setActiveGames(games.map(g => ({
+      ...g as MultiplayerGame,
+      players: (allPlayers || [])
+        .filter(p => p.game_id === g.id)
+        .map(p => ({
+          id: p.id,
+          profile_id: p.profile_id,
+          display_name: profileMap.get(p.profile_id)?.display_name || "Unknown",
+          avatar_url: profileMap.get(p.profile_id)?.avatar_url || null,
+        })),
+    })));
+  };
+
+  useEffect(() => {
+    if (showGames) loadActiveGames();
+  }, [showGames]);
 
   const getSetting = (mode: MultiplayerMode) => settings.find(s => s.mode === mode);
 
@@ -117,6 +172,26 @@ export default function AdminMultiplayer() {
     }
   };
 
+  const forceEndGame = async (gameId: string) => {
+    await supabase.from("multiplayer_games").update({ status: "cancelled" }).eq("id", gameId);
+    toast.success("Game cancelled");
+    loadActiveGames();
+    loadData();
+  };
+
+  const kickPlayer = async (playerId: string) => {
+    await supabase.from("multiplayer_players").delete().eq("id", playerId);
+    toast.success("Player removed");
+    loadActiveGames();
+  };
+
+  const deleteGame = async (gameId: string) => {
+    await supabase.from("multiplayer_games").delete().eq("id", gameId);
+    toast.success("Game deleted");
+    loadActiveGames();
+    loadData();
+  };
+
   if (loading) {
     return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}</div>;
   }
@@ -137,6 +212,60 @@ export default function AdminMultiplayer() {
           <div className="text-2xl font-black text-foreground">{MODES.filter(m => getSetting(m)?.is_enabled).length}</div>
           <div className="text-xs text-muted-foreground">Modes On</div>
         </div>
+      </div>
+
+      {/* Active Games Management */}
+      <div className="p-4 rounded-xl border border-border bg-card">
+        <button
+          onClick={() => setShowGames(!showGames)}
+          className="w-full flex items-center justify-between"
+        >
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" /> Active Games Management
+          </h3>
+          <span className="text-xs text-muted-foreground">{showGames ? "Hide" : "Show"}</span>
+        </button>
+
+        {showGames && (
+          <div className="mt-4 space-y-3">
+            {activeGames.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No active games</p>
+            ) : (
+              activeGames.map(game => (
+                <div key={game.id} className="p-3 rounded-lg border border-border bg-background">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-sm font-bold text-foreground capitalize">{game.mode.replace("_", " ")}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Status: <span className={game.status === "active" ? "text-green-500" : "text-amber-500"}>{game.status}</span>
+                        {" · "}{new Date(game.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => forceEndGame(game.id)} className="h-7 text-xs text-destructive">
+                        <XCircle className="h-3 w-3 mr-1" /> Cancel
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteGame(game.id)} className="h-7 w-7 p-0 text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {game.players.map(p => (
+                      <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50">
+                        <UserAvatar src={p.avatar_url} name={p.display_name || ""} size="sm" />
+                        <span className="text-xs font-medium text-foreground">{p.display_name}</span>
+                        <button onClick={() => kickPlayer(p.id)} className="text-muted-foreground hover:text-destructive">
+                          <UserX className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mode settings */}
