@@ -105,6 +105,7 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
           const clampedDelay = Math.max(10, Math.min(200, realDelay));
 
           gifFrames.push({
+            // Cast to satisfy modern-gif's type expectations
             data: rawFrames[i].data.data,
             delay: clampedDelay,
           });
