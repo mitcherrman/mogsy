@@ -373,7 +373,7 @@ export default function Leaderboard() {
   return (
     <div className="min-h-screen px-4 py-8">
       <SEOHead title={`${leagueName || "Leaderboard"} — Mogsy`} description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Aura leaderboard.`} />
-      <div className="container mx-auto max-w-2xl">
+      <div className="container mx-auto max-w-2xl lg:max-w-3xl">
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-xl pb-4 mb-4 border-b border-border">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">

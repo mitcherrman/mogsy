@@ -376,7 +376,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8">
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
-      <div className="container mx-auto max-w-6xl">
+      <div className="container mx-auto max-w-4xl xl:max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
