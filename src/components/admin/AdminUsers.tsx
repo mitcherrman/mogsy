@@ -596,6 +596,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             {selectedRoles.includes("master_admin") && <Badge className="bg-primary/20 text-primary border-primary/30"><ShieldCheck className="h-3 w-3 mr-1" /> Master</Badge>}
             {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
             {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
+            {isSelectedDemo && <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30"><Film className="h-3 w-3 mr-1" /> Demo</Badge>}
             {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
