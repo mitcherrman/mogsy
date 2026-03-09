@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square, Swords } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
