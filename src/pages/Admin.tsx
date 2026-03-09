@@ -27,6 +27,7 @@ import AdminOnboarding from "@/components/admin/AdminOnboarding";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminUserReports from "@/components/admin/AdminUserReports";
+import AdminFeedback from "@/components/admin/AdminFeedback";
 import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
@@ -45,6 +46,7 @@ const allTabs = [
   { value: "multiplayer", label: "Multiplayer", masterOnly: false },
   { value: "reports", label: "Reports", masterOnly: false },
   { value: "tutorials", label: "Tutorials", masterOnly: false },
+  { value: "feedback", label: "Feedback", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
@@ -211,6 +213,7 @@ export default function Admin() {
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="reports"><AdminUserReports /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
+          <TabsContent value="feedback"><AdminFeedback /></TabsContent>
           {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}

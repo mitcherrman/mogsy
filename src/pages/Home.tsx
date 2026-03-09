@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Gift } from "lucide-react";
+import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Gift, MessageSquarePlus } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -947,6 +947,23 @@ export default function Home() {
             </div>
           </section>
         )}
+
+        {/* Feedback CTA */}
+        <section className="mb-10">
+          <button
+            onClick={() => navigate("/feedback")}
+            className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group"
+          >
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <MessageSquarePlus className="h-5 w-5 text-primary" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-foreground">Share Your Feedback</p>
+              <p className="text-xs text-muted-foreground">Report bugs, suggest features, or tell us what you think</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </button>
+        </section>
       </div>
     </div>
   );
