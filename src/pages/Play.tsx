@@ -633,8 +633,8 @@ export default function Play() {
                 });
             }
 
-            const mainItems = orderedItems.filter(i => i.key !== "elocheck");
-            const eloItem = orderedItems.find(i => i.key === "elocheck");
+            const mainItems = orderedItems.filter(i => i.key !== "elocheck" && i.key !== "multiplayer");
+            const smallItems = orderedItems.filter(i => i.key === "elocheck" || i.key === "multiplayer");
 
             return (
               <motion.div key="top-level" {...fadeIn} className="flex flex-col items-center gap-6">
@@ -649,13 +649,17 @@ export default function Play() {
                     </div>
                   ))}
                 </div>
-                {eloItem && (
-                  <div className="flex flex-col items-center gap-2">
-                    <Bubble size={eloItem.size} onClick={() => handleBubbleClick(eloItem.action)} active={false} variant={eloItem.variant}>
-                      {eloItem.smallIcon}
-                      <span className="text-xs font-extrabold tracking-wide">{eloItem.label}</span>
-                    </Bubble>
-                    <FadeLabel delay={0.5}>{eloItem.desc}</FadeLabel>
+                {smallItems.length > 0 && (
+                  <div className="flex items-start justify-center gap-6">
+                    {smallItems.map(item => (
+                      <div key={item.key} className="flex flex-col items-center gap-2">
+                        <Bubble size={item.size} onClick={() => handleBubbleClick(item.action)} active={false} variant={item.variant}>
+                          {item.smallIcon}
+                          <span className="text-xs font-extrabold tracking-wide">{item.label}</span>
+                        </Bubble>
+                        <FadeLabel delay={0.5}>{item.desc}</FadeLabel>
+                      </div>
+                    ))}
                   </div>
                 )}
               </motion.div>
