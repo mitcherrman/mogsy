@@ -96,17 +96,15 @@ export function useGifExport(ref: RefObject<HTMLElement>, options: UseGifExportO
 
         // Build GIF frames with real timing delays
         const targetDelay = Math.round(1000 / fps); // desired playback delay per frame
-        const gifFrames: { data: Uint8ClampedArray; delay: number }[] = [];
+        const gifFrames: { data: Uint8Array; delay: number }[] = [];
 
         for (let i = 0; i < rawFrames.length; i++) {
           const nextTimestamp = i < rawFrames.length - 1 ? rawFrames[i + 1].timestamp : rawFrames[i].timestamp + targetDelay;
           const realDelay = Math.round(nextTimestamp - rawFrames[i].timestamp);
-          // Clamp delay: min 10ms (GIF spec), max 200ms to avoid stalls
           const clampedDelay = Math.max(10, Math.min(200, realDelay));
 
           gifFrames.push({
-            // Cast to satisfy modern-gif's type expectations
-            data: rawFrames[i].data.data,
+            data: new Uint8Array(rawFrames[i].data.data.buffer),
             delay: clampedDelay,
           });
         }
