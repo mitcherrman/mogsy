@@ -611,6 +611,7 @@ export default function Play() {
               { key: "collections" as ModeKey, label: "Collections", icon: <LayoutGrid className="h-10 w-10" />, smallIcon: <LayoutGrid className="h-10 w-10" />, desc: "Vote on curated matchups", action: () => toggle("collections"), size: 128, variant: "card" as const },
               { key: "compete" as ModeKey, label: "Compete", icon: <Users className="h-10 w-10" />, smallIcon: <Users className="h-10 w-10" />, desc: "Go head-to-head with others", action: () => toggle("compete"), size: 128, variant: "card" as const },
               { key: "elocheck" as ModeKey, label: "Aura Check", icon: <Zap className="h-7 w-7" />, smallIcon: <Zap className="h-7 w-7" />, desc: "Guess who ranks higher", action: () => navigate("/elo-check"), size: 100, variant: "accent" as const },
+              { key: "multiplayer" as ModeKey, label: "Multiplayer", icon: <Swords className="h-7 w-7" />, smallIcon: <Swords className="h-7 w-7" />, desc: "2v2 games with friends", action: () => navigate("/multiplayer"), size: 100, variant: "accent" as const },
             ];
 
             let orderedItems = topLevelItems;
