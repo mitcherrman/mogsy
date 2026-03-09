@@ -1022,6 +1022,262 @@ export type Database = {
           },
         ]
       }
+      multiplayer_actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          game_id: string
+          id: string
+          payload: Json
+          player_id: string
+          round_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          game_id: string
+          id?: string
+          payload?: Json
+          player_id: string
+          round_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          payload?: Json
+          player_id?: string
+          round_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiplayer_actions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_actions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_actions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multiplayer_games: {
+        Row: {
+          config: Json
+          created_at: string
+          finished_at: string | null
+          id: string
+          league_id: string | null
+          league_type: string
+          mode: string
+          result: Json | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          league_id?: string | null
+          league_type?: string
+          mode: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          league_id?: string | null
+          league_type?: string
+          mode?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiplayer_games_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multiplayer_players: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          is_host: boolean
+          is_ready: boolean
+          profile_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          is_host?: boolean
+          is_ready?: boolean
+          profile_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_host?: boolean
+          is_ready?: boolean
+          profile_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiplayer_players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_players_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_players_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_players_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multiplayer_rounds: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          round_number: number
+          state: Json
+          winner_team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          round_number: number
+          state?: Json
+          winner_team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          round_number?: number
+          state?: Json
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiplayer_rounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multiplayer_rounds_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multiplayer_settings: {
+        Row: {
+          config: Json
+          is_enabled: boolean
+          mode: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          is_enabled?: boolean
+          mode: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          is_enabled?: boolean
+          mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      multiplayer_teams: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          score: number
+          team_index: number
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          score?: number
+          team_index: number
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          score?: number
+          team_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multiplayer_teams_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "multiplayer_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       play_layout_config: {
         Row: {
           config: Json
@@ -1622,6 +1878,17 @@ export type Database = {
       }
     }
     Functions: {
+      create_multiplayer_game: {
+        Args: {
+          _config?: Json
+          _host_profile_id: string
+          _league_id: string
+          _league_type: string
+          _mode: string
+          _partner_profile_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1630,9 +1897,18 @@ export type Database = {
         Returns: boolean
       }
       is_friendship_party: { Args: { _profile_id: string }; Returns: boolean }
+      is_game_player: { Args: { _game_id: string }; Returns: boolean }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
+      join_multiplayer_game: {
+        Args: {
+          _game_id: string
+          _partner_profile_id?: string
+          _profile_id: string
+        }
+        Returns: Json
+      }
       purchase_powerup: {
         Args: {
           _diamond_cost: number
@@ -1686,6 +1962,16 @@ export type Database = {
           _winner_profile_id: string
         }
         Returns: undefined
+      }
+      submit_multiplayer_action: {
+        Args: {
+          _action_type: string
+          _game_id: string
+          _payload?: Json
+          _player_id: string
+          _round_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
