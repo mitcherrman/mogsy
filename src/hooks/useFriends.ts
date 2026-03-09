@@ -45,6 +45,13 @@ export function useFriends() {
     if (!myProfileId) return;
     setLoading(true);
 
+    // Get blocked users to filter them out
+    const { data: blockedRows } = await supabase
+      .from("user_blocks")
+      .select("blocked_profile_id")
+      .eq("blocker_profile_id", myProfileId);
+    const blockedIds = new Set((blockedRows || []).map(b => b.blocked_profile_id));
+
     const { data: rows } = await supabase
       .from("friendships")
       .select("*")
@@ -56,6 +63,12 @@ export function useFriends() {
       setLoading(false);
       return;
     }
+
+    // Filter out blocked users
+    const filteredRows = rows.filter(r => {
+      const otherId = r.requester_id === myProfileId ? r.addressee_id : r.requester_id;
+      return !blockedIds.has(otherId);
+    });
 
     // Collect all other profile IDs
     const otherIds = rows.map((r) =>
