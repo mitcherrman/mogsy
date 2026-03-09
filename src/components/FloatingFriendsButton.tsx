@@ -140,11 +140,11 @@ export default function FloatingFriendsButton() {
           </SheetHeader>
 
           <Tabs defaultValue="friends" className="flex flex-col h-full">
-            <TabsList className="mx-4 mb-2">
-              <TabsTrigger value="friends" className="flex-1">
+            <TabsList className="mx-4 mb-2 flex-wrap h-auto gap-1">
+              <TabsTrigger value="friends" className="flex-1 text-xs">
                 Friends ({friends.length})
               </TabsTrigger>
-              <TabsTrigger value="requests" className="flex-1 relative">
+              <TabsTrigger value="requests" className="flex-1 text-xs relative">
                 Requests
                 {pendingRequests.length > 0 && (
                   <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
@@ -152,11 +152,14 @@ export default function FloatingFriendsButton() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="saved" className="flex-1">
+              <TabsTrigger value="saved" className="flex-1 text-xs">
                 <Bookmark className="h-3.5 w-3.5 mr-1" /> Saved
               </TabsTrigger>
-              <TabsTrigger value="search" className="flex-1">
+              <TabsTrigger value="search" className="flex-1 text-xs">
                 <Search className="h-3.5 w-3.5 mr-1" /> Find
+              </TabsTrigger>
+              <TabsTrigger value="blocked" className="flex-1 text-xs">
+                <Ban className="h-3.5 w-3.5 mr-1" /> Blocked
               </TabsTrigger>
             </TabsList>
 
@@ -184,14 +187,13 @@ export default function FloatingFriendsButton() {
                             {f.profile.display_name || "User"}
                           </span>
                         </button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFriend(f.id)}
-                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
+                        <FriendActionMenu
+                          targetProfileId={f.profile.id}
+                          targetName={f.profile.display_name || "User"}
+                          friendshipId={f.id}
+                          onRemoveFriend={removeFriend}
+                          onBlocked={refreshFriends}
+                        />
                       </div>
                     ))}
                   </div>
