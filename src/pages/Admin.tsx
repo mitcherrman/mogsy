@@ -204,6 +204,7 @@ export default function Admin() {
           <TabsContent value="banners"><AdminBanners /></TabsContent>
           <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
           <TabsContent value="sounds"><AdminSounds /></TabsContent>
+          <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}
