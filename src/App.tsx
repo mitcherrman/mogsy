@@ -34,6 +34,8 @@ const AdminDemo = lazy(() => import("./pages/AdminDemo"));
 const SecretRoom = lazy(() => import("./pages/SecretRoom"));
 const Moderator = lazy(() => import("./pages/Moderator"));
 const CustomLink = lazy(() => import("./pages/CustomLink"));
+const Multiplayer = lazy(() => import("./pages/Multiplayer"));
+const MultiplayerGame = lazy(() => import("./pages/MultiplayerGame"));
 
 const queryClient = new QueryClient();
 
