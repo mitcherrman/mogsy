@@ -67,38 +67,7 @@ export default function AdminDemo() {
   const captureRef = useRef<HTMLDivElement>(null);
   const [authorized, setAuthorized] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Auth guard: allow admin, master_admin, or demo_access roles
-  useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .then(({ data }) => {
-        if (!data || data.length === 0) {
-          navigate("/");
-          toast.error("Access denied");
-          return;
-        }
-        const roles = data.map((r) => r.role as string);
-        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access");
-        const fullAdmin = roles.includes("admin") || roles.includes("master_admin");
-        if (!hasAccess) {
-          navigate("/");
-          toast.error("Access denied");
-          return;
-        }
-        setAuthorized(true);
-        setIsFullAdmin(fullAdmin);
-        setLoading(false);
-      });
-  }, [user, navigate]);
-
-  if (loading || !authorized) {
-    return <div className="min-h-screen bg-background" />;
-  }
+  const [authLoading, setAuthLoading] = useState(true);
   const { capture } = useScreenshot(captureRef);
   const [gifFps, setGifFps] = useState<30 | 60>(30);
   const { recordGif, isRecording, progress } = useGifExport(captureRef, {
