@@ -69,12 +69,20 @@ export default function Moderator() {
           <ShieldCheck className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
           <h1 className="text-xl sm:text-3xl font-extrabold text-foreground">Moderator</h1>
           <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Mod</span>
-          <button
-            onClick={() => navigate("/admin/play")}
-            className="ml-auto shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
-          >
-            Play Layout
-          </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={() => navigate("/admin/demo")}
+              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+            >
+              Demo
+            </button>
+            <button
+              onClick={() => navigate("/admin/play")}
+              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+            >
+              Play Layout
+            </button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3 sm:mt-6 space-y-3 sm:space-y-6">

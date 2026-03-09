@@ -65,6 +65,9 @@ export default function AdminDemo() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const captureRef = useRef<HTMLDivElement>(null);
+  const [authorized, setAuthorized] = useState(false);
+  const [isFullAdmin, setIsFullAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const { capture } = useScreenshot(captureRef);
   const [gifFps, setGifFps] = useState<30 | 60>(30);
   const { recordGif, isRecording, progress } = useGifExport(captureRef, {
@@ -101,6 +104,33 @@ export default function AdminDemo() {
 
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
   const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+
+  // Auth guard: allow admin, master_admin, or demo_access roles
+  useEffect(() => {
+    if (!user) { navigate("/auth"); return; }
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (!data || data.length === 0) {
+          navigate("/");
+          toast.error("Access denied");
+          return;
+        }
+        const roles = data.map((r) => r.role as string);
+        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access");
+        const fullAdmin = roles.includes("admin") || roles.includes("master_admin");
+        if (!hasAccess) {
+          navigate("/");
+          toast.error("Access denied");
+          return;
+        }
+        setAuthorized(true);
+        setIsFullAdmin(fullAdmin);
+        setAuthLoading(false);
+      });
+  }, [user, navigate]);
 
   // Save the sitewide theme classes on mount, restore on unmount
   const savedClassesRef = useRef<string>("");
@@ -188,6 +218,10 @@ export default function AdminDemo() {
     // Keep overlay briefly then clear
     setTimeout(() => setAnimWinner(null), 300);
   }, []);
+
+  if (authLoading || !authorized) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   const themeStyle = theme.styles.pageBg ? { background: theme.styles.pageBg } : {};
 
@@ -692,7 +726,7 @@ export default function AdminDemo() {
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>
@@ -912,4 +946,3 @@ export default function AdminDemo() {
     </div>
   );
 }
-
