@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, ImageIcon } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, ImageIcon, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
 import AdminPlayLeagueItems from "@/components/admin/AdminPlayLeagueItems";
+import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import type { PlayLayoutConfig, LayoutTopLevel, LayoutCategory, LayoutLeague } from "@/hooks/usePlayLayout";
 
 interface LeagueItem {
@@ -24,12 +25,14 @@ const DEFAULT_TOP_LEVEL: LayoutTopLevel[] = [
   { key: "collections", label: "Collections", icon: "grid", hidden: false, order: 0 },
   { key: "compete", label: "Compete", icon: "users", hidden: false, order: 1 },
   { key: "elocheck", label: "Aura Check", icon: "zap", hidden: false, order: 2 },
+  { key: "multiplayer", label: "Multiplayer", icon: "swords", hidden: false, order: 3 },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
   grid: <LayoutGrid className="h-5 w-5" />,
   users: <Users className="h-5 w-5" />,
   zap: <Zap className="h-5 w-5" />,
+  swords: <Swords className="h-5 w-5" />,
 };
 
 export default function AdminPlay() {
@@ -560,6 +563,15 @@ export default function AdminPlay() {
               </Reorder.Item>
             ))}
           </Reorder.Group>
+        </Section>
+
+        {/* Multiplayer Settings */}
+        <Section
+          title="Multiplayer Settings"
+          expanded={expandedSections.has("multiplayer")}
+          onToggle={() => toggleSection("multiplayer")}
+        >
+          <AdminMultiplayer />
         </Section>
 
         {/* Edit drawer */}
