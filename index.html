@@ -45,6 +45,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
+    <link rel="preconnect" href="https://kewgjwrzpzpeltwidvuc.supabase.co" crossorigin />
 
     <!-- Preload LCP image so browser discovers it immediately -->
     <link rel="preload" as="image" href="/mogsy-logo-text.png" fetchpriority="high" />
@@ -74,7 +75,12 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static shell painted immediately for fast FCP -->
+      <div id="initial-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a1a;">
+        <img src="/mogsy-logo-text.png" alt="Mogsy" width="264" height="176" style="height:7rem;object-fit:contain;" fetchpriority="high" />
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- AdSense script is loaded dynamically by AdBanner component with the configured client ID -->
   </body>
