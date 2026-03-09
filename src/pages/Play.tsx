@@ -557,6 +557,7 @@ export default function Play() {
               { key: "collections" as ModeKey, label: "Collections", icon: <LayoutGrid className="h-10 w-10" />, desc: "Vote on curated matchups", action: () => toggle("collections"), hasExpand: true },
               { key: "compete" as ModeKey, label: "Compete", icon: <Users className="h-10 w-10" />, desc: "Go head-to-head with others", action: () => toggle("compete"), hasExpand: true },
               { key: "elocheck" as ModeKey, label: "Aura Check", icon: <Zap className="h-10 w-10" />, desc: "Guess who ranks higher", action: () => navigate("/elo-check"), hasExpand: false },
+              { key: "multiplayer" as ModeKey, label: "Multiplayer", icon: <Swords className="h-10 w-10" />, desc: "2v2 games with friends", action: () => navigate("/multiplayer"), hasExpand: false },
             ];
 
             // Apply config ordering/visibility
