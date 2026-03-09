@@ -24,6 +24,7 @@ import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
+import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
