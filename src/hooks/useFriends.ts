@@ -70,8 +70,8 @@ export function useFriends() {
       return !blockedIds.has(otherId);
     });
 
-    // Collect all other profile IDs
-    const otherIds = rows.map((r) =>
+    // Collect all other profile IDs from filtered rows
+    const otherIds = filteredRows.map((r) =>
       r.requester_id === myProfileId ? r.addressee_id : r.requester_id
     );
 
