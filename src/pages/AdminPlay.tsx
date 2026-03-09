@@ -40,6 +40,7 @@ const iconMap: Record<string, React.ReactNode> = {
   grid: <LayoutGrid className="h-5 w-5" />,
   users: <Users className="h-5 w-5" />,
   zap: <Zap className="h-5 w-5" />,
+  swords: <Swords className="h-5 w-5" />,
 };
 
 export default function AdminPlay() {
