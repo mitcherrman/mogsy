@@ -88,7 +88,7 @@ export function useFriends() {
       }
     }
 
-    const enriched = rows.map((r) => {
+    const enriched = filteredRows.map((r) => {
       const otherId = r.requester_id === myProfileId ? r.addressee_id : r.requester_id;
       return {
         ...r,
