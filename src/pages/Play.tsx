@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square } from "lucide-react";
+import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, RectangleHorizontal, List, Square, Swords } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePlayLayout } from "@/hooks/usePlayLayout";
 
-type ModeKey = "collections" | "compete" | "elocheck" | null;
+type ModeKey = "collections" | "compete" | "elocheck" | "multiplayer" | null;
 type SubKey = "swipe" | "elocheck" | null;
 type DesktopLayout = "bubbles" | "pills" | "grid" | "list" | "tiles";
 
@@ -557,6 +557,7 @@ export default function Play() {
               { key: "collections" as ModeKey, label: "Collections", icon: <LayoutGrid className="h-10 w-10" />, desc: "Vote on curated matchups", action: () => toggle("collections"), hasExpand: true },
               { key: "compete" as ModeKey, label: "Compete", icon: <Users className="h-10 w-10" />, desc: "Go head-to-head with others", action: () => toggle("compete"), hasExpand: true },
               { key: "elocheck" as ModeKey, label: "Aura Check", icon: <Zap className="h-10 w-10" />, desc: "Guess who ranks higher", action: () => navigate("/elo-check"), hasExpand: false },
+              { key: "multiplayer" as ModeKey, label: "Multiplayer", icon: <Swords className="h-10 w-10" />, desc: "2v2 games with friends", action: () => navigate("/multiplayer"), hasExpand: false },
             ];
 
             // Apply config ordering/visibility
@@ -610,6 +611,7 @@ export default function Play() {
               { key: "collections" as ModeKey, label: "Collections", icon: <LayoutGrid className="h-10 w-10" />, smallIcon: <LayoutGrid className="h-10 w-10" />, desc: "Vote on curated matchups", action: () => toggle("collections"), size: 128, variant: "card" as const },
               { key: "compete" as ModeKey, label: "Compete", icon: <Users className="h-10 w-10" />, smallIcon: <Users className="h-10 w-10" />, desc: "Go head-to-head with others", action: () => toggle("compete"), size: 128, variant: "card" as const },
               { key: "elocheck" as ModeKey, label: "Aura Check", icon: <Zap className="h-7 w-7" />, smallIcon: <Zap className="h-7 w-7" />, desc: "Guess who ranks higher", action: () => navigate("/elo-check"), size: 100, variant: "accent" as const },
+              { key: "multiplayer" as ModeKey, label: "Multiplayer", icon: <Swords className="h-7 w-7" />, smallIcon: <Swords className="h-7 w-7" />, desc: "2v2 games with friends", action: () => navigate("/multiplayer"), size: 100, variant: "accent" as const },
             ];
 
             let orderedItems = topLevelItems;
@@ -631,8 +633,8 @@ export default function Play() {
                 });
             }
 
-            const mainItems = orderedItems.filter(i => i.key !== "elocheck");
-            const eloItem = orderedItems.find(i => i.key === "elocheck");
+            const mainItems = orderedItems.filter(i => i.key !== "elocheck" && i.key !== "multiplayer");
+            const smallItems = orderedItems.filter(i => i.key === "elocheck" || i.key === "multiplayer");
 
             return (
               <motion.div key="top-level" {...fadeIn} className="flex flex-col items-center gap-6">
@@ -647,13 +649,17 @@ export default function Play() {
                     </div>
                   ))}
                 </div>
-                {eloItem && (
-                  <div className="flex flex-col items-center gap-2">
-                    <Bubble size={eloItem.size} onClick={() => handleBubbleClick(eloItem.action)} active={false} variant={eloItem.variant}>
-                      {eloItem.smallIcon}
-                      <span className="text-xs font-extrabold tracking-wide">{eloItem.label}</span>
-                    </Bubble>
-                    <FadeLabel delay={0.5}>{eloItem.desc}</FadeLabel>
+                {smallItems.length > 0 && (
+                  <div className="flex items-start justify-center gap-6">
+                    {smallItems.map(item => (
+                      <div key={item.key} className="flex flex-col items-center gap-2">
+                        <Bubble size={item.size} onClick={() => handleBubbleClick(item.action)} active={false} variant={item.variant}>
+                          {item.smallIcon}
+                          <span className="text-xs font-extrabold tracking-wide">{item.label}</span>
+                        </Bubble>
+                        <FadeLabel delay={0.5}>{item.desc}</FadeLabel>
+                      </div>
+                    ))}
                   </div>
                 )}
               </motion.div>
