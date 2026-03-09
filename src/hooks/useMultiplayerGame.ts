@@ -74,10 +74,12 @@ export interface GameState {
   myTeam: MultiplayerTeam | null;
   opponentTeam: MultiplayerTeam | null;
   currentRound: MultiplayerRound | null;
+  myProfileId: string | null;
 }
 
 export function useMultiplayerGame(gameId: string | null) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState>({
     game: null,
     teams: [],
@@ -88,9 +90,23 @@ export function useMultiplayerGame(gameId: string | null) {
     myTeam: null,
     opponentTeam: null,
     currentRound: null,
+    myProfileId: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch my profile id
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setMyProfileId(data.id);
+      });
+  }, [user]);
 
   // Fetch initial game state
   const fetchGameState = useCallback(async () => {
@@ -113,8 +129,7 @@ export function useMultiplayerGame(gameId: string | null) {
       const rounds = (roundsRes.data || []) as MultiplayerRound[];
       const actions = (actionsRes.data || []) as MultiplayerAction[];
 
-      // Find my player and team
-      const myPlayer = profile ? players.find(p => p.profile_id === profile.id) || null : null;
+      const myPlayer = myProfileId ? players.find(p => p.profile_id === myProfileId) || null : null;
       const myTeam = myPlayer ? teams.find(t => t.id === myPlayer.team_id) || null : null;
       const opponentTeam = myTeam ? teams.find(t => t.id !== myTeam.id) || null : null;
       const currentRound = rounds.length > 0 ? rounds[rounds.length - 1] : null;
@@ -129,6 +144,7 @@ export function useMultiplayerGame(gameId: string | null) {
         myTeam,
         opponentTeam,
         currentRound,
+        myProfileId,
       });
       setError(null);
     } catch (err: any) {
@@ -136,7 +152,7 @@ export function useMultiplayerGame(gameId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [gameId, profile]);
+  }, [gameId, myProfileId]);
 
   // Set up realtime subscriptions
   useEffect(() => {
@@ -146,31 +162,11 @@ export function useMultiplayerGame(gameId: string | null) {
 
     const channel = supabase
       .channel(`multiplayer-game-${gameId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "multiplayer_games", filter: `id=eq.${gameId}` },
-        () => fetchGameState()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "multiplayer_teams", filter: `game_id=eq.${gameId}` },
-        () => fetchGameState()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "multiplayer_players", filter: `game_id=eq.${gameId}` },
-        () => fetchGameState()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "multiplayer_rounds", filter: `game_id=eq.${gameId}` },
-        () => fetchGameState()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "multiplayer_actions", filter: `game_id=eq.${gameId}` },
-        () => fetchGameState()
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "multiplayer_games", filter: `id=eq.${gameId}` }, () => fetchGameState())
+      .on("postgres_changes", { event: "*", schema: "public", table: "multiplayer_teams", filter: `game_id=eq.${gameId}` }, () => fetchGameState())
+      .on("postgres_changes", { event: "*", schema: "public", table: "multiplayer_players", filter: `game_id=eq.${gameId}` }, () => fetchGameState())
+      .on("postgres_changes", { event: "*", schema: "public", table: "multiplayer_rounds", filter: `game_id=eq.${gameId}` }, () => fetchGameState())
+      .on("postgres_changes", { event: "*", schema: "public", table: "multiplayer_actions", filter: `game_id=eq.${gameId}` }, () => fetchGameState())
       .subscribe();
 
     return () => {
@@ -178,7 +174,6 @@ export function useMultiplayerGame(gameId: string | null) {
     };
   }, [gameId, fetchGameState]);
 
-  // Create a new game
   const createGame = useCallback(
     async (
       mode: MultiplayerMode,
@@ -187,13 +182,13 @@ export function useMultiplayerGame(gameId: string | null) {
       partnerId: string | null,
       config: Record<string, any> = {}
     ) => {
-      if (!profile) throw new Error("Not authenticated");
+      if (!myProfileId) throw new Error("Not authenticated");
 
       const { data, error } = await supabase.rpc("create_multiplayer_game", {
         _mode: mode,
         _league_id: leagueId,
         _league_type: leagueType,
-        _host_profile_id: profile.id,
+        _host_profile_id: myProfileId,
         _partner_profile_id: partnerId,
         _config: config,
       });
@@ -201,27 +196,25 @@ export function useMultiplayerGame(gameId: string | null) {
       if (error) throw error;
       return data as { game_id: string; team_id: string; host_player_id: string; partner_player_id: string | null };
     },
-    [profile]
+    [myProfileId]
   );
 
-  // Join an existing game
   const joinGame = useCallback(
     async (joinGameId: string, partnerId: string | null = null) => {
-      if (!profile) throw new Error("Not authenticated");
+      if (!myProfileId) throw new Error("Not authenticated");
 
       const { data, error } = await supabase.rpc("join_multiplayer_game", {
         _game_id: joinGameId,
-        _profile_id: profile.id,
+        _profile_id: myProfileId,
         _partner_profile_id: partnerId,
       });
 
       if (error) throw error;
       return data as { team_id: string; player_id: string; partner_player_id: string | null };
     },
-    [profile]
+    [myProfileId]
   );
 
-  // Submit an action
   const submitAction = useCallback(
     async (roundId: string | null, actionType: string, payload: Record<string, any> = {}) => {
       if (!gameState.myPlayer || !gameId) throw new Error("Not in a game");
@@ -240,115 +233,78 @@ export function useMultiplayerGame(gameId: string | null) {
     [gameId, gameState.myPlayer]
   );
 
-  // Set player ready status
   const setReady = useCallback(
     async (ready: boolean) => {
       if (!gameState.myPlayer) throw new Error("Not in a game");
-
       const { error } = await supabase
         .from("multiplayer_players")
         .update({ is_ready: ready })
         .eq("id", gameState.myPlayer.id);
-
       if (error) throw error;
     },
     [gameState.myPlayer]
   );
 
-  // Start the game (host only)
   const startGame = useCallback(async () => {
     if (!gameId || !gameState.myPlayer?.is_host) throw new Error("Not authorized");
-
-    // Check all players are ready
     const allReady = gameState.players.every(p => p.is_ready);
     if (!allReady) throw new Error("Not all players are ready");
 
-    // Update game status
     const { error } = await supabase
       .from("multiplayer_games")
       .update({ status: "active", started_at: new Date().toISOString() })
       .eq("id", gameId);
-
     if (error) throw error;
 
-    // Create first round
-    await supabase.from("multiplayer_rounds").insert({
-      game_id: gameId,
-      round_number: 1,
-      state: {},
-    });
+    await supabase.from("multiplayer_rounds").insert({ game_id: gameId, round_number: 1, state: {} });
   }, [gameId, gameState.myPlayer, gameState.players]);
 
-  // Cancel the game (host only)
   const cancelGame = useCallback(async () => {
     if (!gameId || !gameState.myPlayer?.is_host) throw new Error("Not authorized");
-
     const { error } = await supabase
       .from("multiplayer_games")
       .update({ status: "cancelled" })
       .eq("id", gameId);
-
     if (error) throw error;
   }, [gameId, gameState.myPlayer]);
 
-  // Leave the game
   const leaveGame = useCallback(async () => {
     if (!gameState.myPlayer) return;
-
     const { error } = await supabase
       .from("multiplayer_players")
       .delete()
       .eq("id", gameState.myPlayer.id);
-
     if (error) throw error;
   }, [gameState.myPlayer]);
 
-  // Advance to next round
   const nextRound = useCallback(async () => {
     if (!gameId || !gameState.currentRound) throw new Error("No current round");
-
     const nextRoundNumber = gameState.currentRound.round_number + 1;
-    const { error } = await supabase.from("multiplayer_rounds").insert({
-      game_id: gameId,
-      round_number: nextRoundNumber,
-      state: {},
-    });
-
+    const { error } = await supabase.from("multiplayer_rounds").insert({ game_id: gameId, round_number: nextRoundNumber, state: {} });
     if (error) throw error;
   }, [gameId, gameState.currentRound]);
 
-  // Update team score
   const updateScore = useCallback(
     async (teamId: string, scoreChange: number) => {
       if (!gameId) throw new Error("No game");
-
       const team = gameState.teams.find(t => t.id === teamId);
       if (!team) throw new Error("Team not found");
-
       const { error } = await supabase
         .from("multiplayer_teams")
         .update({ score: team.score + scoreChange })
         .eq("id", teamId);
-
       if (error) throw error;
     },
     [gameId, gameState.teams]
   );
 
-  // End the game
   const endGame = useCallback(
     async (result: Record<string, any>) => {
       if (!gameId) throw new Error("No game");
-
       const { error } = await supabase
         .from("multiplayer_games")
-        .update({
-          status: "finished",
-          finished_at: new Date().toISOString(),
-          result,
-        })
+        .update({ status: "finished", finished_at: new Date().toISOString(), result })
         .eq("id", gameId);
-
       if (error) throw error;
     },
     [gameId]
@@ -358,6 +314,7 @@ export function useMultiplayerGame(gameId: string | null) {
     ...gameState,
     loading,
     error,
+    myProfileId,
     createGame,
     joinGame,
     submitAction,
@@ -372,7 +329,6 @@ export function useMultiplayerGame(gameId: string | null) {
   };
 }
 
-// Hook to fetch multiplayer settings
 export function useMultiplayerSettings() {
   const [settings, setSettings] = useState<MultiplayerSettings[]>([]);
   const [loading, setLoading] = useState(true);
@@ -393,7 +349,6 @@ export function useMultiplayerSettings() {
   return { settings, loading, getModeSettings, isEnabled };
 }
 
-// Hook to fetch available games to join
 export function useAvailableGames(mode?: MultiplayerMode) {
   const [games, setGames] = useState<MultiplayerGame[]>([]);
   const [loading, setLoading] = useState(true);
@@ -406,9 +361,7 @@ export function useAvailableGames(mode?: MultiplayerMode) {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (mode) {
-      query = query.eq("mode", mode);
-    }
+    if (mode) query = query.eq("mode", mode);
 
     query.then(({ data }) => {
       if (data) setGames(data as MultiplayerGame[]);
