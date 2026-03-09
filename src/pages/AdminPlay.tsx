@@ -12,14 +12,6 @@ import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
 import AdminPlayLeagueItems from "@/components/admin/AdminPlayLeagueItems";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import type { PlayLayoutConfig, LayoutTopLevel, LayoutCategory, LayoutLeague } from "@/hooks/usePlayLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
-import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
-import AdminPlayLeagueItems from "@/components/admin/AdminPlayLeagueItems";
-import type { PlayLayoutConfig, LayoutTopLevel, LayoutCategory, LayoutLeague } from "@/hooks/usePlayLayout";
 
 interface LeagueItem {
   id: string;
