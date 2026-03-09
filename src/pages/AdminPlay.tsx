@@ -573,6 +573,15 @@ export default function AdminPlay() {
           </Reorder.Group>
         </Section>
 
+        {/* Multiplayer Settings */}
+        <Section
+          title="Multiplayer Settings"
+          expanded={expandedSections.has("multiplayer")}
+          onToggle={() => toggleSection("multiplayer")}
+        >
+          <AdminMultiplayer />
+        </Section>
+
         {/* Edit drawer */}
         {editingItem && (
           <AdminPlayItemEditor
