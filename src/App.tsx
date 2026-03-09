@@ -36,6 +36,7 @@ const Moderator = lazy(() => import("./pages/Moderator"));
 const CustomLink = lazy(() => import("./pages/CustomLink"));
 const Multiplayer = lazy(() => import("./pages/Multiplayer"));
 const MultiplayerGame = lazy(() => import("./pages/MultiplayerGame"));
+const Feedback = lazy(() => import("./pages/Feedback"));
 
 const queryClient = new QueryClient();
 
