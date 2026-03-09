@@ -180,6 +180,21 @@ export function useFriendStatus(targetProfileId: string | undefined) {
 
     const me = myProfile.id;
 
+    // Check if blocked
+    const { data: blockedRow } = await supabase
+      .from("user_blocks")
+      .select("id")
+      .eq("blocker_profile_id", me)
+      .eq("blocked_profile_id", targetProfileId)
+      .maybeSingle();
+
+    if (blockedRow) {
+      setStatus("blocked");
+      setFriendshipId(null);
+      setLoading(false);
+      return;
+    }
+
     const { data: rows } = await supabase
       .from("friendships")
       .select("*")
