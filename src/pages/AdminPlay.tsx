@@ -33,6 +33,7 @@ const DEFAULT_TOP_LEVEL: LayoutTopLevel[] = [
   { key: "collections", label: "Collections", icon: "grid", hidden: false, order: 0 },
   { key: "compete", label: "Compete", icon: "users", hidden: false, order: 1 },
   { key: "elocheck", label: "Aura Check", icon: "zap", hidden: false, order: 2 },
+  { key: "multiplayer", label: "Multiplayer", icon: "swords", hidden: false, order: 3 },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
