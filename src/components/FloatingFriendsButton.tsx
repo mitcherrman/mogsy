@@ -30,7 +30,8 @@ interface SavedProfile {
 export default function FloatingFriendsButton() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId } = useFriends();
+  const { friends, pendingRequests, loading, acceptRequest, declineRequest, removeFriend, sendRequest, myProfileId, refresh: refreshFriends } = useFriends();
+  const { isBlocked, blockedIds, unblockUser } = useBlocks();
   const [open, setOpen] = useState(false);
 
   // Listen for mobile nav trigger
