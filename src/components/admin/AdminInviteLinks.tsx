@@ -73,6 +73,7 @@ export default function AdminInviteLinks() {
   const [form, setForm] = useState({
     label: "",
     grant_admin: false,
+    grant_moderator: false,
     grant_pro: false,
     grant_diamonds: 0,
     grant_boost_credits: 0,
