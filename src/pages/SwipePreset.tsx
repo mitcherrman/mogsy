@@ -643,33 +643,38 @@ export default function SwipePreset() {
             <div className="flex-1 text-center">
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
             </div>
-            {user && (
-              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-            )}
             {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            <div className="flex items-center gap-1 shrink-0">
-              {user && (
-                <SwipeAnimationPicker
-                  currentAnimation={swipeAnimation}
-                  onSelect={(id) => setSwipeAnimation(id)}
-                  isPro={isPro}
-                />
-              )}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={capture}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                title="Save snapshot"
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-              <Link to={`/leaderboard/${leagueId}`}>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <Trophy className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </div>
+            {/* Desktop-only controls */}
+            {!isMobile && (
+              <>
+                {user && (
+                  <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  {user && (
+                    <SwipeAnimationPicker
+                      currentAnimation={swipeAnimation}
+                      onSelect={(id) => setSwipeAnimation(id)}
+                      isPro={isPro}
+                    />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={capture}
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    title="Save snapshot"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                  <Link to={`/leaderboard/${leagueId}`}>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                      <Trophy className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
 
           {gauntletMode ? (
