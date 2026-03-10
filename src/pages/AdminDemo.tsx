@@ -119,8 +119,9 @@ export default function AdminDemo() {
           return;
         }
         const roles = data.map((r) => r.role as string);
-        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access");
+        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access") || roles.includes("moderator");
         const fullAdmin = roles.includes("admin") || roles.includes("master_admin");
+        const isMod = roles.includes("moderator") && !fullAdmin;
         if (!hasAccess) {
           navigate("/");
           toast.error("Access denied");
