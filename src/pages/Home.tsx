@@ -1,7 +1,18 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Swords, ChevronRight, MessageSquare, Crown, Star, Sparkles, TrendingUp, Gift, MessageSquarePlus } from "lucide-react";
+import {
+  Trophy,
+  Swords,
+  ChevronRight,
+  MessageSquare,
+  Crown,
+  Star,
+  Sparkles,
+  TrendingUp,
+  Gift,
+  MessageSquarePlus,
+} from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +74,7 @@ interface PreviewImage {
 interface CategorySection {
   title: string;
   icon: React.ReactNode;
-  categories: {name: string;image: string | null;subcategories: {name: string;image: string | null;}[];}[];
+  categories: { name: string; image: string | null; subcategories: { name: string; image: string | null }[] }[];
 }
 
 interface MostPlayedLeague {
@@ -93,7 +104,7 @@ export default function Home() {
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
   const [playCollections, setPlayCollections] = useState<MostPlayedLeague[]>([]);
   const [playCompetes, setPlayCompetes] = useState<MostPlayedLeague[]>([]);
-  const [curatedLeagues, setCuratedLeagues] = useState<{id: string;name: string;image: string | null;}[]>([]);
+  const [curatedLeagues, setCuratedLeagues] = useState<{ id: string; name: string; image: string | null }[]>([]);
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -108,21 +119,27 @@ export default function Home() {
     return () => clearInterval(bannerTimer.current);
   }, [bannerItems.length, bannerDelay]);
 
-  const getCategoryImage = useCallback((category: string) => {
-    const catImages = previewImages.filter((img) => img.category === category);
-    return catImages[0]?.image_url || null;
-  }, [previewImages]);
+  const getCategoryImage = useCallback(
+    (category: string) => {
+      const catImages = previewImages.filter((img) => img.category === category);
+      return catImages[0]?.image_url || null;
+    },
+    [previewImages],
+  );
 
   const checkOnboardingAndLoad = async () => {
     if (!user) return;
 
-    const { data: profile } = await supabase.
-    from("profiles").
-    select("id, onboarding_completed, preferred_categories").
-    eq("user_id", user.id).
-    single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, onboarding_completed, preferred_categories")
+      .eq("user_id", user.id)
+      .single();
 
-    if (!profile) {setLoading(false);return;}
+    if (!profile) {
+      setLoading(false);
+      return;
+    }
 
     if (!profile.onboarding_completed) {
       setShowOnboarding(true);
@@ -130,29 +147,31 @@ export default function Home() {
       return;
     }
 
-    const cats = profile.preferred_categories as string[] || [];
+    const cats = (profile.preferred_categories as string[]) || [];
     setPreferredCategories(cats);
     await loadData(profile.id, cats);
 
     // Load curated leagues from custom link if present
     const curated = getCuratedConfig();
     if (curated && curated.recommended_league_ids.length > 0) {
-      const { data: curatedData } = await supabase.
-      from("leagues").
-      select("id, name").
-      in("id", curated.recommended_league_ids);
+      const { data: curatedData } = await supabase
+        .from("leagues")
+        .select("id, name")
+        .in("id", curated.recommended_league_ids);
       if (curatedData && curatedData.length > 0) {
         // Get preview images for these leagues
         const leagueIds = curatedData.map((l) => l.id);
-        const { data: items } = await supabase.
-        from("preset_items").
-        select("league_id, image_url").
-        in("league_id", leagueIds).
-        not("image_url", "is", null).
-        not("image_url", "eq", "").
-        limit(20);
+        const { data: items } = await supabase
+          .from("preset_items")
+          .select("league_id, image_url")
+          .in("league_id", leagueIds)
+          .not("image_url", "is", null)
+          .not("image_url", "eq", "")
+          .limit(20);
         const imgMap = new Map<string, string>();
-        items?.forEach((i) => {if (!imgMap.has(i.league_id)) imgMap.set(i.league_id, i.image_url!);});
+        items?.forEach((i) => {
+          if (!imgMap.has(i.league_id)) imgMap.set(i.league_id, i.image_url!);
+        });
         setCuratedLeagues(curatedData.map((l) => ({ id: l.id, name: l.name, image: imgMap.get(l.id) || null })));
       }
       clearCuratedConfig();
@@ -163,11 +182,7 @@ export default function Home() {
     setShowOnboarding(false);
     setPreferredCategories(categories);
     if (!user) return;
-    const { data: profile } = await supabase.
-    from("profiles").
-    select("id").
-    eq("user_id", user.id).
-    single();
+    const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
     if (profile) await loadData(profile.id, categories);
   };
 
@@ -177,25 +192,26 @@ export default function Home() {
     const bannerPromise = loadBannerItems();
     const imagesPromise = loadPreviewImages();
 
-    const [
-    { data: allLeagues },
-    { data: memberships },
-    { data: userMatches },
-    { data: presetMatches }] =
-    await Promise.all([
-    supabase.from("leagues").select("id, name, type, category, subcategory"),
-    supabase.from("league_memberships").select("league_id, elo, matches_played, last_active_at").eq("profile_id", profileId),
-    supabase.from("matches").
-    select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id").
-    or(`winner_profile_id.eq.${profileId},loser_profile_id.eq.${profileId}`).
-    order("created_at", { ascending: false }).
-    limit(50),
-    supabase.from("matches").
-    select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id").
-    not("winner_item_id", "is", null).
-    order("created_at", { ascending: false }).
-    limit(20)]
-    );
+    const [{ data: allLeagues }, { data: memberships }, { data: userMatches }, { data: presetMatches }] =
+      await Promise.all([
+        supabase.from("leagues").select("id, name, type, category, subcategory"),
+        supabase
+          .from("league_memberships")
+          .select("league_id, elo, matches_played, last_active_at")
+          .eq("profile_id", profileId),
+        supabase
+          .from("matches")
+          .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
+          .or(`winner_profile_id.eq.${profileId},loser_profile_id.eq.${profileId}`)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("matches")
+          .select("id, created_at, league_id, winner_profile_id, loser_profile_id, winner_item_id, loser_item_id")
+          .not("winner_item_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
 
     const leagueMap = new Map(allLeagues?.map((l) => [l.id, l]) || []);
     const membershipMap = new Map(memberships?.map((m) => [m.league_id, m]) || []);
@@ -209,10 +225,10 @@ export default function Home() {
       leagueSet.add(m.league_id);
     });
     const allMatches = Array.from(matchMap.values()).sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
-    const leagueMatchCount = new Map<string, {count: number;lastDate: string;}>();
+    const leagueMatchCount = new Map<string, { count: number; lastDate: string }>();
     allMatches.forEach((m) => {
       const existing = leagueMatchCount.get(m.league_id);
       if (!existing) {
@@ -235,7 +251,7 @@ export default function Home() {
         elo: membership?.elo || 1200,
         matchesPlayed: membership?.matches_played || matchInfo?.count || 0,
         lastSwipedAt: membership?.last_active_at || matchInfo?.lastDate || null,
-        category: league.category
+        category: league.category,
       });
     });
 
@@ -250,8 +266,12 @@ export default function Home() {
     setHasLeagues(userOwnLeagues.length > 0);
 
     // Build most-played section
-    const userPresetLeagues = userOwnLeagues.filter((l) => l.type === "preset").sort((a, b) => b.matchesPlayed - a.matchesPlayed);
-    const userCompeteLeagues = userOwnLeagues.filter((l) => l.type === "user").sort((a, b) => b.matchesPlayed - a.matchesPlayed);
+    const userPresetLeagues = userOwnLeagues
+      .filter((l) => l.type === "preset")
+      .sort((a, b) => b.matchesPlayed - a.matchesPlayed);
+    const userCompeteLeagues = userOwnLeagues
+      .filter((l) => l.type === "user")
+      .sort((a, b) => b.matchesPlayed - a.matchesPlayed);
 
     // Get global most-played as fallback
     const globalLeagueMatchCount = new Map<string, number>();
@@ -259,49 +279,76 @@ export default function Home() {
       globalLeagueMatchCount.set(m.league_id, (globalLeagueMatchCount.get(m.league_id) || 0) + 1);
     });
 
-    const globalPresetLeagues = (allLeagues || []).
-    filter((l) => l.type === "preset").
-    map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 })).
-    sort((a, b) => b.globalPlays - a.globalPlays);
+    const globalPresetLeagues = (allLeagues || [])
+      .filter((l) => l.type === "preset")
+      .map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 }))
+      .sort((a, b) => b.globalPlays - a.globalPlays);
 
-    const globalCompeteLeagues = (allLeagues || []).
-    filter((l) => l.type === "user").
-    map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 })).
-    sort((a, b) => b.globalPlays - a.globalPlays);
+    const globalCompeteLeagues = (allLeagues || [])
+      .filter((l) => l.type === "user")
+      .map((l) => ({ ...l, globalPlays: globalLeagueMatchCount.get(l.id) || 0 }))
+      .sort((a, b) => b.globalPlays - a.globalPlays);
 
     // Fetch preview image for the top collection league
     // Pick top 2 collection and top 2 compete leagues
     const toPlayLeague = (l: any, type: string): MostPlayedLeague => ({
-      id: l.id, name: l.name, type, matchesPlayed: l.matchesPlayed ?? l.globalPlays ?? 0, image: null, category: l.category || null
+      id: l.id,
+      name: l.name,
+      type,
+      matchesPlayed: l.matchesPlayed ?? l.globalPlays ?? 0,
+      image: null,
+      category: l.category || null,
     });
 
     const topCollections: MostPlayedLeague[] = [];
     const usedCollectionIds = new Set<string>();
-    userPresetLeagues.forEach((l) => {if (topCollections.length < 2) {topCollections.push(toPlayLeague(l, "preset"));usedCollectionIds.add(l.id);}});
-    globalPresetLeagues.forEach((l) => {if (topCollections.length < 2 && !usedCollectionIds.has(l.id)) {topCollections.push(toPlayLeague(l, "preset"));usedCollectionIds.add(l.id);}});
+    userPresetLeagues.forEach((l) => {
+      if (topCollections.length < 2) {
+        topCollections.push(toPlayLeague(l, "preset"));
+        usedCollectionIds.add(l.id);
+      }
+    });
+    globalPresetLeagues.forEach((l) => {
+      if (topCollections.length < 2 && !usedCollectionIds.has(l.id)) {
+        topCollections.push(toPlayLeague(l, "preset"));
+        usedCollectionIds.add(l.id);
+      }
+    });
 
     const topCompetes: MostPlayedLeague[] = [];
     const usedCompeteIds = new Set<string>();
-    userCompeteLeagues.forEach((l) => {if (topCompetes.length < 2) {topCompetes.push(toPlayLeague(l, "user"));usedCompeteIds.add(l.id);}});
-    globalCompeteLeagues.forEach((l) => {if (topCompetes.length < 2 && !usedCompeteIds.has(l.id)) {topCompetes.push(toPlayLeague(l, "user"));usedCompeteIds.add(l.id);}});
+    userCompeteLeagues.forEach((l) => {
+      if (topCompetes.length < 2) {
+        topCompetes.push(toPlayLeague(l, "user"));
+        usedCompeteIds.add(l.id);
+      }
+    });
+    globalCompeteLeagues.forEach((l) => {
+      if (topCompetes.length < 2 && !usedCompeteIds.has(l.id)) {
+        topCompetes.push(toPlayLeague(l, "user"));
+        usedCompeteIds.add(l.id);
+      }
+    });
 
     // Get images for these leagues
     const playLeagueIds = [...topCollections, ...topCompetes].map((l) => l.id);
     let playLeagueImages = new Map<string, string>();
     if (playLeagueIds.length > 0) {
-      const { data: playItems } = await supabase.
-      from("preset_items").
-      select("league_id, image_url").
-      in("league_id", playLeagueIds).
-      not("image_url", "is", null).
-      not("image_url", "eq", "").
-      limit(20);
+      const { data: playItems } = await supabase
+        .from("preset_items")
+        .select("league_id, image_url")
+        .in("league_id", playLeagueIds)
+        .not("image_url", "is", null)
+        .not("image_url", "eq", "")
+        .limit(20);
       playItems?.forEach((pi) => {
         if (!playLeagueImages.has(pi.league_id)) playLeagueImages.set(pi.league_id, pi.image_url!);
       });
     }
 
-    topCollections.forEach((l) => {l.image = playLeagueImages.get(l.id) || null;});
+    topCollections.forEach((l) => {
+      l.image = playLeagueImages.get(l.id) || null;
+    });
     setPlayCollections(topCollections);
     setPlayCompetes(topCompetes);
 
@@ -310,7 +357,7 @@ export default function Home() {
 
     // Build category sections
     const presetLeagues = (allLeagues || []).filter((l) => l.type === "preset");
-    const categoryMap = new Map<string, {subcategories: Set<string>;}>();
+    const categoryMap = new Map<string, { subcategories: Set<string> }>();
     presetLeagues.forEach((l) => {
       const cat = l.category || "Other";
       if (!categoryMap.has(cat)) categoryMap.set(cat, { subcategories: new Set() });
@@ -341,7 +388,7 @@ export default function Home() {
         return {
           name: catName,
           image: getCategoryImage(catName),
-          subcategories: subs.map((s) => ({ name: s, image: null }))
+          subcategories: subs.map((s) => ({ name: s, image: null })),
         };
       });
 
@@ -381,32 +428,35 @@ export default function Home() {
     const sections: CategorySection[] = [];
 
     // 1. Suggested For You — from preferred categories
-    const suggestedCats = cats.length > 0 ?
-    allCategoryNames.filter((c) => cats.includes(c)) :
-    allCategoryNames.slice(0, 3);
+    const suggestedCats =
+      cats.length > 0 ? allCategoryNames.filter((c) => cats.includes(c)) : allCategoryNames.slice(0, 3);
     if (suggestedCats.length > 0) {
       // Fill to 3 if needed
       const filled = [...suggestedCats];
-      allCategoryNames.forEach((c) => {if (filled.length < 3 && !filled.includes(c)) filled.push(c);});
+      allCategoryNames.forEach((c) => {
+        if (filled.length < 3 && !filled.includes(c)) filled.push(c);
+      });
       sections.push({
         title: "For You",
         icon: <Star className="h-5 w-5 text-primary" />,
-        categories: buildSection(filled)
+        categories: buildSection(filled),
       });
     }
 
     // 2. Your Top Categories — most played
-    const topPlayedCats = Array.from(userCategoryPlayCount.entries()).
-    sort((a, b) => b[1] - a[1]).
-    map(([cat]) => cat).
-    filter((c) => c !== "Other");
+    const topPlayedCats = Array.from(userCategoryPlayCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat)
+      .filter((c) => c !== "Other");
     if (topPlayedCats.length > 0) {
       const filled = [...topPlayedCats];
-      allCategoryNames.forEach((c) => {if (filled.length < 3 && !filled.includes(c)) filled.push(c);});
+      allCategoryNames.forEach((c) => {
+        if (filled.length < 3 && !filled.includes(c)) filled.push(c);
+      });
       sections.push({
         title: "Top Picks",
         icon: <TrendingUp className="h-5 w-5 text-primary" />,
-        categories: buildSection(filled)
+        categories: buildSection(filled),
       });
     } else if (allCategoryNames.length >= 4) {
       // Fill with categories not used in "For You"
@@ -415,20 +465,22 @@ export default function Home() {
       sections.push({
         title: "Top Picks",
         icon: <TrendingUp className="h-5 w-5 text-primary" />,
-        categories: buildSection(remaining)
+        categories: buildSection(remaining),
       });
     }
     // 3. Recommended — categories user hasn't engaged with much
     const usedCats = new Set([...suggestedCats, ...topPlayedCats]);
     const recommendedCats = allCategoryNames.filter((c) => !usedCats.has(c));
     if (recommendedCats.length < 3) {
-      allCategoryNames.forEach((c) => {if (recommendedCats.length < 3 && !recommendedCats.includes(c)) recommendedCats.push(c);});
+      allCategoryNames.forEach((c) => {
+        if (recommendedCats.length < 3 && !recommendedCats.includes(c)) recommendedCats.push(c);
+      });
     }
     if (recommendedCats.length > 0) {
       sections.push({
         title: "Recommended",
         icon: <Sparkles className="h-5 w-5 text-primary" />,
-        categories: buildSection(recommendedCats)
+        categories: buildSection(recommendedCats),
       });
     }
 
@@ -445,11 +497,14 @@ export default function Home() {
       if (m.loser_item_id) itemIds.add(m.loser_item_id);
     });
 
-    const profileNameMap = new Map<string, {name: string;avatar: string;}>();
-    const itemNameMap = new Map<string, {name: string;image: string;}>();
+    const profileNameMap = new Map<string, { name: string; avatar: string }>();
+    const itemNameMap = new Map<string, { name: string; image: string }>();
 
     if (profileIds.size > 0) {
-      const { data } = await supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", Array.from(profileIds));
+      const { data } = await supabase
+        .from("public_profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", Array.from(profileIds));
       data?.forEach((p) => {
         profileNameMap.set(p.id, { name: p.display_name || "Unknown", avatar: p.avatar_url || "" });
       });
@@ -464,21 +519,37 @@ export default function Home() {
     const swipes: RecentSwipe[] = recentMatchesSlice.map((m) => {
       const league = leagueMap.get(m.league_id);
       const isPreset = league?.type === "preset";
-      let winnerName = "Unknown",loserName = "Unknown",winnerImage = "",loserImage = "";
+      let winnerName = "Unknown",
+        loserName = "Unknown",
+        winnerImage = "",
+        loserImage = "";
 
       if (isPreset) {
         const w = itemNameMap.get(m.winner_item_id || "");
         const l = itemNameMap.get(m.loser_item_id || "");
-        winnerName = w?.name || "Unknown";loserName = l?.name || "Unknown";
-        winnerImage = w?.image || "";loserImage = l?.image || "";
+        winnerName = w?.name || "Unknown";
+        loserName = l?.name || "Unknown";
+        winnerImage = w?.image || "";
+        loserImage = l?.image || "";
       } else {
         const w = profileNameMap.get(m.winner_profile_id || "");
         const l = profileNameMap.get(m.loser_profile_id || "");
-        winnerName = w?.name || "Unknown";loserName = l?.name || "Unknown";
-        winnerImage = w?.avatar || "";loserImage = l?.avatar || "";
+        winnerName = w?.name || "Unknown";
+        loserName = l?.name || "Unknown";
+        winnerImage = w?.avatar || "";
+        loserImage = l?.avatar || "";
       }
 
-      return { id: m.id, leagueName: league?.name || "Unknown", leagueType: league?.type || "user", winnerName, loserName, winnerImage, loserImage, createdAt: m.created_at };
+      return {
+        id: m.id,
+        leagueName: league?.name || "Unknown",
+        leagueType: league?.type || "user",
+        winnerName,
+        loserName,
+        winnerImage,
+        loserImage,
+        createdAt: m.created_at,
+      };
     });
     setRecentSwipes(swipes);
 
@@ -488,21 +559,21 @@ export default function Home() {
   };
 
   const loadPreviewImages = async () => {
-    const { data: items } = await supabase.
-    from("preset_items").
-    select("id, league_id, image_url, leagues!inner(category)").
-    not("image_url", "is", null).
-    not("image_url", "eq", "");
+    const { data: items } = await supabase
+      .from("preset_items")
+      .select("id, league_id, image_url, leagues!inner(category)")
+      .not("image_url", "is", null)
+      .not("image_url", "eq", "");
 
     if (!items) return;
 
-    const images: PreviewImage[] = items.
-    filter((item: any) => item.image_url && item.leagues?.category).
-    map((item: any) => ({
-      league_id: item.league_id,
-      category: item.leagues.category,
-      image_url: item.image_url
-    }));
+    const images: PreviewImage[] = items
+      .filter((item: any) => item.image_url && item.leagues?.category)
+      .map((item: any) => ({
+        league_id: item.league_id,
+        category: item.leagues.category,
+        image_url: item.image_url,
+      }));
 
     // Shuffle for randomness
     for (let i = images.length - 1; i > 0; i--) {
@@ -514,12 +585,12 @@ export default function Home() {
   };
 
   const loadTopComments = async () => {
-    const { data: commentsData } = await supabase.
-    from("comments").
-    select("id, content, league_id, profile_id, created_at").
-    eq("is_hidden", false).
-    order("created_at", { ascending: false }).
-    limit(50);
+    const { data: commentsData } = await supabase
+      .from("comments")
+      .select("id, content, league_id, profile_id, created_at")
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     if (!commentsData || commentsData.length === 0) return;
 
@@ -528,15 +599,21 @@ export default function Home() {
     const commentProfileIds = [...new Set(commentsData.map((c) => c.profile_id))];
 
     const [{ data: reactions }, { data: leaguesData }, { data: profiles }] = await Promise.all([
-    supabase.from("comment_reactions").select("comment_id, emoji").in("comment_id", commentIds),
-    leagueIds.length > 0 ? supabase.from("leagues").select("id, name").in("id", leagueIds) : Promise.resolve({ data: [] }),
-    commentProfileIds.length > 0 ? supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", commentProfileIds) : Promise.resolve({ data: [] })]
-    );
+      supabase.from("comment_reactions").select("comment_id, emoji").in("comment_id", commentIds),
+      leagueIds.length > 0
+        ? supabase.from("leagues").select("id, name").in("id", leagueIds)
+        : Promise.resolve({ data: [] }),
+      commentProfileIds.length > 0
+        ? supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", commentProfileIds)
+        : Promise.resolve({ data: [] }),
+    ]);
 
     const leagueMap2 = new Map((leaguesData || []).map((l) => [l.id, l.name]));
-    const profileMap2 = new Map((profiles || []).map((p) => [p.id, { name: p.display_name || "User", avatar: p.avatar_url || "" }]));
+    const profileMap2 = new Map(
+      (profiles || []).map((p) => [p.id, { name: p.display_name || "User", avatar: p.avatar_url || "" }]),
+    );
 
-    const reactionData = new Map<string, {count: number;emojis: Map<string, number>;}>();
+    const reactionData = new Map<string, { count: number; emojis: Map<string, number> }>();
     (reactions || []).forEach((r) => {
       if (!reactionData.has(r.comment_id)) reactionData.set(r.comment_id, { count: 0, emojis: new Map() });
       const d = reactionData.get(r.comment_id)!;
@@ -546,7 +623,12 @@ export default function Home() {
 
     const withReactions = commentsData.map((c) => {
       const rd = reactionData.get(c.id);
-      const topEmojis = rd ? [...rd.emojis.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([e]) => e) : [];
+      const topEmojis = rd
+        ? [...rd.emojis.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([e]) => e)
+        : [];
       const prof = profileMap2.get(c.profile_id);
       return {
         id: c.id,
@@ -556,7 +638,7 @@ export default function Home() {
         top_emojis: topEmojis,
         profile_id: c.profile_id,
         profile_name: prof?.name || "User",
-        profile_avatar: prof?.avatar || ""
+        profile_avatar: prof?.avatar || "",
       };
     });
 
@@ -565,52 +647,79 @@ export default function Home() {
   };
 
   const loadBannerItems = async () => {
-    const { data: configData } = await supabase.
-    from("app_settings").
-    select("value").
-    eq("key", "home_banner_config").
-    single();
+    const { data: configData } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "home_banner_config")
+      .single();
 
-    const cfg = configData?.value as unknown as {rotation_delay?: number;mode?: string;manual_items?: {name: string;image: string;elo: number;league_name: string;}[];} | null;
+    const cfg = configData?.value as unknown as {
+      rotation_delay?: number;
+      mode?: string;
+      manual_items?: { name: string; image: string; elo: number; league_name: string }[];
+    } | null;
     if (cfg?.rotation_delay) setBannerDelay(cfg.rotation_delay);
 
     if (cfg?.mode === "manual" && cfg.manual_items && cfg.manual_items.length > 0) {
-      setBannerItems(cfg.manual_items.map((m) => ({ name: m.name, image: m.image, elo: m.elo, leagueName: m.league_name, type: "preset" as const })));
+      setBannerItems(
+        cfg.manual_items.map((m) => ({
+          name: m.name,
+          image: m.image,
+          elo: m.elo,
+          leagueName: m.league_name,
+          type: "preset" as const,
+        })),
+      );
       return;
     }
 
-    const { data: topPresets } = await supabase.
-    from("preset_items").
-    select("name, image_url, elo, league_id, leagues!inner(name)").
-    not("image_url", "is", null).
-    not("image_url", "eq", "").
-    order("elo", { ascending: false }).
-    limit(10);
+    const { data: topPresets } = await supabase
+      .from("preset_items")
+      .select("name, image_url, elo, league_id, leagues!inner(name)")
+      .not("image_url", "is", null)
+      .not("image_url", "eq", "")
+      .order("elo", { ascending: false })
+      .limit(10);
 
-    const { data: topMembers } = await supabase.
-    from("league_memberships").
-    select("elo, profile_id, league_id, leagues!inner(name)").
-    order("elo", { ascending: false }).
-    limit(15);
+    const { data: topMembers } = await supabase
+      .from("league_memberships")
+      .select("elo, profile_id, league_id, leagues!inner(name)")
+      .order("elo", { ascending: false })
+      .limit(15);
 
     const userItems: BannerItem[] = [];
     const presetItems: BannerItem[] = [];
 
     if (topMembers && topMembers.length > 0) {
       const pIds = [...new Set(topMembers.map((m) => m.profile_id))];
-      const { data: profiles } = await supabase.from("public_profiles").select("id, display_name, avatar_url").in("id", pIds);
+      const { data: profiles } = await supabase
+        .from("public_profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", pIds);
       const pMap = new Map((profiles || []).map((p) => [p.id, p]));
 
       topMembers.forEach((m: any) => {
         const p = pMap.get(m.profile_id);
         if (p && p.avatar_url) {
-          userItems.push({ name: p.display_name || "User", image: p.avatar_url, elo: m.elo, leagueName: m.leagues?.name || "", type: "user" });
+          userItems.push({
+            name: p.display_name || "User",
+            image: p.avatar_url,
+            elo: m.elo,
+            leagueName: m.leagues?.name || "",
+            type: "user",
+          });
         }
       });
     }
 
     (topPresets || []).forEach((item: any) => {
-      presetItems.push({ name: item.name, image: item.image_url, elo: item.elo, leagueName: item.leagues?.name || "", type: "preset" });
+      presetItems.push({
+        name: item.name,
+        image: item.image_url,
+        elo: item.elo,
+        leagueName: item.leagues?.name || "",
+        type: "preset",
+      });
     });
 
     userItems.sort((a, b) => b.elo - a.elo);
@@ -646,17 +755,16 @@ export default function Home() {
   return (
     <div className="min-h-screen px-4 py-2">
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
-  
         {/* Mogsy Logo */}
         <div className="flex flex-col items-center mb-6">
           <img
             src={mogsyLogo}
             alt="Mogsy"
-            className="h-24 sm:h-36 md:h-30 object-cover"
+            className="h-24 sm:h-30 md:h-30 object-cover"
             style={{ clipPath: "inset(15% 0 15% 0)" }}
           />
         </div>
-  
+
         {/* Rotating Aura Banner */}
         {bannerItems.length > 0 && currentBanner && (
           <section className="mb-6">
@@ -674,13 +782,9 @@ export default function Home() {
                   className="absolute inset-0 flex items-center justify-start gap-3 sm:gap-4 px-3 sm:px-5"
                 >
                   <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
-                    <img
-                      src={currentBanner.image}
-                      alt={currentBanner.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={currentBanner.image} alt={currentBanner.name} className="w-full h-full object-cover" />
                   </div>
-  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Crown className="h-4 w-4 text-primary" />
@@ -688,20 +792,15 @@ export default function Home() {
                         Top Rated
                       </span>
                     </div>
-  
-                    <p className="font-extrabold text-base sm:text-lg text-foreground truncate">
-                      {currentBanner.name}
-                    </p>
-  
+
+                    <p className="font-extrabold text-base sm:text-lg text-foreground truncate">{currentBanner.name}</p>
+
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm font-bold text-primary">
-                        {currentBanner.elo}{" "}
-                        <span className="uppercase tracking-wider">Aura</span>
+                        {currentBanner.elo} <span className="uppercase tracking-wider">Aura</span>
                       </span>
-  
-                      <span className="text-xs text-muted-foreground truncate">
-                        in {currentBanner.leagueName}
-                      </span>
+
+                      <span className="text-xs text-muted-foreground truncate">in {currentBanner.leagueName}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -709,198 +808,211 @@ export default function Home() {
             </div>
           </section>
         )}
-  
 
         {/* Curated "Recommended for you" from custom link */}
-        {curatedLeagues.length > 0 &&
-        <section className="mb-8">
+        {curatedLeagues.length > 0 && (
+          <section className="mb-8">
             <div className="flex items-center gap-2 mb-3">
               <Gift className="h-5 w-5 text-primary" />
               <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">Recommended for You</h2>
             </div>
             <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
-              {curatedLeagues.map((league) =>
-            <div key={league.id} className="flex flex-col items-center gap-1.5">
+              {curatedLeagues.map((league) => (
+                <div key={league.id} className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
-                size={isMobile ? 100 : 120}
-                onClick={() => navigate(`/swipe/preset/${league.id}`)}
-                imageUrl={league.image}
-                label={league.name}
-                sublabel="Curated"
-                variant="accent" />
-              
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe/preset/${league.id}`)}
+                    imageUrl={league.image}
+                    label={league.name}
+                    sublabel="Curated"
+                    variant="accent"
+                  />
                 </div>
-            )}
+              ))}
             </div>
           </section>
-        }
+        )}
 
         {/* Play Section */}
-        {(playCollections.length > 0 || playCompetes.length > 0) &&
-        <section className="mb-8">
+        {(playCollections.length > 0 || playCompetes.length > 0) && (
+          <section className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">
-                Play Now
-              </h2>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-foreground">Play Now</h2>
             </div>
             <div className="flex items-center justify-center gap-4 sm:gap-6 flex-wrap">
-              {playCollections.map((col) =>
-            <div key={col.id} className="flex flex-col items-center gap-1.5">
+              {playCollections.map((col) => (
+                <div key={col.id} className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
-                size={isMobile ? 100 : 120}
-                onClick={() => navigate(`/swipe/preset/${col.id}`)}
-                imageUrl={col.image}
-                label={col.name}
-                sublabel="Collection"
-                variant="accent" />
-              
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe/preset/${col.id}`)}
+                    imageUrl={col.image}
+                    label={col.name}
+                    sublabel="Collection"
+                    variant="accent"
+                  />
+
                   <span className="text-[10px] text-muted-foreground">{col.matchesPlayed} swipes</span>
                 </div>
-            )}
-              {playCompetes.map((comp) =>
-            <div key={comp.id} className="flex flex-col items-center gap-1.5">
+              ))}
+              {playCompetes.map((comp) => (
+                <div key={comp.id} className="flex flex-col items-center gap-1.5">
                   <CategoryBubble
-                size={isMobile ? 100 : 120}
-                onClick={() => navigate(`/swipe-leagues`, { state: { leagueId: comp.id } })}
-                imageUrl={comp.image}
-                label={comp.name}
-                sublabel="Compete"
-                variant="accent" />
-              
+                    size={isMobile ? 100 : 120}
+                    onClick={() => navigate(`/swipe-leagues`, { state: { leagueId: comp.id } })}
+                    imageUrl={comp.image}
+                    label={comp.name}
+                    sublabel="Compete"
+                    variant="accent"
+                  />
+
                   <span className="text-[10px] text-muted-foreground">{comp.matchesPlayed} swipes</span>
                 </div>
-            )}
+              ))}
             </div>
           </section>
-        }
+        )}
 
         {/* Friends Section */}
         <HomeFriendsSection />
 
         {/* Category Bubble Sections - Side by Side */}
-        {categorySections.length > 0 &&
-        <section className="mb-10">
+        {categorySections.length > 0 && (
+          <section className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground">Explore</h2>
-              <Link to="/play" className="text-xs text-primary hover:underline">Browse all</Link>
+              <Link to="/play" className="text-xs text-primary hover:underline">
+                Browse all
+              </Link>
             </div>
             <div className="grid grid-cols-3 gap-3 sm:gap-2">
               {categorySections.map((section, sectionIdx) => {
-              // On mobile: show only 1 category + 1 subcategory per column
-              const displayCats = isMobile ? section.categories.slice(0, 1) : section.categories;
-              const allSubs = section.categories.flatMap((cat) =>
-              cat.subcategories.map((sub) => ({ catName: cat.name, sub }))
-              );
-              const displaySubs = isMobile ? allSubs.slice(0, 1) : allSubs;
+                // On mobile: show only 1 category + 1 subcategory per column
+                const displayCats = isMobile ? section.categories.slice(0, 1) : section.categories;
+                const allSubs = section.categories.flatMap((cat) =>
+                  cat.subcategories.map((sub) => ({ catName: cat.name, sub })),
+                );
+                const displaySubs = isMobile ? allSubs.slice(0, 1) : allSubs;
 
-              return (
-                <div key={section.title} className="flex flex-col items-center gap-2 sm:gap-3">
+                return (
+                  <div key={section.title} className="flex flex-col items-center gap-2 sm:gap-3">
                     <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
                       {section.icon}
-                      <span className="text-[10px] sm:text-xs font-bold text-foreground whitespace-nowrap">{section.title}</span>
+                      <span className="text-[10px] sm:text-xs font-bold text-foreground whitespace-nowrap">
+                        {section.title}
+                      </span>
                     </div>
-                    <div className={`flex flex-col items-center gap-2 ${!isMobile ? "grid grid-cols-2 place-items-center" : ""}`}>
-                      {displayCats.map((cat, i) =>
-                    <motion.div
-                      key={cat.name}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: sectionIdx * 0.08 + i * 0.04 }}>
-                      
+                    <div
+                      className={`flex flex-col items-center gap-2 ${!isMobile ? "grid grid-cols-2 place-items-center" : ""}`}
+                    >
+                      {displayCats.map((cat, i) => (
+                        <motion.div
+                          key={cat.name}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: sectionIdx * 0.08 + i * 0.04 }}
+                        >
                           <CategoryBubble
-                        size={isMobile ? 68 : 72}
-                        onClick={() => handleCategoryClick(cat.name)}
-                        imageUrl={cat.image}
-                        label={cat.name} />
-                      
+                            size={isMobile ? 68 : 72}
+                            onClick={() => handleCategoryClick(cat.name)}
+                            imageUrl={cat.image}
+                            label={cat.name}
+                          />
                         </motion.div>
-                    )}
-                      {!isMobile && displayCats.length < 2 && section.categories.slice(1, 2).map((cat, i) =>
-                    <motion.div
-                      key={cat.name}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: sectionIdx * 0.08 + (i + 1) * 0.04 }}>
-                      
+                      ))}
+                      {!isMobile &&
+                        displayCats.length < 2 &&
+                        section.categories.slice(1, 2).map((cat, i) => (
+                          <motion.div
+                            key={cat.name}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: sectionIdx * 0.08 + (i + 1) * 0.04 }}
+                          >
+                            <CategoryBubble
+                              size={72}
+                              onClick={() => handleCategoryClick(cat.name)}
+                              imageUrl={cat.image}
+                              label={cat.name}
+                            />
+                          </motion.div>
+                        ))}
+                      {displaySubs.map(({ catName, sub }, j) => (
+                        <motion.div
+                          key={`${catName}-${sub.name}`}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: sectionIdx * 0.08 + 0.12 + j * 0.03 }}
+                        >
                           <CategoryBubble
-                        size={72}
-                        onClick={() => handleCategoryClick(cat.name)}
-                        imageUrl={cat.image}
-                        label={cat.name} />
-                      
+                            size={isMobile ? 52 : 56}
+                            onClick={() => handleSubcategoryClick(catName, sub.name)}
+                            imageUrl={sub.image}
+                            label={sub.name}
+                            variant="accent"
+                          />
                         </motion.div>
-                    )}
-                      {displaySubs.map(({ catName, sub }, j) =>
-                    <motion.div
-                      key={`${catName}-${sub.name}`}
-                      initial={{ opacity: 0, scale: 0.7 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: sectionIdx * 0.08 + 0.12 + j * 0.03 }}>
-                      
-                          <CategoryBubble
-                        size={isMobile ? 52 : 56}
-                        onClick={() => handleSubcategoryClick(catName, sub.name)}
-                        imageUrl={sub.image}
-                        label={sub.name}
-                        variant="accent" />
-                      
-                        </motion.div>
-                    )}
+                      ))}
                     </div>
-                  </div>);
-
-            })}
+                  </div>
+                );
+              })}
             </div>
           </section>
-        }
+        )}
 
         {/* Your Leagues - Bubble Style */}
-        {hasLeagues &&
-        <section className="mb-10">
+        {hasLeagues && (
+          <section className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-primary" /> Your Leagues
               </h2>
-              <Link to="/leagues" className="text-xs text-primary hover:underline">View all</Link>
+              <Link to="/leagues" className="text-xs text-primary hover:underline">
+                View all
+              </Link>
             </div>
             <div className="flex flex-wrap gap-3 justify-center">
-              {leagues.map((league, i) =>
-            <motion.div
-              key={league.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.05 }}>
-              
+              {leagues.map((league, i) => (
+                <motion.div
+                  key={league.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                >
                   <Link to={`/leaderboard/${league.id}`}>
                     <motion.div
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors">
-                  
-                      {league.type !== "preset" ?
-                  <TierBadge tier={getTierFromElo(league.elo)} /> :
-
-                  <Star className="h-4 w-4 text-primary" />
-                  }
-                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">{league.name}</span>
+                      whileHover={{ scale: 1.06 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-24 h-24 rounded-full border-2 border-border bg-card flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/30 transition-colors"
+                    >
+                      {league.type !== "preset" ? (
+                        <TierBadge tier={getTierFromElo(league.elo)} />
+                      ) : (
+                        <Star className="h-4 w-4 text-primary" />
+                      )}
+                      <span className="text-[10px] font-bold text-foreground text-center leading-tight px-1 line-clamp-2">
+                        {league.name}
+                      </span>
                       <span className="text-[8px] text-muted-foreground">{league.matchesPlayed} swipes</span>
                     </motion.div>
                   </Link>
                 </motion.div>
-            )}
+              ))}
             </div>
           </section>
-        }
+        )}
 
         {/* No leagues fallback if also no suggestions */}
-        {!hasLeagues && categorySections.length === 0 &&
-        <section className="mb-10">
+        {!hasLeagues && categorySections.length === 0 && (
+          <section className="mb-10">
             <div className="rounded-2xl border border-border bg-card p-6 text-center">
               <p className="text-muted-foreground text-sm">No leagues yet. Start swiping to join!</p>
-              <Link to="/play" className="text-primary text-sm mt-2 inline-block hover:underline">Start Swiping →</Link>
+              <Link to="/play" className="text-primary text-sm mt-2 inline-block hover:underline">
+                Start Swiping →
+              </Link>
             </div>
           </section>
-        }
+        )}
 
         {/* Recent Swipes */}
         <section className="mb-10">
@@ -908,20 +1020,20 @@ export default function Home() {
             <Swords className="h-5 w-5 text-primary" /> Recent Swipes
           </h2>
 
-          {recentSwipes.length === 0 ?
-          <div className="rounded-2xl border border-border bg-card p-6 text-center">
+          {recentSwipes.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-6 text-center">
               <p className="text-muted-foreground text-sm">No swipes yet.</p>
-            </div> :
-
-          <div className="space-y-2">
-              {recentSwipes.map((swipe, i) =>
-            <motion.div
-              key={swipe.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm">
-              
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentSwipes.map((swipe, i) => (
+                <motion.div
+                  key={swipe.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm"
+                >
                   <div className="flex items-center gap-2 min-w-0">
                     <UserAvatar src={swipe.winnerImage} name={swipe.winnerName} size="sm" />
                     <span className="font-medium text-foreground truncate">{swipe.winnerName}</span>
@@ -935,52 +1047,53 @@ export default function Home() {
                     <span>{new Date(swipe.createdAt).toLocaleDateString()}</span>
                   </div>
                 </motion.div>
-            )}
+              ))}
             </div>
-          }
+          )}
         </section>
 
         {/* Top Comments */}
-        {topComments.length > 0 &&
-        <section className="mb-10">
+        {topComments.length > 0 && (
+          <section className="mb-10">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
               <MessageSquare className="h-5 w-5 text-primary" /> Top Comments
             </h2>
             <div className="space-y-2">
-              {topComments.map((c) =>
-            <div key={c.id} className="rounded-xl border border-border bg-card p-3">
+              {topComments.map((c) => (
+                <div key={c.id} className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-center gap-2 mb-1.5">
                     <button onClick={() => navigate(`/user/${c.profile_id}`)} className="flex-shrink-0">
                       <UserAvatar src={c.profile_avatar} name={c.profile_name} size="sm" />
                     </button>
-                    <button onClick={() => navigate(`/user/${c.profile_id}`)} className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
+                    <button
+                      onClick={() => navigate(`/user/${c.profile_id}`)}
+                      className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate"
+                    >
                       {c.profile_name}
                     </button>
-                    {c.league_name &&
-                <span className="text-[10px] text-muted-foreground ml-auto truncate">in {c.league_name}</span>
-                }
+                    {c.league_name && (
+                      <span className="text-[10px] text-muted-foreground ml-auto truncate">in {c.league_name}</span>
+                    )}
                   </div>
                   <p className="text-xs text-foreground break-words">{c.content}</p>
                   <div className="flex items-center gap-2 mt-1.5">
-                    {c.top_emojis.length > 0 &&
-                <span className="text-[10px]">{c.top_emojis.join(" ")}</span>
-                }
-                    {c.reaction_count > 0 &&
-                <span className="text-[10px] text-primary font-medium">{c.reaction_count} reactions</span>
-                }
+                    {c.top_emojis.length > 0 && <span className="text-[10px]">{c.top_emojis.join(" ")}</span>}
+                    {c.reaction_count > 0 && (
+                      <span className="text-[10px] text-primary font-medium">{c.reaction_count} reactions</span>
+                    )}
                   </div>
                 </div>
-            )}
+              ))}
             </div>
           </section>
-        }
+        )}
 
         {/* Feedback CTA */}
         <section className="mb-10">
           <button
             onClick={() => navigate("/feedback")}
-            className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group">
-            
+            className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group"
+          >
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
               <MessageSquarePlus className="h-5 w-5 text-primary" />
             </div>
@@ -992,6 +1105,6 @@ export default function Home() {
           </button>
         </section>
       </div>
-    </div>);
-
+    </div>
+  );
 }
