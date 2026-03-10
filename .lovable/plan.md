@@ -1,20 +1,40 @@
-## Percentile-Based Rank System (Implemented)
 
-### Tier Distribution (Compete Leagues Only)
-- **Unranked**: Bottom 60% (0–60th percentile)
-- **Bronze 🥉**: 60th–75th percentile
-- **Silver 🥈**: 75th–90th percentile
-- **Gold 🥇**: 90th–99th percentile
-- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### What Changed
-1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
-2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
-3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
-4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
-5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
-6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
-7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
+## Plan: Move Match Count to Right of "Who Mogs?" with Balanced Centering
 
-### Collections (Preset) Leagues
-Still use absolute Elo-based tiers (unchanged).
+### Current Layout
+```
+← ⚔ 🗡12  |  Who Mogs?  |  [timer/controls]
+```
+The match count (swords icon + number) sits to the left of "Who Mogs?", pushing the title off-center.
+
+### Target Layout
+```
+← ⚔  |  Who Mogs?  🗡12  |  [timer/controls]
+```
+"Who Mogs?" stays visually centered by adding equal invisible spacers on both sides.
+
+### Changes
+
+**`src/pages/SwipePreset.tsx`** (lines 639-645)
+- Remove the match count `<p>` from before the center div
+- Restructure the center section: use a wrapper with `flex-1 flex items-center justify-center` containing "Who Mogs?" and the match count to its right
+- Add an invisible spacer element on the left side (same width as the match count) so the title stays centered
+
+**`src/pages/Swipe.tsx`** (lines 413-421)
+- Same restructure: move match count (including gauntlet streak) to the right of "Who Mogs?" inside the center div
+- Add matching invisible left spacer for centering balance
+
+### Structure (both files)
+```tsx
+<div className="flex-1 flex items-center justify-center">
+  {/* invisible spacer to balance the match count */}
+  <div className="w-12" />
+  <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
+  <p className="text-muted-foreground text-xs flex items-center gap-1 ml-2">
+    <Swords className="h-3.5 w-3.5" />
+    <span className="text-primary font-bold">{matchCount}</span>
+  </p>
+</div>
+```
+
