@@ -1,15 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTutorialTips } from "@/hooks/useTutorialTips";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function TutorialTipPopup() {
   const location = useLocation();
+  const { user } = useAuth();
   const { tips, dismissTip } = useTutorialTips(location.pathname);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
+  useEffect(() => {
+    if (!user) { setOnboardingDone(null); return; }
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setOnboardingDone(data?.onboarding_completed ?? false);
+      });
+  }, [user]);
+
+  if (onboardingDone === false || onboardingDone === null) return null;
   if (tips.length === 0) return null;
 
   const tip = tips[Math.min(currentIndex, tips.length - 1)];
@@ -41,7 +58,6 @@ export default function TutorialTipPopup() {
         className="fixed bottom-20 left-4 right-4 z-50 sm:left-auto sm:right-6 sm:max-w-sm"
       >
         <div className="rounded-2xl border-2 border-primary/30 bg-card shadow-2xl shadow-primary/10 overflow-hidden">
-          {/* Header */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-1">
             <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
               <Lightbulb className="h-4 w-4 text-primary" />
@@ -54,14 +70,10 @@ export default function TutorialTipPopup() {
               <X className="h-4 w-4" />
             </button>
           </div>
-
-          {/* Content */}
           <div className="px-4 py-3">
             <h3 className="text-sm font-bold text-foreground mb-1">{tip.title}</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">{tip.message}</p>
           </div>
-
-          {/* Actions */}
           <div className="flex items-center justify-between px-4 pb-3">
             <button
               onClick={handleDismissAll}
