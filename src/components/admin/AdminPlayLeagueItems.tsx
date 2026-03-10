@@ -84,7 +84,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           if (!item.image_url && imgMap.has(item.id)) {
             const url = imgMap.get(item.id)!;
             updatePromises.push(
-              supabase.from("preset_items").update({ image_url: url }).eq("id", item.id)
+              supabase.from("preset_items").update({ image_url: url }).eq("id", item.id).then()
             );
             return { ...item, image_url: url };
           }
