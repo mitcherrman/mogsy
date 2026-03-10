@@ -38,9 +38,9 @@ export default function SwipeBottomBar({ children }: SwipeBottomBarProps) {
             </div>
             <button
               onClick={handleToggle}
-              className="w-full flex items-center justify-center py-0.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              className="w-full flex items-center justify-center py-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors border-t border-border/30"
             >
-              <ChevronDown className="h-3.5 w-3.5" />
+              <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
             </button>
           </motion.div>
         ) : (
