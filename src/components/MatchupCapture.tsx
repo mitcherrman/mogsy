@@ -18,7 +18,7 @@ const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
         {/* Branding header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <img src={mogsyLogo} alt="Mogsy" className="h-5 object-contain" />
+            <img src={mogsyLogo} alt="Mogsy" className="h-8 sm:h-10 object-contain" />
           </div>
           {centerSlot && (
             <div className="flex items-center justify-center">
