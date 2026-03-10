@@ -754,9 +754,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen px-4 py-2">
-      <nav className="w-full flex flex-col items-center pt-2 pb-2">
+      <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
-        <div className="flex flex-col items-center mb-6">
+        <nav className="w-full flex flex-col items-center pt-2 pb-2">
           <img
             src={mogsyLogo}
             alt="Mogsy"
