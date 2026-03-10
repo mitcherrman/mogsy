@@ -652,7 +652,7 @@ export default function Home() {
           <img
             src={mogsyLogo}
             alt="Mogsy"
-            className="h-24 sm:h-36 md:h-44 object-cover"
+            className="h-24 sm:h-36 md:h-30 object-cover"
             style={{ clipPath: "inset(15% 0 15% 0)" }}
           />
         </div>
@@ -709,8 +709,10 @@ export default function Home() {
             </div>
           </section>
         )}
-
-
+  
+      </div>
+    </div>
+  );
         {/* Curated "Recommended for you" from custom link */}
         {curatedLeagues.length > 0 &&
         <section className="mb-8">
@@ -992,6 +994,6 @@ export default function Home() {
           </button>
         </section>
       </div>
-    </div>
-  );
+    </div>);
+
 }
