@@ -154,7 +154,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setLoading(false);
 
     if (data && data.length > 0) {
-      const userIds = data.map((p) => p.user_id);
+      // Only fetch emails for non-anonymous users
+      const nonAnonUsers = data.filter(p => !p.is_anonymous);
+      const userIds = nonAnonUsers.map((p) => p.user_id);
       const BATCH_SIZE = 50;
       const allEmails: Record<string, string> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
