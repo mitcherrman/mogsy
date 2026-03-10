@@ -573,6 +573,7 @@ export default function AdminPlay() {
         {/* Categories */}
         <Section
           title="Categories"
+          sectionId="section-categories"
           expanded={expandedSections.has("categories")}
           onToggle={() => toggleSection("categories")}
           onAdd={() => { setNewName(""); setAddCategoryOpen(true); }}
