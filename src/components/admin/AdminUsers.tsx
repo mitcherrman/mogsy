@@ -483,7 +483,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setFilterMode("all");
     setSortMode("newest");
   };
-  };
 
   const addToLeague = async (leagueId: string) => {
     if (!selectedUser) return;
