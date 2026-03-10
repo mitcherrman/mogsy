@@ -760,8 +760,8 @@ export default function Home() {
           <img
             src={mogsyLogo}
             alt="Mogsy"
-            className="h-24 sm:h-30 md:h-30 object-cover"
-            style={{ clipPath: "inset(15% 0 15% 0)" }}
+            className="h-24 sm:h-36 md:h-44 object-cover"
+            style={{ clipPath: "inset(30% 0 30% 0)" }}
           />
         </div>
 
