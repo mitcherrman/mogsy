@@ -798,8 +798,7 @@ function DragItem({
   onEdit,
   expandable,
   expanded,
-  onExpand,
-  onViewItems,
+  onBarClick,
   onDelete,
   onAdd,
 }: {
@@ -811,35 +810,29 @@ function DragItem({
   onEdit: () => void;
   expandable?: boolean;
   expanded?: boolean;
-  onExpand?: () => void;
-  onViewItems?: () => void;
+  onBarClick?: () => void;
   onDelete?: () => void;
   onAdd?: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
+    <div
+      className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"} ${onBarClick ? "cursor-pointer hover:bg-accent/30" : ""}`}
+      onClick={onBarClick ? (e) => { e.stopPropagation(); onBarClick(); } : undefined}
+    >
       <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
       {icon && <span className="text-primary shrink-0">{icon}</span>}
       {expandable && (
-        <button onClick={(e) => { e.stopPropagation(); onExpand?.(); }} className="shrink-0">
+        <span className="shrink-0">
           {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-        </button>
+        </span>
       )}
-      <span
-        className={`flex-1 text-sm font-semibold text-foreground truncate ${onViewItems ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
-        onClick={onViewItems ? (e) => { e.stopPropagation(); onViewItems(); } : undefined}
-      >
+      <span className="flex-1 text-sm font-semibold text-foreground truncate">
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
       {onAdd && (
-        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add item">
+        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add">
           <Plus className="h-3.5 w-3.5 text-primary" />
-        </button>
-      )}
-      {onViewItems && (
-        <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
-          <ImageIcon className="h-3.5 w-3.5 text-primary" />
         </button>
       )}
       <button onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
