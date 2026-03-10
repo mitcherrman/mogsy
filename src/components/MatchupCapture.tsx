@@ -1,5 +1,5 @@
 import { forwardRef, ReactNode } from "react";
-import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import mogsyLogo from "@/assets/mogsy-logo.png";
 import { SITE_DOMAIN } from "@/lib/site-config";
 
 interface MatchupCaptureProps {
@@ -18,7 +18,8 @@ const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
         {/* Branding header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <img src={mogsyLogo} alt="Mogsy" className="h-8 sm:h-10 object-contain" />
+            <img src={mogsyLogo} alt="Mogsy" className="h-5 w-5 rounded-md" />
+            <span className="text-xs font-extrabold text-foreground tracking-tight">MOGSY</span>
           </div>
           {centerSlot && (
             <div className="flex items-center justify-center">
