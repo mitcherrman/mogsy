@@ -692,6 +692,7 @@ export default function AdminPlay() {
         {/* Multiplayer Settings */}
         <Section
           title="Multiplayer Settings"
+          sectionId="section-multiplayer"
           expanded={expandedSections.has("multiplayer")}
           onToggle={() => toggleSection("multiplayer")}
         >
