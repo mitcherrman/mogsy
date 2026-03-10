@@ -545,7 +545,9 @@ export default function AdminPlay() {
           onToggle={() => toggleSection("topLevel")}
         >
           <Reorder.Group axis="y" values={sortedTopLevel} onReorder={updateTopLevel} className="space-y-1">
-            {sortedTopLevel.map(item => (
+      {sortedTopLevel.map(item => {
+                const sectionKey = item.key === "collections" ? "categories" : item.key === "compete" ? "compete" : item.key === "elocheck" ? "categories" : item.key === "multiplayer" ? "multiplayer" : undefined;
+                return (
               <Reorder.Item key={item.key} value={item} className="touch-none">
                 <DragItem
                   label={item.label}
@@ -557,9 +559,14 @@ export default function AdminPlay() {
                     itemKey: item.key,
                     item: { key: item.key, label: item.label, hidden: item.hidden, customLabel: null, type: "topLevel" as const },
                   })}
+                  onBarClick={sectionKey ? () => {
+                    if (!expandedSections.has(sectionKey)) toggleSection(sectionKey);
+                    setTimeout(() => document.getElementById(`section-${sectionKey}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                  } : undefined}
                 />
               </Reorder.Item>
-            ))}
+                );
+              })}
           </Reorder.Group>
         </Section>
 
