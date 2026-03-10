@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import { motion } from "framer-motion";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 
 export interface AnimationCardItem {
@@ -18,9 +19,50 @@ export interface AnimationCardItem {
   showGlobalStats?: boolean;
 }
 
+function AuraChangeOverlay({ item }: { item: AnimationCardItem }) {
+  const change = item.eloChange;
+  if (change === null || change === undefined) return null;
+
+  const isPositive = change > 0;
+  const rankChanged = item.rankOld != null && item.rankNew != null && item.rankOld !== item.rankNew;
+
+  return (
+    <div className="absolute bottom-2 left-0 right-0 flex flex-col items-center gap-0.5 z-30 pointer-events-none">
+      <motion.div
+        initial={{ scale: 0, y: 12, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 500, damping: 18, delay: 0.05 }}
+        className={`px-3 py-1 rounded-full font-extrabold text-lg shadow-lg ${
+          isPositive
+            ? "bg-emerald-500/85 text-white shadow-emerald-500/30"
+            : "bg-red-500/85 text-white shadow-red-500/30"
+        }`}
+      >
+        {isPositive ? "+" : ""}{change}
+      </motion.div>
+
+      {rankChanged && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.3, ease: "easeOut" }}
+          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            item.rankNew! < item.rankOld!
+              ? "bg-emerald-500/20 text-emerald-300"
+              : "bg-red-500/20 text-red-300"
+          }`}
+        >
+          #{item.rankOld} → #{item.rankNew} {item.rankNew! < item.rankOld! ? "▲" : "▼"}
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 export default function AnimationCardStats({ item }: { item: AnimationCardItem }) {
   return (
     <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
+      <AuraChangeOverlay item={item} />
       <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate text-center">{item.name}</h3>
       {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate text-center">{item.subtitle}</p>}
       {item.eloVisible && (
