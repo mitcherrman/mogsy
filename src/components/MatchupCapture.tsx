@@ -1,5 +1,5 @@
 import { forwardRef, ReactNode } from "react";
-import mogsyLogo from "@/assets/mogsy-logo.png";
+import mogsyTextLogo from "@/assets/mogsy-text-logo.png";
 import { SITE_DOMAIN } from "@/lib/site-config";
 
 interface MatchupCaptureProps {
