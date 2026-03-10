@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, ImageIcon, Swords } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -545,7 +545,9 @@ export default function AdminPlay() {
           onToggle={() => toggleSection("topLevel")}
         >
           <Reorder.Group axis="y" values={sortedTopLevel} onReorder={updateTopLevel} className="space-y-1">
-            {sortedTopLevel.map(item => (
+      {sortedTopLevel.map(item => {
+                const sectionKey = item.key === "collections" ? "categories" : item.key === "compete" ? "compete" : item.key === "elocheck" ? "categories" : item.key === "multiplayer" ? "multiplayer" : undefined;
+                return (
               <Reorder.Item key={item.key} value={item} className="touch-none">
                 <DragItem
                   label={item.label}
@@ -557,15 +559,21 @@ export default function AdminPlay() {
                     itemKey: item.key,
                     item: { key: item.key, label: item.label, hidden: item.hidden, customLabel: null, type: "topLevel" as const },
                   })}
+                  onBarClick={sectionKey ? () => {
+                    if (!expandedSections.has(sectionKey)) toggleSection(sectionKey);
+                    setTimeout(() => document.getElementById(`section-${sectionKey}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                  } : undefined}
                 />
               </Reorder.Item>
-            ))}
+                );
+              })}
           </Reorder.Group>
         </Section>
 
         {/* Categories */}
         <Section
           title="Categories"
+          sectionId="section-categories"
           expanded={expandedSections.has("categories")}
           onToggle={() => toggleSection("categories")}
           onAdd={() => { setNewName(""); setAddCategoryOpen(true); }}
@@ -586,7 +594,7 @@ export default function AdminPlay() {
                     })}
                     expandable
                     expanded={expandedCategories.has(cat.key)}
-                    onExpand={() => toggleCategory(cat.key)}
+                    onBarClick={() => toggleCategory(cat.key)}
                     onAdd={() => { setNewName(""); setAddSubcategoryOpen(cat.key); }}
                   />
                   <AnimatePresence>
@@ -605,7 +613,7 @@ export default function AdminPlay() {
                         >
                           {getLeaguesForCategory(cat.key).map(league => (
                             <Reorder.Item key={league.id} value={league} className="touch-none">
-                              <DragItem
+                <DragItem
                                 label={getLeagueName(league.id)}
                                 hidden={league.hidden}
                                 onToggleVisibility={() => toggleVisibility("league", league.id)}
@@ -622,9 +630,8 @@ export default function AdminPlay() {
                                     leagueId: league.id,
                                   },
                                 })}
-                                onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                                onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                                 onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
-                                onAdd={() => { setNewName(""); setAddItemOpen(league.id); }}
                               />
                             </Reorder.Item>
                           ))}
@@ -641,6 +648,7 @@ export default function AdminPlay() {
         {/* Compete Leagues */}
         <Section
           title="Compete Leagues"
+          sectionId="section-compete"
           expanded={expandedSections.has("compete")}
           onToggle={() => toggleSection("compete")}
         >
@@ -674,7 +682,7 @@ export default function AdminPlay() {
                       leagueId: league.id,
                     },
                   })}
-                  onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                  onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                 />
               </Reorder.Item>
             ))}
@@ -684,6 +692,7 @@ export default function AdminPlay() {
         {/* Multiplayer Settings */}
         <Section
           title="Multiplayer Settings"
+          sectionId="section-multiplayer"
           expanded={expandedSections.has("multiplayer")}
           onToggle={() => toggleSection("multiplayer")}
         >
@@ -749,9 +758,9 @@ export default function AdminPlay() {
 }
 
 /* ─── Collapsible section ─── */
-function Section({ title, expanded, onToggle, onAdd, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; children: React.ReactNode }) {
+function Section({ title, expanded, onToggle, onAdd, sectionId, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; sectionId?: string; children: React.ReactNode }) {
   return (
-    <div className="mb-4">
+    <div className="mb-4" id={sectionId}>
       <div className="flex items-center gap-1">
         <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -789,8 +798,7 @@ function DragItem({
   onEdit,
   expandable,
   expanded,
-  onExpand,
-  onViewItems,
+  onBarClick,
   onDelete,
   onAdd,
 }: {
@@ -802,35 +810,29 @@ function DragItem({
   onEdit: () => void;
   expandable?: boolean;
   expanded?: boolean;
-  onExpand?: () => void;
-  onViewItems?: () => void;
+  onBarClick?: () => void;
   onDelete?: () => void;
   onAdd?: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
+    <div
+      className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"} ${onBarClick ? "cursor-pointer hover:bg-accent/30" : ""}`}
+      onClick={onBarClick ? (e) => { e.stopPropagation(); onBarClick(); } : undefined}
+    >
       <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
       {icon && <span className="text-primary shrink-0">{icon}</span>}
       {expandable && (
-        <button onClick={(e) => { e.stopPropagation(); onExpand?.(); }} className="shrink-0">
+        <span className="shrink-0">
           {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-        </button>
+        </span>
       )}
-      <span
-        className={`flex-1 text-sm font-semibold text-foreground truncate ${onViewItems ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
-        onClick={onViewItems ? (e) => { e.stopPropagation(); onViewItems(); } : undefined}
-      >
+      <span className="flex-1 text-sm font-semibold text-foreground truncate">
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
       {onAdd && (
-        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add item">
+        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add">
           <Plus className="h-3.5 w-3.5 text-primary" />
-        </button>
-      )}
-      {onViewItems && (
-        <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
-          <ImageIcon className="h-3.5 w-3.5 text-primary" />
         </button>
       )}
       <button onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
