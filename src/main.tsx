@@ -3,3 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Fade out the static shell once React has painted
+requestAnimationFrame(() => {
+  const shell = document.getElementById("initial-shell");
+  if (shell) {
+    shell.style.opacity = "0";
+    setTimeout(() => shell.remove(), 350);
+  }
+});
