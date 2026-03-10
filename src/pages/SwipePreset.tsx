@@ -918,12 +918,13 @@ export default function SwipePreset() {
                   localRank: localRankMap.get(item.id),
                   globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
                   globalRank: rankMap.get(item.id),
-                  eloVisible,
-                  rankVisible,
+                  eloVisible: true,
+                  rankVisible: true,
                   eloChange: eloChanges.get(item.id) ?? null,
                   rankOld: rankChanges.get(item.id)?.old ?? null,
                   rankNew: rankChanges.get(item.id)?.new ?? null,
                   globalDirection: globalDirections.get(item.id),
+                  showGlobalStats,
                 })) : []}
                 onComplete={handleSliceComplete}
               />
