@@ -51,9 +51,9 @@ export default function SwipeBottomBar({ children }: SwipeBottomBarProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={handleToggle}
-            className="w-full flex items-center justify-center py-1.5 bg-card/80 backdrop-blur-sm border-t border-border rounded-t-xl"
+            className="w-full flex items-center justify-center py-2 bg-card/80 backdrop-blur-sm border-t border-border rounded-t-xl"
           >
-            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/50" />
+            <div className="w-8 h-1 rounded-full bg-muted-foreground/40" />
           </motion.button>
         )}
       </AnimatePresence>
