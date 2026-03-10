@@ -46,6 +46,7 @@ interface SwipeProfile {
 
 export default function Swipe() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { toast } = useToast();
   const captureRef = useRef<HTMLDivElement>(null);
