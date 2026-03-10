@@ -1296,7 +1296,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
-        {(filterMode !== "all" || sortMode !== "newest" || search) && (
+        {(filterMode !== "signed_up" || sortMode !== "newest" || search) && (
           <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1 text-muted-foreground">
             <RotateCcw className="h-3 w-3" /> Reset
           </Button>
