@@ -514,14 +514,10 @@ export default function Swipe() {
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[0].id)}</span>
-                        <span className="mx-1 text-muted-foreground/30">|</span>
-                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                        <span className="font-semibold text-blue-400">{pair[0].elo}</span>
-                        <span className="text-blue-400/70">#{globalRankMap.get(pair[0].id)}</span>
                       </span>
                     </div>
                     <div className="flex justify-center mt-0.5">
-                      <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
+                      <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
                     </div>
                   </div>
                 </div>
@@ -539,14 +535,10 @@ export default function Swipe() {
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
-                        <span className="mx-1 text-muted-foreground/30">|</span>
-                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                        <span className="font-semibold text-blue-400">{pair[1].elo}</span>
-                        <span className="text-blue-400/70">#{globalRankMap.get(pair[1].id)}</span>
                       </span>
                     </div>
                     <div className="flex justify-center mt-0.5">
-                      <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
+                      <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
                     </div>
                   </div>
                 </div>
@@ -560,12 +552,9 @@ export default function Swipe() {
                     name: p.displayName,
                     localElo: localElos.get(p.id) ?? 1200,
                     localRank: localRankMap.get(p.id),
-                    globalElo: p.elo,
-                    globalRank: globalRankMap.get(p.id),
                     eloVisible: true,
                     rankVisible: true,
                     eloChange: eloChanges.get(p.id) ?? null,
-                    globalDirection: globalDirections.get(p.id),
                   })) : []}
                   onComplete={handleSliceComplete}
                 />
@@ -575,7 +564,20 @@ export default function Swipe() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <div className="flex items-center justify-center gap-3 mt-2">
+            <SwipeBottomBar>
+              <Button
+                variant={gauntletMode ? "default" : "outline"}
+                size="icon"
+                onClick={() => {
+                  setGauntletMode(!gauntletMode);
+                  setGauntletChampion(null);
+                  setGauntletStreak(0);
+                }}
+                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+              >
+                <Sword className="h-4 w-4" fill="currentColor" />
+              </Button>
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
@@ -600,7 +602,7 @@ export default function Swipe() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               )}
-            </div>
+            </SwipeBottomBar>
           )}
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">
