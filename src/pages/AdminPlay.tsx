@@ -612,7 +612,7 @@ export default function AdminPlay() {
                         >
                           {getLeaguesForCategory(cat.key).map(league => (
                             <Reorder.Item key={league.id} value={league} className="touch-none">
-                              <DragItem
+                <DragItem
                                 label={getLeagueName(league.id)}
                                 hidden={league.hidden}
                                 onToggleVisibility={() => toggleVisibility("league", league.id)}
@@ -629,9 +629,8 @@ export default function AdminPlay() {
                                     leagueId: league.id,
                                   },
                                 })}
-                                onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                                onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                                 onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
-                                onAdd={() => { setNewName(""); setAddItemOpen(league.id); }}
                               />
                             </Reorder.Item>
                           ))}
