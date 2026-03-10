@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
