@@ -1220,6 +1220,16 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search users by name, email, or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0 h-9 w-9"
+          disabled={loading}
+          onClick={() => fetchProfiles()}
+          title="Refresh users"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </Button>
         <Badge variant="outline">{filtered.length} users</Badge>
       </div>
 
