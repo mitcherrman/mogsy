@@ -171,6 +171,7 @@ export default function SwipePreset() {
       setLeagueSubcategory((league as any).subcategory ?? null);
       setShowElo((league as any).show_elo ?? true);
       setShowRank((league as any).show_rank ?? true);
+      setShowGlobalStats((league as any).show_global_stats ?? false);
       // Check if this is a League of Legends subcategory league
       if ((league as any).subcategory === "League of Legends") {
         document.documentElement.classList.add("theme-lol");
