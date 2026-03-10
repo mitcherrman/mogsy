@@ -502,7 +502,7 @@ export default function AdminDemo() {
     const frame = isUserMode ? (frameClasses[card.profileFrame] || "") : "";
 
     return (
-      <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+      <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border overflow-hidden ${theme.styles.cardBg || "border-border bg-card"}`}>
         <div
           className={`relative overflow-hidden transition-all duration-300 ${
             isWinner
