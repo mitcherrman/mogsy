@@ -510,17 +510,13 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
                   <div className="px-2 py-1.5 relative z-20">
-                    <div className="flex items-center justify-center gap-3">
+                    <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[0].id)}</span>
-                        <span className="mx-1 text-muted-foreground/30">|</span>
-                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                        <span className="font-semibold text-blue-400">{pair[0].elo}</span>
-                        <span className="text-blue-400/70">#{globalRankMap.get(pair[0].id)}</span>
                       </span>
                     </div>
-                    <div className="flex justify-center mt-0.5">
+                    <div className={`flex justify-center mt-0.5 ${sliceWinner === null ? "invisible" : ""}`}>
                       <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                     </div>
                   </div>
@@ -535,17 +531,13 @@ export default function Swipe() {
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
                   <div className="px-2 py-1.5 relative z-20">
-                    <div className="flex items-center justify-center gap-3">
+                    <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
-                        <span className="mx-1 text-muted-foreground/30">|</span>
-                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                        <span className="font-semibold text-blue-400">{pair[1].elo}</span>
-                        <span className="text-blue-400/70">#{globalRankMap.get(pair[1].id)}</span>
                       </span>
                     </div>
-                    <div className="flex justify-center mt-0.5">
+                    <div className={`flex justify-center mt-0.5 ${sliceWinner === null ? "invisible" : ""}`}>
                       <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                     </div>
                   </div>
@@ -566,6 +558,7 @@ export default function Swipe() {
                     rankVisible: true,
                     eloChange: eloChanges.get(p.id) ?? null,
                     globalDirection: globalDirections.get(p.id),
+                    showGlobalStats: false,
                   })) : []}
                   onComplete={handleSliceComplete}
                 />
@@ -576,6 +569,19 @@ export default function Swipe() {
           {/* Mobile action bar below cards */}
           {isMobile && (
             <div className="flex items-center justify-center gap-3 mt-2">
+              <Button
+                variant={gauntletMode ? "default" : "outline"}
+                size="icon"
+                onClick={() => {
+                  setGauntletMode(!gauntletMode);
+                  setGauntletChampion(null);
+                  setGauntletStreak(0);
+                }}
+                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+              >
+                <Sword className="h-4 w-4" fill="currentColor" />
+              </Button>
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
