@@ -647,7 +647,7 @@ export default function Home() {
     <div className="min-h-screen px-4 py-2">
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
-        <div className="flex justify-center -mb-4">
+        <div className="flex justify-center -mb-6 -mt-4">
           <img src={mogsyLogo} alt="Mogsy" className="h-24 sm:h-36 md:h-44 -mb-6 object-cover" style={{ clipPath: 'inset(15% 0 15% 0)' }} />
         </div>
 
