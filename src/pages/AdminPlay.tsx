@@ -44,6 +44,7 @@ export default function AdminPlay() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [playStats, setPlayStats] = useState({ totalItems: 0, totalImages: 0, totalClicks: 0 });
   const [authorized, setAuthorized] = useState(false);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [config, setConfig] = useState<PlayLayoutConfig>({ topLevel: [], categories: [], leagues: [] });
