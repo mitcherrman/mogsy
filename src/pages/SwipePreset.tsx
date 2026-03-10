@@ -868,34 +868,34 @@ export default function SwipePreset() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center justify-center gap-3 mt-0.5">
-                              {eloVisible && (
-                                <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
-                                  <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
-                                  {rankVisible && localRankMap.get(item.id) && (
-                                    <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
-                                  )}
-                                  <span className="mx-1 text-muted-foreground/30">|</span>
-                                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                                  {rankVisible && rank && (
-                                    <span className="text-blue-400/70">#{rank}</span>
-                                  )}
-                                </span>
-                              )}
+                            <div className={`flex items-center justify-center gap-3 mt-0.5 ${statsHidden ? "invisible" : ""}`}>
+                              <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
+                                <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
+                                {rankVisible && localRankMap.get(item.id) && (
+                                  <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
+                                )}
+                                {showGlobalStats && (
+                                  <>
+                                    <span className="mx-1 text-muted-foreground/30">|</span>
+                                    <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                                    <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                                    {rankVisible && rank && (
+                                      <span className="text-blue-400/70">#{rank}</span>
+                                    )}
+                                  </>
+                                )}
+                              </span>
                             </div>
 
                             {/* Elo change indicator */}
-                            {chosen !== null && (
-                              <div className="flex justify-center mt-0.5">
-                                <EloChangeIndicator
-                                  change={eloChanges.get(item.id) ?? null}
-                                  oldRank={rankChanges.get(item.id)?.old ?? null}
-                                  newRank={rankChanges.get(item.id)?.new ?? null}
-                                  globalDirection={globalDirections.get(item.id)}
-                                />
-                              </div>
-                            )}
+                            <div className={`flex justify-center mt-0.5 ${statsHidden ? "invisible" : ""}`}>
+                              <EloChangeIndicator
+                                change={eloChanges.get(item.id) ?? null}
+                                oldRank={rankChanges.get(item.id)?.old ?? null}
+                                newRank={rankChanges.get(item.id)?.new ?? null}
+                                globalDirection={globalDirections.get(item.id)}
+                              />
+                            </div>
                           </div>
                         </div>
                       </React.Fragment>
