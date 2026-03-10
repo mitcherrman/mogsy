@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ export default function AdminPlay() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [playStats, setPlayStats] = useState({ totalItems: 0, totalImages: 0, totalClicks: 0 });
   const [authorized, setAuthorized] = useState(false);
   const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [config, setConfig] = useState<PlayLayoutConfig>({ topLevel: [], categories: [], leagues: [] });
@@ -89,11 +90,20 @@ export default function AdminPlay() {
   }, [user]);
 
   const loadData = async () => {
-    const [{ data: leagueData }, { data: draftData }, { data: presetData }] = await Promise.all([
+    const [{ data: leagueData }, { data: draftData }, { data: presetData }, itemsCount, imagesCount, clicksCount] = await Promise.all([
       supabase.from("leagues").select("id, name, category, type, subcategory"),
       supabase.from("play_layout_config").select("config").eq("id", "draft").single(),
       supabase.from("play_layout_config").select("id, updated_at").like("id", "preset__%"),
+      supabase.from("preset_items").select("id", { count: "exact", head: true }),
+      supabase.from("preset_item_images").select("id", { count: "exact", head: true }),
+      supabase.from("image_clicks").select("id", { count: "exact", head: true }),
     ]);
+
+    setPlayStats({
+      totalItems: itemsCount.count || 0,
+      totalImages: imagesCount.count || 0,
+      totalClicks: clicksCount.count || 0,
+    });
 
     const fetchedLeagues = (leagueData as LeagueItem[]) || [];
     setLeagues(fetchedLeagues);
@@ -536,6 +546,21 @@ export default function AdminPlay() {
           <Button size="sm" onClick={handlePublish} disabled={saving} className="gap-1.5 text-xs font-bold">
             Confirm & Publish
           </Button>
+        </div>
+
+        {/* Play Stats */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {[
+            { label: "Items", value: playStats.totalItems, icon: Layers, color: "text-primary" },
+            { label: "Images", value: playStats.totalImages, icon: ImageIcon, color: "text-accent-foreground" },
+            { label: "Img Clicks", value: playStats.totalClicks, icon: MousePointerClick, color: "text-destructive" },
+          ].map(c => (
+            <div key={c.label} className="rounded-xl border border-border bg-card p-3 text-center">
+              <c.icon className={`h-4 w-4 mx-auto mb-1 ${c.color}`} />
+              <p className="text-lg font-extrabold text-foreground">{c.value}</p>
+              <p className="text-[10px] text-muted-foreground">{c.label}</p>
+            </div>
+          ))}
         </div>
 
         {/* Top Level Items */}
