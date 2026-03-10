@@ -17,6 +17,7 @@ import {
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
+  RefreshCw,
 } from "lucide-react";
 
 interface Profile {
