@@ -91,6 +91,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [filterMode, setFilterMode] = useState<string>("all");
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
+  const [purging, setPurging] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "notes" | "account" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
   const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
