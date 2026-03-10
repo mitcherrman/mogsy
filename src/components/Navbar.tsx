@@ -38,6 +38,23 @@ function MobileNavButton({ icon: Icon, label, hasTheme, themeId, onClick, badge 
 export default function Navbar({ themeId }: { themeId?: string }) {
   const location = useLocation();
   const { user } = useAuth();
+  const [navRevealed, setNavRevealed] = useState(false);
+
+  // Detect game routes where bottom nav should auto-hide
+  const isGameRoute = location.pathname.startsWith("/swipe") || location.pathname.includes("/multiplayer/game");
+
+  // Auto-hide nav when route changes
+  useEffect(() => {
+    setNavRevealed(false);
+  }, [location.pathname]);
+
+  // Auto-hide after 4 seconds when revealed on game routes
+  useEffect(() => {
+    if (navRevealed && isGameRoute) {
+      const timer = setTimeout(() => setNavRevealed(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [navRevealed, isGameRoute]);
 
   useEffect(() => {
     if (user) loadDiamonds();
