@@ -130,6 +130,7 @@ export default function AdminDemo() {
         }
         setAuthorized(true);
         setIsFullAdmin(fullAdmin);
+        setIsModerator(isMod);
         setAuthLoading(false);
       });
   }, [user, navigate]);
