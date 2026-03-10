@@ -884,11 +884,15 @@ export default function SwipePreset() {
                                   {rankVisible && localRankMap.get(item.id) && (
                                     <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
                                   )}
-                                  <span className="mx-1 text-muted-foreground/30">|</span>
-                                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                                  {rankVisible && rank && (
-                                    <span className="text-blue-400/70">#{rank}</span>
+                                  {showGlobalStats && (
+                                    <>
+                                      <span className="mx-1 text-muted-foreground/30">|</span>
+                                      <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                                      <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                                      {rankVisible && rank && (
+                                        <span className="text-blue-400/70">#{rank}</span>
+                                      )}
+                                    </>
                                   )}
                                 </span>
                               )}
@@ -901,7 +905,7 @@ export default function SwipePreset() {
                                   change={eloChanges.get(item.id) ?? null}
                                   oldRank={rankChanges.get(item.id)?.old ?? null}
                                   newRank={rankChanges.get(item.id)?.new ?? null}
-                                  globalDirection={globalDirections.get(item.id)}
+                                  globalDirection={showGlobalStats ? globalDirections.get(item.id) : undefined}
                                 />
                               </div>
                             )}
