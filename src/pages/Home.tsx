@@ -757,7 +757,7 @@ export default function Home() {
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
         <nav className="w-full flex flex-col items-center pt-2 pb-2">
-          <img src={mogsyLogo} alt="Mogsy" className="h-40 sm:h-56 md:h-64 object-contain mb-1" />
+          <img src={mogsyLogo} alt="Mogsy" className="h-40 sm:h-56 md:h-64 object-cover mb-1" />
         </nav>
 
         {/* Rotating Aura Banner */}
