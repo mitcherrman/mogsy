@@ -67,6 +67,7 @@ export default function AdminDemo() {
   const captureRef = useRef<HTMLDivElement>(null);
   const [authorized, setAuthorized] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const { capture } = useScreenshot(captureRef);
   const [gifFps, setGifFps] = useState<30 | 60>(30);
@@ -119,8 +120,9 @@ export default function AdminDemo() {
           return;
         }
         const roles = data.map((r) => r.role as string);
-        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access");
+        const hasAccess = roles.includes("admin") || roles.includes("master_admin") || roles.includes("demo_access") || roles.includes("moderator");
         const fullAdmin = roles.includes("admin") || roles.includes("master_admin");
+        const isMod = roles.includes("moderator") && !fullAdmin;
         if (!hasAccess) {
           navigate("/");
           toast.error("Access denied");
@@ -128,6 +130,7 @@ export default function AdminDemo() {
         }
         setAuthorized(true);
         setIsFullAdmin(fullAdmin);
+        setIsModerator(isMod);
         setAuthLoading(false);
       });
   }, [user, navigate]);
@@ -726,7 +729,7 @@ export default function AdminDemo() {
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : "/")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : isModerator ? "/moderator" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>
