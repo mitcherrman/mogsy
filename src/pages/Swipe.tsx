@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe, Eye, EyeOff } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import SwipeAdCard from "@/components/SwipeAdCard";
