@@ -82,6 +82,7 @@ export default function AdminPlay() {
         }
         const isModOnly = roles.includes("moderator") && !roles.includes("admin") && !roles.includes("master_admin");
         setIsModerator(isModOnly);
+        setIsAdmin(!isModOnly);
         setAuthorized(true);
         loadData();
       });
