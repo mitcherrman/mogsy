@@ -48,10 +48,10 @@ export default function Navbar({ themeId }: { themeId?: string }) {
     setNavRevealed(false);
   }, [location.pathname]);
 
-  // Auto-hide after 4 seconds when revealed on game routes
+  // Auto-hide after 6 seconds when revealed on game routes
   useEffect(() => {
     if (navRevealed && isGameRoute) {
-      const timer = setTimeout(() => setNavRevealed(false), 4000);
+      const timer = setTimeout(() => setNavRevealed(false), 6000);
       return () => clearTimeout(timer);
     }
   }, [navRevealed, isGameRoute]);
@@ -134,13 +134,12 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         {isGameRoute && !navRevealed && (
           <motion.button
             key="nav-handle"
-            initial={{ opacity: 0, rotate: -45 }}
-            animate={{ opacity: 1, rotate: 0 }}
-            exit={{ opacity: 0, rotate: -45 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => setNavRevealed(true)}
-            className="fixed bottom-1 left-2 z-50 sm:hidden"
-            style={{ transformOrigin: "bottom left" }}
+            className="fixed bottom-2 left-3 z-50 sm:hidden p-1"
           >
             <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </motion.button>
@@ -158,6 +157,15 @@ export default function Navbar({ themeId }: { themeId?: string }) {
             className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-border bg-background/80 backdrop-blur-xl"
             style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
           >
+            {/* Minimize handle inside navbar */}
+            {isGameRoute && (
+              <button
+                onClick={() => setNavRevealed(false)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-1 z-10"
+              >
+                <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+              </button>
+            )}
             <div className="flex items-center justify-center gap-4 h-14 px-4">
               {/* Friends button */}
               <MobileNavButton
