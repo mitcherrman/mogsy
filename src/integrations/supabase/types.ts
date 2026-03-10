@@ -797,6 +797,7 @@ export type Database = {
           grant_boost_credits: number | null
           grant_diamonds: number | null
           grant_elo_shields: number | null
+          grant_moderator: boolean | null
           grant_pro: boolean | null
           grant_reveals: number | null
           grant_rewinds: number | null
@@ -818,6 +819,7 @@ export type Database = {
           grant_boost_credits?: number | null
           grant_diamonds?: number | null
           grant_elo_shields?: number | null
+          grant_moderator?: boolean | null
           grant_pro?: boolean | null
           grant_reveals?: number | null
           grant_rewinds?: number | null
@@ -839,6 +841,7 @@ export type Database = {
           grant_boost_credits?: number | null
           grant_diamonds?: number | null
           grant_elo_shields?: number | null
+          grant_moderator?: boolean | null
           grant_pro?: boolean | null
           grant_reveals?: number | null
           grant_rewinds?: number | null

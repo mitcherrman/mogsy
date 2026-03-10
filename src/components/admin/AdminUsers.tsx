@@ -88,7 +88,7 @@ interface UserReferralData {
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<string>("all");
+  const [filterMode, setFilterMode] = useState<string>("signed_up");
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
@@ -154,7 +154,9 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setLoading(false);
 
     if (data && data.length > 0) {
-      const userIds = data.map((p) => p.user_id);
+      // Only fetch emails for non-anonymous users
+      const nonAnonUsers = data.filter(p => !p.is_anonymous);
+      const userIds = nonAnonUsers.map((p) => p.user_id);
       const BATCH_SIZE = 50;
       const allEmails: Record<string, string> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
@@ -187,6 +189,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const filtered = useMemo(() => {
     let list = profiles.filter((p) => {
+      // When showing anonymous section separately, exclude them from main list
+      if (filterMode !== "anonymous" && p.is_anonymous) return false;
+      if (filterMode === "anonymous" && !p.is_anonymous) return false;
+
       const q = search.toLowerCase();
       const email = emailMap[p.user_id] || "";
       return (
@@ -197,13 +203,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       );
     });
 
-    // Apply filter
+    // Apply filter (excluding anonymous which is handled above)
     const roles = userRoles;
     switch (filterMode) {
       case "pro": list = list.filter(p => p.is_pro); break;
       case "free": list = list.filter(p => !p.is_pro); break;
-      case "signed_up": list = list.filter(p => !p.is_anonymous); break;
-      case "anonymous": list = list.filter(p => p.is_anonymous); break;
+      case "signed_up": break; // already filtered above
+      case "anonymous": break; // already filtered above
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
       case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
@@ -225,6 +231,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
     return list;
   }, [profiles, search, emailMap, filterMode, sortMode, userRoles]);
+
+  const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
@@ -480,7 +488,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const resetFilters = () => {
     setSearch("");
-    setFilterMode("all");
+    setFilterMode("signed_up");
     setSortMode("newest");
   };
 
@@ -1264,11 +1272,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         <Select value={filterMode} onValueChange={setFilterMode}>
           <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Filter…" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="signed_up">Signed Up</SelectItem>
             <SelectItem value="all">All Users</SelectItem>
             <SelectItem value="pro">Pro Only</SelectItem>
             <SelectItem value="free">Free Only</SelectItem>
-            <SelectItem value="signed_up">Signed Up</SelectItem>
-            <SelectItem value="anonymous">Anonymous</SelectItem>
             <SelectItem value="ads_on">Ads On</SelectItem>
             <SelectItem value="ads_off">Ads Off</SelectItem>
             <SelectItem value="admins">Admins</SelectItem>
@@ -1289,50 +1296,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
-        {(filterMode !== "all" || sortMode !== "newest" || search) && (
+        {(filterMode !== "signed_up" || sortMode !== "newest" || search) && (
           <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1 text-muted-foreground">
             <RotateCcw className="h-3 w-3" /> Reset
           </Button>
-        )}
-      </div>
-
-      {/* Anonymous user controls (admin only) */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant={filterMode === "anonymous" ? "default" : "outline"}
-          size="sm"
-          className="h-8 text-xs gap-1.5"
-          onClick={() => setFilterMode(filterMode === "anonymous" ? "all" : "anonymous")}
-        >
-          <Ghost className="h-3.5 w-3.5" />
-          Anonymous
-          <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 text-[10px] px-1">
-            {profiles.filter(p => p.is_anonymous).length}
-          </Badge>
-        </Button>
-        {isMasterAdmin && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" disabled={purging}>
-                {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Purge Anonymous
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Purge all anonymous users?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all {profiles.filter(p => p.is_anonymous).length} anonymous accounts and their auth data. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handlePurgeAnonymous} className="bg-destructive text-destructive-foreground">
-                  Purge All
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         )}
       </div>
 
@@ -1384,6 +1351,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     {p.admin_notes && <StickyNote className="h-3 w-3 text-primary shrink-0" />}
                     {roles.includes("master_admin") && <ShieldCheck className="h-3 w-3 text-primary shrink-0" />}
                     {roles.includes("admin") && <Shield className="h-3 w-3 text-primary shrink-0" />}
+                    {roles.includes("moderator") && <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" />}
                     {p.avatar_url ? (
                       <ImageIcon className="h-3 w-3 text-primary shrink-0" />
                     ) : (
@@ -1398,7 +1366,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {p.is_anonymous && <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">Anon</Badge>}
                   {p.is_pro && <Crown className="h-4 w-4 text-primary" />}
                   <Diamond className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
@@ -1407,6 +1374,67 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* ─── Separate Anonymous Users Section ─── */}
+      {filterMode !== "anonymous" && anonymousUsers.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+              <Ghost className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Anonymous Users</span>
+              <Badge variant="secondary" className="text-[10px] px-1.5">{anonymousUsers.length}</Badge>
+              <ChevronDown className="h-3 w-3 text-muted-foreground ml-auto" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-3">
+              {isMasterAdmin && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" disabled={purging}>
+                      {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      Purge All Anonymous ({anonymousUsers.length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Purge all anonymous users?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all {anonymousUsers.length} anonymous accounts and their auth data. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handlePurgeAnonymous} className="bg-destructive text-destructive-foreground">
+                        Purge All
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <div className="space-y-1">
+                {anonymousUsers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => openUserDetail(p)}
+                    className="w-full flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                      <Ghost className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{p.display_name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Joined {new Date(p.created_at).toLocaleDateString()}</span>
+                        <span>· Last seen {timeAgo(p.last_seen_at)}</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
     </div>

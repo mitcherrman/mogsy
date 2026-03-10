@@ -17,6 +17,7 @@ interface InviteLink {
   type: "admin" | "user";
   label: string | null;
   grant_admin: boolean;
+  grant_moderator: boolean;
   grant_pro: boolean;
   grant_diamonds: number;
   grant_boost_credits: number;
@@ -73,6 +74,7 @@ export default function AdminInviteLinks() {
   const [form, setForm] = useState({
     label: "",
     grant_admin: false,
+    grant_moderator: false,
     grant_pro: false,
     grant_diamonds: 0,
     grant_boost_credits: 0,
@@ -145,7 +147,8 @@ export default function AdminInviteLinks() {
       recommended_categories: form.recommended_categories,
       max_uses: form.max_uses ? parseInt(form.max_uses) : null,
       expires_at: expiresAt,
-    });
+      grant_moderator: form.grant_moderator,
+    } as any);
 
     if (error) {
       toast.error("Failed to create link");
@@ -153,7 +156,7 @@ export default function AdminInviteLinks() {
       toast.success("Invite link created!");
       setShowCreate(false);
       setForm({
-        label: "", grant_admin: false, grant_pro: false,
+        label: "", grant_admin: false, grant_moderator: false, grant_pro: false,
         grant_diamonds: 0, grant_boost_credits: 0, grant_elo_shields: 0,
         grant_reveals: 0, grant_rewinds: 0, recommended_categories: [],
         max_uses: "", expires_days: "",
@@ -241,14 +244,18 @@ export default function AdminInviteLinks() {
                     <Gift className="h-3 w-3" /> Signup Rewards
                   </h5>
                   <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={form.grant_admin} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_admin: v }))} />
-                      <Label className="text-xs">Grant Admin</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={form.grant_pro} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_pro: v }))} />
-                      <Label className="text-xs">Grant Pro</Label>
-                    </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_admin} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_admin: v }))} />
+                       <Label className="text-xs">Grant Admin</Label>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_moderator} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_moderator: v }))} />
+                       <Label className="text-xs">Grant Moderator</Label>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_pro} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_pro: v }))} />
+                       <Label className="text-xs">Grant Pro</Label>
+                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
@@ -460,6 +467,7 @@ function LinkCard({
                 <span className="text-muted-foreground">Type:</span>
                 <span className="text-foreground capitalize">{link.type}</span>
                 {link.grant_admin && <><span className="text-muted-foreground">Grants Admin:</span><span className="text-primary font-bold">Yes</span></>}
+                {(link as any).grant_moderator && <><span className="text-muted-foreground">Grants Moderator:</span><span className="text-blue-500 font-bold">Yes</span></>}
                 {link.grant_pro && <><span className="text-muted-foreground">Grants Pro:</span><span className="text-primary font-bold">Yes</span></>}
                 {link.grant_diamonds > 0 && <><span className="text-muted-foreground">Diamonds:</span><span>{link.grant_diamonds}</span></>}
                 {link.grant_boost_credits > 0 && <><span className="text-muted-foreground">Boosts:</span><span>{link.grant_boost_credits}</span></>}
