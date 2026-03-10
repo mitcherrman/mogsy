@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -44,6 +43,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [uploading, setUploading] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
+  const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [addItemName, setAddItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
@@ -64,13 +64,37 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       if (ids.length > 0) {
         const { data: images } = await supabase
           .from("preset_item_images")
-          .select("preset_item_id")
-          .in("preset_item_id", ids);
+          .select("preset_item_id, image_url, is_hidden, sort_order")
+          .in("preset_item_id", ids)
+          .eq("is_hidden", false)
+          .order("sort_order");
         const countMap = new Map<string, number>();
+        const imgMap = new Map<string, string>();
         images?.forEach(img => {
           countMap.set(img.preset_item_id, (countMap.get(img.preset_item_id) || 0) + 1);
+          if (!imgMap.has(img.preset_item_id)) {
+            imgMap.set(img.preset_item_id, img.image_url);
+          }
         });
         setImageCountMap(countMap);
+        setFirstImageMap(imgMap);
+
+        // Auto-set preview image for items that have no image_url but have available images
+        const updatePromises: Promise<any>[] = [];
+        const updatedItems = data.map(item => {
+          if (!item.image_url && imgMap.has(item.id)) {
+            const url = imgMap.get(item.id)!;
+            updatePromises.push(
+              supabase.from("preset_items").update({ image_url: url }).eq("id", item.id)
+            );
+            return { ...item, image_url: url };
+          }
+          return item;
+        });
+        if (updatePromises.length > 0) {
+          await Promise.all(updatePromises);
+          setItems(updatedItems);
+        }
       }
     }
   };
@@ -84,6 +108,15 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       .eq("preset_item_id", item.id)
       .order("sort_order");
     setItemImages((images as ItemImage[]) || []);
+  };
+
+  const setPreviewImage = async (url: string) => {
+    if (!selectedItem) return;
+    const { error } = await supabase.from("preset_items").update({ image_url: url }).eq("id", selectedItem.id);
+    if (error) { toast.error(error.message); return; }
+    setSelectedItem({ ...selectedItem, image_url: url });
+    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, image_url: url } : i));
+    toast.success("Preview image updated");
   };
 
   const handleAddImageByUrl = async () => {
@@ -104,9 +137,10 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       next.set(selectedItem.id, (next.get(selectedItem.id) || 0) + 1);
       return next;
     });
-    // Update item preview image
-    await supabase.from("preset_items").update({ image_url: addImageUrl.trim() }).eq("id", selectedItem.id);
-    setSelectedItem({ ...selectedItem, image_url: addImageUrl.trim() });
+    // Auto-set preview if none exists
+    if (!selectedItem.image_url) {
+      await setPreviewImage(addImageUrl.trim());
+    }
     toast.success("Image added");
   };
 
@@ -135,9 +169,10 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       next.set(selectedItem.id, (next.get(selectedItem.id) || 0) + 1);
       return next;
     });
-    // Update item preview image
-    await supabase.from("preset_items").update({ image_url: urlData.publicUrl }).eq("id", selectedItem.id);
-    setSelectedItem({ ...selectedItem, image_url: urlData.publicUrl });
+    // Auto-set preview if none exists
+    if (!selectedItem.image_url) {
+      await setPreviewImage(urlData.publicUrl);
+    }
     setUploading(false);
     toast.success("Image uploaded & added");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -161,6 +196,14 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         next.set(selectedItem.id, Math.max(0, (next.get(selectedItem.id) || 1) - 1));
         return next;
       });
+      // If deleted image was the preview, pick another
+      if (selectedItem.image_url === img.image_url) {
+        const remaining = itemImages.filter(i => i.id !== img.id && !i.is_hidden);
+        const newUrl = remaining.length > 0 ? remaining[0].image_url : null;
+        await supabase.from("preset_items").update({ image_url: newUrl }).eq("id", selectedItem.id);
+        setSelectedItem({ ...selectedItem, image_url: newUrl });
+        setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, image_url: newUrl } : i));
+      }
     }
     toast.success("Image removed");
   };
@@ -216,39 +259,52 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           <p className="text-sm text-muted-foreground text-center py-6">No images yet.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {itemImages.map(img => (
-              <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : "border-border"}`}>
-                <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
-                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant={img.is_hidden ? "default" : "secondary"} className="h-8 w-8" onClick={() => handleToggleImageVisibility(img)}>
-                    {img.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button size="icon" variant="destructive" className="h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete image?</AlertDialogTitle>
-                        <AlertDialogDescription>Permanently remove this image.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteImage(img)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+            {itemImages.map(img => {
+              const isPreview = selectedItem.image_url === img.image_url;
+              return (
+                <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : isPreview ? "border-primary border-2" : "border-border"}`}>
+                  <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant={isPreview ? "default" : "secondary"}
+                      className="h-8 w-8"
+                      onClick={() => setPreviewImage(img.image_url)}
+                      title="Set as preview"
+                    >
+                      <Star className={`h-4 w-4 ${isPreview ? "fill-current" : ""}`} />
+                    </Button>
+                    <Button size="icon" variant={img.is_hidden ? "default" : "secondary"} className="h-8 w-8" onClick={() => handleToggleImageVisibility(img)}>
+                      {img.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="icon" variant="destructive" className="h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete image?</AlertDialogTitle>
+                          <AlertDialogDescription>Permanently remove this image.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeleteImage(img)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-2 py-1 text-[10px] flex items-center justify-between">
+                    <span className={img.is_hidden ? "text-destructive font-bold" : "text-muted-foreground"}>
+                      {img.is_hidden ? "Hidden" : `${img.report_count} reports`}
+                    </span>
+                    {isPreview && <span className="text-primary font-bold">Preview</span>}
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-2 py-1 text-[10px]">
-                  <span className={img.is_hidden ? "text-destructive font-bold" : "text-muted-foreground"}>
-                    {img.is_hidden ? "Hidden" : `${img.report_count} reports`}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -315,6 +371,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         {items.length === 0 && <p className="text-center text-muted-foreground text-sm py-8">No items.</p>}
         {items.map(item => {
           const imgCount = imageCountMap.get(item.id) || 0;
+          const displayUrl = item.image_url || firstImageMap.get(item.id);
           return (
             <button
               key={item.id}
@@ -322,8 +379,8 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               className="flex items-center gap-3 w-full text-left rounded-xl border border-border bg-card p-3 hover:bg-accent/30 transition-colors"
             >
               <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden shrink-0">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                {displayUrl ? (
+                  <img src={displayUrl} alt={item.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-xs font-bold text-muted-foreground">{item.name.charAt(0)}</div>
                 )}
