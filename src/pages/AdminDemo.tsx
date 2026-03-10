@@ -656,7 +656,7 @@ export default function AdminDemo() {
       style={themeStyle}
     >
       {/* Game top bar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+      <div className="flex items-center gap-2 px-3 py-2">
         <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="flex items-center gap-1 text-muted-foreground">
           <Swords className="h-3.5 w-3.5" />
@@ -665,8 +665,12 @@ export default function AdminDemo() {
         <div className="flex-1 flex items-center justify-center">
           <img src={mogsyTextLogo} alt="Mogsy" className="h-4 object-contain opacity-70" />
         </div>
-        <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
+        {!isMobile && (
+          <>
+            <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
+          </>
+        )}
       </div>
 
       {/* Progress bar */}
@@ -679,10 +683,18 @@ export default function AdminDemo() {
         {children}
       </div>
 
-      {/* Bottom helper */}
+      {/* Bottom bar */}
       <div className="flex items-center justify-between px-3 pb-2">
         <span className="text-[10px] text-muted-foreground/60 italic">Tap or swipe to choose</span>
-        <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <>
+              <Camera className="h-3.5 w-3.5 text-muted-foreground/40" />
+              <Trophy className="h-3.5 w-3.5 text-muted-foreground/40" />
+            </>
+          )}
+          <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
+        </div>
       </div>
     </div>
   );
