@@ -1,20 +1,26 @@
-## Percentile-Based Rank System (Implemented)
 
-### Tier Distribution (Compete Leagues Only)
-- **Unranked**: Bottom 60% (0–60th percentile)
-- **Bronze 🥉**: 60th–75th percentile
-- **Silver 🥈**: 75th–90th percentile
-- **Gold 🥇**: 90th–99th percentile
-- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### What Changed
-1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
-2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
-3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
-4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
-5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
-6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
-7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
+## Plan
 
-### Collections (Preset) Leagues
-Still use absolute Elo-based tiers (unchanged).
+### 1. Hide tutorial tips during onboarding
+
+The `TutorialTipPopup` is rendered in `Layout.tsx`. The onboarding flow is rendered inside `Home.tsx` when `showOnboarding` is true, overlaying the entire screen at `z-[100]`.
+
+**Fix:** In `TutorialTipPopup.tsx`, check if the user's `onboarding_completed` is false. If so, return null. This uses the existing profile query pattern — fetch `onboarding_completed` from profiles and suppress tips until it's true.
+
+**File:** `src/components/TutorialTipPopup.tsx`
+
+### 2. Cinematic welcome screen redesign
+
+Redesign `OnboardingWelcome.tsx` to feel more dramatic and cinematic:
+
+- Dark fullscreen backdrop with a radial gradient glow behind the logo
+- Staggered text reveal animations (each line fades in sequentially with delay)
+- Logo enters with a dramatic scale + blur-to-sharp animation
+- Subtle particle/sparkle dots animating in background using framer-motion
+- Tagline text uses larger, bolder typography with a slight glow effect
+- Button pulses subtly to draw attention
+- Remove the dots indicator from the welcome screen (first impression should be immersive, dots appear from step 2 onward)
+
+**File:** `src/components/onboarding/OnboardingWelcome.tsx`
+
