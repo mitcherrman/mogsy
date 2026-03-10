@@ -84,6 +84,10 @@ export default function AdminLeagueSettings() {
                     <Label className="text-[10px] text-muted-foreground">Rank</Label>
                     <Switch checked={l.show_rank} onCheckedChange={(v) => updateLeague(l.id, "show_rank", v)} />
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-[10px] text-muted-foreground">Global</Label>
+                    <Switch checked={l.show_global_stats} onCheckedChange={(v) => updateLeague(l.id, "show_global_stats", v)} />
+                  </div>
                 </div>
               </div>
             ))}

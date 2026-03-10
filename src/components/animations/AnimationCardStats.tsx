@@ -30,11 +30,15 @@ export default function AnimationCardStats({ item }: { item: AnimationCardItem }
             {item.rankVisible && item.localRank && (
               <span className="text-muted-foreground/70">#{item.localRank}</span>
             )}
-            <span className="mx-1 text-muted-foreground/30">|</span>
-            <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-            <span className="font-semibold text-blue-400">{item.globalElo ?? 1200}</span>
-            {item.rankVisible && item.globalRank && (
-              <span className="text-blue-400/70">#{item.globalRank}</span>
+            {item.showGlobalStats !== false && (
+              <>
+                <span className="mx-1 text-muted-foreground/30">|</span>
+                <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                <span className="font-semibold text-blue-400">{item.globalElo ?? 1200}</span>
+                {item.rankVisible && item.globalRank && (
+                  <span className="text-blue-400/70">#{item.globalRank}</span>
+                )}
+              </>
             )}
           </span>
         </div>
