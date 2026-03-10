@@ -388,7 +388,12 @@ export default function AdminDemo() {
           <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {profileThemes.filter(t => t.id !== "cycle").map(t => (
-              <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+              <SelectItem key={t.id} value={t.id}>
+                <div className="flex items-center gap-2">
+                  <div className={`h-3.5 w-6 rounded-sm shrink-0 ${t.preview}`} />
+                  <span>{t.label}</span>
+                </div>
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
