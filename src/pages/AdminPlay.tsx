@@ -755,9 +755,9 @@ export default function AdminPlay() {
 }
 
 /* ─── Collapsible section ─── */
-function Section({ title, expanded, onToggle, onAdd, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; children: React.ReactNode }) {
+function Section({ title, expanded, onToggle, onAdd, sectionId, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; sectionId?: string; children: React.ReactNode }) {
   return (
-    <div className="mb-4">
+    <div className="mb-4" id={sectionId}>
       <div className="flex items-center gap-1">
         <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
