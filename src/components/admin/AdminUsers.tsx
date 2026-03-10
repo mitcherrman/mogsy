@@ -17,8 +17,12 @@ import {
   ArrowLeft, StickyNote, AlertTriangle, ImageIcon, ImageOff,
   MapPin, Clock, ShieldCheck, ShieldOff, Link2, Gift, Pencil,
   KeyRound, MailCheck, Ban, UserCheck, Copy, Loader2, Info, Film,
-  RefreshCw,
+  RefreshCw, RotateCcw, Ghost,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Profile {
   id: string;
