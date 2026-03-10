@@ -346,6 +346,105 @@ export default function AdminPlay() {
     return cat?.customLabel || key;
   };
 
+  // Get user profile for mod notifications
+  const getProfileId = async () => {
+    if (!user) return null;
+    const { data } = await supabase.from("profiles").select("id, display_name").eq("user_id", user.id).single();
+    return data;
+  };
+
+  const handleAddCategory = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    // Create a league with this category
+    const { data, error } = await supabase.from("leagues").insert({
+      name: name,
+      category: name,
+      type: "preset",
+      created_by_user_id: user!.id,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    // Add to config
+    setConfig(prev => ({
+      ...prev,
+      categories: [...prev.categories, { key: name, parentKey: "collections", hidden: false, order: prev.categories.length, customLabel: null }],
+      leagues: [...prev.leagues, { id: data.id, hidden: false, order: prev.leagues.length, customLabel: null }],
+    }));
+    setLeagues(prev => [...prev, { id: data.id, name, category: name, subcategory: null, type: "preset" }]);
+    hasUnsavedChanges.current = true;
+    setAddCategoryOpen(false);
+    setNewName("");
+    toast.success(`Category "${name}" created`);
+  };
+
+  const handleAddSubcategory = async (parentCategory: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    const { data, error } = await supabase.from("leagues").insert({
+      name: name,
+      category: parentCategory,
+      subcategory: name,
+      type: "preset",
+      created_by_user_id: user!.id,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    setConfig(prev => ({
+      ...prev,
+      leagues: [...prev.leagues, { id: data.id, hidden: false, order: prev.leagues.length, customLabel: null }],
+    }));
+    setLeagues(prev => [...prev, { id: data.id, name, category: parentCategory, subcategory: name, type: "preset" }]);
+    hasUnsavedChanges.current = true;
+    setAddSubcategoryOpen(null);
+    setNewName("");
+    toast.success(`Subcategory "${name}" added to ${parentCategory}`);
+  };
+
+  const handleAddItem = async (leagueId: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    const { error } = await supabase.from("preset_items").insert({
+      league_id: leagueId,
+      name: name,
+    });
+    if (error) { toast.error(error.message); return; }
+    setAddItemOpen(null);
+    setNewName("");
+    toast.success(`Item "${name}" added`);
+  };
+
+  const handleDelete = async (targetType: "league" | "item", targetId: string, targetName: string) => {
+    if (isAdmin) {
+      // Direct delete
+      if (targetType === "league") {
+        const { error } = await supabase.from("leagues").delete().eq("id", targetId);
+        if (error) { toast.error(error.message); return; }
+        setLeagues(prev => prev.filter(l => l.id !== targetId));
+        setConfig(prev => ({ ...prev, leagues: prev.leagues.filter(l => l.id !== targetId) }));
+      } else {
+        const { error } = await supabase.from("preset_items").delete().eq("id", targetId);
+        if (error) { toast.error(error.message); return; }
+      }
+      hasUnsavedChanges.current = true;
+      toast.success(`Deleted "${targetName}"`);
+    } else {
+      // Moderator: send request
+      const profile = await getProfileId();
+      await supabase.from("admin_notifications").insert({
+        type: "mod_delete_request",
+        title: `Delete request: ${targetName}`,
+        message: `Moderator "${profile?.display_name || "Unknown"}" wants to delete ${targetType} "${targetName}"`,
+        metadata: {
+          target_type: targetType,
+          target_id: targetId,
+          target_name: targetName,
+          mod_name: profile?.display_name || "Unknown",
+          mod_profile_id: profile?.id,
+        },
+      });
+      toast.success("Delete request sent to admin for approval");
+    }
+  };
+
   if (loading || !authorized) return <div className="min-h-screen" />;
 
   // League items detail view
