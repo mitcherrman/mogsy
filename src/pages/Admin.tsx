@@ -28,6 +28,7 @@ import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminUserReports from "@/components/admin/AdminUserReports";
 import AdminFeedback from "@/components/admin/AdminFeedback";
+import AdminModeratorConfig from "@/components/admin/AdminModeratorConfig";
 import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
