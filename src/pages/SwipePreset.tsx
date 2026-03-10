@@ -636,18 +636,10 @@ export default function SwipePreset() {
             >
               <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
-            <div className="flex-1 relative flex items-center justify-center">
-              <div className="sm:hidden absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex-1 sm:relative flex items-center justify-center">
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none sm:static sm:translate-x-0">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
                 <p className="text-muted-foreground text-xs flex items-center gap-1 ml-2">
-                  <Swords className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-primary font-bold">{matchCount}</span>
-                </p>
-              </div>
-              <div className="hidden sm:flex items-center justify-center">
-                <div className="w-14 shrink-0" />
-                <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
-                <p className="text-muted-foreground text-xs flex items-center gap-1 ml-2 w-14 shrink-0">
                   <Swords className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-primary font-bold">{matchCount}</span>
                 </p>
