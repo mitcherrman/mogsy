@@ -45,6 +45,8 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [addItemName, setAddItemName] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
 
   useEffect(() => {
     loadItems();
