@@ -48,6 +48,7 @@ const allTabs = [
   { value: "reports", label: "Reports", masterOnly: false },
   { value: "tutorials", label: "Tutorials", masterOnly: false },
   { value: "feedback", label: "Feedback", masterOnly: false },
+  { value: "mod-config", label: "Mod Config", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
