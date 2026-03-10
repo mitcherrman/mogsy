@@ -26,7 +26,7 @@ export default function AdminLeagueSettings() {
   useEffect(() => {
     supabase
       .from("leagues")
-      .select("id, name, category, show_elo, show_rank")
+      .select("id, name, category, show_elo, show_rank, show_global_stats")
       .eq("type", "preset")
       .order("category")
       .order("name")
