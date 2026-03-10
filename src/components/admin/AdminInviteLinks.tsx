@@ -155,7 +155,7 @@ export default function AdminInviteLinks() {
       toast.success("Invite link created!");
       setShowCreate(false);
       setForm({
-        label: "", grant_admin: false, grant_pro: false,
+        label: "", grant_admin: false, grant_moderator: false, grant_pro: false,
         grant_diamonds: 0, grant_boost_credits: 0, grant_elo_shields: 0,
         grant_reveals: 0, grant_rewinds: 0, recommended_categories: [],
         max_uses: "", expires_days: "",
