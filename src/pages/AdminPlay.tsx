@@ -816,7 +816,10 @@ function DragItem({
           {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
         </button>
       )}
-      <span className="flex-1 text-sm font-semibold text-foreground truncate">
+      <span
+        className={`flex-1 text-sm font-semibold text-foreground truncate ${onViewItems ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+        onClick={onViewItems ? (e) => { e.stopPropagation(); onViewItems(); } : undefined}
+      >
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>

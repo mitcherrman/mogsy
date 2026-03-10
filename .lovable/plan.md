@@ -1,30 +1,20 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-## Fix: Moderator image upload RLS + clickable subcategory bars
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-### 1. RLS policy for moderators uploading images
-
-The `preset_item_images` table only has INSERT/UPDATE/DELETE policies for `admin` role. Moderators aren't admins, so they get blocked. Need to add INSERT and UPDATE policies for moderators.
-
-**Database migration:**
-```sql
-CREATE POLICY "Moderators can insert images"
-ON public.preset_item_images FOR INSERT TO authenticated
-WITH CHECK (has_role(auth.uid(), 'moderator'::app_role));
-
-CREATE POLICY "Moderators can update images"
-ON public.preset_item_images FOR UPDATE TO authenticated
-USING (has_role(auth.uid(), 'moderator'::app_role));
-```
-
-### 2. Make subcategory/sub-subcategory bars clickable
-
-Currently, only the `ImageIcon` button triggers `onViewItems`. The label/bar area of league rows inside categories should also navigate to the items view when clicked.
-
-**Changes to `DragItem` component** (lines 810-845 in `AdminPlay.tsx`):
-- Make the label `<span>` clickable — when `onViewItems` is provided, clicking the label text triggers `onViewItems()` with a pointer cursor, so the entire bar acts as a clickable entry point (same as the image icon button).
-
-**Files changed:**
-- `src/pages/AdminPlay.tsx` — make label clickable when `onViewItems` exists
-- Database migration — add moderator INSERT/UPDATE policies on `preset_item_images`
-
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
