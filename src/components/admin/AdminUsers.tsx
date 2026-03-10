@@ -1289,6 +1289,51 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             <SelectItem value="name_az">Name A-Z</SelectItem>
           </SelectContent>
         </Select>
+        {(filterMode !== "all" || sortMode !== "newest" || search) && (
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="h-8 text-xs gap-1 text-muted-foreground">
+            <RotateCcw className="h-3 w-3" /> Reset
+          </Button>
+        )}
+      </div>
+
+      {/* Anonymous user controls (admin only) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={filterMode === "anonymous" ? "default" : "outline"}
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => setFilterMode(filterMode === "anonymous" ? "all" : "anonymous")}
+        >
+          <Ghost className="h-3.5 w-3.5" />
+          Anonymous
+          <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 text-[10px] px-1">
+            {profiles.filter(p => p.is_anonymous).length}
+          </Badge>
+        </Button>
+        {isMasterAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" disabled={purging}>
+                {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Purge Anonymous
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Purge all anonymous users?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete all {profiles.filter(p => p.is_anonymous).length} anonymous accounts and their auth data. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handlePurgeAnonymous} className="bg-destructive text-destructive-foreground">
+                  Purge All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {deletedUsers.length > 0 && (
