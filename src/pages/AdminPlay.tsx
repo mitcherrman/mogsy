@@ -58,6 +58,13 @@ export default function AdminPlay() {
   const hasUnsavedChanges = useRef(false);
 
   const [isModerator, setIsModerator] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Add dialogs state
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addSubcategoryOpen, setAddSubcategoryOpen] = useState<string | null>(null); // parent category key
+  const [addItemOpen, setAddItemOpen] = useState<string | null>(null); // league id
+  const [newName, setNewName] = useState("");
 
   // Auth gate
   useEffect(() => {
