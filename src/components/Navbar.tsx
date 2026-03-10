@@ -139,21 +139,10 @@ export default function Navbar({ themeId }: { themeId?: string }) {
             exit={{ opacity: 0, rotate: -45 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             onClick={() => setNavRevealed(true)}
-            className="fixed bottom-2 left-3 z-50 sm:hidden flex items-center justify-center"
+            className="fixed bottom-1 left-2 z-50 sm:hidden"
             style={{ transformOrigin: "bottom left" }}
           >
-            <svg width="28" height="32" viewBox="0 0 28 32" fill="none" className="text-muted-foreground/40">
-              {/* Hook shape */}
-              <path
-                d="M14 30 L14 12 Q14 4 20 4 Q26 4 26 10 Q26 16 20 16"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                fill="none"
-              />
-              {/* Small dot at tip */}
-              <circle cx="14" cy="30" r="2" fill="currentColor" />
-            </svg>
+            <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </motion.button>
         )}
       </AnimatePresence>
