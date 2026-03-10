@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe } from "lucide-react";
-import SwipeBottomBar from "@/components/SwipeBottomBar";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
 import { Progress } from "@/components/ui/progress";
@@ -87,9 +86,8 @@ export default function SwipePreset() {
   const [finished, setFinished] = useState(false);
   const [showElo, setShowElo] = useState(true);
   const [showRank, setShowRank] = useState(true);
-  const [showGlobalStats, setShowGlobalStats] = useState(false);
-  const [userShowElo, setUserShowElo] = useState(false);
-  const [userShowRank, setUserShowRank] = useState(false);
+  const [userShowElo, setUserShowElo] = useState(true);
+  const [userShowRank, setUserShowRank] = useState(true);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
@@ -163,7 +161,7 @@ export default function SwipePreset() {
 
   const loadItems = async () => {
     const [{ data: league }, { data }] = await Promise.all([
-      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory, show_global_stats").eq("id", leagueId!).single(),
+      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory").eq("id", leagueId!).single(),
       supabase.from("preset_items").select("*").eq("league_id", leagueId!),
     ]);
     if (league) {
@@ -172,7 +170,6 @@ export default function SwipePreset() {
       setLeagueSubcategory((league as any).subcategory ?? null);
       setShowElo((league as any).show_elo ?? true);
       setShowRank((league as any).show_rank ?? true);
-      setShowGlobalStats((league as any).show_global_stats ?? false);
       // Check if this is a League of Legends subcategory league
       if ((league as any).subcategory === "League of Legends") {
         document.documentElement.classList.add("theme-lol");
@@ -630,6 +627,15 @@ export default function SwipePreset() {
             <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
+            <Button
+              variant={gauntletMode ? "default" : "outline"}
+              size="icon"
+              onClick={handleToggleGauntlet}
+              className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+              title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+            >
+              <Sword className="h-4 w-4" fill="currentColor" />
+            </Button>
             <div className="flex-1 sm:relative flex items-center justify-center">
               <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none sm:static sm:translate-x-0">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
@@ -643,15 +649,6 @@ export default function SwipePreset() {
             {/* Desktop-only controls */}
             {!isMobile && (
               <>
-                <Button
-                  variant={gauntletMode ? "default" : "outline"}
-                  size="icon"
-                  onClick={handleToggleGauntlet}
-                  className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                  title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-                >
-                  <Sword className="h-4 w-4" fill="currentColor" />
-                </Button>
                 {user && (
                   <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
                 )}
@@ -677,19 +674,6 @@ export default function SwipePreset() {
                       <Trophy className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      const next = !(userShowElo && userShowRank);
-                      setUserShowElo(next);
-                      setUserShowRank(next);
-                    }}
-                    className="h-7 w-7 text-muted-foreground shrink-0"
-                    title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
-                  >
-                    {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                  </Button>
                 </div>
               </>
             )}
@@ -773,7 +757,6 @@ export default function SwipePreset() {
                         currentImageIndex={currentImageIndex}
                         eloVisible={eloVisible}
                         rankVisible={rankVisible}
-                        showGlobalStats={showGlobalStats}
                         items={items}
                         eloChanges={eloChanges}
                         globalDirections={globalDirections}
@@ -885,15 +868,11 @@ export default function SwipePreset() {
                                   {rankVisible && localRankMap.get(item.id) && (
                                     <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
                                   )}
-                                  {showGlobalStats && (
-                                    <>
-                                      <span className="mx-1 text-muted-foreground/30">|</span>
-                                      <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                                      <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                                      {rankVisible && rank && (
-                                        <span className="text-blue-400/70">#{rank}</span>
-                                      )}
-                                    </>
+                                  <span className="mx-1 text-muted-foreground/30">|</span>
+                                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+                                  {rankVisible && rank && (
+                                    <span className="text-blue-400/70">#{rank}</span>
                                   )}
                                 </span>
                               )}
@@ -906,7 +885,7 @@ export default function SwipePreset() {
                                   change={eloChanges.get(item.id) ?? null}
                                   oldRank={rankChanges.get(item.id)?.old ?? null}
                                   newRank={rankChanges.get(item.id)?.new ?? null}
-                                  globalDirection={showGlobalStats ? globalDirections.get(item.id) : undefined}
+                                  globalDirection={globalDirections.get(item.id)}
                                 />
                               </div>
                             )}
@@ -930,14 +909,14 @@ export default function SwipePreset() {
                   subtitle: item.subtitle,
                   localElo: localElos.get(item.id) ?? 1200,
                   localRank: localRankMap.get(item.id),
-                  globalElo: showGlobalStats ? (items.find(i => i.id === item.id)?.elo ?? item.elo) : undefined,
-                  globalRank: showGlobalStats ? rankMap.get(item.id) : undefined,
+                  globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
+                  globalRank: rankMap.get(item.id),
                   eloVisible,
                   rankVisible,
                   eloChange: eloChanges.get(item.id) ?? null,
                   rankOld: rankChanges.get(item.id)?.old ?? null,
                   rankNew: rankChanges.get(item.id)?.new ?? null,
-                  globalDirection: showGlobalStats ? globalDirections.get(item.id) : undefined,
+                  globalDirection: globalDirections.get(item.id),
                 })) : []}
                 onComplete={handleSliceComplete}
               />
@@ -946,29 +925,7 @@ export default function SwipePreset() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <SwipeBottomBar>
-              <Button
-                variant={gauntletMode ? "default" : "outline"}
-                size="icon"
-                onClick={handleToggleGauntlet}
-                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-              >
-                <Sword className="h-4 w-4" fill="currentColor" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  const next = !(userShowElo && userShowRank);
-                  setUserShowElo(next);
-                  setUserShowRank(next);
-                }}
-                className="h-8 w-8 text-muted-foreground shrink-0"
-                title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
-              >
-                {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              </Button>
+            <div className="flex items-center justify-center gap-3 mt-2">
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
@@ -993,7 +950,7 @@ export default function SwipePreset() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               </Link>
-            </SwipeBottomBar>
+            </div>
           )}
 
           <div className="flex items-center mt-1.5">
@@ -1002,6 +959,19 @@ export default function SwipePreset() {
                 ? `Tap to choose · Winner stays · ${matchCount} votes`
                 : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
             </p>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const next = !(userShowElo && userShowRank);
+                setUserShowElo(next);
+                setUserShowRank(next);
+              }}
+              className="h-7 w-7 text-muted-foreground shrink-0"
+              title={userShowElo && userShowRank ? "Hide Stats" : "Show Stats"}
+            >
+              {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </Button>
           </div>
 
           <ScrollToCommentsHint />
@@ -1017,12 +987,12 @@ export default function SwipePreset() {
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, handleChoose, handleReportImage,
+  eloVisible, rankVisible, items, eloChanges, globalDirections, rankChanges, getDisplayImage, handleChoose, handleReportImage,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
   itemImages: Map<string, ItemImage[]>; currentImageIndex: Map<string, number>;
-  eloVisible: boolean; rankVisible: boolean; showGlobalStats: boolean; items: PresetItem[];
+  eloVisible: boolean; rankVisible: boolean; items: PresetItem[];
   eloChanges: Map<string, number>; globalDirections: Map<string, "up" | "down" | "none">; rankChanges: Map<string, { old: number; new: number }>;
   getDisplayImage: (item: PresetItem) => string | null;
   handleChoose: (idx: 0 | 1) => void;
@@ -1095,22 +1065,18 @@ function GauntletCard({
               {rankVisible && localRankMap.get(item.id) && (
                 <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
               )}
-              {showGlobalStats && (
-                <>
-                  <span className="mx-1 text-muted-foreground/30">|</span>
-                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                  {rankVisible && rank && (
-                    <span className="text-blue-400/70">#{rank}</span>
-                  )}
-                </>
+              <span className="mx-1 text-muted-foreground/30">|</span>
+              <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+              <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
+              {rankVisible && rank && (
+                <span className="text-blue-400/70">#{rank}</span>
               )}
             </span>
           )}
         </div>
         {chosen !== null && (
           <div className="flex justify-center mt-0.5">
-            <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={showGlobalStats ? globalDirections.get(item.id) : undefined} />
+            <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
           </div>
         )}
       </div>

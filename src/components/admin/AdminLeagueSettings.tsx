@@ -12,7 +12,6 @@ interface League {
   category: string | null;
   show_elo: boolean;
   show_rank: boolean;
-  show_global_stats: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -26,7 +25,7 @@ export default function AdminLeagueSettings() {
   useEffect(() => {
     supabase
       .from("leagues")
-      .select("id, name, category, show_elo, show_rank, show_global_stats")
+      .select("id, name, category, show_elo, show_rank")
       .eq("type", "preset")
       .order("category")
       .order("name")
@@ -43,7 +42,7 @@ export default function AdminLeagueSettings() {
     });
   };
 
-  const updateLeague = async (id: string, field: "show_elo" | "show_rank" | "show_global_stats", value: boolean) => {
+  const updateLeague = async (id: string, field: "show_elo" | "show_rank", value: boolean) => {
     setLeagues(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
     const { error } = await supabase.from("leagues").update({ [field]: value }).eq("id", id);
     if (error) {
@@ -83,10 +82,6 @@ export default function AdminLeagueSettings() {
                   <div className="flex items-center gap-1.5">
                     <Label className="text-[10px] text-muted-foreground">Rank</Label>
                     <Switch checked={l.show_rank} onCheckedChange={(v) => updateLeague(l.id, "show_rank", v)} />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-[10px] text-muted-foreground">Global</Label>
-                    <Switch checked={l.show_global_stats} onCheckedChange={(v) => updateLeague(l.id, "show_global_stats", v)} />
                   </div>
                 </div>
               </div>

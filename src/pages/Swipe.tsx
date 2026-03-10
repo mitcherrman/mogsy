@@ -2,8 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe, Eye, EyeOff } from "lucide-react";
-import SwipeBottomBar from "@/components/SwipeBottomBar";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import SwipeAdCard from "@/components/SwipeAdCard";
@@ -398,6 +397,19 @@ export default function Swipe() {
             <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
+            <Button
+              variant={gauntletMode ? "default" : "outline"}
+              size="icon"
+              onClick={() => {
+                setGauntletMode(!gauntletMode);
+                setGauntletChampion(null);
+                setGauntletStreak(0);
+              }}
+              className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+              title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+            >
+              <Sword className="h-4 w-4" fill="currentColor" />
+            </Button>
             <div className="flex-1 sm:relative flex items-center justify-center">
               <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none sm:static sm:translate-x-0">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
@@ -410,50 +422,33 @@ export default function Swipe() {
                 <span className="ml-2">🔥 {gauntletStreak} streak</span>
               )}
             </p>
-            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            {!isMobile && (
-              <>
-                <Button
-                  variant={gauntletMode ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => {
-                    setGauntletMode(!gauntletMode);
-                    setGauntletChampion(null);
-                    setGauntletStreak(0);
-                  }}
-                  className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                  title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-                >
-                  <Sword className="h-4 w-4" fill="currentColor" />
-                </Button>
-                {user && (
-                  <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-                )}
-                <div className="flex items-center gap-1 shrink-0">
-                  {user && (
-                    <SwipeAnimationPicker
-                      currentAnimation={swipeAnimation}
-                      onSelect={(id) => setSwipeAnimation(id)}
-                      isPro={isPro}
-                    />
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={capture}
-                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    title="Save snapshot"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                  {globalLeagueId && (
-                    <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
-                      <Trophy className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </>
+            {user && (
+              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
             )}
+            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
+            <div className="flex items-center gap-1 shrink-0">
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={capture}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Save snapshot"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              {globalLeagueId && (
+                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
+                  <Trophy className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Capturable matchup area */}
@@ -514,10 +509,14 @@ export default function Swipe() {
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[0].id)}</span>
+                        <span className="mx-1 text-muted-foreground/30">|</span>
+                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                        <span className="font-semibold text-blue-400">{pair[0].elo}</span>
+                        <span className="text-blue-400/70">#{globalRankMap.get(pair[0].id)}</span>
                       </span>
                     </div>
                     <div className="flex justify-center mt-0.5">
-                      <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} />
+                      <EloChangeIndicator change={eloChanges.get(pair[0].id) ?? null} globalDirection={globalDirections.get(pair[0].id)} />
                     </div>
                   </div>
                 </div>
@@ -535,10 +534,14 @@ export default function Swipe() {
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
                         <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
+                        <span className="mx-1 text-muted-foreground/30">|</span>
+                        <Globe className="h-2.5 w-2.5 text-blue-400/70" />
+                        <span className="font-semibold text-blue-400">{pair[1].elo}</span>
+                        <span className="text-blue-400/70">#{globalRankMap.get(pair[1].id)}</span>
                       </span>
                     </div>
                     <div className="flex justify-center mt-0.5">
-                      <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} />
+                      <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
                     </div>
                   </div>
                 </div>
@@ -552,9 +555,12 @@ export default function Swipe() {
                     name: p.displayName,
                     localElo: localElos.get(p.id) ?? 1200,
                     localRank: localRankMap.get(p.id),
+                    globalElo: p.elo,
+                    globalRank: globalRankMap.get(p.id),
                     eloVisible: true,
                     rankVisible: true,
                     eloChange: eloChanges.get(p.id) ?? null,
+                    globalDirection: globalDirections.get(p.id),
                   })) : []}
                   onComplete={handleSliceComplete}
                 />
@@ -564,20 +570,7 @@ export default function Swipe() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <SwipeBottomBar>
-              <Button
-                variant={gauntletMode ? "default" : "outline"}
-                size="icon"
-                onClick={() => {
-                  setGauntletMode(!gauntletMode);
-                  setGauntletChampion(null);
-                  setGauntletStreak(0);
-                }}
-                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-              >
-                <Sword className="h-4 w-4" fill="currentColor" />
-              </Button>
+            <div className="flex items-center justify-center gap-3 mt-2">
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
@@ -602,7 +595,7 @@ export default function Swipe() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               )}
-            </SwipeBottomBar>
+            </div>
           )}
 
           <p className="text-center text-[10px] text-muted-foreground mt-2">
