@@ -162,7 +162,7 @@ export default function SwipePreset() {
 
   const loadItems = async () => {
     const [{ data: league }, { data }] = await Promise.all([
-      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory").eq("id", leagueId!).single(),
+      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory, show_global_stats").eq("id", leagueId!).single(),
       supabase.from("preset_items").select("*").eq("league_id", leagueId!),
     ]);
     if (league) {
@@ -171,6 +171,7 @@ export default function SwipePreset() {
       setLeagueSubcategory((league as any).subcategory ?? null);
       setShowElo((league as any).show_elo ?? true);
       setShowRank((league as any).show_rank ?? true);
+      setShowGlobalStats((league as any).show_global_stats ?? false);
       // Check if this is a League of Legends subcategory league
       if ((league as any).subcategory === "League of Legends") {
         document.documentElement.classList.add("theme-lol");
