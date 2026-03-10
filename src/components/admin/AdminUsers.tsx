@@ -1272,11 +1272,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         <Select value={filterMode} onValueChange={setFilterMode}>
           <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Filter…" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="signed_up">Signed Up</SelectItem>
             <SelectItem value="all">All Users</SelectItem>
             <SelectItem value="pro">Pro Only</SelectItem>
             <SelectItem value="free">Free Only</SelectItem>
-            <SelectItem value="signed_up">Signed Up</SelectItem>
-            <SelectItem value="anonymous">Anonymous</SelectItem>
             <SelectItem value="ads_on">Ads On</SelectItem>
             <SelectItem value="ads_off">Ads Off</SelectItem>
             <SelectItem value="admins">Admins</SelectItem>
