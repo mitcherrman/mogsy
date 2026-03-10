@@ -66,13 +66,12 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           .from("preset_item_images")
           .select("preset_item_id, image_url, is_hidden, sort_order")
           .in("preset_item_id", ids)
-          .eq("is_hidden", false)
           .order("sort_order");
         const countMap = new Map<string, number>();
         const imgMap = new Map<string, string>();
         images?.forEach(img => {
           countMap.set(img.preset_item_id, (countMap.get(img.preset_item_id) || 0) + 1);
-          if (!imgMap.has(img.preset_item_id)) {
+          if (!imgMap.has(img.preset_item_id) && !img.is_hidden) {
             imgMap.set(img.preset_item_id, img.image_url);
           }
         });
