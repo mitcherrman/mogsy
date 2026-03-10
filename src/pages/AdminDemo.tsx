@@ -67,6 +67,7 @@ export default function AdminDemo() {
   const captureRef = useRef<HTMLDivElement>(null);
   const [authorized, setAuthorized] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const { capture } = useScreenshot(captureRef);
   const [gifFps, setGifFps] = useState<30 | 60>(30);
