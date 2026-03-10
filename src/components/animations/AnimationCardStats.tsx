@@ -15,6 +15,7 @@ export interface AnimationCardItem {
   rankOld?: number | null;
   rankNew?: number | null;
   globalDirection?: "up" | "down" | "none";
+  showGlobalStats?: boolean;
 }
 
 export default function AnimationCardStats({ item }: { item: AnimationCardItem }) {
