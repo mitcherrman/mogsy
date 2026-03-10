@@ -65,6 +65,7 @@ function generateMatchups(items: PresetItem[]): [PresetItem, PresetItem][] {
 export default function SwipePreset() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const captureRef = useRef<HTMLDivElement>(null);
