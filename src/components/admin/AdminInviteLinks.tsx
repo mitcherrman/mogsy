@@ -146,7 +146,8 @@ export default function AdminInviteLinks() {
       recommended_categories: form.recommended_categories,
       max_uses: form.max_uses ? parseInt(form.max_uses) : null,
       expires_at: expiresAt,
-    });
+      grant_moderator: form.grant_moderator,
+    } as any);
 
     if (error) {
       toast.error("Failed to create link");
