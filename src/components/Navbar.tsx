@@ -130,60 +130,87 @@ export default function Navbar({ themeId }: { themeId?: string }) {
       </nav>
 
       {/* Mobile bottom nav */}
-      {isGameRoute && !navRevealed ? (
-        /* Pull-up handle when nav is hidden on game routes */
-        <button
-          onClick={() => setNavRevealed(true)}
-          className="fixed bottom-0 left-0 right-0 z-50 sm:hidden flex items-center justify-center h-5 pb-1"
-        >
-          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-        </button>
-      ) : (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-border bg-background/80 backdrop-blur-xl"
-          style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
-        >
-          <div className="flex items-center justify-center gap-4 h-14 px-4">
-            {/* Friends button */}
-            <MobileNavButton
-              icon={Users}
-              label="Friends"
-              hasTheme={!!hasTheme}
-              themeId={themeId}
-              onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
-              badge={pendingCount > 0 ? pendingCount : undefined}
-            />
+      <AnimatePresence>
+        {isGameRoute && !navRevealed && (
+          <motion.button
+            key="nav-handle"
+            initial={{ opacity: 0, rotate: -45 }}
+            animate={{ opacity: 1, rotate: 0 }}
+            exit={{ opacity: 0, rotate: -45 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            onClick={() => setNavRevealed(true)}
+            className="fixed bottom-2 left-3 z-50 sm:hidden flex items-center justify-center"
+            style={{ transformOrigin: "bottom left" }}
+          >
+            <svg width="28" height="32" viewBox="0 0 28 32" fill="none" className="text-muted-foreground/40">
+              {/* Hook shape */}
+              <path
+                d="M14 30 L14 12 Q14 4 20 4 Q26 4 26 10 Q26 16 20 16"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* Small dot at tip */}
+              <circle cx="14" cy="30" r="2" fill="currentColor" />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link key={item.path} to={item.path} className="relative flex flex-col items-center gap-0.5 py-1 px-3">
-                  <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined} />
-                  <span className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
-                    {item.label}
-                  </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="nav-indicator-mobile"
-                      className="absolute top-0 left-2 right-2 h-0.5 bg-gradient-primary rounded-full"
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
-                </Link>
-              );
-            })}
+      <AnimatePresence>
+        {(!isGameRoute || navRevealed) && (
+          <motion.div
+            key="nav-bar"
+            initial={isGameRoute ? { y: "100%" } : false}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-border bg-background/80 backdrop-blur-xl"
+            style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
+          >
+            <div className="flex items-center justify-center gap-4 h-14 px-4">
+              {/* Friends button */}
+              <MobileNavButton
+                icon={Users}
+                label="Friends"
+                hasTheme={!!hasTheme}
+                themeId={themeId}
+                onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
+                badge={pendingCount > 0 ? pendingCount : undefined}
+              />
 
-            {/* Theme button */}
-            <MobileNavButton
-              icon={Palette}
-              label="Theme"
-              hasTheme={!!hasTheme}
-              themeId={themeId}
-              onClick={() => window.dispatchEvent(new CustomEvent("open-theme-picker"))}
-            />
-          </div>
-        </div>
-      )}
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link key={item.path} to={item.path} className="relative flex flex-col items-center gap-0.5 py-1 px-3">
+                    <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined} />
+                    <span className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-indicator-mobile"
+                        className="absolute top-0 left-2 right-2 h-0.5 bg-gradient-primary rounded-full"
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+
+              {/* Theme button */}
+              <MobileNavButton
+                icon={Palette}
+                label="Theme"
+                hasTheme={!!hasTheme}
+                themeId={themeId}
+                onClick={() => window.dispatchEvent(new CustomEvent("open-theme-picker"))}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
