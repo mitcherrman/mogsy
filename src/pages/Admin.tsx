@@ -216,6 +216,7 @@ export default function Admin() {
           <TabsContent value="reports"><AdminUserReports /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
           <TabsContent value="feedback"><AdminFeedback /></TabsContent>
+          <TabsContent value="mod-config"><AdminModeratorConfig /></TabsContent>
           {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}
