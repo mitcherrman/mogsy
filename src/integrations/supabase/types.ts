@@ -755,6 +755,59 @@ export type Database = {
         }
         Relationships: []
       }
+      image_clicks: {
+        Row: {
+          created_at: string
+          id: string
+          image_id: string
+          preset_item_id: string
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_id: string
+          preset_item_id: string
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_id?: string
+          preset_item_id?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_clicks_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "preset_item_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_clicks_preset_item_id_fkey"
+            columns: ["preset_item_id"]
+            isOneToOne: false
+            referencedRelation: "preset_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_clicks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_clicks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       image_reports: {
         Row: {
           created_at: string
