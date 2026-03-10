@@ -958,7 +958,6 @@ export default function AdminDemo() {
                       <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
                     </div>
                   </div>
-                  </div>
                 )}
               </div>
             </div>
