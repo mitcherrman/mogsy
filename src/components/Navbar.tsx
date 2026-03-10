@@ -134,13 +134,12 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         {isGameRoute && !navRevealed && (
           <motion.button
             key="nav-handle"
-            initial={{ opacity: 0, rotate: -45 }}
-            animate={{ opacity: 1, rotate: 0 }}
-            exit={{ opacity: 0, rotate: -45 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={() => setNavRevealed(true)}
-            className="fixed bottom-1 left-2 z-50 sm:hidden"
-            style={{ transformOrigin: "bottom left" }}
+            className="fixed bottom-2 left-3 z-50 sm:hidden p-1"
           >
             <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
           </motion.button>
