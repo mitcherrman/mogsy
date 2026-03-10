@@ -994,6 +994,6 @@ export default function Home() {
           </button>
         </section>
       </div>
-    </div>);
-
+    </div>
+  );
 }
