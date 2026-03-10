@@ -709,10 +709,8 @@ export default function Home() {
             </div>
           </section>
         )}
-  
-      </div>
-    </div>
-  );
+
+
         {/* Curated "Recommended for you" from custom link */}
         {curatedLeagues.length > 0 &&
         <section className="mb-8">
