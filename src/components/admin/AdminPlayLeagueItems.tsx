@@ -263,8 +263,46 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       </Button>
 
       <div className="flex items-center gap-2">
-        <h3 className="text-lg font-bold text-foreground">{leagueName}</h3>
+        <h3 className="text-lg font-bold text-foreground flex-1">{leagueName}</h3>
         <Badge variant="outline">{items.length} items</Badge>
+      </div>
+
+      {/* Add Item */}
+      <div className="flex gap-2">
+        <Input
+          value={addItemName}
+          onChange={e => setAddItemName(e.target.value)}
+          placeholder="New item name…"
+          className="text-sm"
+          onKeyDown={async e => {
+            if (e.key === "Enter" && addItemName.trim()) {
+              setAddingItem(true);
+              const { error } = await supabase.from("preset_items").insert({ league_id: leagueId, name: addItemName.trim() });
+              if (error) { toast.error(error.message); setAddingItem(false); return; }
+              toast.success(`Item "${addItemName.trim()}" added`);
+              setAddItemName("");
+              setAddingItem(false);
+              loadItems();
+            }
+          }}
+        />
+        <Button
+          size="sm"
+          disabled={!addItemName.trim() || addingItem}
+          className="gap-1 shrink-0"
+          onClick={async () => {
+            if (!addItemName.trim()) return;
+            setAddingItem(true);
+            const { error } = await supabase.from("preset_items").insert({ league_id: leagueId, name: addItemName.trim() });
+            if (error) { toast.error(error.message); setAddingItem(false); return; }
+            toast.success(`Item "${addItemName.trim()}" added`);
+            setAddItemName("");
+            setAddingItem(false);
+            loadItems();
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </Button>
       </div>
 
       <div className="space-y-1.5">
