@@ -700,13 +700,20 @@ export default function AdminPlay() {
 }
 
 /* ─── Collapsible section ─── */
-function Section({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
+function Section({ title, expanded, onToggle, onAdd, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <button onClick={onToggle} className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-        {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-        <span className="text-sm font-bold text-foreground">{title}</span>
-      </button>
+      <div className="flex items-center gap-1">
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+          {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          <span className="text-sm font-bold text-foreground">{title}</span>
+        </button>
+        {onAdd && (
+          <button onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
+            <Plus className="h-4 w-4 text-primary" />
+          </button>
+        )}
+      </div>
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -735,6 +742,8 @@ function DragItem({
   expanded,
   onExpand,
   onViewItems,
+  onDelete,
+  onAdd,
 }: {
   label: string;
   sublabel?: string;
@@ -746,6 +755,8 @@ function DragItem({
   expanded?: boolean;
   onExpand?: () => void;
   onViewItems?: () => void;
+  onDelete?: () => void;
+  onAdd?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
@@ -760,6 +771,11 @@ function DragItem({
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
+      {onAdd && (
+        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add item">
+          <Plus className="h-3.5 w-3.5 text-primary" />
+        </button>
+      )}
       {onViewItems && (
         <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
           <ImageIcon className="h-3.5 w-3.5 text-primary" />
@@ -771,6 +787,11 @@ function DragItem({
       <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
         <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
+      {onDelete && (
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="shrink-0 p-1 rounded hover:bg-destructive/10 transition-colors" title="Delete">
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </button>
+      )}
     </div>
   );
 }
