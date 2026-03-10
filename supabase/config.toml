@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.snapshot-global-elo]
 verify_jwt = false
+
+[functions.purge-anonymous-users]
+verify_jwt = false

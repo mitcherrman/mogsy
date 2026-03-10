@@ -28,6 +28,7 @@ import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminUserReports from "@/components/admin/AdminUserReports";
 import AdminFeedback from "@/components/admin/AdminFeedback";
+import AdminModeratorConfig from "@/components/admin/AdminModeratorConfig";
 import { exportAdminCSV } from "@/lib/admin-csv-export";
 
 const allTabs = [
@@ -47,6 +48,7 @@ const allTabs = [
   { value: "reports", label: "Reports", masterOnly: false },
   { value: "tutorials", label: "Tutorials", masterOnly: false },
   { value: "feedback", label: "Feedback", masterOnly: false },
+  { value: "mod-config", label: "Mod Config", masterOnly: false },
   { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
@@ -214,6 +216,7 @@ export default function Admin() {
           <TabsContent value="reports"><AdminUserReports /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
           <TabsContent value="feedback"><AdminFeedback /></TabsContent>
+          <TabsContent value="mod-config"><AdminModeratorConfig /></TabsContent>
           {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}

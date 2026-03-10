@@ -184,9 +184,37 @@ function ItemDetailHeader({ item, rank, wins, losses, onUpdate }: {
           <Badge variant="outline">{wins}W / {losses}L ({wins + losses} total)</Badge>
         </div>
       </div>
-      <Button size="icon" variant="ghost" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground shrink-0">
-        <Pencil className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="outline" className="text-xs gap-1 h-7 text-muted-foreground hover:text-destructive" title="Reset this item's Aura to 1200">
+              <RotateCcw className="h-3 w-3" /> Reset Aura
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset Aura for {item.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will reset this item's Elo from {item.elo} back to 1200. You can undo this action.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={async () => {
+                const { error } = await supabase.from("preset_items").update({ elo: 1200 }).eq("id", item.id);
+                if (error) { toast.error(error.message); return; }
+                onUpdate({ ...item, elo: 1200 });
+                toast.success(`Reset ${item.name} Aura to 1200`);
+              }}>
+                Reset to 1200
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Button size="icon" variant="ghost" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

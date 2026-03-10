@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AdminPlayItemEditor from "@/components/admin/AdminPlayItemEditor";
@@ -53,6 +58,13 @@ export default function AdminPlay() {
   const hasUnsavedChanges = useRef(false);
 
   const [isModerator, setIsModerator] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Add dialogs state
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addSubcategoryOpen, setAddSubcategoryOpen] = useState<string | null>(null); // parent category key
+  const [addItemOpen, setAddItemOpen] = useState<string | null>(null); // league id
+  const [newName, setNewName] = useState("");
 
   // Auth gate
   useEffect(() => {
@@ -70,6 +82,7 @@ export default function AdminPlay() {
         }
         const isModOnly = roles.includes("moderator") && !roles.includes("admin") && !roles.includes("master_admin");
         setIsModerator(isModOnly);
+        setIsAdmin(!isModOnly);
         setAuthorized(true);
         loadData();
       });
@@ -333,6 +346,105 @@ export default function AdminPlay() {
     return cat?.customLabel || key;
   };
 
+  // Get user profile for mod notifications
+  const getProfileId = async () => {
+    if (!user) return null;
+    const { data } = await supabase.from("profiles").select("id, display_name").eq("user_id", user.id).single();
+    return data;
+  };
+
+  const handleAddCategory = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    // Create a league with this category
+    const { data, error } = await supabase.from("leagues").insert({
+      name: name,
+      category: name,
+      type: "preset",
+      created_by_user_id: user!.id,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    // Add to config
+    setConfig(prev => ({
+      ...prev,
+      categories: [...prev.categories, { key: name, parentKey: "collections", hidden: false, order: prev.categories.length, customLabel: null }],
+      leagues: [...prev.leagues, { id: data.id, hidden: false, order: prev.leagues.length, customLabel: null }],
+    }));
+    setLeagues(prev => [...prev, { id: data.id, name, category: name, subcategory: null, type: "preset" }]);
+    hasUnsavedChanges.current = true;
+    setAddCategoryOpen(false);
+    setNewName("");
+    toast.success(`Category "${name}" created`);
+  };
+
+  const handleAddSubcategory = async (parentCategory: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    const { data, error } = await supabase.from("leagues").insert({
+      name: name,
+      category: parentCategory,
+      subcategory: name,
+      type: "preset",
+      created_by_user_id: user!.id,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    setConfig(prev => ({
+      ...prev,
+      leagues: [...prev.leagues, { id: data.id, hidden: false, order: prev.leagues.length, customLabel: null }],
+    }));
+    setLeagues(prev => [...prev, { id: data.id, name, category: parentCategory, subcategory: name, type: "preset" }]);
+    hasUnsavedChanges.current = true;
+    setAddSubcategoryOpen(null);
+    setNewName("");
+    toast.success(`Subcategory "${name}" added to ${parentCategory}`);
+  };
+
+  const handleAddItem = async (leagueId: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    const { error } = await supabase.from("preset_items").insert({
+      league_id: leagueId,
+      name: name,
+    });
+    if (error) { toast.error(error.message); return; }
+    setAddItemOpen(null);
+    setNewName("");
+    toast.success(`Item "${name}" added`);
+  };
+
+  const handleDelete = async (targetType: "league" | "item", targetId: string, targetName: string) => {
+    if (isAdmin) {
+      // Direct delete
+      if (targetType === "league") {
+        const { error } = await supabase.from("leagues").delete().eq("id", targetId);
+        if (error) { toast.error(error.message); return; }
+        setLeagues(prev => prev.filter(l => l.id !== targetId));
+        setConfig(prev => ({ ...prev, leagues: prev.leagues.filter(l => l.id !== targetId) }));
+      } else {
+        const { error } = await supabase.from("preset_items").delete().eq("id", targetId);
+        if (error) { toast.error(error.message); return; }
+      }
+      hasUnsavedChanges.current = true;
+      toast.success(`Deleted "${targetName}"`);
+    } else {
+      // Moderator: send request
+      const profile = await getProfileId();
+      await supabase.from("admin_notifications").insert({
+        type: "mod_delete_request",
+        title: `Delete request: ${targetName}`,
+        message: `Moderator "${profile?.display_name || "Unknown"}" wants to delete ${targetType} "${targetName}"`,
+        metadata: {
+          target_type: targetType,
+          target_id: targetId,
+          target_name: targetName,
+          mod_name: profile?.display_name || "Unknown",
+          mod_profile_id: profile?.id,
+        },
+      });
+      toast.success("Delete request sent to admin for approval");
+    }
+  };
+
   if (loading || !authorized) return <div className="min-h-screen" />;
 
   // League items detail view
@@ -456,6 +568,7 @@ export default function AdminPlay() {
           title="Categories"
           expanded={expandedSections.has("categories")}
           onToggle={() => toggleSection("categories")}
+          onAdd={() => { setNewName(""); setAddCategoryOpen(true); }}
         >
           <Reorder.Group axis="y" values={sortedCategories} onReorder={updateCategories} className="space-y-1">
             {sortedCategories.map(cat => (
@@ -474,6 +587,7 @@ export default function AdminPlay() {
                     expandable
                     expanded={expandedCategories.has(cat.key)}
                     onExpand={() => toggleCategory(cat.key)}
+                    onAdd={() => { setNewName(""); setAddSubcategoryOpen(cat.key); }}
                   />
                   <AnimatePresence>
                     {expandedCategories.has(cat.key) && (
@@ -509,6 +623,8 @@ export default function AdminPlay() {
                                   },
                                 })}
                                 onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                                onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
+                                onAdd={() => { setNewName(""); setAddItemOpen(league.id); }}
                               />
                             </Reorder.Item>
                           ))}
@@ -582,19 +698,71 @@ export default function AdminPlay() {
             onClose={() => setEditingItem(null)}
           />
         )}
+
+        {/* Add Category Dialog */}
+        <Dialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Category</DialogTitle>
+              <DialogDescription>Create a new category for collections.</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Category name…" onKeyDown={e => e.key === "Enter" && handleAddCategory()} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddCategoryOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddCategory} disabled={!newName.trim()}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Subcategory Dialog */}
+        <Dialog open={!!addSubcategoryOpen} onOpenChange={open => !open && setAddSubcategoryOpen(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Subcategory</DialogTitle>
+              <DialogDescription>Add a subcategory to "{addSubcategoryOpen}".</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Subcategory name…" onKeyDown={e => e.key === "Enter" && addSubcategoryOpen && handleAddSubcategory(addSubcategoryOpen)} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddSubcategoryOpen(null)}>Cancel</Button>
+              <Button onClick={() => addSubcategoryOpen && handleAddSubcategory(addSubcategoryOpen)} disabled={!newName.trim()}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Item Dialog */}
+        <Dialog open={!!addItemOpen} onOpenChange={open => !open && setAddItemOpen(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Item</DialogTitle>
+              <DialogDescription>Add a new item to this league.</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Item name…" onKeyDown={e => e.key === "Enter" && addItemOpen && handleAddItem(addItemOpen)} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddItemOpen(null)}>Cancel</Button>
+              <Button onClick={() => addItemOpen && handleAddItem(addItemOpen)} disabled={!newName.trim()}>Add Item</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
 }
 
 /* ─── Collapsible section ─── */
-function Section({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
+function Section({ title, expanded, onToggle, onAdd, children }: { title: string; expanded: boolean; onToggle: () => void; onAdd?: () => void; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <button onClick={onToggle} className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-        {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-        <span className="text-sm font-bold text-foreground">{title}</span>
-      </button>
+      <div className="flex items-center gap-1">
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+          {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          <span className="text-sm font-bold text-foreground">{title}</span>
+        </button>
+        {onAdd && (
+          <button onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
+            <Plus className="h-4 w-4 text-primary" />
+          </button>
+        )}
+      </div>
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -623,6 +791,8 @@ function DragItem({
   expanded,
   onExpand,
   onViewItems,
+  onDelete,
+  onAdd,
 }: {
   label: string;
   sublabel?: string;
@@ -634,6 +804,8 @@ function DragItem({
   expanded?: boolean;
   onExpand?: () => void;
   onViewItems?: () => void;
+  onDelete?: () => void;
+  onAdd?: () => void;
 }) {
   return (
     <div className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${hidden ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card"}`}>
@@ -648,6 +820,11 @@ function DragItem({
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
+      {onAdd && (
+        <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add item">
+          <Plus className="h-3.5 w-3.5 text-primary" />
+        </button>
+      )}
       {onViewItems && (
         <button onClick={(e) => { e.stopPropagation(); onViewItems(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Manage items & images">
           <ImageIcon className="h-3.5 w-3.5 text-primary" />
@@ -659,6 +836,11 @@ function DragItem({
       <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors">
         <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
+      {onDelete && (
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="shrink-0 p-1 rounded hover:bg-destructive/10 transition-colors" title="Delete">
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </button>
+      )}
     </div>
   );
 }
