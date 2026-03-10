@@ -17,6 +17,7 @@ interface InviteLink {
   type: "admin" | "user";
   label: string | null;
   grant_admin: boolean;
+  grant_moderator: boolean;
   grant_pro: boolean;
   grant_diamonds: number;
   grant_boost_credits: number;
