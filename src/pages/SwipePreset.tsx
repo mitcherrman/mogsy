@@ -929,14 +929,14 @@ export default function SwipePreset() {
                   subtitle: item.subtitle,
                   localElo: localElos.get(item.id) ?? 1200,
                   localRank: localRankMap.get(item.id),
-                  globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
-                  globalRank: rankMap.get(item.id),
+                  globalElo: showGlobalStats ? (items.find(i => i.id === item.id)?.elo ?? item.elo) : undefined,
+                  globalRank: showGlobalStats ? rankMap.get(item.id) : undefined,
                   eloVisible,
                   rankVisible,
                   eloChange: eloChanges.get(item.id) ?? null,
                   rankOld: rankChanges.get(item.id)?.old ?? null,
                   rankNew: rankChanges.get(item.id)?.new ?? null,
-                  globalDirection: globalDirections.get(item.id),
+                  globalDirection: showGlobalStats ? globalDirections.get(item.id) : undefined,
                 })) : []}
                 onComplete={handleSliceComplete}
               />
