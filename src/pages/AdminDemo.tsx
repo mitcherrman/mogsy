@@ -907,32 +907,57 @@ export default function AdminDemo() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex gap-1 relative">
-                    {renderSwipeCard(cardA, 0)}
-                    <div className="flex items-center justify-center shrink-0">
-                      <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+                  <div className="rounded-2xl border border-border overflow-hidden" style={themeStyle}>
+                    {/* Game top bar */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+                      <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Swords className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-bold">12/20</span>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center">
+                        <img src={mogsyTextLogo} alt="Mogsy" className="h-4 object-contain opacity-70" />
+                      </div>
+                      <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>
-                    {renderSwipeCard(cardB, 1)}
-                    <CardAnimationRouter
-                      animationId={animationId}
-                      winnerSide={animWinner}
-                      items={[cardA, cardB].map(c => ({
-                        imageUrl: c.imageUrl || null,
-                        name: c.name,
-                        subtitle: c.subtitle,
-                        localElo: c.aura,
-                        localRank: c.rank,
-                        globalElo: c.aura,
-                        globalRank: c.rank,
-                        eloVisible: true,
-                        rankVisible: true,
-                        eloChange: c.eloDelta,
-                        rankOld: null,
-                        rankNew: null,
-                        globalDirection: c.globalDirection,
-                      }))}
-                      onComplete={handleAnimComplete}
-                    />
+                    <div className="px-3 pt-1.5">
+                      <Progress value={60} className="h-1.5" />
+                    </div>
+                    <div className="p-3">
+                      <div className="flex gap-1 relative">
+                        {renderSwipeCard(cardA, 0)}
+                        <div className="flex items-center justify-center shrink-0">
+                          <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+                        </div>
+                        {renderSwipeCard(cardB, 1)}
+                        <CardAnimationRouter
+                          animationId={animationId}
+                          winnerSide={animWinner}
+                          items={[cardA, cardB].map(c => ({
+                            imageUrl: c.imageUrl || null,
+                            name: c.name,
+                            subtitle: c.subtitle,
+                            localElo: c.aura,
+                            localRank: c.rank,
+                            globalElo: c.aura,
+                            globalRank: c.rank,
+                            eloVisible: true,
+                            rankVisible: true,
+                            eloChange: c.eloDelta,
+                            rankOld: null,
+                            rankNew: null,
+                            globalDirection: c.globalDirection,
+                          }))}
+                          onComplete={handleAnimComplete}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between px-3 pb-2">
+                      <span className="text-[10px] text-muted-foreground/60 italic">Tap or swipe to choose</span>
+                      <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
+                    </div>
+                  </div>
                   </div>
                 )}
               </div>
