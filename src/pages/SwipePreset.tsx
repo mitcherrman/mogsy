@@ -951,6 +951,7 @@ export default function SwipePreset() {
             </div>
           )}
 
+          <div className="flex items-center mt-1.5">
             <p className="flex-1 text-center text-[10px] text-muted-foreground">
               {gauntletMode
                 ? `Tap to choose · Winner stays · ${matchCount} votes`
