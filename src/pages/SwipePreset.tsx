@@ -162,7 +162,7 @@ export default function SwipePreset() {
 
   const loadItems = async () => {
     const [{ data: league }, { data }] = await Promise.all([
-      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory").eq("id", leagueId!).single(),
+      supabase.from("leagues").select("name, category, show_elo, show_rank, subcategory, show_global_stats").eq("id", leagueId!).single(),
       supabase.from("preset_items").select("*").eq("league_id", leagueId!),
     ]);
     if (league) {
