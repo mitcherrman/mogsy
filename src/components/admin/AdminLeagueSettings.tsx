@@ -12,6 +12,7 @@ interface League {
   category: string | null;
   show_elo: boolean;
   show_rank: boolean;
+  show_global_stats: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
