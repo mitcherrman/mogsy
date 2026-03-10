@@ -587,6 +587,7 @@ export default function AdminPlay() {
                     expandable
                     expanded={expandedCategories.has(cat.key)}
                     onExpand={() => toggleCategory(cat.key)}
+                    onAdd={() => { setNewName(""); setAddSubcategoryOpen(cat.key); }}
                   />
                   <AnimatePresence>
                     {expandedCategories.has(cat.key) && (
