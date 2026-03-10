@@ -21,7 +21,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import CategoryBubble from "@/components/CategoryBubble";
-import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import mogsyLogo from "@/assets/mogsy-text-logo.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
 import { getCuratedConfig, clearCuratedConfig } from "@/pages/CustomLink";
 
@@ -757,8 +757,12 @@ export default function Home() {
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
         <nav className="w-full flex flex-col items-center pt-2 pb-2">
-          <img src={mogsyLogo} alt="Mogsy" className="h-40 sm:h-56 md:h-64 object-cover mb-1" />
-        </nav>
+          <img
+            src={mogsyLogo}
+            alt="Mogsy"
+            className="h-24 sm:h-36 md:h-44 object-cover"
+          />
+        </div>
 
         {/* Rotating Aura Banner */}
         {bannerItems.length > 0 && currentBanner && (
