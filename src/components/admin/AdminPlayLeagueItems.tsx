@@ -94,6 +94,20 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     }
   };
 
+  const loadImageClickCounts = async (imageIds: string[]) => {
+    if (imageIds.length === 0) return;
+    // Count clicks per image_id
+    const { data } = await supabase
+      .from("image_clicks")
+      .select("image_id")
+      .in("image_id", imageIds);
+    const counts = new Map<string, number>();
+    data?.forEach(row => {
+      counts.set(row.image_id, (counts.get(row.image_id) || 0) + 1);
+    });
+    setImageClickCounts(counts);
+  };
+
   const openItemImages = async (item: PresetItem) => {
     setSelectedItem(item);
     setAddImageUrl("");
@@ -102,7 +116,10 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       .select("*")
       .eq("preset_item_id", item.id)
       .order("sort_order");
-    setItemImages((images as ItemImage[]) || []);
+    const imgs = (images as ItemImage[]) || [];
+    setItemImages(imgs);
+    // Load click counts for these images
+    await loadImageClickCounts(imgs.map(i => i.id));
   };
 
   const setPreviewImage = async (url: string) => {
