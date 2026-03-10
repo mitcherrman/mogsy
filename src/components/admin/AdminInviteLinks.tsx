@@ -243,14 +243,18 @@ export default function AdminInviteLinks() {
                     <Gift className="h-3 w-3" /> Signup Rewards
                   </h5>
                   <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={form.grant_admin} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_admin: v }))} />
-                      <Label className="text-xs">Grant Admin</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={form.grant_pro} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_pro: v }))} />
-                      <Label className="text-xs">Grant Pro</Label>
-                    </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_admin} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_admin: v }))} />
+                       <Label className="text-xs">Grant Admin</Label>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_moderator} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_moderator: v }))} />
+                       <Label className="text-xs">Grant Moderator</Label>
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Switch checked={form.grant_pro} onCheckedChange={(v) => setForm((f) => ({ ...f, grant_pro: v }))} />
+                       <Label className="text-xs">Grant Pro</Label>
+                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
