@@ -648,7 +648,46 @@ export default function AdminDemo() {
     );
   };
 
-  const previewContent = (
+  const gameChrome = (children: React.ReactNode, withRef = false) => (
+    <div
+      className={`rounded-2xl border border-border overflow-hidden transition-all ${
+        deviceFrame === "phone" ? "max-w-[375px] mx-auto" : "w-full"
+      }`}
+      style={themeStyle}
+    >
+      {/* Game top bar */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+        <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Swords className="h-3.5 w-3.5" />
+          <span className="text-[10px] font-bold">12/20</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <img src={mogsyTextLogo} alt="Mogsy" className="h-4 object-contain opacity-70" />
+        </div>
+        <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
+        <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
+      </div>
+
+      {/* Progress bar */}
+      <div className="px-3 pt-1.5">
+        <Progress value={60} className="h-1.5" />
+      </div>
+
+      {/* Content */}
+      <div className="p-3" ref={withRef ? captureRef : undefined}>
+        {children}
+      </div>
+
+      {/* Bottom helper */}
+      <div className="flex items-center justify-between px-3 pb-2">
+        <span className="text-[10px] text-muted-foreground/60 italic">Tap or swipe to choose</span>
+        <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
+      </div>
+    </div>
+  );
+
+  const previewContent = mode === "aura-check" ? (
     <div
       className={`rounded-2xl border border-border overflow-hidden transition-all ${
         deviceFrame === "phone" ? "max-w-[375px] mx-auto" : "w-full"
@@ -656,80 +695,76 @@ export default function AdminDemo() {
       style={themeStyle}
     >
       <div className="p-3">
-        {mode === "aura-check" ? (
-          /* Aura Check preview */
-          <div>
-            <div className="flex items-center justify-center gap-6 mb-3">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Score</p>
-                <p className="text-2xl font-black text-primary">{auraScore}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Streak</p>
-                <p className="text-2xl font-black text-foreground">{auraStreak}🔥</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Best</p>
-                <p className="text-2xl font-black text-muted-foreground">{auraBest}</p>
-              </div>
-            </div>
-            <p className="text-center text-sm text-muted-foreground mb-3">
-              Who's ranked higher in their league?
-            </p>
-            <MatchupCapture ref={captureRef} leagueName={leagueName}>
-              <div className="grid grid-cols-2 gap-3">
-                {renderAuraCard(cardA, 0)}
-                {renderAuraCard(cardB, 1)}
-              </div>
-            </MatchupCapture>
-            {auraRevealed && (
-              <motion.p
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                className={`text-lg font-black text-center mt-3 ${
-                  cardA.aura >= cardB.aura ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {cardA.aura >= cardB.aura ? "Correct! 🎉" : "Wrong! 😬" }
-              </motion.p>
-            )}
+        <div className="flex items-center justify-center gap-6 mb-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Score</p>
+            <p className="text-2xl font-black text-primary">{auraScore}</p>
           </div>
-        ) : (
-          /* Swipe preview */
-          <MatchupCapture ref={captureRef} leagueName={leagueName}>
-            <div className="flex gap-1 relative">
-              {renderSwipeCard(cardA, 0)}
-              <div className="flex items-center justify-center shrink-0">
-                <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
-              </div>
-              {renderSwipeCard(cardB, 1)}
-
-              <CardAnimationRouter
-                animationId={animationId}
-                winnerSide={animWinner}
-                items={[cardA, cardB].map(c => ({
-                  imageUrl: c.imageUrl || null,
-                  name: c.name,
-                  subtitle: c.subtitle,
-                  localElo: c.aura,
-                  localRank: c.rank,
-                  globalElo: c.aura,
-                  globalRank: c.rank,
-                  eloVisible: true,
-                  rankVisible: true,
-                  eloChange: c.eloDelta,
-                  rankOld: null,
-                  rankNew: null,
-                  globalDirection: c.globalDirection,
-                }))}
-                onComplete={handleAnimComplete}
-              />
-            </div>
-          </MatchupCapture>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Streak</p>
+            <p className="text-2xl font-black text-foreground">{auraStreak}🔥</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Best</p>
+            <p className="text-2xl font-black text-muted-foreground">{auraBest}</p>
+          </div>
+        </div>
+        <p className="text-center text-sm text-muted-foreground mb-3">
+          Who's ranked higher in their league?
+        </p>
+        <MatchupCapture ref={captureRef} leagueName={leagueName}>
+          <div className="grid grid-cols-2 gap-3">
+            {renderAuraCard(cardA, 0)}
+            {renderAuraCard(cardB, 1)}
+          </div>
+        </MatchupCapture>
+        {auraRevealed && (
+          <motion.p
+            initial={{ scale: 0.5 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className={`text-lg font-black text-center mt-3 ${
+              cardA.aura >= cardB.aura ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {cardA.aura >= cardB.aura ? "Correct! 🎉" : "Wrong! 😬" }
+          </motion.p>
         )}
       </div>
     </div>
+  ) : (
+    gameChrome(
+      <MatchupCapture ref={captureRef} leagueName={leagueName}>
+        <div className="flex gap-1 relative">
+          {renderSwipeCard(cardA, 0)}
+          <div className="flex items-center justify-center shrink-0">
+            <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+          </div>
+          {renderSwipeCard(cardB, 1)}
+
+          <CardAnimationRouter
+            animationId={animationId}
+            winnerSide={animWinner}
+            items={[cardA, cardB].map(c => ({
+              imageUrl: c.imageUrl || null,
+              name: c.name,
+              subtitle: c.subtitle,
+              localElo: c.aura,
+              localRank: c.rank,
+              globalElo: c.aura,
+              globalRank: c.rank,
+              eloVisible: true,
+              rankVisible: true,
+              eloChange: c.eloDelta,
+              rankOld: null,
+              rankNew: null,
+              globalDirection: c.globalDirection,
+            }))}
+            onComplete={handleAnimComplete}
+          />
+        </div>
+      </MatchupCapture>
+    )
   );
 
   return (
