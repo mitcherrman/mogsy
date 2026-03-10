@@ -648,6 +648,7 @@ export default function AdminPlay() {
         {/* Compete Leagues */}
         <Section
           title="Compete Leagues"
+          sectionId="section-compete"
           expanded={expandedSections.has("compete")}
           onToggle={() => toggleSection("compete")}
         >
