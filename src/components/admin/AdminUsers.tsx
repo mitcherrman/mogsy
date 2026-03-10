@@ -488,7 +488,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const resetFilters = () => {
     setSearch("");
-    setFilterMode("all");
+    setFilterMode("signed_up");
     setSortMode("newest");
   };
 
