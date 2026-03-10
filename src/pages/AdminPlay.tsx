@@ -698,6 +698,51 @@ export default function AdminPlay() {
             onClose={() => setEditingItem(null)}
           />
         )}
+
+        {/* Add Category Dialog */}
+        <Dialog open={addCategoryOpen} onOpenChange={setAddCategoryOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Category</DialogTitle>
+              <DialogDescription>Create a new category for collections.</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Category name…" onKeyDown={e => e.key === "Enter" && handleAddCategory()} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddCategoryOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddCategory} disabled={!newName.trim()}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Subcategory Dialog */}
+        <Dialog open={!!addSubcategoryOpen} onOpenChange={open => !open && setAddSubcategoryOpen(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Subcategory</DialogTitle>
+              <DialogDescription>Add a subcategory to "{addSubcategoryOpen}".</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Subcategory name…" onKeyDown={e => e.key === "Enter" && addSubcategoryOpen && handleAddSubcategory(addSubcategoryOpen)} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddSubcategoryOpen(null)}>Cancel</Button>
+              <Button onClick={() => addSubcategoryOpen && handleAddSubcategory(addSubcategoryOpen)} disabled={!newName.trim()}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Item Dialog */}
+        <Dialog open={!!addItemOpen} onOpenChange={open => !open && setAddItemOpen(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Item</DialogTitle>
+              <DialogDescription>Add a new item to this league.</DialogDescription>
+            </DialogHeader>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Item name…" onKeyDown={e => e.key === "Enter" && addItemOpen && handleAddItem(addItemOpen)} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddItemOpen(null)}>Cancel</Button>
+              <Button onClick={() => addItemOpen && handleAddItem(addItemOpen)} disabled={!newName.trim()}>Add Item</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
