@@ -90,11 +90,20 @@ export default function AdminPlay() {
   }, [user]);
 
   const loadData = async () => {
-    const [{ data: leagueData }, { data: draftData }, { data: presetData }] = await Promise.all([
+    const [{ data: leagueData }, { data: draftData }, { data: presetData }, itemsCount, imagesCount, clicksCount] = await Promise.all([
       supabase.from("leagues").select("id, name, category, type, subcategory"),
       supabase.from("play_layout_config").select("config").eq("id", "draft").single(),
       supabase.from("play_layout_config").select("id, updated_at").like("id", "preset__%"),
+      supabase.from("preset_items").select("id", { count: "exact", head: true }),
+      supabase.from("preset_item_images").select("id", { count: "exact", head: true }),
+      supabase.from("image_clicks").select("id", { count: "exact", head: true }),
     ]);
+
+    setPlayStats({
+      totalItems: itemsCount.count || 0,
+      totalImages: imagesCount.count || 0,
+      totalClicks: clicksCount.count || 0,
+    });
 
     const fetchedLeagues = (leagueData as LeagueItem[]) || [];
     setLeagues(fetchedLeagues);
