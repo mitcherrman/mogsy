@@ -1043,6 +1043,7 @@ export type Database = {
           promoted_brand_name: string | null
           promoted_until: string | null
           show_elo: boolean | null
+          show_global_stats: boolean | null
           show_rank: boolean | null
           subcategory: string | null
           type: string
@@ -1061,6 +1062,7 @@ export type Database = {
           promoted_brand_name?: string | null
           promoted_until?: string | null
           show_elo?: boolean | null
+          show_global_stats?: boolean | null
           show_rank?: boolean | null
           subcategory?: string | null
           type?: string
@@ -1079,6 +1081,7 @@ export type Database = {
           promoted_brand_name?: string | null
           promoted_until?: string | null
           show_elo?: boolean | null
+          show_global_stats?: boolean | null
           show_rank?: boolean | null
           subcategory?: string | null
           type?: string
