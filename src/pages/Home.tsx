@@ -757,7 +757,12 @@ export default function Home() {
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
         <div className="flex flex-col items-center mb-6">
-          <img src={mogsyLogo} alt="Mogsy" className="h-24 sm:h-36 md:h-44 object-cover" />
+          <img
+            src={mogsyLogo}
+            alt="Mogsy"
+            className="h-24 sm:h-36 md:h-44 object-cover"
+            style={{ clipPath: "inset(0% 0 60% 0)" }}
+          />
         </div>
 
         {/* Rotating Aura Banner */}
