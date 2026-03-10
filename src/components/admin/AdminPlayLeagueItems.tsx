@@ -104,6 +104,9 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       next.set(selectedItem.id, (next.get(selectedItem.id) || 0) + 1);
       return next;
     });
+    // Update item preview image
+    await supabase.from("preset_items").update({ image_url: addImageUrl.trim() }).eq("id", selectedItem.id);
+    setSelectedItem({ ...selectedItem, image_url: addImageUrl.trim() });
     toast.success("Image added");
   };
 
