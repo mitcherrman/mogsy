@@ -312,6 +312,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <span className={img.is_hidden ? "text-destructive font-bold" : "text-muted-foreground"}>
                       {img.is_hidden ? "Hidden" : `${img.report_count} reports`}
                     </span>
+                    <span className="text-muted-foreground">{imageClickCounts.get(img.id) || 0} clicks</span>
                     {isPreview && <span className="text-primary font-bold">Preview</span>}
                   </div>
                 </div>
