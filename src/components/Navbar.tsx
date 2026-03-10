@@ -48,10 +48,10 @@ export default function Navbar({ themeId }: { themeId?: string }) {
     setNavRevealed(false);
   }, [location.pathname]);
 
-  // Auto-hide after 4 seconds when revealed on game routes
+  // Auto-hide after 6 seconds when revealed on game routes
   useEffect(() => {
     if (navRevealed && isGameRoute) {
-      const timer = setTimeout(() => setNavRevealed(false), 4000);
+      const timer = setTimeout(() => setNavRevealed(false), 6000);
       return () => clearTimeout(timer);
     }
   }, [navRevealed, isGameRoute]);
