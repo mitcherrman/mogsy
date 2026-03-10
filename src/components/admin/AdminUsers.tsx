@@ -189,6 +189,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const filtered = useMemo(() => {
     let list = profiles.filter((p) => {
+      // When showing anonymous section separately, exclude them from main list
+      if (filterMode !== "anonymous" && p.is_anonymous) return false;
+      if (filterMode === "anonymous" && !p.is_anonymous) return false;
+
       const q = search.toLowerCase();
       const email = emailMap[p.user_id] || "";
       return (
@@ -199,13 +203,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       );
     });
 
-    // Apply filter
+    // Apply filter (excluding anonymous which is handled above)
     const roles = userRoles;
     switch (filterMode) {
       case "pro": list = list.filter(p => p.is_pro); break;
       case "free": list = list.filter(p => !p.is_pro); break;
-      case "signed_up": list = list.filter(p => !p.is_anonymous); break;
-      case "anonymous": list = list.filter(p => p.is_anonymous); break;
+      case "signed_up": break; // already filtered above
+      case "anonymous": break; // already filtered above
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
       case "ads_off": list = list.filter(p => p.ads_enabled === false); break;
       case "admins": list = list.filter(p => (roles[p.user_id] || []).some(r => r === "admin" || r === "master_admin")); break;
@@ -227,6 +231,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
     return list;
   }, [profiles, search, emailMap, filterMode, sortMode, userRoles]);
+
+  const anonymousUsers = useMemo(() => profiles.filter(p => p.is_anonymous), [profiles]);
 
   const openUserDetail = async (profile: Profile) => {
     setSelectedUser(profile);
