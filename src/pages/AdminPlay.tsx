@@ -548,6 +548,21 @@ export default function AdminPlay() {
           </Button>
         </div>
 
+        {/* Play Stats */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {[
+            { label: "Items", value: playStats.totalItems, icon: Layers, color: "text-primary" },
+            { label: "Images", value: playStats.totalImages, icon: ImageIcon, color: "text-accent-foreground" },
+            { label: "Img Clicks", value: playStats.totalClicks, icon: MousePointerClick, color: "text-destructive" },
+          ].map(c => (
+            <div key={c.label} className="rounded-xl border border-border bg-card p-3 text-center">
+              <c.icon className={`h-4 w-4 mx-auto mb-1 ${c.color}`} />
+              <p className="text-lg font-extrabold text-foreground">{c.value}</p>
+              <p className="text-[10px] text-muted-foreground">{c.label}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Top Level Items */}
         <Section
           title="Top Level"
