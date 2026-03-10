@@ -27,7 +27,7 @@ function AuraChangeOverlay({ item }: { item: AnimationCardItem }) {
   const rankChanged = item.rankOld != null && item.rankNew != null && item.rankOld !== item.rankNew;
 
   return (
-    <div className="absolute bottom-2 left-0 right-0 flex flex-col items-center gap-0.5 z-30 pointer-events-none">
+    <div className="absolute bottom-full left-0 right-0 flex flex-col items-center gap-0.5 z-[60] pointer-events-none mb-1">
       <motion.div
         initial={{ scale: 0, y: 12, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
