@@ -86,8 +86,9 @@ export default function SwipePreset() {
   const [finished, setFinished] = useState(false);
   const [showElo, setShowElo] = useState(true);
   const [showRank, setShowRank] = useState(true);
-  const [userShowElo, setUserShowElo] = useState(true);
-  const [userShowRank, setUserShowRank] = useState(true);
+  const [showGlobalStats, setShowGlobalStats] = useState(false);
+  const [userShowElo, setUserShowElo] = useState(false);
+  const [userShowRank, setUserShowRank] = useState(false);
   const [eloChanges, setEloChanges] = useState<Map<string, number>>(new Map());
   const [globalDirections, setGlobalDirections] = useState<Map<string, "up" | "down" | "none">>(new Map());
   const [countsTowardGlobal, setCountsTowardGlobal] = useState<boolean | null>(null);
