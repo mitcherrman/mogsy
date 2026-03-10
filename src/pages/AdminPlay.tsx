@@ -568,6 +568,7 @@ export default function AdminPlay() {
           title="Categories"
           expanded={expandedSections.has("categories")}
           onToggle={() => toggleSection("categories")}
+          onAdd={() => { setNewName(""); setAddCategoryOpen(true); }}
         >
           <Reorder.Group axis="y" values={sortedCategories} onReorder={updateCategories} className="space-y-1">
             {sortedCategories.map(cat => (
