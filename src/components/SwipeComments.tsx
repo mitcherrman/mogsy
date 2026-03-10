@@ -413,26 +413,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
       return;
     }
 
-    const { count } = await supabase
-      .from("comment_reports")
-      .select("*", { count: "exact", head: true })
-      .eq("comment_id", commentId);
-
-    if (count && count >= 5) {
-      await supabase.from("comments").update({ is_hidden: true, hidden_by_admin: false }).eq("id", commentId);
-      setComments((prev) =>
-        prev
-          .filter((c) => c.id !== commentId)
-          .map((c) => ({ ...c, replies: c.replies.filter((r) => r.id !== commentId) }))
-      );
-      await supabase.from("admin_notifications").insert({
-        type: "comment_report_critical",
-        title: "Comment auto-hidden",
-        message: `A comment received ${count} reports and was automatically hidden.`,
-        metadata: { comment_id: commentId, report_count: count },
-      });
-    }
-
+    // Auto-hide is handled server-side by the check_and_auto_hide_comment trigger
     toast.success("Comment reported");
   };
 
