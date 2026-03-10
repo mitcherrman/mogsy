@@ -773,6 +773,7 @@ export default function SwipePreset() {
                         currentImageIndex={currentImageIndex}
                         eloVisible={eloVisible}
                         rankVisible={rankVisible}
+                        showGlobalStats={showGlobalStats}
                         items={items}
                         eloChanges={eloChanges}
                         globalDirections={globalDirections}
