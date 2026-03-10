@@ -467,6 +467,7 @@ function LinkCard({
                 <span className="text-muted-foreground">Type:</span>
                 <span className="text-foreground capitalize">{link.type}</span>
                 {link.grant_admin && <><span className="text-muted-foreground">Grants Admin:</span><span className="text-primary font-bold">Yes</span></>}
+                {(link as any).grant_moderator && <><span className="text-muted-foreground">Grants Moderator:</span><span className="text-blue-500 font-bold">Yes</span></>}
                 {link.grant_pro && <><span className="text-muted-foreground">Grants Pro:</span><span className="text-primary font-bold">Yes</span></>}
                 {link.grant_diamonds > 0 && <><span className="text-muted-foreground">Diamonds:</span><span>{link.grant_diamonds}</span></>}
                 {link.grant_boost_credits > 0 && <><span className="text-muted-foreground">Boosts:</span><span>{link.grant_boost_credits}</span></>}
