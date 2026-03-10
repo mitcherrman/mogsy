@@ -623,6 +623,8 @@ export default function AdminPlay() {
                                   },
                                 })}
                                 onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                                onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
+                                onAdd={() => { setNewName(""); setAddItemOpen(league.id); }}
                               />
                             </Reorder.Item>
                           ))}
