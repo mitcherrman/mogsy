@@ -461,6 +461,29 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     toast.success(`Restored ${p.display_name}`);
   };
 
+  const handlePurgeAnonymous = async () => {
+    setPurging(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("purge-anonymous-users");
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || "Purge failed");
+      } else {
+        toast.success(data?.message || "Anonymous users purged");
+        fetchProfiles();
+      }
+    } catch {
+      toast.error("Purge failed");
+    }
+    setPurging(false);
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterMode("all");
+    setSortMode("newest");
+  };
+  };
+
   const addToLeague = async (leagueId: string) => {
     if (!selectedUser) return;
     const existing = memberships.find((m) => m.league_id === leagueId);
