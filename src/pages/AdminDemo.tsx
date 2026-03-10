@@ -665,17 +665,6 @@ export default function AdminDemo() {
         <div className="flex-1 flex items-center justify-center">
           <img src={mogsyTextLogo} alt="Mogsy" className="h-4 object-contain opacity-70" />
         </div>
-        {!isMobile && (
-          <>
-            <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
-            <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
-          </>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="px-3 pt-1.5">
-        <Progress value={60} className="h-1.5" />
       </div>
 
       {/* Content */}
@@ -683,18 +672,11 @@ export default function AdminDemo() {
         {children}
       </div>
 
-      {/* Bottom bar */}
-      <div className="flex items-center justify-between px-3 pb-2">
-        <span className="text-[10px] text-muted-foreground/60 italic">Tap or swipe to choose</span>
-        <div className="flex items-center gap-2">
-          {isMobile && (
-            <>
-              <Camera className="h-3.5 w-3.5 text-muted-foreground/40" />
-              <Trophy className="h-3.5 w-3.5 text-muted-foreground/40" />
-            </>
-          )}
-          <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
-        </div>
+      {/* Bottom icon bar */}
+      <div className="flex items-center justify-center gap-4 px-3 pb-2 pt-1">
+        <Camera className="h-4 w-4 text-muted-foreground/50" />
+        <Trophy className="h-4 w-4 text-muted-foreground/50" />
+        <Eye className="h-4 w-4 text-muted-foreground/50" />
       </div>
     </div>
   );
