@@ -762,7 +762,7 @@ export default function Home() {
             alt="Mogsy"
             className="h-24 sm:h-36 md:h-44 object-cover"
           />
-        </div>
+        </nav>
 
         {/* Rotating Aura Banner */}
         {bannerItems.length > 0 && currentBanner && (
