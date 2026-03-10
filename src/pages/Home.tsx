@@ -761,7 +761,7 @@ export default function Home() {
             src={mogsyLogo}
             alt="Mogsy"
             className="h-24 sm:h-36 md:h-44 object-cover"
-            style={{ clipPath: "inset(30% 0 30% 0)" }}
+            style={{ clipPath: "inset(10% 0 10% 0)" }}
           />
         </div>
 
