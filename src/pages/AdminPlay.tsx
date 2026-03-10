@@ -682,7 +682,7 @@ export default function AdminPlay() {
                       leagueId: league.id,
                     },
                   })}
-                  onViewItems={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                  onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
                 />
               </Reorder.Item>
             ))}
