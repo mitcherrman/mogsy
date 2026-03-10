@@ -3,10 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, BarChart3, PieChart, LineChart, AreaChart } from "lucide-react";
+import { ArrowLeft, Plus, X, BarChart3, PieChart, LineChart, AreaChart, RefreshCw, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getDataSources, getCategories, getDataSourceById, type DataSourceResult } from "@/lib/admin-data-sources";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart as RLineChart, Line, PieChart as RPieChart, Pie, Cell,
   AreaChart as RAreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -20,6 +21,7 @@ interface GraphCard {
   chartType: ChartType;
   data: DataSourceResult | null;
   loading: boolean;
+  error: boolean;
 }
 
 const COLORS = [
@@ -38,6 +40,8 @@ function loadSavedGraphs(): { sourceId: string; chartType: ChartType }[] {
 function saveGraphConfigs(graphs: GraphCard[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(graphs.map(g => ({ sourceId: g.sourceId, chartType: g.chartType }))));
 }
+
+const chartTypeIcons: Record<ChartType, any> = { bar: BarChart3, line: LineChart, pie: PieChart, area: AreaChart };
 
 function ChartRenderer({ data, chartType }: { data: DataSourceResult; chartType: ChartType }) {
   const chartData = data.labels.map((label, i) => {
@@ -91,7 +95,6 @@ function ChartRenderer({ data, chartType }: { data: DataSourceResult; chartType:
     );
   }
 
-  // bar (default)
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData}>
@@ -106,8 +109,6 @@ function ChartRenderer({ data, chartType }: { data: DataSourceResult; chartType:
   );
 }
 
-const chartTypeIcons: Record<ChartType, any> = { bar: BarChart3, line: LineChart, pie: PieChart, area: AreaChart };
-
 export default function AdminData() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -116,9 +117,11 @@ export default function AdminData() {
   const [graphs, setGraphs] = useState<GraphCard[]>([]);
   const [selectedSource, setSelectedSource] = useState("");
   const [selectedChart, setSelectedChart] = useState<ChartType>("bar");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
-  // Summary stats
   const [stats, setStats] = useState({ users: 0, matches: 0, avgElo: 0, activeToday: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -133,21 +136,43 @@ export default function AdminData() {
     });
   }, [user]);
 
-  // Load summary stats
-  useEffect(() => {
-    if (!authorized) return;
-    Promise.all([
-      supabase.from("profiles").select("id, last_seen_at", { count: "exact", head: false }).eq("is_bot", false),
-      supabase.from("matches").select("id", { count: "exact", head: true }),
-      supabase.from("league_memberships").select("elo"),
-    ]).then(([profilesRes, matchesRes, eloRes]) => {
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const [profilesRes, matchesRes, eloRes] = await Promise.all([
+        supabase.from("profiles").select("id, last_seen_at", { count: "exact", head: false }).eq("is_bot", false),
+        supabase.from("matches").select("id", { count: "exact", head: true }),
+        supabase.from("league_memberships").select("elo"),
+      ]);
       const profiles = profilesRes.data || [];
       const active = profiles.filter(p => p.last_seen_at && Date.now() - new Date(p.last_seen_at).getTime() < 86400000).length;
       const elos = (eloRes.data || []).map(e => e.elo);
       const avg = elos.length > 0 ? Math.round(elos.reduce((a, b) => a + b, 0) / elos.length) : 1200;
       setStats({ users: profiles.length, matches: matchesRes.count || 0, avgElo: avg, activeToday: active });
-    });
-  }, [authorized]);
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+    setStatsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (authorized) fetchStats();
+  }, [authorized, fetchStats]);
+
+  const fetchGraphData = useCallback(async (cardId: string, sourceId: string, currentGraphs?: GraphCard[]) => {
+    const source = getDataSourceById(sourceId);
+    if (!source) return;
+    try {
+      const data = await source.fetch();
+      setGraphs(prev => {
+        const base = currentGraphs || prev;
+        return base.map(g => g.id === cardId ? { ...g, data, loading: false, error: false } : g);
+      });
+    } catch (err) {
+      console.error("Failed to fetch data source:", err);
+      setGraphs(prev => prev.map(g => g.id === cardId ? { ...g, loading: false, error: true } : g));
+    }
+  }, []);
 
   // Load saved graphs
   useEffect(() => {
@@ -160,26 +185,32 @@ export default function AdminData() {
         chartType: s.chartType,
         data: null,
         loading: true,
+        error: false,
       }));
       setGraphs(cards);
       cards.forEach((card) => fetchGraphData(card.id, card.sourceId, cards));
     }
-  }, [authorized]);
+  }, [authorized, fetchGraphData]);
 
-  const fetchGraphData = useCallback(async (cardId: string, sourceId: string, currentGraphs?: GraphCard[]) => {
-    const source = getDataSourceById(sourceId);
-    if (!source) return;
-    try {
-      const data = await source.fetch();
-      setGraphs(prev => {
-        const updated = (currentGraphs || prev).map(g => g.id === cardId ? { ...g, data, loading: false } : g);
-        return updated;
-      });
-    } catch (err) {
-      console.error("Failed to fetch data source:", err);
-      setGraphs(prev => prev.map(g => g.id === cardId ? { ...g, loading: false } : g));
-    }
-  }, []);
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    // Refresh stats
+    await fetchStats();
+    // Refresh all graphs
+    setGraphs(prev => prev.map(g => ({ ...g, loading: true, error: false })));
+    setGraphs(prev => {
+      prev.forEach(g => fetchGraphData(g.id, g.sourceId));
+      return prev;
+    });
+    setLastRefreshed(new Date());
+    setRefreshing(false);
+    toast.success("Data refreshed");
+  }, [fetchStats, fetchGraphData]);
+
+  const refreshSingleGraph = useCallback((id: string, sourceId: string) => {
+    setGraphs(prev => prev.map(g => g.id === id ? { ...g, loading: true, error: false } : g));
+    fetchGraphData(id, sourceId);
+  }, [fetchGraphData]);
 
   const addGraph = () => {
     if (!selectedSource) { toast.error("Select a data source"); return; }
@@ -189,6 +220,7 @@ export default function AdminData() {
       chartType: selectedChart,
       data: null,
       loading: true,
+      error: false,
     };
     setGraphs(prev => {
       const updated = [...prev, card];
@@ -219,17 +251,36 @@ export default function AdminData() {
 
   const dataSources = getDataSources();
   const categories = getCategories();
+  const timeAgo = Math.round((Date.now() - lastRefreshed.getTime()) / 1000);
+  const timeLabel = timeAgo < 5 ? "just now" : timeAgo < 60 ? `${timeAgo}s ago` : `${Math.round(timeAgo / 60)}m ago`;
 
   return (
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <BarChart3 className="h-5 w-5 text-primary" />
-          <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">Admin Data</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-extrabold text-foreground">Admin Data</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Clock className="h-3 w-3" /> {timeLabel}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={refreshing}
+              onClick={refreshAll}
+              className="gap-1.5"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -242,7 +293,11 @@ export default function AdminData() {
           ].map(s => (
             <div key={s.label} className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mt-1" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
+              )}
             </div>
           ))}
         </div>
@@ -306,6 +361,15 @@ export default function AdminData() {
                     <p className="text-[10px] text-muted-foreground">{source?.description}</p>
                   </div>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => refreshSingleGraph(g.id, g.sourceId)}
+                      disabled={g.loading}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                      title="Refresh this graph"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${g.loading ? "animate-spin" : ""}`} />
+                    </button>
+                    <div className="w-px h-5 bg-border mx-0.5" />
                     {(["bar", "line", "pie", "area"] as ChartType[]).map(t => {
                       const Icon = chartTypeIcons[t];
                       return (
@@ -318,13 +382,24 @@ export default function AdminData() {
                         </button>
                       );
                     })}
-                    <button onClick={() => removeGraph(g.id)} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive ml-1">
+                    <div className="w-px h-5 bg-border mx-0.5" />
+                    <button onClick={() => removeGraph(g.id)} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
                 {g.loading ? (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+                  <div className="h-[300px] flex flex-col items-center justify-center gap-3">
+                    <RefreshCw className="h-6 w-6 text-muted-foreground animate-spin" />
+                    <p className="text-sm text-muted-foreground">Loading data...</p>
+                  </div>
+                ) : g.error ? (
+                  <div className="h-[300px] flex flex-col items-center justify-center gap-3">
+                    <p className="text-sm text-destructive">Failed to load data</p>
+                    <Button variant="outline" size="sm" onClick={() => refreshSingleGraph(g.id, g.sourceId)} className="gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5" /> Retry
+                    </Button>
+                  </div>
                 ) : g.data && g.data.labels.length > 0 ? (
                   <ChartRenderer data={g.data} chartType={g.chartType} />
                 ) : (
