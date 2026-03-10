@@ -545,8 +545,10 @@ export default function SwipePreset() {
     );
   }
 
-  const eloVisible = showElo && userShowElo;
-  const rankVisible = showRank && userShowRank;
+  const isAnimating = sliceWinner !== null;
+  const eloVisible = showElo && (userShowElo || isAnimating);
+  const rankVisible = showRank && (userShowRank || isAnimating);
+  const statsHidden = !userShowElo && !userShowRank && !isAnimating;
 
   if (finished) {
     return (
