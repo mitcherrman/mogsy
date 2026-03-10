@@ -79,21 +79,16 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         setFirstImageMap(imgMap);
 
         // Auto-set preview image for items that have no image_url but have available images
-        const updatePromises: Promise<any>[] = [];
-        const updatedItems = data.map(item => {
+        const updatedItems = [...data];
+        for (let i = 0; i < updatedItems.length; i++) {
+          const item = updatedItems[i];
           if (!item.image_url && imgMap.has(item.id)) {
             const url = imgMap.get(item.id)!;
-            updatePromises.push(
-              supabase.from("preset_items").update({ image_url: url }).eq("id", item.id).then()
-            );
-            return { ...item, image_url: url };
+            await supabase.from("preset_items").update({ image_url: url }).eq("id", item.id);
+            updatedItems[i] = { ...item, image_url: url };
           }
-          return item;
-        });
-        if (updatePromises.length > 0) {
-          await Promise.all(updatePromises);
-          setItems(updatedItems);
         }
+        setItems(updatedItems);
       }
     }
   };
