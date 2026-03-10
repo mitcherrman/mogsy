@@ -88,7 +88,7 @@ interface UserReferralData {
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<string>("all");
+  const [filterMode, setFilterMode] = useState<string>("signed_up");
   const [sortMode, setSortMode] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
