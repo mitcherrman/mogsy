@@ -921,7 +921,36 @@ export default function SwipePreset() {
             </MatchupCapture>
           )}
 
-          <div className="flex items-center mt-1.5">
+          {/* Mobile action bar below cards */}
+          {isMobile && (
+            <div className="flex items-center justify-center gap-3 mt-2">
+              {user && (
+                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+              )}
+              {user && (
+                <SwipeAnimationPicker
+                  currentAnimation={swipeAnimation}
+                  onSelect={(id) => setSwipeAnimation(id)}
+                  isPro={isPro}
+                />
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={capture}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Save snapshot"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              <Link to={`/leaderboard/${leagueId}`}>
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                  <Trophy className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+          )}
+
             <p className="flex-1 text-center text-[10px] text-muted-foreground">
               {gauntletMode
                 ? `Tap to choose · Winner stays · ${matchCount} votes`
