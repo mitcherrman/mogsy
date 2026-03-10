@@ -631,15 +631,18 @@ export default function SwipePreset() {
             <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <Button
-              variant={gauntletMode ? "default" : "outline"}
-              size="icon"
-              onClick={handleToggleGauntlet}
-              className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
-              title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
-            >
-              <Sword className="h-4 w-4" fill="currentColor" />
-            </Button>
+            {/* Gauntlet button — desktop only */}
+            {!isMobile && (
+              <Button
+                variant={gauntletMode ? "default" : "outline"}
+                size="icon"
+                onClick={handleToggleGauntlet}
+                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
+              >
+                <Sword className="h-4 w-4" fill="currentColor" />
+              </Button>
+            )}
             <div className="flex-1 sm:relative flex items-center justify-center">
               <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none sm:static sm:translate-x-0">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
