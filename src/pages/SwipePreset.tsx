@@ -451,10 +451,26 @@ export default function SwipePreset() {
     [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
 
+  const trackImageClicks = useCallback((currentPair: PresetItem[]) => {
+    // Track that both images in this matchup were viewed/clicked
+    currentPair.forEach(item => {
+      const imageId = getCurrentImageId(item);
+      if (imageId) {
+        supabase.from("image_clicks").insert({
+          image_id: imageId,
+          preset_item_id: item.id,
+          profile_id: myProfileId || undefined,
+        }).then(() => {});
+      }
+    });
+  }, [myProfileId, getCurrentImageId]);
+
   const handleChoose = useCallback(
     (winnerIndex: 0 | 1) => {
       if (!pair || chosen !== null || sliceWinner !== null || readyDelay) return;
       setChosen(winnerIndex);
+      // Track image clicks for both items in the pair
+      trackImageClicks(pair);
       // Check for animation override from league rules
       const override = getAnimationOverride(matchCount + 1, animRules);
       const animToUse = override || swipeAnimation;
@@ -465,7 +481,7 @@ export default function SwipePreset() {
       setSliceWinner(winnerIndex);
       pendingAction.current = () => executeChoice(winnerIndex);
     },
-    [pair, chosen, sliceWinner, readyDelay, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules]
+    [pair, chosen, sliceWinner, readyDelay, swipeAnimation, playSwipeSound, playAnimationSound, logUsage, executeChoice, matchCount, animRules, trackImageClicks]
   );
 
   const handleSliceComplete = useCallback(() => {
