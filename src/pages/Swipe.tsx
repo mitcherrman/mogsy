@@ -410,15 +410,16 @@ export default function Swipe() {
             >
               <Sword className="h-4 w-4" fill="currentColor" />
             </Button>
-            <p className="text-muted-foreground text-xs shrink-0 flex items-center gap-1">
-              <Swords className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-primary font-bold">{matchCount}</span>
-              {gauntletMode && gauntletStreak > 0 && (
-                <span className="ml-2">🔥 {gauntletStreak} streak</span>
-              )}
-            </p>
-            <div className="flex-1 text-center">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-14 shrink-0" />
               <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
+              <p className="text-muted-foreground text-xs flex items-center gap-1 ml-2 w-14 shrink-0">
+                <Swords className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-primary font-bold">{matchCount}</span>
+                {gauntletMode && gauntletStreak > 0 && (
+                  <span className="ml-2">🔥 {gauntletStreak} streak</span>
+                )}
+              </p>
             </div>
             {user && (
               <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
