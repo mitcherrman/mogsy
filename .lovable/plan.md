@@ -1,43 +1,43 @@
-## Percentile-Based Rank System (Implemented)
 
-### Tier Distribution (Compete Leagues Only)
-- **Unranked**: Bottom 60% (0–60th percentile)
-- **Bronze 🥉**: 60th–75th percentile
-- **Silver 🥈**: 75th–90th percentile
-- **Gold 🥇**: 90th–99th percentile
-- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### What Changed
-1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
-2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
-3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
-4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
-5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
-6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
-7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
+# Condense Mobile Card Stats to Single Line
 
-### Collections (Preset) Leagues
-Still use absolute Elo-based tiers (unchanged).
+## Problem
+On mobile, each card's stats area takes multiple lines (name, subtitle, aura/rank, elo change indicator) causing the game to overflow the viewport. Users can still scroll.
 
-## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
+## Solution
+On mobile, collapse the name + aura/rank into a single horizontal line per card, and remove the separate EloChangeIndicator row. This saves ~20-30px per card (40-60px total), eliminating the scroll.
 
-### Changes Made
+## Changes
 
-1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
+### `src/pages/SwipePreset.tsx`
+**Normal cards (line ~913-960)** and **GauntletCard (line ~1144-1182)**: On mobile, replace the multi-line stats block with a single-line layout:
+- Name on the left, aura/rank on the right, all on one line
+- Remove subtitle on mobile (or keep inline if short)
+- Hide the EloChangeIndicator row on mobile (it shows during animations anyway via the overlay)
+- Reduce padding from `py-1` to `py-0.5` on mobile
+- Keep desktop layout unchanged
 
-2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
+**Image aspect ratio**: Change mobile portrait from `aspect-[5/4]` to `aspect-[4/3]` to shorten cards slightly.
 
-3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
+### `src/pages/Swipe.tsx`
+**Card stats area (lines ~539-549, 564-574)**: Same single-line treatment — name left, aura right, remove EloChangeIndicator row on mobile. Reduce padding.
 
-4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
+### `src/components/animations/AnimationCardStats.tsx`
+Add optional `compact` prop. When true, render name and elo on one line, skip subtitle and EloChangeIndicator.
 
-5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
+### Layout tightening
+- Change outer container `pb-4` to `pb-6` for more bottom buffer
+- Ensure `overflow-hidden` is strict (already set)
 
-6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
+### Single-line mobile layout (per card)
+```text
+Before (3 lines):
+  [      Item Name      ]
+  [   1200 #3 | 🌐 1200 #5   ]
+  [     +15 ▲            ]
 
-### Files Changed
-- `src/pages/SwipePreset.tsx`
-- `src/pages/Swipe.tsx`
-- `src/components/MatchupCapture.tsx`
-- `src/components/admin/AdminSettings.tsx`
-- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
+After (1 line):
+  [ Item Name    1200 #3 ]
+```
+
