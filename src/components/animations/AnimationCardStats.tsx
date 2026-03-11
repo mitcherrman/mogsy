@@ -10,6 +10,7 @@ export interface AnimationCardItem {
   titleImageUrl?: string;
   titleImageScale?: number;
   titleImageOffsetY?: number;
+  titleImageOffsetX?: number;
   titleImageMaxHeight?: number;
   localElo?: number;
   localRank?: number;
@@ -27,12 +28,14 @@ export interface AnimationCardItem {
 function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSProperties {
   const scale = item.titleImageScale ?? 1;
   const offsetY = item.titleImageOffsetY ?? 0;
+  const offsetX = item.titleImageOffsetX ?? 0;
   const maxHeight = item.titleImageMaxHeight && item.titleImageMaxHeight > 0
     ? `${item.titleImageMaxHeight}px`
     : undefined;
   return {
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
+    marginLeft: offsetX !== 0 ? `${offsetX}px` : undefined,
     maxHeight,
     maxWidth: '75%',
   };

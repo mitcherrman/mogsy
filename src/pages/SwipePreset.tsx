@@ -42,18 +42,21 @@ interface PresetItem {
   title_image_url?: string | null;
   title_image_scale?: number;
   title_image_offset_y?: number;
+  title_image_offset_x?: number;
   title_image_max_height?: number;
 }
 
 function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSProperties {
   const scale = item.title_image_scale ?? 1;
   const offsetY = item.title_image_offset_y ?? 0;
+  const offsetX = item.title_image_offset_x ?? 0;
   const maxHeight = item.title_image_max_height && item.title_image_max_height > 0
     ? `${item.title_image_max_height}px`
     : undefined;
   return {
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
+    marginLeft: offsetX !== 0 ? `${offsetX}px` : undefined,
     maxHeight,
     maxWidth: '75%',
   };
