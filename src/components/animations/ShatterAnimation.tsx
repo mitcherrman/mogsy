@@ -69,7 +69,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
                   transition={{ duration: 0.6, delay: 0.1 }}
                 >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
                     {phase !== "idle" && (
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
@@ -114,7 +114,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
                       } : {}}
                       transition={{ duration: 0.5, delay: f.delay, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                      <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
                     </motion.div>
                   ))}
                 </div>

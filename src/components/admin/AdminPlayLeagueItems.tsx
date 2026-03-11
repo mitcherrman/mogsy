@@ -368,7 +368,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                   <img
                     src={cardPreviewImage}
                     alt={selectedItem.name}
-                    className="w-full h-full object-contain bg-muted/30"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
@@ -400,7 +400,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <img
                       src={cardPreviewImage}
                       alt={selectedItem.name}
-                      className="w-full h-full object-contain bg-muted/30"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center text-3xl font-black text-muted-foreground/30">
