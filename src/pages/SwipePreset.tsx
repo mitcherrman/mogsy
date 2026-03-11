@@ -846,6 +846,7 @@ export default function SwipePreset() {
                                   src={displayImage}
                                   alt={item.name}
                                   className="w-full h-full object-cover"
+                                  style={getImageStyle(item)}
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                                   }}
