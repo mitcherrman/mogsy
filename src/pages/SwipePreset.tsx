@@ -848,10 +848,14 @@ export default function SwipePreset() {
 
                     return (
                       <React.Fragment key={item.id}>
-                        {/* VS badge between cards (after first card) */}
+                        {/* VS / Who Mogs? badge between cards (after first card) */}
                         {idx === 1 && (
                           <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
-                            <span className="text-xs md:text-base lg:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                            {isMobile ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Who Mogs?</span>
+                            ) : (
+                              <span className="text-xs md:text-base lg:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                            )}
                           </div>
                         )}
                         <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
