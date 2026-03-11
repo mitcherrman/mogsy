@@ -4,6 +4,7 @@ import EloChangeIndicator from "@/components/EloChangeIndicator";
 
 export interface AnimationCardItem {
   imageUrl: string | null;
+  imageStyle?: React.CSSProperties;
   name: string;
   subtitle?: string;
   localElo?: number;
