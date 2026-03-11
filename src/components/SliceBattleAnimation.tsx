@@ -104,7 +104,7 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
       <motion.div
         // Keep the overlay mounted (opaque) until parent clears winnerSide.
         // Exit fade happens only when this component is removed (winnerSide -> null).
-        className="absolute inset-0 z-50 pointer-events-none bg-background"
+        className="absolute inset-0 z-[70] pointer-events-none bg-background"
         initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
