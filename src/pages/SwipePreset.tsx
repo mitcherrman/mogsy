@@ -948,7 +948,7 @@ export default function SwipePreset() {
                               </div>
                             </div>
                           ) : (
-                            <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
+                            <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
                               <div className="flex items-center justify-center gap-1">
                                 <div className="flex-1 min-w-0" />
                                 <div className="text-center min-w-0">
