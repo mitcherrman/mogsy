@@ -1149,7 +1149,7 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
       <motion.button
         onClick={() => handleChoose(idx as 0 | 1)}
         drag={chosen === null ? "x" : false}
