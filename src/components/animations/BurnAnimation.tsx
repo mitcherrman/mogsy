@@ -28,7 +28,7 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
 
   return (
     <AnimatePresence>
-      <motion.div className="absolute inset-0 z-50 pointer-events-none bg-background"
+      <motion.div className="absolute inset-0 z-[70] pointer-events-none bg-background"
         initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.05 }}>
         <div className="w-full h-full flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-2 landscape:gap-4 md:gap-5 lg:gap-8 p-0">
           {items.map((item, idx) => {
