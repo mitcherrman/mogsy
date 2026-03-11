@@ -84,7 +84,7 @@ export default function AnimationCardStats({ item, compact = false }: { item: An
         <AuraChangeOverlay item={item} />
         <div className="flex items-center justify-between gap-1">
           {item.titleImageUrl ? (
-                    <img src={item.titleImageUrl} alt={item.name} className="max-h-5 w-auto object-contain" draggable={false} />
+                    <img src={item.titleImageUrl} alt={item.name} className="w-auto object-contain" style={getTitleImgStyle(item, true)} draggable={false} />
                   ) : (
                     <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
                   )}
