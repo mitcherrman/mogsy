@@ -56,8 +56,11 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleImageInputRef = useRef<HTMLInputElement>(null);
   const [addItemName, setAddItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
+  const [titleImageUrl, setTitleImageUrl] = useState("");
+  const [uploadingTitleImage, setUploadingTitleImage] = useState(false);
 
   useEffect(() => {
     loadItems();
