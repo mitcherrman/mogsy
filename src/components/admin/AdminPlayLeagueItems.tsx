@@ -353,13 +353,13 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Scale</label>
                       <Input
-                        type="number" min={0.1} max={6} step={0.05}
+                        type="number" min={0.1} max={15} step={0.05}
                         value={tiScale.toFixed(2)}
-                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.1, Math.min(6, n))); }}
+                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.1, Math.min(15, n))); }}
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
-                    <Slider min={0.1} max={6} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
+                    <Slider min={0.1} max={15} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
                   </div>
 
                   {/* Vertical Offset with +/- buttons */}
@@ -367,21 +367,21 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Vertical Offset</label>
                       <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.max(-100, v - 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.max(-600, v - 1))}>
                           <ChevronDown className="h-3 w-3" />
                         </Button>
                         <Input
-                          type="number" min={-100} max={50}
+                          type="number" min={-600} max={300}
                           value={tiOffsetY}
-                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-100, Math.min(50, n))); }}
+                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-600, Math.min(300, n))); }}
                           className="w-14 h-6 text-[10px] text-right px-1 font-mono"
                         />
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.min(50, v + 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.min(300, v + 1))}>
                           <ChevronUp className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                    <Slider min={-100} max={50} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
+                    <Slider min={-600} max={300} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
                   </div>
 
                   {/* Horizontal Offset with +/- buttons */}
@@ -389,21 +389,21 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Horizontal Offset</label>
                       <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.max(-50, v - 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.max(-200, v - 1))}>
                           <ChevronLeft className="h-3 w-3" />
                         </Button>
                         <Input
-                          type="number" min={-50} max={50}
+                          type="number" min={-200} max={200}
                           value={tiOffsetX}
-                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetX(Math.max(-50, Math.min(50, n))); }}
+                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetX(Math.max(-200, Math.min(200, n))); }}
                           className="w-14 h-6 text-[10px] text-right px-1 font-mono"
                         />
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.min(50, v + 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.min(200, v + 1))}>
                           <ChevronRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                    <Slider min={-50} max={50} step={1} value={[tiOffsetX]} onValueChange={([v]) => setTiOffsetX(v)} />
+                    <Slider min={-200} max={200} step={1} value={[tiOffsetX]} onValueChange={([v]) => setTiOffsetX(v)} />
                   </div>
 
                   {/* Max Height */}
@@ -411,13 +411,13 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Height (0 = auto)</label>
                       <Input
-                        type="number" min={0} max={200}
+                        type="number" min={0} max={600}
                         value={tiMaxHeight}
-                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(200, n))); }}
+                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(600, n))); }}
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
-                    <Slider min={0} max={200} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
+                    <Slider min={0} max={600} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
                   </div>
                 </div>
 
