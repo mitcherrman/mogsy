@@ -782,7 +782,11 @@ export default function SwipePreset() {
                     )}
                   </div>
                   <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} text-center`}>
-                    <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
+                    {pair[0].title_image_url ? (
+                      <img src={pair[0].title_image_url} alt={pair[0].name} className="max-h-8 w-auto object-contain mx-auto" draggable={false} />
+                    ) : (
+                      <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
