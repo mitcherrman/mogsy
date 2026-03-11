@@ -19,6 +19,7 @@ interface PresetItem {
   image_url: string | null;
   elo: number;
   league_id: string;
+  title_image_url?: string | null;
 }
 
 interface ItemImage {
@@ -55,8 +56,11 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleImageInputRef = useRef<HTMLInputElement>(null);
   const [addItemName, setAddItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
+  const [titleImageUrl, setTitleImageUrl] = useState("");
+  const [uploadingTitleImage, setUploadingTitleImage] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -296,6 +300,83 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           >
             <Smartphone className="h-3.5 w-3.5" /> Card Preview
           </Button>
+        </div>
+
+        {/* Title Image */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Title Image</h5>
+          <p className="text-[10px] text-muted-foreground">Replaces the text name on cards. Bleeds over the card image edges.</p>
+          {selectedItem.title_image_url ? (
+            <div className="flex items-center gap-3">
+              <img src={selectedItem.title_image_url} alt="Title" className="max-h-12 w-auto object-contain rounded border border-border bg-muted p-1" />
+              <Button size="sm" variant="destructive" onClick={async () => {
+                const { error } = await supabase.from("preset_items").update({ title_image_url: null } as any).eq("id", selectedItem.id);
+                if (error) { toast.error(error.message); return; }
+                setSelectedItem({ ...selectedItem, title_image_url: null });
+                setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: null } : i));
+                toast.success("Title image removed");
+              }}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={titleImageUrl}
+                  onChange={(e) => setTitleImageUrl(e.target.value)}
+                  placeholder="Paste title image URL..."
+                  className="text-sm"
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && titleImageUrl.trim()) {
+                      const { error } = await supabase.from("preset_items").update({ title_image_url: titleImageUrl.trim() } as any).eq("id", selectedItem.id);
+                      if (error) { toast.error(error.message); return; }
+                      setSelectedItem({ ...selectedItem, title_image_url: titleImageUrl.trim() });
+                      setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: titleImageUrl.trim() } : i));
+                      setTitleImageUrl("");
+                      toast.success("Title image set");
+                    }
+                  }}
+                />
+                <Button size="sm" onClick={async () => {
+                  if (!titleImageUrl.trim()) return;
+                  const { error } = await supabase.from("preset_items").update({ title_image_url: titleImageUrl.trim() } as any).eq("id", selectedItem.id);
+                  if (error) { toast.error(error.message); return; }
+                  setSelectedItem({ ...selectedItem, title_image_url: titleImageUrl.trim() });
+                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: titleImageUrl.trim() } : i));
+                  setTitleImageUrl("");
+                  toast.success("Title image set");
+                }} disabled={!titleImageUrl.trim()} className="gap-1 shrink-0">
+                  <Link className="h-3.5 w-3.5" /> Add
+                </Button>
+              </div>
+              <div>
+                <input ref={titleImageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+                  if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF"); return; }
+                  if (file.size > 20 * 1024 * 1024) { toast.error("Max 20MB"); return; }
+                  setUploadingTitleImage(true);
+                  const ext = file.name.split(".").pop();
+                  const path = `preset-items/${selectedItem.id}/title-${Date.now()}.${ext}`;
+                  const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
+                  if (uploadError) { toast.error(uploadError.message); setUploadingTitleImage(false); return; }
+                  const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
+                  const { error } = await supabase.from("preset_items").update({ title_image_url: urlData.publicUrl } as any).eq("id", selectedItem.id);
+                  if (error) { toast.error(error.message); setUploadingTitleImage(false); return; }
+                  setSelectedItem({ ...selectedItem, title_image_url: urlData.publicUrl });
+                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: urlData.publicUrl } : i));
+                  setUploadingTitleImage(false);
+                  toast.success("Title image uploaded");
+                  if (titleImageInputRef.current) titleImageInputRef.current.value = "";
+                }} className="hidden" />
+                <Button size="sm" variant="outline" onClick={() => titleImageInputRef.current?.click()} disabled={uploadingTitleImage} className="gap-1">
+                  <Upload className="h-3.5 w-3.5" /> {uploadingTitleImage ? "Uploading..." : "Upload File"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add image */}

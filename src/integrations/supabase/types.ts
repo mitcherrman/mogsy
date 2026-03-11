@@ -1527,6 +1527,7 @@ export type Database = {
           league_id: string
           name: string
           subtitle: string
+          title_image_url: string | null
         }
         Insert: {
           created_at?: string
@@ -1537,6 +1538,7 @@ export type Database = {
           league_id: string
           name: string
           subtitle?: string
+          title_image_url?: string | null
         }
         Update: {
           created_at?: string
@@ -1547,6 +1549,7 @@ export type Database = {
           league_id?: string
           name?: string
           subtitle?: string
+          title_image_url?: string | null
         }
         Relationships: [
           {

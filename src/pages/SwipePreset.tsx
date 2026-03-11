@@ -39,6 +39,7 @@ interface PresetItem {
   image_url: string | null;
   elo: number;
   league_id: string;
+  title_image_url?: string | null;
 }
 
 interface ItemImage {
@@ -781,7 +782,11 @@ export default function SwipePreset() {
                     )}
                   </div>
                   <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} text-center`}>
-                    <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
+                    {pair[0].title_image_url ? (
+                      <img src={pair[0].title_image_url} alt={pair[0].name} className="max-h-8 w-auto object-contain mx-auto" draggable={false} />
+                    ) : (
+                      <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
@@ -867,7 +872,7 @@ export default function SwipePreset() {
                             )}
                           </div>
                         )}
-                        <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+          <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
                           <motion.button
                             onClick={() => handleChoose(idx as 0 | 1)}
                             drag={chosen === null ? "x" : false}
@@ -920,9 +925,13 @@ export default function SwipePreset() {
 
                           {/* Name & stats — always visible, outside animation area */}
                           {isMobile ? (
-                            <div className="px-1.5 py-0.5 flex-shrink-0 relative z-20">
+                            <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
                               <div className="flex items-center justify-between gap-1">
-                                <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+                {item.title_image_url ? (
+                                  <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
+                                ) : (
+                                  <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+                                )}
                                 <div className="flex items-center gap-1 shrink-0">
                                   <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap ${statsHidden ? "invisible" : ""}`}>
                                     <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
@@ -943,12 +952,16 @@ export default function SwipePreset() {
                               </div>
                             </div>
                           ) : (
-                            <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
+                            <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
                               <div className="flex items-center justify-center gap-1">
                                 <div className="flex-1 min-w-0" />
                                 <div className="text-center min-w-0">
-                                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                                  {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+                              {item.title_image_url ? (
+                                    <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain" draggable={false} />
+                                  ) : (
+                                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                                  )}
+                                  {!item.title_image_url && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
                                 </div>
                                 <div className="flex-1 min-w-0 flex justify-end">
                                   {hasMultipleImages && (
@@ -1008,6 +1021,7 @@ export default function SwipePreset() {
                   imageStyle: getImageStyle(item),
                   name: item.name,
                   subtitle: item.subtitle,
+                  titleImageUrl: item.title_image_url || undefined,
                   localElo: localElos.get(item.id) ?? 1200,
                   localRank: localRankMap.get(item.id),
                   globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
@@ -1139,7 +1153,7 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
       <motion.button
         onClick={() => handleChoose(idx as 0 | 1)}
         drag={chosen === null ? "x" : false}
@@ -1177,9 +1191,13 @@ function GauntletCard({
         )}
       </motion.button>
       {isMobile ? (
-        <div className="px-1.5 py-0.5 flex-shrink-0 relative z-20">
+        <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
           <div className="flex items-center justify-between gap-1">
-            <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+            {item.title_image_url ? (
+              <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
+            ) : (
+              <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+            )}
             <div className="flex items-center gap-1 shrink-0">
               <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap ${statsHidden ? "invisible" : ""}`}>
                 <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
@@ -1198,12 +1216,16 @@ function GauntletCard({
           </div>
         </div>
       ) : (
-        <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
+          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
           <div className="flex items-center justify-center gap-1">
             <div className="flex-1 min-w-0" />
             <div className="text-center min-w-0">
-              <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-              {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+              {item.title_image_url ? (
+                <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain mx-auto" draggable={false} />
+              ) : (
+                <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+              )}
+              {!item.title_image_url && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
             </div>
             <div className="flex-1 min-w-0 flex justify-end">
               {hasMultipleImages && (
