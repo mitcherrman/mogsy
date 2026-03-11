@@ -48,7 +48,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                   } : {}}
                   transition={{ duration: 0.5, delay: 0.1 }}
                 >
-                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
+                  <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
                     <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                     {phase !== "idle" && (
                       <motion.div

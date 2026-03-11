@@ -49,6 +49,8 @@ interface ItemImage {
   focal_x: number;
   focal_y: number;
   zoom: number;
+  pad_top: number;
+  pad_left: number;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
@@ -255,8 +257,14 @@ export default function SwipePreset() {
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
       const img = images[idx % images.length];
-      if (img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1) {
+      const hasCustom = img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1 || img.pad_top !== 0 || img.pad_left !== 0;
+      if (hasCustom) {
         return {
+          position: 'absolute' as const,
+          top: `${img.pad_top}%`,
+          left: `${img.pad_left}%`,
+          width: `${100 - img.pad_left}%`,
+          height: `${100 - img.pad_top}%`,
           objectPosition: `${img.focal_x}% ${img.focal_y}%`,
           transform: `scale(${img.zoom})`,
           transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
@@ -731,7 +739,7 @@ export default function SwipePreset() {
               >
                 {/* Real item card */}
                 <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
+                  <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                     {pair[0].image_url ? (
                       <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-cover" style={getImageStyle(pair[0])} />
                     ) : (
@@ -841,7 +849,7 @@ export default function SwipePreset() {
                             }`}
                           >
                             {/* Image container */}
-                            <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
+                            <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                               {displayImage ? (
                                 <img
                                   src={displayImage}
@@ -1065,7 +1073,7 @@ function GauntletCard({
             : ""
         }`}
       >
-        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
+        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-cover"
               style={getImageStyle(item)}

@@ -1472,6 +1472,8 @@ export type Database = {
           id: string
           image_url: string
           is_hidden: boolean
+          pad_left: number
+          pad_top: number
           preset_item_id: string
           report_count: number
           sort_order: number
@@ -1484,6 +1486,8 @@ export type Database = {
           id?: string
           image_url: string
           is_hidden?: boolean
+          pad_left?: number
+          pad_top?: number
           preset_item_id: string
           report_count?: number
           sort_order?: number
@@ -1496,6 +1500,8 @@ export type Database = {
           id?: string
           image_url?: string
           is_hidden?: boolean
+          pad_left?: number
+          pad_top?: number
           preset_item_id?: string
           report_count?: number
           sort_order?: number
