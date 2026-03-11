@@ -549,6 +549,19 @@ export default function AdminPlay() {
           </Button>
         </div>
 
+        {/* Show/Hide hidden toggle */}
+        <div className="flex justify-end mb-2">
+          <Button
+            size="sm"
+            variant={showHidden ? "default" : "outline"}
+            className="gap-1.5 text-xs"
+            onClick={() => setShowHidden(!showHidden)}
+          >
+            {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showHidden ? "Hide hidden" : "Show hidden"}
+          </Button>
+        </div>
+
         {/* Play Stats */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           {[
