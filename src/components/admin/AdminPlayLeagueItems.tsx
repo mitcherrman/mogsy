@@ -403,7 +403,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                         </Button>
                       </div>
                     </div>
-                    <Slider min={-50} max={50} step={1} value={[tiOffsetX]} onValueChange={([v]) => setTiOffsetX(v)} />
+                    <Slider min={-200} max={200} step={1} value={[tiOffsetX]} onValueChange={([v]) => setTiOffsetX(v)} />
                   </div>
 
                   {/* Max Height */}
