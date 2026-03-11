@@ -137,6 +137,7 @@ export default function SwipePreset() {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
+  const [cardBgOpacity, setCardBgOpacity] = useState(20);
 
   // Lock scroll on mobile to prevent any scrolling past game area
   useEffect(() => {
@@ -153,12 +154,13 @@ export default function SwipePreset() {
 
   // Fetch swipe UI settings
   useEffect(() => {
-    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress"]).then(({ data }) => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress", "card_bg_opacity"]).then(({ data }) => {
       if (data) {
         for (const row of data) {
           const val = row.value as any;
           if (row.key === "show_match_count") setShowMatchCount(val?.enabled ?? true);
           if (row.key === "show_swipe_progress") setShowSwipeProgress(val?.enabled ?? true);
+          if (row.key === "card_bg_opacity") setCardBgOpacity(val?.opacity ?? 20);
         }
       }
     });
@@ -798,7 +800,7 @@ export default function SwipePreset() {
                 <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${pair[0].title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
                     <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                     {pair[0].image_url && (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-20" aria-hidden="true" />
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
                     )}
                     {pair[0].image_url ? (
                       <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain relative z-10" style={getImageStyle(pair[0])} />
@@ -866,6 +868,7 @@ export default function SwipePreset() {
                         handleChoose={handleChoose}
                         handleReportImage={handleReportImage}
                         isMobile={isMobile}
+                        cardBgOpacity={cardBgOpacity}
                       />
                     );
                   })}
@@ -920,7 +923,7 @@ export default function SwipePreset() {
                             {/* Image container */}
                             <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                               {displayImage && (
-                                <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-20" aria-hidden="true" />
+                                <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
                               )}
                               {displayImage ? (
                                 <img
@@ -1164,7 +1167,7 @@ export default function SwipePreset() {
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile,
+  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
@@ -1176,6 +1179,7 @@ function GauntletCard({
   handleChoose: (idx: 0 | 1) => void;
   handleReportImage: (item: PresetItem) => void;
   isMobile: boolean;
+  cardBgOpacity: number;
 }) {
   const displayImage = getDisplayImage(item);
   const rank = rankMap.get(item.id);
@@ -1206,7 +1210,7 @@ function GauntletCard({
       >
         <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
           {displayImage && (
-            <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-20" aria-hidden="true" />
+            <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
           )}
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-contain relative z-10"

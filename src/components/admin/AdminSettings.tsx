@@ -3,6 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ interface SettingsState {
   shop_ad_subtext: string;
   show_match_count: boolean;
   show_swipe_progress: boolean;
+  card_bg_opacity: number;
 }
 
 export default function AdminSettings() {
@@ -40,6 +42,7 @@ export default function AdminSettings() {
     shop_ad_subtext: "Unlock premium themes, animations, and more.",
     show_match_count: true,
     show_swipe_progress: true,
+    card_bg_opacity: 20,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,6 +67,7 @@ export default function AdminSettings() {
               case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Pro!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium themes, animations, and more."; break;
               case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
               case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
+              case "card_bg_opacity": s.card_bg_opacity = val?.opacity ?? 20; break;
             }
           }
           setSettings(s);
@@ -161,6 +165,27 @@ export default function AdminSettings() {
           checked={settings.show_swipe_progress}
           onChange={() => toggleSetting("show_swipe_progress", "show_swipe_progress")}
         />
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div className="flex-1 mr-4">
+            <Label className="text-sm font-medium flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Card Background Opacity</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">Opacity of the blurred background image on swipe cards ({settings.card_bg_opacity}%)</p>
+          </div>
+          <div className="flex items-center gap-3 min-w-[180px]">
+            <Slider
+              value={[settings.card_bg_opacity]}
+              onValueChange={([v]) => setSettings(s => ({ ...s, card_bg_opacity: v }))}
+              min={0}
+              max={100}
+              step={5}
+              className="flex-1"
+            />
+            <Button size="sm" variant="outline" disabled={saving} onClick={async () => {
+              setSaving(true);
+              await updateSetting("card_bg_opacity", { opacity: settings.card_bg_opacity });
+              setSaving(false);
+            }}>Save</Button>
+          </div>
+        </div>
       </div>
 
       {/* Swipe Timer */}
