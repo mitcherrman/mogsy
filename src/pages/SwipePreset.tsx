@@ -1078,11 +1078,13 @@ export default function SwipePreset() {
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
-            {gauntletMode
-              ? `Tap to choose · Winner stays · ${matchCount} votes`
-              : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
-          </p>
+          {!isMobile && (
+            <p className="text-center text-[10px] text-muted-foreground mt-0.5">
+              {gauntletMode
+                ? `Tap to choose · Winner stays · ${matchCount} votes`
+                : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
+            </p>
+          )}
 
           {!isMobile && <ScrollToCommentsHint />}
 

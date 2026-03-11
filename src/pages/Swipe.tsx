@@ -673,11 +673,13 @@ export default function Swipe() {
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
-            {gauntletMode
-              ? "Tap to choose · Winner stays on screen"
-              : "Tap the profile you prefer · Aura updates instantly"}
-          </p>
+          {!isMobile && (
+            <p className="text-center text-[10px] text-muted-foreground mt-0.5">
+              {gauntletMode
+                ? "Tap to choose · Winner stays on screen"
+                : "Tap the profile you prefer · Aura updates instantly"}
+            </p>
+          )}
 
           {!isMobile && <ScrollToCommentsHint />}
 
