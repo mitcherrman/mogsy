@@ -109,7 +109,7 @@ function ItemDetailHeader({ item, rank, wins, losses, onUpdate }: {
     if (!file) return;
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
+    if (file.size > 20 * 1024 * 1024) { toast.error("Max 20MB"); return; }
     const ext = file.name.split(".").pop();
     const path = `preset-items/${item.id}/profile-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
