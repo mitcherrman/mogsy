@@ -1,24 +1,29 @@
 import { forwardRef, ReactNode } from "react";
 import mogsyTextLogo from "@/assets/mogsy-text-logo.png";
 import { SITE_DOMAIN } from "@/lib/site-config";
+import { cn } from "@/lib/utils";
 
 interface MatchupCaptureProps {
   leagueName: string;
   children: ReactNode;
   centerSlot?: ReactNode;
+  isMobile?: boolean;
 }
 
 const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
-  ({ leagueName, children, centerSlot }, ref) => {
+  ({ leagueName, children, centerSlot, isMobile }, ref) => {
     return (
       <div
         ref={ref}
-        className="relative rounded-2xl overflow-hidden bg-card border border-border p-3"
+        className={cn(
+          "relative rounded-2xl overflow-hidden bg-card border border-border",
+          isMobile ? "p-1.5" : "p-3"
+        )}
       >
         {/* Branding header */}
-        <div className="flex items-center justify-between mb-2">
+        <div className={cn("flex items-center justify-between", isMobile ? "mb-1" : "mb-2")}>
           <div className="flex items-center">
-            <img src={mogsyTextLogo} alt="Mogsy" className="h-5 object-contain" />
+            <img src={mogsyTextLogo} alt="Mogsy" className={cn("object-contain", isMobile ? "h-4" : "h-5")} />
           </div>
           {centerSlot && (
             <div className="flex items-center justify-center">
@@ -34,7 +39,10 @@ const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
         {children}
 
         {/* Footer watermark */}
-        <div className="flex items-center justify-center mt-2 pt-1.5 border-t border-border/50">
+        <div className={cn(
+          "flex items-center justify-center border-t border-border/50",
+          isMobile ? "mt-1 pt-1" : "mt-2 pt-1.5"
+        )}>
           <span className="text-[9px] text-muted-foreground font-medium">{SITE_DOMAIN}</span>
         </div>
       </div>

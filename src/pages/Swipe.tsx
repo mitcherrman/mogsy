@@ -82,10 +82,22 @@ export default function Swipe() {
   const [readyDelay, setReadyDelay] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
+  const [showMatchCount, setShowMatchCount] = useState(true);
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
+  }, []);
+
+  // Fetch swipe UI settings
+  useEffect(() => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count"]).then(({ data }) => {
+      if (data) {
+        for (const row of data) {
+          if (row.key === "show_match_count") setShowMatchCount((row.value as any)?.enabled ?? true);
+        }
+      }
+    });
   }, []);
 
   const handleTimerTimeout = useCallback(() => {
@@ -391,16 +403,23 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} px-3 py-3 flex flex-col relative`}>
+      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0 pb-4' : 'px-3 py-3'} flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
+
+        {/* Floating back button on mobile */}
+        {isMobile && (
+          <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
-          {/* Controls bar */}
-          <div className="flex items-center gap-2 mb-2">
-            <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            {/* Gauntlet — desktop only */}
-            {!isMobile && (
+          {/* Controls bar — desktop only */}
+          {!isMobile && (
+            <div className="flex items-center gap-2 mb-2">
+              <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"
@@ -414,54 +433,60 @@ export default function Swipe() {
               >
                 <Sword className="h-4 w-4" fill="currentColor" />
               </Button>
-            )}
-            <div className="flex-1 sm:relative flex items-center justify-center">
-              <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none sm:static sm:translate-x-0">
+              <div className="flex-1 flex items-center justify-center">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
               </div>
-            </div>
-            <p className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">
-              <Swords className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-primary font-bold">{matchCount}</span>
-              {gauntletMode && gauntletStreak > 0 && (
-                <span className="ml-2">🔥 {gauntletStreak} streak</span>
+              {showMatchCount && (
+                <p className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">
+                  <Swords className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-primary font-bold">{matchCount}</span>
+                  {gauntletMode && gauntletStreak > 0 && (
+                    <span className="ml-2">🔥 {gauntletStreak} streak</span>
+                  )}
+                </p>
               )}
-            </p>
-            {user && !isMobile && (
-              <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
-            )}
-            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            {!isMobile && (
-            <div className="flex items-center gap-1 shrink-0">
               {user && (
-                <SwipeAnimationPicker
-                  currentAnimation={swipeAnimation}
-                  onSelect={(id) => setSwipeAnimation(id)}
-                  isPro={isPro}
-                />
+                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
               )}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={capture}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                title="Save snapshot"
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-              {globalLeagueId && (
-                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" />
+              {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
+              <div className="flex items-center gap-1 shrink-0">
+                {user && (
+                  <SwipeAnimationPicker
+                    currentAnimation={swipeAnimation}
+                    onSelect={(id) => setSwipeAnimation(id)}
+                    isPro={isPro}
+                  />
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={capture}
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  title="Save snapshot"
+                >
+                  <Camera className="h-4 w-4" />
                 </Button>
-              )}
+                {globalLeagueId && (
+                  <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
+                    <Trophy className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
-            )}
-          </div>
+          )}
+
+          {/* Mobile: minimal top area with timer only */}
+          {isMobile && timerEnabled && (
+            <div className="flex items-center justify-end mb-1">
+              <SwipeTimer timeLeft={timeLeft} duration={duration} />
+            </div>
+          )}
 
           {/* Capturable matchup area */}
           <MatchupCapture
             ref={captureRef}
             leagueName="Swipe On Who Mogs"
+            isMobile={isMobile}
             centerSlot={lastMatch && myRewinds > 0 ? (
               <Button variant="outline" size="sm" onClick={handleRewind} className="gap-1 h-7 text-xs">
                 <Undo2 className="h-3 w-3" /> {myRewinds}
@@ -474,7 +499,7 @@ export default function Swipe() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]"
+                className={`relative flex flex-col sm:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]`}
               >
                 {/* Real card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
@@ -506,12 +531,12 @@ export default function Swipe() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="relative flex flex-col sm:flex-row gap-1 sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]"
+                className={`relative flex flex-col sm:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]`}
               >
                 {/* Left / Top card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-                  <div className="px-2 py-1.5 relative z-20">
+                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} relative z-20`}>
                     <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
@@ -524,15 +549,19 @@ export default function Swipe() {
                   </div>
                 </div>
 
-                {/* VS badge */}
+                {/* VS / Who Mogs? badge */}
                 <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
-                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                  {isMobile ? (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Who Mogs?</span>
+                  ) : (
+                    <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                  )}
                 </div>
 
                 {/* Right / Bottom card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
-                  <div className="px-2 py-1.5 relative z-20">
+                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} relative z-20`}>
                     <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
@@ -570,7 +599,7 @@ export default function Swipe() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <div className="flex items-center justify-center gap-3 mt-2">
+            <div className="flex items-center justify-center gap-3 mt-1">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"
@@ -579,10 +608,10 @@ export default function Swipe() {
                   setGauntletChampion(null);
                   setGauntletStreak(0);
                 }}
-                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                className={`h-7 w-7 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
               >
-                <Sword className="h-4 w-4" fill="currentColor" />
+                <Sword className="h-3.5 w-3.5" fill="currentColor" />
               </Button>
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
@@ -598,29 +627,29 @@ export default function Swipe() {
                 variant="outline"
                 size="icon"
                 onClick={capture}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Save snapshot"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-3.5 w-3.5" />
               </Button>
               {globalLeagueId && (
-                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
-                  <Trophy className="h-3.5 w-3.5" />
+                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-7 w-7 text-xs">
+                  <Trophy className="h-3 w-3" />
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setCommentsOpen(true)}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Comments"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-3.5 w-3.5" />
               </Button>
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-2">
+          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
             {gauntletMode
               ? "Tap to choose · Winner stays on screen"
               : "Tap the profile you prefer · Aura updates instantly"}
