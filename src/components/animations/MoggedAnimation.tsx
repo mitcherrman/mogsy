@@ -48,7 +48,7 @@ export default function MoggedAnimation({ winnerSide, items, onComplete }: Props
                   transition={{ duration: 0.8, delay: 0.2 }}
                 >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
                     {phase !== "idle" && (
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
