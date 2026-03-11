@@ -23,6 +23,7 @@ interface PresetItem {
   title_image_url?: string | null;
   title_image_scale?: number;
   title_image_offset_y?: number;
+  title_image_offset_x?: number;
   title_image_max_height?: number;
 }
 
