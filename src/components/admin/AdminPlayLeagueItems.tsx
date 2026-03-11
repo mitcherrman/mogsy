@@ -69,6 +69,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [adjustingTitleImage, setAdjustingTitleImage] = useState(false);
   const [tiScale, setTiScale] = useState(1);
   const [tiOffsetY, setTiOffsetY] = useState(0);
+  const [tiOffsetX, setTiOffsetX] = useState(0);
   const [tiMaxHeight, setTiMaxHeight] = useState(0);
 
   useEffect(() => {
