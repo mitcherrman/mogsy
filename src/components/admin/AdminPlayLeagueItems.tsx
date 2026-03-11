@@ -241,6 +241,27 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
 
   if (selectedItem) {
     const visibleCount = itemImages.filter(i => !i.is_hidden).length;
+
+    // Image positioning sub-view
+    if (positioningImage) {
+      return (
+        <div className="space-y-4">
+          <Button variant="ghost" size="sm" onClick={() => setPositioningImage(null)} className="text-muted-foreground gap-1">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to {selectedItem.name}
+          </Button>
+          <ImagePositionEditor
+            imageUrl={positioningImage.image_url}
+            itemName={selectedItem.name}
+            initialFocalX={positioningImage.focal_x}
+            initialFocalY={positioningImage.focal_y}
+            initialZoom={positioningImage.zoom}
+            onSave={(fx, fy, z) => handleSavePosition(positioningImage, fx, fy, z)}
+            onCancel={() => setPositioningImage(null)}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelectedItem(null)} className="text-muted-foreground gap-1">
