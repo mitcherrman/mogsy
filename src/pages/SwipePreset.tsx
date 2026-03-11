@@ -1232,12 +1232,12 @@ function GauntletCard({
           </div>
         </div>
       ) : (
-          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
+          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-center gap-1">
             <div className="flex-1 min-w-0" />
             <div className="text-center min-w-0">
               {item.title_image_url ? (
-                <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain mx-auto" draggable={false} />
+                <img src={item.title_image_url} alt={item.name} className="w-auto object-contain mx-auto" style={getTitleImageStyle(item, false)} draggable={false} />
               ) : (
                 <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
               )}
