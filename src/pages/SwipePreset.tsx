@@ -755,7 +755,7 @@ export default function SwipePreset() {
 
           {/* Matchup area */}
           {pair && showInSwipeAd ? (
-            <MatchupCapture ref={captureRef} leagueName={leagueName}>
+            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile}>
               <motion.div
                 key={`ad-${showInSwipeAd.id}-${matchCount}`}
                 initial={{ opacity: 0 }}
