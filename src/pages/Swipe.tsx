@@ -403,7 +403,7 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0 pb-4' : 'px-3 py-3'} flex flex-col relative`}>
+      <div className={`${isMobile ? 'h-[calc(100dvh-7.5rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0' : 'px-3 py-3'} flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
 
         {/* Floating back button on mobile */}
