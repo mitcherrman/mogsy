@@ -42,6 +42,8 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [addImageUrl, setAddImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [cardPreviewOpen, setCardPreviewOpen] = useState(false);
+  const [cardPreviewImage, setCardPreviewImage] = useState<string | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
