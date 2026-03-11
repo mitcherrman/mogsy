@@ -239,10 +239,22 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               <div className="h-full w-full flex items-center justify-center text-lg font-bold text-muted-foreground">{selectedItem.name.charAt(0)}</div>
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-bold text-foreground">{selectedItem.name}</h3>
             <p className="text-xs text-muted-foreground">{itemImages.length} images • {visibleCount} active</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs shrink-0"
+            onClick={() => {
+              const visibleImg = itemImages.find(i => !i.is_hidden);
+              setCardPreviewImage(visibleImg?.image_url || selectedItem.image_url || null);
+              setCardPreviewOpen(true);
+            }}
+          >
+            <Smartphone className="h-3.5 w-3.5" /> Card Preview
+          </Button>
         </div>
 
         {/* Add image */}
