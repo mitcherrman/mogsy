@@ -667,16 +667,23 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} px-3 py-2 md:px-6 md:py-4 flex flex-col relative`}>
+      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0 pb-4' : 'px-3 py-2 md:px-6 md:py-4'} flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
+
+        {/* Floating back button on mobile */}
+        {isMobile && (
+          <Button variant="outline" size="icon" onClick={handleBack} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
         <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
-          {/* Controls bar */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            {/* Gauntlet button — desktop only */}
-            {!isMobile && (
+          {/* Controls bar — desktop keeps full bar, mobile collapses */}
+          {!isMobile && (
+            <div className="flex items-center gap-2 mb-1.5">
+              <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"
@@ -686,52 +693,54 @@ export default function SwipePreset() {
               >
                 <Sword className="h-4 w-4" fill="currentColor" />
               </Button>
-            )}
-            <div className="flex-1 sm:relative flex items-center justify-center">
-              <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none sm:static sm:translate-x-0">
+              <div className="flex-1 flex items-center justify-center">
                 <h1 className="text-sm font-bold text-foreground">Who Mogs?</h1>
               </div>
-            </div>
-            <p className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">
-              <Swords className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-primary font-bold">{matchCount}</span>
-            </p>
-            {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
-            {/* Desktop-only controls */}
-            {!isMobile && (
-              <>
+              {showMatchCount && (
+                <p className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">
+                  <Swords className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-primary font-bold">{matchCount}</span>
+                </p>
+              )}
+              {timerEnabled && <SwipeTimer timeLeft={timeLeft} duration={duration} />}
+              {user && (
+                <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+              )}
+              <div className="flex items-center gap-1 shrink-0">
                 {user && (
-                  <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
+                  <SwipeAnimationPicker
+                    currentAnimation={swipeAnimation}
+                    onSelect={(id) => setSwipeAnimation(id)}
+                    isPro={isPro}
+                  />
                 )}
-                <div className="flex items-center gap-1 shrink-0">
-                  {user && (
-                    <SwipeAnimationPicker
-                      currentAnimation={swipeAnimation}
-                      onSelect={(id) => setSwipeAnimation(id)}
-                      isPro={isPro}
-                    />
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={capture}
-                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    title="Save snapshot"
-                  >
-                    <Camera className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={capture}
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  title="Save snapshot"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+                <Link to={`/leaderboard/${leagueId}`}>
+                  <Button variant="outline" size="icon" className="h-8 w-8">
+                    <Trophy className="h-3.5 w-3.5" />
                   </Button>
-                  <Link to={`/leaderboard/${leagueId}`}>
-                    <Button variant="outline" size="icon" className="h-8 w-8">
-                      <Trophy className="h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile: minimal top area with timer only */}
+          {isMobile && timerEnabled && (
+            <div className="flex items-center justify-end mb-1">
+              <SwipeTimer timeLeft={timeLeft} duration={duration} />
+            </div>
+          )}
 
           {gauntletMode ? (
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className={`flex items-center justify-center gap-2 ${isMobile ? 'mb-1' : 'mb-2'}`}>
               <Sword className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-bold text-primary">Gauntlet</span>
               {gauntletStreak > 0 && (
@@ -741,7 +750,7 @@ export default function SwipePreset() {
               )}
             </div>
           ) : (
-            <Progress value={progress} className="mb-2 h-1" />
+            showSwipeProgress && <Progress value={progress} className={`${isMobile ? 'mb-1' : 'mb-2'} h-1`} />
           )}
 
           {/* Matchup area */}
