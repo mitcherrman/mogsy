@@ -226,23 +226,21 @@ export default function AdminPlay() {
   };
 
   const toggleVisibility = (type: "topLevel" | "category" | "league", key: string) => {
-    if (type === "topLevel") {
-      setConfig(prev => ({
-        ...prev,
-        topLevel: prev.topLevel.map(t => t.key === key ? { ...t, hidden: !t.hidden } : t),
-      }));
-    } else if (type === "category") {
-      setConfig(prev => ({
-        ...prev,
-        categories: prev.categories.map(c => c.key === key ? { ...c, hidden: !c.hidden } : c),
-      }));
-    } else {
-      setConfig(prev => ({
-        ...prev,
-        leagues: prev.leagues.map(l => l.id === key ? { ...l, hidden: !l.hidden } : l),
-      }));
-    }
-    hasUnsavedChanges.current = true;
+    setConfig(prev => {
+      let next: typeof prev;
+      if (type === "topLevel") {
+        next = { ...prev, topLevel: prev.topLevel.map(t => t.key === key ? { ...t, hidden: !t.hidden } : t) };
+      } else if (type === "category") {
+        next = { ...prev, categories: prev.categories.map(c => c.key === key ? { ...c, hidden: !c.hidden } : c) };
+      } else {
+        next = { ...prev, leagues: prev.leagues.map(l => l.id === key ? { ...l, hidden: !l.hidden } : l) };
+      }
+      // Auto-publish visibility changes so they take effect immediately on the Play tab
+      const ts = new Date().toISOString();
+      supabase.from("play_layout_config").upsert({ id: "published", config: next as any, updated_at: ts }).then(() => {});
+      supabase.from("play_layout_config").upsert({ id: "draft", config: next as any, updated_at: ts }).then(() => {});
+      return next;
+    });
   };
 
   const handleSaveDraft = async () => {
