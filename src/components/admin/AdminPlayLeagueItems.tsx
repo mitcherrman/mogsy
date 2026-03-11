@@ -327,9 +327,12 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               return (
                 <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : isPreview ? "border-primary border-2" : "border-border"}`}>
                   <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
-                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 flex-wrap">
                     <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
                       <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setPositioningImage(img)} title="Position & Zoom">
+                      <Move className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
