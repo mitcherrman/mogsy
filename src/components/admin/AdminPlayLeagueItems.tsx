@@ -389,7 +389,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Horizontal Offset</label>
                       <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.max(-50, v - 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.max(-200, v - 1))}>
                           <ChevronLeft className="h-3 w-3" />
                         </Button>
                         <Input
