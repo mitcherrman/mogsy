@@ -353,9 +353,9 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Scale</label>
                       <Input
-                        type="number" min={0.1} max={6} step={0.05}
+                        type="number" min={0.1} max={15} step={0.05}
                         value={tiScale.toFixed(2)}
-                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.1, Math.min(6, n))); }}
+                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.1, Math.min(15, n))); }}
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
