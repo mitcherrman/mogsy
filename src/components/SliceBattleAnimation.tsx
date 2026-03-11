@@ -194,7 +194,7 @@ export default function SliceBattleAnimation({ winnerSide, items, onComplete }: 
                       ease: phase === "done" ? "easeIn" : [0.22, 1, 0.36, 1],
                     }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
                   </motion.div>
 
                   {/* Bottom half */}
