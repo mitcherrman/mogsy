@@ -642,7 +642,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                   <div className={`flex flex-col rounded-2xl border border-border bg-card max-w-[320px] mx-auto ${selectedItem.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
                     <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden relative">
                       {cardPreviewImage && (
-                        <img src={cardPreviewImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" aria-hidden="true" />
+                        <img src={cardPreviewImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" aria-hidden="true" />
                       )}
                       {cardPreviewImage ? (
                         <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-contain relative z-10" style={imgStyle} />
