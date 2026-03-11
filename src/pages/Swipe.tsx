@@ -573,17 +573,29 @@ export default function Swipe() {
                 {/* Right / Bottom card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[1]} side="right" onChoose={() => handleChoose(1)} />
-                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} relative z-20`}>
-                    <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
-                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-                        <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
-                        <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
-                      </span>
+                  {isMobile ? (
+                    <div className="px-1.5 py-0.5 relative z-20">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="text-xs font-extrabold text-foreground truncate">{pair[1].displayName}</h3>
+                        <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap shrink-0 ${sliceWinner === null ? "invisible" : ""}`}>
+                          <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
+                          <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className={`flex justify-center mt-0.5 ${sliceWinner === null ? "invisible" : ""}`}>
-                      <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
+                  ) : (
+                    <div className="px-2 py-1.5 relative z-20">
+                      <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
+                        <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
+                          <span className="font-semibold text-primary">{localElos.get(pair[1].id) ?? 1200}</span>
+                          <span className="text-muted-foreground/70">#{localRankMap.get(pair[1].id)}</span>
+                        </span>
+                      </div>
+                      <div className={`flex justify-center mt-0.5 ${sliceWinner === null ? "invisible" : ""}`}>
+                        <EloChangeIndicator change={eloChanges.get(pair[1].id) ?? null} globalDirection={globalDirections.get(pair[1].id)} />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Card animation overlay */}
