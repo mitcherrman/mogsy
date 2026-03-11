@@ -338,7 +338,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                       style={{
                         transform: tiScale !== 1 ? `scale(${tiScale})` : undefined,
                         marginTop: `${tiOffsetY}px`,
-                        marginLeft: tiOffsetX !== 0 ? `${tiOffsetX}px` : undefined,
+                        marginLeft: `${tiOffsetX + 50}px`,
                         maxHeight: tiMaxHeight > 0 ? `${tiMaxHeight}px` : undefined,
                         maxWidth: '75%',
                       }}

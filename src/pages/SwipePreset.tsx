@@ -56,7 +56,7 @@ function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSPrope
   return {
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
-    marginLeft: offsetX !== 0 ? `${offsetX}px` : undefined,
+    marginLeft: `${offsetX + 50}px`,
     maxHeight,
     maxWidth: '75%',
   };
