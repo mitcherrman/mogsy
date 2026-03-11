@@ -60,7 +60,26 @@ function AuraChangeOverlay({ item }: { item: AnimationCardItem }) {
   );
 }
 
-export default function AnimationCardStats({ item }: { item: AnimationCardItem }) {
+export default function AnimationCardStats({ item, compact = false }: { item: AnimationCardItem; compact?: boolean }) {
+  if (compact) {
+    return (
+      <div className="px-1.5 py-0.5 flex-shrink-0 relative z-20">
+        <AuraChangeOverlay item={item} />
+        <div className="flex items-center justify-between gap-1">
+          <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+          {item.eloVisible && (
+            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap shrink-0">
+              <span className="font-semibold text-primary">{item.localElo ?? 1200}</span>
+              {item.rankVisible && item.localRank && (
+                <span className="text-muted-foreground/70">#{item.localRank}</span>
+              )}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
       <AuraChangeOverlay item={item} />
