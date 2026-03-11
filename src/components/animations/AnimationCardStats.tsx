@@ -8,6 +8,9 @@ export interface AnimationCardItem {
   name: string;
   subtitle?: string;
   titleImageUrl?: string;
+  titleImageScale?: number;
+  titleImageOffsetY?: number;
+  titleImageMaxHeight?: number;
   localElo?: number;
   localRank?: number;
   globalElo?: number;
@@ -19,6 +22,19 @@ export interface AnimationCardItem {
   rankNew?: number | null;
   globalDirection?: "up" | "down" | "none";
   showGlobalStats?: boolean;
+}
+
+function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSProperties {
+  const scale = item.titleImageScale ?? 1;
+  const offsetY = item.titleImageOffsetY ?? (compact ? -12 : -16);
+  const maxHeight = item.titleImageMaxHeight && item.titleImageMaxHeight > 0
+    ? `${item.titleImageMaxHeight}px`
+    : undefined;
+  return {
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
+    marginTop: `${offsetY}px`,
+    maxHeight,
+  };
 }
 
 function AuraChangeOverlay({ item }: { item: AnimationCardItem }) {
@@ -68,7 +84,7 @@ export default function AnimationCardStats({ item, compact = false }: { item: An
         <AuraChangeOverlay item={item} />
         <div className="flex items-center justify-between gap-1">
           {item.titleImageUrl ? (
-                    <img src={item.titleImageUrl} alt={item.name} className="max-h-5 w-auto object-contain" draggable={false} />
+                    <img src={item.titleImageUrl} alt={item.name} className="w-auto object-contain" style={getTitleImgStyle(item, true)} draggable={false} />
                   ) : (
                     <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
                   )}
@@ -89,7 +105,7 @@ export default function AnimationCardStats({ item, compact = false }: { item: An
     <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
       <AuraChangeOverlay item={item} />
       {item.titleImageUrl ? (
-        <img src={item.titleImageUrl} alt={item.name} className="max-h-8 md:max-h-12 w-auto object-contain mx-auto" draggable={false} />
+        <img src={item.titleImageUrl} alt={item.name} className="w-auto object-contain mx-auto" style={getTitleImgStyle(item, false)} draggable={false} />
       ) : (
         <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate text-center">{item.name}</h3>
       )}

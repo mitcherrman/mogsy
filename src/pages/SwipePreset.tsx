@@ -40,6 +40,22 @@ interface PresetItem {
   elo: number;
   league_id: string;
   title_image_url?: string | null;
+  title_image_scale?: number;
+  title_image_offset_y?: number;
+  title_image_max_height?: number;
+}
+
+function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSProperties {
+  const scale = item.title_image_scale ?? 1;
+  const offsetY = item.title_image_offset_y ?? (isMobile ? -12 : -16);
+  const maxHeight = item.title_image_max_height && item.title_image_max_height > 0
+    ? `${item.title_image_max_height}px`
+    : undefined;
+  return {
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
+    marginTop: `${offsetY}px`,
+    maxHeight,
+  };
 }
 
 interface ItemImage {
@@ -783,7 +799,7 @@ export default function SwipePreset() {
                   </div>
                   <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} text-center`}>
                     {pair[0].title_image_url ? (
-                      <img src={pair[0].title_image_url} alt={pair[0].name} className="max-h-8 w-auto object-contain mx-auto" draggable={false} />
+                      <img src={pair[0].title_image_url} alt={pair[0].name} className="w-auto object-contain mx-auto" style={getTitleImageStyle(pair[0], isMobile)} draggable={false} />
                     ) : (
                       <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
                     )}
@@ -925,10 +941,10 @@ export default function SwipePreset() {
 
                           {/* Name & stats — always visible, outside animation area */}
                           {isMobile ? (
-                            <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
+                            <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
                               <div className="flex items-center justify-between gap-1">
                 {item.title_image_url ? (
-                                  <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
+                                  <img src={item.title_image_url} alt={item.name} className="w-auto object-contain" style={getTitleImageStyle(item, true)} draggable={false} />
                                 ) : (
                                   <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
                                 )}
@@ -952,12 +968,12 @@ export default function SwipePreset() {
                               </div>
                             </div>
                           ) : (
-                            <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
+                            <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
                               <div className="flex items-center justify-center gap-1">
                                 <div className="flex-1 min-w-0" />
                                 <div className="text-center min-w-0">
                               {item.title_image_url ? (
-                                    <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain" draggable={false} />
+                                    <img src={item.title_image_url} alt={item.name} className="w-auto object-contain" style={getTitleImageStyle(item, false)} draggable={false} />
                                   ) : (
                                     <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
                                   )}
@@ -1022,6 +1038,9 @@ export default function SwipePreset() {
                   name: item.name,
                   subtitle: item.subtitle,
                   titleImageUrl: item.title_image_url || undefined,
+                  titleImageScale: item.title_image_scale,
+                  titleImageOffsetY: item.title_image_offset_y,
+                  titleImageMaxHeight: item.title_image_max_height,
                   localElo: localElos.get(item.id) ?? 1200,
                   localRank: localRankMap.get(item.id),
                   globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
@@ -1191,10 +1210,10 @@ function GauntletCard({
         )}
       </motion.button>
       {isMobile ? (
-        <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
+        <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-between gap-1">
             {item.title_image_url ? (
-              <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
+              <img src={item.title_image_url} alt={item.name} className="w-auto object-contain" style={getTitleImageStyle(item, true)} draggable={false} />
             ) : (
               <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
             )}
@@ -1216,12 +1235,12 @@ function GauntletCard({
           </div>
         </div>
       ) : (
-          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-4' : ''}`}>
+          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-center gap-1">
             <div className="flex-1 min-w-0" />
             <div className="text-center min-w-0">
               {item.title_image_url ? (
-                <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain mx-auto" draggable={false} />
+                <img src={item.title_image_url} alt={item.name} className="w-auto object-contain mx-auto" style={getTitleImageStyle(item, false)} draggable={false} />
               ) : (
                 <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
               )}
