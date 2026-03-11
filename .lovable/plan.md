@@ -1,43 +1,38 @@
-## Percentile-Based Rank System (Implemented)
 
-### Tier Distribution (Compete Leagues Only)
-- **Unranked**: Bottom 60% (0–60th percentile)
-- **Bronze 🥉**: 60th–75th percentile
-- **Silver 🥈**: 75th–90th percentile
-- **Gold 🥇**: 90th–99th percentile
-- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### What Changed
-1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
-2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
-3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
-4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
-5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
-6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
-7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
+# Title Image for Preset Items
 
-### Collections (Preset) Leagues
-Still use absolute Elo-based tiers (unchanged).
+## Overview
+Add a `title_image_url` column to `preset_items`. Admins can upload/paste a title image per item via Admin Play. In the swipe game, if a title image exists, it replaces the text name and is rendered as an image that overflows/bleeds upward into the card photo area.
 
-## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
+## Database
+- Add `title_image_url text` (nullable) to `preset_items`
 
-### Changes Made
+## Admin UI (`AdminPlayLeagueItems.tsx`)
+In the item images detail view (when `selectedItem` is set), add a new "Title Image" section above the existing "Add Image" section:
+- Show current title image thumbnail if set, with a remove button
+- Input field to paste a URL + "Add" button
+- Upload button (reuse existing upload pattern to `profile-photos` bucket under `preset-items/{id}/title-{timestamp}.{ext}`)
+- When set, save to `preset_items.title_image_url`
 
-1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
+## Swipe Game Display (`SwipePreset.tsx`)
+Where item name is rendered (both mobile and desktop stats areas), check for `title_image_url`:
+- If present, render an `<img>` instead of the `<h3>` text
+- The image container uses `overflow-visible` and negative top margin (e.g. `-mt-3`) so it bleeds upward into the card photo area
+- Image is sized to fit the stats bar width with `max-h-10` (mobile) / `max-h-14` (desktop), `object-contain`, and `w-auto`
+- The parent stats container gets `overflow-visible` and `relative z-30` so the title image renders on top of the card
 
-2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
+## Swipe.tsx (user leagues)
+No changes needed — user leagues don't have preset items with title images.
 
-3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
+## AnimationCardStats.tsx
+Accept optional `titleImageUrl` prop. If present in compact mode, show `<img>` instead of the name text with the same overflow treatment.
 
-4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
+## Files changed
+| File | Changes |
+|------|---------|
+| DB migration | `ALTER TABLE preset_items ADD COLUMN title_image_url text` |
+| `AdminPlayLeagueItems.tsx` | Title image upload/URL section in item detail view |
+| `SwipePreset.tsx` | Render title image instead of name, with overflow bleed |
+| `AnimationCardStats.tsx` | Optional `titleImageUrl` prop |
 
-5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
-
-6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
-
-### Files Changed
-- `src/pages/SwipePreset.tsx`
-- `src/pages/Swipe.tsx`
-- `src/components/MatchupCapture.tsx`
-- `src/components/admin/AdminSettings.tsx`
-- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
