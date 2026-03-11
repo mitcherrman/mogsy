@@ -80,7 +80,7 @@ export default function BurnAnimation({ winnerSide, items, onComplete }: Props) 
                     }
                     transition={{ duration: phase === "glow" ? 0.2 : 0.5, ease: "easeOut" }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   <motion.div

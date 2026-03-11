@@ -95,7 +95,7 @@ export default function ChopAnimation({ winnerSide, items, onComplete }: Props) 
                     }
                     transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {/* CHOPPED stamp */}
