@@ -1187,9 +1187,13 @@ function GauntletCard({
         )}
       </motion.button>
       {isMobile ? (
-        <div className="px-1.5 py-0.5 flex-shrink-0 relative z-20">
+        <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
           <div className="flex items-center justify-between gap-1">
-            <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+            {item.title_image_url ? (
+              <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
+            ) : (
+              <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
+            )}
             <div className="flex items-center gap-1 shrink-0">
               <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap ${statsHidden ? "invisible" : ""}`}>
                 <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
