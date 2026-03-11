@@ -7,6 +7,7 @@ export interface AnimationCardItem {
   imageStyle?: React.CSSProperties;
   name: string;
   subtitle?: string;
+  titleImageUrl?: string;
   localElo?: number;
   localRank?: number;
   globalElo?: number;
