@@ -165,6 +165,27 @@ export default function AdminSettings() {
           checked={settings.show_swipe_progress}
           onChange={() => toggleSetting("show_swipe_progress", "show_swipe_progress")}
         />
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div className="flex-1 mr-4">
+            <Label className="text-sm font-medium flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Card Background Opacity</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">Opacity of the blurred background image on swipe cards ({settings.card_bg_opacity}%)</p>
+          </div>
+          <div className="flex items-center gap-3 min-w-[180px]">
+            <Slider
+              value={[settings.card_bg_opacity]}
+              onValueChange={([v]) => setSettings(s => ({ ...s, card_bg_opacity: v }))}
+              min={0}
+              max={100}
+              step={5}
+              className="flex-1"
+            />
+            <Button size="sm" variant="outline" disabled={saving} onClick={async () => {
+              setSaving(true);
+              await updateSetting("card_bg_opacity", { opacity: settings.card_bg_opacity });
+              setSaving(false);
+            }}>Save</Button>
+          </div>
+        </div>
       </div>
 
       {/* Swipe Timer */}
