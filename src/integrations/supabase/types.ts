@@ -1528,6 +1528,7 @@ export type Database = {
           name: string
           subtitle: string
           title_image_max_height: number
+          title_image_offset_x: number
           title_image_offset_y: number
           title_image_scale: number
           title_image_url: string | null
@@ -1542,6 +1543,7 @@ export type Database = {
           name: string
           subtitle?: string
           title_image_max_height?: number
+          title_image_offset_x?: number
           title_image_offset_y?: number
           title_image_scale?: number
           title_image_url?: string | null
@@ -1556,6 +1558,7 @@ export type Database = {
           name?: string
           subtitle?: string
           title_image_max_height?: number
+          title_image_offset_x?: number
           title_image_offset_y?: number
           title_image_scale?: number
           title_image_url?: string | null
