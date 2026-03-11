@@ -154,12 +154,13 @@ export default function SwipePreset() {
 
   // Fetch swipe UI settings
   useEffect(() => {
-    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress"]).then(({ data }) => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress", "card_bg_opacity"]).then(({ data }) => {
       if (data) {
         for (const row of data) {
           const val = row.value as any;
           if (row.key === "show_match_count") setShowMatchCount(val?.enabled ?? true);
           if (row.key === "show_swipe_progress") setShowSwipeProgress(val?.enabled ?? true);
+          if (row.key === "card_bg_opacity") setCardBgOpacity(val?.opacity ?? 20);
         }
       }
     });
