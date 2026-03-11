@@ -1,32 +1,43 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-# Title Image Bleed Over Card Edges
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-## What
-Make title images overflow and visually bleed over the card's borders (left, bottom, right), appearing on top of everything — exactly like the admin preview already does naturally with CSS overflow.
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
 
-## Current State
-The card container already sets `overflow-visible` when a title image exists, and the stats bar div also has `overflow-visible`. The title image positioning with negative offsets and scale should already cause visual bleed. The issue is likely that:
-1. The title image `<img>` needs a higher z-index to render **on top of** the card border/theme overlay
-2. The `position: relative` with a high z-index on the title image will make it visually stack above surrounding elements
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
 
-## Changes
+### Changes Made
 
-### `SwipePreset.tsx` — Title image `<img>` styling
-Add `position: 'relative'` and `zIndex: 30` to the `getTitleImageStyle` helper so the title image renders above the card border, theme overlay, and adjacent elements. This single change applies to both mobile and desktop, and to all title image instances since they all use this helper.
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
 
-```tsx
-// In getTitleImageStyle, add to returned style:
-position: 'relative',
-zIndex: 30,
-```
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
 
-### `AnimationCardStats.tsx` — Same for animation overlays
-Add the same `position: 'relative'` and `zIndex: 30` to `getTitleImgStyle` so title images bleed during animations too.
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
 
-### Files
-| File | Change |
-|------|--------|
-| `SwipePreset.tsx` | Add position/zIndex to `getTitleImageStyle` |
-| `AnimationCardStats.tsx` | Add position/zIndex to `getTitleImgStyle` |
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
 
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
+
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
+
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
