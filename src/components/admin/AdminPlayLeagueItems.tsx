@@ -445,6 +445,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                 <Button size="sm" variant="outline" onClick={() => {
                   setTiScale(selectedItem.title_image_scale ?? 1);
                   setTiOffsetY(selectedItem.title_image_offset_y ?? 0);
+                  setTiOffsetX(selectedItem.title_image_offset_x ?? 0);
                   setTiMaxHeight(selectedItem.title_image_max_height ?? 0);
                   setAdjustingTitleImage(true);
                 }} className="gap-1">
