@@ -77,7 +77,7 @@ export default function ImagePositionEditor({
       <p className="text-[10px] text-muted-foreground">Click/drag to set focal point. Use sliders or type values for precise control.</p>
 
       {/* Live preview */}
-      <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[240px] mx-auto">
+      <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[320px] mx-auto">
         <div
           ref={containerRef}
           className="w-full aspect-[5/4] overflow-hidden relative cursor-crosshair select-none bg-muted/30"
