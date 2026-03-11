@@ -910,7 +910,7 @@ export default function SwipePreset() {
                           </motion.button>
 
                           {/* Name & stats — always visible, outside animation area */}
-                          <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
+                          <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} flex-shrink-0 relative z-20`}>
                             <div className="flex items-center justify-center gap-1">
                               <div className="flex-1 min-w-0" />
                               <div className="text-center min-w-0">
