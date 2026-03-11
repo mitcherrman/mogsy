@@ -115,6 +115,14 @@ export default function SwipePreset() {
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
 
+  // Lock scroll on mobile to prevent any scrolling past game area
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isMobile]);
+
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
@@ -667,7 +675,7 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0 pb-4' : 'px-3 py-2 md:px-6 md:py-4'} flex flex-col relative`}>
+      <div className={`${isMobile ? 'h-[calc(100dvh-7.5rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0' : 'px-3 py-2 md:px-6 md:py-4'} flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
 
         {/* Floating back button on mobile */}
@@ -1078,11 +1086,13 @@ export default function SwipePreset() {
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
-            {gauntletMode
-              ? `Tap to choose · Winner stays · ${matchCount} votes`
-              : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
-          </p>
+          {!isMobile && (
+            <p className="text-center text-[10px] text-muted-foreground mt-0.5">
+              {gauntletMode
+                ? `Tap to choose · Winner stays · ${matchCount} votes`
+                : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
+            </p>
+          )}
 
           {!isMobile && <ScrollToCommentsHint />}
 

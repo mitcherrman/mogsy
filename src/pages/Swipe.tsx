@@ -84,6 +84,14 @@ export default function Swipe() {
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [showMatchCount, setShowMatchCount] = useState(true);
 
+  // Lock scroll on mobile to prevent any scrolling past game area
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isMobile]);
+
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
@@ -403,7 +411,7 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0 pb-4' : 'px-3 py-3'} flex flex-col relative`}>
+      <div className={`${isMobile ? 'h-[calc(100dvh-7.5rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} ${isMobile ? 'px-3 py-0' : 'px-3 py-3'} flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
 
         {/* Floating back button on mobile */}
@@ -673,11 +681,13 @@ export default function Swipe() {
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
-            {gauntletMode
-              ? "Tap to choose · Winner stays on screen"
-              : "Tap the profile you prefer · Aura updates instantly"}
-          </p>
+          {!isMobile && (
+            <p className="text-center text-[10px] text-muted-foreground mt-0.5">
+              {gauntletMode
+                ? "Tap to choose · Winner stays on screen"
+                : "Tap the profile you prefer · Aura updates instantly"}
+            </p>
+          )}
 
           {!isMobile && <ScrollToCommentsHint />}
 
