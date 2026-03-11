@@ -109,9 +109,9 @@ export default function ImagePositionEditor({
           <span className="text-xs font-mono text-foreground">{zoom.toFixed(1)}×</span>
         </div>
         <Slider
-          min={1}
+          min={0.3}
           max={3}
-          step={0.1}
+          step={0.05}
           value={[zoom]}
           onValueChange={([v]) => setZoom(v)}
         />
