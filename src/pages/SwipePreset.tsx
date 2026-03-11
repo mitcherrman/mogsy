@@ -790,6 +790,7 @@ export default function SwipePreset() {
                         globalDirections={globalDirections}
                         rankChanges={rankChanges}
                         getDisplayImage={getDisplayImage}
+                        getImageStyle={getImageStyle}
                         handleChoose={handleChoose}
                         handleReportImage={handleReportImage}
                       />
