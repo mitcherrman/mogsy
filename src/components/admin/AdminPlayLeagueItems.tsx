@@ -19,6 +19,7 @@ interface PresetItem {
   image_url: string | null;
   elo: number;
   league_id: string;
+  title_image_url?: string | null;
 }
 
 interface ItemImage {
