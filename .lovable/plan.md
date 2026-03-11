@@ -18,3 +18,26 @@
 
 ### Collections (Preset) Leagues
 Still use absolute Elo-based tiers (unchanged).
+
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
+
+### Changes Made
+
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
+
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
+
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
+
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
+
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
+
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
+
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
