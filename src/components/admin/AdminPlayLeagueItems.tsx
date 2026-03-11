@@ -639,18 +639,36 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               return (
                 <>
                   {/* Simulated card */}
-                  <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[320px] mx-auto">
-                    <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden">
+                  <div className={`flex flex-col rounded-2xl border border-border bg-card max-w-[320px] mx-auto ${selectedItem.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
+                    <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden relative">
                       {cardPreviewImage ? (
                         <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-contain" style={imgStyle} />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
                       )}
                     </div>
-                    <div className="px-2 py-1.5 flex-shrink-0">
+                    <div className={`px-2 py-1.5 flex-shrink-0 ${selectedItem.title_image_url ? 'overflow-visible' : ''}`}>
                       <div className="text-center">
-                        <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
-                        {selectedItem.subtitle && <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>}
+                        {selectedItem.title_image_url ? (
+                          <img
+                            src={selectedItem.title_image_url}
+                            alt={selectedItem.name}
+                            className="w-auto object-contain mx-auto"
+                            draggable={false}
+                            style={{
+                              transform: (selectedItem.title_image_scale ?? 1) !== 1 ? `scale(${selectedItem.title_image_scale})` : undefined,
+                              marginTop: `${selectedItem.title_image_offset_y ?? 0}px`,
+                              marginLeft: (selectedItem.title_image_offset_x ?? 0) !== 0 ? `${selectedItem.title_image_offset_x}px` : undefined,
+                              maxHeight: (selectedItem.title_image_max_height ?? 0) > 0 ? `${selectedItem.title_image_max_height}px` : undefined,
+                              maxWidth: '75%',
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
+                            {selectedItem.subtitle && <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>}
+                          </>
+                        )}
                       </div>
                       <div className="flex items-center justify-center gap-3 mt-0.5">
                         <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
