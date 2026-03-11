@@ -115,6 +115,14 @@ export default function SwipePreset() {
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
 
+  // Lock scroll on mobile to prevent any scrolling past game area
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isMobile]);
+
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
