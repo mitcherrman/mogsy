@@ -34,6 +34,7 @@ function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSP
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
     maxHeight,
+    maxWidth: '75%',
   };
 }
 
