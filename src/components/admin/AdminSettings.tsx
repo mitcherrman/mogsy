@@ -67,6 +67,7 @@ export default function AdminSettings() {
               case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Pro!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium themes, animations, and more."; break;
               case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
               case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
+              case "card_bg_opacity": s.card_bg_opacity = val?.opacity ?? 20; break;
             }
           }
           setSettings(s);
