@@ -952,8 +952,12 @@ export default function SwipePreset() {
                               <div className="flex items-center justify-center gap-1">
                                 <div className="flex-1 min-w-0" />
                                 <div className="text-center min-w-0">
-                                  <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                                  {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+                              {item.title_image_url ? (
+                                    <img src={item.title_image_url} alt={item.name} className="max-h-10 md:max-h-14 w-auto object-contain" draggable={false} />
+                                  ) : (
+                                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
+                                  )}
+                                  {!item.title_image_url && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
                                 </div>
                                 <div className="flex-1 min-w-0 flex justify-end">
                                   {hasMultipleImages && (
