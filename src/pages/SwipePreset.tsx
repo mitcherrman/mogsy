@@ -1179,6 +1179,7 @@ function GauntletCard({
   handleChoose: (idx: 0 | 1) => void;
   handleReportImage: (item: PresetItem) => void;
   isMobile: boolean;
+  cardBgOpacity: number;
 }) {
   const displayImage = getDisplayImage(item);
   const rank = rankMap.get(item.id);
