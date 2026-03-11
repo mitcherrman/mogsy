@@ -38,6 +38,8 @@ function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSP
     marginLeft: `${offsetX + 50}px`,
     maxHeight,
     maxWidth: '75%',
+    position: 'relative' as const,
+    zIndex: 30,
   };
 }
 

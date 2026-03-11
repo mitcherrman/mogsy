@@ -59,6 +59,8 @@ function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSPrope
     marginLeft: `${offsetX + 50}px`,
     maxHeight,
     maxWidth: '75%',
+    position: 'relative' as const,
+    zIndex: 30,
   };
 }
 
