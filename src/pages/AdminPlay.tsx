@@ -57,6 +57,7 @@ export default function AdminPlay() {
   const [newPresetName, setNewPresetName] = useState("");
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   const [isModerator, setIsModerator] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -472,18 +473,18 @@ export default function AdminPlay() {
     );
   }
 
-  const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order);
-  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order);
+  const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order).filter(i => showHidden || !i.hidden);
+  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order).filter(c => showHidden || !c.hidden);
 
   const getLeaguesForCategory = (catKey: string) => {
     const catLeagueIds = new Set(leagues.filter(l => l.category === catKey).map(l => l.id));
     return config.leagues
-      .filter(l => catLeagueIds.has(l.id))
+      .filter(l => catLeagueIds.has(l.id) && (showHidden || !l.hidden))
       .sort((a, b) => a.order - b.order);
   };
 
   const userLeagueIds = new Set(leagues.filter(l => l.type === "user").map(l => l.id));
-  const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id)).sort((a, b) => a.order - b.order);
+  const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id) && (showHidden || !l.hidden)).sort((a, b) => a.order - b.order);
 
   return (
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
@@ -545,6 +546,19 @@ export default function AdminPlay() {
           </Button>
           <Button size="sm" onClick={handlePublish} disabled={saving} className="gap-1.5 text-xs font-bold">
             Confirm & Publish
+          </Button>
+        </div>
+
+        {/* Show/Hide hidden toggle */}
+        <div className="flex justify-end mb-2">
+          <Button
+            size="sm"
+            variant={showHidden ? "default" : "outline"}
+            className="gap-1.5 text-xs"
+            onClick={() => setShowHidden(!showHidden)}
+          >
+            {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showHidden ? "Hide hidden" : "Show hidden"}
           </Button>
         </div>
 
