@@ -80,6 +80,7 @@ export default function Swipe() {
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const [readyDelay, setReadyDelay] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
 
   useEffect(() => {

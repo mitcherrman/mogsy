@@ -111,6 +111,7 @@ export default function SwipePreset() {
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [readyDelay, setReadyDelay] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
