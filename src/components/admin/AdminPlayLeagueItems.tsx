@@ -517,29 +517,55 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           const imgCount = imageCountMap.get(item.id) || 0;
           const displayUrl = item.image_url || firstImageMap.get(item.id);
           return (
-            <button
+            <div
               key={item.id}
-              onClick={() => openItemImages(item)}
-              className="flex items-center gap-3 w-full text-left rounded-xl border border-border bg-card p-3 hover:bg-accent/30 transition-colors"
+              className="flex items-center gap-3 w-full rounded-xl border border-border bg-card p-3 hover:bg-accent/30 transition-colors"
             >
-              <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden shrink-0">
-                {displayUrl ? (
-                  <img src={displayUrl} alt={item.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-xs font-bold text-muted-foreground">{item.name.charAt(0)}</div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
-                    <ImageIcon className="h-2.5 w-2.5 mr-0.5" /> {imgCount}
-                  </Badge>
+              <button
+                onClick={() => openItemImages(item)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+              >
+                <div className="h-10 w-10 rounded-lg bg-secondary overflow-hidden shrink-0">
+                  {displayUrl ? (
+                    <img src={displayUrl} alt={item.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xs font-bold text-muted-foreground">{item.name.charAt(0)}</div>
+                  )}
                 </div>
-                {item.subtitle && <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>}
-              </div>
-              <span className="text-xs text-muted-foreground shrink-0">Elo {item.elo}</span>
-            </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                      <ImageIcon className="h-2.5 w-2.5 mr-0.5" /> {imgCount}
+                    </Badge>
+                  </div>
+                  {item.subtitle && <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>}
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">Elo {item.elo}</span>
+              </button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="icon" variant="ghost" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete "{item.name}"?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently delete this item and all its images. This cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+                      const { error } = await supabase.from("preset_items").delete().eq("id", item.id);
+                      if (error) { toast.error(error.message); return; }
+                      toast.success(`"${item.name}" deleted`);
+                      loadItems();
+                    }}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           );
         })}
       </div>
