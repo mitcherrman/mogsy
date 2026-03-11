@@ -1017,6 +1017,7 @@ export default function SwipePreset() {
                   imageStyle: getImageStyle(item),
                   name: item.name,
                   subtitle: item.subtitle,
+                  titleImageUrl: item.title_image_url || undefined,
                   localElo: localElos.get(item.id) ?? 1200,
                   localRank: localRankMap.get(item.id),
                   globalElo: items.find(i => i.id === item.id)?.elo ?? item.elo,
