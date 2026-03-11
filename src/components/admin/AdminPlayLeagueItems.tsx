@@ -28,6 +28,9 @@ interface ItemImage {
   is_hidden: boolean;
   report_count: number;
   sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
 }
 
 interface Props {
