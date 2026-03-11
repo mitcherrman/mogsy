@@ -367,7 +367,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Vertical Offset</label>
                       <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.max(-100, v - 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.max(-600, v - 1))}>
                           <ChevronDown className="h-3 w-3" />
                         </Button>
                         <Input
