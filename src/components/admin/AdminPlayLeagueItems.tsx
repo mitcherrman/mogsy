@@ -314,18 +314,114 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Title Image</h5>
           <p className="text-[10px] text-muted-foreground">Replaces the text name on cards. Bleeds over the card image edges.</p>
           {selectedItem.title_image_url ? (
-            <div className="flex items-center gap-3">
-              <img src={selectedItem.title_image_url} alt="Title" className="max-h-12 w-auto object-contain rounded border border-border bg-muted p-1" />
-              <Button size="sm" variant="destructive" onClick={async () => {
-                const { error } = await supabase.from("preset_items").update({ title_image_url: null } as any).eq("id", selectedItem.id);
-                if (error) { toast.error(error.message); return; }
-                setSelectedItem({ ...selectedItem, title_image_url: null });
-                setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: null } : i));
-                toast.success("Title image removed");
-              }}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-              </Button>
-            </div>
+            adjustingTitleImage ? (
+              /* ── Title Image Adjust Editor ── */
+              <div className="space-y-4">
+                {/* Live card preview */}
+                <div className="flex flex-col rounded-2xl border border-border bg-card overflow-visible max-w-[280px] mx-auto">
+                  <div className="w-full aspect-[5/4] overflow-hidden relative bg-muted/30">
+                    {selectedItem.image_url ? (
+                      <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-contain" draggable={false} />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
+                    )}
+                  </div>
+                  <div className="px-2 py-1.5 text-center overflow-visible relative z-20">
+                    <img
+                      src={selectedItem.title_image_url}
+                      alt={selectedItem.name}
+                      className="w-auto object-contain mx-auto"
+                      draggable={false}
+                      style={{
+                        transform: tiScale !== 1 ? `scale(${tiScale})` : undefined,
+                        marginTop: `${tiOffsetY}px`,
+                        maxHeight: tiMaxHeight > 0 ? `${tiMaxHeight}px` : undefined,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Scale</label>
+                      <Input
+                        type="number" min={0.5} max={3} step={0.05}
+                        value={tiScale.toFixed(2)}
+                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.5, Math.min(3, n))); }}
+                        className="w-16 h-6 text-[10px] text-right px-1 font-mono"
+                      />
+                    </div>
+                    <Slider min={0.5} max={3} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Vertical Offset</label>
+                      <Input
+                        type="number" min={-50} max={20}
+                        value={tiOffsetY}
+                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-50, Math.min(20, n))); }}
+                        className="w-16 h-6 text-[10px] text-right px-1 font-mono"
+                      />
+                    </div>
+                    <Slider min={-50} max={20} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Height (0 = auto)</label>
+                      <Input
+                        type="number" min={0} max={120}
+                        value={tiMaxHeight}
+                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(120, n))); }}
+                        className="w-16 h-6 text-[10px] text-right px-1 font-mono"
+                      />
+                    </div>
+                    <Slider min={0} max={120} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setAdjustingTitleImage(false)}>Cancel</Button>
+                  <Button className="flex-1" onClick={async () => {
+                    const { error } = await supabase.from("preset_items").update({
+                      title_image_scale: tiScale,
+                      title_image_offset_y: tiOffsetY,
+                      title_image_max_height: tiMaxHeight,
+                    } as any).eq("id", selectedItem.id);
+                    if (error) { toast.error(error.message); return; }
+                    const updated = { ...selectedItem, title_image_scale: tiScale, title_image_offset_y: tiOffsetY, title_image_max_height: tiMaxHeight };
+                    setSelectedItem(updated);
+                    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updated } : i));
+                    setAdjustingTitleImage(false);
+                    toast.success("Title image sizing saved");
+                  }}>Save</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <img src={selectedItem.title_image_url} alt="Title" className="max-h-12 w-auto object-contain rounded border border-border bg-muted p-1" />
+                <Button size="sm" variant="outline" onClick={() => {
+                  setTiScale(selectedItem.title_image_scale ?? 1);
+                  setTiOffsetY(selectedItem.title_image_offset_y ?? 0);
+                  setTiMaxHeight(selectedItem.title_image_max_height ?? 0);
+                  setAdjustingTitleImage(true);
+                }} className="gap-1">
+                  <Maximize2 className="h-3.5 w-3.5" /> Adjust
+                </Button>
+                <Button size="sm" variant="destructive" onClick={async () => {
+                  const { error } = await supabase.from("preset_items").update({ title_image_url: null } as any).eq("id", selectedItem.id);
+                  if (error) { toast.error(error.message); return; }
+                  setSelectedItem({ ...selectedItem, title_image_url: null });
+                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: null } : i));
+                  toast.success("Title image removed");
+                }}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                </Button>
+              </div>
+            )
           ) : (
             <div className="space-y-2">
               <div className="flex gap-2">
