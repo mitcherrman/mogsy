@@ -827,6 +827,7 @@ export default function SwipePreset() {
                         getImageStyle={getImageStyle}
                         handleChoose={handleChoose}
                         handleReportImage={handleReportImage}
+                        isMobile={isMobile}
                       />
                     );
                   })}
