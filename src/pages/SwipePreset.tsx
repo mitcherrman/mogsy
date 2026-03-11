@@ -799,7 +799,7 @@ export default function SwipePreset() {
             <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile}>
               {gauntletMode ? (
                 /* Gauntlet: render champion stable, only challenger animates */
-                <div className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1">
+                <div className={`flex flex-col portrait:flex-col landscape:flex-row md:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} landscape:gap-4 md:gap-5 lg:gap-8 flex-1`}>
                   {pair.map((item, idx) => {
                     const isChampion = gauntletChampion && item.id === gauntletChampion.id;
                     return (
