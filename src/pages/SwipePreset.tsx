@@ -250,6 +250,22 @@ export default function SwipePreset() {
     return item.image_url;
   };
 
+  const getImageStyle = (item: PresetItem): React.CSSProperties => {
+    const images = itemImages.get(item.id);
+    if (images && images.length > 0) {
+      const idx = currentImageIndex.get(item.id) || 0;
+      const img = images[idx % images.length];
+      if (img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1) {
+        return {
+          objectPosition: `${img.focal_x}% ${img.focal_y}%`,
+          transform: `scale(${img.zoom})`,
+          transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
+        };
+      }
+    }
+    return {};
+  };
+
   const getCurrentImageId = (item: PresetItem): string | null => {
     const images = itemImages.get(item.id);
     if (images && images.length > 0) {
