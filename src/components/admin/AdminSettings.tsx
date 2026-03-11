@@ -42,6 +42,7 @@ export default function AdminSettings() {
     shop_ad_subtext: "Unlock premium themes, animations, and more.",
     show_match_count: true,
     show_swipe_progress: true,
+    card_bg_opacity: 20,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
