@@ -66,7 +66,7 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
             return (
               <div key={idx} className="flex-1 flex flex-col min-h-0 relative rounded-2xl border border-border bg-card overflow-hidden">
                 <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] relative overflow-hidden">
-                  <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                  <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
 
                   {/* Red overlay + GIF play simultaneously */}
                   {phase === "stab" && (

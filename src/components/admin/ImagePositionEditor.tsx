@@ -89,7 +89,7 @@ export default function ImagePositionEditor({
           <img
             src={imageUrl}
             alt={itemName}
-            className="absolute object-cover pointer-events-none"
+            className="absolute object-contain pointer-events-none"
             draggable={false}
             style={{
               top: `${padTop}%`,

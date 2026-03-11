@@ -82,7 +82,7 @@ export default function SgtDoakesAnimation({ winnerSide, items, onComplete }: Pr
                     }
                     transition={{ duration: 0.5 }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {/* Sgt Doakes walking in from bottom */}

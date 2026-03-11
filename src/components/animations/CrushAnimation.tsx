@@ -84,7 +84,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                       ease: phase === "crush" ? [0.55, 0, 1, 0.45] : "easeOut",
                     }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {(phase === "impact" || phase === "crush") && (
