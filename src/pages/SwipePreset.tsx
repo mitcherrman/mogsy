@@ -1219,7 +1219,7 @@ function GauntletCard({
         <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-between gap-1">
             {item.title_image_url ? (
-              <img src={item.title_image_url} alt={item.name} className="w-auto object-contain" style={getTitleImageStyle(item, true)} draggable={false} />
+              <img src={item.title_image_url} alt={item.name} className="w-auto object-contain cursor-pointer" style={getTitleImageStyle(item, true)} draggable={false} onClick={() => handleChoose(idx as 0 | 1)} />
             ) : (
               <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
             )}
