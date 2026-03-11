@@ -26,7 +26,7 @@ export interface AnimationCardItem {
 
 function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSProperties {
   const scale = item.titleImageScale ?? 1;
-  const offsetY = item.titleImageOffsetY ?? (compact ? -12 : -16);
+  const offsetY = item.titleImageOffsetY ?? 0;
   const maxHeight = item.titleImageMaxHeight && item.titleImageMaxHeight > 0
     ? `${item.titleImageMaxHeight}px`
     : undefined;
@@ -34,6 +34,7 @@ function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSP
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
     maxHeight,
+    maxWidth: '75%',
   };
 }
 

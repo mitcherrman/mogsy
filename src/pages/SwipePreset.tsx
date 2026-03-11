@@ -47,7 +47,7 @@ interface PresetItem {
 
 function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSProperties {
   const scale = item.title_image_scale ?? 1;
-  const offsetY = item.title_image_offset_y ?? (isMobile ? -12 : -16);
+  const offsetY = item.title_image_offset_y ?? 0;
   const maxHeight = item.title_image_max_height && item.title_image_max_height > 0
     ? `${item.title_image_max_height}px`
     : undefined;
@@ -55,6 +55,7 @@ function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSPrope
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
     maxHeight,
+    maxWidth: '75%',
   };
 }
 
