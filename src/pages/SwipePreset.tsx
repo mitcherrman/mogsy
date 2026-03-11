@@ -772,7 +772,7 @@ export default function SwipePreset() {
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
                   </div>
-                  <div className="px-2 py-1.5 text-center">
+                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} text-center`}>
                     <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
                   </div>
                 </div>
