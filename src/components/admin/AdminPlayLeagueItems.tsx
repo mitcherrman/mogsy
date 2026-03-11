@@ -398,7 +398,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                           onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetX(Math.max(-200, Math.min(200, n))); }}
                           className="w-14 h-6 text-[10px] text-right px-1 font-mono"
                         />
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.min(50, v + 1))}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.min(200, v + 1))}>
                           <ChevronRight className="h-3 w-3" />
                         </Button>
                       </div>
