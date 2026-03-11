@@ -1073,7 +1073,7 @@ function GauntletCard({
             : ""
         }`}
       >
-        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
+        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-cover"
               style={getImageStyle(item)}
