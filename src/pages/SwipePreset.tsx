@@ -935,6 +935,7 @@ export default function SwipePreset() {
                 winnerSide={sliceWinner}
                 items={pair ? pair.map(item => ({
                   imageUrl: getDisplayImage(item),
+                  imageStyle: getImageStyle(item),
                   name: item.name,
                   subtitle: item.subtitle,
                   localElo: localElos.get(item.id) ?? 1200,
