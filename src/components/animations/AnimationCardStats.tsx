@@ -10,6 +10,7 @@ export interface AnimationCardItem {
   titleImageUrl?: string;
   titleImageScale?: number;
   titleImageOffsetY?: number;
+  titleImageOffsetX?: number;
   titleImageMaxHeight?: number;
   localElo?: number;
   localRank?: number;
