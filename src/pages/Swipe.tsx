@@ -82,10 +82,22 @@ export default function Swipe() {
   const [readyDelay, setReadyDelay] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
+  const [showMatchCount, setShowMatchCount] = useState(true);
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
+  }, []);
+
+  // Fetch swipe UI settings
+  useEffect(() => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count"]).then(({ data }) => {
+      if (data) {
+        for (const row of data) {
+          if (row.key === "show_match_count") setShowMatchCount((row.value as any)?.enabled ?? true);
+        }
+      }
+    });
   }, []);
 
   const handleTimerTimeout = useCallback(() => {
