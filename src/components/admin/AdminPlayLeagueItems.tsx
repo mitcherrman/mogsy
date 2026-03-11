@@ -359,7 +359,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
-                    <Slider min={0.1} max={6} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
+                    <Slider min={0.1} max={15} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
                   </div>
 
                   {/* Vertical Offset with +/- buttons */}
