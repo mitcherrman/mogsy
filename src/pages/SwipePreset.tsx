@@ -921,7 +921,7 @@ export default function SwipePreset() {
 
                           {/* Name & stats — always visible, outside animation area */}
                           {isMobile ? (
-                            <div className="px-1.5 py-0.5 flex-shrink-0 relative z-20">
+                            <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible -mt-3' : ''}`}>
                               <div className="flex items-center justify-between gap-1">
                 {item.title_image_url ? (
                                   <img src={item.title_image_url} alt={item.name} className="max-h-6 w-auto object-contain" draggable={false} />
