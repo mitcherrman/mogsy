@@ -112,10 +112,25 @@ export default function SwipePreset() {
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [readyDelay, setReadyDelay] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [showMatchCount, setShowMatchCount] = useState(true);
+  const [showSwipeProgress, setShowSwipeProgress] = useState(true);
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
+  }, []);
+
+  // Fetch swipe UI settings
+  useEffect(() => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress"]).then(({ data }) => {
+      if (data) {
+        for (const row of data) {
+          const val = row.value as any;
+          if (row.key === "show_match_count") setShowMatchCount(val?.enabled ?? true);
+          if (row.key === "show_swipe_progress") setShowSwipeProgress(val?.enabled ?? true);
+        }
+      }
+    });
   }, []);
 
   useEffect(() => { preloadSounds(); }, [preloadSounds]);
