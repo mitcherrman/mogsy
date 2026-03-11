@@ -257,8 +257,14 @@ export default function SwipePreset() {
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
       const img = images[idx % images.length];
-      if (img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1) {
+      const hasCustom = img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1 || img.pad_top !== 0 || img.pad_left !== 0;
+      if (hasCustom) {
         return {
+          position: 'absolute' as const,
+          top: `${img.pad_top}%`,
+          left: `${img.pad_left}%`,
+          width: `${100 - img.pad_left}%`,
+          height: `${100 - img.pad_top}%`,
           objectPosition: `${img.focal_x}% ${img.focal_y}%`,
           transform: `scale(${img.zoom})`,
           transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
