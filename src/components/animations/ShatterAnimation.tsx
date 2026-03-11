@@ -114,7 +114,7 @@ export default function ShatterAnimation({ winnerSide, items, onComplete }: Prop
                       } : {}}
                       transition={{ duration: 0.5, delay: f.delay, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <img src={imageUrl} alt={item.name} className="w-full h-full object-contain bg-muted/30" draggable={false} />
+                      <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
                     </motion.div>
                   ))}
                 </div>
