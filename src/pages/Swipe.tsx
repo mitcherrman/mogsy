@@ -84,6 +84,14 @@ export default function Swipe() {
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [showMatchCount, setShowMatchCount] = useState(true);
 
+  // Lock scroll on mobile to prevent any scrolling past game area
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isMobile]);
+
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
     return () => clearTimeout(t);
