@@ -49,7 +49,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                   transition={{ duration: 0.5, delay: 0.1 }}
                 >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden relative">
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
                     {phase !== "idle" && (
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
@@ -84,7 +84,7 @@ export default function CrushAnimation({ winnerSide, items, onComplete }: Props)
                       ease: phase === "crush" ? [0.55, 0, 1, 0.45] : "easeOut",
                     }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-contain" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {(phase === "impact" || phase === "crush") && (

@@ -741,7 +741,7 @@ export default function SwipePreset() {
                 <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
                   <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                     {pair[0].image_url ? (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-cover" style={getImageStyle(pair[0])} />
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain" style={getImageStyle(pair[0])} />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
@@ -854,7 +854,7 @@ export default function SwipePreset() {
                                 <img
                                   src={displayImage}
                                   alt={item.name}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-contain"
                                   style={getImageStyle(item)}
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
@@ -1075,7 +1075,7 @@ function GauntletCard({
       >
         <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
           {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-cover"
+            <img src={displayImage} alt={item.name} className="w-full h-full object-contain"
               style={getImageStyle(item)}
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
             />
