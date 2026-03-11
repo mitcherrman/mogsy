@@ -71,6 +71,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [tiOffsetY, setTiOffsetY] = useState(0);
   const [tiOffsetX, setTiOffsetX] = useState(0);
   const [tiMaxHeight, setTiMaxHeight] = useState(0);
+  const [showHiddenImages, setShowHiddenImages] = useState(false);
 
   useEffect(() => {
     loadItems();
@@ -545,12 +546,25 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
           </div>
         </div>
 
+        {/* Show hidden toggle */}
+        {itemImages.some(i => i.is_hidden) && (
+          <Button
+            size="sm"
+            variant={showHiddenImages ? "default" : "outline"}
+            className="gap-1.5 text-xs"
+            onClick={() => setShowHiddenImages(!showHiddenImages)}
+          >
+            {showHiddenImages ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showHiddenImages ? "Hide hidden" : `Show hidden (${itemImages.filter(i => i.is_hidden).length})`}
+          </Button>
+        )}
+
         {/* Images grid */}
         {itemImages.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">No images yet.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {itemImages.map(img => {
+            {itemImages.filter(img => showHiddenImages || !img.is_hidden).map(img => {
               const isPreview = selectedItem.image_url === img.image_url;
               return (
                 <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : isPreview ? "border-primary border-2" : "border-border"}`}>
