@@ -436,7 +436,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                   <p className="text-[10px] text-muted-foreground text-center mt-2">Mobile portrait uses 5:4 • Desktop/landscape uses 3:4</p>
                   <details className="mt-2">
                     <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">Show desktop (3:4) preview</summary>
-                    <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[240px] mx-auto mt-2">">
+                    <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[240px] mx-auto mt-2">
                       <div className="w-full aspect-[3/4] bg-muted/30 overflow-hidden">
                         {cardPreviewImage ? (
                           <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-contain" style={imgStyle} />
