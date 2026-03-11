@@ -560,7 +560,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                       const { error } = await supabase.from("preset_items").delete().eq("id", item.id);
                       if (error) { toast.error(error.message); return; }
                       toast.success(`"${item.name}" deleted`);
-                      loadItems(leagueId);
+                      loadItems();
                     }}>Delete</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
