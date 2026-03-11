@@ -658,7 +658,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                             style={{
                               transform: (selectedItem.title_image_scale ?? 1) !== 1 ? `scale(${selectedItem.title_image_scale})` : undefined,
                               marginTop: `${selectedItem.title_image_offset_y ?? 0}px`,
-                              marginLeft: (selectedItem.title_image_offset_x ?? 0) !== 0 ? `${selectedItem.title_image_offset_x}px` : undefined,
+                              marginLeft: `${(selectedItem.title_image_offset_x ?? 0) + 50}px`,
                               maxHeight: (selectedItem.title_image_max_height ?? 0) > 0 ? `${selectedItem.title_image_max_height}px` : undefined,
                               maxWidth: '75%',
                             }}
