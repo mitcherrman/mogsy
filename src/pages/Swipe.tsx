@@ -549,9 +549,13 @@ export default function Swipe() {
                   </div>
                 </div>
 
-                {/* VS badge */}
+                {/* VS / Who Mogs? badge */}
                 <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
-                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                  {isMobile ? (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Who Mogs?</span>
+                  ) : (
+                    <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
+                  )}
                 </div>
 
                 {/* Right / Bottom card */}
