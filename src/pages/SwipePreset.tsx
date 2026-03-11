@@ -1109,7 +1109,7 @@ export default function SwipePreset() {
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage,
+  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
@@ -1120,6 +1120,7 @@ function GauntletCard({
   getImageStyle: (item: PresetItem) => React.CSSProperties;
   handleChoose: (idx: 0 | 1) => void;
   handleReportImage: (item: PresetItem) => void;
+  isMobile: boolean;
 }) {
   const displayImage = getDisplayImage(item);
   const rank = rankMap.get(item.id);
