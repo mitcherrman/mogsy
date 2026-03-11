@@ -3,7 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -20,6 +20,8 @@ interface SettingsState {
   shop_ad_type: "pro" | "diamonds";
   shop_ad_headline: string;
   shop_ad_subtext: string;
+  show_match_count: boolean;
+  show_swipe_progress: boolean;
 }
 
 export default function AdminSettings() {
@@ -36,6 +38,8 @@ export default function AdminSettings() {
     shop_ad_type: "pro",
     shop_ad_headline: "Upgrade to Pro!",
     shop_ad_subtext: "Unlock premium themes, animations, and more.",
+    show_match_count: true,
+    show_swipe_progress: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,6 +62,8 @@ export default function AdminSettings() {
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
               case "swipe_timer": s.swipe_timer_enabled = val?.enabled ?? false; s.swipe_timer_duration = val?.duration_seconds ?? 10; break;
               case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Pro!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium themes, animations, and more."; break;
+              case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
+              case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
             }
           }
           setSettings(s);
@@ -136,6 +142,25 @@ export default function AdminSettings() {
             <Button size="sm" variant="outline" disabled={saving} onClick={() => saveNumericSetting("default_diamonds", "default_diamonds")}>Save</Button>
           </div>
         </div>
+      </div>
+
+      {/* Swipe UI */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Eye className="h-3.5 w-3.5" /> Swipe UI
+        </h4>
+        <SettingToggle
+          label="Show Match Count"
+          description="Display the swords icon and match count number during swiping"
+          checked={settings.show_match_count}
+          onChange={() => toggleSetting("show_match_count", "show_match_count")}
+        />
+        <SettingToggle
+          label="Show Swipe Progress Bar"
+          description="Display the progress bar in preset/collection leagues"
+          checked={settings.show_swipe_progress}
+          onChange={() => toggleSetting("show_swipe_progress", "show_swipe_progress")}
+        />
       </div>
 
       {/* Swipe Timer */}
