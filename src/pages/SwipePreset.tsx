@@ -2,9 +2,10 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
 import SwipeAdCard from "@/components/SwipeAdCard";
@@ -110,6 +111,7 @@ export default function SwipePreset() {
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
   const [readyDelay, setReadyDelay] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setReadyDelay(false), 1500);
@@ -650,7 +652,7 @@ export default function SwipePreset() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] px-3 py-2 md:px-6 md:py-4 flex flex-col relative">
+      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} px-3 py-2 md:px-6 md:py-4 flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
         <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
@@ -1012,6 +1014,15 @@ export default function SwipePreset() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCommentsOpen(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Comments"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
@@ -1021,10 +1032,22 @@ export default function SwipePreset() {
               : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
           </p>
 
-          <ScrollToCommentsHint />
+          {!isMobile && <ScrollToCommentsHint />}
 
-          {/* Comments section */}
-          {leagueId && <SwipeComments leagueId={leagueId} />}
+          {/* Comments: drawer on mobile, inline on desktop */}
+          {isMobile && leagueId && (
+            <Drawer open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DrawerContent className="max-h-[75dvh]">
+                <DrawerHeader>
+                  <DrawerTitle>Comments</DrawerTitle>
+                </DrawerHeader>
+                <div className="overflow-y-auto px-4 pb-4">
+                  <SwipeComments leagueId={leagueId} />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          )}
+          {!isMobile && leagueId && <SwipeComments leagueId={leagueId} />}
         </div>
       </div>
     </>

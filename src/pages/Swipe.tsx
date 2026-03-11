@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe, Eye, EyeOff } from "lucide-react";
+import { Trophy, Undo2, Shield, ArrowLeft, Camera, Sword, Swords, Globe, Eye, EyeOff, MessageCircle } from "lucide-react";
 import ProfileCard from "@/components/ProfileCard";
 import SwipeAd from "@/components/SwipeAd";
 import SwipeAdCard from "@/components/SwipeAdCard";
@@ -10,6 +10,7 @@ import type { AdCreative } from "@/components/SwipeAdCard";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import MatchupCapture from "@/components/MatchupCapture";
 import SwipeComments from "@/components/SwipeComments";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +80,7 @@ export default function Swipe() {
   const { rules: animRules } = useLeagueAnimationRules(globalLeagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const [readyDelay, setReadyDelay] = useState(true);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
 
   useEffect(() => {
@@ -389,7 +391,7 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] px-3 py-3 flex flex-col relative">
+      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} px-3 py-3 flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
@@ -606,6 +608,15 @@ export default function Swipe() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCommentsOpen(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Comments"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
@@ -615,10 +626,22 @@ export default function Swipe() {
               : "Tap the profile you prefer · Aura updates instantly"}
           </p>
 
-          <ScrollToCommentsHint />
+          {!isMobile && <ScrollToCommentsHint />}
 
-          {/* Comments section */}
-          {globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
+          {/* Comments: drawer on mobile, inline on desktop */}
+          {isMobile && globalLeagueId && (
+            <Drawer open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DrawerContent className="max-h-[75dvh]">
+                <DrawerHeader>
+                  <DrawerTitle>Comments</DrawerTitle>
+                </DrawerHeader>
+                <div className="overflow-y-auto px-4 pb-4">
+                  <SwipeComments leagueId={globalLeagueId} />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          )}
+          {!isMobile && globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
         </div>
       </div>
     </>
