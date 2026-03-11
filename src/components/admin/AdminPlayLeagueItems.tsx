@@ -411,9 +411,9 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Height (0 = auto)</label>
                       <Input
-                        type="number" min={0} max={200}
+                        type="number" min={0} max={600}
                         value={tiMaxHeight}
-                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(200, n))); }}
+                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(600, n))); }}
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
