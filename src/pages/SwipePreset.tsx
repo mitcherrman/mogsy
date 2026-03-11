@@ -46,6 +46,9 @@ interface ItemImage {
   image_url: string;
   is_hidden: boolean;
   sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
