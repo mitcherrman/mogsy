@@ -381,7 +381,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                         </Button>
                       </div>
                     </div>
-                    <Slider min={-100} max={50} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
+                    <Slider min={-600} max={300} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
                   </div>
 
                   {/* Horizontal Offset with +/- buttons */}
