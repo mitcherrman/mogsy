@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,8 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [addImageUrl, setAddImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [cardPreviewOpen, setCardPreviewOpen] = useState(false);
+  const [cardPreviewImage, setCardPreviewImage] = useState<string | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
@@ -237,10 +239,22 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               <div className="h-full w-full flex items-center justify-center text-lg font-bold text-muted-foreground">{selectedItem.name.charAt(0)}</div>
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-bold text-foreground">{selectedItem.name}</h3>
             <p className="text-xs text-muted-foreground">{itemImages.length} images • {visibleCount} active</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs shrink-0"
+            onClick={() => {
+              const visibleImg = itemImages.find(i => !i.is_hidden);
+              setCardPreviewImage(visibleImg?.image_url || selectedItem.image_url || null);
+              setCardPreviewOpen(true);
+            }}
+          >
+            <Smartphone className="h-3.5 w-3.5" /> Card Preview
+          </Button>
         </div>
 
         {/* Add image */}
@@ -324,6 +338,84 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
           <DialogContent className="max-w-3xl p-2 bg-background/95 backdrop-blur-xl">
             {viewingImage && <img src={viewingImage} alt="" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />}
+          </DialogContent>
+        </Dialog>
+
+        {/* Card Preview Dialog — mirrors exact swipe card layout */}
+        <Dialog open={cardPreviewOpen} onOpenChange={setCardPreviewOpen}>
+          <DialogContent className="max-w-sm p-4 bg-background/95 backdrop-blur-xl">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Card Preview — as seen in game</h4>
+            {/* Image selector */}
+            {itemImages.filter(i => !i.is_hidden).length > 1 && (
+              <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                {itemImages.filter(i => !i.is_hidden).map(img => (
+                  <button
+                    key={img.id}
+                    onClick={() => setCardPreviewImage(img.image_url)}
+                    className={`h-10 w-10 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
+                      cardPreviewImage === img.image_url ? "border-primary ring-1 ring-primary/30" : "border-border"
+                    }`}
+                  >
+                    <img src={img.image_url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Simulated card */}
+            <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[220px] mx-auto">
+              <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden">
+                {cardPreviewImage ? (
+                  <img
+                    src={cardPreviewImage}
+                    alt={selectedItem.name}
+                    className="w-full h-full object-contain bg-muted/30"
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
+                    {selectedItem.name.charAt(0)}
+                  </span>
+                )}
+              </div>
+              <div className="px-2 py-1.5 flex-shrink-0">
+                <div className="text-center">
+                  <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
+                  {selectedItem.subtitle && (
+                    <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-3 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
+                    <span className="font-semibold text-primary">{selectedItem.elo}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">Mobile portrait uses 5:4 • Desktop/landscape uses 3:4</p>
+            {/* Desktop aspect preview */}
+            <details className="mt-2">
+              <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">Show desktop (3:4) preview</summary>
+              <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[180px] mx-auto mt-2">
+                <div className="w-full aspect-[3/4] bg-muted/30 overflow-hidden">
+                  {cardPreviewImage ? (
+                    <img
+                      src={cardPreviewImage}
+                      alt={selectedItem.name}
+                      className="w-full h-full object-contain bg-muted/30"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-3xl font-black text-muted-foreground/30">
+                      {selectedItem.name.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                <div className="px-2 py-1.5">
+                  <h3 className="text-xs font-extrabold text-foreground truncate text-center">{selectedItem.name}</h3>
+                  <div className="flex items-center justify-center mt-0.5">
+                    <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
+                  </div>
+                </div>
+              </div>
+            </details>
           </DialogContent>
         </Dialog>
       </div>
