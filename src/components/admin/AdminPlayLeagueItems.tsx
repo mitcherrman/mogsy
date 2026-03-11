@@ -371,9 +371,9 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                           <ChevronDown className="h-3 w-3" />
                         </Button>
                         <Input
-                          type="number" min={-100} max={50}
+                          type="number" min={-600} max={300}
                           value={tiOffsetY}
-                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-100, Math.min(50, n))); }}
+                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-600, Math.min(300, n))); }}
                           className="w-14 h-6 text-[10px] text-right px-1 font-mono"
                         />
                         <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.min(50, v + 1))}>
