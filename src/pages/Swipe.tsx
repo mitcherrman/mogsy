@@ -536,7 +536,7 @@ export default function Swipe() {
                 {/* Left / Top card */}
                 <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
                   <ProfileCard profile={pair[0]} side="left" onChoose={() => handleChoose(0)} />
-                  <div className="px-2 py-1.5 relative z-20">
+                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} relative z-20`}>
                     <div className={`flex items-center justify-center gap-3 ${sliceWinner === null ? "invisible" : ""}`}>
                       <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
                         <span className="font-semibold text-primary">{localElos.get(pair[0].id) ?? 1200}</span>
