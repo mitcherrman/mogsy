@@ -995,15 +995,15 @@ export default function SwipePreset() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <div className="flex items-center justify-center gap-3 mt-2">
+            <div className="flex items-center justify-center gap-3 mt-1">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"
                 onClick={handleToggleGauntlet}
-                className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
+                className={`h-7 w-7 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
               >
-                <Sword className="h-4 w-4" fill="currentColor" />
+                <Sword className="h-3.5 w-3.5" fill="currentColor" />
               </Button>
               {user && (
                 <SwipeInventoryButton rewinds={myRewinds} shields={myShields} reveals={myReveals} />
@@ -1019,10 +1019,10 @@ export default function SwipePreset() {
                 variant="outline"
                 size="icon"
                 onClick={capture}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Save snapshot"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="outline"
@@ -1038,23 +1038,23 @@ export default function SwipePreset() {
                 {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <Trophy className="h-3.5 w-3.5" />
+                <Button variant="outline" size="icon" className="h-7 w-7">
+                  <Trophy className="h-3 w-3" />
                 </Button>
               </Link>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setCommentsOpen(true)}
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Comments"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-3.5 w-3.5" />
               </Button>
             </div>
           )}
 
-          <p className="text-center text-[10px] text-muted-foreground mt-1.5">
+          <p className="text-center text-[10px] text-muted-foreground mt-0.5">
             {gauntletMode
               ? `Tap to choose · Winner stays · ${matchCount} votes`
               : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
