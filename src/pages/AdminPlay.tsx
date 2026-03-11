@@ -57,6 +57,7 @@ export default function AdminPlay() {
   const [newPresetName, setNewPresetName] = useState("");
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const hasUnsavedChanges = useRef(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   const [isModerator, setIsModerator] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
