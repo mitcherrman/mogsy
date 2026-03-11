@@ -390,7 +390,7 @@ export default function Swipe() {
           }}
         />
       )}
-      <div className="min-h-[calc(100dvh-4rem)] px-3 py-3 flex flex-col relative">
+      <div className={`${isMobile ? 'h-[calc(100dvh-4rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'} px-3 py-3 flex flex-col relative`}>
         <AnimatePresence>{readyDelay && <SwipeReadyOverlay />}</AnimatePresence>
         <div className="container mx-auto max-w-4xl flex flex-col flex-1">
           {/* Controls bar */}
