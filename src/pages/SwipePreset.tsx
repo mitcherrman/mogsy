@@ -906,7 +906,7 @@ export default function SwipePreset() {
                               }
                             }}
                             whileTap={{ scale: 0.99 }}
-                            className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                            className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
                             isWinner
                                 ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
                                 : isLoser
