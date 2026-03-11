@@ -8,6 +8,9 @@ export interface AnimationCardItem {
   name: string;
   subtitle?: string;
   titleImageUrl?: string;
+  titleImageScale?: number;
+  titleImageOffsetY?: number;
+  titleImageMaxHeight?: number;
   localElo?: number;
   localRank?: number;
   globalElo?: number;
@@ -19,6 +22,19 @@ export interface AnimationCardItem {
   rankNew?: number | null;
   globalDirection?: "up" | "down" | "none";
   showGlobalStats?: boolean;
+}
+
+function getTitleImgStyle(item: AnimationCardItem, compact: boolean): React.CSSProperties {
+  const scale = item.titleImageScale ?? 1;
+  const offsetY = item.titleImageOffsetY ?? (compact ? -12 : -16);
+  const maxHeight = item.titleImageMaxHeight && item.titleImageMaxHeight > 0
+    ? `${item.titleImageMaxHeight}px`
+    : undefined;
+  return {
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
+    marginTop: `${offsetY}px`,
+    maxHeight,
+  };
 }
 
 function AuraChangeOverlay({ item }: { item: AnimationCardItem }) {

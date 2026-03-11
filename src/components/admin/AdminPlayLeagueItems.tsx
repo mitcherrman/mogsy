@@ -20,6 +20,9 @@ interface PresetItem {
   elo: number;
   league_id: string;
   title_image_url?: string | null;
+  title_image_scale?: number;
+  title_image_offset_y?: number;
+  title_image_max_height?: number;
 }
 
 interface ItemImage {
