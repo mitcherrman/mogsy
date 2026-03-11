@@ -23,6 +23,7 @@ interface SettingsState {
   shop_ad_subtext: string;
   show_match_count: boolean;
   show_swipe_progress: boolean;
+  card_bg_opacity: number;
 }
 
 export default function AdminSettings() {
