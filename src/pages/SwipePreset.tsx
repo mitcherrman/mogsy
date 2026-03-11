@@ -796,7 +796,7 @@ export default function SwipePreset() {
               </motion.div>
             </MatchupCapture>
           ) : pair && (
-            <MatchupCapture ref={captureRef} leagueName={leagueName}>
+            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile}>
               {gauntletMode ? (
                 /* Gauntlet: render champion stable, only challenger animates */
                 <div className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1">
