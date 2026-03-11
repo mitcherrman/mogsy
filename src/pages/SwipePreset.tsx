@@ -837,7 +837,7 @@ export default function SwipePreset() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col portrait:flex-col landscape:flex-row md:flex-row gap-1 landscape:gap-4 md:gap-5 lg:gap-8 flex-1"
+                  className={`flex flex-col portrait:flex-col landscape:flex-row md:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} landscape:gap-4 md:gap-5 lg:gap-8 flex-1`}
                 >
                   {pair.map((item, idx) => {
                     const displayImage = getDisplayImage(item);
