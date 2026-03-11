@@ -1013,6 +1013,15 @@ export default function SwipePreset() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCommentsOpen(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Comments"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
@@ -1022,10 +1031,22 @@ export default function SwipePreset() {
               : `Tap or swipe to choose · ${currentIndex + 1}/${matchups.length}`}
           </p>
 
-          <ScrollToCommentsHint />
+          {!isMobile && <ScrollToCommentsHint />}
 
-          {/* Comments section */}
-          {leagueId && <SwipeComments leagueId={leagueId} />}
+          {/* Comments: drawer on mobile, inline on desktop */}
+          {isMobile && leagueId && (
+            <Drawer open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DrawerContent className="max-h-[75dvh]">
+                <DrawerHeader>
+                  <DrawerTitle>Comments</DrawerTitle>
+                </DrawerHeader>
+                <div className="overflow-y-auto px-4 pb-4">
+                  <SwipeComments leagueId={leagueId} />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          )}
+          {!isMobile && leagueId && <SwipeComments leagueId={leagueId} />}
         </div>
       </div>
     </>

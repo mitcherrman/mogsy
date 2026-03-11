@@ -607,6 +607,15 @@ export default function Swipe() {
                   <Trophy className="h-3.5 w-3.5" />
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCommentsOpen(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                title="Comments"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
@@ -616,10 +625,22 @@ export default function Swipe() {
               : "Tap the profile you prefer · Aura updates instantly"}
           </p>
 
-          <ScrollToCommentsHint />
+          {!isMobile && <ScrollToCommentsHint />}
 
-          {/* Comments section */}
-          {globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
+          {/* Comments: drawer on mobile, inline on desktop */}
+          {isMobile && globalLeagueId && (
+            <Drawer open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DrawerContent className="max-h-[75dvh]">
+                <DrawerHeader>
+                  <DrawerTitle>Comments</DrawerTitle>
+                </DrawerHeader>
+                <div className="overflow-y-auto px-4 pb-4">
+                  <SwipeComments leagueId={globalLeagueId} />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          )}
+          {!isMobile && globalLeagueId && <SwipeComments leagueId={globalLeagueId} />}
         </div>
       </div>
     </>
