@@ -1527,6 +1527,9 @@ export type Database = {
           league_id: string
           name: string
           subtitle: string
+          title_image_max_height: number
+          title_image_offset_y: number
+          title_image_scale: number
           title_image_url: string | null
         }
         Insert: {
@@ -1538,6 +1541,9 @@ export type Database = {
           league_id: string
           name: string
           subtitle?: string
+          title_image_max_height?: number
+          title_image_offset_y?: number
+          title_image_scale?: number
           title_image_url?: string | null
         }
         Update: {
@@ -1549,6 +1555,9 @@ export type Database = {
           league_id?: string
           name?: string
           subtitle?: string
+          title_image_max_height?: number
+          title_image_offset_y?: number
+          title_image_scale?: number
           title_image_url?: string | null
         }
         Relationships: [
