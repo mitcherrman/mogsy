@@ -49,6 +49,8 @@ interface ItemImage {
   focal_x: number;
   focal_y: number;
   zoom: number;
+  pad_top: number;
+  pad_left: number;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
