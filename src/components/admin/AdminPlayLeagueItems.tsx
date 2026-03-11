@@ -227,7 +227,18 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     toast.success("Image removed");
   };
 
-  // Item image detail view
+  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number) => {
+    const { error } = await supabase
+      .from("preset_item_images")
+      .update({ focal_x: focalX, focal_y: focalY, zoom })
+      .eq("id", img.id);
+    if (error) { toast.error(error.message); return; }
+    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom } : i));
+    setPositioningImage(null);
+    toast.success("Position saved");
+  };
+
+
   if (selectedItem) {
     const visibleCount = itemImages.filter(i => !i.is_hidden).length;
     return (
