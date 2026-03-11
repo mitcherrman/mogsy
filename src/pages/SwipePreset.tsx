@@ -2,9 +2,10 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SwipeComments from "@/components/SwipeComments";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Progress } from "@/components/ui/progress";
 import SwipeAd from "@/components/SwipeAd";
 import SwipeAdCard from "@/components/SwipeAdCard";
