@@ -795,7 +795,7 @@ export default function SwipePreset() {
                 className={`flex flex-col portrait:flex-col landscape:flex-row md:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} landscape:gap-4 md:gap-5 lg:gap-8 flex-1`}
               >
                 {/* Real item card */}
-                <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
+                <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${pair[0].title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
                   <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                     {pair[0].image_url ? (
                       <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain" style={getImageStyle(pair[0])} />
@@ -906,7 +906,7 @@ export default function SwipePreset() {
                               }
                             }}
                             whileTap={{ scale: 0.99 }}
-                            className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                            className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
                             isWinner
                                 ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
                                 : isLoser
@@ -1188,7 +1188,7 @@ function GauntletCard({
           if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
         }}
         whileTap={{ scale: 0.99 }}
-        className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+        className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
           isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
         } ${
           isWinner

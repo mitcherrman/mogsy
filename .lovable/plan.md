@@ -1,30 +1,43 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-# Fix Title Image Bleed in Swipe Cards
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-## Problem
-The outer card div correctly toggles `overflow-visible` when a title image exists, but the inner `motion.button` element always has `overflow-hidden`, which clips the title image and prevents it from bleeding over the card edges.
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
 
-## Fix
-In `SwipePreset.tsx`, make the `motion.button`'s overflow class conditional on whether a title image exists — same pattern already used on the outer div.
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
 
-There are **three instances** of this pattern in the file:
-1. **Line 909** — mobile card rendering inside the `pair.map()` loop
-2. **Line 1191** — the `cardContent` variable used for desktop rendering  
-3. **Line 798** — the first/top card in the initial pair display
+### Changes Made
 
-Each `motion.button` with `className="relative overflow-hidden ..."` needs to become `overflow-visible` when the item has a `title_image_url`.
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
 
-### Change
-```tsx
-// Before:
-className={`relative overflow-hidden cursor-pointer ...`}
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
 
-// After:
-className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer ...`}
-```
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
 
-| File | Change |
-|------|--------|
-| `SwipePreset.tsx` | Toggle overflow on motion.button at ~3 locations |
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
 
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
+
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
+
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
