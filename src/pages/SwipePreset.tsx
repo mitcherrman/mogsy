@@ -796,9 +796,12 @@ export default function SwipePreset() {
               >
                 {/* Real item card */}
                 <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${pair[0].title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-                  <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+                    <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+                    {pair[0].image_url && (
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" aria-hidden="true" />
+                    )}
                     {pair[0].image_url ? (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain" style={getImageStyle(pair[0])} />
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain relative z-10" style={getImageStyle(pair[0])} />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
@@ -916,11 +919,14 @@ export default function SwipePreset() {
                           >
                             {/* Image container */}
                             <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+                              {displayImage && (
+                                <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" aria-hidden="true" />
+                              )}
                               {displayImage ? (
                                 <img
                                   src={displayImage}
                                   alt={item.name}
-                                  className="w-full h-full object-contain"
+                                  className="w-full h-full object-contain relative z-10"
                                   style={getImageStyle(item)}
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
@@ -1199,8 +1205,11 @@ function GauntletCard({
         }`}
       >
         <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+          {displayImage && (
+            <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-70" aria-hidden="true" />
+          )}
           {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-contain"
+            <img src={displayImage} alt={item.name} className="w-full h-full object-contain relative z-10"
               style={getImageStyle(item)}
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
             />
