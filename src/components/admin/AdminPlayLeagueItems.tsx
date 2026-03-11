@@ -257,7 +257,9 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
             initialFocalX={positioningImage.focal_x}
             initialFocalY={positioningImage.focal_y}
             initialZoom={positioningImage.zoom}
-            onSave={(fx, fy, z) => handleSavePosition(positioningImage, fx, fy, z)}
+            initialPadTop={positioningImage.pad_top}
+            initialPadLeft={positioningImage.pad_left}
+            onSave={(fx, fy, z, pt, pl) => handleSavePosition(positioningImage, fx, fy, z, pt, pl)}
             onCancel={() => setPositioningImage(null)}
           />
         </div>
