@@ -714,7 +714,7 @@ export default function SwipePreset() {
                 <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
                   <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
                     {pair[0].image_url ? (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain bg-muted/30" />
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-cover" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
