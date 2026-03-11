@@ -473,18 +473,18 @@ export default function AdminPlay() {
     );
   }
 
-  const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order);
-  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order);
+  const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order).filter(i => showHidden || !i.hidden);
+  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order).filter(c => showHidden || !c.hidden);
 
   const getLeaguesForCategory = (catKey: string) => {
     const catLeagueIds = new Set(leagues.filter(l => l.category === catKey).map(l => l.id));
     return config.leagues
-      .filter(l => catLeagueIds.has(l.id))
+      .filter(l => catLeagueIds.has(l.id) && (showHidden || !l.hidden))
       .sort((a, b) => a.order - b.order);
   };
 
   const userLeagueIds = new Set(leagues.filter(l => l.type === "user").map(l => l.id));
-  const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id)).sort((a, b) => a.order - b.order);
+  const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id) && (showHidden || !l.hidden)).sort((a, b) => a.order - b.order);
 
   return (
     <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
