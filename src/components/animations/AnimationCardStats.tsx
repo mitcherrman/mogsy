@@ -88,8 +88,12 @@ export default function AnimationCardStats({ item, compact = false }: { item: An
   return (
     <div className="px-2 py-1.5 flex-shrink-0 relative z-20">
       <AuraChangeOverlay item={item} />
-      <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate text-center">{item.name}</h3>
-      {item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate text-center">{item.subtitle}</p>}
+      {item.titleImageUrl ? (
+        <img src={item.titleImageUrl} alt={item.name} className="max-h-8 md:max-h-12 w-auto object-contain mx-auto" draggable={false} />
+      ) : (
+        <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate text-center">{item.name}</h3>
+      )}
+      {!item.titleImageUrl && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate text-center">{item.subtitle}</p>}
       {item.eloVisible && (
         <div className="flex items-center justify-center gap-3 mt-0.5">
           <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
