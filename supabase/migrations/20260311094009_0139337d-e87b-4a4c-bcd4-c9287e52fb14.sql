@@ -1,0 +1,1 @@
+ALTER TABLE public.preset_items ADD COLUMN title_image_url text;
