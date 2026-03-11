@@ -417,7 +417,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                         className="w-16 h-6 text-[10px] text-right px-1 font-mono"
                       />
                     </div>
-                    <Slider min={0} max={200} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
+                    <Slider min={0} max={600} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
                   </div>
                 </div>
 
