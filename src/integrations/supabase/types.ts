@@ -1467,30 +1467,39 @@ export type Database = {
       preset_item_images: {
         Row: {
           created_at: string
+          focal_x: number
+          focal_y: number
           id: string
           image_url: string
           is_hidden: boolean
           preset_item_id: string
           report_count: number
           sort_order: number
+          zoom: number
         }
         Insert: {
           created_at?: string
+          focal_x?: number
+          focal_y?: number
           id?: string
           image_url: string
           is_hidden?: boolean
           preset_item_id: string
           report_count?: number
           sort_order?: number
+          zoom?: number
         }
         Update: {
           created_at?: string
+          focal_x?: number
+          focal_y?: number
           id?: string
           image_url?: string
           is_hidden?: boolean
           preset_item_id?: string
           report_count?: number
           sort_order?: number
+          zoom?: number
         }
         Relationships: [
           {

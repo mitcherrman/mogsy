@@ -48,7 +48,7 @@ export default function ChopAnimation({ winnerSide, items, onComplete }: Props) 
                   transition={{ duration: 0.6, delay: 0.15 }}
                 >
                   <div className="w-full portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] overflow-hidden">
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                     {phase !== "idle" && (
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
@@ -80,7 +80,7 @@ export default function ChopAnimation({ winnerSide, items, onComplete }: Props) 
                     }
                     transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {/* Right half */}
@@ -95,7 +95,7 @@ export default function ChopAnimation({ winnerSide, items, onComplete }: Props) 
                     }
                     transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+                    <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" style={item.imageStyle} draggable={false} />
                   </motion.div>
 
                   {/* CHOPPED stamp */}

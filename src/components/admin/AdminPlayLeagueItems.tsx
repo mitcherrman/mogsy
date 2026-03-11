@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ImagePositionEditor from "./ImagePositionEditor";
 
 interface PresetItem {
   id: string;
@@ -27,6 +28,9 @@ interface ItemImage {
   is_hidden: boolean;
   report_count: number;
   sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
 }
 
 interface Props {
@@ -44,6 +48,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [cardPreviewOpen, setCardPreviewOpen] = useState(false);
   const [cardPreviewImage, setCardPreviewImage] = useState<string | null>(null);
+  const [positioningImage, setPositioningImage] = useState<ItemImage | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
@@ -222,9 +227,41 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     toast.success("Image removed");
   };
 
-  // Item image detail view
+  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number) => {
+    const { error } = await supabase
+      .from("preset_item_images")
+      .update({ focal_x: focalX, focal_y: focalY, zoom })
+      .eq("id", img.id);
+    if (error) { toast.error(error.message); return; }
+    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom } : i));
+    setPositioningImage(null);
+    toast.success("Position saved");
+  };
+
+
   if (selectedItem) {
     const visibleCount = itemImages.filter(i => !i.is_hidden).length;
+
+    // Image positioning sub-view
+    if (positioningImage) {
+      return (
+        <div className="space-y-4">
+          <Button variant="ghost" size="sm" onClick={() => setPositioningImage(null)} className="text-muted-foreground gap-1">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to {selectedItem.name}
+          </Button>
+          <ImagePositionEditor
+            imageUrl={positioningImage.image_url}
+            itemName={selectedItem.name}
+            initialFocalX={positioningImage.focal_x}
+            initialFocalY={positioningImage.focal_y}
+            initialZoom={positioningImage.zoom}
+            onSave={(fx, fy, z) => handleSavePosition(positioningImage, fx, fy, z)}
+            onCancel={() => setPositioningImage(null)}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => setSelectedItem(null)} className="text-muted-foreground gap-1">
@@ -290,9 +327,12 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               return (
                 <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : isPreview ? "border-primary border-2" : "border-border"}`}>
                   <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
-                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 flex-wrap">
                     <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
                       <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setPositioningImage(img)} title="Position & Zoom">
+                      <Move className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
@@ -361,61 +401,56 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                 ))}
               </div>
             )}
-            {/* Simulated card */}
-            <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[220px] mx-auto">
-              <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden">
-                {cardPreviewImage ? (
-                  <img
-                    src={cardPreviewImage}
-                    alt={selectedItem.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
-                    {selectedItem.name.charAt(0)}
-                  </span>
-                )}
-              </div>
-              <div className="px-2 py-1.5 flex-shrink-0">
-                <div className="text-center">
-                  <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
-                  {selectedItem.subtitle && (
-                    <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>
-                  )}
-                </div>
-                <div className="flex items-center justify-center gap-3 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-                    <span className="font-semibold text-primary">{selectedItem.elo}</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center mt-2">Mobile portrait uses 5:4 • Desktop/landscape uses 3:4</p>
-            {/* Desktop aspect preview */}
-            <details className="mt-2">
-              <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">Show desktop (3:4) preview</summary>
-              <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[180px] mx-auto mt-2">
-                <div className="w-full aspect-[3/4] bg-muted/30 overflow-hidden">
-                  {cardPreviewImage ? (
-                    <img
-                      src={cardPreviewImage}
-                      alt={selectedItem.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center text-3xl font-black text-muted-foreground/30">
-                      {selectedItem.name.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <div className="px-2 py-1.5">
-                  <h3 className="text-xs font-extrabold text-foreground truncate text-center">{selectedItem.name}</h3>
-                  <div className="flex items-center justify-center mt-0.5">
-                    <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
+            {(() => {
+              const previewImg = itemImages.find(i => i.image_url === cardPreviewImage);
+              const imgStyle = previewImg ? {
+                objectPosition: `${previewImg.focal_x}% ${previewImg.focal_y}%`,
+                transform: `scale(${previewImg.zoom})`,
+                transformOrigin: `${previewImg.focal_x}% ${previewImg.focal_y}%`,
+              } : {};
+              return (
+                <>
+                  {/* Simulated card */}
+                  <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[220px] mx-auto">
+                    <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden">
+                      {cardPreviewImage ? (
+                        <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-cover" style={imgStyle} />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
+                      )}
+                    </div>
+                    <div className="px-2 py-1.5 flex-shrink-0">
+                      <div className="text-center">
+                        <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
+                        {selectedItem.subtitle && <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>}
+                      </div>
+                      <div className="flex items-center justify-center gap-3 mt-0.5">
+                        <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </details>
+                  <p className="text-[10px] text-muted-foreground text-center mt-2">Mobile portrait uses 5:4 • Desktop/landscape uses 3:4</p>
+                  <details className="mt-2">
+                    <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">Show desktop (3:4) preview</summary>
+                    <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[180px] mx-auto mt-2">
+                      <div className="w-full aspect-[3/4] bg-muted/30 overflow-hidden">
+                        {cardPreviewImage ? (
+                          <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-cover" style={imgStyle} />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-3xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <h3 className="text-xs font-extrabold text-foreground truncate text-center">{selectedItem.name}</h3>
+                        <div className="flex items-center justify-center mt-0.5">
+                          <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                </>
+              );
+            })()}
           </DialogContent>
         </Dialog>
       </div>

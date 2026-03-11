@@ -46,6 +46,9 @@ interface ItemImage {
   image_url: string;
   is_hidden: boolean;
   sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
@@ -245,6 +248,22 @@ export default function SwipePreset() {
       return images[idx % images.length].image_url;
     }
     return item.image_url;
+  };
+
+  const getImageStyle = (item: PresetItem): React.CSSProperties => {
+    const images = itemImages.get(item.id);
+    if (images && images.length > 0) {
+      const idx = currentImageIndex.get(item.id) || 0;
+      const img = images[idx % images.length];
+      if (img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1) {
+        return {
+          objectPosition: `${img.focal_x}% ${img.focal_y}%`,
+          transform: `scale(${img.zoom})`,
+          transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
+        };
+      }
+    }
+    return {};
   };
 
   const getCurrentImageId = (item: PresetItem): string | null => {
@@ -714,7 +733,7 @@ export default function SwipePreset() {
                 <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden">
                   <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
                     {pair[0].image_url ? (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-cover" />
+                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-cover" style={getImageStyle(pair[0])} />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
@@ -771,6 +790,7 @@ export default function SwipePreset() {
                         globalDirections={globalDirections}
                         rankChanges={rankChanges}
                         getDisplayImage={getDisplayImage}
+                        getImageStyle={getImageStyle}
                         handleChoose={handleChoose}
                         handleReportImage={handleReportImage}
                       />
@@ -827,6 +847,7 @@ export default function SwipePreset() {
                                   src={displayImage}
                                   alt={item.name}
                                   className="w-full h-full object-cover"
+                                  style={getImageStyle(item)}
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
                                   }}
@@ -914,6 +935,7 @@ export default function SwipePreset() {
                 winnerSide={sliceWinner}
                 items={pair ? pair.map(item => ({
                   imageUrl: getDisplayImage(item),
+                  imageStyle: getImageStyle(item),
                   name: item.name,
                   subtitle: item.subtitle,
                   localElo: localElos.get(item.id) ?? 1200,
@@ -1004,7 +1026,7 @@ export default function SwipePreset() {
 /* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, handleChoose, handleReportImage,
+  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
@@ -1012,6 +1034,7 @@ function GauntletCard({
   eloVisible: boolean; rankVisible: boolean; statsHidden: boolean; showGlobalStats: boolean; items: PresetItem[];
   eloChanges: Map<string, number>; globalDirections: Map<string, "up" | "down" | "none">; rankChanges: Map<string, { old: number; new: number }>;
   getDisplayImage: (item: PresetItem) => string | null;
+  getImageStyle: (item: PresetItem) => React.CSSProperties;
   handleChoose: (idx: 0 | 1) => void;
   handleReportImage: (item: PresetItem) => void;
 }) {
@@ -1045,6 +1068,7 @@ function GauntletCard({
         <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden">
           {displayImage ? (
             <img src={displayImage} alt={item.name} className="w-full h-full object-cover"
+              style={getImageStyle(item)}
               onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
             />
           ) : (
