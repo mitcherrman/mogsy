@@ -868,6 +868,7 @@ export default function SwipePreset() {
                         handleChoose={handleChoose}
                         handleReportImage={handleReportImage}
                         isMobile={isMobile}
+                        cardBgOpacity={cardBgOpacity}
                       />
                     );
                   })}
