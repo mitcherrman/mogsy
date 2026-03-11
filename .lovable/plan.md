@@ -1,43 +1,26 @@
-## Percentile-Based Rank System (Implemented)
 
-### Tier Distribution (Compete Leagues Only)
-- **Unranked**: Bottom 60% (0–60th percentile)
-- **Bronze 🥉**: 60th–75th percentile
-- **Silver 🥈**: 75th–90th percentile
-- **Gold 🥇**: 90th–99th percentile
-- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-### What Changed
-1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
-2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
-3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
-4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
-5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
-6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
-7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
+# Remove Help Text + Lock Scroll on Mobile Swipe Pages
 
-### Collections (Preset) Leagues
-Still use absolute Elo-based tiers (unchanged).
+## Problem
+1. "Tap or swipe to choose" text wastes vertical space on mobile
+2. `pb-16` from Layout's `<main>` (for bottom navbar) creates empty scrollable space below the game
+3. The swipe container uses `h-[calc(100dvh-4rem)]` but the Layout wrapper adds extra bottom padding
 
-## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
+## Changes
 
-### Changes Made
+### 1. Remove help text on mobile
+**`SwipePreset.tsx`** (line ~1081) and **`Swipe.tsx`** (line ~676): Wrap the help text `<p>` in `{!isMobile && ...}` so it only shows on desktop.
 
-1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
+### 2. Lock scroll on mobile swipe pages
+**`SwipePreset.tsx`** and **`Swipe.tsx`**: Add a `useEffect` that sets `document.body.style.overflow = 'hidden'` on mount (mobile only) and restores it on unmount. This prevents any scrolling past the game area regardless of Layout padding.
 
-2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
+### 3. Account for Layout's bottom padding
+**`SwipePreset.tsx`** (line ~670) and **`Swipe.tsx`** (line ~406): Change the mobile height from `h-[calc(100dvh-4rem)]` to `h-[calc(100dvh-4rem-4rem)]` (subtract the navbar top `pt-14` ≈ 3.5rem + bottom `pb-16` = 4rem) so the game fits exactly within the visible area. Combined with the scroll lock, there will be zero scrollable overflow.
 
-3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
+## Files changed
+| File | Changes |
+|------|---------|
+| `src/pages/SwipePreset.tsx` | Hide help text on mobile, add scroll lock effect, adjust height calc |
+| `src/pages/Swipe.tsx` | Same changes |
 
-4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
-
-5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
-
-6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
-
-### Files Changed
-- `src/pages/SwipePreset.tsx`
-- `src/pages/Swipe.tsx`
-- `src/components/MatchupCapture.tsx`
-- `src/components/admin/AdminSettings.tsx`
-- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
