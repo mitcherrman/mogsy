@@ -1143,7 +1143,88 @@ export default function SwipePreset() {
   );
 }
 
-/* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
+/* ─── CardDraggable: GPU-accelerated drag with velocity prediction + direction overlay ─── */
+function CardDraggable({
+  idx, chosen, item, displayImage, isWinner, isLoser, handleChoose, getImageStyle, cardBgOpacity,
+}: {
+  idx: 0 | 1;
+  chosen: 0 | 1 | null;
+  item: PresetItem;
+  displayImage: string | null;
+  isWinner: boolean;
+  isLoser: boolean;
+  handleChoose: (idx: 0 | 1) => void;
+  getImageStyle: (item: PresetItem) => React.CSSProperties;
+  cardBgOpacity: number;
+}) {
+  const dragX = useMotionValue(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const rotation = useTransform(dragX, [-200, 0, 200], [-8, 0, 8]);
+
+  return (
+    <motion.button
+      onClick={() => handleChoose(idx)}
+      drag={chosen === null ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.3}
+      style={{ x: dragX, rotate: rotation, willChange: "transform" }}
+      onDrag={() => setDragOffset(dragX.get())}
+      onDragEnd={(_e, info) => {
+        setDragOffset(0);
+        // Velocity-based prediction: trigger at lower offset if fast swipe
+        if (Math.abs(info.velocity.x) > 500 || Math.abs(info.offset.x) > 60) {
+          handleChoose(idx);
+        }
+      }}
+      whileTap={{ scale: 0.99 }}
+      className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-shadow duration-300 ${
+        isWinner
+          ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
+          : isLoser
+          ? "opacity-50"
+          : ""
+      }`}
+    >
+      {/* Image container */}
+      <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+        {displayImage && (
+          <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
+        )}
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={item.name}
+            className="w-full h-full object-contain relative z-10"
+            style={getImageStyle(item)}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+            }}
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
+            {item.name.charAt(0)}
+          </span>
+        )}
+      </div>
+
+      {/* Swipe direction overlay */}
+      <SwipeDirectionOverlay dragX={dragOffset} />
+
+      {/* Winner crown */}
+      {isWinner && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
+        >
+          <Crown className="h-4 w-4" />
+        </motion.div>
+      )}
+    </motion.button>
+  );
+}
+
+
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
   eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity,
