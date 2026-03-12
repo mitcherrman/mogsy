@@ -187,6 +187,13 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF"); return; }
     if (file.size > 20 * 1024 * 1024) { toast.error("Max 20MB"); return; }
     setUploading(true);
+
+    // Detect GIF uploads and warn about performance
+    const isGif = file.type === "image/gif";
+    if (isGif) {
+      toast.info("GIF detected — consider providing MP4/WebM versions for better performance");
+    }
+
     const ext = file.name.split(".").pop();
     const path = `preset-items/${selectedItem.id}/${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
@@ -205,6 +212,15 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       next.set(selectedItem.id, (next.get(selectedItem.id) || 0) + 1);
       return next;
     });
+
+    // Track GIF in processed_media table for future conversion pipeline
+    if (isGif) {
+      await supabase.from("processed_media" as any).insert({
+        original_url: urlData.publicUrl,
+        media_type: "gif",
+      });
+    }
+
     // Auto-set preview if none exists
     if (!selectedItem.image_url) {
       await setPreviewImage(urlData.publicUrl);
