@@ -266,21 +266,6 @@ export default function SwipePreset() {
         setItemImages(map);
         setCurrentImageIndex(idxMap);
 
-        // Load optimized media URLs for any GIFs that have been converted
-        if (allImageUrls.length > 0) {
-          const { data: media } = await supabase
-            .from("processed_media")
-            .select("original_url, webm_url")
-            .in("original_url", allImageUrls)
-            .not("webm_url", "is", null);
-          if (media && media.length > 0) {
-            const urlMap = new Map<string, string>();
-            media.forEach((m: any) => {
-              if (m.webm_url) urlMap.set(m.original_url, m.webm_url);
-            });
-            setOptimizedUrls(urlMap);
-          }
-        }
       }
     }
 
