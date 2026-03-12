@@ -1,127 +1,79 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-# Upgrade Mogsy Swipe Media System
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-This is a large, multi-phase upgrade. Important context: this project uses **React + Vite** (not Next.js), **Supabase** for backend, and the current swipe system renders static images (not GIFs/videos for card content). The decorative GIFs are only used in animation overlays. Let me scope this to what's actually impactful and feasible.
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
 
-## What Already Exists
-- Cards render `<img>` tags with static images from `preset_item_images` table
-- Framer Motion handles card transitions with `opacity` animations
-- Card animations (burn, shatter, slice, etc.) use z-[70] overlays
-- Image uploads go to Supabase Storage (`profile-photos` bucket)
-- No video support, no gesture-based swiping (only click + minimal drag)
-- No prebuffering of upcoming card images
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
 
-## Plan
+### Changes Made
 
-### Phase 1: Media Processing Pipeline (Edge Function + Database)
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
 
-**Database migration** — Create `processed_media` table:
-```
-id, owner_profile_id, original_url, mp4_url, webm_url, thumbnail_url, 
-media_type (image|gif|video), duration, width, height, created_at
-```
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
 
-**Edge function** `process-media/index.ts` — When a GIF is uploaded in Admin Play:
-1. Accept the upload, store original to Supabase Storage
-2. Use a cloud FFmpeg service (or flag for async processing) to convert GIF → MP4/WebM
-3. Generate thumbnail JPG
-4. Store converted assets and update `processed_media` row
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
 
-> **Reality check**: Server-side FFmpeg isn't available in Deno edge functions. The practical approach is to use a **client-side conversion** library or integrate with an external API. For MVP, we'll detect GIF uploads and convert client-side using the existing `modern-gif` package (already installed) for thumbnail extraction, and store a flag indicating the media needs video conversion. A future iteration can add server-side processing.
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
 
-**Practical MVP approach**: 
-- Detect GIF uploads in `AdminPlayLeagueItems.tsx`
-- Generate a static thumbnail frame client-side
-- Store both original GIF URL and thumbnail URL in `processed_media`
-- Render GIFs using `<video>` tags where MP4/WebM versions exist, fall back to `<img>` otherwise
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
 
-### Phase 2: AutoVideo Component + Card Rendering
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
 
-**Create `src/components/AutoVideo.tsx`** — Reusable component:
-- Accepts `src` prop (any media URL)
-- Detects if URL points to video (mp4/webm) vs image
-- Renders `<video autoPlay loop muted playsInline preload="metadata">` for video
-- Falls back to `<img>` for images
-- Accepts `className`, `style`, `onLoad` props
-- Controls play/pause based on visibility via IntersectionObserver
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
 
-**Update `SwipePreset.tsx` card rendering** — Replace `<img>` tags with `<AutoVideo>` where media might be animated.
+## Swipe Media System Upgrade (Implemented)
 
-### Phase 3: Image/Media Prebuffering
+### What Changed
 
-**Add prebuffering in `SwipePreset.tsx`**:
-```tsx
-useEffect(() => {
-  // Preload next 2-3 matchup pairs
-  const upcoming = matchups.slice(currentIndex + 1, currentIndex + 4);
-  upcoming.flat().forEach(item => {
-    const url = getDisplayImage(item) || item.image_url;
-    if (url) {
-      if (url.endsWith('.mp4') || url.endsWith('.webm')) {
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.src = url;
-      } else {
-        const img = new Image();
-        img.src = url;
-      }
-    }
-  });
-}, [currentIndex, matchups]);
-```
+1. **`processed_media` table** — New database table tracking GIF/video assets with fields for original_url, mp4_url, webm_url, thumbnail_url, media_type, dimensions, and duration. RLS: admin-managed, publicly readable.
 
-Same pattern in `Swipe.tsx` for user-league swiping.
+2. **`src/components/AutoVideo.tsx`** — Reusable component that renders `<video autoPlay loop muted playsInline>` for video URLs (mp4/webm) or `<img>` for images. Includes IntersectionObserver-based play/pause for offscreen performance.
 
-### Phase 4: GPU-Accelerated Swipe Gestures
+3. **`src/components/SwipeDirectionOverlay.tsx`** — Drag direction indicator showing "👑 MOG" or "👎 PASS" overlay during card swipes, with opacity proportional to drag distance.
 
-**Update card motion in `SwipePreset.tsx`**:
-- Replace the current minimal drag with proper `translate3d` transforms via Framer Motion
-- Add `will-change: transform` to card containers
-- Implement velocity-based swipe prediction:
-  ```tsx
-  onDragEnd={(_e, info) => {
-    const velocity = info.velocity.x;
-    const offset = info.offset.x;
-    if (Math.abs(velocity) > 500 || Math.abs(offset) > 60) {
-      handleChoose(idx as 0 | 1);
-    }
-  }}
-  ```
-- Add swipe direction overlay (subtle "MOG" / "PASS" text that fades in based on drag offset)
-- Ensure all transforms use `translate3d(x, 0, 0) rotate(angle)` for GPU compositing
+4. **`src/pages/SwipePreset.tsx`** — 
+   - **Prebuffering**: Preloads next 3 matchup pairs (images/videos) into browser cache
+   - **GPU drag**: Cards use `translate3d` + `rotate` transforms via Framer Motion `useMotionValue`/`useTransform`
+   - **Velocity prediction**: Swipes complete at lower offset when velocity > 500px/s
+   - **Direction overlays**: MOG/PASS overlay appears during drag
+   - **`will-change: transform`** on card containers
 
-### Phase 5: Swipe Direction Overlays
+5. **`src/pages/Swipe.tsx`** — Avatar prebuffering for next 6 profiles
 
-**Add overlay layer to each card** during drag:
-- Show "👑 MOG" or "👎" overlay that scales with drag distance
-- Layer structure: card bg (z-1) → image (z-10) → drag overlay (z-15) → animation overlay (z-70)
-- Fade in/out with CSS opacity transitions tied to drag offset
+6. **GIF → Video migration** — Decorative GIFs replaced with `<video>` tags with webm/mp4 sources + GIF fallback:
+   - `SgtDoakesAnimation.tsx` — sgt-doakes.gif → video
+   - `AmongUsAnimation.tsx` — amongus-backstab.gif → video
+   - `ThemeOverlay.tsx` — amongus-crewmate.gif → video
+   - `SecretRoom.tsx` — twerking-amongus.gif → video
 
-### Phase 6: Card Stack Rendering (Visual Polish)
+7. **`AdminPlayLeagueItems.tsx`** — GIF uploads detected and logged to `processed_media` table for future conversion pipeline
 
-**Render next card slightly visible behind current pair**:
-- Show the upcoming matchup pair scaled down (scale 0.95, opacity 0.5) behind current cards
-- Absolute positioning with stacking context
-- Only on desktop (mobile viewport too constrained)
+### Video Files Needed
+Place MP4/WebM versions in `public/images/`:
+- `sgt-doakes.mp4` / `sgt-doakes.webm`
+- `amongus-backstab.mp4` / `amongus-backstab.webm`
+- `amongus-crewmate.mp4` / `amongus-crewmate.webm`
+- `twerking-amongus.mp4` / `twerking-amongus.webm`
 
-## Files to Create/Edit
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/AutoVideo.tsx` | Create | Reusable video-as-gif component with visibility control |
-| `src/components/SwipeDirectionOverlay.tsx` | Create | Drag direction indicator overlay |
-| `src/pages/SwipePreset.tsx` | Edit | Add prebuffering, GPU transforms, gesture prediction, direction overlays |
-| `src/pages/Swipe.tsx` | Edit | Same prebuffering + gesture improvements |
-| `src/components/admin/AdminPlayLeagueItems.tsx` | Edit | Detect GIF uploads, store processed media reference |
-| DB migration | Create | `processed_media` table for tracking converted assets |
-
-## Phases Summary
-
-1. **Media table + GIF detection** — Database + admin upload awareness
-2. **AutoVideo component** — Render video where available
-3. **Prebuffering** — Preload next 3 matchup pairs
-4. **GPU swipe gestures** — translate3d, velocity prediction, will-change
-5. **Direction overlays** — Visual swipe feedback
-6. **Card stack** — Depth effect on desktop
-
+Convert using: `ffmpeg -i input.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" output.mp4`

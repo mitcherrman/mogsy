@@ -199,6 +199,20 @@ export default function Swipe() {
     setLoading(false);
   };
 
+  // ── Media prebuffering: preload upcoming profile avatars ──
+  useEffect(() => {
+    if (!pair || profiles.length < 2) return;
+    // Preload a few random other profile avatars for next pairs
+    const otherProfiles = profiles.filter(p => p.id !== pair[0].id && p.id !== pair[1].id);
+    const toPreload = otherProfiles.slice(0, 6);
+    toPreload.forEach(p => {
+      if (p.avatarUrl) {
+        const img = new Image();
+        img.src = p.avatarUrl;
+      }
+    });
+  }, [pair, profiles]);
+
   function getRandomPair(list: SwipeProfile[], lastPair?: [string, string]): [SwipeProfile, SwipeProfile] {
     let a: number, b: number;
     do {

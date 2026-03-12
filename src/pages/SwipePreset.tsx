@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SwipeDirectionOverlay from "@/components/SwipeDirectionOverlay";
 import SwipeComments from "@/components/SwipeComments";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Progress } from "@/components/ui/progress";
@@ -292,6 +293,25 @@ export default function SwipePreset() {
 
     setLoading(false);
   };
+
+  // ── Media prebuffering: preload next 3 matchup pairs ──
+  useEffect(() => {
+    if (!matchups.length || currentIndex >= matchups.length) return;
+    const upcoming = matchups.slice(currentIndex + 1, currentIndex + 4);
+    upcoming.flat().forEach(item => {
+      const url = getDisplayImage(item) || item.image_url;
+      if (url) {
+        if (url.match(/\.(mp4|webm|mov)(\?|$)/i)) {
+          const vid = document.createElement("video");
+          vid.preload = "metadata";
+          vid.src = url;
+        } else {
+          const img = new Image();
+          img.src = url;
+        }
+      }
+    });
+  }, [currentIndex, matchups, itemImages, currentImageIndex]);
 
   const getDisplayImage = (item: PresetItem): string | null => {
     const images = itemImages.get(item.id);
@@ -900,59 +920,18 @@ export default function SwipePreset() {
                             )}
                           </div>
                         )}
-          <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-                          <motion.button
-                            onClick={() => handleChoose(idx as 0 | 1)}
-                            drag={chosen === null ? "x" : false}
-                            dragConstraints={{ left: 0, right: 0 }}
-                            dragElastic={0.3}
-                            onDragEnd={(_e, info) => {
-                              if (Math.abs(info.offset.x) > 60) {
-                                handleChoose(idx as 0 | 1);
-                              }
-                            }}
-                            whileTap={{ scale: 0.99 }}
-                            className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
-                            isWinner
-                                ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
-                                : isLoser
-                                ? "opacity-50"
-                                : ""
-                            }`}
-                          >
-                            {/* Image container */}
-                            <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
-                              {displayImage && (
-                                <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
-                              )}
-                              {displayImage ? (
-                                <img
-                                  src={displayImage}
-                                  alt={item.name}
-                                  className="w-full h-full object-contain relative z-10"
-                                  style={getImageStyle(item)}
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
-                                  }}
-                                />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
-                                  {item.name.charAt(0)}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Winner crown */}
-                            {isWinner && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
-                              >
-                                <Crown className="h-4 w-4" />
-                              </motion.div>
-                            )}
-                          </motion.button>
+          <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`} style={{ willChange: "transform" }}>
+                          <CardDraggable
+                            idx={idx as 0 | 1}
+                            chosen={chosen}
+                            item={item}
+                            displayImage={displayImage}
+                            isWinner={isWinner}
+                            isLoser={isLoser}
+                            handleChoose={handleChoose}
+                            getImageStyle={getImageStyle}
+                            cardBgOpacity={cardBgOpacity}
+                          />
 
                           {/* Name & stats — always visible, outside animation area */}
                           {isMobile ? (
@@ -1164,7 +1143,88 @@ export default function SwipePreset() {
   );
 }
 
-/* ─── Gauntlet Card: champion stays stable, challenger fades in ─── */
+/* ─── CardDraggable: GPU-accelerated drag with velocity prediction + direction overlay ─── */
+function CardDraggable({
+  idx, chosen, item, displayImage, isWinner, isLoser, handleChoose, getImageStyle, cardBgOpacity,
+}: {
+  idx: 0 | 1;
+  chosen: 0 | 1 | null;
+  item: PresetItem;
+  displayImage: string | null;
+  isWinner: boolean;
+  isLoser: boolean;
+  handleChoose: (idx: 0 | 1) => void;
+  getImageStyle: (item: PresetItem) => React.CSSProperties;
+  cardBgOpacity: number;
+}) {
+  const dragX = useMotionValue(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const rotation = useTransform(dragX, [-200, 0, 200], [-8, 0, 8]);
+
+  return (
+    <motion.button
+      onClick={() => handleChoose(idx)}
+      drag={chosen === null ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.3}
+      style={{ x: dragX, rotate: rotation, willChange: "transform" }}
+      onDrag={() => setDragOffset(dragX.get())}
+      onDragEnd={(_e, info) => {
+        setDragOffset(0);
+        // Velocity-based prediction: trigger at lower offset if fast swipe
+        if (Math.abs(info.velocity.x) > 500 || Math.abs(info.offset.x) > 60) {
+          handleChoose(idx);
+        }
+      }}
+      whileTap={{ scale: 0.99 }}
+      className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-shadow duration-300 ${
+        isWinner
+          ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
+          : isLoser
+          ? "opacity-50"
+          : ""
+      }`}
+    >
+      {/* Image container */}
+      <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+        {displayImage && (
+          <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
+        )}
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={item.name}
+            className="w-full h-full object-contain relative z-10"
+            style={getImageStyle(item)}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`;
+            }}
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">
+            {item.name.charAt(0)}
+          </span>
+        )}
+      </div>
+
+      {/* Swipe direction overlay */}
+      <SwipeDirectionOverlay dragX={dragOffset} />
+
+      {/* Winner crown */}
+      {isWinner && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg"
+        >
+          <Crown className="h-4 w-4" />
+        </motion.div>
+      )}
+    </motion.button>
+  );
+}
+
+
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
   eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity,
@@ -1188,46 +1248,18 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-      <motion.button
-        onClick={() => handleChoose(idx as 0 | 1)}
-        drag={chosen === null ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.3}
-        onDragEnd={(_e: any, info: any) => {
-          if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
-        }}
-        whileTap={{ scale: 0.99 }}
-        className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
-          isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
-        } ${
-          isWinner
-            ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
-            : isLoser
-            ? "opacity-50"
-            : ""
-        }`}
-      >
-        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
-          {displayImage && (
-            <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
-          )}
-          {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-contain relative z-10"
-              style={getImageStyle(item)}
-              onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
-            />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
-          )}
-        </div>
-        {isWinner && (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-            className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg">
-            <Crown className="h-4 w-4" />
-          </motion.div>
-        )}
-      </motion.button>
+    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`} style={{ willChange: "transform" }}>
+      <CardDraggable
+        idx={idx as 0 | 1}
+        chosen={chosen}
+        item={item}
+        displayImage={displayImage}
+        isWinner={isWinner}
+        isLoser={isLoser}
+        handleChoose={handleChoose}
+        getImageStyle={getImageStyle}
+        cardBgOpacity={cardBgOpacity}
+      />
       {isMobile ? (
         <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-between gap-1">

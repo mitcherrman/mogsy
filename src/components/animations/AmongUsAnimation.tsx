@@ -89,12 +89,18 @@ export default function AmongUsAnimation({ winnerSide, items, onComplete }: Prop
                             WebkitMaskImage: "radial-gradient(ellipse 70% 60% at center 60%, black 35%, transparent 65%)",
                           }}
                         >
-                          <img
-                            src="/images/amongus-backstab.gif"
-                            alt="Among Us backstab"
+                          <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
                             className="w-full h-full object-cover object-bottom scale-[1.3] origin-bottom drop-shadow-2xl"
-                            draggable={false}
-                          />
+                          >
+                            <source src="/images/amongus-backstab.webm" type="video/webm" />
+                            <source src="/images/amongus-backstab.mp4" type="video/mp4" />
+                            <img src="/images/amongus-backstab.gif" alt="Among Us backstab" className="w-full h-full object-cover object-bottom scale-[1.3] origin-bottom drop-shadow-2xl" draggable={false} />
+                          </video>
                         </div>
                       </motion.div>
                     </>

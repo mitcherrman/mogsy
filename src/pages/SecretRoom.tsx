@@ -135,12 +135,18 @@ export default function SecretRoom() {
 
       {/* Twerking Among Us GIF */}
       <div className="mt-8">
-        <img
-          src="/images/twerking-amongus.gif"
-          alt="secret crewmate"
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg"
-          draggable={false}
-        />
+        >
+          <source src="/images/twerking-amongus.webm" type="video/webm" />
+          <source src="/images/twerking-amongus.mp4" type="video/mp4" />
+          <img src="/images/twerking-amongus.gif" alt="secret crewmate" className="w-32 h-32 md:w-40 md:h-40 object-contain drop-shadow-lg" draggable={false} />
+        </video>
       </div>
     </div>
   );

@@ -1573,6 +1573,63 @@ export type Database = {
           },
         ]
       }
+      processed_media: {
+        Row: {
+          created_at: string
+          duration: number | null
+          height: number | null
+          id: string
+          media_type: string
+          mp4_url: string | null
+          original_url: string
+          owner_profile_id: string | null
+          thumbnail_url: string | null
+          webm_url: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          height?: number | null
+          id?: string
+          media_type?: string
+          mp4_url?: string | null
+          original_url: string
+          owner_profile_id?: string | null
+          thumbnail_url?: string | null
+          webm_url?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          height?: number | null
+          id?: string
+          media_type?: string
+          mp4_url?: string | null
+          original_url?: string
+          owner_profile_id?: string | null
+          thumbnail_url?: string | null
+          webm_url?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processed_media_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processed_media_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_favorites: {
         Row: {
           created_at: string
