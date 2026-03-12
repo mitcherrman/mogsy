@@ -3,7 +3,7 @@
  * Uses `modern-gif` (already installed) for frame decoding.
  */
 
-import { decode } from "modern-gif";
+import { decode, decodeFrames } from "modern-gif";
 
 export interface ConversionResult {
   webmBlob: Blob;
