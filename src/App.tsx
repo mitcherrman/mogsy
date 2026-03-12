@@ -7,9 +7,10 @@ import { AuthProvider } from "./hooks/useAuth";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
+
+const Index = lazy(() => import("./pages/Index"));
 
 // Lazy-load all non-landing routes to reduce initial JS bundle
 const Home = lazy(() => import("./pages/Home"));
