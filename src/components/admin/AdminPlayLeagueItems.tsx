@@ -323,6 +323,104 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   };
 
 
+  const handleConvertAllGifs = async () => {
+    setConvertingAll(true);
+    setConvertProgress("Scanning…");
+    try {
+      // Get all preset_item_images for this league's items that are GIFs
+      const itemIds = items.map(i => i.id);
+      if (itemIds.length === 0) { toast.info("No items in this league"); setConvertingAll(false); return; }
+
+      const { data: allImages } = await supabase
+        .from("preset_item_images")
+        .select("id, preset_item_id, image_url")
+        .in("preset_item_id", itemIds);
+
+      const gifImages = (allImages || []).filter(img =>
+        img.image_url && img.image_url.toLowerCase().split("?")[0].endsWith(".gif")
+      );
+
+      if (gifImages.length === 0) {
+        toast.info("No GIFs found to convert");
+        setConvertingAll(false);
+        setConvertProgress("");
+        return;
+      }
+
+      let converted = 0;
+      let failed = 0;
+
+      for (const gifImg of gifImages) {
+        setConvertProgress(`${converted + 1}/${gifImages.length}`);
+        try {
+          // Fetch the GIF
+          const response = await fetch(gifImg.image_url);
+          const blob = await response.blob();
+          const file = new File([blob], "image.gif", { type: "image/gif" });
+
+          const result = await gifToWebm(file);
+          if (!result) { failed++; continue; }
+
+          const ts = Date.now();
+          // Upload WebM
+          const webmPath = `preset-items/${gifImg.preset_item_id}/${ts}.webm`;
+          const { error: webmErr } = await supabase.storage
+            .from("profile-photos")
+            .upload(webmPath, result.webmBlob, { contentType: "video/webm" });
+          if (webmErr) { failed++; continue; }
+          const { data: webmData } = supabase.storage.from("profile-photos").getPublicUrl(webmPath);
+          const webmUrl = webmData.publicUrl;
+
+          // Upload thumbnail
+          const thumbPath = `preset-items/${gifImg.preset_item_id}/${ts}_thumb.jpg`;
+          await supabase.storage
+            .from("profile-photos")
+            .upload(thumbPath, result.thumbnailBlob, { contentType: "image/jpeg" });
+          const { data: thumbData } = supabase.storage.from("profile-photos").getPublicUrl(thumbPath);
+          const thumbnailUrl = thumbData.publicUrl;
+
+          // Record in processed_media
+          await supabase.from("processed_media").insert({
+            original_url: gifImg.image_url,
+            webm_url: webmUrl,
+            thumbnail_url: thumbnailUrl,
+            media_type: "gif",
+            width: result.width,
+            height: result.height,
+            duration: result.duration,
+          });
+
+          // Update preset_item_images to point to WebM
+          await supabase
+            .from("preset_item_images")
+            .update({ image_url: webmUrl })
+            .eq("id", gifImg.id);
+
+          // Update preset_items.image_url if it pointed to the old GIF
+          await supabase
+            .from("preset_items")
+            .update({ image_url: webmUrl })
+            .eq("id", gifImg.preset_item_id)
+            .eq("image_url", gifImg.image_url);
+
+          converted++;
+        } catch (err) {
+          console.error("Failed to convert GIF:", gifImg.image_url, err);
+          failed++;
+        }
+      }
+
+      toast.success(`Converted ${converted}/${gifImages.length} GIFs to WebM${failed > 0 ? ` (${failed} failed)` : ""}`);
+      await loadItems();
+    } catch (err) {
+      console.error("Convert all GIFs error:", err);
+      toast.error("Conversion failed");
+    } finally {
+      setConvertingAll(false);
+      setConvertProgress("");
+    }
+  };
+
   if (selectedItem) {
     const visibleCount = itemImages.filter(i => !i.is_hidden).length;
 
