@@ -828,13 +828,19 @@ function AmongUsCrewmateGif() {
             }}
             onClick={isClickable ? () => navigate("/secret-room") : undefined}
           >
-            <img
-              src="/images/amongus-crewmate.gif"
-              alt=""
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
               className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-lg"
-              draggable={false}
               style={{ filter: isClickable ? "brightness(1.3)" : "none", transform: gifPos.flipped ? "scaleX(-1)" : "none" }}
-            />
+            >
+              <source src="/images/amongus-crewmate.webm" type="video/webm" />
+              <source src="/images/amongus-crewmate.mp4" type="video/mp4" />
+              <img src="/images/amongus-crewmate.gif" alt="" className="w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-lg" draggable={false} style={{ filter: isClickable ? "brightness(1.3)" : "none", transform: gifPos.flipped ? "scaleX(-1)" : "none" }} />
+            </video>
           </motion.div>
         )}
       </AnimatePresence>
