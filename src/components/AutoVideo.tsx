@@ -7,6 +7,7 @@ interface AutoVideoProps {
   style?: React.CSSProperties;
   draggable?: boolean;
   onLoad?: () => void;
+  onError?: (e: React.SyntheticEvent) => void;
   /** If true, auto play/pause based on IntersectionObserver visibility */
   visibilityControl?: boolean;
 }
