@@ -96,13 +96,19 @@ export default function SgtDoakesAnimation({ winnerSide, items, onComplete }: Pr
                     }
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <img
-                      src="/images/sgt-doakes.gif"
-                      alt=""
+                    <video
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="auto"
                       className="w-[85%] h-auto"
                       style={{ maskImage: "linear-gradient(to top, black 40%, transparent 95%)" }}
-                      draggable={false}
-                    />
+                    >
+                      <source src="/images/sgt-doakes.webm" type="video/webm" />
+                      <source src="/images/sgt-doakes.mp4" type="video/mp4" />
+                      <img src="/images/sgt-doakes.gif" alt="" className="w-[85%] h-auto" style={{ maskImage: "linear-gradient(to top, black 40%, transparent 95%)" }} draggable={false} />
+                    </video>
                   </motion.div>
 
                   {/* SURPRISE stamp */}
