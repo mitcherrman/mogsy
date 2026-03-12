@@ -1215,10 +1215,10 @@ function CardDraggable({
       {/* Image container */}
       <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
         {displayImage && (
-          <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
+          <AutoVideo src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
         )}
         {displayImage ? (
-          <img
+          <AutoVideo
             src={displayImage}
             alt={item.name}
             className="w-full h-full object-contain relative z-10"
