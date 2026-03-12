@@ -31,6 +31,7 @@ export default function AutoVideo({
   style,
   draggable = false,
   onLoad,
+  onError,
   visibilityControl = true,
 }: AutoVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
