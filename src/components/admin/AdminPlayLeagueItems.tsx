@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ImagePositionEditor from "./ImagePositionEditor";
+import { gifToWebm } from "@/lib/gif-to-video";
 
 interface PresetItem {
   id: string;
