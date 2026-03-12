@@ -334,11 +334,18 @@ export default function SwipePreset() {
 
   const getDisplayImage = (item: PresetItem): string | null => {
     const images = itemImages.get(item.id);
+    let url: string | null = null;
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
-      return images[idx % images.length].image_url;
+      url = images[idx % images.length].image_url;
+    } else {
+      url = item.image_url;
     }
-    return item.image_url;
+    // Resolve optimized video URL if available
+    if (url && optimizedUrls.has(url)) {
+      return optimizedUrls.get(url)!;
+    }
+    return url;
   };
 
   const getImageStyle = (item: PresetItem): React.CSSProperties => {
