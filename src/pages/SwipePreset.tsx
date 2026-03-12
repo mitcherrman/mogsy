@@ -249,10 +249,12 @@ export default function SwipePreset() {
       if (images) {
         const map = new Map<string, ItemImage[]>();
         const idxMap = new Map<string, number>();
+        const allImageUrls: string[] = [];
         images.forEach(img => {
           const list = map.get(img.preset_item_id) || [];
           list.push(img as ItemImage);
           map.set(img.preset_item_id, list);
+          allImageUrls.push(img.image_url);
           if (!idxMap.has(img.preset_item_id)) {
             idxMap.set(img.preset_item_id, Math.floor(Math.random() * (list.length)));
           }
@@ -262,6 +264,22 @@ export default function SwipePreset() {
         });
         setItemImages(map);
         setCurrentImageIndex(idxMap);
+
+        // Load optimized media URLs for any GIFs that have been converted
+        if (allImageUrls.length > 0) {
+          const { data: media } = await supabase
+            .from("processed_media")
+            .select("original_url, webm_url")
+            .in("original_url", allImageUrls)
+            .not("webm_url", "is", null);
+          if (media && media.length > 0) {
+            const urlMap = new Map<string, string>();
+            media.forEach((m: any) => {
+              if (m.webm_url) urlMap.set(m.original_url, m.webm_url);
+            });
+            setOptimizedUrls(urlMap);
+          }
+        }
       }
     }
 
