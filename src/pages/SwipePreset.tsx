@@ -327,10 +327,6 @@ export default function SwipePreset() {
     } else {
       url = item.image_url;
     }
-    // Resolve optimized video URL if available
-    if (url && optimizedUrls.has(url)) {
-      return optimizedUrls.get(url)!;
-    }
     return url;
   };
 
