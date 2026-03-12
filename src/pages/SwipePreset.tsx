@@ -1248,46 +1248,18 @@ function GauntletCard({
   const isLoser = chosen !== null && chosen !== idx;
 
   const cardContent = (
-    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-      <motion.button
-        onClick={() => handleChoose(idx as 0 | 1)}
-        drag={chosen === null ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.3}
-        onDragEnd={(_e: any, info: any) => {
-          if (Math.abs(info.offset.x) > 60) handleChoose(idx as 0 | 1);
-        }}
-        whileTap={{ scale: 0.99 }}
-        className={`relative ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} cursor-pointer transition-all duration-300 ${
-          isChampion && chosen === null ? "champion-stay ring-2 ring-primary/40" : ""
-        } ${
-          isWinner
-            ? "ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.3)]"
-            : isLoser
-            ? "opacity-50"
-            : ""
-        }`}
-      >
-        <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
-          {displayImage && (
-            <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
-          )}
-          {displayImage ? (
-            <img src={displayImage} alt={item.name} className="w-full h-full object-contain relative z-10"
-              style={getImageStyle(item)}
-              onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=1a1a2e&color=00d4ff&size=200`; }}
-            />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
-          )}
-        </div>
-        {isWinner && (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-            className="absolute top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg">
-            <Crown className="h-4 w-4" />
-          </motion.div>
-        )}
-      </motion.button>
+    <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`} style={{ willChange: "transform" }}>
+      <CardDraggable
+        idx={idx as 0 | 1}
+        chosen={chosen}
+        item={item}
+        displayImage={displayImage}
+        isWinner={isWinner}
+        isLoser={isLoser}
+        handleChoose={handleChoose}
+        getImageStyle={getImageStyle}
+        cardBgOpacity={cardBgOpacity}
+      />
       {isMobile ? (
         <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
           <div className="flex items-center justify-between gap-1">
