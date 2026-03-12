@@ -28,6 +28,7 @@ import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import ScrollToCommentsHint from "@/components/ScrollToCommentsHint";
+import AutoVideo from "@/components/AutoVideo";
 import SwipeInventoryButton from "@/components/SwipeInventoryButton";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
@@ -846,10 +847,10 @@ export default function SwipePreset() {
                 <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${pair[0].title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
                     <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
                     {pair[0].image_url && (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
+                      <AutoVideo src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
                     )}
                     {pair[0].image_url ? (
-                      <img src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain relative z-10" style={getImageStyle(pair[0])} />
+                      <AutoVideo src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain relative z-10" style={getImageStyle(pair[0])} />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
                     )}
@@ -1214,10 +1215,10 @@ function CardDraggable({
       {/* Image container */}
       <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
         {displayImage && (
-          <img src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" />
+          <AutoVideo src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
         )}
         {displayImage ? (
-          <img
+          <AutoVideo
             src={displayImage}
             alt={item.name}
             className="w-full h-full object-contain relative z-10"

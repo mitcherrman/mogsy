@@ -7,6 +7,7 @@ interface AutoVideoProps {
   style?: React.CSSProperties;
   draggable?: boolean;
   onLoad?: () => void;
+  onError?: (e: React.SyntheticEvent) => void;
   /** If true, auto play/pause based on IntersectionObserver visibility */
   visibilityControl?: boolean;
 }
@@ -30,6 +31,7 @@ export default function AutoVideo({
   style,
   draggable = false,
   onLoad,
+  onError,
   visibilityControl = true,
 }: AutoVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,6 +93,7 @@ export default function AutoVideo({
       style={style}
       draggable={draggable}
       onLoad={onLoad}
+      onError={onError}
     />
   );
 }
