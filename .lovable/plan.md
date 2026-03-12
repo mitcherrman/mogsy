@@ -41,3 +41,39 @@ Still use absolute Elo-based tiers (unchanged).
 - `src/components/MatchupCapture.tsx`
 - `src/components/admin/AdminSettings.tsx`
 - Database: `show_match_count` and `show_swipe_progress` in `app_settings`
+
+## Swipe Media System Upgrade (Implemented)
+
+### What Changed
+
+1. **`processed_media` table** — New database table tracking GIF/video assets with fields for original_url, mp4_url, webm_url, thumbnail_url, media_type, dimensions, and duration. RLS: admin-managed, publicly readable.
+
+2. **`src/components/AutoVideo.tsx`** — Reusable component that renders `<video autoPlay loop muted playsInline>` for video URLs (mp4/webm) or `<img>` for images. Includes IntersectionObserver-based play/pause for offscreen performance.
+
+3. **`src/components/SwipeDirectionOverlay.tsx`** — Drag direction indicator showing "👑 MOG" or "👎 PASS" overlay during card swipes, with opacity proportional to drag distance.
+
+4. **`src/pages/SwipePreset.tsx`** — 
+   - **Prebuffering**: Preloads next 3 matchup pairs (images/videos) into browser cache
+   - **GPU drag**: Cards use `translate3d` + `rotate` transforms via Framer Motion `useMotionValue`/`useTransform`
+   - **Velocity prediction**: Swipes complete at lower offset when velocity > 500px/s
+   - **Direction overlays**: MOG/PASS overlay appears during drag
+   - **`will-change: transform`** on card containers
+
+5. **`src/pages/Swipe.tsx`** — Avatar prebuffering for next 6 profiles
+
+6. **GIF → Video migration** — Decorative GIFs replaced with `<video>` tags with webm/mp4 sources + GIF fallback:
+   - `SgtDoakesAnimation.tsx` — sgt-doakes.gif → video
+   - `AmongUsAnimation.tsx` — amongus-backstab.gif → video
+   - `ThemeOverlay.tsx` — amongus-crewmate.gif → video
+   - `SecretRoom.tsx` — twerking-amongus.gif → video
+
+7. **`AdminPlayLeagueItems.tsx`** — GIF uploads detected and logged to `processed_media` table for future conversion pipeline
+
+### Video Files Needed
+Place MP4/WebM versions in `public/images/`:
+- `sgt-doakes.mp4` / `sgt-doakes.webm`
+- `amongus-backstab.mp4` / `amongus-backstab.webm`
+- `amongus-crewmate.mp4` / `amongus-crewmate.webm`
+- `twerking-amongus.mp4` / `twerking-amongus.webm`
+
+Convert using: `ffmpeg -i input.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" output.mp4`
