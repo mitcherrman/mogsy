@@ -139,6 +139,7 @@ export default function SwipePreset() {
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
+  const [optimizedUrls, setOptimizedUrls] = useState<Map<string, string>>(new Map());
 
   // Lock scroll on mobile to prevent any scrolling past game area
   useEffect(() => {
@@ -248,10 +249,12 @@ export default function SwipePreset() {
       if (images) {
         const map = new Map<string, ItemImage[]>();
         const idxMap = new Map<string, number>();
+        const allImageUrls: string[] = [];
         images.forEach(img => {
           const list = map.get(img.preset_item_id) || [];
           list.push(img as ItemImage);
           map.set(img.preset_item_id, list);
+          allImageUrls.push(img.image_url);
           if (!idxMap.has(img.preset_item_id)) {
             idxMap.set(img.preset_item_id, Math.floor(Math.random() * (list.length)));
           }
@@ -261,6 +264,22 @@ export default function SwipePreset() {
         });
         setItemImages(map);
         setCurrentImageIndex(idxMap);
+
+        // Load optimized media URLs for any GIFs that have been converted
+        if (allImageUrls.length > 0) {
+          const { data: media } = await supabase
+            .from("processed_media")
+            .select("original_url, webm_url")
+            .in("original_url", allImageUrls)
+            .not("webm_url", "is", null);
+          if (media && media.length > 0) {
+            const urlMap = new Map<string, string>();
+            media.forEach((m: any) => {
+              if (m.webm_url) urlMap.set(m.original_url, m.webm_url);
+            });
+            setOptimizedUrls(urlMap);
+          }
+        }
       }
     }
 
@@ -315,11 +334,18 @@ export default function SwipePreset() {
 
   const getDisplayImage = (item: PresetItem): string | null => {
     const images = itemImages.get(item.id);
+    let url: string | null = null;
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
-      return images[idx % images.length].image_url;
+      url = images[idx % images.length].image_url;
+    } else {
+      url = item.image_url;
     }
-    return item.image_url;
+    // Resolve optimized video URL if available
+    if (url && optimizedUrls.has(url)) {
+      return optimizedUrls.get(url)!;
+    }
+    return url;
   };
 
   const getImageStyle = (item: PresetItem): React.CSSProperties => {
