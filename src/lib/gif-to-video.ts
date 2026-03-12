@@ -47,6 +47,7 @@ export async function gifToWebm(file: File): Promise<ConversionResult | null> {
   const ctx = canvas.getContext("2d")!;
 
   // Generate thumbnail from first frame
+  const firstFrame = frames[0];
   ctx.putImageData(
     new ImageData(new Uint8ClampedArray(firstFrame.data), width, height),
     0,
