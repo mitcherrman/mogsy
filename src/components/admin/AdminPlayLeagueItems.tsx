@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
