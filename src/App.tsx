@@ -54,7 +54,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Suspense fallback={<LazyFallback />}><Index /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<LazyFallback />}><Auth /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<LazyFallback />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
