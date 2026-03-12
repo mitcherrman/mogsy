@@ -1,24 +1,79 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-## Analysis
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-I queried the `processed_media` table and found the problem. There are entries where the client-side GIF→WebM conversion "succeeded" (has a `webm_url`), but the resulting WebM files are likely **static or broken**. The `MediaRecorder` + `canvas.captureStream()` approach used in `gif-to-video.ts` is fundamentally unreliable — it's a known issue that this API often produces single-frame or poorly-encoded WebM files, especially with complex GIF timing.
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
 
-**Your suspicion is correct**: Iron Man 1 works because its conversion failed (`webm_url = null`), so the original animated GIF is displayed. The Avengers and others got "converted" WebM files that are actually broken — showing as still images.
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
 
-**Is the WebM conversion worth it?** No. The client-side `MediaRecorder` approach is too unreliable for production use. Server-side FFmpeg would work, but that's significant infrastructure. For the volume of GIFs in this app, the original GIFs are fine — browsers handle them natively and reliably.
+### Changes Made
 
-## Plan: Remove WebM substitution, keep original GIFs
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
 
-**1. `src/pages/SwipePreset.tsx`** — Remove the `optimizedUrls` state and the `processed_media` query that substitutes GIF URLs with WebM URLs. The `getDisplayImage` function will simply return the original image URL (GIF or static). This is the only change needed to fix the display issue.
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
 
-- Remove `optimizedUrls` state variable
-- Remove the `processed_media` query block (lines 270-282)
-- Remove the optimized URL resolution from `getDisplayImage` (lines 346-348)
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
 
-**2. `src/pages/SwipePreset.tsx`** — Keep `AutoVideo` usage for any actual video files that may be uploaded directly (mp4/webm uploads), but GIFs will now always render as `<img>` tags since their URLs end in `.gif`.
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
 
-**3. No database changes** — The `processed_media` table can stay as-is; it just won't be queried during swipe rendering. The admin conversion UI can be cleaned up separately if desired.
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
 
-This is a minimal, safe change that restores all animated GIFs to working state immediately.
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
 
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
+
+## Swipe Media System Upgrade (Implemented)
+
+### What Changed
+
+1. **`processed_media` table** — New database table tracking GIF/video assets with fields for original_url, mp4_url, webm_url, thumbnail_url, media_type, dimensions, and duration. RLS: admin-managed, publicly readable.
+
+2. **`src/components/AutoVideo.tsx`** — Reusable component that renders `<video autoPlay loop muted playsInline>` for video URLs (mp4/webm) or `<img>` for images. Includes IntersectionObserver-based play/pause for offscreen performance.
+
+3. **`src/components/SwipeDirectionOverlay.tsx`** — Drag direction indicator showing "👑 MOG" or "👎 PASS" overlay during card swipes, with opacity proportional to drag distance.
+
+4. **`src/pages/SwipePreset.tsx`** — 
+   - **Prebuffering**: Preloads next 3 matchup pairs (images/videos) into browser cache
+   - **GPU drag**: Cards use `translate3d` + `rotate` transforms via Framer Motion `useMotionValue`/`useTransform`
+   - **Velocity prediction**: Swipes complete at lower offset when velocity > 500px/s
+   - **Direction overlays**: MOG/PASS overlay appears during drag
+   - **`will-change: transform`** on card containers
+
+5. **`src/pages/Swipe.tsx`** — Avatar prebuffering for next 6 profiles
+
+6. **GIF → Video migration** — Decorative GIFs replaced with `<video>` tags with webm/mp4 sources + GIF fallback:
+   - `SgtDoakesAnimation.tsx` — sgt-doakes.gif → video
+   - `AmongUsAnimation.tsx` — amongus-backstab.gif → video
+   - `ThemeOverlay.tsx` — amongus-crewmate.gif → video
+   - `SecretRoom.tsx` — twerking-amongus.gif → video
+
+7. **`AdminPlayLeagueItems.tsx`** — GIF uploads detected and logged to `processed_media` table for future conversion pipeline
+
+### Video Files Needed
+Place MP4/WebM versions in `public/images/`:
+- `sgt-doakes.mp4` / `sgt-doakes.webm`
+- `amongus-backstab.mp4` / `amongus-backstab.webm`
+- `amongus-crewmate.mp4` / `amongus-crewmate.webm`
+- `twerking-amongus.mp4` / `twerking-amongus.webm`
+
+Convert using: `ffmpeg -i input.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" output.mp4`
