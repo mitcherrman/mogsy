@@ -189,21 +189,58 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     if (file.size > 20 * 1024 * 1024) { toast.error("Max 20MB"); return; }
     setUploading(true);
 
-    // Detect GIF uploads and warn about performance
     const isGif = file.type === "image/gif";
-    if (isGif) {
-      toast.info("GIF detected — consider providing MP4/WebM versions for better performance");
-    }
 
     const ext = file.name.split(".").pop();
-    const path = `preset-items/${selectedItem.id}/${Date.now()}.${ext}`;
+    const ts = Date.now();
+    const path = `preset-items/${selectedItem.id}/${ts}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
     if (uploadError) { toast.error(uploadError.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
+    const originalUrl = urlData.publicUrl;
+
+    // GIF conversion pipeline
+    let webmUrl: string | null = null;
+    let thumbnailUrl: string | null = null;
+    let conversionMeta: { width: number; height: number; duration: number } | null = null;
+
+    if (isGif) {
+      toast.info("Converting GIF to optimized video…");
+      try {
+        const result = await gifToWebm(file);
+        if (result) {
+          // Upload WebM
+          const webmPath = `preset-items/${selectedItem.id}/${ts}.webm`;
+          const { error: webmErr } = await supabase.storage
+            .from("profile-photos")
+            .upload(webmPath, result.webmBlob, { contentType: "video/webm" });
+          if (!webmErr) {
+            const { data: webmData } = supabase.storage.from("profile-photos").getPublicUrl(webmPath);
+            webmUrl = webmData.publicUrl;
+          }
+
+          // Upload thumbnail
+          const thumbPath = `preset-items/${selectedItem.id}/${ts}_thumb.jpg`;
+          const { error: thumbErr } = await supabase.storage
+            .from("profile-photos")
+            .upload(thumbPath, result.thumbnailBlob, { contentType: "image/jpeg" });
+          if (!thumbErr) {
+            const { data: thumbData } = supabase.storage.from("profile-photos").getPublicUrl(thumbPath);
+            thumbnailUrl = thumbData.publicUrl;
+          }
+
+          conversionMeta = { width: result.width, height: result.height, duration: result.duration };
+        }
+      } catch (err) {
+        console.error("GIF conversion failed:", err);
+        toast.warning("GIF conversion failed — original GIF will be used");
+      }
+    }
+
     const nextOrder = itemImages.length;
     const { data, error } = await supabase
       .from("preset_item_images")
-      .insert({ preset_item_id: selectedItem.id, image_url: urlData.publicUrl, sort_order: nextOrder })
+      .insert({ preset_item_id: selectedItem.id, image_url: originalUrl, sort_order: nextOrder })
       .select()
       .single();
     if (error) { toast.error(error.message); setUploading(false); return; }
@@ -214,20 +251,31 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       return next;
     });
 
-    // Track GIF in processed_media table for future conversion pipeline
+    // Store processed media record
     if (isGif) {
       await supabase.from("processed_media" as any).insert({
-        original_url: urlData.publicUrl,
+        original_url: originalUrl,
+        webm_url: webmUrl,
+        thumbnail_url: thumbnailUrl,
         media_type: "gif",
+        width: conversionMeta?.width ?? null,
+        height: conversionMeta?.height ?? null,
+        duration: conversionMeta?.duration ?? null,
       });
     }
 
     // Auto-set preview if none exists
     if (!selectedItem.image_url) {
-      await setPreviewImage(urlData.publicUrl);
+      await setPreviewImage(originalUrl);
     }
     setUploading(false);
-    toast.success("Image uploaded & added");
+    if (webmUrl) {
+      toast.success("GIF converted to optimized video & uploaded");
+    } else if (isGif) {
+      toast.success("GIF uploaded (conversion unavailable in this browser)");
+    } else {
+      toast.success("Image uploaded & added");
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
