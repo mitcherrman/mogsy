@@ -122,6 +122,7 @@ export default function Landing() {
           className="h-28 sm:h-36 md:h-44 object-contain drop-shadow-[0_0_25px_hsl(var(--primary)/0.4)]"
           width={264}
           height={176}
+          sizes="(min-width: 768px) 176px, (min-width: 640px) 144px, 112px"
           animate={{
             y: [0, -6, 0],
             filter: [
