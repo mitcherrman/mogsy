@@ -93,6 +93,7 @@ export default function AutoVideo({
       style={style}
       draggable={draggable}
       onLoad={onLoad}
+      onError={onError}
     />
   );
 }
