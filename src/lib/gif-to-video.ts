@@ -28,17 +28,17 @@ export async function gifToWebm(file: File): Promise<ConversionResult | null> {
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const frames = await decode(arrayBuffer);
+  const gif = decode(arrayBuffer);
+  const frames = await decodeFrames(arrayBuffer);
 
   if (!frames || frames.length === 0) {
     console.warn("No frames decoded from GIF");
     return null;
   }
 
-  // Get dimensions from first frame
-  const firstFrame = frames[0];
-  const width = firstFrame.width;
-  const height = firstFrame.height;
+  // Get dimensions from gif metadata
+  const width = gif.width;
+  const height = gif.height;
 
   // Create offscreen canvas
   const canvas = document.createElement("canvas");
