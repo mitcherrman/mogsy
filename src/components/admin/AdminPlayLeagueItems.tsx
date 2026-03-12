@@ -935,6 +935,17 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         </Button>
       </div>
 
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 w-full"
+        disabled={convertingAll || items.length === 0}
+        onClick={handleConvertAllGifs}
+      >
+        <Film className="h-3.5 w-3.5" />
+        {convertingAll ? `Converting ${convertProgress}…` : "Convert All GIFs to WebM"}
+      </Button>
+
       <div className="space-y-1.5">
         {items.length === 0 && <p className="text-center text-muted-foreground text-sm py-8">No items.</p>}
         {items.map(item => {
