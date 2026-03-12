@@ -294,6 +294,25 @@ export default function SwipePreset() {
     setLoading(false);
   };
 
+  // ── Media prebuffering: preload next 3 matchup pairs ──
+  useEffect(() => {
+    if (!matchups.length || currentIndex >= matchups.length) return;
+    const upcoming = matchups.slice(currentIndex + 1, currentIndex + 4);
+    upcoming.flat().forEach(item => {
+      const url = getDisplayImage(item) || item.image_url;
+      if (url) {
+        if (url.match(/\.(mp4|webm|mov)(\?|$)/i)) {
+          const vid = document.createElement("video");
+          vid.preload = "metadata";
+          vid.src = url;
+        } else {
+          const img = new Image();
+          img.src = url;
+        }
+      }
+    });
+  }, [currentIndex, matchups, itemImages, currentImageIndex]);
+
   const getDisplayImage = (item: PresetItem): string | null => {
     const images = itemImages.get(item.id);
     if (images && images.length > 0) {
