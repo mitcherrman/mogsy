@@ -28,6 +28,7 @@ import { useSwipeTimer } from "@/hooks/useSwipeTimer";
 import SwipeTimer from "@/components/SwipeTimer";
 import SwipeReadyOverlay from "@/components/SwipeReadyOverlay";
 import ScrollToCommentsHint from "@/components/ScrollToCommentsHint";
+import AutoVideo from "@/components/AutoVideo";
 import SwipeInventoryButton from "@/components/SwipeInventoryButton";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
