@@ -73,6 +73,8 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [tiOffsetX, setTiOffsetX] = useState(0);
   const [tiMaxHeight, setTiMaxHeight] = useState(0);
   const [showHiddenImages, setShowHiddenImages] = useState(false);
+  const [convertingAll, setConvertingAll] = useState(false);
+  const [convertProgress, setConvertProgress] = useState("");
 
   useEffect(() => {
     loadItems();
