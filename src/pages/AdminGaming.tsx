@@ -109,7 +109,6 @@ export default function AdminGaming() {
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="league-display"><AdminLeagueSettings /></TabsContent>
           <TabsContent value="ads"><AdminAds /></TabsContent>
-          <TabsContent value="ad-analytics"><AdminAdAnalytics /></TabsContent>
           <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
           <TabsContent value="sounds"><AdminSounds /></TabsContent>
         </Tabs>
