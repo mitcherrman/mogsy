@@ -32,6 +32,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 const AdminData = lazy(() => import("./pages/AdminData"));
 const AdminDemo = lazy(() => import("./pages/AdminDemo"));
+const AdminGaming = lazy(() => import("./pages/AdminGaming"));
 const SecretRoom = lazy(() => import("./pages/SecretRoom"));
 const Moderator = lazy(() => import("./pages/Moderator"));
 const CustomLink = lazy(() => import("./pages/CustomLink"));
