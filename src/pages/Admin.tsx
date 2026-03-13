@@ -20,7 +20,7 @@ import AdminBanners from "@/components/admin/AdminBanners";
 import AdminPushNotifications from "@/components/admin/AdminPushNotifications";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
-import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
+
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminUserReports from "@/components/admin/AdminUserReports";
 import AdminFeedback from "@/components/admin/AdminFeedback";
