@@ -32,6 +32,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPlay = lazy(() => import("./pages/AdminPlay"));
 const AdminData = lazy(() => import("./pages/AdminData"));
 const AdminDemo = lazy(() => import("./pages/AdminDemo"));
+const AdminGaming = lazy(() => import("./pages/AdminGaming"));
 const SecretRoom = lazy(() => import("./pages/SecretRoom"));
 const Moderator = lazy(() => import("./pages/Moderator"));
 const CustomLink = lazy(() => import("./pages/CustomLink"));
@@ -75,6 +76,7 @@ const App = () => (
                   <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/gaming" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminGaming /></Suspense></ProtectedRoute>} />
                   <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Moderator /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Multiplayer /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>} />

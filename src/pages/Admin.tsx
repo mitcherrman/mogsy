@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, ChevronRight, ChevronLeft, Bell, Download, BarChart3 } from "lucide-react";
+import { Shield, ChevronRight, ChevronLeft, Bell, Download, BarChart3, Gamepad2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -14,17 +14,13 @@ import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminNotifications from "@/components/admin/AdminNotifications";
-import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
-import AdminAds from "@/components/admin/AdminAds";
 import AdminBanners from "@/components/admin/AdminBanners";
 import AdminPushNotifications from "@/components/admin/AdminPushNotifications";
-import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
-import AdminSounds from "@/components/admin/AdminSounds";
 import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
-import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
+
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
 import AdminUserReports from "@/components/admin/AdminUserReports";
 import AdminFeedback from "@/components/admin/AdminFeedback";
@@ -36,15 +32,10 @@ const allTabs = [
   { value: "collections", label: "Collections", masterOnly: false },
   { value: "bots", label: "Bots", masterOnly: false },
   { value: "promoted", label: "Promoted", masterOnly: false },
-  { value: "elo-check", label: "Aura Check", masterOnly: false },
   { value: "comments", label: "Comments", masterOnly: false },
   { value: "invite-links", label: "Invites", masterOnly: false },
   { value: "push", label: "Push", masterOnly: false },
-  { value: "ads", label: "Ads", masterOnly: false },
   { value: "banners", label: "Banners", masterOnly: false },
-  { value: "animations", label: "Animations", masterOnly: false },
-  { value: "sounds", label: "Sounds", masterOnly: false },
-  { value: "multiplayer", label: "Multiplayer", masterOnly: false },
   { value: "reports", label: "Reports", masterOnly: false },
   { value: "tutorials", label: "Tutorials", masterOnly: false },
   { value: "feedback", label: "Feedback", masterOnly: false },
@@ -141,6 +132,12 @@ export default function Admin() {
                 Demo
               </button>
               <button
+                onClick={() => navigate("/admin/gaming")}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              >
+                <Gamepad2 className="h-3 w-3" /> Gaming
+              </button>
+              <button
                 disabled={csvExporting}
                 onClick={async () => { setCsvExporting(true); try { await exportAdminCSV(); toast.success("CSV exported"); } catch { toast.error("Export failed"); } finally { setCsvExporting(false); } }}
                 className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-muted-foreground text-[10px] sm:text-xs font-bold hover:bg-secondary transition-colors disabled:opacity-50"
@@ -204,15 +201,10 @@ export default function Admin() {
           <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
           <TabsContent value="promoted"><AdminPromotedLeagues /></TabsContent>
-          <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>
           <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
           <TabsContent value="push"><AdminPushNotifications /></TabsContent>
-          <TabsContent value="ads"><AdminAds /></TabsContent>
           <TabsContent value="banners"><AdminBanners /></TabsContent>
-          <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
-          <TabsContent value="sounds"><AdminSounds /></TabsContent>
-          <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="reports"><AdminUserReports /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
           <TabsContent value="feedback"><AdminFeedback /></TabsContent>
