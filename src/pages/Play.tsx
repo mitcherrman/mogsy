@@ -236,8 +236,13 @@ export default function Play() {
 
   const onCatSelect = (cat: string) => setSelectedCategory(cat);
 
-  // Determine if we need scrolling (large list of subcategories)
+  // Determine if we need scrolling — on desktop/iPad, always allow scroll when
+  // a category or subcategory is expanded since the content can exceed the viewport
   const needsScroll = (() => {
+    // Desktop/tablet: allow scrolling whenever content is expanded
+    if (!isMobile && (selectedCategory || selectedSubcategory || (subExpanded && expanded))) {
+      return true;
+    }
     if (selectedSubcategory) {
       const cat = selectedCategory || "";
       const leaguesInSub = (currentCategories[cat] || []).filter(l => l.subcategory === selectedSubcategory);
