@@ -172,7 +172,7 @@ export default function AdminPlay() {
     ];
 
     return {
-      topLevel: saved.topLevel.length > 0 ? saved.topLevel : [...DEFAULT_TOP_LEVEL],
+      topLevel: mergedTopLevel,
       categories: [
         ...saved.categories,
         ...newCats.map((cat, i) => ({

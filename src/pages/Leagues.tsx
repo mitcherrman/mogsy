@@ -74,7 +74,7 @@ export default function Leagues() {
     const results: LeagueWithTop5[] = [];
 
     // Fetch top 5 for each league in parallel
-    const promises = allLeagues.map(async (league) => {
+    const promises = visibleLeagues.map(async (league) => {
       let top5: LeagueWithTop5["top5"] = [];
 
       if (league.type === "preset") {
