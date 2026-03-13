@@ -10,7 +10,6 @@ import AdminSwipeGameConfig from "@/components/admin/AdminSwipeGameConfig";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminAds from "@/components/admin/AdminAds";
-import AdminAdAnalytics from "@/components/admin/AdminAdAnalytics";
 import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
@@ -21,7 +20,6 @@ const allTabs = [
   { value: "multiplayer", label: "Multiplayer" },
   { value: "league-display", label: "League Display" },
   { value: "ads", label: "Ads" },
-  { value: "ad-analytics", label: "Ad Analytics" },
   { value: "animations", label: "Animations" },
   { value: "sounds", label: "Sounds" },
 ];
@@ -111,7 +109,6 @@ export default function AdminGaming() {
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="league-display"><AdminLeagueSettings /></TabsContent>
           <TabsContent value="ads"><AdminAds /></TabsContent>
-          <TabsContent value="ad-analytics"><AdminAdAnalytics /></TabsContent>
           <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
           <TabsContent value="sounds"><AdminSounds /></TabsContent>
         </Tabs>

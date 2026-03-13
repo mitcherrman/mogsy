@@ -380,6 +380,63 @@ export type Database = {
           },
         ]
       }
+      custom_animations: {
+        Row: {
+          contexts: string[]
+          created_at: string
+          description: string
+          duration_ms: number
+          effects: Json
+          icon: string
+          id: string
+          image_url: string | null
+          is_enabled: boolean
+          name: string
+          pro_only: boolean
+          sort_order: number
+          sound_delay_ms: number
+          sound_duration_ms: number | null
+          sound_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          contexts?: string[]
+          created_at?: string
+          description?: string
+          duration_ms?: number
+          effects?: Json
+          icon?: string
+          id?: string
+          image_url?: string | null
+          is_enabled?: boolean
+          name: string
+          pro_only?: boolean
+          sort_order?: number
+          sound_delay_ms?: number
+          sound_duration_ms?: number | null
+          sound_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contexts?: string[]
+          created_at?: string
+          description?: string
+          duration_ms?: number
+          effects?: Json
+          icon?: string
+          id?: string
+          image_url?: string | null
+          is_enabled?: boolean
+          name?: string
+          pro_only?: boolean
+          sort_order?: number
+          sound_delay_ms?: number
+          sound_duration_ms?: number | null
+          sound_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_links: {
         Row: {
           created_at: string | null
