@@ -126,7 +126,7 @@ export default function FloatingThemeSwitcher() {
   };
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] hidden sm:flex flex-col items-end gap-2">
+    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2">
       {/* Mobile theme picker (triggered from nav) */}
       <AnimatePresence>
         {open && (
@@ -250,14 +250,14 @@ export default function FloatingThemeSwitcher() {
         )}
       </AnimatePresence>
 
-      {/* FAB */}
+      {/* FAB - hidden on mobile since theme button is in bottom nav */}
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setOpen((o) => !o)}
-        className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-primary text-primary-foreground shadow-xl flex items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
+        className="hidden sm:flex w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-xl items-center justify-center border-2 border-primary/50 hover:shadow-2xl transition-shadow"
       >
-        <Palette className="h-4 w-4 sm:h-5 sm:w-5" />
+        <Palette className="h-5 w-5" />
       </motion.button>
     </div>
   );
