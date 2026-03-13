@@ -126,7 +126,7 @@ export default function FloatingThemeSwitcher() {
   };
 
   return (
-    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] hidden sm:flex flex-col items-end gap-2">
+    <div ref={menuRef} className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-2">
       {/* Mobile theme picker (triggered from nav) */}
       <AnimatePresence>
         {open && (
