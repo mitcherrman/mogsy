@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Trophy, Users, Layers, ArrowLeft, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import type { PlayLayoutConfig } from "@/hooks/usePlayLayout";
 import UserAvatar from "@/components/UserAvatar";
 import TierBadge from "@/components/TierBadge";
 import { getTierFromElo, getTierColor } from "@/lib/mock-data";
@@ -34,18 +35,46 @@ export default function Leagues() {
 
   const loadLeagues = async () => {
     const filterType = isCompete ? "user" : "preset";
+
+    // Load published layout config to filter out hidden items
+    const { data: layoutData } = await supabase
+      .from("play_layout_config")
+      .select("config")
+      .eq("id", "published")
+      .single();
+
+    const layoutConfig = layoutData?.config as unknown as PlayLayoutConfig | null;
+
+    // Build sets of hidden league IDs and hidden category keys
+    const hiddenLeagueIds = new Set<string>();
+    const hiddenCategoryKeys = new Set<string>();
+
+    if (layoutConfig) {
+      // Hidden leagues
+      layoutConfig.leagues?.forEach(l => { if (l.hidden) hiddenLeagueIds.add(l.id); });
+      // Hidden categories
+      layoutConfig.categories?.forEach(c => { if (c.hidden) hiddenCategoryKeys.add(c.key); });
+    }
+
     const { data: allLeagues } = await supabase
       .from("leagues")
-      .select("id, name, type")
+      .select("id, name, type, category")
       .eq("type", filterType)
       .order("created_at", { ascending: true });
 
     if (!allLeagues) { setLoading(false); return; }
 
+    // Filter out hidden leagues and leagues in hidden categories
+    const visibleLeagues = allLeagues.filter(league => {
+      if (hiddenLeagueIds.has(league.id)) return false;
+      if (league.category && hiddenCategoryKeys.has(league.category)) return false;
+      return true;
+    });
+
     const results: LeagueWithTop5[] = [];
 
     // Fetch top 5 for each league in parallel
-    const promises = allLeagues.map(async (league) => {
+    const promises = visibleLeagues.map(async (league) => {
       let top5: LeagueWithTop5["top5"] = [];
 
       if (league.type === "preset") {

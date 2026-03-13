@@ -162,8 +162,17 @@ export default function AdminPlay() {
     const newCats = [...allCats].filter(c => !catKeys.has(c));
     const maxCatOrder = saved.categories.reduce((m, c) => Math.max(m, c.order), -1);
 
+    // Ensure all default top-level items exist (e.g. Multiplayer added later)
+    const savedTopKeys = new Set(saved.topLevel.map(t => t.key));
+    const maxTopOrder = saved.topLevel.reduce((m, t) => Math.max(m, t.order), -1);
+    const missingTopLevel = DEFAULT_TOP_LEVEL.filter(t => !savedTopKeys.has(t.key));
+    const mergedTopLevel = [
+      ...saved.topLevel,
+      ...missingTopLevel.map((t, i) => ({ ...t, order: maxTopOrder + 1 + i })),
+    ];
+
     return {
-      topLevel: saved.topLevel.length > 0 ? saved.topLevel : [...DEFAULT_TOP_LEVEL],
+      topLevel: mergedTopLevel,
       categories: [
         ...saved.categories,
         ...newCats.map((cat, i) => ({
