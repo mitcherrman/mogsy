@@ -10,7 +10,6 @@ import AdminSwipeGameConfig from "@/components/admin/AdminSwipeGameConfig";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminAds from "@/components/admin/AdminAds";
-import AdminAdAnalytics from "@/components/admin/AdminAdAnalytics";
 import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
