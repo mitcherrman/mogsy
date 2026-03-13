@@ -20,7 +20,6 @@ const allTabs = [
   { value: "multiplayer", label: "Multiplayer" },
   { value: "league-display", label: "League Display" },
   { value: "ads", label: "Ads" },
-  { value: "ad-analytics", label: "Ad Analytics" },
   { value: "animations", label: "Animations" },
   { value: "sounds", label: "Sounds" },
 ];
