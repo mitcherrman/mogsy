@@ -201,15 +201,10 @@ export default function Admin() {
           <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
           <TabsContent value="promoted"><AdminPromotedLeagues /></TabsContent>
-          <TabsContent value="elo-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>
           <TabsContent value="invite-links"><AdminInviteLinks /></TabsContent>
           <TabsContent value="push"><AdminPushNotifications /></TabsContent>
-          <TabsContent value="ads"><AdminAds /></TabsContent>
           <TabsContent value="banners"><AdminBanners /></TabsContent>
-          <TabsContent value="animations"><AdminCardAnimations /></TabsContent>
-          <TabsContent value="sounds"><AdminSounds /></TabsContent>
-          <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="reports"><AdminUserReports /></TabsContent>
           <TabsContent value="tutorials"><AdminTutorialTips /></TabsContent>
           <TabsContent value="feedback"><AdminFeedback /></TabsContent>

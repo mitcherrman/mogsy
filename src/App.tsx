@@ -76,6 +76,7 @@ const App = () => (
                   <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/gaming" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminGaming /></Suspense></ProtectedRoute>} />
                   <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Moderator /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Multiplayer /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
