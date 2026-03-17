@@ -17,6 +17,7 @@ import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
 
 const allTabs = [
   { value: "swipe-games", label: "Swipe Games" },
+  { value: "first-game", label: "First Game" },
   { value: "aura-check", label: "Aura Check" },
   { value: "multiplayer", label: "Multiplayer" },
   { value: "league-display", label: "League Display" },
