@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSwipeGameConfig from "@/components/admin/AdminSwipeGameConfig";
+import AdminFirstGameTriggers from "@/components/admin/AdminFirstGameTriggers";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminAds from "@/components/admin/AdminAds";
@@ -16,6 +17,7 @@ import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
 
 const allTabs = [
   { value: "swipe-games", label: "Swipe Games" },
+  { value: "first-game", label: "First Game" },
   { value: "aura-check", label: "Aura Check" },
   { value: "multiplayer", label: "Multiplayer" },
   { value: "league-display", label: "League Display" },
@@ -105,6 +107,7 @@ export default function AdminGaming() {
           </div>
 
           <TabsContent value="swipe-games"><AdminSwipeGameConfig /></TabsContent>
+          <TabsContent value="first-game"><AdminFirstGameTriggers /></TabsContent>
           <TabsContent value="aura-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="league-display"><AdminLeagueSettings /></TabsContent>
