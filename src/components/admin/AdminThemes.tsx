@@ -334,9 +334,6 @@ export default function AdminThemes() {
         {saving ? "Saving…" : "Save Theme Settings"}
       </Button>
 
-      {showThemePreview && (
-        <OnboardingFlow skipToTheme onComplete={() => setShowThemePreview(false)} />
-      )}
     </div>
   );
 }
