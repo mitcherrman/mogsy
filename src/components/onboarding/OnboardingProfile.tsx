@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, User, Camera, Mail, MapPin, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,27 @@ import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
 import { searchCities } from "@/lib/cities-data";
 import { toast } from "sonner";
 import OnboardingDots from "./OnboardingDots";
+
+interface FieldConfig {
+  enabled: boolean;
+  required: boolean;
+}
+
+interface ProfileFieldsConfig {
+  display_name: FieldConfig;
+  age: FieldConfig;
+  location: FieldConfig;
+  photo: FieldConfig;
+  email_link: FieldConfig;
+}
+
+const DEFAULT_FIELDS: ProfileFieldsConfig = {
+  display_name: { enabled: true, required: false },
+  age: { enabled: true, required: false },
+  location: { enabled: true, required: false },
+  photo: { enabled: true, required: false },
+  email_link: { enabled: true, required: false },
+};
 
 interface Props {
   onNext: () => void;
@@ -30,7 +51,21 @@ export default function OnboardingProfile({ onNext }: Props) {
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState("");
   const [linkError, setLinkError] = useState("");
+  const [fields, setFields] = useState<ProfileFieldsConfig>(DEFAULT_FIELDS);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("key, value")
+      .eq("key", "onboarding_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === "object" && "profile_fields" in (data.value as any)) {
+          setFields({ ...DEFAULT_FIELDS, ...((data.value as any).profile_fields || {}) });
+        }
+      });
+  }, []);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,13 +88,27 @@ export default function OnboardingProfile({ onNext }: Props) {
     setCitySuggestions(searchCities(val));
   };
 
+  const canContinue = () => {
+    if (fields.display_name.required && !displayName.trim()) return false;
+    if (fields.age.required && !age) return false;
+    if (fields.location.required && !location.trim()) return false;
+    if (fields.photo.required && !photoFile) return false;
+    if (isAnonymous && fields.email_link.required && (!email.trim() || !password)) return false;
+    return true;
+  };
+
   const handleContinue = async () => {
     if (!user) return;
+
+    if (!canContinue()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
     setSaving(true);
     setNameError("");
     setLinkError("");
 
-    // Validate display name
     if (displayName.trim() && containsProfanity(displayName)) {
       setNameError(getProfanityMessage());
       setSaving(false);
@@ -67,7 +116,6 @@ export default function OnboardingProfile({ onNext }: Props) {
     }
 
     try {
-      // Get profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("id")
@@ -80,7 +128,6 @@ export default function OnboardingProfile({ onNext }: Props) {
         return;
       }
 
-      // Upload photo if selected
       let avatarUrl: string | null = null;
       if (photoFile) {
         const ext = photoFile.name.split(".").pop() || "jpg";
@@ -95,7 +142,6 @@ export default function OnboardingProfile({ onNext }: Props) {
             .getPublicUrl(sanitizedName);
           avatarUrl = urlData.publicUrl;
 
-          // Insert into profile_photos table
           await supabase.from("profile_photos").insert({
             profile_id: profile.id,
             url: avatarUrl,
@@ -104,7 +150,6 @@ export default function OnboardingProfile({ onNext }: Props) {
         }
       }
 
-      // Build profile update
       const updates: Record<string, any> = {};
       if (displayName.trim()) updates.display_name = displayName.trim();
       if (age && parseInt(age) >= 13) updates.age = parseInt(age);
@@ -115,7 +160,6 @@ export default function OnboardingProfile({ onNext }: Props) {
         await supabase.from("profiles").update(updates).eq("user_id", user.id);
       }
 
-      // Link anonymous account if email + password provided
       if (isAnonymous && email.trim() && password) {
         const { error } = await linkAnonymousAccount(email.trim(), password);
         if (error) {
@@ -133,6 +177,14 @@ export default function OnboardingProfile({ onNext }: Props) {
     onNext();
   };
 
+  const hasAnyField = fields.display_name.enabled || fields.age.enabled || fields.location.enabled || fields.photo.enabled || (isAnonymous && fields.email_link.enabled);
+
+  // If no fields are enabled, skip this step entirely
+  if (!hasAnyField) {
+    onNext();
+    return null;
+  }
+
   return (
     <motion.div
       key="profile"
@@ -145,101 +197,117 @@ export default function OnboardingProfile({ onNext }: Props) {
       <User className="h-8 w-8 text-primary mb-4" />
       <h2 className="text-2xl font-extrabold text-foreground mb-2">Set Up Your Profile</h2>
       <p className="text-muted-foreground text-sm mb-6">
-        All fields are optional — you can always update later.
+        {Object.values(fields).some((f) => f.required) 
+          ? "Fields marked with * are required."
+          : "All fields are optional — you can always update later."}
       </p>
 
       <div className="w-full space-y-4 text-left mb-6">
         {/* Photo */}
-        <div className="flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="relative w-20 h-20 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center overflow-hidden bg-muted"
-          >
-            {photoPreview ? (
-              <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-            ) : (
-              <Camera className="h-6 w-6 text-muted-foreground" />
-            )}
-          </button>
-          <span className="text-xs text-muted-foreground">Tap to add a photo</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={handlePhotoSelect}
-          />
-        </div>
-
-        {/* Username */}
-        <div className="space-y-1.5">
-          <Label htmlFor="onb-name" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-            <User className="h-3.5 w-3.5" /> Display Name
-          </Label>
-          <Input
-            id="onb-name"
-            placeholder="Choose a username"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            maxLength={30}
-          />
-          {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-        </div>
-
-        {/* Age + Location row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="onb-age" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" /> Age
-            </Label>
-            <Input
-              id="onb-age"
-              type="number"
-              placeholder="18"
-              min={13}
-              max={120}
-              value={age}
-              onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
+        {fields.photo.enabled && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="relative w-20 h-20 rounded-full border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center overflow-hidden bg-muted"
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <Camera className="h-6 w-6 text-muted-foreground" />
+              )}
+            </button>
+            <span className="text-xs text-muted-foreground">
+              Tap to add a photo{fields.photo.required ? " *" : ""}
+            </span>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handlePhotoSelect}
             />
           </div>
-          <div className="space-y-1.5 relative">
-            <Label htmlFor="onb-loc" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" /> City
+        )}
+
+        {/* Username */}
+        {fields.display_name.enabled && (
+          <div className="space-y-1.5">
+            <Label htmlFor="onb-name" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <User className="h-3.5 w-3.5" /> Display Name{fields.display_name.required ? " *" : ""}
             </Label>
             <Input
-              id="onb-loc"
-              placeholder="Start typing..."
-              value={location}
-              onChange={(e) => handleLocationChange(e.target.value)}
-              onBlur={() => setTimeout(() => setCitySuggestions([]), 150)}
+              id="onb-name"
+              placeholder="Choose a username"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={30}
             />
-            {citySuggestions.length > 0 && (
-              <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                {citySuggestions.map((city) => (
-                  <button
-                    key={city}
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                    onMouseDown={() => {
-                      setLocation(city);
-                      setCitySuggestions([]);
-                    }}
-                  >
-                    {city}
-                  </button>
-                ))}
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+          </div>
+        )}
+
+        {/* Age + Location row */}
+        {(fields.age.enabled || fields.location.enabled) && (
+          <div className={`grid gap-3 ${fields.age.enabled && fields.location.enabled ? "grid-cols-2" : "grid-cols-1"}`}>
+            {fields.age.enabled && (
+              <div className="space-y-1.5">
+                <Label htmlFor="onb-age" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" /> Age{fields.age.required ? " *" : ""}
+                </Label>
+                <Input
+                  id="onb-age"
+                  type="number"
+                  placeholder="18"
+                  min={13}
+                  max={120}
+                  value={age}
+                  onChange={(e) => setAge(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+            )}
+            {fields.location.enabled && (
+              <div className="space-y-1.5 relative">
+                <Label htmlFor="onb-loc" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" /> City{fields.location.required ? " *" : ""}
+                </Label>
+                <Input
+                  id="onb-loc"
+                  placeholder="Start typing..."
+                  value={location}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setCitySuggestions([]), 150)}
+                />
+                {citySuggestions.length > 0 && (
+                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {citySuggestions.map((city) => (
+                      <button
+                        key={city}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        onMouseDown={() => {
+                          setLocation(city);
+                          setCitySuggestions([]);
+                        }}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Email + Password for anonymous users */}
-        {isAnonymous && (
+        {isAnonymous && fields.email_link.enabled && (
           <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
             <div className="flex items-center gap-2 mb-1">
               <Mail className="h-4 w-4 text-primary" />
-              <span className="text-sm font-bold text-foreground">Create an Account</span>
+              <span className="text-sm font-bold text-foreground">
+                Create an Account{fields.email_link.required ? " *" : ""}
+              </span>
             </div>
             <p className="text-xs text-muted-foreground mb-2">
               Sign up to save your progress and unlock full features.
@@ -267,19 +335,21 @@ export default function OnboardingProfile({ onNext }: Props) {
       <div className="flex flex-col items-center gap-2">
         <Button
           onClick={handleContinue}
-          disabled={saving}
+          disabled={saving || !canContinue()}
           className="gap-2 rounded-full px-8"
           size="lg"
         >
           {saving ? "Saving..." : "Continue"} <ChevronRight className="h-4 w-4" />
         </Button>
-        <button
-          onClick={onNext}
-          disabled={saving}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Skip for now
-        </button>
+        {!Object.values(fields).some((f) => f.required) && (
+          <button
+            onClick={onNext}
+            disabled={saving}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Skip for now
+          </button>
+        )}
       </div>
       <OnboardingDots current="profile" />
     </motion.div>
