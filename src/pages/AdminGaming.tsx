@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSwipeGameConfig from "@/components/admin/AdminSwipeGameConfig";
+import AdminFirstGameTriggers from "@/components/admin/AdminFirstGameTriggers";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 import AdminMultiplayer from "@/components/admin/AdminMultiplayer";
 import AdminAds from "@/components/admin/AdminAds";
