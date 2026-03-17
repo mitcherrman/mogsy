@@ -47,7 +47,6 @@ export default function AdminThemes() {
   const [config, setConfig] = useState<ThemeConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showThemePreview, setShowThemePreview] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<string | null>(null);
 
   useEffect(() => {
