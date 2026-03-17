@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Palette, Crown, Eye, Lock, Unlock, RefreshCw } from "lucide-react";
+import { Palette, Crown, Lock, Unlock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { profileThemes } from "@/lib/profile-themes";
 import { Slider } from "@/components/ui/slider";
-import OnboardingFlow from "@/components/OnboardingFlow";
+
 
 const THEME_COLORS: Record<string, [string, string]> = {
   light: ["hsl(209,40%,96%)", "hsl(210,80%,60%)"],
@@ -47,7 +47,6 @@ export default function AdminThemes() {
   const [config, setConfig] = useState<ThemeConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showThemePreview, setShowThemePreview] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<string | null>(null);
 
   useEffect(() => {
@@ -269,15 +268,6 @@ export default function AdminThemes() {
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview & Tools</h4>
         <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
           <div>
-            <Label className="text-sm font-medium">Preview Theme Picker</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Preview the onboarding theme selection dialog</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setShowThemePreview(true)} className="text-xs gap-1">
-            <Eye className="h-3 w-3" /> Preview
-          </Button>
-        </div>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-          <div>
             <Label className="text-sm font-medium">Live Preview Theme</Label>
             <p className="text-xs text-muted-foreground mt-0.5">Temporarily apply a theme to see how it looks</p>
           </div>
@@ -343,9 +333,6 @@ export default function AdminThemes() {
         {saving ? "Saving…" : "Save Theme Settings"}
       </Button>
 
-      {showThemePreview && (
-        <OnboardingFlow skipToTheme onComplete={() => setShowThemePreview(false)} />
-      )}
     </div>
   );
 }

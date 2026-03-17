@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, Palette, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { profileThemes } from "@/lib/profile-themes";
+import { supabase } from "@/integrations/supabase/client";
 import OnboardingDots from "./OnboardingDots";
 
 const THEME_COLORS: Record<string, [string, string]> = {
@@ -26,6 +28,20 @@ interface Props {
 
 export default function OnboardingTheme({ chosenTheme, setChosenTheme, onFinish, saving, skipToTheme }: Props) {
   const proThemes = profileThemes.filter(t => t.isPro);
+  const [themeIcons, setThemeIcons] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("key, value")
+      .eq("key", "onboarding_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === "object" && "theme_icons" in (data.value as any)) {
+          setThemeIcons((data.value as any).theme_icons || {});
+        }
+      });
+  }, []);
 
   return (
     <motion.div
@@ -49,6 +65,7 @@ export default function OnboardingTheme({ chosenTheme, setChosenTheme, onFinish,
         {proThemes.map((theme, i) => {
           const colors = THEME_COLORS[theme.id] || ["#333", "#555"];
           const isChosen = chosenTheme === theme.id;
+          const customIcon = themeIcons[theme.id];
           return (
             <motion.button
               key={theme.id}
@@ -61,7 +78,7 @@ export default function OnboardingTheme({ chosenTheme, setChosenTheme, onFinish,
               className="flex flex-col items-center gap-2 group"
             >
               <div
-                className={`w-14 h-14 rounded-full border-3 transition-all ${
+                className={`w-14 h-14 rounded-full border-3 transition-all flex items-center justify-center text-lg ${
                   isChosen
                     ? "border-primary ring-4 ring-primary/30 shadow-lg scale-110"
                     : "border-border hover:border-primary/50"
@@ -70,7 +87,9 @@ export default function OnboardingTheme({ chosenTheme, setChosenTheme, onFinish,
                   background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`,
                   borderWidth: 3,
                 }}
-              />
+              >
+                {customIcon && <span className="drop-shadow-sm">{customIcon}</span>}
+              </div>
               <span className={`text-xs font-semibold ${isChosen ? "text-primary" : "text-muted-foreground"}`}>
                 {theme.label}
               </span>
