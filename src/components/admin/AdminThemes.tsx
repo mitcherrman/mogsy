@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { profileThemes } from "@/lib/profile-themes";
 import { Slider } from "@/components/ui/slider";
-import OnboardingFlow from "@/components/OnboardingFlow";
+
 
 const THEME_COLORS: Record<string, [string, string]> = {
   light: ["hsl(209,40%,96%)", "hsl(210,80%,60%)"],
