@@ -269,15 +269,6 @@ export default function AdminThemes() {
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview & Tools</h4>
         <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
           <div>
-            <Label className="text-sm font-medium">Preview Theme Picker</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Preview the onboarding theme selection dialog</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setShowThemePreview(true)} className="text-xs gap-1">
-            <Eye className="h-3 w-3" /> Preview
-          </Button>
-        </div>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-          <div>
             <Label className="text-sm font-medium">Live Preview Theme</Label>
             <p className="text-xs text-muted-foreground mt-0.5">Temporarily apply a theme to see how it looks</p>
           </div>
