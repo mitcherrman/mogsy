@@ -107,6 +107,7 @@ export default function AdminGaming() {
           </div>
 
           <TabsContent value="swipe-games"><AdminSwipeGameConfig /></TabsContent>
+          <TabsContent value="first-game"><AdminFirstGameTriggers /></TabsContent>
           <TabsContent value="aura-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
           <TabsContent value="league-display"><AdminLeagueSettings /></TabsContent>
