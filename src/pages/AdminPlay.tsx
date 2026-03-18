@@ -365,7 +365,47 @@ export default function AdminPlay() {
     return cat?.customLabel || key;
   };
 
-  // Get user profile for mod notifications
+  const handleMoveTo = async (type: "category" | "league", key: string, newParent: string) => {
+    if (type === "category") {
+      setConfig(prev => ({
+        ...prev,
+        categories: prev.categories.map(c =>
+          c.key === key ? { ...c, parentKey: newParent } : c
+        ),
+      }));
+      hasUnsavedChanges.current = true;
+      toast.success(`Moved category to ${newParent === "collections" ? "root" : getCategoryLabel(newParent)}`);
+    } else {
+      await supabase.from("leagues").update({ category: newParent }).eq("id", key);
+      setLeagues(prev => prev.map(l => l.id === key ? { ...l, category: newParent } : l));
+      hasUnsavedChanges.current = true;
+      toast.success(`Moved league to ${getCategoryLabel(newParent)}`);
+    }
+  };
+
+  const getMoveTargets = (excludeKey?: string): { key: string; label: string }[] => {
+    const targets: { key: string; label: string }[] = [
+      { key: "collections", label: "Root (Collections)" },
+    ];
+    const isDescendant = (parentKey: string, targetKey: string): boolean => {
+      if (parentKey === targetKey) return true;
+      const children = config.categories.filter(c => c.parentKey === parentKey);
+      return children.some(c => isDescendant(c.key, targetKey));
+    };
+    config.categories.forEach(c => {
+      if (c.key !== excludeKey && !(excludeKey && isDescendant(excludeKey, c.key))) {
+        targets.push({ key: c.key, label: getCategoryLabel(c.key) });
+      }
+    });
+    return targets;
+  };
+
+  const getChildCategories = (parentKey: string) =>
+    config.categories
+      .filter(c => c.parentKey === parentKey && (showHidden || !c.hidden))
+      .sort((a, b) => a.order - b.order);
+
+
   const getProfileId = async () => {
     if (!user) return null;
     const { data } = await supabase.from("profiles").select("id, display_name").eq("user_id", user.id).single();
