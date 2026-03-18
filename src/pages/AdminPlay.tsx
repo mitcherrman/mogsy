@@ -416,9 +416,7 @@ export default function AdminPlay() {
   };
 
   const getMoveTargets = (excludeKey?: string): { key: string; label: string }[] => {
-    const targets: { key: string; label: string }[] = [
-      { key: "collections", label: "Root (Collections)" },
-    ];
+    const targets: { key: string; label: string }[] = [];
     const isDescendant = (parentKey: string, targetKey: string): boolean => {
       if (parentKey === targetKey) return true;
       const children = config.categories.filter(c => c.parentKey === parentKey);
