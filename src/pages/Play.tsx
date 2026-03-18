@@ -201,22 +201,35 @@ export default function Play() {
 
     if (!publishedConfig) return raw;
 
-    // Filter hidden categories and leagues, sort by config order
     const catConfigs = publishedConfig.categories || [];
     const leagueConfigs = publishedConfig.leagues || [];
 
+    // Handle nested categories: merge child category leagues into parent as subcategories
+    const childCats = catConfigs.filter(c => c.parentKey && c.parentKey !== "collections" && !c.hidden);
+    for (const child of childCats) {
+      const childKey = child.key;
+      const parentKey = child.parentKey;
+      if (!raw[childKey]) continue;
+
+      if (!raw[parentKey]) raw[parentKey] = [];
+      const childLabel = child.customLabel || childKey;
+      raw[childKey].forEach(l => {
+        raw[parentKey].push({ ...l, subcategory: l.subcategory || childLabel });
+      });
+      delete raw[childKey];
+    }
+
+    // Filter hidden categories and leagues, sort by config order
     const result: Record<string, LeagueItem[]> = {};
     for (const catKey of Object.keys(raw)) {
       const catCfg = catConfigs.find(c => c.key === catKey);
-      if (catCfg?.hidden) continue; // skip hidden categories
+      if (catCfg?.hidden) continue;
 
       let catLeagues = raw[catKey];
-      // Filter hidden leagues
       catLeagues = catLeagues.filter(l => {
         const lCfg = leagueConfigs.find(lc => lc.id === l.id);
         return !lCfg?.hidden;
       });
-      // Sort leagues by config order
       catLeagues.sort((a, b) => {
         const aOrder = leagueConfigs.find(lc => lc.id === a.id)?.order ?? 9999;
         const bOrder = leagueConfigs.find(lc => lc.id === b.id)?.order ?? 9999;
