@@ -221,7 +221,15 @@ export default function Play() {
 
     // Filter hidden categories and leagues, sort by config order
     const result: Record<string, LeagueItem[]> = {};
-    for (const catKey of Object.keys(raw)) {
+
+    // Sort category keys by their config order
+    const sortedCatKeys = Object.keys(raw).sort((a, b) => {
+      const aCfg = catConfigs.find(c => c.key === a);
+      const bCfg = catConfigs.find(c => c.key === b);
+      return (aCfg?.order ?? 9999) - (bCfg?.order ?? 9999);
+    });
+
+    for (const catKey of sortedCatKeys) {
       const catCfg = catConfigs.find(c => c.key === catKey);
       if (catCfg?.hidden) continue;
 

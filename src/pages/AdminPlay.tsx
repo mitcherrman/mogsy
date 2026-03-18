@@ -366,21 +366,53 @@ export default function AdminPlay() {
   };
 
   const handleMoveTo = async (type: "category" | "league", key: string, newParent: string) => {
+    let nextConfig: PlayLayoutConfig;
+
     if (type === "category") {
-      setConfig(prev => ({
-        ...prev,
-        categories: prev.categories.map(c =>
+      nextConfig = {
+        ...config,
+        categories: config.categories.map(c =>
           c.key === key ? { ...c, parentKey: newParent } : c
         ),
-      }));
-      hasUnsavedChanges.current = true;
+      };
+      setConfig(nextConfig);
       toast.success(`Moved category to ${newParent === "collections" ? "root" : getCategoryLabel(newParent)}`);
     } else {
-      await supabase.from("leagues").update({ category: newParent }).eq("id", key);
-      setLeagues(prev => prev.map(l => l.id === key ? { ...l, category: newParent } : l));
-      hasUnsavedChanges.current = true;
-      toast.success(`Moved league to ${getCategoryLabel(newParent)}`);
+      // When moving a league to root, auto-create a standalone category for it
+      if (newParent === "collections") {
+        const league = leagues.find(l => l.id === key);
+        const leagueName = getLeagueName(key);
+        const catKey = `league_${key}`;
+
+        // Update DB category to the new standalone key
+        await supabase.from("leagues").update({ category: catKey }).eq("id", key);
+        setLeagues(prev => prev.map(l => l.id === key ? { ...l, category: catKey } : l));
+
+        // Add a new category entry if one doesn't already exist
+        const existingCat = config.categories.find(c => c.key === catKey);
+        const maxOrder = config.categories.reduce((m, c) => Math.max(m, c.order), -1);
+        nextConfig = {
+          ...config,
+          categories: existingCat
+            ? config.categories.map(c => c.key === catKey ? { ...c, parentKey: "collections" } : c)
+            : [...config.categories, { key: catKey, parentKey: "collections", hidden: false, order: maxOrder + 1, customLabel: leagueName }],
+        };
+        setConfig(nextConfig);
+        toast.success(`Promoted "${leagueName}" to root level`);
+      } else {
+        await supabase.from("leagues").update({ category: newParent }).eq("id", key);
+        setLeagues(prev => prev.map(l => l.id === key ? { ...l, category: newParent } : l));
+        nextConfig = { ...config };
+        setConfig(nextConfig);
+        toast.success(`Moved league to ${getCategoryLabel(newParent)}`);
+      }
     }
+
+    // Auto-publish so Play page updates immediately
+    hasUnsavedChanges.current = true;
+    const ts = new Date().toISOString();
+    supabase.from("play_layout_config").upsert({ id: "published", config: nextConfig as any, updated_at: ts }).then(() => {});
+    supabase.from("play_layout_config").upsert({ id: "draft", config: nextConfig as any, updated_at: ts }).then(() => {});
   };
 
   const getMoveTargets = (excludeKey?: string): { key: string; label: string }[] => {
