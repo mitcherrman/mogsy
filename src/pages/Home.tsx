@@ -145,13 +145,25 @@ export default function Home() {
   const checkOnboardingAndLoad = async () => {
     if (!user) return;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, onboarding_completed, preferred_categories")
-      .eq("user_id", user.id)
-      .single();
+    // The profile trigger may not have fired yet for brand-new users — retry a few times
+    let profile: { id: string; onboarding_completed: boolean | null; preferred_categories: string[] | null } | null = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, onboarding_completed, preferred_categories")
+        .eq("user_id", user.id)
+        .single();
+      if (data) {
+        profile = data;
+        break;
+      }
+      // Wait before retrying
+      await new Promise((r) => setTimeout(r, 600));
+    }
 
     if (!profile) {
+      // Still no profile after retries — show onboarding so the user isn't stuck on a blank screen
+      setShowOnboarding(true);
       setLoading(false);
       return;
     }
