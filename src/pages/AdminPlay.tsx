@@ -219,7 +219,8 @@ export default function AdminPlay() {
 
   const updateCategories = (items: LayoutCategory[]) => {
     const reordered = items.map((item, i) => ({ ...item, order: i }));
-    setConfig(prev => ({ ...prev, categories: reordered }));
+    const nonRoot = config.categories.filter(c => c.parentKey !== "collections");
+    setConfig(prev => ({ ...prev, categories: [...reordered, ...nonRoot] }));
     hasUnsavedChanges.current = true;
   };
 
