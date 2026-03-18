@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
