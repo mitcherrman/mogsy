@@ -482,7 +482,7 @@ export default function AdminPlay() {
   }
 
   const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order).filter(i => showHidden || !i.hidden);
-  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order).filter(c => showHidden || !c.hidden);
+  const rootCategories = [...config.categories].filter(c => c.parentKey === "collections" && (showHidden || !c.hidden)).sort((a, b) => a.order - b.order);
 
   const getLeaguesForCategory = (catKey: string) => {
     const catLeagueIds = new Set(leagues.filter(l => l.category === catKey).map(l => l.id));
