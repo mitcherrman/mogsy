@@ -116,10 +116,11 @@ export default function Shop() {
   }, [searchParams]);
 
   const loadProfile = async () => {
+    if (!user) return;
     const { data } = await supabase
       .from("profiles")
       .select("id, is_pro, boost_credits, elo_shields, reveals, rewinds, diamonds")
-      .eq("user_id", user!.id)
+      .eq("user_id", user.id)
       .single();
     if (data) setProfile(data as ProfileData);
     setLoading(false);
