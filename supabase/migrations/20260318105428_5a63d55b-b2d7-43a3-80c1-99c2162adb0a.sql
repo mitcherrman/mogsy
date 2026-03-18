@@ -1,0 +1,1 @@
+UPDATE leagues SET category = 'Anime' WHERE id IN ('d119384c-e58e-4a5e-97df-e1156af20159', 'd0a6a451-15fc-4581-b783-58811873368c') AND category = 'collections';
