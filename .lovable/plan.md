@@ -1,57 +1,79 @@
+## Percentile-Based Rank System (Implemented)
 
+### Tier Distribution (Compete Leagues Only)
+- **Unranked**: Bottom 60% (0–60th percentile)
+- **Bronze 🥉**: 60th–75th percentile
+- **Silver 🥈**: 75th–90th percentile
+- **Gold 🥇**: 90th–99th percentile
+- **Diamond 💎**: Top 1% (99th–100th percentile)
 
-## Feasibility Analysis: Fully Modular Category Hierarchy in Admin Play
+### What Changed
+1. **`src/lib/mock-data.ts`** — Added `getTierFromPercentile()`, `getTierRowBg()`, `getTierIcon()`, `TierConfig` type, `DEFAULT_TIER_CONFIG`. Renamed platinum → diamond throughout. Added "unranked" support.
+2. **`src/pages/Leaderboard.tsx`** — User leagues now use percentile-based tiers. Rows are highlighted with tier-colored left borders and subtle backgrounds. Tier section headers with icons separate rank groups.
+3. **`src/pages/UserProfile.tsx`** — Hero section now shows a large prominent medal tag for the user's best compete league tier (diamond/gold/silver/bronze). Percentile-based computation.
+4. **`src/components/admin/AdminRankSettings.tsx`** — New master admin panel for managing rank system: enable/disable toggle, editable percentile thresholds per tier, visual preview bar.
+5. **`src/pages/Admin.tsx`** — Added "Ranks" tab (master_admin only) linking to AdminRankSettings.
+6. **`tailwind.config.ts`** — Added `tier.diamond` color token.
+7. **`app_settings.rank_tiers`** — Database row stores enabled flag + tier config array.
 
-### Current Architecture
+### Collections (Preset) Leagues
+Still use absolute Elo-based tiers (unchanged).
 
-The system uses a **fixed two-level hierarchy**:
-- **Categories** (e.g., Anime, Movies, Food) -- always at the top level under "Collections"
-- **Leagues/Subcategories** (e.g., "Best Anime", "Best Movie of All Time") -- always nested inside a category
+## Condensed Mobile Swipe Layout + UI Tweaks (Implemented)
 
-Categories have a `parentKey` field (always set to `"collections"`), and leagues are mapped to categories via the `leagues` table's `category` column. The admin UI renders categories as a flat reorderable list, each expanding to show its child leagues.
+### Changes Made
 
-### What You Want
+1. **"Who Mogs?" between cards** — On mobile, replaced the "VS" badge between cards with "Who Mogs?" text. Title removed from top controls bar on mobile.
 
-A **tree structure** where any node can be reparented to any level:
-- Move "Best Anime" (currently a subcategory/league under Anime) up to sit alongside Anime, Movies, Food
-- Move "Superheroes" (currently a top-level category) down to be nested inside Movies
+2. **Floating back button** — On mobile, back button is now a floating absolute element in the top-left corner (outside the card game area), not in the controls bar.
 
-### Feasibility: High -- but requires a data model shift
+3. **Match count toggle** — Added `show_match_count` setting to `app_settings`. Admin toggle under new "Swipe UI" section. Swords icon + count hidden when disabled.
 
-The `parentKey` field on `LayoutCategory` already exists and could support arbitrary nesting. The main work is:
+4. **Progress bar toggle** — Added `show_swipe_progress` setting to `app_settings`. Admin toggle under "Swipe UI" section. Progress bar hidden when disabled.
 
-1. **Add a "Move to..." action** on each category and league item in the admin drag list. This would open a dropdown/dialog showing all possible parent locations (root level, or inside any other category). Selecting one updates the item's `parentKey` (for categories) or `category` column (for leagues promoted to categories).
+5. **Mobile spacing condensed** — Controls bar collapsed on mobile (contents relocated/hidden). Outer container uses `py-0 pb-4`. Card gap reduced to `gap-0.5`. Card stats padding reduced to `py-1`. Action bar buttons shrunk to `h-7 w-7`. Help text margin reduced to `mt-0.5`.
 
-2. **Support categories-as-children-of-categories** in the layout config. Currently `LayoutCategory.parentKey` is always `"collections"`. Allowing it to reference another category key creates a recursive tree. The admin UI would render this as nested expandable sections (already supported via `expandedCategories`).
+6. **MatchupCapture** — Accepts `isMobile` prop. Mobile: `p-1.5`, `mb-1` header, `h-4` logo, `mt-1 pt-1` footer.
 
-3. **Promote leagues to categories and demote categories to leagues.** When moving a league up to be a peer of categories, it effectively becomes a category (a node with no children, or with its own children). When moving a category down inside another, it becomes a child node.
+### Files Changed
+- `src/pages/SwipePreset.tsx`
+- `src/pages/Swipe.tsx`
+- `src/components/MatchupCapture.tsx`
+- `src/components/admin/AdminSettings.tsx`
+- Database: `show_match_count` and `show_swipe_progress` in `app_settings`
 
-### Proposed Plan
+## Swipe Media System Upgrade (Implemented)
 
-**A. Extend the data model (in `usePlayLayout.ts`)**
-- `LayoutCategory.parentKey` can be `"collections"` (root) or any other category key (nested)
-- Add a `children` concept implicitly via `parentKey` references -- no schema change needed, just rendering logic
+### What Changed
 
-**B. Add "Move to" UI on each DragItem (`AdminPlay.tsx`)**
-- Add a folder/move icon button on each category and league row
-- On click, show a dropdown listing all valid parent targets: "Root (Collections)", plus all existing categories
-- On selection, update the item's `parentKey` (or convert league to category / category to subcategory)
-- When moving a league up to root, create a new `LayoutCategory` entry for it
-- When moving a category into another, update its `parentKey`
+1. **`processed_media` table** — New database table tracking GIF/video assets with fields for original_url, mp4_url, webm_url, thumbnail_url, media_type, dimensions, and duration. RLS: admin-managed, publicly readable.
 
-**C. Update rendering logic in AdminPlay**
-- Change the Categories section to render recursively: root categories first, then nested categories inside expanded parents
-- `getLeaguesForCategory` already handles filtering -- just needs to also include child categories
+2. **`src/components/AutoVideo.tsx`** — Reusable component that renders `<video autoPlay loop muted playsInline>` for video URLs (mp4/webm) or `<img>` for images. Includes IntersectionObserver-based play/pause for offscreen performance.
 
-**D. Update Play.tsx consumption**
-- The Play page navigation needs to handle the recursive tree when building the bubble/pill UI for browsing
+3. **`src/components/SwipeDirectionOverlay.tsx`** — Drag direction indicator showing "👑 MOG" or "👎 PASS" overlay during card swipes, with opacity proportional to drag distance.
 
-### Scope Estimate
-- ~150-250 lines of new/changed code across `AdminPlay.tsx`, `usePlayLayout.ts`, and `Play.tsx`
-- No database migration needed (layout config is stored as JSON in `play_layout_config`)
-- Medium complexity -- the recursive rendering and move logic are the trickiest parts
+4. **`src/pages/SwipePreset.tsx`** — 
+   - **Prebuffering**: Preloads next 3 matchup pairs (images/videos) into browser cache
+   - **GPU drag**: Cards use `translate3d` + `rotate` transforms via Framer Motion `useMotionValue`/`useTransform`
+   - **Velocity prediction**: Swipes complete at lower offset when velocity > 500px/s
+   - **Direction overlays**: MOG/PASS overlay appears during drag
+   - **`will-change: transform`** on card containers
 
-### Summary
+5. **`src/pages/Swipe.tsx`** — Avatar prebuffering for next 6 profiles
 
-This is very feasible. The `parentKey` field already exists to support it. The main work is adding a "Move to" dropdown on each row in the admin list, updating `parentKey` on selection, and making both the admin and Play page render the tree recursively.
+6. **GIF → Video migration** — Decorative GIFs replaced with `<video>` tags with webm/mp4 sources + GIF fallback:
+   - `SgtDoakesAnimation.tsx` — sgt-doakes.gif → video
+   - `AmongUsAnimation.tsx` — amongus-backstab.gif → video
+   - `ThemeOverlay.tsx` — amongus-crewmate.gif → video
+   - `SecretRoom.tsx` — twerking-amongus.gif → video
 
+7. **`AdminPlayLeagueItems.tsx`** — GIF uploads detected and logged to `processed_media` table for future conversion pipeline
+
+### Video Files Needed
+Place MP4/WebM versions in `public/images/`:
+- `sgt-doakes.mp4` / `sgt-doakes.webm`
+- `amongus-backstab.mp4` / `amongus-backstab.webm`
+- `amongus-crewmate.mp4` / `amongus-crewmate.webm`
+- `twerking-amongus.mp4` / `twerking-amongus.webm`
+
+Convert using: `ffmpeg -i input.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" output.mp4`

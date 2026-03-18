@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -219,7 +219,8 @@ export default function AdminPlay() {
 
   const updateCategories = (items: LayoutCategory[]) => {
     const reordered = items.map((item, i) => ({ ...item, order: i }));
-    setConfig(prev => ({ ...prev, categories: reordered }));
+    const nonRoot = config.categories.filter(c => c.parentKey !== "collections");
+    setConfig(prev => ({ ...prev, categories: [...reordered, ...nonRoot] }));
     hasUnsavedChanges.current = true;
   };
 
@@ -364,7 +365,47 @@ export default function AdminPlay() {
     return cat?.customLabel || key;
   };
 
-  // Get user profile for mod notifications
+  const handleMoveTo = async (type: "category" | "league", key: string, newParent: string) => {
+    if (type === "category") {
+      setConfig(prev => ({
+        ...prev,
+        categories: prev.categories.map(c =>
+          c.key === key ? { ...c, parentKey: newParent } : c
+        ),
+      }));
+      hasUnsavedChanges.current = true;
+      toast.success(`Moved category to ${newParent === "collections" ? "root" : getCategoryLabel(newParent)}`);
+    } else {
+      await supabase.from("leagues").update({ category: newParent }).eq("id", key);
+      setLeagues(prev => prev.map(l => l.id === key ? { ...l, category: newParent } : l));
+      hasUnsavedChanges.current = true;
+      toast.success(`Moved league to ${getCategoryLabel(newParent)}`);
+    }
+  };
+
+  const getMoveTargets = (excludeKey?: string): { key: string; label: string }[] => {
+    const targets: { key: string; label: string }[] = [
+      { key: "collections", label: "Root (Collections)" },
+    ];
+    const isDescendant = (parentKey: string, targetKey: string): boolean => {
+      if (parentKey === targetKey) return true;
+      const children = config.categories.filter(c => c.parentKey === parentKey);
+      return children.some(c => isDescendant(c.key, targetKey));
+    };
+    config.categories.forEach(c => {
+      if (c.key !== excludeKey && !(excludeKey && isDescendant(excludeKey, c.key))) {
+        targets.push({ key: c.key, label: getCategoryLabel(c.key) });
+      }
+    });
+    return targets;
+  };
+
+  const getChildCategories = (parentKey: string) =>
+    config.categories
+      .filter(c => c.parentKey === parentKey && (showHidden || !c.hidden))
+      .sort((a, b) => a.order - b.order);
+
+
   const getProfileId = async () => {
     if (!user) return null;
     const { data } = await supabase.from("profiles").select("id, display_name").eq("user_id", user.id).single();
@@ -481,7 +522,7 @@ export default function AdminPlay() {
   }
 
   const sortedTopLevel = [...config.topLevel].sort((a, b) => a.order - b.order).filter(i => showHidden || !i.hidden);
-  const sortedCategories = [...config.categories].sort((a, b) => a.order - b.order).filter(c => showHidden || !c.hidden);
+  const rootCategories = [...config.categories].filter(c => c.parentKey === "collections" && (showHidden || !c.hidden)).sort((a, b) => a.order - b.order);
 
   const getLeaguesForCategory = (catKey: string) => {
     const catLeagueIds = new Set(leagues.filter(l => l.category === catKey).map(l => l.id));
@@ -624,13 +665,12 @@ export default function AdminPlay() {
           onToggle={() => toggleSection("categories")}
           onAdd={() => { setNewName(""); setAddCategoryOpen(true); }}
         >
-          <Reorder.Group axis="y" values={sortedCategories} onReorder={updateCategories} className="space-y-1">
-            {sortedCategories.map(cat => (
+          <Reorder.Group axis="y" values={rootCategories} onReorder={updateCategories} className="space-y-1">
+            {rootCategories.map(cat => (
               <Reorder.Item key={cat.key} value={cat} className="touch-none">
                 <div>
                   <DragItem
                     label={getCategoryLabel(cat.key)}
-                    sublabel={`(${cat.parentKey})`}
                     hidden={cat.hidden}
                     onToggleVisibility={() => toggleVisibility("category", cat.key)}
                     onEdit={() => setEditingItem({
@@ -642,6 +682,9 @@ export default function AdminPlay() {
                     expanded={expandedCategories.has(cat.key)}
                     onBarClick={() => toggleCategory(cat.key)}
                     onAdd={() => { setNewName(""); setAddSubcategoryOpen(cat.key); }}
+                    onMoveTo={(newParent) => handleMoveTo("category", cat.key, newParent)}
+                    moveTargets={getMoveTargets(cat.key)}
+                    currentParent={cat.parentKey}
                   />
                   <AnimatePresence>
                     {expandedCategories.has(cat.key) && (
@@ -651,37 +694,57 @@ export default function AdminPlay() {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden pl-8"
                       >
-                        <Reorder.Group
-                          axis="y"
-                          values={getLeaguesForCategory(cat.key)}
-                          onReorder={(items) => updateLeaguesInCategory(cat.key, items)}
-                          className="space-y-1 py-1"
-                        >
-                          {getLeaguesForCategory(cat.key).map(league => (
-                            <Reorder.Item key={league.id} value={league} className="touch-none">
-                <DragItem
-                                label={getLeagueName(league.id)}
-                                hidden={league.hidden}
-                                onToggleVisibility={() => toggleVisibility("league", league.id)}
-                                onEdit={() => setEditingItem({
-                                  itemType: "league",
-                                  itemKey: league.id,
-                                  item: {
-                                    id: league.id,
-                                    label: getLeagueName(league.id),
-                                    hidden: league.hidden,
-                                    customLabel: league.customLabel,
-                                    coverItemId: league.coverItemId,
-                                    type: "league" as const,
-                                    leagueId: league.id,
-                                  },
-                                })}
-                                onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
-                                onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
-                              />
-                            </Reorder.Item>
+                        <div className="space-y-1 py-1">
+                          {/* Child categories nested under this one */}
+                          {getChildCategories(cat.key).map(child => (
+                            <CategoryNode key={child.key} cat={child} depth={1}
+                              getChildCategories={getChildCategories}
+                              getLeaguesForCategory={getLeaguesForCategory}
+                              getCategoryLabel={getCategoryLabel}
+                              getLeagueName={getLeagueName}
+                              getMoveTargets={getMoveTargets}
+                              leagues={leagues}
+                              expandedCategories={expandedCategories}
+                              toggleCategory={toggleCategory}
+                              toggleVisibility={toggleVisibility}
+                              setEditingItem={setEditingItem}
+                              setAddSubcategoryOpen={setAddSubcategoryOpen}
+                              setNewName={setNewName}
+                              setViewingLeague={setViewingLeague}
+                              handleMoveTo={handleMoveTo}
+                              handleDelete={handleDelete}
+                              updateLeaguesInCategory={updateLeaguesInCategory}
+                              showHidden={showHidden}
+                            />
                           ))}
-                        </Reorder.Group>
+                          {/* Leagues directly in this category */}
+                          <Reorder.Group
+                            axis="y"
+                            values={getLeaguesForCategory(cat.key)}
+                            onReorder={(items) => updateLeaguesInCategory(cat.key, items)}
+                            className="space-y-1"
+                          >
+                            {getLeaguesForCategory(cat.key).map(league => (
+                              <Reorder.Item key={league.id} value={league} className="touch-none">
+                                <DragItem
+                                  label={getLeagueName(league.id)}
+                                  hidden={league.hidden}
+                                  onToggleVisibility={() => toggleVisibility("league", league.id)}
+                                  onEdit={() => setEditingItem({
+                                    itemType: "league",
+                                    itemKey: league.id,
+                                    item: { id: league.id, label: getLeagueName(league.id), hidden: league.hidden, customLabel: league.customLabel, coverItemId: league.coverItemId, type: "league" as const, leagueId: league.id },
+                                  })}
+                                  onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                                  onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
+                                  onMoveTo={(newParent) => handleMoveTo("league", league.id, newParent)}
+                                  moveTargets={getMoveTargets()}
+                                  currentParent={leagues.find(l => l.id === league.id)?.category || ""}
+                                />
+                              </Reorder.Item>
+                            ))}
+                          </Reorder.Group>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -834,6 +897,109 @@ function Section({ title, expanded, onToggle, onAdd, sectionId, children }: { ti
   );
 }
 
+/* ─── Recursive category node for nested hierarchy ─── */
+function CategoryNode({
+  cat, depth, getChildCategories, getLeaguesForCategory, getCategoryLabel, getLeagueName,
+  getMoveTargets, leagues, expandedCategories, toggleCategory, toggleVisibility,
+  setEditingItem, setAddSubcategoryOpen, setNewName, setViewingLeague,
+  handleMoveTo, handleDelete, updateLeaguesInCategory, showHidden,
+}: {
+  cat: LayoutCategory; depth: number;
+  getChildCategories: (key: string) => LayoutCategory[];
+  getLeaguesForCategory: (key: string) => LayoutLeague[];
+  getCategoryLabel: (key: string) => string;
+  getLeagueName: (id: string) => string;
+  getMoveTargets: (excludeKey?: string) => { key: string; label: string }[];
+  leagues: { id: string; category: string | null }[];
+  expandedCategories: Set<string>;
+  toggleCategory: (key: string) => void;
+  toggleVisibility: (type: "topLevel" | "category" | "league", key: string) => void;
+  setEditingItem: (item: any) => void;
+  setAddSubcategoryOpen: (key: string | null) => void;
+  setNewName: (name: string) => void;
+  setViewingLeague: (league: { id: string; name: string } | null) => void;
+  handleMoveTo: (type: "category" | "league", key: string, newParent: string) => void;
+  handleDelete: (type: "league" | "item", id: string, name: string) => void;
+  updateLeaguesInCategory: (cat: string, items: LayoutLeague[]) => void;
+  showHidden: boolean;
+}) {
+  const childCats = getChildCategories(cat.key);
+  const catLeagues = getLeaguesForCategory(cat.key);
+
+  return (
+    <div>
+      <DragItem
+        label={getCategoryLabel(cat.key)}
+        sublabel={`↳ ${getCategoryLabel(cat.parentKey)}`}
+        hidden={cat.hidden}
+        onToggleVisibility={() => toggleVisibility("category", cat.key)}
+        onEdit={() => setEditingItem({
+          itemType: "category", itemKey: cat.key,
+          item: { key: cat.key, label: getCategoryLabel(cat.key), hidden: cat.hidden, customLabel: cat.customLabel, coverItemId: cat.coverItemId, type: "category" as const },
+        })}
+        expandable
+        expanded={expandedCategories.has(cat.key)}
+        onBarClick={() => toggleCategory(cat.key)}
+        onAdd={() => { setNewName(""); setAddSubcategoryOpen(cat.key); }}
+        onMoveTo={(newParent) => handleMoveTo("category", cat.key, newParent)}
+        moveTargets={getMoveTargets(cat.key)}
+        currentParent={cat.parentKey}
+      />
+      <AnimatePresence>
+        {expandedCategories.has(cat.key) && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pl-8"
+          >
+            <div className="space-y-1 py-1">
+              {childCats.map(child => (
+                <CategoryNode key={child.key} cat={child} depth={depth + 1}
+                  getChildCategories={getChildCategories}
+                  getLeaguesForCategory={getLeaguesForCategory}
+                  getCategoryLabel={getCategoryLabel}
+                  getLeagueName={getLeagueName}
+                  getMoveTargets={getMoveTargets}
+                  leagues={leagues}
+                  expandedCategories={expandedCategories}
+                  toggleCategory={toggleCategory}
+                  toggleVisibility={toggleVisibility}
+                  setEditingItem={setEditingItem}
+                  setAddSubcategoryOpen={setAddSubcategoryOpen}
+                  setNewName={setNewName}
+                  setViewingLeague={setViewingLeague}
+                  handleMoveTo={handleMoveTo}
+                  handleDelete={handleDelete}
+                  updateLeaguesInCategory={updateLeaguesInCategory}
+                  showHidden={showHidden}
+                />
+              ))}
+              {catLeagues.map(league => (
+                <DragItem
+                  key={league.id}
+                  label={getLeagueName(league.id)}
+                  hidden={league.hidden}
+                  onToggleVisibility={() => toggleVisibility("league", league.id)}
+                  onEdit={() => setEditingItem({
+                    itemType: "league", itemKey: league.id,
+                    item: { id: league.id, label: getLeagueName(league.id), hidden: league.hidden, customLabel: league.customLabel, coverItemId: league.coverItemId, type: "league" as const, leagueId: league.id },
+                  })}
+                  onBarClick={() => setViewingLeague({ id: league.id, name: getLeagueName(league.id) })}
+                  onDelete={() => handleDelete("league", league.id, getLeagueName(league.id))}
+                  onMoveTo={(newParent) => handleMoveTo("league", league.id, newParent)}
+                  moveTargets={getMoveTargets()}
+                  currentParent={leagues.find(l => l.id === league.id)?.category || ""}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ─── Draggable item row ─── */
 function DragItem({
   label,
@@ -847,6 +1013,9 @@ function DragItem({
   onBarClick,
   onDelete,
   onAdd,
+  onMoveTo,
+  moveTargets,
+  currentParent,
 }: {
   label: string;
   sublabel?: string;
@@ -859,6 +1028,9 @@ function DragItem({
   onBarClick?: () => void;
   onDelete?: () => void;
   onAdd?: () => void;
+  onMoveTo?: (newParent: string) => void;
+  moveTargets?: { key: string; label: string }[];
+  currentParent?: string;
 }) {
   return (
     <div
@@ -876,6 +1048,27 @@ function DragItem({
         {label}
         {sublabel && <span className="text-[10px] text-muted-foreground ml-1.5">{sublabel}</span>}
       </span>
+      {onMoveTo && moveTargets && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button onClick={e => e.stopPropagation()} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Move to…">
+              <FolderInput className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2 max-h-64 overflow-y-auto" align="end" onClick={e => e.stopPropagation()}>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1">Move to…</p>
+            {moveTargets.map(t => (
+              <button
+                key={t.key}
+                onClick={() => onMoveTo(t.key)}
+                className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors ${currentParent === t.key ? "bg-primary/10 text-primary font-bold" : "text-foreground hover:bg-accent"}`}
+              >
+                {t.key === "collections" ? "📁" : "📂"} {t.label} {currentParent === t.key && " ✓"}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      )}
       {onAdd && (
         <button onClick={(e) => { e.stopPropagation(); onAdd(); }} className="shrink-0 p-1 rounded hover:bg-muted transition-colors" title="Add">
           <Plus className="h-3.5 w-3.5 text-primary" />
