@@ -3,15 +3,20 @@ import { LogOut, LogIn, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import SEOHead from "@/components/SEOHead";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
+    // Clear all cached data before signing out to prevent stale state
+    queryClient.clear();
     await signOut();
-    navigate("/");
+    // Navigate to landing after sign-out
+    navigate("/", { replace: true });
   };
 
   const isAnonymousOrNoUser = !user || user.is_anonymous;
