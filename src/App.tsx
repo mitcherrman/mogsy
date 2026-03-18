@@ -47,9 +47,15 @@ const LazyFallback = () => (
   <div className="min-h-screen bg-background" />
 );
 
+function AuthQuerySyncBridge() {
+  useAuthQuerySync();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <AuthQuerySyncBridge />
       <SitewideThemeProvider>
         <TooltipProvider>
           <Toaster />
