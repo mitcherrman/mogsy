@@ -58,13 +58,15 @@ export default function Navbar({ themeId }: { themeId?: string }) {
 
   useEffect(() => {
     if (user) loadDiamonds();
-  }, [user]);
+    else setDiamonds(null);
+  }, [user?.id]);
 
   const loadDiamonds = async () => {
+    if (!user) return;
     const { data } = await supabase
       .from("profiles")
       .select("diamonds")
-      .eq("user_id", user!.id)
+      .eq("user_id", user.id)
       .single();
     if (data) setDiamonds(data.diamonds ?? 0);
   };

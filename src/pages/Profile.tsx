@@ -96,20 +96,27 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // Reset state when user signs out
+      setLoading(false);
+      setProfileId(null);
+      return;
+    }
+    setLoading(true);
     loadProfile();
     // Check if user is a moderator
     supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
       const roles = data?.map(r => r.role as string) || [];
       setIsModerator(roles.includes("moderator") || roles.includes("admin") || roles.includes("master_admin"));
     });
-  }, [user]);
+  }, [user?.id]);
 
   const loadProfile = async () => {
+    if (!user) return;
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
-      .eq("user_id", user!.id)
+      .eq("user_id", user.id)
       .single();
 
     if (profile) {
