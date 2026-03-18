@@ -108,8 +108,23 @@ export default function Home() {
   const bannerTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (user) checkOnboardingAndLoad();
-  }, [user]);
+    if (user) {
+      // Reset state when user identity changes
+      setLoading(true);
+      setLeagues([]);
+      setRecentSwipes([]);
+      setTopComments([]);
+      setBannerItems([]);
+      setHasLeagues(false);
+      setCategorySections([]);
+      setPlayCollections([]);
+      setPlayCompetes([]);
+      setCuratedLeagues([]);
+      checkOnboardingAndLoad();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (bannerItems.length <= 1) return;

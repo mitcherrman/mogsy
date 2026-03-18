@@ -90,12 +90,16 @@ export default function Shop() {
 
   useEffect(() => {
     if (user) {
+      setLoading(true);
       loadProfile();
       checkSubscription();
       checkAdmin();
       loadShopAdConfig();
+    } else {
+      setLoading(false);
+      setProfile(null);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
