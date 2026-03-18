@@ -294,7 +294,7 @@ export default function Leaderboard() {
         {list.map((entry, i) => {
           const rank = i + 1;
           const isTop3 = rank <= 3;
-          const size = isTop3 ? "w-24 h-24 sm:w-32 sm:h-32" : "w-16 h-16 sm:w-20 sm:h-20";
+          const size = isTop3 ? "w-12 h-12 sm:w-24 sm:h-24 md:w-32 md:h-32" : "w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20";
           const rowBg = isCompeteLeague && rankEnabled ? getTierRowBg(entry.tier) : "";
           const showSectionHeader = isCompeteLeague && rankEnabled && entry.tier !== lastTier && entry.tier !== "unranked";
           lastTier = entry.tier;
