@@ -65,16 +65,11 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const titleImageInputRef = useRef<HTMLInputElement>(null);
   const [addItemName, setAddItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
-  const [titleImageUrl, setTitleImageUrl] = useState("");
-  const [uploadingTitleImage, setUploadingTitleImage] = useState(false);
-  const [adjustingTitleImage, setAdjustingTitleImage] = useState(false);
-  const [tiScale, setTiScale] = useState(1);
-  const [tiOffsetY, setTiOffsetY] = useState(0);
-  const [tiOffsetX, setTiOffsetX] = useState(0);
-  const [tiMaxHeight, setTiMaxHeight] = useState(0);
   const [showHiddenImages, setShowHiddenImages] = useState(false);
   const [convertingAll, setConvertingAll] = useState(false);
   const [convertProgress, setConvertProgress] = useState("");
+  const [previewEditorOpen, setPreviewEditorOpen] = useState(false);
+  const [previewEditorImageId, setPreviewEditorImageId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     loadItems();
