@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import ImagePositionEditor from "./ImagePositionEditor";
+import CardPreviewEditor from "./CardPreviewEditor";
 import { gifToWebm } from "@/lib/gif-to-video";
 
 interface PresetItem {
