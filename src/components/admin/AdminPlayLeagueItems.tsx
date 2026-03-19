@@ -308,7 +308,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       .eq("id", img.id);
     if (error) { toast.error(error.message); return; }
     setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft } : i));
-    setPositioningImage(null);
+    setPreviewEditorOpen(false);
     toast.success("Position saved");
   };
 
