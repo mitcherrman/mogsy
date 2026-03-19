@@ -27,6 +27,7 @@ interface ItemImage {
   preset_item_id: string;
   image_url: string;
   is_hidden: boolean;
+  report_count: number;
   sort_order: number;
   focal_x: number;
   focal_y: number;
