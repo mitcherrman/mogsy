@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone, Move, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Film } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Link, Eye, EyeOff, Maximize2, ImageIcon, Star, Smartphone, Move, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import ImagePositionEditor from "./ImagePositionEditor";
+import CardPreviewEditor from "./CardPreviewEditor";
 import { gifToWebm } from "@/lib/gif-to-video";
 
 interface PresetItem {
@@ -55,26 +54,17 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   const [addImageUrl, setAddImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [cardPreviewOpen, setCardPreviewOpen] = useState(false);
-  const [cardPreviewImage, setCardPreviewImage] = useState<string | null>(null);
-  const [positioningImage, setPositioningImage] = useState<ItemImage | null>(null);
   const [imageCountMap, setImageCountMap] = useState<Map<string, number>>(new Map());
   const [firstImageMap, setFirstImageMap] = useState<Map<string, string>>(new Map());
   const [imageClickCounts, setImageClickCounts] = useState<Map<string, number>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const titleImageInputRef = useRef<HTMLInputElement>(null);
   const [addItemName, setAddItemName] = useState("");
   const [addingItem, setAddingItem] = useState(false);
-  const [titleImageUrl, setTitleImageUrl] = useState("");
-  const [uploadingTitleImage, setUploadingTitleImage] = useState(false);
-  const [adjustingTitleImage, setAdjustingTitleImage] = useState(false);
-  const [tiScale, setTiScale] = useState(1);
-  const [tiOffsetY, setTiOffsetY] = useState(0);
-  const [tiOffsetX, setTiOffsetX] = useState(0);
-  const [tiMaxHeight, setTiMaxHeight] = useState(0);
   const [showHiddenImages, setShowHiddenImages] = useState(false);
   const [convertingAll, setConvertingAll] = useState(false);
   const [convertProgress, setConvertProgress] = useState("");
+  const [previewEditorOpen, setPreviewEditorOpen] = useState(false);
+  const [previewEditorImageId, setPreviewEditorImageId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     loadItems();
@@ -318,7 +308,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
       .eq("id", img.id);
     if (error) { toast.error(error.message); return; }
     setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft } : i));
-    setPositioningImage(null);
+    setPreviewEditorOpen(false);
     toast.success("Position saved");
   };
 
@@ -424,23 +414,41 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
   if (selectedItem) {
     const visibleCount = itemImages.filter(i => !i.is_hidden).length;
 
-    // Image positioning sub-view
-    if (positioningImage) {
+    // Unified Preview Editor sub-view
+    if (previewEditorOpen) {
       return (
         <div className="space-y-4">
-          <Button variant="ghost" size="sm" onClick={() => setPositioningImage(null)} className="text-muted-foreground gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setPreviewEditorOpen(false)} className="text-muted-foreground gap-1">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to {selectedItem.name}
           </Button>
-          <ImagePositionEditor
-            imageUrl={positioningImage.image_url}
-            itemName={selectedItem.name}
-            initialFocalX={positioningImage.focal_x}
-            initialFocalY={positioningImage.focal_y}
-            initialZoom={positioningImage.zoom}
-            initialPadTop={positioningImage.pad_top}
-            initialPadLeft={positioningImage.pad_left}
-            onSave={(fx, fy, z, pt, pl) => handleSavePosition(positioningImage, fx, fy, z, pt, pl)}
-            onCancel={() => setPositioningImage(null)}
+          <CardPreviewEditor
+            item={selectedItem}
+            images={itemImages}
+            initialImageId={previewEditorImageId}
+            onSaveImage={async (img, fx, fy, z, pt, pl) => {
+              await handleSavePosition(img, fx, fy, z, pt, pl);
+            }}
+            onSaveTitleImage={async (scale, offsetY, offsetX, maxHeight) => {
+              const { error } = await supabase.from("preset_items").update({
+                title_image_scale: scale,
+                title_image_offset_y: offsetY,
+                title_image_offset_x: offsetX,
+                title_image_max_height: maxHeight,
+              } as any).eq("id", selectedItem.id);
+              if (error) { toast.error(error.message); return; }
+              const updated = { ...selectedItem, title_image_scale: scale, title_image_offset_y: offsetY, title_image_offset_x: offsetX, title_image_max_height: maxHeight };
+              setSelectedItem(updated);
+              setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updated } : i));
+              toast.success("Title image sizing saved");
+            }}
+            onSetTitleImageUrl={async (url) => {
+              const { error } = await supabase.from("preset_items").update({ title_image_url: url } as any).eq("id", selectedItem.id);
+              if (error) { toast.error(error.message); return; }
+              setSelectedItem({ ...selectedItem, title_image_url: url });
+              setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: url } : i));
+              toast.success(url ? "Title image set" : "Title image removed");
+            }}
+            onCancel={() => setPreviewEditorOpen(false)}
           />
         </div>
       );
@@ -469,223 +477,12 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
             size="sm"
             className="gap-1.5 text-xs shrink-0"
             onClick={() => {
-              const visibleImg = itemImages.find(i => !i.is_hidden);
-              setCardPreviewImage(visibleImg?.image_url || selectedItem.image_url || null);
-              setCardPreviewOpen(true);
+              setPreviewEditorImageId(undefined);
+              setPreviewEditorOpen(true);
             }}
           >
-            <Smartphone className="h-3.5 w-3.5" /> Card Preview
+            <Smartphone className="h-3.5 w-3.5" /> Preview Editor
           </Button>
-        </div>
-
-        {/* Title Image */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Title Image</h5>
-          <p className="text-[10px] text-muted-foreground">Replaces the text name on cards. Bleeds over the card image edges.</p>
-          {selectedItem.title_image_url ? (
-            adjustingTitleImage ? (
-              /* ── Title Image Adjust Editor ── */
-              <div className="space-y-4">
-                {/* Live card preview */}
-                <div className="flex flex-col rounded-2xl border border-border bg-card overflow-visible max-w-[280px] mx-auto">
-                  <div className="w-full aspect-[5/4] overflow-hidden relative bg-muted/30">
-                    {selectedItem.image_url ? (
-                      <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-contain" draggable={false} />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <div className="px-2 py-1.5 text-center overflow-visible relative z-20">
-                    <img
-                      src={selectedItem.title_image_url}
-                      alt={selectedItem.name}
-                      className="w-auto object-contain mx-auto"
-                      draggable={false}
-                      style={{
-                        transform: tiScale !== 1 ? `scale(${tiScale})` : undefined,
-                        marginTop: `${tiOffsetY}px`,
-                        marginLeft: `${tiOffsetX + 50}px`,
-                        maxHeight: tiMaxHeight > 0 ? `${tiMaxHeight}px` : undefined,
-                        maxWidth: '75%',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Controls */}
-                <div className="grid grid-cols-1 gap-3">
-                  {/* Scale */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Scale</label>
-                      <Input
-                        type="number" min={0.1} max={15} step={0.05}
-                        value={tiScale.toFixed(2)}
-                        onChange={e => { const n = parseFloat(e.target.value); if (!isNaN(n)) setTiScale(Math.max(0.1, Math.min(15, n))); }}
-                        className="w-16 h-6 text-[10px] text-right px-1 font-mono"
-                      />
-                    </div>
-                    <Slider min={0.1} max={15} step={0.05} value={[tiScale]} onValueChange={([v]) => setTiScale(v)} />
-                  </div>
-
-                  {/* Vertical Offset with +/- buttons */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Vertical Offset</label>
-                      <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.max(-600, v - 1))}>
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                        <Input
-                          type="number" min={-600} max={300}
-                          value={tiOffsetY}
-                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetY(Math.max(-600, Math.min(300, n))); }}
-                          className="w-14 h-6 text-[10px] text-right px-1 font-mono"
-                        />
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetY(v => Math.min(300, v + 1))}>
-                          <ChevronUp className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Slider min={-600} max={300} step={1} value={[tiOffsetY]} onValueChange={([v]) => setTiOffsetY(v)} />
-                  </div>
-
-                  {/* Horizontal Offset with +/- buttons */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Horizontal Offset</label>
-                      <div className="flex items-center gap-0.5">
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.max(-200, v - 1))}>
-                          <ChevronLeft className="h-3 w-3" />
-                        </Button>
-                        <Input
-                          type="number" min={-200} max={200}
-                          value={tiOffsetX}
-                          onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiOffsetX(Math.max(-200, Math.min(200, n))); }}
-                          className="w-14 h-6 text-[10px] text-right px-1 font-mono"
-                        />
-                        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => setTiOffsetX(v => Math.min(200, v + 1))}>
-                          <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Slider min={-200} max={200} step={1} value={[tiOffsetX]} onValueChange={([v]) => setTiOffsetX(v)} />
-                  </div>
-
-                  {/* Max Height */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Height (0 = auto)</label>
-                      <Input
-                        type="number" min={0} max={600}
-                        value={tiMaxHeight}
-                        onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTiMaxHeight(Math.max(0, Math.min(600, n))); }}
-                        className="w-16 h-6 text-[10px] text-right px-1 font-mono"
-                      />
-                    </div>
-                    <Slider min={0} max={600} step={1} value={[tiMaxHeight]} onValueChange={([v]) => setTiMaxHeight(v)} />
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setAdjustingTitleImage(false)}>Cancel</Button>
-                  <Button className="flex-1" onClick={async () => {
-                    const { error } = await supabase.from("preset_items").update({
-                      title_image_scale: tiScale,
-                      title_image_offset_y: tiOffsetY,
-                      title_image_offset_x: tiOffsetX,
-                      title_image_max_height: tiMaxHeight,
-                    } as any).eq("id", selectedItem.id);
-                    if (error) { toast.error(error.message); return; }
-                    const updated = { ...selectedItem, title_image_scale: tiScale, title_image_offset_y: tiOffsetY, title_image_offset_x: tiOffsetX, title_image_max_height: tiMaxHeight };
-                    setSelectedItem(updated);
-                    setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updated } : i));
-                    setAdjustingTitleImage(false);
-                    toast.success("Title image sizing saved");
-                  }}>Save</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <img src={selectedItem.title_image_url} alt="Title" className="max-h-12 w-auto object-contain rounded border border-border bg-muted p-1" />
-                <Button size="sm" variant="outline" onClick={() => {
-                  setTiScale(selectedItem.title_image_scale ?? 1);
-                  setTiOffsetY(selectedItem.title_image_offset_y ?? 0);
-                  setTiOffsetX(selectedItem.title_image_offset_x ?? 0);
-                  setTiMaxHeight(selectedItem.title_image_max_height ?? 0);
-                  setAdjustingTitleImage(true);
-                }} className="gap-1">
-                  <Maximize2 className="h-3.5 w-3.5" /> Adjust
-                </Button>
-                <Button size="sm" variant="destructive" onClick={async () => {
-                  const { error } = await supabase.from("preset_items").update({ title_image_url: null } as any).eq("id", selectedItem.id);
-                  if (error) { toast.error(error.message); return; }
-                  setSelectedItem({ ...selectedItem, title_image_url: null });
-                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: null } : i));
-                  toast.success("Title image removed");
-                }}>
-                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-                </Button>
-              </div>
-            )
-          ) : (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Input
-                  value={titleImageUrl}
-                  onChange={(e) => setTitleImageUrl(e.target.value)}
-                  placeholder="Paste title image URL..."
-                  className="text-sm"
-                  onKeyDown={async (e) => {
-                    if (e.key === "Enter" && titleImageUrl.trim()) {
-                      const { error } = await supabase.from("preset_items").update({ title_image_url: titleImageUrl.trim() } as any).eq("id", selectedItem.id);
-                      if (error) { toast.error(error.message); return; }
-                      setSelectedItem({ ...selectedItem, title_image_url: titleImageUrl.trim() });
-                      setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: titleImageUrl.trim() } : i));
-                      setTitleImageUrl("");
-                      toast.success("Title image set");
-                    }
-                  }}
-                />
-                <Button size="sm" onClick={async () => {
-                  if (!titleImageUrl.trim()) return;
-                  const { error } = await supabase.from("preset_items").update({ title_image_url: titleImageUrl.trim() } as any).eq("id", selectedItem.id);
-                  if (error) { toast.error(error.message); return; }
-                  setSelectedItem({ ...selectedItem, title_image_url: titleImageUrl.trim() });
-                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: titleImageUrl.trim() } : i));
-                  setTitleImageUrl("");
-                  toast.success("Title image set");
-                }} disabled={!titleImageUrl.trim()} className="gap-1 shrink-0">
-                  <Link className="h-3.5 w-3.5" /> Add
-                </Button>
-              </div>
-              <div>
-                <input ref={titleImageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-                  if (!allowedTypes.includes(file.type)) { toast.error("Only JPEG, PNG, WebP, GIF"); return; }
-                  if (file.size > 20 * 1024 * 1024) { toast.error("Max 20MB"); return; }
-                  setUploadingTitleImage(true);
-                  const ext = file.name.split(".").pop();
-                  const path = `preset-items/${selectedItem.id}/title-${Date.now()}.${ext}`;
-                  const { error: uploadError } = await supabase.storage.from("profile-photos").upload(path, file);
-                  if (uploadError) { toast.error(uploadError.message); setUploadingTitleImage(false); return; }
-                  const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
-                  const { error } = await supabase.from("preset_items").update({ title_image_url: urlData.publicUrl } as any).eq("id", selectedItem.id);
-                  if (error) { toast.error(error.message); setUploadingTitleImage(false); return; }
-                  setSelectedItem({ ...selectedItem, title_image_url: urlData.publicUrl });
-                  setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, title_image_url: urlData.publicUrl } : i));
-                  setUploadingTitleImage(false);
-                  toast.success("Title image uploaded");
-                  if (titleImageInputRef.current) titleImageInputRef.current.value = "";
-                }} className="hidden" />
-                <Button size="sm" variant="outline" onClick={() => titleImageInputRef.current?.click()} disabled={uploadingTitleImage} className="gap-1">
-                  <Upload className="h-3.5 w-3.5" /> {uploadingTitleImage ? "Uploading..." : "Upload File"}
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Add image */}
@@ -738,7 +535,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
                       <Maximize2 className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setPositioningImage(img)} title="Position & Zoom">
+                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => { setPreviewEditorImageId(img.id); setPreviewEditorOpen(true); }} title="Preview Editor">
                       <Move className="h-4 w-4" />
                     </Button>
                     <Button
@@ -785,100 +582,6 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
         <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
           <DialogContent className="max-w-3xl p-2 bg-background/95 backdrop-blur-xl">
             {viewingImage && <img src={viewingImage} alt="" className="w-full h-auto max-h-[80vh] object-contain rounded-lg" />}
-          </DialogContent>
-        </Dialog>
-
-        {/* Card Preview Dialog — mirrors exact swipe card layout */}
-        <Dialog open={cardPreviewOpen} onOpenChange={setCardPreviewOpen}>
-          <DialogContent className="max-w-sm p-4 bg-background/95 backdrop-blur-xl">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Card Preview — as seen in game</h4>
-            {/* Image selector */}
-            {itemImages.filter(i => !i.is_hidden).length > 1 && (
-              <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
-                {itemImages.filter(i => !i.is_hidden).map(img => (
-                  <button
-                    key={img.id}
-                    onClick={() => setCardPreviewImage(img.image_url)}
-                    className={`h-10 w-10 rounded-lg border-2 overflow-hidden shrink-0 transition-all ${
-                      cardPreviewImage === img.image_url ? "border-primary ring-1 ring-primary/30" : "border-border"
-                    }`}
-                  >
-                    <img src={img.image_url} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-            {(() => {
-              const previewImg = itemImages.find(i => i.image_url === cardPreviewImage);
-              const imgStyle = previewImg ? {
-                objectPosition: `${previewImg.focal_x}% ${previewImg.focal_y}%`,
-                transform: `scale(${previewImg.zoom})`,
-                transformOrigin: `${previewImg.focal_x}% ${previewImg.focal_y}%`,
-              } : {};
-              return (
-                <>
-                  {/* Simulated card */}
-                  <div className={`flex flex-col rounded-2xl border border-border bg-card max-w-[320px] mx-auto ${selectedItem.title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-                    <div className="w-full aspect-[5/4] bg-muted/30 overflow-hidden relative">
-                      {cardPreviewImage && (
-                        <img src={cardPreviewImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-20" aria-hidden="true" />
-                      )}
-                      {cardPreviewImage ? (
-                        <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-contain relative z-10" style={imgStyle} />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
-                      )}
-                    </div>
-                    <div className={`px-2 py-1.5 flex-shrink-0 ${selectedItem.title_image_url ? 'overflow-visible' : ''}`}>
-                      <div className="text-center">
-                        {selectedItem.title_image_url ? (
-                          <img
-                            src={selectedItem.title_image_url}
-                            alt={selectedItem.name}
-                            className="w-auto object-contain mx-auto"
-                            draggable={false}
-                            style={{
-                              transform: (selectedItem.title_image_scale ?? 1) !== 1 ? `scale(${selectedItem.title_image_scale})` : undefined,
-                              marginTop: `${selectedItem.title_image_offset_y ?? 0}px`,
-                              marginLeft: `${(selectedItem.title_image_offset_x ?? 0) + 50}px`,
-                              maxHeight: (selectedItem.title_image_max_height ?? 0) > 0 ? `${selectedItem.title_image_max_height}px` : undefined,
-                              maxWidth: '75%',
-                            }}
-                          />
-                        ) : (
-                          <>
-                            <h3 className="text-sm font-extrabold text-foreground truncate">{selectedItem.name}</h3>
-                            {selectedItem.subtitle && <p className="text-[10px] text-muted-foreground truncate">{selectedItem.subtitle}</p>}
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-center gap-3 mt-0.5">
-                        <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground text-center mt-2">Mobile portrait uses 5:4 • Desktop/landscape uses 3:4</p>
-                  <details className="mt-2">
-                    <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors">Show desktop (3:4) preview</summary>
-                    <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden max-w-[240px] mx-auto mt-2">
-                      <div className="w-full aspect-[3/4] bg-muted/30 overflow-hidden">
-                        {cardPreviewImage ? (
-                          <img src={cardPreviewImage} alt={selectedItem.name} className="w-full h-full object-contain" style={imgStyle} />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-3xl font-black text-muted-foreground/30">{selectedItem.name.charAt(0)}</span>
-                        )}
-                      </div>
-                      <div className="px-2 py-1.5">
-                        <h3 className="text-xs font-extrabold text-foreground truncate text-center">{selectedItem.name}</h3>
-                        <div className="flex items-center justify-center mt-0.5">
-                          <span className="text-[10px] font-semibold text-primary">{selectedItem.elo}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-                </>
-              );
-            })()}
           </DialogContent>
         </Dialog>
       </div>
