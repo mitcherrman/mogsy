@@ -8,6 +8,7 @@ interface MatchupCaptureProps {
   children: ReactNode;
   centerSlot?: ReactNode;
   isMobile?: boolean;
+  className?: string;
 }
 
 const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
