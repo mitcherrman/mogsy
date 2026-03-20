@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe, MessageCircle } from "lucide-react";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
+import CardStatsFooter from "@/components/CardStatsFooter";
 import { Button } from "@/components/ui/button";
 import SwipeDirectionOverlay from "@/components/SwipeDirectionOverlay";
 import SwipeComments from "@/components/SwipeComments";
