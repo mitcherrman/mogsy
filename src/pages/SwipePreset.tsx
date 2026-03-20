@@ -142,7 +142,7 @@ export default function SwipePreset() {
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
-  
+  const [cardStatsConfig, setCardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
 
   // Lock scroll on mobile to prevent any scrolling past game area
   useEffect(() => {
