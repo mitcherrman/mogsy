@@ -1179,7 +1179,7 @@ function CardDraggable({
 
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity,
+  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity, cardStatsConfig,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
@@ -1192,6 +1192,7 @@ function GauntletCard({
   handleReportImage: (item: PresetItem) => void;
   isMobile: boolean;
   cardBgOpacity: number;
+  cardStatsConfig: CardStatsConfig;
 }) {
   const displayImage = getDisplayImage(item);
   const rank = rankMap.get(item.id);
