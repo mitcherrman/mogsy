@@ -738,7 +738,7 @@ export default function SwipePreset() {
           </Button>
         )}
 
-        <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
+        <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Controls bar — desktop keeps full bar, mobile collapses */}
           {!isMobile && (
             <div className="flex items-center gap-2 mb-1.5">
