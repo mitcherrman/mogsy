@@ -7,6 +7,8 @@ import { RotateCcw, Monitor, Smartphone, ChevronDown, ChevronUp, ChevronLeft, Ch
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AutoVideo from "@/components/AutoVideo";
+import CardStatsFooter from "@/components/CardStatsFooter";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
 
 interface PresetItem {
   id: string;

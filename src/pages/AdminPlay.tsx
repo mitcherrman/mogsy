@@ -736,6 +736,16 @@ export default function AdminPlay() {
           </Reorder.Group>
         </Section>
 
+        {/* Card Stats Config */}
+        <Section
+          title="Card Stats Display"
+          sectionId="section-card-stats"
+          expanded={expandedSections.has("card-stats")}
+          onToggle={() => toggleSection("card-stats")}
+        >
+          <AdminCardStatsPreview />
+        </Section>
+
         {/* Multiplayer Settings */}
         <Section
           title="Multiplayer Settings"
