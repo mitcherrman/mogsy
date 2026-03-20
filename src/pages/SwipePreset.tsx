@@ -1062,7 +1062,7 @@ export default function SwipePreset() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <div className="flex items-center justify-center gap-3 mt-1 relative z-40">
+            <div className="flex items-center justify-center gap-3 mt-1 relative z-40 flex-shrink-0">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"
