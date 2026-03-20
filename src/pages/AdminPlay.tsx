@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers, BarChart3 } from "lucide-react";
+import AdminCardStatsPreview from "@/components/admin/AdminCardStatsPreview";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -733,6 +734,16 @@ export default function AdminPlay() {
               </Reorder.Item>
             ))}
           </Reorder.Group>
+        </Section>
+
+        {/* Card Stats Config */}
+        <Section
+          title="Card Stats Display"
+          sectionId="section-card-stats"
+          expanded={expandedSections.has("card-stats")}
+          onToggle={() => toggleSection("card-stats")}
+        >
+          <AdminCardStatsPreview />
         </Section>
 
         {/* Multiplayer Settings */}

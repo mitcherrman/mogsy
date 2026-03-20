@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { ArrowLeft, Trophy, Crown, RotateCcw, Flag, Eye, EyeOff, Camera, Sword, Swords, Globe, MessageCircle } from "lucide-react";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
+import CardStatsFooter from "@/components/CardStatsFooter";
 import { Button } from "@/components/ui/button";
 import SwipeDirectionOverlay from "@/components/SwipeDirectionOverlay";
 import SwipeComments from "@/components/SwipeComments";
@@ -140,7 +142,7 @@ export default function SwipePreset() {
   const [showMatchCount, setShowMatchCount] = useState(true);
   const [showSwipeProgress, setShowSwipeProgress] = useState(true);
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
-  
+  const [cardStatsConfig, setCardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
 
   // Lock scroll on mobile to prevent any scrolling past game area
   useEffect(() => {
@@ -157,13 +159,14 @@ export default function SwipePreset() {
 
   // Fetch swipe UI settings
   useEffect(() => {
-    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress", "card_bg_opacity"]).then(({ data }) => {
+    supabase.from("app_settings").select("key, value").in("key", ["show_match_count", "show_swipe_progress", "card_bg_opacity", "card_stats_config"]).then(({ data }) => {
       if (data) {
         for (const row of data) {
           const val = row.value as any;
           if (row.key === "show_match_count") setShowMatchCount(val?.enabled ?? true);
           if (row.key === "show_swipe_progress") setShowSwipeProgress(val?.enabled ?? true);
           if (row.key === "card_bg_opacity") setCardBgOpacity(val?.opacity ?? 20);
+          if (row.key === "card_stats_config") setCardStatsConfig({ ...DEFAULT_CARD_STATS_CONFIG, ...val });
         }
       }
     });
@@ -897,6 +900,7 @@ export default function SwipePreset() {
                         handleReportImage={handleReportImage}
                         isMobile={isMobile}
                         cardBgOpacity={cardBgOpacity}
+                        cardStatsConfig={cardStatsConfig}
                       />
                     );
                   })}
@@ -941,86 +945,27 @@ export default function SwipePreset() {
                             cardBgOpacity={cardBgOpacity}
                           />
 
-                          {/* Name & stats — always visible, outside animation area */}
-                          {isMobile ? (
-                            <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-                              <div className="flex items-center justify-between gap-1">
-                {item.title_image_url ? (
-                                  <img src={item.title_image_url} alt={item.name} className="w-auto object-contain cursor-pointer" style={getTitleImageStyle(item, true)} draggable={false} onClick={() => handleChoose(idx as 0 | 1)} />
-                                ) : (
-                                  <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
-                                )}
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap ${statsHidden ? "invisible" : ""}`}>
-                                    <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
-                                    {rankVisible && localRankMap.get(item.id) && (
-                                      <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
-                                    )}
-                                  </span>
-                                  {hasMultipleImages && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                                      className="h-4 w-4 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
-                                      title="Report image as not representative"
-                                    >
-                                      <Flag className="h-2.5 w-2.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-                              <div className="flex items-center justify-center gap-1">
-                                <div className="flex-1 min-w-0" />
-                                <div className="text-center min-w-0">
-                              {item.title_image_url ? (
-                                    <img src={item.title_image_url} alt={item.name} className="w-auto object-contain cursor-pointer" style={getTitleImageStyle(item, false)} draggable={false} onClick={() => handleChoose(idx as 0 | 1)} />
-                                  ) : (
-                                    <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-                                  )}
-                                  {!item.title_image_url && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
-                                </div>
-                                <div className="flex-1 min-w-0 flex justify-end">
-                                  {hasMultipleImages && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                                      className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
-                                      title="Report image as not representative"
-                                    >
-                                      <Flag className="h-2.5 w-2.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              <div className={`flex items-center justify-center gap-3 mt-0.5 ${statsHidden ? "invisible" : ""}`}>
-                                <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
-                                  <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
-                                  {rankVisible && localRankMap.get(item.id) && (
-                                    <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
-                                  )}
-                                  {showGlobalStats && (
-                                    <>
-                                      <span className="mx-1 text-muted-foreground/30">|</span>
-                                      <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                                      <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                                      {rankVisible && rank && (
-                                        <span className="text-blue-400/70">#{rank}</span>
-                                      )}
-                                    </>
-                                  )}
-                                </span>
-                              </div>
-                              <div className={`flex justify-center mt-0.5 ${statsHidden ? "invisible" : ""}`}>
-                                <EloChangeIndicator
-                                  change={eloChanges.get(item.id) ?? null}
-                                  oldRank={rankChanges.get(item.id)?.old ?? null}
-                                  newRank={rankChanges.get(item.id)?.new ?? null}
-                                  globalDirection={globalDirections.get(item.id)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                          {/* Unified stats footer */}
+                          <CardStatsFooter
+                            config={cardStatsConfig}
+                            isMobile={isMobile}
+                            itemName={item.name}
+                            subtitle={item.subtitle}
+                            titleImageUrl={item.title_image_url}
+                            titleImageStyle={getTitleImageStyle(item, isMobile)}
+                            localElo={localElos.get(item.id) ?? 1200}
+                            localRank={localRankMap.get(item.id)}
+                            globalElo={showGlobalStats ? (items.find(i => i.id === item.id)?.elo || item.elo) : undefined}
+                            globalRank={showGlobalStats ? rank : undefined}
+                            eloChange={eloChanges.get(item.id) ?? null}
+                            rankOld={rankChanges.get(item.id)?.old ?? null}
+                            rankNew={rankChanges.get(item.id)?.new ?? null}
+                            globalDirection={globalDirections.get(item.id)}
+                            statsHidden={statsHidden}
+                            hasMultipleImages={hasMultipleImages}
+                            onChoose={() => handleChoose(idx as 0 | 1)}
+                            onReport={() => handleReportImage(item)}
+                          />
                         </div>
                       </React.Fragment>
                     );
@@ -1235,7 +1180,7 @@ function CardDraggable({
 
 function GauntletCard({
   item, idx, isChampion, matchCount, chosen, rankMap, localRankMap, localElos, itemImages, currentImageIndex,
-  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity,
+  eloVisible, rankVisible, statsHidden, showGlobalStats, items, eloChanges, globalDirections, rankChanges, getDisplayImage, getImageStyle, handleChoose, handleReportImage, isMobile, cardBgOpacity, cardStatsConfig,
 }: {
   item: PresetItem; idx: number; isChampion: boolean; matchCount: number;
   chosen: 0 | 1 | null; rankMap: Map<string, number>; localRankMap: Map<string, number>; localElos: Map<string, number>;
@@ -1248,6 +1193,7 @@ function GauntletCard({
   handleReportImage: (item: PresetItem) => void;
   isMobile: boolean;
   cardBgOpacity: number;
+  cardStatsConfig: CardStatsConfig;
 }) {
   const displayImage = getDisplayImage(item);
   const rank = rankMap.get(item.id);
@@ -1268,76 +1214,26 @@ function GauntletCard({
         getImageStyle={getImageStyle}
         cardBgOpacity={cardBgOpacity}
       />
-      {isMobile ? (
-        <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-          <div className="flex items-center justify-between gap-1">
-            {item.title_image_url ? (
-              <img src={item.title_image_url} alt={item.name} className="w-auto object-contain cursor-pointer" style={getTitleImageStyle(item, true)} draggable={false} onClick={() => handleChoose(idx as 0 | 1)} />
-            ) : (
-              <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
-            )}
-            <div className="flex items-center gap-1 shrink-0">
-              <span className={`text-[10px] text-muted-foreground inline-flex items-center gap-0.5 whitespace-nowrap ${statsHidden ? "invisible" : ""}`}>
-                <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
-                {rankVisible && localRankMap.get(item.id) && (
-                  <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
-                )}
-              </span>
-              {hasMultipleImages && (
-                <button onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                  className="h-4 w-4 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
-                  title="Report image as not representative">
-                  <Flag className="h-2.5 w-2.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-          <div className="flex items-center justify-center gap-1">
-            <div className="flex-1 min-w-0" />
-            <div className="text-center min-w-0">
-              {item.title_image_url ? (
-                <img src={item.title_image_url} alt={item.name} className="w-auto object-contain mx-auto cursor-pointer" style={getTitleImageStyle(item, false)} draggable={false} onClick={() => handleChoose(idx as 0 | 1)} />
-              ) : (
-                <h3 className="text-sm md:text-base lg:text-lg font-extrabold text-foreground truncate">{item.name}</h3>
-              )}
-              {!item.title_image_url && item.subtitle && <p className="text-[10px] md:text-xs text-muted-foreground truncate">{item.subtitle}</p>}
-            </div>
-            <div className="flex-1 min-w-0 flex justify-end">
-              {hasMultipleImages && (
-                <button onClick={(e) => { e.stopPropagation(); handleReportImage(item); }}
-                  className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors"
-                  title="Report image as not representative">
-                  <Flag className="h-2.5 w-2.5" />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className={`flex items-center justify-center gap-3 mt-0.5 ${statsHidden ? "invisible" : ""}`}>
-            <span className="text-[10px] md:text-xs text-muted-foreground inline-flex items-center gap-0.5">
-              <span className="font-semibold text-primary">{localElos.get(item.id) ?? 1200}</span>
-              {rankVisible && localRankMap.get(item.id) && (
-                <span className="text-muted-foreground/70">#{localRankMap.get(item.id)}</span>
-              )}
-              {showGlobalStats && (
-                <>
-                  <span className="mx-1 text-muted-foreground/30">|</span>
-                  <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-                  <span className="font-semibold text-blue-400">{items.find(i => i.id === item.id)?.elo || item.elo}</span>
-                  {rankVisible && rank && (
-                    <span className="text-blue-400/70">#{rank}</span>
-                  )}
-                </>
-              )}
-            </span>
-          </div>
-          <div className={`flex justify-center mt-0.5 ${statsHidden ? "invisible" : ""}`}>
-            <EloChangeIndicator change={eloChanges.get(item.id) ?? null} oldRank={rankChanges.get(item.id)?.old ?? null} newRank={rankChanges.get(item.id)?.new ?? null} globalDirection={globalDirections.get(item.id)} />
-          </div>
-        </div>
-      )}
+      <CardStatsFooter
+        config={cardStatsConfig}
+        isMobile={isMobile}
+        itemName={item.name}
+        subtitle={item.subtitle}
+        titleImageUrl={item.title_image_url}
+        titleImageStyle={getTitleImageStyle(item, isMobile)}
+        localElo={localElos.get(item.id) ?? 1200}
+        localRank={localRankMap.get(item.id)}
+        globalElo={showGlobalStats ? (items.find(i => i.id === item.id)?.elo || item.elo) : undefined}
+        globalRank={showGlobalStats ? rank : undefined}
+        eloChange={eloChanges.get(item.id) ?? null}
+        rankOld={rankChanges.get(item.id)?.old ?? null}
+        rankNew={rankChanges.get(item.id)?.new ?? null}
+        globalDirection={globalDirections.get(item.id)}
+        statsHidden={statsHidden}
+        hasMultipleImages={hasMultipleImages}
+        onChoose={() => handleChoose(idx as 0 | 1)}
+        onReport={() => handleReportImage(item)}
+      />
     </div>
   );
 
