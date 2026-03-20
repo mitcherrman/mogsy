@@ -98,14 +98,20 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
 
   const [mode, setMode] = useState<"mobile" | "desktop">("mobile");
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
+  const [cardStatsConfig, setCardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
   const [imageOpen, setImageOpen] = useState(true);
   const [titleOpen, setTitleOpen] = useState(!!item.title_image_url);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
   useEffect(() => {
-    supabase.from("app_settings").select("key, value").eq("key", "card_bg_opacity").single().then(({ data }) => {
-      if (data) setCardBgOpacity((data.value as any)?.opacity ?? 20);
+    supabase.from("app_settings").select("key, value").in("key", ["card_bg_opacity", "card_stats_config"]).then(({ data }) => {
+      if (data) {
+        for (const row of data) {
+          if (row.key === "card_bg_opacity") setCardBgOpacity((row.value as any)?.opacity ?? 20);
+          if (row.key === "card_stats_config") setCardStatsConfig({ ...DEFAULT_CARD_STATS_CONFIG, ...(row.value as any) });
+        }
+      }
     });
   }, []);
 
