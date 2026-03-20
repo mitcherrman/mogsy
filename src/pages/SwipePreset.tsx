@@ -738,7 +738,7 @@ export default function SwipePreset() {
           </Button>
         )}
 
-        <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1">
+        <div className="container mx-auto max-w-lg md:max-w-2xl lg:max-w-4xl flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Controls bar — desktop keeps full bar, mobile collapses */}
           {!isMobile && (
             <div className="flex items-center gap-2 mb-1.5">
@@ -816,7 +816,7 @@ export default function SwipePreset() {
 
           {/* Matchup area */}
           {pair && showInSwipeAd ? (
-            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile}>
+            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile} className="min-h-0 flex-1">
               <motion.div
                 key={`ad-${showInSwipeAd.id}-${matchCount}`}
                 initial={{ opacity: 0 }}
@@ -864,7 +864,7 @@ export default function SwipePreset() {
               </motion.div>
             </MatchupCapture>
           ) : pair && (
-            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile}>
+            <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile} className="min-h-0 flex-1">
               {gauntletMode ? (
                 /* Gauntlet: render champion stable, only challenger animates */
                 <div className={`flex flex-col portrait:flex-col landscape:flex-row md:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} landscape:gap-4 md:gap-5 lg:gap-8 flex-1`}>
@@ -1062,7 +1062,7 @@ export default function SwipePreset() {
 
           {/* Mobile action bar below cards */}
           {isMobile && (
-            <div className="flex items-center justify-center gap-3 mt-1 relative z-40">
+            <div className="flex items-center justify-center gap-3 mt-1 relative z-40 flex-shrink-0">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
                 size="icon"

@@ -8,16 +8,18 @@ interface MatchupCaptureProps {
   children: ReactNode;
   centerSlot?: ReactNode;
   isMobile?: boolean;
+  className?: string;
 }
 
 const MatchupCapture = forwardRef<HTMLDivElement, MatchupCaptureProps>(
-  ({ leagueName, children, centerSlot, isMobile }, ref) => {
+  ({ leagueName, children, centerSlot, isMobile, className }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
-          "relative rounded-2xl overflow-hidden bg-card border border-border",
-          isMobile ? "p-1.5" : "p-3"
+          "relative rounded-2xl overflow-hidden bg-card border border-border flex flex-col",
+          isMobile ? "p-1.5" : "p-3",
+          className
         )}
       >
         {/* Branding header */}
