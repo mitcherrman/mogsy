@@ -249,39 +249,27 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
           )}
         </div>
 
-        {/* Footer — matches game layout */}
-        {mode === "mobile" ? (
-          <div className={`px-1.5 py-0.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-            <div className="flex items-center justify-between gap-1">
-              {item.title_image_url ? (
-                <img src={item.title_image_url} alt={item.name} className="w-auto object-contain" style={getTitleImageStyle(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight)} draggable={false} />
-              ) : (
-                <h3 className="text-xs font-extrabold text-foreground truncate">{item.name}</h3>
-              )}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-[10px] text-muted-foreground">
-                  <span className="font-semibold text-primary">{item.elo}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className={`px-2 py-1.5 flex-shrink-0 relative z-20 ${item.title_image_url ? 'overflow-visible' : ''}`}>
-            <div className="text-center">
-              {item.title_image_url ? (
-                <img src={item.title_image_url} alt={item.name} className="w-auto object-contain mx-auto" style={getTitleImageStyle(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight)} draggable={false} />
-              ) : (
-                <>
-                  <h3 className="text-sm font-extrabold text-foreground truncate">{item.name}</h3>
-                  {item.subtitle && <p className="text-[10px] text-muted-foreground truncate">{item.subtitle}</p>}
-                </>
-              )}
-            </div>
-            <div className="flex items-center justify-center gap-3 mt-0.5">
-              <span className="text-[10px] font-semibold text-primary">{item.elo}</span>
-            </div>
-          </div>
-        )}
+        {/* Footer — uses unified CardStatsFooter */}
+        <CardStatsFooter
+          config={cardStatsConfig}
+          isMobile={mode === "mobile"}
+          itemName={item.name}
+          subtitle={item.subtitle}
+          titleImageUrl={item.title_image_url}
+          titleImageStyle={getTitleImageStyle(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight)}
+          localElo={item.elo}
+          localRank={1}
+          globalElo={item.elo}
+          globalRank={1}
+          eloChange={null}
+          rankOld={null}
+          rankNew={null}
+          globalDirection={undefined}
+          statsHidden={false}
+          hasMultipleImages={false}
+          onChoose={() => {}}
+          onReport={() => {}}
+        />
       </div>
 
       {/* Image selector strip */}
