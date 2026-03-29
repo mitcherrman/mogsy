@@ -330,8 +330,43 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
             >
               <div className="absolute inset-[3px] rounded-full bg-primary" />
             </div>
+          {/* Guide overlay */}
+          {showGuides && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {/* Image boundary - bottom edge */}
+              <div className="absolute bottom-0 left-0 right-0 border-b-2 border-dashed" style={{ borderColor: 'hsl(190 80% 60% / 0.5)' }}>
+                <span className="absolute right-1 -top-3 text-[7px] font-mono" style={{ color: 'hsl(190 80% 60% / 0.7)' }}>image edge</span>
+              </div>
+              {/* 75% max-width guides for title image */}
+              {item.title_image_url && (
+                <>
+                  <div className="absolute top-0 bottom-0 border-l border-dashed" style={{ left: '12.5%', borderColor: 'hsl(30 80% 55% / 0.25)' }} />
+                  <div className="absolute top-0 bottom-0 border-r border-dashed" style={{ right: '12.5%', borderColor: 'hsl(30 80% 55% / 0.25)' }} />
+                </>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Title image bounding box guide - rendered outside image container but inside card */}
+        {showGuides && item.title_image_url && (
+          <div className="relative pointer-events-none" style={{ height: 0 }}>
+            <div
+              className="absolute border-2 border-dotted rounded"
+              style={{
+                borderColor: 'hsl(30 80% 55% / 0.6)',
+                left: '12.5%',
+                width: '75%',
+                transform: `translate(${activeTiOffsetX + 50}px, ${activeTiOffsetY}px) scale(${activeTiScale})`,
+                transformOrigin: 'center top',
+                height: activeTiMaxHeight > 0 ? `${activeTiMaxHeight}px` : '40px',
+                top: 0,
+              }}
+            >
+              <span className="absolute -top-2.5 left-1 text-[7px] font-mono" style={{ color: 'hsl(30 80% 55% / 0.8)' }}>title zone</span>
+            </div>
+          </div>
+        )}
 
         <CardStatsFooter
           config={cardStatsConfig}
