@@ -354,17 +354,22 @@ export default function SwipePreset() {
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
       const img = images[idx % images.length];
-      const hasCustom = img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1 || img.pad_top !== 0 || img.pad_left !== 0;
+      const fx = isMobile ? (img.mobile_focal_x ?? img.focal_x) : img.focal_x;
+      const fy = isMobile ? (img.mobile_focal_y ?? img.focal_y) : img.focal_y;
+      const z = isMobile ? (img.mobile_zoom ?? img.zoom) : img.zoom;
+      const pt = isMobile ? (img.mobile_pad_top ?? img.pad_top) : img.pad_top;
+      const pl = isMobile ? (img.mobile_pad_left ?? img.pad_left) : img.pad_left;
+      const hasCustom = fx !== 50 || fy !== 50 || z !== 1 || pt !== 0 || pl !== 0;
       if (hasCustom) {
         return {
           position: 'absolute' as const,
-          top: `${img.pad_top}%`,
-          left: `${img.pad_left}%`,
-          width: `${100 - img.pad_left}%`,
-          height: `${100 - img.pad_top}%`,
-          objectPosition: `${img.focal_x}% ${img.focal_y}%`,
-          transform: `scale(${img.zoom})`,
-          transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
+          top: `${pt}%`,
+          left: `${pl}%`,
+          width: `${100 - pl}%`,
+          height: `${100 - pt}%`,
+          objectPosition: `${fx}% ${fy}%`,
+          transform: `scale(${z})`,
+          transformOrigin: `${fx}% ${fy}%`,
         };
       }
     }
