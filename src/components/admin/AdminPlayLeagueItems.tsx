@@ -310,13 +310,13 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     toast.success("Image removed");
   };
 
-  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number) => {
+  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number, mFx?: number | null, mFy?: number | null, mZ?: number | null, mPt?: number | null, mPl?: number | null) => {
     const { error } = await supabase
       .from("preset_item_images")
-      .update({ focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft })
+      .update({ focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft, mobile_focal_x: mFx ?? null, mobile_focal_y: mFy ?? null, mobile_zoom: mZ ?? null, mobile_pad_top: mPt ?? null, mobile_pad_left: mPl ?? null } as any)
       .eq("id", img.id);
     if (error) { toast.error(error.message); return; }
-    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft } : i));
+    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft, mobile_focal_x: mFx ?? null, mobile_focal_y: mFy ?? null, mobile_zoom: mZ ?? null, mobile_pad_top: mPt ?? null, mobile_pad_left: mPl ?? null } : i));
     setPreviewEditorOpen(false);
     toast.success("Position saved");
   };
