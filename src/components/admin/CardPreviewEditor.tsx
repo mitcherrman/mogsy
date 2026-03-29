@@ -330,6 +330,7 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
             >
               <div className="absolute inset-[3px] rounded-full bg-primary" />
             </div>
+          )}
           {/* Guide overlay */}
           {showGuides && (
             <div className="absolute inset-0 pointer-events-none z-20">
