@@ -112,6 +112,7 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
   const [cardStatsConfig, setCardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
   const [imageOpen, setImageOpen] = useState(true);
   const [titleOpen, setTitleOpen] = useState(!!item.title_image_url);
+  const [showGuides, setShowGuides] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
