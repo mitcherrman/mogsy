@@ -48,15 +48,26 @@ interface PresetItem {
   title_image_offset_y?: number;
   title_image_offset_x?: number;
   title_image_max_height?: number;
+  mobile_title_image_scale?: number | null;
+  mobile_title_image_offset_y?: number | null;
+  mobile_title_image_offset_x?: number | null;
+  mobile_title_image_max_height?: number | null;
 }
 
 function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSProperties {
-  const scale = item.title_image_scale ?? 1;
-  const offsetY = item.title_image_offset_y ?? 0;
-  const offsetX = item.title_image_offset_x ?? 0;
-  const maxHeight = item.title_image_max_height && item.title_image_max_height > 0
-    ? `${item.title_image_max_height}px`
-    : undefined;
+  const scale = isMobile
+    ? (item.mobile_title_image_scale ?? item.title_image_scale ?? 1)
+    : (item.title_image_scale ?? 1);
+  const offsetY = isMobile
+    ? (item.mobile_title_image_offset_y ?? item.title_image_offset_y ?? 0)
+    : (item.title_image_offset_y ?? 0);
+  const offsetX = isMobile
+    ? (item.mobile_title_image_offset_x ?? item.title_image_offset_x ?? 0)
+    : (item.title_image_offset_x ?? 0);
+  const maxHeightVal = isMobile
+    ? (item.mobile_title_image_max_height ?? item.title_image_max_height ?? 0)
+    : (item.title_image_max_height ?? 0);
+  const maxHeight = maxHeightVal > 0 ? `${maxHeightVal}px` : undefined;
   return {
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
@@ -79,6 +90,11 @@ interface ItemImage {
   zoom: number;
   pad_top: number;
   pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
