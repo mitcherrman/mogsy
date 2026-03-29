@@ -452,6 +452,32 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
                   <RotateCcw className="h-2.5 w-2.5" /> Reset
                 </Button>
               </div>
+              {/* Title Position Presets */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Position Presets</label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { label: "Centered", scale: 1, offsetY: 0, offsetX: 0, maxHeight: 120 },
+                    { label: "Large Bleed", scale: 2.5, offsetY: -80, offsetX: 0, maxHeight: 200 },
+                    { label: "Compact", scale: 0.8, offsetY: 10, offsetX: 0, maxHeight: 80 },
+                    { label: "Left", scale: 1.2, offsetY: -20, offsetX: -60, maxHeight: 150 },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setActiveTiScale(preset.scale);
+                        setActiveTiOffsetY(preset.offsetY);
+                        setActiveTiOffsetX(preset.offsetX);
+                        setActiveTiMaxHeight(preset.maxHeight);
+                        if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true);
+                      }}
+                      className="px-2 py-0.5 rounded border border-border bg-muted/50 text-[9px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <Crosshair className="h-2.5 w-2.5 inline mr-0.5 -mt-px" />{preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <ControlSlider label="Scale" value={activeTiScale} min={0.1} max={15} step={0.05} onChange={(v) => { setActiveTiScale(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} isFloat />
               <NudgeSlider label="Vertical Offset" value={activeTiOffsetY} min={-600} max={300} onChange={(v) => { setActiveTiOffsetY(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} decIcon={<ChevronDown className="h-3 w-3" />} incIcon={<ChevronUp className="h-3 w-3" />} />
               <NudgeSlider label="Horizontal Offset" value={activeTiOffsetX} min={-200} max={200} onChange={(v) => { setActiveTiOffsetX(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} decIcon={<ChevronLeft className="h-3 w-3" />} incIcon={<ChevronRight className="h-3 w-3" />} />
