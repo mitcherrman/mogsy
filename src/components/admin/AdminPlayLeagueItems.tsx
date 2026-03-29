@@ -25,6 +25,10 @@ interface PresetItem {
   title_image_offset_y?: number;
   title_image_offset_x?: number;
   title_image_max_height?: number;
+  mobile_title_image_scale?: number | null;
+  mobile_title_image_offset_y?: number | null;
+  mobile_title_image_offset_x?: number | null;
+  mobile_title_image_max_height?: number | null;
 }
 
 interface ItemImage {
@@ -39,6 +43,11 @@ interface ItemImage {
   zoom: number;
   pad_top: number;
   pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
 }
 
 interface Props {
