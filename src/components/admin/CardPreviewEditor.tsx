@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { RotateCcw, Monitor, Smartphone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, Link, Trash2 } from "lucide-react";
+import { RotateCcw, Monitor, Smartphone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, Link, Trash2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AutoVideo from "@/components/AutoVideo";
@@ -22,6 +22,10 @@ interface PresetItem {
   title_image_offset_y?: number;
   title_image_offset_x?: number;
   title_image_max_height?: number;
+  mobile_title_image_scale?: number | null;
+  mobile_title_image_offset_y?: number | null;
+  mobile_title_image_offset_x?: number | null;
+  mobile_title_image_max_height?: number | null;
 }
 
 interface ItemImage {
@@ -36,31 +40,21 @@ interface ItemImage {
   zoom: number;
   pad_top: number;
   pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
 }
 
 interface Props {
   item: PresetItem;
   images: ItemImage[];
   initialImageId?: string;
-  onSaveImage: (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number) => void;
-  onSaveTitleImage: (scale: number, offsetY: number, offsetX: number, maxHeight: number) => void;
+  onSaveImage: (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number, mobileFocalX: number | null, mobileFocalY: number | null, mobileZoom: number | null, mobilePadTop: number | null, mobilePadLeft: number | null) => void;
+  onSaveTitleImage: (scale: number, offsetY: number, offsetX: number, maxHeight: number, mobileScale: number | null, mobileOffsetY: number | null, mobileOffsetX: number | null, mobileMaxHeight: number | null) => void;
   onSetTitleImageUrl: (url: string | null) => void;
   onCancel: () => void;
-}
-
-function getImageStyle(img: ItemImage): React.CSSProperties {
-  const hasCustom = img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1 || img.pad_top !== 0 || img.pad_left !== 0;
-  if (!hasCustom) return {};
-  return {
-    position: 'absolute' as const,
-    top: `${img.pad_top}%`,
-    left: `${img.pad_left}%`,
-    width: `${100 - img.pad_left}%`,
-    height: `${100 - img.pad_top}%`,
-    objectPosition: `${img.focal_x}% ${img.focal_y}%`,
-    transform: `scale(${img.zoom})`,
-    transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
-  };
 }
 
 function getTitleImageStyle(scale: number, offsetY: number, offsetX: number, maxHeight: number): React.CSSProperties {
@@ -80,18 +74,34 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
   const initialImg = initialImageId ? visibleImages.find(i => i.id === initialImageId) : visibleImages[0];
   const [selectedImg, setSelectedImg] = useState<ItemImage | null>(initialImg || visibleImages[0] || null);
 
-  // Image controls
+  // Desktop image controls
   const [focalX, setFocalX] = useState(selectedImg?.focal_x ?? 50);
   const [focalY, setFocalY] = useState(selectedImg?.focal_y ?? 50);
   const [zoom, setZoom] = useState(selectedImg?.zoom ?? 1);
   const [padTop, setPadTop] = useState(selectedImg?.pad_top ?? 0);
   const [padLeft, setPadLeft] = useState(selectedImg?.pad_left ?? 0);
 
-  // Title image controls
+  // Mobile image controls (null = use desktop)
+  const [mobileFocalX, setMobileFocalX] = useState<number>(selectedImg?.mobile_focal_x ?? selectedImg?.focal_x ?? 50);
+  const [mobileFocalY, setMobileFocalY] = useState<number>(selectedImg?.mobile_focal_y ?? selectedImg?.focal_y ?? 50);
+  const [mobileZoom, setMobileZoom] = useState<number>(selectedImg?.mobile_zoom ?? selectedImg?.zoom ?? 1);
+  const [mobilePadTop, setMobilePadTop] = useState<number>(selectedImg?.mobile_pad_top ?? selectedImg?.pad_top ?? 0);
+  const [mobilePadLeft, setMobilePadLeft] = useState<number>(selectedImg?.mobile_pad_left ?? selectedImg?.pad_left ?? 0);
+  const [mobileHasOverride, setMobileHasOverride] = useState(selectedImg?.mobile_focal_x != null);
+
+  // Desktop title image controls
   const [tiScale, setTiScale] = useState(item.title_image_scale ?? 1);
   const [tiOffsetY, setTiOffsetY] = useState(item.title_image_offset_y ?? 0);
   const [tiOffsetX, setTiOffsetX] = useState(item.title_image_offset_x ?? 0);
   const [tiMaxHeight, setTiMaxHeight] = useState(item.title_image_max_height ?? 0);
+
+  // Mobile title image controls
+  const [mTiScale, setMTiScale] = useState<number>(item.mobile_title_image_scale ?? item.title_image_scale ?? 1);
+  const [mTiOffsetY, setMTiOffsetY] = useState<number>(item.mobile_title_image_offset_y ?? item.title_image_offset_y ?? 0);
+  const [mTiOffsetX, setMTiOffsetX] = useState<number>(item.mobile_title_image_offset_x ?? item.title_image_offset_x ?? 0);
+  const [mTiMaxHeight, setMTiMaxHeight] = useState<number>(item.mobile_title_image_max_height ?? item.title_image_max_height ?? 0);
+  const [mobileTitleHasOverride, setMobileTitleHasOverride] = useState(item.mobile_title_image_scale != null);
+
   const [titleImageUrl, setTitleImageUrl] = useState("");
   const [uploadingTitle, setUploadingTitle] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -115,12 +125,40 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
     });
   }, []);
 
+  // Active state based on mode
+  const isDesktop = mode === "desktop";
+  const activeFocalX = isDesktop ? focalX : mobileFocalX;
+  const activeFocalY = isDesktop ? focalY : mobileFocalY;
+  const activeZoom = isDesktop ? zoom : mobileZoom;
+  const activePadTop = isDesktop ? padTop : mobilePadTop;
+  const activePadLeft = isDesktop ? padLeft : mobilePadLeft;
+  const setActiveFocalX = isDesktop ? setFocalX : setMobileFocalX;
+  const setActiveFocalY = isDesktop ? setFocalY : setMobileFocalY;
+  const setActiveZoom = isDesktop ? setZoom : setMobileZoom;
+  const setActivePadTop = isDesktop ? setPadTop : setMobilePadTop;
+  const setActivePadLeft = isDesktop ? setPadLeft : setMobilePadLeft;
+
+  const activeTiScale = isDesktop ? tiScale : mTiScale;
+  const activeTiOffsetY = isDesktop ? tiOffsetY : mTiOffsetY;
+  const activeTiOffsetX = isDesktop ? tiOffsetX : mTiOffsetX;
+  const activeTiMaxHeight = isDesktop ? tiMaxHeight : mTiMaxHeight;
+  const setActiveTiScale = isDesktop ? setTiScale : setMTiScale;
+  const setActiveTiOffsetY = isDesktop ? setTiOffsetY : setMTiOffsetY;
+  const setActiveTiOffsetX = isDesktop ? setTiOffsetX : setMTiOffsetX;
+  const setActiveTiMaxHeight = isDesktop ? setTiMaxHeight : setMTiMaxHeight;
+
   const syncImageState = (img: ItemImage) => {
     setFocalX(img.focal_x);
     setFocalY(img.focal_y);
     setZoom(img.zoom);
     setPadTop(img.pad_top);
     setPadLeft(img.pad_left);
+    setMobileFocalX(img.mobile_focal_x ?? img.focal_x);
+    setMobileFocalY(img.mobile_focal_y ?? img.focal_y);
+    setMobileZoom(img.mobile_zoom ?? img.zoom);
+    setMobilePadTop(img.mobile_pad_top ?? img.pad_top);
+    setMobilePadLeft(img.mobile_pad_left ?? img.pad_left);
+    setMobileHasOverride(img.mobile_focal_x != null);
   };
 
   const selectImage = (img: ItemImage) => {
@@ -132,44 +170,71 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
     dragging.current = true;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     updateFocal(e);
-  }, []);
-  const handlePointerMove = useCallback((e: React.PointerEvent) => { if (dragging.current) updateFocal(e); }, []);
+  }, [mode, isDesktop]);
+  const handlePointerMove = useCallback((e: React.PointerEvent) => { if (dragging.current) updateFocal(e); }, [mode, isDesktop]);
   const handlePointerUp = useCallback(() => { dragging.current = false; }, []);
 
   const updateFocal = (e: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setFocalX(Math.round(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))));
-    setFocalY(Math.round(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))));
+    const x = Math.round(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)));
+    const y = Math.round(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)));
+    if (isDesktop) { setFocalX(x); setFocalY(y); }
+    else { setMobileFocalX(x); setMobileFocalY(y); if (!mobileHasOverride) setMobileHasOverride(true); }
   };
 
-  const handleResetImage = () => { setFocalX(50); setFocalY(50); setZoom(1); setPadTop(0); setPadLeft(0); };
-  const handleResetTitle = () => { setTiScale(1); setTiOffsetY(0); setTiOffsetX(0); setTiMaxHeight(0); };
+  const handleResetImage = () => {
+    if (isDesktop) { setFocalX(50); setFocalY(50); setZoom(1); setPadTop(0); setPadLeft(0); }
+    else { setMobileFocalX(50); setMobileFocalY(50); setMobileZoom(1); setMobilePadTop(0); setMobilePadLeft(0); }
+  };
+  const handleResetTitle = () => {
+    if (isDesktop) { setTiScale(1); setTiOffsetY(0); setTiOffsetX(0); setTiMaxHeight(0); }
+    else { setMTiScale(1); setMTiOffsetY(0); setMTiOffsetX(0); setMTiMaxHeight(0); }
+  };
 
-  const clampInt = (v: string, min: number, max: number) => { const n = parseInt(v, 10); return isNaN(n) ? min : Math.max(min, Math.min(max, n)); };
+  const copyDesktopToMobile = () => {
+    setMobileFocalX(focalX); setMobileFocalY(focalY); setMobileZoom(zoom); setMobilePadTop(padTop); setMobilePadLeft(padLeft);
+    setMTiScale(tiScale); setMTiOffsetY(tiOffsetY); setMTiOffsetX(tiOffsetX); setMTiMaxHeight(tiMaxHeight);
+    setMobileHasOverride(true); setMobileTitleHasOverride(true);
+    toast.success("Copied desktop settings to mobile");
+  };
+  const copyMobileToDesktop = () => {
+    setFocalX(mobileFocalX); setFocalY(mobileFocalY); setZoom(mobileZoom); setPadTop(mobilePadTop); setPadLeft(mobilePadLeft);
+    setTiScale(mTiScale); setTiOffsetY(mTiOffsetY); setTiOffsetX(mTiOffsetX); setTiMaxHeight(mTiMaxHeight);
+    toast.success("Copied mobile settings to desktop");
+  };
 
-  // Current preview style using live state
+  // Current preview style using active state
+  const hasCustomPos = activeFocalX !== 50 || activeFocalY !== 50 || activeZoom !== 1 || activePadTop !== 0 || activePadLeft !== 0;
   const liveImgStyle: React.CSSProperties = selectedImg ? {
     position: 'absolute' as const,
-    top: `${padTop}%`,
-    left: `${padLeft}%`,
-    width: `${100 - padLeft}%`,
-    height: `${100 - padTop}%`,
-    objectPosition: `${focalX}% ${focalY}%`,
-    transform: `scale(${zoom})`,
-    transformOrigin: `${focalX}% ${focalY}%`,
+    top: `${activePadTop}%`,
+    left: `${activePadLeft}%`,
+    width: `${100 - activePadLeft}%`,
+    height: `${100 - activePadTop}%`,
+    objectPosition: `${activeFocalX}% ${activeFocalY}%`,
+    transform: `scale(${activeZoom})`,
+    transformOrigin: `${activeFocalX}% ${activeFocalY}%`,
   } : {};
 
-  const hasCustomPos = focalX !== 50 || focalY !== 50 || zoom !== 1 || padTop !== 0 || padLeft !== 0;
   const displayUrl = selectedImg?.image_url || item.image_url;
   const aspectClass = mode === "mobile" ? "aspect-[5/4]" : "aspect-[3/4]";
 
   const handleSaveAll = () => {
     if (selectedImg) {
-      onSaveImage(selectedImg, focalX, focalY, zoom, padTop, padLeft);
+      const mFx = mobileHasOverride ? mobileFocalX : null;
+      const mFy = mobileHasOverride ? mobileFocalY : null;
+      const mZ = mobileHasOverride ? mobileZoom : null;
+      const mPt = mobileHasOverride ? mobilePadTop : null;
+      const mPl = mobileHasOverride ? mobilePadLeft : null;
+      onSaveImage(selectedImg, focalX, focalY, zoom, padTop, padLeft, mFx, mFy, mZ, mPt, mPl);
     }
     if (item.title_image_url) {
-      onSaveTitleImage(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight);
+      const mScale = mobileTitleHasOverride ? mTiScale : null;
+      const mOffY = mobileTitleHasOverride ? mTiOffsetY : null;
+      const mOffX = mobileTitleHasOverride ? mTiOffsetX : null;
+      const mMH = mobileTitleHasOverride ? mTiMaxHeight : null;
+      onSaveTitleImage(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight, mScale, mOffY, mOffX, mMH);
     }
   };
 
@@ -212,7 +277,20 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
         </div>
       </div>
 
-      {/* Live preview card — 1:1 match to SwipePreset */}
+      {/* Copy buttons */}
+      <div className="flex gap-2">
+        {mode === "mobile" ? (
+          <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7" onClick={copyDesktopToMobile}>
+            <Copy className="h-3 w-3" /> Copy from Desktop
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7" onClick={copyMobileToDesktop}>
+            <Copy className="h-3 w-3" /> Copy from Mobile
+          </Button>
+        )}
+      </div>
+
+      {/* Live preview card */}
       <div className={`flex flex-col rounded-2xl border border-border bg-card mx-auto ${item.title_image_url ? 'overflow-visible' : 'overflow-hidden'} ${mode === "mobile" ? "max-w-[300px]" : "max-w-[260px]"}`}>
         <div
           ref={containerRef}
@@ -222,11 +300,9 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
           onPointerUp={handlePointerUp}
           style={{ touchAction: "none" }}
         >
-          {/* Blurred background layer */}
           {displayUrl && (
             <img src={displayUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl pointer-events-none" style={{ opacity: cardBgOpacity / 100 }} aria-hidden="true" draggable={false} />
           )}
-          {/* Main image */}
           {displayUrl ? (
             <img
               src={displayUrl}
@@ -238,25 +314,23 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
           ) : (
             <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{item.name.charAt(0)}</span>
           )}
-          {/* Focal point indicator */}
           {selectedImg && (
             <div
               className="absolute w-5 h-5 rounded-full border-2 border-primary bg-primary/30 -translate-x-1/2 -translate-y-1/2 pointer-events-none shadow-lg z-20"
-              style={{ left: `${padLeft + (100 - padLeft) * focalX / 100}%`, top: `${padTop + (100 - padTop) * focalY / 100}%` }}
+              style={{ left: `${activePadLeft + (100 - activePadLeft) * activeFocalX / 100}%`, top: `${activePadTop + (100 - activePadTop) * activeFocalY / 100}%` }}
             >
               <div className="absolute inset-[3px] rounded-full bg-primary" />
             </div>
           )}
         </div>
 
-        {/* Footer — uses unified CardStatsFooter */}
         <CardStatsFooter
           config={cardStatsConfig}
           isMobile={mode === "mobile"}
           itemName={item.name}
           subtitle={item.subtitle}
           titleImageUrl={item.title_image_url}
-          titleImageStyle={getTitleImageStyle(tiScale, tiOffsetY, tiOffsetX, tiMaxHeight)}
+          titleImageStyle={getTitleImageStyle(activeTiScale, activeTiOffsetY, activeTiOffsetX, activeTiMaxHeight)}
           localElo={item.elo}
           localRank={1}
           globalElo={item.elo}
@@ -291,7 +365,7 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
       <Collapsible open={imageOpen} onOpenChange={setImageOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex items-center justify-between w-full text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground py-1.5">
-            <span>Image Controls</span>
+            <span>Image Controls {!isDesktop && mobileHasOverride && <span className="text-primary text-[9px] ml-1">(MOBILE)</span>}</span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleResetImage(); }} className="gap-1 text-[10px] h-6 px-1.5">
                 <RotateCcw className="h-2.5 w-2.5" /> Reset
@@ -302,12 +376,12 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <ControlSlider label="Focal X" value={focalX} min={0} max={100} step={1} onChange={setFocalX} />
-            <ControlSlider label="Focal Y" value={focalY} min={0} max={100} step={1} onChange={setFocalY} />
-            <ControlSlider label="Zoom" value={zoom} min={0.3} max={3} step={0.05} onChange={setZoom} isFloat />
-            <ControlSlider label="Border Top" value={padTop} min={0} max={50} step={1} onChange={setPadTop} />
+            <ControlSlider label="Focal X" value={activeFocalX} min={0} max={100} step={1} onChange={(v) => { setActiveFocalX(v); if (!isDesktop && !mobileHasOverride) setMobileHasOverride(true); }} />
+            <ControlSlider label="Focal Y" value={activeFocalY} min={0} max={100} step={1} onChange={(v) => { setActiveFocalY(v); if (!isDesktop && !mobileHasOverride) setMobileHasOverride(true); }} />
+            <ControlSlider label="Zoom" value={activeZoom} min={0.3} max={3} step={0.05} onChange={(v) => { setActiveZoom(v); if (!isDesktop && !mobileHasOverride) setMobileHasOverride(true); }} isFloat />
+            <ControlSlider label="Border Top" value={activePadTop} min={0} max={50} step={1} onChange={(v) => { setActivePadTop(v); if (!isDesktop && !mobileHasOverride) setMobileHasOverride(true); }} />
             <div className="col-span-2">
-              <ControlSlider label="Border Left" value={padLeft} min={0} max={50} step={1} onChange={setPadLeft} />
+              <ControlSlider label="Border Left" value={activePadLeft} min={0} max={50} step={1} onChange={(v) => { setActivePadLeft(v); if (!isDesktop && !mobileHasOverride) setMobileHasOverride(true); }} />
             </div>
           </div>
         </CollapsibleContent>
@@ -317,7 +391,7 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
       <Collapsible open={titleOpen} onOpenChange={setTitleOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex items-center justify-between w-full text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground py-1.5">
-            <span>Title Image</span>
+            <span>Title Image {!isDesktop && mobileTitleHasOverride && <span className="text-primary text-[9px] ml-1">(MOBILE)</span>}</span>
             {titleOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
         </CollapsibleTrigger>
@@ -333,10 +407,10 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
                   <RotateCcw className="h-2.5 w-2.5" /> Reset
                 </Button>
               </div>
-              <ControlSlider label="Scale" value={tiScale} min={0.1} max={15} step={0.05} onChange={setTiScale} isFloat />
-              <NudgeSlider label="Vertical Offset" value={tiOffsetY} min={-600} max={300} onChange={setTiOffsetY} decIcon={<ChevronDown className="h-3 w-3" />} incIcon={<ChevronUp className="h-3 w-3" />} />
-              <NudgeSlider label="Horizontal Offset" value={tiOffsetX} min={-200} max={200} onChange={setTiOffsetX} decIcon={<ChevronLeft className="h-3 w-3" />} incIcon={<ChevronRight className="h-3 w-3" />} />
-              <ControlSlider label="Max Height (0=auto)" value={tiMaxHeight} min={0} max={600} step={1} onChange={setTiMaxHeight} />
+              <ControlSlider label="Scale" value={activeTiScale} min={0.1} max={15} step={0.05} onChange={(v) => { setActiveTiScale(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} isFloat />
+              <NudgeSlider label="Vertical Offset" value={activeTiOffsetY} min={-600} max={300} onChange={(v) => { setActiveTiOffsetY(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} decIcon={<ChevronDown className="h-3 w-3" />} incIcon={<ChevronUp className="h-3 w-3" />} />
+              <NudgeSlider label="Horizontal Offset" value={activeTiOffsetX} min={-200} max={200} onChange={(v) => { setActiveTiOffsetX(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} decIcon={<ChevronLeft className="h-3 w-3" />} incIcon={<ChevronRight className="h-3 w-3" />} />
+              <ControlSlider label="Max Height (0=auto)" value={activeTiMaxHeight} min={0} max={600} step={1} onChange={(v) => { setActiveTiMaxHeight(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} />
             </div>
           ) : (
             <div className="space-y-2 pt-1">

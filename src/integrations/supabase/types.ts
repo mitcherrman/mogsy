@@ -1529,6 +1529,11 @@ export type Database = {
           id: string
           image_url: string
           is_hidden: boolean
+          mobile_focal_x: number | null
+          mobile_focal_y: number | null
+          mobile_pad_left: number | null
+          mobile_pad_top: number | null
+          mobile_zoom: number | null
           pad_left: number
           pad_top: number
           preset_item_id: string
@@ -1543,6 +1548,11 @@ export type Database = {
           id?: string
           image_url: string
           is_hidden?: boolean
+          mobile_focal_x?: number | null
+          mobile_focal_y?: number | null
+          mobile_pad_left?: number | null
+          mobile_pad_top?: number | null
+          mobile_zoom?: number | null
           pad_left?: number
           pad_top?: number
           preset_item_id: string
@@ -1557,6 +1567,11 @@ export type Database = {
           id?: string
           image_url?: string
           is_hidden?: boolean
+          mobile_focal_x?: number | null
+          mobile_focal_y?: number | null
+          mobile_pad_left?: number | null
+          mobile_pad_top?: number | null
+          mobile_zoom?: number | null
           pad_left?: number
           pad_top?: number
           preset_item_id?: string
@@ -1582,6 +1597,10 @@ export type Database = {
           id: string
           image_url: string | null
           league_id: string
+          mobile_title_image_max_height: number | null
+          mobile_title_image_offset_x: number | null
+          mobile_title_image_offset_y: number | null
+          mobile_title_image_scale: number | null
           name: string
           subtitle: string
           title_image_max_height: number
@@ -1597,6 +1616,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id: string
+          mobile_title_image_max_height?: number | null
+          mobile_title_image_offset_x?: number | null
+          mobile_title_image_offset_y?: number | null
+          mobile_title_image_scale?: number | null
           name: string
           subtitle?: string
           title_image_max_height?: number
@@ -1612,6 +1635,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id?: string
+          mobile_title_image_max_height?: number | null
+          mobile_title_image_offset_x?: number | null
+          mobile_title_image_offset_y?: number | null
+          mobile_title_image_scale?: number | null
           name?: string
           subtitle?: string
           title_image_max_height?: number

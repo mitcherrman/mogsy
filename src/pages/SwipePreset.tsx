@@ -48,15 +48,26 @@ interface PresetItem {
   title_image_offset_y?: number;
   title_image_offset_x?: number;
   title_image_max_height?: number;
+  mobile_title_image_scale?: number | null;
+  mobile_title_image_offset_y?: number | null;
+  mobile_title_image_offset_x?: number | null;
+  mobile_title_image_max_height?: number | null;
 }
 
 function getTitleImageStyle(item: PresetItem, isMobile: boolean): React.CSSProperties {
-  const scale = item.title_image_scale ?? 1;
-  const offsetY = item.title_image_offset_y ?? 0;
-  const offsetX = item.title_image_offset_x ?? 0;
-  const maxHeight = item.title_image_max_height && item.title_image_max_height > 0
-    ? `${item.title_image_max_height}px`
-    : undefined;
+  const scale = isMobile
+    ? (item.mobile_title_image_scale ?? item.title_image_scale ?? 1)
+    : (item.title_image_scale ?? 1);
+  const offsetY = isMobile
+    ? (item.mobile_title_image_offset_y ?? item.title_image_offset_y ?? 0)
+    : (item.title_image_offset_y ?? 0);
+  const offsetX = isMobile
+    ? (item.mobile_title_image_offset_x ?? item.title_image_offset_x ?? 0)
+    : (item.title_image_offset_x ?? 0);
+  const maxHeightVal = isMobile
+    ? (item.mobile_title_image_max_height ?? item.title_image_max_height ?? 0)
+    : (item.title_image_max_height ?? 0);
+  const maxHeight = maxHeightVal > 0 ? `${maxHeightVal}px` : undefined;
   return {
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     marginTop: `${offsetY}px`,
@@ -79,6 +90,11 @@ interface ItemImage {
   zoom: number;
   pad_top: number;
   pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
 }
 
 const AD_INTERVAL_FALLBACK = 10;
@@ -338,17 +354,22 @@ export default function SwipePreset() {
     if (images && images.length > 0) {
       const idx = currentImageIndex.get(item.id) || 0;
       const img = images[idx % images.length];
-      const hasCustom = img.focal_x !== 50 || img.focal_y !== 50 || img.zoom !== 1 || img.pad_top !== 0 || img.pad_left !== 0;
+      const fx = isMobile ? (img.mobile_focal_x ?? img.focal_x) : img.focal_x;
+      const fy = isMobile ? (img.mobile_focal_y ?? img.focal_y) : img.focal_y;
+      const z = isMobile ? (img.mobile_zoom ?? img.zoom) : img.zoom;
+      const pt = isMobile ? (img.mobile_pad_top ?? img.pad_top) : img.pad_top;
+      const pl = isMobile ? (img.mobile_pad_left ?? img.pad_left) : img.pad_left;
+      const hasCustom = fx !== 50 || fy !== 50 || z !== 1 || pt !== 0 || pl !== 0;
       if (hasCustom) {
         return {
           position: 'absolute' as const,
-          top: `${img.pad_top}%`,
-          left: `${img.pad_left}%`,
-          width: `${100 - img.pad_left}%`,
-          height: `${100 - img.pad_top}%`,
-          objectPosition: `${img.focal_x}% ${img.focal_y}%`,
-          transform: `scale(${img.zoom})`,
-          transformOrigin: `${img.focal_x}% ${img.focal_y}%`,
+          top: `${pt}%`,
+          left: `${pl}%`,
+          width: `${100 - pl}%`,
+          height: `${100 - pt}%`,
+          objectPosition: `${fx}% ${fy}%`,
+          transform: `scale(${z})`,
+          transformOrigin: `${fx}% ${fy}%`,
         };
       }
     }

@@ -25,6 +25,10 @@ interface PresetItem {
   title_image_offset_y?: number;
   title_image_offset_x?: number;
   title_image_max_height?: number;
+  mobile_title_image_scale?: number | null;
+  mobile_title_image_offset_y?: number | null;
+  mobile_title_image_offset_x?: number | null;
+  mobile_title_image_max_height?: number | null;
 }
 
 interface ItemImage {
@@ -39,6 +43,11 @@ interface ItemImage {
   zoom: number;
   pad_top: number;
   pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
 }
 
 interface Props {
@@ -301,13 +310,13 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
     toast.success("Image removed");
   };
 
-  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number) => {
+  const handleSavePosition = async (img: ItemImage, focalX: number, focalY: number, zoom: number, padTop: number, padLeft: number, mFx?: number | null, mFy?: number | null, mZ?: number | null, mPt?: number | null, mPl?: number | null) => {
     const { error } = await supabase
       .from("preset_item_images")
-      .update({ focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft })
+      .update({ focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft, mobile_focal_x: mFx ?? null, mobile_focal_y: mFy ?? null, mobile_zoom: mZ ?? null, mobile_pad_top: mPt ?? null, mobile_pad_left: mPl ?? null } as any)
       .eq("id", img.id);
     if (error) { toast.error(error.message); return; }
-    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft } : i));
+    setItemImages(prev => prev.map(i => i.id === img.id ? { ...i, focal_x: focalX, focal_y: focalY, zoom, pad_top: padTop, pad_left: padLeft, mobile_focal_x: mFx ?? null, mobile_focal_y: mFy ?? null, mobile_zoom: mZ ?? null, mobile_pad_top: mPt ?? null, mobile_pad_left: mPl ?? null } : i));
     setPreviewEditorOpen(false);
     toast.success("Position saved");
   };
@@ -425,18 +434,22 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
             item={selectedItem}
             images={itemImages}
             initialImageId={previewEditorImageId}
-            onSaveImage={async (img, fx, fy, z, pt, pl) => {
-              await handleSavePosition(img, fx, fy, z, pt, pl);
+            onSaveImage={async (img, fx, fy, z, pt, pl, mFx, mFy, mZ, mPt, mPl) => {
+              await handleSavePosition(img, fx, fy, z, pt, pl, mFx, mFy, mZ, mPt, mPl);
             }}
-            onSaveTitleImage={async (scale, offsetY, offsetX, maxHeight) => {
+            onSaveTitleImage={async (scale, offsetY, offsetX, maxHeight, mScale, mOffY, mOffX, mMH) => {
               const { error } = await supabase.from("preset_items").update({
                 title_image_scale: scale,
                 title_image_offset_y: offsetY,
                 title_image_offset_x: offsetX,
                 title_image_max_height: maxHeight,
+                mobile_title_image_scale: mScale ?? null,
+                mobile_title_image_offset_y: mOffY ?? null,
+                mobile_title_image_offset_x: mOffX ?? null,
+                mobile_title_image_max_height: mMH ?? null,
               } as any).eq("id", selectedItem.id);
               if (error) { toast.error(error.message); return; }
-              const updated = { ...selectedItem, title_image_scale: scale, title_image_offset_y: offsetY, title_image_offset_x: offsetX, title_image_max_height: maxHeight };
+              const updated = { ...selectedItem, title_image_scale: scale, title_image_offset_y: offsetY, title_image_offset_x: offsetX, title_image_max_height: maxHeight, mobile_title_image_scale: mScale, mobile_title_image_offset_y: mOffY, mobile_title_image_offset_x: mOffX, mobile_title_image_max_height: mMH };
               setSelectedItem(updated);
               setItems(prev => prev.map(i => i.id === selectedItem.id ? { ...i, ...updated } : i));
               toast.success("Title image sizing saved");
