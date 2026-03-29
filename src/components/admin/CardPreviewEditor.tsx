@@ -260,9 +260,16 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
 
   return (
     <div className="space-y-4">
-      {/* Mode toggle */}
+      {/* Mode toggle + Guides toggle */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold text-foreground">Preview Editor</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-bold text-foreground">Preview Editor</h4>
+          <div className="flex items-center gap-1.5">
+            <Ruler className="h-3 w-3 text-muted-foreground" />
+            <Switch checked={showGuides} onCheckedChange={setShowGuides} className="scale-75" />
+            <span className="text-[9px] text-muted-foreground">Guides</span>
+          </div>
+        </div>
         <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
           <button
             onClick={() => setMode("desktop")}
