@@ -1,54 +1,36 @@
 
 
-# Separate Mobile & Desktop Image Configurations in Preview Editor
+# Updated Plan: Add Guide Lines + Title Position Presets to Preview Editor
 
-## Problem
-The preview editor has a Desktop/Mobile toggle, but both modes share the same image positioning values (focal_x, focal_y, zoom, pad_top, pad_left) and title image values (scale, offset_y, offset_x, max_height). Adjusting one mode changes the other.
+## Addition to Existing Plan
 
-## Solution
-Add mobile-specific columns to both `preset_item_images` and `preset_items` tables. The existing columns become the "desktop" values. New `mobile_*` columns store the mobile overrides. When `mobile_*` values are null, the game falls back to desktop values.
+On top of the visual guide lines (already planned), add **title image position presets** — quick-apply buttons that snap the title image to ideal positions matching the reference screenshots.
 
-## Database Migration
+## Title Position Presets
 
-**`preset_item_images`** — add 5 columns:
-- `mobile_focal_x` (real, nullable)
-- `mobile_focal_y` (real, nullable)
-- `mobile_zoom` (real, nullable)
-- `mobile_pad_top` (real, nullable)
-- `mobile_pad_left` (real, nullable)
+Add a row of preset buttons in `CardPreviewEditor.tsx` near the title image sliders:
 
-**`preset_items`** — add 4 columns:
-- `mobile_title_image_scale` (real, nullable)
-- `mobile_title_image_offset_y` (real, nullable)
-- `mobile_title_image_offset_x` (real, nullable)
-- `mobile_title_image_max_height` (real, nullable)
+| Preset | Scale | Offset Y | Offset X | Max Height | Description |
+|--------|-------|----------|----------|------------|-------------|
+| **Centered Above Footer** | 1.0 | 0 | 0 | 120 | Title centered in the gap between image and footer |
+| **Large Bleed** | 2.5 | -80 | 0 | 200 | Title bleeds over the card image, prominent display (matches the uploaded screenshots) |
+| **Compact Bottom** | 0.8 | 10 | 0 | 80 | Small title tucked just above the stats |
+| **Left Aligned** | 1.2 | -20 | -60 | 150 | Title shifted left for stylistic offset |
 
-Null = "use desktop value" (no duplication needed if they want the same look).
+These presets apply to whichever mode is active (desktop or mobile), so you can set desktop to "Large Bleed" and mobile to "Compact Bottom" independently.
 
-## File Changes
+## Changes in `src/components/admin/CardPreviewEditor.tsx`
 
-### 1. `src/components/admin/CardPreviewEditor.tsx`
-- Maintain two sets of state: desktop (`focalX`, `focalY`, etc.) and mobile (`mobileFocalX`, `mobileFocalY`, etc.)
-- When toggling mode, switch which state the sliders read/write
-- On load, initialize mobile state from `mobile_*` DB columns (falling back to desktop values if null)
-- `onSaveImage` callback expanded to pass both desktop and mobile values
-- `onSaveTitleImage` callback expanded similarly
-- Add a "Copy from Desktop" / "Copy from Mobile" button to quickly sync one mode to the other
+1. **Add `showGuides` state** (default true) with a small toggle button near the mode switcher.
 
-### 2. `src/components/admin/AdminPlayLeagueItems.tsx`
-- Update the save handler to write both desktop and mobile columns when saving image position
-- Update title image save to write both sets of columns
+2. **Guide overlay** — a `pointer-events-none absolute inset-0` div inside the preview card containing:
+   - Horizontal dashed cyan line at the image/footer boundary
+   - Dotted orange rectangle showing the title image's computed bounding box (moves live with sliders)
+   - Faint vertical lines at 12.5% and 87.5% width (75% max-width constraint)
+   - Tiny `text-[8px]` labels on each guide
 
-### 3. `src/pages/SwipePreset.tsx`
-- Update `getImageStyle()` to check `isMobile` — if mobile and `mobile_focal_x` is not null, use `mobile_*` columns; otherwise fall back to desktop columns
-- Update `getTitleImageStyle()` calls similarly — use `mobile_title_image_*` columns on mobile/tablet, desktop columns on desktop
-- iPad uses mobile config (the `isMobile` check already covers portrait orientation / touch devices)
+3. **Preset buttons** — a row of small buttons ("Centered", "Large Bleed", "Compact", "Left") in the title image controls section. Clicking one sets the active mode's title image values (scale, offsetY, offsetX, maxHeight) to the preset values. The preview updates immediately.
 
-### 4. `src/components/CardStatsFooter.tsx`
-No changes needed — stats config is separate from image positioning.
-
-## Technical Notes
-- Existing items with no mobile overrides will behave exactly as before (null falls back to desktop)
-- The preview editor's mode toggle now controls which set of values you're editing, with independent undo/reset per mode
-- iPads use the mobile configuration since `isMobile` in the app is based on viewport/touch detection which includes tablets
+## No Other File Changes
+This is entirely within `CardPreviewEditor.tsx`. No database changes, no game rendering changes.
 
