@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { RotateCcw, Monitor, Smartphone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, Link, Trash2, Copy } from "lucide-react";
+import { RotateCcw, Monitor, Smartphone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, Link, Trash2, Copy, Ruler, Crosshair } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AutoVideo from "@/components/AutoVideo";
@@ -111,6 +112,7 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
   const [cardStatsConfig, setCardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
   const [imageOpen, setImageOpen] = useState(true);
   const [titleOpen, setTitleOpen] = useState(!!item.title_image_url);
+  const [showGuides, setShowGuides] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
@@ -258,9 +260,16 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
 
   return (
     <div className="space-y-4">
-      {/* Mode toggle */}
+      {/* Mode toggle + Guides toggle */}
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold text-foreground">Preview Editor</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-bold text-foreground">Preview Editor</h4>
+          <div className="flex items-center gap-1.5">
+            <Ruler className="h-3 w-3 text-muted-foreground" />
+            <Switch checked={showGuides} onCheckedChange={setShowGuides} className="scale-75" />
+            <span className="text-[9px] text-muted-foreground">Guides</span>
+          </div>
+        </div>
         <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
           <button
             onClick={() => setMode("desktop")}
@@ -322,7 +331,43 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
               <div className="absolute inset-[3px] rounded-full bg-primary" />
             </div>
           )}
+          {/* Guide overlay */}
+          {showGuides && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {/* Image boundary - bottom edge */}
+              <div className="absolute bottom-0 left-0 right-0 border-b-2 border-dashed" style={{ borderColor: 'hsl(190 80% 60% / 0.5)' }}>
+                <span className="absolute right-1 -top-3 text-[7px] font-mono" style={{ color: 'hsl(190 80% 60% / 0.7)' }}>image edge</span>
+              </div>
+              {/* 75% max-width guides for title image */}
+              {item.title_image_url && (
+                <>
+                  <div className="absolute top-0 bottom-0 border-l border-dashed" style={{ left: '12.5%', borderColor: 'hsl(30 80% 55% / 0.25)' }} />
+                  <div className="absolute top-0 bottom-0 border-r border-dashed" style={{ right: '12.5%', borderColor: 'hsl(30 80% 55% / 0.25)' }} />
+                </>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Title image bounding box guide - rendered outside image container but inside card */}
+        {showGuides && item.title_image_url && (
+          <div className="relative pointer-events-none" style={{ height: 0 }}>
+            <div
+              className="absolute border-2 border-dotted rounded"
+              style={{
+                borderColor: 'hsl(30 80% 55% / 0.6)',
+                left: '12.5%',
+                width: '75%',
+                transform: `translate(${activeTiOffsetX + 50}px, ${activeTiOffsetY}px) scale(${activeTiScale})`,
+                transformOrigin: 'center top',
+                height: activeTiMaxHeight > 0 ? `${activeTiMaxHeight}px` : '40px',
+                top: 0,
+              }}
+            >
+              <span className="absolute -top-2.5 left-1 text-[7px] font-mono" style={{ color: 'hsl(30 80% 55% / 0.8)' }}>title zone</span>
+            </div>
+          </div>
+        )}
 
         <CardStatsFooter
           config={cardStatsConfig}
@@ -406,6 +451,32 @@ export default function CardPreviewEditor({ item, images, initialImageId, onSave
                 <Button variant="ghost" size="sm" onClick={handleResetTitle} className="gap-1 text-[10px] h-7 px-1.5">
                   <RotateCcw className="h-2.5 w-2.5" /> Reset
                 </Button>
+              </div>
+              {/* Title Position Presets */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Position Presets</label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { label: "Centered", scale: 1, offsetY: 0, offsetX: 0, maxHeight: 120 },
+                    { label: "Large Bleed", scale: 2.5, offsetY: -80, offsetX: 0, maxHeight: 200 },
+                    { label: "Compact", scale: 0.8, offsetY: 10, offsetX: 0, maxHeight: 80 },
+                    { label: "Left", scale: 1.2, offsetY: -20, offsetX: -60, maxHeight: 150 },
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setActiveTiScale(preset.scale);
+                        setActiveTiOffsetY(preset.offsetY);
+                        setActiveTiOffsetX(preset.offsetX);
+                        setActiveTiMaxHeight(preset.maxHeight);
+                        if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true);
+                      }}
+                      className="px-2 py-0.5 rounded border border-border bg-muted/50 text-[9px] font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <Crosshair className="h-2.5 w-2.5 inline mr-0.5 -mt-px" />{preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <ControlSlider label="Scale" value={activeTiScale} min={0.1} max={15} step={0.05} onChange={(v) => { setActiveTiScale(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} isFloat />
               <NudgeSlider label="Vertical Offset" value={activeTiOffsetY} min={-600} max={300} onChange={(v) => { setActiveTiOffsetY(v); if (!isDesktop && !mobileTitleHasOverride) setMobileTitleHasOverride(true); }} decIcon={<ChevronDown className="h-3 w-3" />} incIcon={<ChevronUp className="h-3 w-3" />} />
