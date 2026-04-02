@@ -286,22 +286,55 @@ export default function AdminDemo() {
     } else {
       const { data } = await supabase
         .from("preset_items")
-        .select("id, name, image_url, elo, subtitle")
+        .select("*")
         .ilike("name", `%${query}%`)
         .limit(10);
-      setSearchResults(data?.map(i => ({ id: i.id, name: i.name, imageUrl: i.image_url, aura: i.elo, subtitle: i.subtitle, type: "preset" })) || []);
+      setSearchResults(data?.map(i => ({ ...i, type: "preset" })) || []);
     }
   }, [mode]);
 
-  const applySearchResult = (result: any, target: "a" | "b") => {
+  const applySearchResult = async (result: any, target: "a" | "b") => {
     const setter = target === "a" ? setCardA : setCardB;
-    setter(prev => ({
-      ...prev,
-      name: result.name || prev.name,
-      imageUrl: result.imageUrl || prev.imageUrl,
-      subtitle: result.subtitle || prev.subtitle,
-      aura: result.aura || prev.aura,
-    }));
+
+    if (result.type === "preset") {
+      // Load full preset item images
+      let images: ItemImage[] = [];
+      const { data: imgData } = await supabase
+        .from("preset_item_images")
+        .select("*")
+        .eq("preset_item_id", result.id)
+        .eq("is_hidden", false)
+        .order("sort_order");
+      if (imgData) images = imgData as ItemImage[];
+
+      setter(prev => ({
+        ...prev,
+        id: result.id,
+        name: result.name || prev.name,
+        imageUrl: result.image_url || prev.imageUrl,
+        subtitle: result.subtitle || prev.subtitle,
+        aura: result.elo || prev.aura,
+        titleImageUrl: result.title_image_url || null,
+        titleImageScale: result.title_image_scale ?? 1,
+        titleImageOffsetY: result.title_image_offset_y ?? 0,
+        titleImageOffsetX: result.title_image_offset_x ?? 0,
+        titleImageMaxHeight: result.title_image_max_height ?? 0,
+        mobileTitleImageScale: result.mobile_title_image_scale ?? null,
+        mobileTitleImageOffsetY: result.mobile_title_image_offset_y ?? null,
+        mobileTitleImageOffsetX: result.mobile_title_image_offset_x ?? null,
+        mobileTitleImageMaxHeight: result.mobile_title_image_max_height ?? null,
+        images,
+        currentImageIdx: images.length > 0 ? Math.floor(Math.random() * images.length) : 0,
+      }));
+    } else {
+      setter(prev => ({
+        ...prev,
+        name: result.name || prev.name,
+        imageUrl: result.imageUrl || prev.imageUrl,
+        subtitle: result.subtitle || prev.subtitle,
+        aura: result.aura || prev.aura,
+      }));
+    }
     setSearchTarget(null);
     setSearchResults([]);
     setSearchQuery("");
