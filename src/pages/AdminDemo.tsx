@@ -1027,6 +1027,21 @@ export default function AdminDemo() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-bold text-foreground truncate flex-1">{leagueName}</span>
+              {/* Device toggle in fullscreen */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setDeviceFrame("phone")}
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold transition-colors ${isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                >
+                  <Smartphone className="h-3 w-3" /> Mobile
+                </button>
+                <button
+                  onClick={() => setDeviceFrame("full")}
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold transition-colors ${!isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                >
+                  <Monitor className="h-3 w-3" /> Desktop
+                </button>
+              </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
                 <X className="h-4 w-4" />
               </Button>
@@ -1034,7 +1049,7 @@ export default function AdminDemo() {
 
             {/* Card area */}
             <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" style={{ background: theme?.styles?.pageBg || "hsl(var(--background))" }}>
-              <div className={`w-full ${deviceFrame === "phone" ? "max-w-[375px]" : "max-w-[600px]"}`}>
+              <div className={`w-full ${isPhoneFrame ? "max-w-[375px]" : "max-w-[600px]"}`}>
                 {mode === "aura-check" ? (
                   <div>
                     <div className="flex items-center justify-center gap-6 mb-4">
