@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Crown, CheckCircle2, XCircle, Search,
   Smartphone, Monitor, Play, Globe, User, Maximize2, X, Film, Loader2,
-  Swords, Trophy, Eye
+  Swords, Sword, Trophy, Eye, EyeOff, Sparkles, MessageCircle, Flag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
