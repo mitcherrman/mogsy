@@ -201,6 +201,7 @@ export default function AdminDemo() {
 
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
   const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+  const isPhoneFrame = deviceFrame === "phone";
 
   // Auth guard: allow admin, master_admin, or demo_access roles
   useEffect(() => {
@@ -551,24 +552,10 @@ export default function AdminDemo() {
         <Input value={leagueName} onChange={e => setLeagueName(e.target.value)} className="h-8 text-xs mt-1" />
       </div>
 
-      {/* Device Frame */}
-      <div className="flex gap-2">
-        <Button
-          variant={deviceFrame === "phone" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setDeviceFrame("phone")}
-          className="flex-1 gap-1"
-        >
-          <Smartphone className="h-3.5 w-3.5" /> Phone
-        </Button>
-        <Button
-          variant={deviceFrame === "full" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setDeviceFrame("full")}
-          className="flex-1 gap-1"
-        >
-          <Monitor className="h-3.5 w-3.5" /> Full
-        </Button>
+      {/* Card BG Opacity */}
+      <div>
+        <Label className="text-xs font-bold">Card BG Opacity</Label>
+        <Input type="number" value={cardBgOpacity} onChange={e => setCardBgOpacity(Number(e.target.value))} className="h-8 text-xs mt-1" min={0} max={100} />
       </div>
 
       {/* Aura Check controls */}
@@ -630,7 +617,7 @@ export default function AdminDemo() {
 
     // Get display image (from multi-image or fallback)
     const displayImage = getCardDisplayImage(card);
-    const imageStyle = isPresetMode ? getCardImageStyle(card, isMobile) : {};
+    const imageStyle = isPresetMode ? getCardImageStyle(card, isPhoneFrame) : {};
     const hasTitleImage = isPresetMode && card.titleImageUrl;
 
     return (
@@ -696,7 +683,7 @@ export default function AdminDemo() {
                 src={card.titleImageUrl!}
                 alt={card.name}
                 className="w-auto object-contain mx-auto"
-                style={getTitleImageStyle(card, isMobile)}
+                style={getTitleImageStyle(card, isPhoneFrame)}
                 draggable={false}
               />
             ) : (
@@ -807,7 +794,7 @@ export default function AdminDemo() {
   const gameChrome = (children: React.ReactNode, withRef = false) => (
     <div
       className={`rounded-2xl border border-border overflow-hidden transition-all ${
-        deviceFrame === "phone" ? "max-w-[375px] mx-auto" : "w-full"
+        isPhoneFrame ? "max-w-[375px] mx-auto" : "w-full"
       }`}
       style={themeStyle}
     >
@@ -840,7 +827,7 @@ export default function AdminDemo() {
   const previewContent = mode === "aura-check" ? (
     <div
       className={`rounded-2xl border border-border overflow-hidden transition-all ${
-        deviceFrame === "phone" ? "max-w-[375px] mx-auto" : "w-full"
+        isPhoneFrame ? "max-w-[375px] mx-auto" : "w-full"
       }`}
       style={themeStyle}
     >
@@ -897,7 +884,7 @@ export default function AdminDemo() {
             winnerSide={animWinner}
             items={[cardA, cardB].map(c => ({
               imageUrl: getCardDisplayImage(c) || null,
-              imageStyle: getCardImageStyle(c, isMobile),
+              imageStyle: getCardImageStyle(c, isPhoneFrame),
               name: c.name,
               subtitle: c.subtitle,
               titleImageUrl: c.titleImageUrl || undefined,
@@ -927,53 +914,73 @@ export default function AdminDemo() {
     <div className="min-h-screen px-3 py-4" style={themeStyle}>
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : isModerator ? "/moderator" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(true)}>
-            <Maximize2 className="h-3.5 w-3.5" /> Preview
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
-            <Camera className="h-3.5 w-3.5" /> Screenshot
-          </Button>
-          {mode !== "aura-check" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs text-muted-foreground"
-              onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
-              disabled={isRecording}
-            >
-              {gifFps}fps
+          <h1 className="text-xl font-extrabold text-foreground">Demo Studio</h1>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Device toggle */}
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => setDeviceFrame("phone")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors ${isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                <Smartphone className="h-3.5 w-3.5" /> Mobile
+              </button>
+              <button
+                onClick={() => setDeviceFrame("full")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors ${!isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                <Monitor className="h-3.5 w-3.5" /> Desktop
+              </button>
+            </div>
+
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(true)}>
+              <Maximize2 className="h-3.5 w-3.5" /> Preview
             </Button>
-          )}
-          {mode !== "aura-check" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={isRecording}
-              onClick={() => {
-                recordGif(() => {
-                  const winner = cardA.isWinner ? 0 : 1;
-                  playAnimationSound(animationId);
-                  setAnimWinner(winner as 0 | 1);
-                });
-              }}
-            >
-              {isRecording ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%
-                </>
-              ) : (
-                <>
-                  <Film className="h-3.5 w-3.5" /> GIF
-                </>
-              )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
+              <Camera className="h-3.5 w-3.5" />
             </Button>
-          )}
+            {mode !== "aura-check" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-xs text-muted-foreground px-2"
+                  onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
+                  disabled={isRecording}
+                >
+                  {gifFps}fps
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isRecording}
+                  onClick={() => {
+                    recordGif(() => {
+                      const winner = cardA.isWinner ? 0 : 1;
+                      playAnimationSound(animationId);
+                      setAnimWinner(winner as 0 | 1);
+                    });
+                  }}
+                >
+                  {isRecording ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%</>
+                  ) : (
+                    <><Film className="h-3.5 w-3.5" /> GIF</>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Centered logo */}
+        <div className="w-full mb-3 flex justify-center">
+          <img src={mogsyTextLogo} alt="Mogsy" className="h-6 object-contain" />
         </div>
 
         {isMobile ? (
@@ -1020,6 +1027,21 @@ export default function AdminDemo() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-bold text-foreground truncate flex-1">{leagueName}</span>
+              {/* Device toggle in fullscreen */}
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setDeviceFrame("phone")}
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold transition-colors ${isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                >
+                  <Smartphone className="h-3 w-3" /> Mobile
+                </button>
+                <button
+                  onClick={() => setDeviceFrame("full")}
+                  className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold transition-colors ${!isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                >
+                  <Monitor className="h-3 w-3" /> Desktop
+                </button>
+              </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
                 <X className="h-4 w-4" />
               </Button>
@@ -1027,7 +1049,7 @@ export default function AdminDemo() {
 
             {/* Card area */}
             <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" style={{ background: theme?.styles?.pageBg || "hsl(var(--background))" }}>
-              <div className={`w-full ${deviceFrame === "phone" ? "max-w-[375px]" : "max-w-[600px]"}`}>
+              <div className={`w-full ${isPhoneFrame ? "max-w-[375px]" : "max-w-[600px]"}`}>
                 {mode === "aura-check" ? (
                   <div>
                     <div className="flex items-center justify-center gap-6 mb-4">
@@ -1092,7 +1114,7 @@ export default function AdminDemo() {
                           winnerSide={animWinner}
                           items={[cardA, cardB].map(c => ({
                             imageUrl: getCardDisplayImage(c) || null,
-                            imageStyle: getCardImageStyle(c, isMobile),
+                            imageStyle: getCardImageStyle(c, isPhoneFrame),
                             name: c.name,
                             subtitle: c.subtitle,
                             titleImageUrl: c.titleImageUrl || undefined,
