@@ -70,6 +70,7 @@ export default function AdminSettings() {
               case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
               case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
               case "card_bg_opacity": s.card_bg_opacity = val?.opacity ?? 20; break;
+              case "nav_tab_mode": s.nav_tab_mode = val?.mode ?? "play"; break;
             }
           }
           setSettings(s);
