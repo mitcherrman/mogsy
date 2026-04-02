@@ -119,7 +119,7 @@ export default function AdminInviteLinks() {
   };
 
   const copyLink = (code: string) => {
-    const url = `${window.location.origin}/auth?invite=${code}`;
+    const url = `${SITE_URL}/${code}`;
     navigator.clipboard.writeText(url);
     toast.success("Invite link copied!");
   };

@@ -143,7 +143,7 @@ export default function Referral() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 rounded-xl bg-background border border-border px-4 py-3">
                     <span className="flex-1 text-sm font-mono text-foreground truncate text-left">
-                      {window.location.origin}/auth?invite={referralCode}
+                      {SITE_URL}/{referralCode}
                     </span>
                     <Button size="sm" variant="outline" onClick={copyLink} className="flex-shrink-0">
                       {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
