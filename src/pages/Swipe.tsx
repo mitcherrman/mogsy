@@ -59,6 +59,7 @@ export default function Swipe() {
   const [globalLeagueId, setGlobalLeagueId] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
+  const [showAdsenseInSwipe, setShowAdsenseInSwipe] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [lastMatch, setLastMatch] = useState<{ winner: SwipeProfile; loser: SwipeProfile; prevWinnerElo: number; prevLoserElo: number } | null>(null);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
