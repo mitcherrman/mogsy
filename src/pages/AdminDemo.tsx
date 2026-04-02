@@ -201,6 +201,7 @@ export default function AdminDemo() {
 
   const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
   const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+  const isPhoneFrame = deviceFrame === "phone";
 
   // Auth guard: allow admin, master_admin, or demo_access roles
   useEffect(() => {
