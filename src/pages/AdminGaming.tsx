@@ -14,9 +14,11 @@ import AdminAds from "@/components/admin/AdminAds";
 import AdminCardAnimations from "@/components/admin/AdminCardAnimations";
 import AdminSounds from "@/components/admin/AdminSounds";
 import AdminLeagueSettings from "@/components/admin/AdminLeagueSettings";
+import AdminSwipeTabConfig from "@/components/admin/AdminSwipeTabConfig";
 
 const allTabs = [
   { value: "swipe-games", label: "Swipe Games" },
+  { value: "swipe-tab", label: "Swipe Tab" },
   { value: "first-game", label: "First Game" },
   { value: "aura-check", label: "Aura Check" },
   { value: "multiplayer", label: "Multiplayer" },
@@ -107,6 +109,7 @@ export default function AdminGaming() {
           </div>
 
           <TabsContent value="swipe-games"><AdminSwipeGameConfig /></TabsContent>
+          <TabsContent value="swipe-tab"><AdminSwipeTabConfig /></TabsContent>
           <TabsContent value="first-game"><AdminFirstGameTriggers /></TabsContent>
           <TabsContent value="aura-check"><AdminEloCheck /></TabsContent>
           <TabsContent value="multiplayer"><AdminMultiplayer /></TabsContent>
