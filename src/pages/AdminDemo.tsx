@@ -683,7 +683,7 @@ export default function AdminDemo() {
                 src={card.titleImageUrl!}
                 alt={card.name}
                 className="w-auto object-contain mx-auto"
-                style={getTitleImageStyle(card, isMobile)}
+                style={getTitleImageStyle(card, isPhoneFrame)}
                 draggable={false}
               />
             ) : (
