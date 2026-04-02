@@ -688,41 +688,26 @@ export default function AdminDemo() {
           )}
         </div>
 
-        <div className="px-2 py-1.5 flex-shrink-0">
-          <div className="text-center">
-            {hasTitleImage ? (
-              <img
-                src={card.titleImageUrl!}
-                alt={card.name}
-                className="w-auto object-contain mx-auto"
-                style={getTitleImageStyle(card, isPhoneFrame)}
-                draggable={false}
-              />
-            ) : (
-              <div className="flex items-center justify-center gap-1">
-                <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
-                {isUserMode && <TierBadge tier={card.tier} />}
-              </div>
-            )}
-            {card.subtitle && <p className="text-[10px] text-muted-foreground truncate">{card.subtitle}</p>}
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-0.5">
-            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-              <span className="font-semibold text-primary">{card.aura}</span>
-              <span className="text-muted-foreground/70">#{card.rank}</span>
-              <span className="mx-1 text-muted-foreground/30">|</span>
-              <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-              <span className="font-semibold text-blue-400">{card.aura}</span>
-              <span className="text-blue-400/70">#{card.rank}</span>
-            </span>
-          </div>
-          <div className="flex justify-center mt-0.5">
-            <EloChangeIndicator
-              change={card.eloDelta}
-              globalDirection={card.globalDirection}
-            />
-          </div>
-        </div>
+        <CardStatsFooter
+          config={cardStatsConfig}
+          isMobile={isPhoneFrame}
+          itemName={card.name}
+          subtitle={card.subtitle}
+          titleImageUrl={hasTitleImage ? card.titleImageUrl : null}
+          titleImageStyle={hasTitleImage ? getTitleImageStyle(card, isPhoneFrame) : undefined}
+          localElo={card.aura}
+          localRank={card.rank}
+          globalElo={card.aura}
+          globalRank={card.rank}
+          eloChange={card.eloDelta}
+          rankOld={null}
+          rankNew={null}
+          globalDirection={card.globalDirection}
+          statsHidden={false}
+          hasMultipleImages={false}
+          onChoose={() => {}}
+          onReport={() => {}}
+        />
       </div>
     );
   };
