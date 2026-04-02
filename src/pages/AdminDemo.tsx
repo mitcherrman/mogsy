@@ -181,6 +181,7 @@ export default function AdminDemo() {
   const [leagueName, setLeagueName] = useState("Demo League");
   const [cardA, setCardA] = useState<CardData>(defaultCard("left"));
   const [cardB, setCardB] = useState<CardData>(defaultCard("right"));
+  const [cardBgOpacity, setCardBgOpacity] = useState(20);
 
   // Animation playback
   const [animWinner, setAnimWinner] = useState<0 | 1 | null>(null);
