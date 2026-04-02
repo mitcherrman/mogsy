@@ -40,7 +40,13 @@ function MobileNavButton({ icon: Icon, label, hasTheme, themeId, onClick, badge 
 export default function Navbar({ themeId }: { themeId?: string }) {
   const location = useLocation();
   const { user } = useAuth();
+  const { settings } = useAppSettings();
   const [navRevealed, setNavRevealed] = useState(false);
+
+  const navItems = baseNavItems.filter(item => {
+    if (!("mode" in item) || !item.mode) return true;
+    return item.mode === settings.nav_tab_mode;
+  });
 
   // Detect game routes where bottom nav should auto-hide
   const isGameRoute = location.pathname.startsWith("/swipe") || location.pathname.includes("/multiplayer/game");
