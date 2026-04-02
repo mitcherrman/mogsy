@@ -42,6 +42,7 @@ export default function CustomLink() {
   }, [slug]);
 
   const resolveSlug = async (s: string) => {
+    // First check custom_links table
     const { data, error } = await supabase
       .from("custom_links")
       .select("*")
@@ -49,10 +50,28 @@ export default function CustomLink() {
       .eq("is_active", true)
       .maybeSingle();
 
-    if (error || !data) {
-      setNotFound(true);
+    if (!error && data) {
+      handleCustomLink(s, data);
       return;
     }
+
+    // Fallback: check invite_links table (referral / invite codes)
+    const { data: inviteData } = await supabase
+      .from("invite_links")
+      .select("code")
+      .eq("code", s.toUpperCase())
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (inviteData) {
+      navigate(`/auth?invite=${inviteData.code}`, { replace: true });
+      return;
+    }
+
+    setNotFound(true);
+  };
+
+  const handleCustomLink = (s: string, data: any) => {
 
     // Increment visits (fire-and-forget)
     supabase.rpc("increment_custom_link_visits" as any, { _slug: s.toLowerCase() }).then(() => {});
