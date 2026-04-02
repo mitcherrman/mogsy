@@ -53,6 +53,7 @@ export function useAppSettings() {
             if (row.key === "card_stats_config") {
               s.card_stats_config = { ...DEFAULT_CARD_STATS_CONFIG, ...(row.value as any) };
             }
+            if (row.key === "nav_tab_mode") s.nav_tab_mode = (row.value as any)?.mode ?? "play";
           }
           setSettings(s);
         }
