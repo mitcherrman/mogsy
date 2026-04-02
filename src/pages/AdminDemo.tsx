@@ -912,7 +912,11 @@ export default function AdminDemo() {
         <div className="flex gap-1 relative">
           {renderSwipeCard(cardA, 0)}
           <div className="flex items-center justify-center shrink-0">
-            <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+            {isPhoneFrame ? (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Who Mogs?</span>
+            ) : (
+              <span className="text-xs md:text-base font-black text-muted-foreground/60 select-none">VS</span>
+            )}
           </div>
           {renderSwipeCard(cardB, 1)}
 
