@@ -1079,7 +1079,7 @@ export default function AdminDemo() {
                           winnerSide={animWinner}
                           items={[cardA, cardB].map(c => ({
                             imageUrl: getCardDisplayImage(c) || null,
-                            imageStyle: getCardImageStyle(c, isMobile),
+                            imageStyle: getCardImageStyle(c, isPhoneFrame),
                             name: c.name,
                             subtitle: c.subtitle,
                             titleImageUrl: c.titleImageUrl || undefined,
