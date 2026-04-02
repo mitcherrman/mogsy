@@ -1127,27 +1127,40 @@ export default function AdminDemo() {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-border overflow-hidden" style={themeStyle}>
-                    {/* Game top bar */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-                      <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Swords className="h-3.5 w-3.5" />
-                        <span className="text-[10px] font-bold">12/20</span>
+                    {/* Controls bar matching SwipePreset */}
+                    {!isPhoneFrame ? (
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Swords className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 flex items-center justify-center">
+                          <span className="text-sm font-bold text-foreground">Who Mogs?</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs flex items-center gap-1 shrink-0">
+                          <Swords className="h-3.5 w-3.5" />
+                          <span className="text-primary font-bold">12</span>
+                        </span>
+                        <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
-                      <div className="flex-1 flex items-center justify-center">
-                        <img src={mogsyTextLogo} alt="Mogsy" className="h-4 object-contain opacity-70" />
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       </div>
-                      <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </div>
-                    <div className="px-3 pt-1.5">
-                      <Progress value={60} className="h-1.5" />
-                    </div>
+                    )}
+                    {showProgressBar && (
+                      <div className="px-3">
+                        <Progress value={60} className="h-1" />
+                      </div>
+                    )}
                     <div className="p-3">
                       <div className="flex gap-1 relative">
                         {renderSwipeCard(cardA, 0)}
                         <div className="flex items-center justify-center shrink-0">
-                          <span className="text-xs font-black text-muted-foreground/60 select-none">VS</span>
+                          {isPhoneFrame ? (
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Who Mogs?</span>
+                          ) : (
+                            <span className="text-xs md:text-base font-black text-muted-foreground/60 select-none">VS</span>
+                          )}
                         </div>
                         {renderSwipeCard(cardB, 1)}
                         <CardAnimationRouter
@@ -1178,10 +1191,22 @@ export default function AdminDemo() {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center justify-between px-3 pb-2">
-                      <span className="text-[10px] text-muted-foreground/60 italic">Tap or swipe to choose</span>
-                      <Eye className="h-3.5 w-3.5 text-muted-foreground/40" />
-                    </div>
+                    {/* Mobile bottom action bar */}
+                    {isPhoneFrame && (
+                      <div className="flex items-center justify-center gap-3 px-3 pb-2 pt-1">
+                        <Swords className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <Camera className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <Trophy className="h-3.5 w-3.5 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    {!isPhoneFrame && (
+                      <div className="px-3 pb-2">
+                        <p className="text-center text-[10px] text-muted-foreground">
+                          Tap or swipe to choose · 5/20
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
