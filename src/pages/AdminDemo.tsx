@@ -914,53 +914,73 @@ export default function AdminDemo() {
     <div className="min-h-screen px-3 py-4" style={themeStyle}>
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : isModerator ? "/moderator" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-extrabold text-foreground flex-1">Demo Studio</h1>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(true)}>
-            <Maximize2 className="h-3.5 w-3.5" /> Preview
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
-            <Camera className="h-3.5 w-3.5" /> Screenshot
-          </Button>
-          {mode !== "aura-check" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs text-muted-foreground"
-              onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
-              disabled={isRecording}
-            >
-              {gifFps}fps
+          <h1 className="text-xl font-extrabold text-foreground">Demo Studio</h1>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Device toggle */}
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => setDeviceFrame("phone")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors ${isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                <Smartphone className="h-3.5 w-3.5" /> Mobile
+              </button>
+              <button
+                onClick={() => setDeviceFrame("full")}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold transition-colors ${!isPhoneFrame ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
+              >
+                <Monitor className="h-3.5 w-3.5" /> Desktop
+              </button>
+            </div>
+
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setFullscreenPreview(true)}>
+              <Maximize2 className="h-3.5 w-3.5" /> Preview
             </Button>
-          )}
-          {mode !== "aura-check" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={isRecording}
-              onClick={() => {
-                recordGif(() => {
-                  const winner = cardA.isWinner ? 0 : 1;
-                  playAnimationSound(animationId);
-                  setAnimWinner(winner as 0 | 1);
-                });
-              }}
-            >
-              {isRecording ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%
-                </>
-              ) : (
-                <>
-                  <Film className="h-3.5 w-3.5" /> GIF
-                </>
-              )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={capture}>
+              <Camera className="h-3.5 w-3.5" />
             </Button>
-          )}
+            {mode !== "aura-check" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-xs text-muted-foreground px-2"
+                  onClick={() => setGifFps(prev => prev === 30 ? 60 : 30)}
+                  disabled={isRecording}
+                >
+                  {gifFps}fps
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isRecording}
+                  onClick={() => {
+                    recordGif(() => {
+                      const winner = cardA.isWinner ? 0 : 1;
+                      playAnimationSound(animationId);
+                      setAnimWinner(winner as 0 | 1);
+                    });
+                  }}
+                >
+                  {isRecording ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress}%</>
+                  ) : (
+                    <><Film className="h-3.5 w-3.5" /> GIF</>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Centered logo */}
+        <div className="w-full mb-3 flex justify-center">
+          <img src={mogsyTextLogo} alt="Mogsy" className="h-6 object-contain" />
         </div>
 
         {isMobile ? (
