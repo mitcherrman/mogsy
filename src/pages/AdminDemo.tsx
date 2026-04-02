@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import CardStatsFooter from "@/components/CardStatsFooter";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
 import mogsyTextLogo from "@/assets/mogsy-text-logo.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
