@@ -1,43 +1,43 @@
-<!-- DOMAIN CONFIG: When changing domain, find-and-replace all "mogsy.com" in this file -->
+<!-- DOMAIN CONFIG: When changing domain, find-and-replace all "mogsy.net" in this file -->
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://mogsy.com/</loc>
+    <loc>https://mogsy.net/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/home</loc>
+    <loc>https://mogsy.net/home</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/play</loc>
+    <loc>https://mogsy.net/play</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/presets</loc>
+    <loc>https://mogsy.net/presets</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/swipe-leagues</loc>
+    <loc>https://mogsy.net/swipe-leagues</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/elo-check</loc>
+    <loc>https://mogsy.net/elo-check</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/shop</loc>
+    <loc>https://mogsy.net/shop</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mogsy.com/auth</loc>
+    <loc>https://mogsy.net/auth</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

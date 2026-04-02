@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Crown, CheckCircle2, XCircle, Search,
-  Smartphone, Monitor, Play, Globe, User, Maximize2, X, Film, Loader2,
-  Swords, Trophy, Eye
+  Smartphone, Monitor, Play, User, Maximize2, X, Film, Loader2,
+  Swords, Sword, Trophy, EyeOff, Sparkles, MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import CardStatsFooter from "@/components/CardStatsFooter";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
 import mogsyTextLogo from "@/assets/mogsy-text-logo.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +23,6 @@ import { useGifExport } from "@/hooks/useGifExport";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
-import EloChangeIndicator from "@/components/EloChangeIndicator";
-import TierBadge from "@/components/TierBadge";
 import AutoVideo from "@/components/AutoVideo";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
@@ -183,6 +183,7 @@ export default function AdminDemo() {
   const [cardB, setCardB] = useState<CardData>(defaultCard("right"));
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
   const [showProgressBar, setShowProgressBar] = useState(true);
+  const [cardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
 
   // Animation playback
   const [animWinner, setAnimWinner] = useState<0 | 1 | null>(null);
@@ -685,41 +686,26 @@ export default function AdminDemo() {
           )}
         </div>
 
-        <div className="px-2 py-1.5 flex-shrink-0">
-          <div className="text-center">
-            {hasTitleImage ? (
-              <img
-                src={card.titleImageUrl!}
-                alt={card.name}
-                className="w-auto object-contain mx-auto"
-                style={getTitleImageStyle(card, isPhoneFrame)}
-                draggable={false}
-              />
-            ) : (
-              <div className="flex items-center justify-center gap-1">
-                <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
-                {isUserMode && <TierBadge tier={card.tier} />}
-              </div>
-            )}
-            {card.subtitle && <p className="text-[10px] text-muted-foreground truncate">{card.subtitle}</p>}
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-0.5">
-            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-              <span className="font-semibold text-primary">{card.aura}</span>
-              <span className="text-muted-foreground/70">#{card.rank}</span>
-              <span className="mx-1 text-muted-foreground/30">|</span>
-              <Globe className="h-2.5 w-2.5 text-blue-400/70" />
-              <span className="font-semibold text-blue-400">{card.aura}</span>
-              <span className="text-blue-400/70">#{card.rank}</span>
-            </span>
-          </div>
-          <div className="flex justify-center mt-0.5">
-            <EloChangeIndicator
-              change={card.eloDelta}
-              globalDirection={card.globalDirection}
-            />
-          </div>
-        </div>
+        <CardStatsFooter
+          config={cardStatsConfig}
+          isMobile={isPhoneFrame}
+          itemName={card.name}
+          subtitle={card.subtitle}
+          titleImageUrl={hasTitleImage ? card.titleImageUrl : null}
+          titleImageStyle={hasTitleImage ? getTitleImageStyle(card, isPhoneFrame) : undefined}
+          localElo={card.aura}
+          localRank={card.rank}
+          globalElo={card.aura}
+          globalRank={card.rank}
+          eloChange={card.eloDelta}
+          rankOld={null}
+          rankNew={null}
+          globalDirection={card.globalDirection}
+          statsHidden={false}
+          hasMultipleImages={false}
+          onChoose={() => {}}
+          onReport={() => {}}
+        />
       </div>
     );
   };
@@ -811,7 +797,7 @@ export default function AdminDemo() {
       {!isPhoneFrame ? (
         <div className="flex items-center gap-2 px-3 py-2">
           <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Swords className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Sword className="h-4 w-4 text-muted-foreground shrink-0" fill="currentColor" />
           <div className="flex-1 flex items-center justify-center">
             <span className="text-sm font-bold text-foreground">Who Mogs?</span>
           </div>
@@ -819,6 +805,7 @@ export default function AdminDemo() {
             <Swords className="h-3.5 w-3.5" />
             <span className="text-primary font-bold">12</span>
           </span>
+          <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
           <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
           <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
@@ -840,13 +827,15 @@ export default function AdminDemo() {
         {children}
       </div>
 
-      {/* Mobile bottom action bar */}
+      {/* Mobile bottom action bar — matches real swipe game */}
       {isPhoneFrame && (
         <div className="flex items-center justify-center gap-3 px-3 pb-2 pt-1">
-          <Swords className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <Sword className="h-3.5 w-3.5 text-muted-foreground/50" fill="currentColor" />
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground/50" />
           <Camera className="h-3.5 w-3.5 text-muted-foreground/50" />
-          <Eye className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <EyeOff className="h-3.5 w-3.5 text-muted-foreground/50" />
           <Trophy className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <MessageCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
         </div>
       )}
 
@@ -1131,7 +1120,7 @@ export default function AdminDemo() {
                     {!isPhoneFrame ? (
                       <div className="flex items-center gap-2 px-3 py-2">
                         <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Swords className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Sword className="h-4 w-4 text-muted-foreground shrink-0" fill="currentColor" />
                         <div className="flex-1 flex items-center justify-center">
                           <span className="text-sm font-bold text-foreground">Who Mogs?</span>
                         </div>
@@ -1139,6 +1128,7 @@ export default function AdminDemo() {
                           <Swords className="h-3.5 w-3.5" />
                           <span className="text-primary font-bold">12</span>
                         </span>
+                        <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
                         <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
                         <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
@@ -1194,10 +1184,12 @@ export default function AdminDemo() {
                     {/* Mobile bottom action bar */}
                     {isPhoneFrame && (
                       <div className="flex items-center justify-center gap-3 px-3 pb-2 pt-1">
-                        <Swords className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <Sword className="h-3.5 w-3.5 text-muted-foreground/50" fill="currentColor" />
+                        <Sparkles className="h-3.5 w-3.5 text-muted-foreground/50" />
                         <Camera className="h-3.5 w-3.5 text-muted-foreground/50" />
-                        <Eye className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <EyeOff className="h-3.5 w-3.5 text-muted-foreground/50" />
                         <Trophy className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <MessageCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
                       </div>
                     )}
                     {!isPhoneFrame && (

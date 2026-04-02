@@ -14,4 +14,4 @@ User-agent: *
 Allow: /
 
 # DOMAIN CONFIG: Update domain below when changing domain
-Sitemap: https://mogsy.com/sitemap.xml
+Sitemap: https://mogsy.net/sitemap.xml
