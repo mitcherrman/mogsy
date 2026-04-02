@@ -23,8 +23,6 @@ import { useGifExport } from "@/hooks/useGifExport";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
-import EloChangeIndicator from "@/components/EloChangeIndicator";
-import TierBadge from "@/components/TierBadge";
 import AutoVideo from "@/components/AutoVideo";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
