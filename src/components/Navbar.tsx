@@ -1,17 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Play, User, Diamond, ChevronRight, Users, Palette } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight, Users, Palette, Flame } from "lucide-react";
 import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
 
-const navItems = [
+const baseNavItems = [
   { path: "/home", label: "Home", icon: Home },
-  { path: "/play", label: "Play", icon: Play },
+  { path: "/play", label: "Play", icon: Play, mode: "play" as const },
+  { path: "/swipe", label: "Swipe", icon: Flame, mode: "swipe" as const },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
