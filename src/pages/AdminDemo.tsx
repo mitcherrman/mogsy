@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,16 +23,36 @@ import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
 import TierBadge from "@/components/TierBadge";
-import UserAvatar from "@/components/UserAvatar";
+import AutoVideo from "@/components/AutoVideo";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { toast } from "sonner";
+import React from "react";
 
 type DemoMode = "swipe-collections" | "swipe-users" | "aura-check";
 
+interface ItemImage {
+  id: string;
+  preset_item_id: string;
+  image_url: string;
+  is_hidden: boolean;
+  sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
+  pad_top: number;
+  pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
+}
+
 interface CardData {
+  id?: string;
   name: string;
   subtitle: string;
   imageUrl: string;
@@ -46,6 +65,79 @@ interface CardData {
   profileFrame: string;
   tier: string;
   leagueName: string;
+  // Preset item fields for accurate card rendering
+  titleImageUrl?: string | null;
+  titleImageScale?: number;
+  titleImageOffsetY?: number;
+  titleImageOffsetX?: number;
+  titleImageMaxHeight?: number;
+  mobileTitleImageScale?: number | null;
+  mobileTitleImageOffsetY?: number | null;
+  mobileTitleImageOffsetX?: number | null;
+  mobileTitleImageMaxHeight?: number | null;
+  images?: ItemImage[];
+  currentImageIdx?: number;
+}
+
+function getTitleImageStyle(card: CardData, isMobile: boolean): React.CSSProperties {
+  const scale = isMobile
+    ? (card.mobileTitleImageScale ?? card.titleImageScale ?? 1)
+    : (card.titleImageScale ?? 1);
+  const offsetY = isMobile
+    ? (card.mobileTitleImageOffsetY ?? card.titleImageOffsetY ?? 0)
+    : (card.titleImageOffsetY ?? 0);
+  const offsetX = isMobile
+    ? (card.mobileTitleImageOffsetX ?? card.titleImageOffsetX ?? 0)
+    : (card.titleImageOffsetX ?? 0);
+  const maxHeightVal = isMobile
+    ? (card.mobileTitleImageMaxHeight ?? card.titleImageMaxHeight ?? 0)
+    : (card.titleImageMaxHeight ?? 0);
+  const maxHeight = maxHeightVal > 0 ? `${maxHeightVal}px` : undefined;
+  return {
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
+    marginTop: `${offsetY}px`,
+    marginLeft: `${offsetX + 50}px`,
+    maxHeight,
+    maxWidth: '75%',
+    position: 'relative' as const,
+    zIndex: 30,
+  };
+}
+
+function getCardImageStyle(card: CardData, isMobile: boolean): React.CSSProperties {
+  const images = card.images;
+  if (images && images.length > 0) {
+    const idx = card.currentImageIdx || 0;
+    const img = images[idx % images.length];
+    const fx = isMobile ? (img.mobile_focal_x ?? img.focal_x) : img.focal_x;
+    const fy = isMobile ? (img.mobile_focal_y ?? img.focal_y) : img.focal_y;
+    const z = isMobile ? (img.mobile_zoom ?? img.zoom) : img.zoom;
+    const pt = isMobile ? (img.mobile_pad_top ?? img.pad_top) : img.pad_top;
+    const pl = isMobile ? (img.mobile_pad_left ?? img.pad_left) : img.pad_left;
+    const hasCustom = fx !== 50 || fy !== 50 || z !== 1 || pt !== 0 || pl !== 0;
+    if (hasCustom) {
+      return {
+        position: 'absolute' as const,
+        top: `${pt}%`,
+        left: `${pl}%`,
+        width: `${100 - pl}%`,
+        height: `${100 - pt}%`,
+        objectPosition: `${fx}% ${fy}%`,
+        transform: `scale(${z})`,
+        transformOrigin: `${fx}% ${fy}%`,
+      };
+    }
+  }
+  return {};
+}
+
+function getCardDisplayImage(card: CardData): string | null {
+  const images = card.images;
+  if (images && images.length > 0) {
+    const idx = card.currentImageIdx || 0;
+    return images[idx % images.length].image_url;
+  }
+  return card.imageUrl || null;
 }
 
 const defaultCard = (side: "left" | "right"): CardData => ({
@@ -89,6 +181,7 @@ export default function AdminDemo() {
   const [leagueName, setLeagueName] = useState("Demo League");
   const [cardA, setCardA] = useState<CardData>(defaultCard("left"));
   const [cardB, setCardB] = useState<CardData>(defaultCard("right"));
+  const [cardBgOpacity, setCardBgOpacity] = useState(20);
 
   // Animation playback
   const [animWinner, setAnimWinner] = useState<0 | 1 | null>(null);
@@ -193,22 +286,55 @@ export default function AdminDemo() {
     } else {
       const { data } = await supabase
         .from("preset_items")
-        .select("id, name, image_url, elo, subtitle")
+        .select("*")
         .ilike("name", `%${query}%`)
         .limit(10);
-      setSearchResults(data?.map(i => ({ id: i.id, name: i.name, imageUrl: i.image_url, aura: i.elo, subtitle: i.subtitle, type: "preset" })) || []);
+      setSearchResults(data?.map(i => ({ ...i, type: "preset" })) || []);
     }
   }, [mode]);
 
-  const applySearchResult = (result: any, target: "a" | "b") => {
+  const applySearchResult = async (result: any, target: "a" | "b") => {
     const setter = target === "a" ? setCardA : setCardB;
-    setter(prev => ({
-      ...prev,
-      name: result.name || prev.name,
-      imageUrl: result.imageUrl || prev.imageUrl,
-      subtitle: result.subtitle || prev.subtitle,
-      aura: result.aura || prev.aura,
-    }));
+
+    if (result.type === "preset") {
+      // Load full preset item images
+      let images: ItemImage[] = [];
+      const { data: imgData } = await supabase
+        .from("preset_item_images")
+        .select("*")
+        .eq("preset_item_id", result.id)
+        .eq("is_hidden", false)
+        .order("sort_order");
+      if (imgData) images = imgData as ItemImage[];
+
+      setter(prev => ({
+        ...prev,
+        id: result.id,
+        name: result.name || prev.name,
+        imageUrl: result.image_url || prev.imageUrl,
+        subtitle: result.subtitle || prev.subtitle,
+        aura: result.elo || prev.aura,
+        titleImageUrl: result.title_image_url || null,
+        titleImageScale: result.title_image_scale ?? 1,
+        titleImageOffsetY: result.title_image_offset_y ?? 0,
+        titleImageOffsetX: result.title_image_offset_x ?? 0,
+        titleImageMaxHeight: result.title_image_max_height ?? 0,
+        mobileTitleImageScale: result.mobile_title_image_scale ?? null,
+        mobileTitleImageOffsetY: result.mobile_title_image_offset_y ?? null,
+        mobileTitleImageOffsetX: result.mobile_title_image_offset_x ?? null,
+        mobileTitleImageMaxHeight: result.mobile_title_image_max_height ?? null,
+        images,
+        currentImageIdx: images.length > 0 ? Math.floor(Math.random() * images.length) : 0,
+      }));
+    } else {
+      setter(prev => ({
+        ...prev,
+        name: result.name || prev.name,
+        imageUrl: result.imageUrl || prev.imageUrl,
+        subtitle: result.subtitle || prev.subtitle,
+        aura: result.aura || prev.aura,
+      }));
+    }
     setSearchTarget(null);
     setSearchResults([]);
     setSearchQuery("");
@@ -261,8 +387,8 @@ export default function AdminDemo() {
                 onClick={() => applySearchResult(r, side)}
                 className="w-full px-2 py-1.5 text-left text-xs hover:bg-secondary flex items-center gap-2"
               >
-                {r.imageUrl ? (
-                  <img src={r.imageUrl} className="h-5 w-5 rounded object-cover" />
+                {(r.imageUrl || r.image_url) ? (
+                  <img src={r.imageUrl || r.image_url} className="h-5 w-5 rounded object-cover" />
                 ) : (
                   <div className="h-5 w-5 rounded bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">{r.name?.charAt(0)}</div>
                 )}
@@ -494,15 +620,21 @@ export default function AdminDemo() {
     diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
   };
 
-  const renderSwipeCard = (card: CardData, idx: 0 | 1) => {
+  const renderSwipeCard = (card: CardData, _idx: 0 | 1) => {
     const isAnimating = animWinner !== null;
     const isWinner = isAnimating && card.isWinner;
     const isLoser = isAnimating && !card.isWinner;
     const isUserMode = mode === "swipe-users";
     const frame = isUserMode ? (frameClasses[card.profileFrame] || "") : "";
+    const isPresetMode = mode === "swipe-collections";
+
+    // Get display image (from multi-image or fallback)
+    const displayImage = getCardDisplayImage(card);
+    const imageStyle = isPresetMode ? getCardImageStyle(card, isMobile) : {};
+    const hasTitleImage = isPresetMode && card.titleImageUrl;
 
     return (
-      <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border overflow-hidden ${theme.styles.cardBg || "border-border bg-card"}`}>
+      <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border ${hasTitleImage ? 'overflow-visible' : 'overflow-hidden'} ${theme.styles.cardBg || "border-border bg-card"}`}>
         <div
           className={`relative overflow-hidden transition-all duration-300 ${
             isWinner
@@ -512,9 +644,23 @@ export default function AdminDemo() {
               : ""
           }`}
         >
-          <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden ${frame}`}>
-            {card.imageUrl ? (
-              <img src={card.imageUrl} alt={card.name} className="w-full h-full object-contain" />
+          <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden relative ${frame}`}>
+            {/* Blurred background (like SwipePreset) */}
+            {isPresetMode && displayImage && (
+              <AutoVideo src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
+            )}
+
+            {displayImage ? (
+              isPresetMode ? (
+                <AutoVideo
+                  src={displayImage}
+                  alt={card.name}
+                  className="w-full h-full object-contain relative z-10"
+                  style={imageStyle}
+                />
+              ) : (
+                <img src={displayImage} alt={card.name} className="w-full h-full object-contain" />
+              )
             ) : isUserMode ? (
               <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
                 <User className="h-12 w-12 text-muted-foreground/70" />
@@ -545,10 +691,20 @@ export default function AdminDemo() {
 
         <div className="px-2 py-1.5 flex-shrink-0">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
-              {isUserMode && <TierBadge tier={card.tier} />}
-            </div>
+            {hasTitleImage ? (
+              <img
+                src={card.titleImageUrl!}
+                alt={card.name}
+                className="w-auto object-contain mx-auto"
+                style={getTitleImageStyle(card, isMobile)}
+                draggable={false}
+              />
+            ) : (
+              <div className="flex items-center justify-center gap-1">
+                <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
+                {isUserMode && <TierBadge tier={card.tier} />}
+              </div>
+            )}
             {card.subtitle && <p className="text-[10px] text-muted-foreground truncate">{card.subtitle}</p>}
           </div>
           <div className="flex items-center justify-center gap-3 mt-0.5">
@@ -740,9 +896,14 @@ export default function AdminDemo() {
             animationId={animationId}
             winnerSide={animWinner}
             items={[cardA, cardB].map(c => ({
-              imageUrl: c.imageUrl || null,
+              imageUrl: getCardDisplayImage(c) || null,
+              imageStyle: getCardImageStyle(c, isMobile),
               name: c.name,
               subtitle: c.subtitle,
+              titleImageUrl: c.titleImageUrl || undefined,
+              titleImageScale: c.titleImageScale,
+              titleImageOffsetY: c.titleImageOffsetY,
+              titleImageMaxHeight: c.titleImageMaxHeight,
               localElo: c.aura,
               localRank: c.rank,
               globalElo: c.aura,
@@ -753,6 +914,7 @@ export default function AdminDemo() {
               rankOld: null,
               rankNew: null,
               globalDirection: c.globalDirection,
+              showGlobalStats: false,
             }))}
             onComplete={handleAnimComplete}
           />
@@ -929,9 +1091,14 @@ export default function AdminDemo() {
                           animationId={animationId}
                           winnerSide={animWinner}
                           items={[cardA, cardB].map(c => ({
-                            imageUrl: c.imageUrl || null,
+                            imageUrl: getCardDisplayImage(c) || null,
+                            imageStyle: getCardImageStyle(c, isMobile),
                             name: c.name,
                             subtitle: c.subtitle,
+                            titleImageUrl: c.titleImageUrl || undefined,
+                            titleImageScale: c.titleImageScale,
+                            titleImageOffsetY: c.titleImageOffsetY,
+                            titleImageMaxHeight: c.titleImageMaxHeight,
                             localElo: c.aura,
                             localRank: c.rank,
                             globalElo: c.aura,
@@ -942,6 +1109,7 @@ export default function AdminDemo() {
                             rankOld: null,
                             rankNew: null,
                             globalDirection: c.globalDirection,
+                            showGlobalStats: false,
                           }))}
                           onComplete={handleAnimComplete}
                         />
