@@ -559,6 +559,14 @@ export default function AdminDemo() {
         <Input type="number" value={cardBgOpacity} onChange={e => setCardBgOpacity(Number(e.target.value))} className="h-8 text-xs mt-1" min={0} max={100} />
       </div>
 
+      {/* Progress Bar Toggle */}
+      {mode !== "aura-check" && (
+        <div className="flex items-center gap-1.5">
+          <Switch checked={showProgressBar} onCheckedChange={setShowProgressBar} />
+          <Label className="text-xs font-bold">Show Progress Bar</Label>
+        </div>
+      )}
+
       {/* Aura Check controls */}
       {mode === "aura-check" && (
         <div className="space-y-3 border-t border-border pt-3">
