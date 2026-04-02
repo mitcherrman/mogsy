@@ -58,7 +58,7 @@
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" />
     </noscript>
     <script>
-      // Load fonts asynchronously to avoid render-blocking
+      // Load fonts asynchronously — media="print" trick prevents render-blocking
       (function() {
         var fonts = [
           'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
@@ -69,6 +69,8 @@
           var link = document.createElement('link');
           link.rel = 'stylesheet';
           link.href = href;
+          link.media = 'print';
+          link.onload = function() { this.media = 'all'; };
           document.head.appendChild(link);
         });
       })();
