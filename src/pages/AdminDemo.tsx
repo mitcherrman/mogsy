@@ -552,24 +552,10 @@ export default function AdminDemo() {
         <Input value={leagueName} onChange={e => setLeagueName(e.target.value)} className="h-8 text-xs mt-1" />
       </div>
 
-      {/* Device Frame */}
-      <div className="flex gap-2">
-        <Button
-          variant={deviceFrame === "phone" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setDeviceFrame("phone")}
-          className="flex-1 gap-1"
-        >
-          <Smartphone className="h-3.5 w-3.5" /> Phone
-        </Button>
-        <Button
-          variant={deviceFrame === "full" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setDeviceFrame("full")}
-          className="flex-1 gap-1"
-        >
-          <Monitor className="h-3.5 w-3.5" /> Full
-        </Button>
+      {/* Card BG Opacity */}
+      <div>
+        <Label className="text-xs font-bold">Card BG Opacity</Label>
+        <Input type="number" value={cardBgOpacity} onChange={e => setCardBgOpacity(Number(e.target.value))} className="h-8 text-xs mt-1" min={0} max={100} />
       </div>
 
       {/* Aura Check controls */}
