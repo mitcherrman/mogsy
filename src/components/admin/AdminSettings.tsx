@@ -44,6 +44,7 @@ export default function AdminSettings() {
     show_match_count: true,
     show_swipe_progress: true,
     card_bg_opacity: 20,
+    nav_tab_mode: "play",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
