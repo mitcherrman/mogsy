@@ -794,7 +794,7 @@ export default function AdminDemo() {
   const gameChrome = (children: React.ReactNode, withRef = false) => (
     <div
       className={`rounded-2xl border border-border overflow-hidden transition-all ${
-        deviceFrame === "phone" ? "max-w-[375px] mx-auto" : "w-full"
+        isPhoneFrame ? "max-w-[375px] mx-auto" : "w-full"
       }`}
       style={themeStyle}
     >
