@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone, Eye } from "lucide-react";
+import { Settings2, Shield, Users, Diamond, ImageIcon, Heart, Timer, Megaphone, Eye, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ interface SettingsState {
   show_match_count: boolean;
   show_swipe_progress: boolean;
   card_bg_opacity: number;
+  nav_tab_mode: "play" | "swipe";
 }
 
 export default function AdminSettings() {
@@ -43,6 +44,7 @@ export default function AdminSettings() {
     show_match_count: true,
     show_swipe_progress: true,
     card_bg_opacity: 20,
+    nav_tab_mode: "play",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +70,7 @@ export default function AdminSettings() {
               case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
               case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
               case "card_bg_opacity": s.card_bg_opacity = val?.opacity ?? 20; break;
+              case "nav_tab_mode": s.nav_tab_mode = val?.mode ?? "play"; break;
             }
           }
           setSettings(s);
@@ -119,6 +122,25 @@ export default function AdminSettings() {
         <SettingToggle label="Require Account Sign-Up" description="When off, users can browse without creating an account" checked={settings.require_auth} onChange={() => toggleSetting("require_auth", "require_auth")} />
         <SettingToggle label="Allow Anonymous Browsing" description="Let non-signed-up users use the app with limited features" checked={settings.allow_anonymous_browsing} onChange={() => toggleSetting("allow_anonymous_browsing", "allow_anonymous_browsing")} />
         <SettingToggle label="Maintenance Mode" description="Show a maintenance page to all non-admin users" checked={settings.maintenance_mode} onChange={() => toggleSetting("maintenance_mode", "maintenance_mode")} />
+      </div>
+
+      {/* Navigation Tab */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Flame className="h-3.5 w-3.5" /> Navigation Tab
+        </h4>
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div>
+            <Label className="text-sm font-medium">Game Tab Mode</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {settings.nav_tab_mode === "play" ? "Navbar shows Play (bubble hub)" : "Navbar shows Swipe (direct category links)"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant={settings.nav_tab_mode === "play" ? "default" : "outline"} onClick={async () => { setSettings(s => ({ ...s, nav_tab_mode: "play" })); await updateSetting("nav_tab_mode", { mode: "play" }); }} className="text-xs">Play</Button>
+            <Button size="sm" variant={settings.nav_tab_mode === "swipe" ? "default" : "outline"} onClick={async () => { setSettings(s => ({ ...s, nav_tab_mode: "swipe" })); await updateSetting("nav_tab_mode", { mode: "swipe" }); }} className="text-xs">Swipe</Button>
+          </div>
+        </div>
       </div>
 
       {/* User Defaults */}

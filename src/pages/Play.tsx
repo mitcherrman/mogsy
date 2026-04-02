@@ -183,7 +183,7 @@ export default function Play() {
   const handleLeagueSelect = (league: LeagueItem) => {
     const navState = { subcategory: league.subcategory };
     if (league.type === "preset") navigate(`/swipe/preset/${league.id}`, { state: navState });
-    else navigate("/swipe");
+    else navigate("/swipe-game");
   };
 
   // publishedConfig already declared above
