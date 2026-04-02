@@ -620,15 +620,21 @@ export default function AdminDemo() {
     diamond: "ring-4 ring-cyan-300/60 shadow-[0_0_20px_hsl(180_80%_70%/0.4)]",
   };
 
-  const renderSwipeCard = (card: CardData, idx: 0 | 1) => {
+  const renderSwipeCard = (card: CardData, _idx: 0 | 1) => {
     const isAnimating = animWinner !== null;
     const isWinner = isAnimating && card.isWinner;
     const isLoser = isAnimating && !card.isWinner;
     const isUserMode = mode === "swipe-users";
     const frame = isUserMode ? (frameClasses[card.profileFrame] || "") : "";
+    const isPresetMode = mode === "swipe-collections";
+
+    // Get display image (from multi-image or fallback)
+    const displayImage = getCardDisplayImage(card);
+    const imageStyle = isPresetMode ? getCardImageStyle(card, isMobile) : {};
+    const hasTitleImage = isPresetMode && card.titleImageUrl;
 
     return (
-      <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border overflow-hidden ${theme.styles.cardBg || "border-border bg-card"}`}>
+      <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border ${hasTitleImage ? 'overflow-visible' : 'overflow-hidden'} ${theme.styles.cardBg || "border-border bg-card"}`}>
         <div
           className={`relative overflow-hidden transition-all duration-300 ${
             isWinner
@@ -638,9 +644,23 @@ export default function AdminDemo() {
               : ""
           }`}
         >
-          <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden ${frame}`}>
-            {card.imageUrl ? (
-              <img src={card.imageUrl} alt={card.name} className="w-full h-full object-contain" />
+          <div className={`w-full aspect-[3/4] bg-muted/30 overflow-hidden relative ${frame}`}>
+            {/* Blurred background (like SwipePreset) */}
+            {isPresetMode && displayImage && (
+              <AutoVideo src={displayImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
+            )}
+
+            {displayImage ? (
+              isPresetMode ? (
+                <AutoVideo
+                  src={displayImage}
+                  alt={card.name}
+                  className="w-full h-full object-contain relative z-10"
+                  style={imageStyle}
+                />
+              ) : (
+                <img src={displayImage} alt={card.name} className="w-full h-full object-contain" />
+              )
             ) : isUserMode ? (
               <div className="w-full h-full bg-gradient-to-b from-muted-foreground/30 to-muted-foreground/50 flex items-center justify-center">
                 <User className="h-12 w-12 text-muted-foreground/70" />
@@ -671,10 +691,20 @@ export default function AdminDemo() {
 
         <div className="px-2 py-1.5 flex-shrink-0">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
-              {isUserMode && <TierBadge tier={card.tier} />}
-            </div>
+            {hasTitleImage ? (
+              <img
+                src={card.titleImageUrl!}
+                alt={card.name}
+                className="w-auto object-contain mx-auto"
+                style={getTitleImageStyle(card, isMobile)}
+                draggable={false}
+              />
+            ) : (
+              <div className="flex items-center justify-center gap-1">
+                <h3 className="text-sm font-extrabold text-foreground truncate">{card.name}</h3>
+                {isUserMode && <TierBadge tier={card.tier} />}
+              </div>
+            )}
             {card.subtitle && <p className="text-[10px] text-muted-foreground truncate">{card.subtitle}</p>}
           </div>
           <div className="flex items-center justify-center gap-3 mt-0.5">
