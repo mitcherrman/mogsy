@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Link2, Copy, Trash2, Users, Shield, Plus, ChevronDown, ChevronUp, Gift, Clock, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminCustomLinks from "./AdminCustomLinks";
+import { SITE_URL } from "@/lib/site-config";
 
 interface InviteLink {
   id: string;
@@ -119,7 +120,7 @@ export default function AdminInviteLinks() {
   };
 
   const copyLink = (code: string) => {
-    const url = `${window.location.origin}/auth?invite=${code}`;
+    const url = `${SITE_URL}/${code}`;
     navigator.clipboard.writeText(url);
     toast.success("Invite link copied!");
   };
