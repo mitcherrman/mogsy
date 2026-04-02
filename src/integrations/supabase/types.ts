@@ -2419,6 +2419,39 @@ export type Database = {
         }
         Returns: Json
       }
+      get_own_profile: {
+        Args: never
+        Returns: {
+          active_boost_until: string
+          ads_enabled: boolean
+          age: number
+          avatar_url: string
+          boost_credits: number
+          created_at: string
+          custom_theme: string
+          diamonds: number
+          display_name: string
+          elo_shields: number
+          elocheck_animation: string
+          id: string
+          is_anonymous: boolean
+          is_bot: boolean
+          is_flagged_underage: boolean
+          is_pro: boolean
+          last_seen_at: string
+          location: string
+          onboarding_completed: boolean
+          preferred_categories: string[]
+          profile_frame: string
+          reveals: number
+          rewinds: number
+          socials: Json
+          status_message: string
+          swipe_animation: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2480,6 +2513,10 @@ export type Database = {
           _loser_profile_id: string
           _winner_profile_id: string
         }
+        Returns: Json
+      }
+      redeem_invite_link: {
+        Args: { _code: string; _user_id: string }
         Returns: Json
       }
       rewind_user_match: {

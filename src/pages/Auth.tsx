@@ -48,66 +48,17 @@ export default function Auth() {
     const code = localStorage.getItem("mogsy-invite-code");
     if (!code) return;
 
-    const { data: invite } = await supabase
-      .from("invite_links")
-      .select("*")
-      .eq("code", code)
-      .eq("is_active", true)
-      .single();
+    try {
+      const { data, error } = await supabase.rpc("redeem_invite_link", {
+        _code: code,
+        _user_id: userId,
+      });
 
-    if (!invite) return;
-    if (invite.expires_at && new Date(invite.expires_at) < new Date()) return;
-    if (invite.max_uses && (invite.times_used ?? 0) >= invite.max_uses) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", userId)
-      .single();
-    if (!profile) return;
-
-    const updates: Record<string, any> = {};
-    if (invite.grant_pro) updates.is_pro = true;
-    if ((invite.grant_diamonds ?? 0) > 0) updates.diamonds = invite.grant_diamonds;
-    if ((invite.grant_boost_credits ?? 0) > 0) updates.boost_credits = invite.grant_boost_credits;
-    if ((invite.grant_elo_shields ?? 0) > 0) updates.elo_shields = invite.grant_elo_shields;
-    if ((invite.grant_reveals ?? 0) > 0) updates.reveals = invite.grant_reveals;
-    if ((invite.grant_rewinds ?? 0) > 0) updates.rewinds = invite.grant_rewinds;
-
-    const cats = invite.recommended_categories as string[];
-    if (cats && cats.length > 0) updates.preferred_categories = cats;
-
-    if (Object.keys(updates).length > 0) {
-      await supabase.from("profiles").update(updates).eq("id", profile.id);
-    }
-
-    if (invite.grant_admin) {
-      await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
-    }
-
-    await supabase.from("invite_redemptions").insert({
-      invite_link_id: invite.id,
-      redeemed_by_user_id: userId,
-      referrer_user_id: invite.type === "user" ? invite.created_by_user_id : null,
-    });
-
-    await supabase.from("invite_links").update({ times_used: (invite.times_used ?? 0) + 1 }).eq("id", invite.id);
-
-    if (invite.type === "user") {
-      const { data: settings } = await supabase.from("user_invite_settings").select("*").limit(1).single();
-      if (settings && settings.is_enabled) {
-        const { data: referrerProfile } = await supabase
-          .from("profiles")
-          .select("id, diamonds, boost_credits")
-          .eq("user_id", invite.created_by_user_id)
-          .single();
-        if (referrerProfile) {
-          await supabase.from("profiles").update({
-            diamonds: (referrerProfile.diamonds || 0) + (settings.referrer_diamonds || 0),
-            boost_credits: (referrerProfile.boost_credits || 0) + (settings.referrer_boost_credits || 0),
-          }).eq("id", referrerProfile.id);
-        }
+      if (error) {
+        console.error("Invite redemption error:", error.message);
       }
+    } catch (e) {
+      console.error("Invite redemption failed:", e);
     }
 
     localStorage.removeItem("mogsy-invite-code");
