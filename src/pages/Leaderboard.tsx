@@ -279,7 +279,7 @@ export default function Leaderboard() {
 
   const getSwipeLink = () => {
     if (leagueType === "preset") return `/swipe/preset/${leagueId}`;
-    return "/swipe";
+    return "/swipe-game";
   };
 
   // Determine if this is a user/compete league for tier highlighting
