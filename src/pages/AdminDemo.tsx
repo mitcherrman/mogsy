@@ -617,7 +617,7 @@ export default function AdminDemo() {
 
     // Get display image (from multi-image or fallback)
     const displayImage = getCardDisplayImage(card);
-    const imageStyle = isPresetMode ? getCardImageStyle(card, isMobile) : {};
+    const imageStyle = isPresetMode ? getCardImageStyle(card, isPhoneFrame) : {};
     const hasTitleImage = isPresetMode && card.titleImageUrl;
 
     return (
