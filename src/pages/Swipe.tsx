@@ -298,7 +298,9 @@ export default function Swipe() {
         const adType = shouldShowAd(newCount, isPro);
         if (adType === "in_swipe") {
           const creative = getRandomCreative();
-          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+          if (creative) { setShowInSwipeAd(creative); }
+          else if (adSource !== "custom") { setShowAdsenseInSwipe(true); }
+          else { setShowAd(true); }
         } else if (adType === "popup") {
           setShowAd(true);
         } else {
@@ -311,7 +313,9 @@ export default function Swipe() {
         const adType = shouldShowAd(newCount, isPro);
         if (adType === "in_swipe") {
           const creative = getRandomCreative();
-          if (creative) { setShowInSwipeAd(creative); } else { setShowAd(true); }
+          if (creative) { setShowInSwipeAd(creative); }
+          else if (adSource !== "custom") { setShowAdsenseInSwipe(true); }
+          else { setShowAd(true); }
           setEloChanges(new Map());
           setGlobalDirections(new Map());
         } else if (adType === "popup") {
