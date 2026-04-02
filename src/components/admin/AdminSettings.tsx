@@ -141,6 +141,7 @@ export default function AdminSettings() {
             <Button size="sm" variant={settings.nav_tab_mode === "swipe" ? "default" : "outline"} onClick={async () => { setSettings(s => ({ ...s, nav_tab_mode: "swipe" })); await updateSetting("nav_tab_mode", { mode: "swipe" }); }} className="text-xs">Swipe</Button>
           </div>
         </div>
+      </div>
 
       {/* User Defaults */}
       <div className="space-y-3">
