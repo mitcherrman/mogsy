@@ -97,7 +97,7 @@ export default function Referral() {
 
   const copyLink = () => {
     if (!referralCode) return;
-    const url = `${window.location.origin}/auth?invite=${referralCode}`;
+    const url = `${SITE_URL}/${referralCode}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success("Link copied!");
