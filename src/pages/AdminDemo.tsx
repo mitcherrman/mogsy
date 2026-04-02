@@ -23,17 +23,40 @@ import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import EloChangeIndicator from "@/components/EloChangeIndicator";
+import CardStatsFooter from "@/components/CardStatsFooter";
+import { type CardStatsConfig, DEFAULT_CARD_STATS_CONFIG } from "@/hooks/useAppSettings";
 import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
+import AutoVideo from "@/components/AutoVideo";
 import { profileThemes } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { toast } from "sonner";
+import React from "react";
 
 type DemoMode = "swipe-collections" | "swipe-users" | "aura-check";
 
+interface ItemImage {
+  id: string;
+  preset_item_id: string;
+  image_url: string;
+  is_hidden: boolean;
+  sort_order: number;
+  focal_x: number;
+  focal_y: number;
+  zoom: number;
+  pad_top: number;
+  pad_left: number;
+  mobile_focal_x?: number | null;
+  mobile_focal_y?: number | null;
+  mobile_zoom?: number | null;
+  mobile_pad_top?: number | null;
+  mobile_pad_left?: number | null;
+}
+
 interface CardData {
+  id?: string;
   name: string;
   subtitle: string;
   imageUrl: string;
@@ -46,6 +69,79 @@ interface CardData {
   profileFrame: string;
   tier: string;
   leagueName: string;
+  // Preset item fields for accurate card rendering
+  titleImageUrl?: string | null;
+  titleImageScale?: number;
+  titleImageOffsetY?: number;
+  titleImageOffsetX?: number;
+  titleImageMaxHeight?: number;
+  mobileTitleImageScale?: number | null;
+  mobileTitleImageOffsetY?: number | null;
+  mobileTitleImageOffsetX?: number | null;
+  mobileTitleImageMaxHeight?: number | null;
+  images?: ItemImage[];
+  currentImageIdx?: number;
+}
+
+function getTitleImageStyle(card: CardData, isMobile: boolean): React.CSSProperties {
+  const scale = isMobile
+    ? (card.mobileTitleImageScale ?? card.titleImageScale ?? 1)
+    : (card.titleImageScale ?? 1);
+  const offsetY = isMobile
+    ? (card.mobileTitleImageOffsetY ?? card.titleImageOffsetY ?? 0)
+    : (card.titleImageOffsetY ?? 0);
+  const offsetX = isMobile
+    ? (card.mobileTitleImageOffsetX ?? card.titleImageOffsetX ?? 0)
+    : (card.titleImageOffsetX ?? 0);
+  const maxHeightVal = isMobile
+    ? (card.mobileTitleImageMaxHeight ?? card.titleImageMaxHeight ?? 0)
+    : (card.titleImageMaxHeight ?? 0);
+  const maxHeight = maxHeightVal > 0 ? `${maxHeightVal}px` : undefined;
+  return {
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
+    marginTop: `${offsetY}px`,
+    marginLeft: `${offsetX + 50}px`,
+    maxHeight,
+    maxWidth: '75%',
+    position: 'relative' as const,
+    zIndex: 30,
+  };
+}
+
+function getCardImageStyle(card: CardData, isMobile: boolean): React.CSSProperties {
+  const images = card.images;
+  if (images && images.length > 0) {
+    const idx = card.currentImageIdx || 0;
+    const img = images[idx % images.length];
+    const fx = isMobile ? (img.mobile_focal_x ?? img.focal_x) : img.focal_x;
+    const fy = isMobile ? (img.mobile_focal_y ?? img.focal_y) : img.focal_y;
+    const z = isMobile ? (img.mobile_zoom ?? img.zoom) : img.zoom;
+    const pt = isMobile ? (img.mobile_pad_top ?? img.pad_top) : img.pad_top;
+    const pl = isMobile ? (img.mobile_pad_left ?? img.pad_left) : img.pad_left;
+    const hasCustom = fx !== 50 || fy !== 50 || z !== 1 || pt !== 0 || pl !== 0;
+    if (hasCustom) {
+      return {
+        position: 'absolute' as const,
+        top: `${pt}%`,
+        left: `${pl}%`,
+        width: `${100 - pl}%`,
+        height: `${100 - pt}%`,
+        objectPosition: `${fx}% ${fy}%`,
+        transform: `scale(${z})`,
+        transformOrigin: `${fx}% ${fy}%`,
+      };
+    }
+  }
+  return {};
+}
+
+function getCardDisplayImage(card: CardData): string | null {
+  const images = card.images;
+  if (images && images.length > 0) {
+    const idx = card.currentImageIdx || 0;
+    return images[idx % images.length].image_url;
+  }
+  return card.imageUrl || null;
 }
 
 const defaultCard = (side: "left" | "right"): CardData => ({
