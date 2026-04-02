@@ -5,13 +5,13 @@ import SEOHead from "@/components/SEOHead";
 import CategoryBubble from "@/components/CategoryBubble";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SwipeOption {
   key: string;
   label: string;
-  leagueName: string; // used to find league in DB
+  leagueName: string;
   type: "preset" | "compete";
-  imageUrl?: string | null;
 }
 
 const SWIPE_OPTIONS: SwipeOption[] = [
@@ -27,6 +27,7 @@ const SWIPE_OPTIONS: SwipeOption[] = [
 
 export default function SwipeHub() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [leagues, setLeagues] = useState<Record<string, { id: string; imageUrl?: string | null }>>({});
   const [loading, setLoading] = useState(true);
 
@@ -41,25 +42,47 @@ export default function SwipeHub() {
         const map: Record<string, { id: string; imageUrl?: string | null }> = {};
         
         if (leagueData) {
-          // Get first image for each league
           const leagueIds = leagueData.map(l => l.id);
+          
+          // Get all images from preset_item_images for these leagues via preset_items
           const { data: items } = await supabase
             .from("preset_items")
-            .select("league_id, image_url")
-            .in("league_id", leagueIds)
-            .limit(1);
+            .select("id, league_id")
+            .in("league_id", leagueIds);
           
-          const imageMap: Record<string, string | null> = {};
-          if (items) {
-            for (const item of items) {
-              if (!imageMap[item.league_id]) imageMap[item.league_id] = item.image_url;
+          if (items && items.length > 0) {
+            const itemIds = items.map(i => i.id);
+            const { data: images } = await supabase
+              .from("preset_item_images")
+              .select("preset_item_id, image_url")
+              .in("preset_item_id", itemIds)
+              .eq("is_hidden", false);
+            
+            // Group images by league
+            const imagesByLeague: Record<string, string[]> = {};
+            if (images) {
+              const itemToLeague: Record<string, string> = {};
+              for (const item of items) {
+                itemToLeague[item.id] = item.league_id;
+              }
+              for (const img of images) {
+                const leagueId = itemToLeague[img.preset_item_id];
+                if (leagueId) {
+                  if (!imagesByLeague[leagueId]) imagesByLeague[leagueId] = [];
+                  imagesByLeague[leagueId].push(img.image_url);
+                }
+              }
             }
-          }
 
-          for (const league of leagueData) {
-            const option = SWIPE_OPTIONS.find(o => o.leagueName === league.name);
-            if (option) {
-              map[option.key] = { id: league.id, imageUrl: imageMap[league.id] || null };
+            for (const league of leagueData) {
+              const option = SWIPE_OPTIONS.find(o => o.leagueName === league.name);
+              if (option) {
+                const leagueImages = imagesByLeague[league.id] || [];
+                const randomImage = leagueImages.length > 0
+                  ? leagueImages[Math.floor(Math.random() * leagueImages.length)]
+                  : null;
+                map[option.key] = { id: league.id, imageUrl: randomImage };
+              }
             }
           }
         }
@@ -80,6 +103,8 @@ export default function SwipeHub() {
     }
   };
 
+  const bubbleSize = isMobile ? 110 : 150;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -92,7 +117,7 @@ export default function SwipeHub() {
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
       <div className="min-h-screen px-4 py-6">
-        <div className="container mx-auto max-w-lg">
+        <div className="container mx-auto max-w-4xl">
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -101,7 +126,7 @@ export default function SwipeHub() {
             Swipe
           </motion.h1>
 
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className={`flex flex-wrap justify-center ${isMobile ? "gap-4" : "gap-6 flex-nowrap"}`}>
             {SWIPE_OPTIONS.map((option, i) => {
               const league = leagues[option.key];
               return (
@@ -110,9 +135,10 @@ export default function SwipeHub() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
+                  className="shrink-0"
                 >
                   <CategoryBubble
-                    size={110}
+                    size={bubbleSize}
                     onClick={() => handleSelect(option)}
                     imageUrl={league?.imageUrl}
                     label={option.label}
