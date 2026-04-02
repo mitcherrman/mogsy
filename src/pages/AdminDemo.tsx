@@ -1091,9 +1091,14 @@ export default function AdminDemo() {
                           animationId={animationId}
                           winnerSide={animWinner}
                           items={[cardA, cardB].map(c => ({
-                            imageUrl: c.imageUrl || null,
+                            imageUrl: getCardDisplayImage(c) || null,
+                            imageStyle: getCardImageStyle(c, isMobile),
                             name: c.name,
                             subtitle: c.subtitle,
+                            titleImageUrl: c.titleImageUrl || undefined,
+                            titleImageScale: c.titleImageScale,
+                            titleImageOffsetY: c.titleImageOffsetY,
+                            titleImageMaxHeight: c.titleImageMaxHeight,
                             localElo: c.aura,
                             localRank: c.rank,
                             globalElo: c.aura,
@@ -1104,6 +1109,7 @@ export default function AdminDemo() {
                             rankOld: null,
                             rankNew: null,
                             globalDirection: c.globalDirection,
+                            showGlobalStats: false,
                           }))}
                           onComplete={handleAnimComplete}
                         />
