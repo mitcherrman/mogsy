@@ -124,6 +124,24 @@ export default function AdminSettings() {
         <SettingToggle label="Maintenance Mode" description="Show a maintenance page to all non-admin users" checked={settings.maintenance_mode} onChange={() => toggleSetting("maintenance_mode", "maintenance_mode")} />
       </div>
 
+      {/* Navigation Tab */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Flame className="h-3.5 w-3.5" /> Navigation Tab
+        </h4>
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div>
+            <Label className="text-sm font-medium">Game Tab Mode</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {settings.nav_tab_mode === "play" ? "Navbar shows Play (bubble hub)" : "Navbar shows Swipe (direct category links)"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant={settings.nav_tab_mode === "play" ? "default" : "outline"} onClick={async () => { setSettings(s => ({ ...s, nav_tab_mode: "play" })); await updateSetting("nav_tab_mode", { mode: "play" }); }} className="text-xs">Play</Button>
+            <Button size="sm" variant={settings.nav_tab_mode === "swipe" ? "default" : "outline"} onClick={async () => { setSettings(s => ({ ...s, nav_tab_mode: "swipe" })); await updateSetting("nav_tab_mode", { mode: "swipe" }); }} className="text-xs">Swipe</Button>
+          </div>
+        </div>
+
       {/* User Defaults */}
       <div className="space-y-3">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
