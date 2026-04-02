@@ -79,7 +79,7 @@ export default function CustomLink() {
     supabase.from("custom_links").update({ visits: (data.visits ?? 0) + 1 } as any).eq("id", data.id).then(() => {});
 
     if (data.destination_type === "league" && data.league_id) {
-      navigate(`/swipe/preset/${data.league_id}`, { replace: true });
+      navigate(`/swipe/preset/${data.league_id}`, { replace: true, state: { subcategory: data.label || undefined } });
       return;
     }
 
