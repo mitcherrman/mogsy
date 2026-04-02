@@ -17,7 +17,7 @@ export default function AdBanner({ slot, format = "auto", className = "", client
   const adRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
 
-  const client = clientId || "ca-pub-XXXXXXXXXXXXXXXX";
+  const client = clientId || "ca-pub-9823769047605421";
 
   useEffect(() => {
     if (pushed.current) return;
