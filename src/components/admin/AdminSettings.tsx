@@ -24,6 +24,7 @@ interface SettingsState {
   show_match_count: boolean;
   show_swipe_progress: boolean;
   card_bg_opacity: number;
+  nav_tab_mode: "play" | "swipe";
 }
 
 export default function AdminSettings() {
