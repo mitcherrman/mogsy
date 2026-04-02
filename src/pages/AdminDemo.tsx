@@ -799,7 +799,7 @@ export default function AdminDemo() {
       {!isPhoneFrame ? (
         <div className="flex items-center gap-2 px-3 py-2">
           <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Swords className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Sword className="h-4 w-4 text-muted-foreground shrink-0" fill="currentColor" />
           <div className="flex-1 flex items-center justify-center">
             <span className="text-sm font-bold text-foreground">Who Mogs?</span>
           </div>
@@ -807,6 +807,7 @@ export default function AdminDemo() {
             <Swords className="h-3.5 w-3.5" />
             <span className="text-primary font-bold">12</span>
           </span>
+          <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
           <Camera className="h-4 w-4 text-muted-foreground shrink-0" />
           <Trophy className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
@@ -828,13 +829,15 @@ export default function AdminDemo() {
         {children}
       </div>
 
-      {/* Mobile bottom action bar */}
+      {/* Mobile bottom action bar — matches real swipe game */}
       {isPhoneFrame && (
         <div className="flex items-center justify-center gap-3 px-3 pb-2 pt-1">
-          <Swords className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <Sword className="h-3.5 w-3.5 text-muted-foreground/50" fill="currentColor" />
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground/50" />
           <Camera className="h-3.5 w-3.5 text-muted-foreground/50" />
-          <Eye className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <EyeOff className="h-3.5 w-3.5 text-muted-foreground/50" />
           <Trophy className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <MessageCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
         </div>
       )}
 
