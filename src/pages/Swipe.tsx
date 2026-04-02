@@ -520,9 +520,9 @@ export default function Swipe() {
               </Button>
             ) : undefined}
           >
-            {showInSwipeAd ? (
+            {(showInSwipeAd || showAdsenseInSwipe) ? (
               <motion.div
-                key={`ad-${showInSwipeAd.id}-${matchCount}`}
+                key={`ad-${showInSwipeAd?.id ?? 'adsense'}-${matchCount}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
@@ -538,10 +538,14 @@ export default function Swipe() {
                 {/* Ad card */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
-                  adsenseSlot={adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined}
-                  adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
+                  adsenseSlot={showAdsenseInSwipe ? (adsenseSlot || "auto") : (adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined)}
+                  adsenseClientId={showAdsenseInSwipe ? (adsenseClientId || "ca-pub-9823769047605421") : (adSource !== "custom" ? adsenseClientId : undefined)}
+                  placement="swipe"
+                  adSource={adSource}
+                  profileId={myProfileId || undefined}
                   onSkip={() => {
                     setShowInSwipeAd(null);
+                    setShowAdsenseInSwipe(false);
                     if (gauntletMode && gauntletChampion) {
                       const others = profiles.filter(p => p.id !== gauntletChampion.id);
                       const challenger = others[Math.floor(Math.random() * others.length)];
