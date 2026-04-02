@@ -19,6 +19,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Play = lazy(() => import("./pages/Play"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Swipe = lazy(() => import("./pages/Swipe"));
+const SwipeHub = lazy(() => import("./pages/SwipeHub"));
 const Leagues = lazy(() => import("./pages/Leagues"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const SwipePreset = lazy(() => import("./pages/SwipePreset"));
