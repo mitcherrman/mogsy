@@ -185,6 +185,7 @@ export default function AdminDemo() {
   const [cardB, setCardB] = useState<CardData>(defaultCard("right"));
   const [cardBgOpacity, setCardBgOpacity] = useState(20);
   const [showProgressBar, setShowProgressBar] = useState(true);
+  const [cardStatsConfig] = useState<CardStatsConfig>(DEFAULT_CARD_STATS_CONFIG);
 
   // Animation playback
   const [animWinner, setAnimWinner] = useState<0 | 1 | null>(null);
