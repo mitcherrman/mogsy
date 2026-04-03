@@ -145,12 +145,17 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, admin_notes, is_flagged_underage, created_at, last_seen_at, ads_enabled")
-      .eq("is_bot", false)
-      .order("created_at", { ascending: false });
-    setProfiles((data as Profile[]) || []);
+    const [{ data }, { data: notesData }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, user_id, display_name, avatar_url, age, location, status_message, is_pro, is_bot, is_anonymous, diamonds, elo_shields, reveals, rewinds, boost_credits, active_boost_until, profile_frame, is_flagged_underage, created_at, last_seen_at, ads_enabled")
+        .eq("is_bot", false)
+        .order("created_at", { ascending: false }),
+      supabase.from("profile_admin_notes").select("profile_id, notes"),
+    ]);
+    const notesMap = new Map((notesData || []).map((n: any) => [n.profile_id, n.notes]));
+    const enriched = ((data as any[]) || []).map(p => ({ ...p, admin_notes: notesMap.get(p.id) || null }));
+    setProfiles(enriched as Profile[]);
     setLoading(false);
 
     if (data && data.length > 0) {
