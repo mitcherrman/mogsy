@@ -49,6 +49,7 @@ const DEFAULT_CONFIG: SwipeTabConfig = {
   shape: "circle",
   formation: "wrap",
   button_order: ["anime", "fastfood", "movies", "sports", "marvel", "videogames", "lol", "compete"],
+  button_slugs: {},
 };
 
 export default function AdminSwipeTabConfig() {
