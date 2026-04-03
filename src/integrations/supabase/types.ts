@@ -1714,6 +1714,42 @@ export type Database = {
           },
         ]
       }
+      profile_admin_notes: {
+        Row: {
+          id: string
+          notes: string | null
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_admin_notes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_admin_notes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_favorites: {
         Row: {
           created_at: string
