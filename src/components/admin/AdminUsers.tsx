@@ -411,9 +411,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setSavingNotes(true);
     const serialized = JSON.stringify(entries);
     const { error } = await supabase
-      .from("profiles")
-      .update({ admin_notes: serialized } as any)
-      .eq("id", selectedUser.id);
+      .from("profile_admin_notes")
+      .upsert({ profile_id: selectedUser.id, notes: serialized, updated_at: new Date().toISOString() } as any, { onConflict: "profile_id" });
     setSavingNotes(false);
     if (error) { toast.error("Failed to save notes"); return false; }
     setSelectedUser({ ...selectedUser, admin_notes: serialized } as Profile);
