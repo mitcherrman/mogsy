@@ -207,10 +207,10 @@ export default function AdminSwipeTabConfig() {
         </div>
       </div>
 
-      {/* Button Order */}
+      {/* Button Order & URL Slugs */}
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-foreground">Button Order</h4>
-        <p className="text-xs text-muted-foreground">Drag to reorder</p>
+        <h4 className="text-sm font-semibold text-foreground">Button Order & URL Slugs</h4>
+        <p className="text-xs text-muted-foreground">Drag to reorder. Set a URL slug so mogsy.net/slug goes directly to that game.</p>
         <div className="space-y-1">
           {config.button_order.map((key, idx) => (
             <div
@@ -230,8 +230,23 @@ export default function AdminSwipeTabConfig() {
               }`}
             >
               <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium">{getLabel(key)}</span>
-              <span className="ml-auto text-xs text-muted-foreground">#{idx + 1}</span>
+              <span className="text-sm font-medium min-w-[100px]">{getLabel(key)}</span>
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">mogsy.net/</span>
+                <Input
+                  value={config.button_slugs[key] || ""}
+                  onChange={(e) => {
+                    const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                    setConfig(c => ({
+                      ...c,
+                      button_slugs: { ...c.button_slugs, [key]: slug },
+                    }));
+                  }}
+                  placeholder={key}
+                  className="h-7 w-32 text-xs"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">#{idx + 1}</span>
             </div>
           ))}
         </div>
