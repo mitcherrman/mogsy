@@ -42,11 +42,60 @@ export default function CustomLink() {
   }, [slug]);
 
   const resolveSlug = async (s: string) => {
-    // First check custom_links table
+    const lower = s.toLowerCase();
+
+    // Check swipe tab config for button slugs first
+    const { data: swipeConfig } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "swipe_tab_config")
+      .maybeSingle();
+
+    if (swipeConfig?.value) {
+      const cfg = swipeConfig.value as any;
+      const buttonSlugs: Record<string, string> = cfg.button_slugs || {};
+      // Find which button key this slug maps to
+      const matchedKey = Object.entries(buttonSlugs).find(
+        ([, slug]) => slug === lower
+      )?.[0];
+
+      if (matchedKey) {
+        // Resolve the button key to a league
+        const swipeOptions: Record<string, { leagueName: string; type: string }> = {
+          anime: { leagueName: "Best Anime", type: "preset" },
+          fastfood: { leagueName: "Best Fast Food", type: "preset" },
+          movies: { leagueName: "Best Movie of All Time", type: "preset" },
+          sports: { leagueName: "Best Sport of All Time", type: "preset" },
+          marvel: { leagueName: "Best Marvel Movie", type: "preset" },
+          videogames: { leagueName: "Best Video Game of All Time", type: "preset" },
+          lol: { leagueName: "Best Champion", type: "preset" },
+          compete: { leagueName: "Global Rankings", type: "compete" },
+        };
+
+        const option = swipeOptions[matchedKey];
+        if (option) {
+          if (option.type === "compete") {
+            navigate("/swipe-game", { replace: true });
+            return;
+          }
+          const { data: league } = await supabase
+            .from("leagues")
+            .select("id")
+            .eq("name", option.leagueName)
+            .maybeSingle();
+          if (league) {
+            navigate(`/swipe/preset/${league.id}`, { replace: true });
+            return;
+          }
+        }
+      }
+    }
+
+    // Check custom_links table
     const { data, error } = await supabase
       .from("custom_links")
       .select("*")
-      .eq("slug", s.toLowerCase())
+      .eq("slug", lower)
       .eq("is_active", true)
       .maybeSingle();
 

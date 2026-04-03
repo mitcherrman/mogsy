@@ -33,6 +33,7 @@ interface SwipeTabConfig {
   shape: string;
   formation: string;
   button_order: string[];
+  button_slugs: Record<string, string>;
 }
 
 const DEFAULT_CONFIG: SwipeTabConfig = {
@@ -43,6 +44,7 @@ const DEFAULT_CONFIG: SwipeTabConfig = {
   shape: "circle",
   formation: "wrap",
   button_order: ["anime", "fastfood", "movies", "sports", "marvel", "videogames", "lol", "compete"],
+  button_slugs: {},
 };
 
 export default function SwipeHub() {
