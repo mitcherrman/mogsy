@@ -20,6 +20,7 @@ import ProfilePhotoCircles from "@/components/ProfilePhotoCircles";
 import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
 import { getThemeById } from "@/lib/profile-themes";
 import ThemeOverlay from "@/components/ThemeOverlay";
+import RecentMatchups from "@/components/RecentMatchups";
 
 interface ProfileData {
   id: string;
@@ -616,6 +617,15 @@ export default function UserProfile() {
             <ProfileFavoriteCards items={favorites} />
           </motion.div>
         )}
+
+        {/* Recent Matchups */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <RecentMatchups profileId={profileId!} themeStyles={theme.styles} />
+        </motion.div>
 
         {/* Quick stats row */}
         <motion.div
