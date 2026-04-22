@@ -784,7 +784,14 @@ export default function Home() {
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
         <nav className="w-full flex flex-col items-center pt-2 pb-2">
-          <img src={mogsyLogo} alt="Mogsy" className="h-16 sm:h-24 md:h-32 object-contain" />
+          <motion.img
+            src={mogsyLogo}
+            alt="Mogsy"
+            className="h-16 sm:h-24 md:h-32 object-contain drop-shadow-[0_0_25px_hsl(var(--primary)/0.3)]"
+            initial={{ opacity: 0, scale: 0.9, filter: "blur(8px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          />
         </nav>
 
         {/* Rotating Aura Banner */}

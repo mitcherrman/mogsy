@@ -55,10 +55,24 @@ export default function Landing() {
     setTimeout(() => navigate("/home", { replace: true }), 250);
   };
 
+  const handleEnter = useCallback(() => {
+    playLaunchSound();
+    setTimeout(() => navigate("/home", { replace: true }), 250);
+  }, [playLaunchSound, navigate]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      handleEnter();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleEnter]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative cursor-pointer"
+      onClick={handleEnter}
+    >
       <SEOHead
         title="Mogsy — Vote, Rank, Compete"
         description="Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Aura leaderboards, compete in leagues, and see who comes out on top."
@@ -107,7 +121,7 @@ export default function Landing() {
 
       {/* Logo — clickable */}
       <motion.button
-        onClick={handleLogoClick}
+        onClick={(e) => { e.stopPropagation(); handleEnter(); }}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ scale: 1.08 }}
@@ -154,7 +168,7 @@ export default function Landing() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2.5, duration: 0.8 }}
-        onClick={() => navigate(user && !user.is_anonymous ? "/profile" : "/auth")}
+        onClick={(e) => { e.stopPropagation(); navigate(user && !user.is_anonymous ? "/profile" : "/auth"); }}
         className="fixed bottom-6 right-6 z-20 w-9 h-9 rounded-full bg-card/60 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card/80 transition-colors"
         aria-label="Profile"
       >
