@@ -440,7 +440,7 @@ export default function Swipe() {
           </Button>
         )}
 
-        <div className="container mx-auto max-w-4xl flex flex-col flex-1">
+        <div className="container mx-auto max-w-4xl lg:max-w-6xl xl:max-w-7xl flex flex-col flex-1">
           {/* Controls bar — desktop only */}
           {!isMobile && (
             <div className="flex items-center gap-2 mb-2">
