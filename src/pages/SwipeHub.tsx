@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import SEOHead from "@/components/SEOHead";
@@ -164,89 +164,154 @@ export default function SwipeHub() {
     return bubbleSize;
   };
 
-  // Container styles based on formation
-  const containerStyle: React.CSSProperties = {
-    display: "flex",
-    flexWrap: formation === "horizontal" ? "nowrap" : "wrap",
-    justifyContent: "center",
-    gap: bubbleSize > 200 ? 24 : bubbleSize > 120 ? 16 : 12,
-    overflowX: formation === "horizontal" ? "auto" : "visible",
-    maxWidth: formation === "rows"
-      ? `${(getButtonWidth() + (bubbleSize > 200 ? 24 : 16)) * itemsPerRow}px`
-      : undefined,
-  };
+  // Split into two rows for auto-scrolling marquee
+  const row1 = orderedOptions.filter((_, i) => i % 2 === 0);
+  const row2 = orderedOptions.filter((_, i) => i % 2 === 1);
+  const gap = bubbleSize > 200 ? 24 : bubbleSize > 120 ? 16 : 12;
 
   return (
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
-      <div className="h-[100dvh] overflow-hidden px-4 py-6">
-        <div className="container mx-auto" style={{ maxWidth: formation === "horizontal" ? "100%" : "64rem" }}>
+      <div className="h-[100dvh] overflow-hidden px-4 py-6 flex flex-col">
+        <div className="container mx-auto w-full flex-1 min-h-0 flex flex-col" style={{ maxWidth: "100%" }}>
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl font-extrabold text-center mb-6"
+            className="text-2xl font-extrabold text-center mb-6 shrink-0"
           >
             Swipe
           </motion.h1>
 
-          <div style={containerStyle} className="mx-auto">
-            {orderedOptions.map((option, i) => {
-              const league = leagues[option.key];
-              const w = getButtonWidth();
-              const h = bubbleSize;
-              const br = getBorderRadius();
-
-              return (
-                <motion.div
-                  key={option.key}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="shrink-0"
-                >
-                  {shape === "circle" ? (
-                    <CategoryBubble
-                      size={bubbleSize}
-                      onClick={() => handleSelect(option)}
-                      imageUrl={league?.imageUrl}
-                      label={option.label}
-                      variant={option.type === "compete" ? "accent" : "card"}
-                    />
-                  ) : (
-                    <motion.button
-                      onClick={() => handleSelect(option)}
-                      whileHover={{ scale: 1.06 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="relative flex flex-col items-center justify-center border-2 cursor-pointer select-none overflow-hidden border-border bg-card text-foreground"
-                      style={{
-                        width: w,
-                        height: h,
-                        borderRadius: br,
-                      }}
-                    >
-                      {league?.imageUrl && (
-                        <>
-                          <img
-                            src={league.imageUrl}
-                            alt=""
-                            className="absolute inset-0 w-full h-full object-cover"
-                            style={{ borderRadius: br }}
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-black/50" style={{ borderRadius: br }} />
-                        </>
-                      )}
-                      <span className={`relative z-10 font-extrabold tracking-wide text-center px-2 leading-tight ${league?.imageUrl ? "text-white drop-shadow-lg" : ""} ${bubbleSize >= 200 ? "text-base" : bubbleSize >= 120 ? "text-xs" : "text-[10px]"}`}>
-                        {option.label}
-                      </span>
-                    </motion.button>
-                  )}
-                </motion.div>
-              );
-            })}
+          <div className="flex-1 min-h-0 flex flex-col justify-center gap-4">
+            <AutoScrollRow
+              options={row1}
+              leagues={leagues}
+              bubbleSize={bubbleSize}
+              shape={shape}
+              gap={gap}
+              direction={1}
+              getBorderRadius={getBorderRadius}
+              getButtonWidth={getButtonWidth}
+              onSelect={handleSelect}
+            />
+            <AutoScrollRow
+              options={row2}
+              leagues={leagues}
+              bubbleSize={bubbleSize}
+              shape={shape}
+              gap={gap}
+              direction={-1}
+              getBorderRadius={getBorderRadius}
+              getButtonWidth={getButtonWidth}
+              onSelect={handleSelect}
+            />
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+interface AutoScrollRowProps {
+  options: SwipeOption[];
+  leagues: Record<string, { id: string; imageUrl?: string | null }>;
+  bubbleSize: number;
+  shape: string;
+  gap: number;
+  direction: 1 | -1;
+  getBorderRadius: () => string;
+  getButtonWidth: () => number;
+  onSelect: (o: SwipeOption) => void;
+}
+
+function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, getBorderRadius, getButtonWidth, onSelect }: AutoScrollRowProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pausedRef = useRef(false);
+  const lastInteractRef = useRef(0);
+
+  useEffect(() => {
+    if (options.length === 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf = 0;
+    let last = performance.now();
+    const speed = 25; // px per second
+
+    const tick = (now: number) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      if (!pausedRef.current && now - lastInteractRef.current > 1500) {
+        const half = el.scrollWidth / 2;
+        let next = el.scrollLeft + direction * speed * dt;
+        if (next >= half) next -= half;
+        if (next < 0) next += half;
+        el.scrollLeft = next;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [options.length, direction]);
+
+  if (options.length === 0) return null;
+
+  // Duplicate for seamless looping
+  const items = [...options, ...options];
+  const w = getButtonWidth();
+  const h = bubbleSize;
+  const br = getBorderRadius();
+
+  return (
+    <div
+      ref={scrollRef}
+      onMouseEnter={() => { pausedRef.current = true; }}
+      onMouseLeave={() => { pausedRef.current = false; }}
+      onScroll={() => { lastInteractRef.current = performance.now(); }}
+      className="overflow-x-auto overflow-y-hidden swipe-thin-scroll"
+      style={{ scrollbarWidth: "thin" }}
+    >
+      <div className="flex" style={{ gap, width: "max-content", paddingBottom: 6 }}>
+        {items.map((option, i) => {
+          const league = leagues[option.key];
+          return (
+            <div key={`${option.key}-${i}`} className="shrink-0">
+              {shape === "circle" ? (
+                <CategoryBubble
+                  size={bubbleSize}
+                  onClick={() => onSelect(option)}
+                  imageUrl={league?.imageUrl}
+                  label={option.label}
+                  variant={option.type === "compete" ? "accent" : "card"}
+                />
+              ) : (
+                <motion.button
+                  onClick={() => onSelect(option)}
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative flex flex-col items-center justify-center border-2 cursor-pointer select-none overflow-hidden border-border bg-card text-foreground"
+                  style={{ width: w, height: h, borderRadius: br }}
+                >
+                  {league?.imageUrl && (
+                    <>
+                      <img
+                        src={league.imageUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ borderRadius: br }}
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/50" style={{ borderRadius: br }} />
+                    </>
+                  )}
+                  <span className={`relative z-10 font-extrabold tracking-wide text-center px-2 leading-tight ${league?.imageUrl ? "text-white drop-shadow-lg" : ""} ${bubbleSize >= 200 ? "text-base" : bubbleSize >= 120 ? "text-xs" : "text-[10px]"}`}>
+                    {option.label}
+                  </span>
+                </motion.button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

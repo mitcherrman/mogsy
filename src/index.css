@@ -394,3 +394,7 @@
   from { transform: translateY(-40px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+.swipe-thin-scroll::-webkit-scrollbar { height: 6px; }
+.swipe-thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.swipe-thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
+.swipe-thin-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
