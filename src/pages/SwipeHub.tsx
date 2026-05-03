@@ -201,6 +201,7 @@ export default function SwipeHub() {
               shape={shape}
               gap={gap}
               direction={-1}
+              // both rows scroll same direction
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
