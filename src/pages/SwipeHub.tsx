@@ -200,7 +200,7 @@ export default function SwipeHub() {
               bubbleSize={bubbleSize}
               shape={shape}
               gap={gap}
-              direction={-1}
+              direction={1}
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
@@ -226,8 +226,6 @@ interface AutoScrollRowProps {
 
 function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, getBorderRadius, getButtonWidth, onSelect }: AutoScrollRowProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const pausedRef = useRef(false);
-  const lastInteractRef = useRef(0);
 
   useEffect(() => {
     if (options.length === 0) return;
@@ -235,17 +233,18 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
     if (!el) return;
     let raf = 0;
     let last = performance.now();
-    const speed = 25; // px per second
+    const speed = 30; // px per second
+    let pos = el.scrollLeft;
 
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      if (!pausedRef.current && now - lastInteractRef.current > 1500) {
-        const half = el.scrollWidth / 2;
-        let next = el.scrollLeft + direction * speed * dt;
-        if (next >= half) next -= half;
-        if (next < 0) next += half;
-        el.scrollLeft = next;
+      const half = el.scrollWidth / 2;
+      if (half > 0) {
+        pos += direction * speed * dt;
+        if (pos >= half) pos -= half;
+        if (pos < 0) pos += half;
+        el.scrollLeft = pos;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -264,9 +263,6 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
   return (
     <div
       ref={scrollRef}
-      onMouseEnter={() => { pausedRef.current = true; }}
-      onMouseLeave={() => { pausedRef.current = false; }}
-      onScroll={() => { lastInteractRef.current = performance.now(); }}
       className="overflow-x-auto overflow-y-hidden swipe-thin-scroll"
       style={{ scrollbarWidth: "thin" }}
     >
