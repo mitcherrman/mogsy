@@ -200,7 +200,7 @@ export default function SwipeHub() {
               bubbleSize={bubbleSize}
               shape={shape}
               gap={gap}
-              direction={-1}
+              direction={1}
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
