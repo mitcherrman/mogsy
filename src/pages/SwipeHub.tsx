@@ -263,10 +263,10 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
   return (
     <div
       ref={scrollRef}
-      className="overflow-x-auto overflow-y-hidden swipe-thin-scroll"
-      style={{ scrollbarWidth: "thin" }}
+      className="overflow-x-auto swipe-thin-scroll group"
+      style={{ scrollbarWidth: "none" }}
     >
-      <div className="flex" style={{ gap, width: "max-content", paddingBottom: 6 }}>
+      <div className="flex items-center" style={{ gap, width: "max-content", paddingTop: bubbleSize * 0.1, paddingBottom: bubbleSize * 0.1 }}>
         {items.map((option, i) => {
           const league = leagues[option.key];
           return (
