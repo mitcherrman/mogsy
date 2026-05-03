@@ -142,7 +142,7 @@ export default function SwipeHub() {
     );
   }
 
-  const bubbleSize = isMobile ? config.bubble_size_mobile : config.bubble_size_desktop;
+  const bubbleSize = (isMobile ? config.bubble_size_mobile : config.bubble_size_desktop) * 2;
   const itemsPerRow = isMobile ? config.items_per_row_mobile : config.items_per_row_desktop;
   const { shape, formation } = config;
 
@@ -179,7 +179,7 @@ export default function SwipeHub() {
   return (
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
-      <div className="min-h-screen px-4 py-6">
+      <div className="h-[100dvh] overflow-hidden px-4 py-6">
         <div className="container mx-auto" style={{ maxWidth: formation === "horizontal" ? "100%" : "64rem" }}>
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
