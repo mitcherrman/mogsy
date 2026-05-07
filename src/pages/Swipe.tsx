@@ -143,7 +143,11 @@ export default function Swipe() {
         .single();
       if (myProfile) {
         setMyProfileId(myProfile.id);
-        setIsPro(myProfile.is_pro || false);
+        // Admins/moderators always see ads (for QA/verification)
+        const { data: roles } = await supabase
+          .from("user_roles").select("role").eq("user_id", user.id);
+        const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
+        setIsPro(!!myProfile.is_pro && !isStaff);
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);
