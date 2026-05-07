@@ -131,6 +131,7 @@ export default function SwipePreset() {
   const [chosen, setChosen] = useState<0 | 1 | null>(null);
   const [showAd, setShowAd] = useState(false);
   const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
+  const [showAdsenseInSwipe, setShowAdsenseInSwipe] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [finished, setFinished] = useState(false);
   const [showElo, setShowElo] = useState(true);
@@ -559,8 +560,12 @@ export default function SwipePreset() {
         setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
         const adType = shouldShowAd(newCount, isPro);
         if (adType === "in_swipe") {
-          const creative = getRandomCreative();
-          if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+          if (adSource === "adsense" || adSource === "hybrid") {
+            setShowAdsenseInSwipe(true);
+          } else {
+            const creative = getRandomCreative();
+            if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+          }
         } else if (adType === "popup") {
           setShowAd(true);
         }
@@ -571,8 +576,12 @@ export default function SwipePreset() {
         } else {
           const adType = shouldShowAd(newCount, isPro);
           if (adType === "in_swipe") {
-            const creative = getRandomCreative();
-            if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+            if (adSource === "adsense" || adSource === "hybrid") {
+              setShowAdsenseInSwipe(true);
+            } else {
+              const creative = getRandomCreative();
+              if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+            }
           } else if (adType === "popup") {
             setShowAd(true);
           } else {
@@ -843,10 +852,10 @@ export default function SwipePreset() {
           )}
 
           {/* Matchup area */}
-          {pair && showInSwipeAd ? (
+          {pair && (showInSwipeAd || showAdsenseInSwipe) ? (
             <MatchupCapture ref={captureRef} leagueName={leagueName} isMobile={isMobile} className="min-h-0 flex-1">
               <motion.div
-                key={`ad-${showInSwipeAd.id}-${matchCount}`}
+                key={`ad-${showInSwipeAd?.id ?? 'adsense'}-${matchCount}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
@@ -855,10 +864,11 @@ export default function SwipePreset() {
                 {/* Full-width ad takeover */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
-                  adsenseSlot={adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined}
-                  adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
+                  adsenseSlot={showAdsenseInSwipe ? (adsenseSlot || "auto") : (adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined)}
+                  adsenseClientId={showAdsenseInSwipe ? (adsenseClientId || "ca-pub-9823769047605421") : (adSource !== "custom" ? adsenseClientId : undefined)}
                   onSkip={() => {
                     setShowInSwipeAd(null);
+                    setShowAdsenseInSwipe(false);
                     if (!gauntletMode) {
                       setCurrentIndex(currentIndex + 1);
                     } else if (gauntletChampion) {
