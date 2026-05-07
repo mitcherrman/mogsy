@@ -143,7 +143,11 @@ export default function Swipe() {
         .single();
       if (myProfile) {
         setMyProfileId(myProfile.id);
-        setIsPro(myProfile.is_pro || false);
+        // Admins/moderators always see ads (for QA/verification)
+        const { data: roles } = await supabase
+          .from("user_roles").select("role").eq("user_id", user.id);
+        const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
+        setIsPro(!!myProfile.is_pro && !isStaff);
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);
@@ -526,16 +530,9 @@ export default function Swipe() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className={`relative flex flex-col sm:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} sm:gap-3 items-stretch flex-1 min-h-0 [&_.profile-photo]:!aspect-[4/3] sm:[&_.profile-photo]:!aspect-[3/4]`}
+                className="relative flex flex-1 min-h-0 w-full"
               >
-                {/* Real card */}
-                <div className="flex flex-col flex-1 relative z-10 rounded-2xl border border-border bg-card overflow-hidden">
-                  <ProfileCard profile={pair[0]} side="left" onChoose={() => {}} />
-                </div>
-                <div className="flex items-center justify-center py-0 sm:px-1 sm:py-0 shrink-0">
-                  <span className="text-xs sm:text-lg font-black text-muted-foreground/60 select-none">VS</span>
-                </div>
-                {/* Ad card */}
+                {/* Full-width ad takeover */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
                   adsenseSlot={showAdsenseInSwipe ? (adsenseSlot || "auto") : (adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined)}

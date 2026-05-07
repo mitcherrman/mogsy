@@ -61,7 +61,7 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card overflow-hidden relative"
+      className="flex flex-col flex-1 min-h-0 w-full rounded-2xl border border-border bg-card overflow-hidden relative"
     >
       {/* Sponsored badge */}
       <div className="absolute top-2 left-2 z-10">
@@ -70,8 +70,8 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
         </Badge>
       </div>
 
-      {/* Content area */}
-      <div className="w-full aspect-[3/4] sm:aspect-[3/4] bg-muted/30 overflow-hidden relative">
+      {/* Content area — fills all available space */}
+      <div className="w-full flex-1 min-h-0 bg-muted/30 overflow-hidden relative">
         {isAdsense ? (
           <div className="w-full h-full flex items-center justify-center p-2">
             <AdBanner

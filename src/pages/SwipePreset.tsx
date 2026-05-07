@@ -292,7 +292,11 @@ export default function SwipePreset() {
       const { data: profile } = await supabase
         .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
-        if (profile.is_pro) setIsPro(true);
+        // Admins/moderators always see ads (for QA/verification)
+        const { data: roles } = await supabase
+          .from("user_roles").select("role").eq("user_id", user.id);
+        const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
+        if (profile.is_pro && !isStaff) setIsPro(true);
         setMyProfileId(profile.id);
         setMyRewinds(profile.rewinds ?? 0);
         setMyShields(profile.elo_shields ?? 0);
@@ -846,32 +850,9 @@ export default function SwipePreset() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className={`flex flex-col portrait:flex-col landscape:flex-row md:flex-row ${isMobile ? 'gap-0.5' : 'gap-1'} landscape:gap-4 md:gap-5 lg:gap-8 flex-1`}
+                className="flex flex-1 min-h-0 w-full"
               >
-                {/* Real item card */}
-                <div className={`flex flex-col flex-1 min-h-0 rounded-2xl border border-border bg-card ${pair[0].title_image_url ? 'overflow-visible' : 'overflow-hidden'}`}>
-                    <div className="w-full min-h-[100px] portrait:aspect-[5/4] landscape:aspect-[3/4] md:aspect-[3/4] bg-muted/30 overflow-hidden relative">
-                    {pair[0].image_url && (
-                      <AutoVideo src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl" style={{ opacity: cardBgOpacity / 100 }} />
-                    )}
-                    {pair[0].image_url ? (
-                      <AutoVideo src={getDisplayImage(pair[0]) || pair[0].image_url || ""} alt={pair[0].name} className="w-full h-full object-contain relative z-10" style={getImageStyle(pair[0])} />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center text-4xl font-black text-muted-foreground/30">{pair[0].name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <div className={`px-2 ${isMobile ? 'py-1' : 'py-1.5'} text-center`}>
-                    {pair[0].title_image_url ? (
-                      <img src={pair[0].title_image_url} alt={pair[0].name} className="w-auto object-contain mx-auto" style={getTitleImageStyle(pair[0], isMobile)} draggable={false} />
-                    ) : (
-                      <h3 className="text-sm font-extrabold text-foreground truncate">{pair[0].name}</h3>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center py-0 landscape:py-0 md:py-0 shrink-0">
-                  <span className="text-xs md:text-base font-black text-muted-foreground/60 select-none">VS</span>
-                </div>
-                {/* Ad card */}
+                {/* Full-width ad takeover */}
                 <SwipeAdCard
                   creative={showInSwipeAd}
                   adsenseSlot={adSource !== "custom" && !showInSwipeAd?.image_url ? adsenseSlot : undefined}
