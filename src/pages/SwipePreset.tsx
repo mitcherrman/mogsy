@@ -292,7 +292,11 @@ export default function SwipePreset() {
       const { data: profile } = await supabase
         .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
-        if (profile.is_pro) setIsPro(true);
+        // Admins/moderators always see ads (for QA/verification)
+        const { data: roles } = await supabase
+          .from("user_roles").select("role").eq("user_id", user.id);
+        const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
+        if (profile.is_pro && !isStaff) setIsPro(true);
         setMyProfileId(profile.id);
         setMyRewinds(profile.rewinds ?? 0);
         setMyShields(profile.elo_shields ?? 0);
