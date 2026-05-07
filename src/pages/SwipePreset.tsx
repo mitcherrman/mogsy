@@ -560,8 +560,12 @@ export default function SwipePreset() {
         setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
         const adType = shouldShowAd(newCount, isPro);
         if (adType === "in_swipe") {
-          const creative = getRandomCreative();
-          if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+          if (adSource === "adsense" || adSource === "hybrid") {
+            setShowAdsenseInSwipe(true);
+          } else {
+            const creative = getRandomCreative();
+            if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+          }
         } else if (adType === "popup") {
           setShowAd(true);
         }
@@ -572,8 +576,12 @@ export default function SwipePreset() {
         } else {
           const adType = shouldShowAd(newCount, isPro);
           if (adType === "in_swipe") {
-            const creative = getRandomCreative();
-            if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+            if (adSource === "adsense" || adSource === "hybrid") {
+              setShowAdsenseInSwipe(true);
+            } else {
+              const creative = getRandomCreative();
+              if (creative) setShowInSwipeAd(creative); else setShowAd(true);
+            }
           } else if (adType === "popup") {
             setShowAd(true);
           } else {
