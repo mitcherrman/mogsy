@@ -2444,6 +2444,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_boost: { Args: never; Returns: string }
       create_multiplayer_game: {
         Args: {
           _config?: Json
