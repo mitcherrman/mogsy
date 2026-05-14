@@ -1,0 +1,14 @@
+# Mogsy
+
+> Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Aura leaderboards, and compete in user-created leagues.
+
+## Pages
+
+- [Home](/home): Main hub with friends, recent matchups, and featured leagues.
+- [Play](/play): Discover game modes, collections, and competitive leagues.
+- [Swipe](/swipe): Pick a league and start voting head-to-head.
+- [Collections](/presets): Curated preset leagues built by the Mogsy team.
+- [Compete](/swipe-leagues): User-created leagues for community competition.
+- [Aura Check](/elo-check): Look up Aura ratings and rankings for any item.
+- [Shop](/shop): Power-ups, cosmetics, and Mogsy Pro subscription.
+- [Sign in](/auth): Create an account or sign in to save progress.
