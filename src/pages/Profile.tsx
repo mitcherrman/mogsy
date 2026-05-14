@@ -298,11 +298,7 @@ export default function Profile() {
 
   const handleActivateBoost = async () => {
     if (!profileId || boostCredits <= 0) return;
-    const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await supabase.from("profiles").update({
-      active_boost_until: until,
-      boost_credits: boostCredits - 1,
-    }).eq("id", profileId);
+    const { error } = await supabase.rpc("activate_boost");
     if (error) {
       toast({ title: "Boost failed", description: "No boost credits available.", variant: "destructive" });
       return;
