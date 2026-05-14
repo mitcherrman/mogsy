@@ -2516,6 +2516,14 @@ export type Database = {
         }
         Returns: Json
       }
+      realtime_is_game_topic_player: {
+        Args: { _topic: string }
+        Returns: boolean
+      }
+      realtime_is_notification_topic_owner: {
+        Args: { _topic: string }
+        Returns: boolean
+      }
       record_dual_preset_match: {
         Args: {
           _caller_profile_id: string
