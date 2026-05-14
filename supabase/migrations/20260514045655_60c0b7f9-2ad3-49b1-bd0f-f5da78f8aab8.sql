@@ -1,0 +1,1 @@
+DROP VIEW IF EXISTS public.custom_links_public;

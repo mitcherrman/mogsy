@@ -2385,59 +2385,6 @@ export type Database = {
       }
     }
     Views: {
-      custom_links_public: {
-        Row: {
-          created_at: string | null
-          default_swipe_animation: string | null
-          default_theme: string | null
-          destination_type: string | null
-          id: string | null
-          is_active: boolean | null
-          label: string | null
-          league_id: string | null
-          recommended_categories: string[] | null
-          recommended_league_ids: string[] | null
-          slug: string | null
-          visits: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          default_swipe_animation?: string | null
-          default_theme?: string | null
-          destination_type?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          label?: string | null
-          league_id?: string | null
-          recommended_categories?: string[] | null
-          recommended_league_ids?: string[] | null
-          slug?: string | null
-          visits?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          default_swipe_animation?: string | null
-          default_theme?: string | null
-          destination_type?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          label?: string | null
-          league_id?: string | null
-          recommended_categories?: string[] | null
-          recommended_league_ids?: string[] | null
-          slug?: string | null
-          visits?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "custom_links_league_id_fkey"
-            columns: ["league_id"]
-            isOneToOne: false
-            referencedRelation: "leagues"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       public_profiles: {
         Row: {
           active_boost_until: string | null
