@@ -69,7 +69,7 @@ export default function Landing() {
   }, [handleEnter]);
 
   return (
-    <div
+    <main
       className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative cursor-pointer"
       onClick={handleEnter}
     >
@@ -174,6 +174,6 @@ export default function Landing() {
       >
         <User className="h-4 w-4" />
       </motion.button>
-    </div>
+    </main>
   );
 }
