@@ -50,7 +50,20 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    // Validate origin against allowlist to prevent open-redirect via Stripe success/cancel URLs
+    const allowedOrigins = [
+      "https://mogsy.net",
+      "https://www.mogsy.net",
+      "https://mogsy.app",
+      "https://www.mogsy.app",
+      "https://mogsy.lovable.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ];
+    const requestOrigin = req.headers.get("origin") || "";
+    const origin = allowedOrigins.includes(requestOrigin)
+      ? requestOrigin
+      : "https://mogsy.net";
 
     const sessionConfig: any = {
       customer: customerId,
