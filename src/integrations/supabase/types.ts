@@ -2456,6 +2456,10 @@ export type Database = {
         }
         Returns: Json
       }
+      finish_multiplayer_game: {
+        Args: { _game_id: string; _result: Json }
+        Returns: undefined
+      }
       get_own_profile: {
         Args: never
         Returns: {
@@ -2573,6 +2577,10 @@ export type Database = {
           _prev_winner_elo: number
           _winner_profile_id: string
         }
+        Returns: undefined
+      }
+      set_round_winner: {
+        Args: { _round_id: string; _winner_team_id: string }
         Returns: undefined
       }
       submit_multiplayer_action: {

@@ -73,20 +73,20 @@ serve(async (req) => {
       const sub = allSubs[0];
       subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
       isTrial = sub.status === "trialing";
+    }
 
-      // Sync pro status to profiles table
-      const { data: profile } = await supabaseClient
+    // Always sync pro status to profiles table — revoke when no active sub
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("id, is_pro")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile && profile.is_pro !== hasActiveSub) {
+      await supabaseClient
         .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (profile) {
-        await supabaseClient
-          .from("profiles")
-          .update({ is_pro: true })
-          .eq("id", profile.id);
-      }
+        .update({ is_pro: hasActiveSub })
+        .eq("id", profile.id);
     }
 
     return new Response(JSON.stringify({
