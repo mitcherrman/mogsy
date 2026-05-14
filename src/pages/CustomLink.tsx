@@ -94,7 +94,7 @@ export default function CustomLink() {
     // Check custom_links table
     const { data, error } = await supabase
       .from("custom_links")
-      .select("*")
+      .select("id, slug, destination_type, league_id, recommended_categories, recommended_league_ids, default_theme, default_swipe_animation, label, is_active, visits, created_at")
       .eq("slug", lower)
       .eq("is_active", true)
       .maybeSingle();
@@ -138,8 +138,9 @@ export default function CustomLink() {
       recommended_categories: (data.recommended_categories as string[]) || [],
       default_theme: (data as any).default_theme || "default",
       default_swipe_animation: (data as any).default_swipe_animation || "default",
-      grant_diamonds: (data as any).grant_diamonds || 0,
-      grant_pro: (data as any).grant_pro || false,
+      // grant_* fields are intentionally not exposed to the public; they apply server-side only
+      grant_diamonds: 0,
+      grant_pro: false,
       slug: s,
     };
     localStorage.setItem(CURATED_STORAGE_KEY, JSON.stringify(config));
