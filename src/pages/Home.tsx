@@ -207,11 +207,18 @@ export default function Home() {
   };
 
   const handleOnboardingComplete = async (categories: string[]) => {
+    // Enter loading state in the same render that hides onboarding so we
+    // don't paint a frame of empty Home sections (template/outline flash).
+    setLoading(true);
     setShowOnboarding(false);
     setPreferredCategories(categories);
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
     if (profile) await loadData(profile.id, categories);
+    else setLoading(false);
   };
 
   const loadData = async (profileId: string, cats: string[]) => {
