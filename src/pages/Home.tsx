@@ -24,6 +24,7 @@ import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-text-logo.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
 import { getCuratedConfig, clearCuratedConfig } from "@/pages/CustomLink";
+import SEOHead from "@/components/SEOHead";
 
 interface LeagueInfo {
   id: string;
@@ -781,6 +782,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen px-4 py-2">
+      <SEOHead
+        title="Mogsy — Rank anything, climb the Aura leaderboard"
+        description="Swipe head-to-head matchups across hundreds of Collections, climb personal and global Aura leaderboards, and Compete with friends on Mogsy."
+        path="/home"
+      />
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Mogsy Logo */}
         <nav className="w-full flex flex-col items-center pt-2 pb-2">
