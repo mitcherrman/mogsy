@@ -12,6 +12,7 @@ import { getTierFromElo, getTierColor } from "@/lib/mock-data";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import SEOHead from "@/components/SEOHead";
 
 interface LeagueWithTop5 {
   id: string;
@@ -191,6 +192,14 @@ export default function Leagues() {
 
   return (
     <div className="min-h-screen px-4 py-8 pb-24">
+      <SEOHead
+        title={isCompete ? "Compete leagues — Mogsy" : "Collections — Mogsy"}
+        description={
+          isCompete
+            ? "Browse Compete leagues created by the Mogsy community. Battle for top Aura in user-made rankings."
+            : "Browse curated Mogsy Collections. Swipe matchups across pop culture, sports, food, and more to build the definitive Aura leaderboard."
+        }
+      />
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
