@@ -7,6 +7,8 @@ interface SEOHeadProps {
   /** Optional override for the canonical / og:url path. Defaults to current pathname. */
   path?: string;
   image?: string;
+  /** Optional JSON-LD structured data object(s) injected for this route. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 function upsertMeta(selector: string, attr: "name" | "property", key: string, content: string) {
@@ -19,7 +21,7 @@ function upsertMeta(selector: string, attr: "name" | "property", key: string, co
   el.setAttribute("content", content);
 }
 
-export default function SEOHead({ title, description, path, image }: SEOHeadProps) {
+export default function SEOHead({ title, description, path, image, jsonLd }: SEOHeadProps) {
   useEffect(() => {
     document.title = title;
     upsertMeta('meta[name="description"]', "name", "description", description);
@@ -46,7 +48,24 @@ export default function SEOHead({ title, description, path, image }: SEOHeadProp
     upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
     upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
     if (image) upsertMeta('meta[name="twitter:image"]', "name", "twitter:image", image);
-  }, [title, description, path, image]);
+
+    // Per-route JSON-LD. Tagged so we can clean up on unmount/route change.
+    const ldNodes: HTMLScriptElement[] = [];
+    if (jsonLd) {
+      const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+      for (const item of items) {
+        const script = document.createElement("script");
+        script.type = "application/ld+json";
+        script.dataset.seoRoute = "true";
+        script.text = JSON.stringify(item);
+        document.head.appendChild(script);
+        ldNodes.push(script);
+      }
+    }
+    return () => {
+      for (const node of ldNodes) node.remove();
+    };
+  }, [title, description, path, image, jsonLd]);
 
   return null;
 }

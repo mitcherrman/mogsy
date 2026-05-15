@@ -476,6 +476,18 @@ export default function UserProfile() {
       <SEOHead
         title={`${profile.display_name || "User"} — Mogsy`}
         description={`View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`}
+        image={profile.avatar_url || undefined}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ProfilePage",
+          mainEntity: {
+            "@type": "Person",
+            name: profile.display_name || "User",
+            image: profile.avatar_url || undefined,
+            description: profile.status_message || undefined,
+            address: profile.location || undefined,
+          },
+        }}
       />
 
       {/* Hero header */}

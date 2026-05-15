@@ -372,7 +372,25 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen px-4 py-8">
-      <SEOHead title={`${leagueName || "Leaderboard"} — Mogsy`} description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Aura leaderboard.`} />
+      <SEOHead
+        title={`${leagueName || "Leaderboard"} — Mogsy`}
+        description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Aura leaderboard.`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${leagueName} Leaderboard`,
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: entries.length,
+            itemListElement: entries.slice(0, 20).map((e, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: e.displayName,
+              image: e.imageUrl || e.avatarUrl || undefined,
+            })),
+          },
+        }}
+      />
       <div className="container mx-auto max-w-2xl lg:max-w-3xl">
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-xl pb-4 mb-4 border-b border-border">
           <div className="flex items-center gap-3">
