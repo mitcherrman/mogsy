@@ -1,68 +1,68 @@
-<!-- DOMAIN CONFIG: When changing domain, find-and-replace all "mogsy.net" in this file -->
+<!-- DOMAIN CONFIG: When changing domain, find-and-replace all "mogsy.app" in this file -->
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://mogsy.net/</loc>
+    <loc>https://mogsy.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/home</loc>
+    <loc>https://mogsy.app/home</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/play</loc>
+    <loc>https://mogsy.app/play</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/presets</loc>
+    <loc>https://mogsy.app/presets</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/swipe-leagues</loc>
+    <loc>https://mogsy.app/swipe-leagues</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/elo-check</loc>
+    <loc>https://mogsy.app/elo-check</loc>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/shop</loc>
+    <loc>https://mogsy.app/shop</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/auth</loc>
+    <loc>https://mogsy.app/auth</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/swipe</loc>
+    <loc>https://mogsy.app/swipe</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/profile</loc>
+    <loc>https://mogsy.app/profile</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/settings</loc>
+    <loc>https://mogsy.app/settings</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/referral</loc>
+    <loc>https://mogsy.app/referral</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://mogsy.net/reset-password</loc>
+    <loc>https://mogsy.app/reset-password</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
