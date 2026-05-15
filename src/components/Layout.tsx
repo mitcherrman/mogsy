@@ -18,7 +18,7 @@ export default function Layout() {
   const { theme, themeId, visualThemeId, isEnabled, isCycleFading } = useSitewideTheme();
 
   if (loading || settingsLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return <RouteLoader />;
   }
 
   return (
@@ -36,7 +36,7 @@ export default function Layout() {
       <Navbar themeId={isEnabled ? visualThemeId : undefined} />
       {isEnabled && <ThemeOverlay themeId={visualThemeId} />}
       <main className="pt-14 pb-16 sm:pb-0 relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
-        <Suspense fallback={<div className="min-h-screen" />}>
+        <Suspense fallback={<RouteLoader />}>
           <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? visualThemeId : null }} />
         </Suspense>
       </main>
@@ -44,6 +44,24 @@ export default function Layout() {
       <FloatingThemeSwitcher />
       <FloatingScrollButton />
       <TutorialTipPopup />
+    </div>
+  );
+}
+
+/** Lightweight branded loader for in-app route transitions and auth/settings boot.
+ *  Mirrors the static FCP shell in index.html so transitions feel continuous. */
+function RouteLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <img
+        src="/mogsy-logo-text.png"
+        alt=""
+        aria-hidden="true"
+        width={264}
+        height={176}
+        className="h-20 sm:h-24 object-contain opacity-70 animate-pulse"
+        decoding="async"
+      />
     </div>
   );
 }

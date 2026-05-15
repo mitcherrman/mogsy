@@ -62,6 +62,12 @@ export default function Landing() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Only trigger on deliberate enter/space — don't hijack Cmd-L, refresh, devtools, etc.
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      e.preventDefault();
       handleEnter();
     };
     window.addEventListener("keydown", onKey);
@@ -70,8 +76,7 @@ export default function Landing() {
 
   return (
     <main
-      className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative cursor-pointer"
-      onClick={handleEnter}
+      className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative"
     >
       <SEOHead
         title="Mogsy — Vote, Rank, Compete"
@@ -121,7 +126,7 @@ export default function Landing() {
 
       {/* Logo — clickable */}
       <motion.button
-        onClick={(e) => { e.stopPropagation(); handleEnter(); }}
+        onClick={handleEnter}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ scale: 1.08 }}
@@ -168,7 +173,7 @@ export default function Landing() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 2.5, duration: 0.8 }}
-        onClick={(e) => { e.stopPropagation(); navigate(user && !user.is_anonymous ? "/profile" : "/auth"); }}
+        onClick={() => navigate(user && !user.is_anonymous ? "/profile" : "/auth")}
         className="fixed bottom-6 right-6 z-20 w-9 h-9 rounded-full bg-card/60 backdrop-blur-sm border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card/80 transition-colors"
         aria-label="Profile"
       >
