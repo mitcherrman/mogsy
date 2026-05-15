@@ -26,6 +26,8 @@ const staticEntries: SitemapEntry[] = [
   { path: "/home", changefreq: "daily", priority: "0.8" },
   { path: "/play", changefreq: "daily", priority: "0.9" },
   { path: "/swipe", changefreq: "daily", priority: "0.8" },
+  { path: "/swipe-game", changefreq: "daily", priority: "0.8" },
+  { path: "/swipe-leagues", changefreq: "daily", priority: "0.8" },
   { path: "/leagues/presets", changefreq: "weekly", priority: "0.8" },
   { path: "/leagues/compete", changefreq: "weekly", priority: "0.8" },
   { path: "/elo-check", changefreq: "daily", priority: "0.7" },
@@ -47,7 +49,7 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
   // Public leaderboards — one per league
   const { data: leagues, error: lErr } = await supabase
     .from("leagues")
-    .select("id, created_at")
+    .select("id, type, created_at")
     .limit(2000);
   if (lErr) console.warn("[sitemap] leagues fetch failed:", lErr.message);
   for (const l of leagues ?? []) {
@@ -57,6 +59,14 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
       changefreq: "daily",
       priority: "0.6",
     });
+    if (l.type === "preset") {
+      entries.push({
+        path: `/swipe/preset/${l.id}`,
+        lastmod: l.created_at ? new Date(l.created_at).toISOString().slice(0, 10) : undefined,
+        changefreq: "daily",
+        priority: "0.6",
+      });
+    }
   }
 
   // Active custom short links
