@@ -674,31 +674,58 @@ export default function UserProfile() {
             transition={{ delay: 0.2 }}
             className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
           >
-            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>League Leaderboard</h2>
-            <div className="space-y-2">
-              {leagueStats.map((stat) => (
-                <button
-                  key={stat.league_id}
-                  onClick={() => navigate(`/leaderboard/${stat.league_id}`)}
-                  className={cn("w-full flex items-center justify-between p-3 rounded-lg border transition-colors text-left", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", "hover:opacity-90")}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", theme.styles.innerBg || "bg-primary/10")}>
-                      #{stat.rank}
+            <h2 className={cn("text-sm font-bold mb-3", theme.styles.headingColor || "text-foreground")}>Leaderboards by Category</h2>
+            <div className="space-y-4">
+              {Object.entries(
+                leagueStats.reduce((acc, stat) => {
+                  const key = stat.category || "Other";
+                  (acc[key] ||= []).push(stat);
+                  return acc;
+                }, {} as Record<string, typeof leagueStats>)
+              )
+                .sort((a, b) => {
+                  const maxA = Math.max(...a[1].map((s) => s.elo));
+                  const maxB = Math.max(...b[1].map((s) => s.elo));
+                  return maxB - maxA;
+                })
+                .map(([category, stats]) => (
+                  <div key={category}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={cn("text-[11px] font-bold uppercase tracking-wider", theme.styles.textAccent || "text-primary")}>
+                        {category}
+                      </span>
+                      <span className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
+                        {stats.length} {stats.length === 1 ? "league" : "leagues"}
+                      </span>
+                      <div className={cn("flex-1 h-px", theme.styles.innerBorder || "bg-border")} />
                     </div>
-                    <div className="min-w-0">
-                      <p className={cn("text-sm font-semibold truncate", theme.styles.textColor || "text-foreground")}>{stat.league_name}</p>
-                      <p className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
-                        {stat.matches_played} matches · {stat.total_members} members
-                      </p>
+                    <div className="space-y-2">
+                      {stats.map((stat) => (
+                        <button
+                          key={stat.league_id}
+                          onClick={() => navigate(`/leaderboard/${stat.league_id}`)}
+                          className={cn("w-full flex items-center justify-between p-3 rounded-lg border transition-colors text-left", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", "hover:opacity-90")}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs shrink-0", theme.styles.textAccent || "text-primary", theme.styles.innerBg || "bg-primary/10")}>
+                              #{stat.rank}
+                            </div>
+                            <div className="min-w-0">
+                              <p className={cn("text-sm font-semibold truncate", theme.styles.textColor || "text-foreground")}>{stat.league_name}</p>
+                              <p className={cn("text-[10px]", theme.styles.mutedColor || "text-muted-foreground")}>
+                                {stat.matches_played} matches · {stat.total_members} members
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <TierBadge tier={stat.tier} className="text-[9px] px-1.5 py-0" />
+                            <span className={cn("text-sm font-bold", theme.styles.textColor || "text-foreground")}>{stat.elo}</span>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <TierBadge tier={stat.tier} className="text-[9px] px-1.5 py-0" />
-                    <span className={cn("text-sm font-bold", theme.styles.textColor || "text-foreground")}>{stat.elo}</span>
-                  </div>
-                </button>
-              ))}
+                ))}
             </div>
           </motion.div>
         )}
