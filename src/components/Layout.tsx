@@ -23,11 +23,27 @@ export default function Layout() {
 
   return (
     <div
-      className="min-h-screen bg-background relative animate-page-fade-in"
-      style={{
-        ...(isEnabled && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
-      }}
+      className="min-h-screen relative animate-page-fade-in"
+      style={{ background: "#0a0a1a" }}
     >
+      {/* Stage: paints the app background only behind the centered column,
+          with both vertical edges feathered into the body color. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-x z-0"
+        style={{
+          ...(isEnabled && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
+        }}
+      />
+      {/* Ambient halo so the column feels lit rather than cut */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[96rem] z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 80% at 50% 50%, hsl(var(--background) / 0.35), transparent 70%)",
+        }}
+      />
       {/* Fade-to-black overlay for cycle theme transitions */}
       <div
         className="fixed inset-0 bg-black pointer-events-none z-[15] transition-opacity duration-700 ease-in-out"
