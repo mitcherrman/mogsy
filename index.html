@@ -100,6 +100,17 @@
   </head>
 
   <body style="background:#0a0a1a">
+    <script>
+      // Apply user accessibility/personalization classes before first paint
+      (function() {
+        try {
+          var d = document.documentElement;
+          if (localStorage.getItem('mogsy-reduce-motion') === '1') d.classList.add('reduce-motion');
+          if (localStorage.getItem('mogsy-large-text') === '1') d.classList.add('large-text');
+          if (localStorage.getItem('mogsy-high-contrast') === '1') d.classList.add('high-contrast');
+        } catch (e) {}
+      })();
+    </script>
     <!-- Static shell painted immediately for fast FCP — lives OUTSIDE #root so React doesn't destroy it -->
     <div id="initial-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a1a;position:fixed;inset:0;z-index:9999;transition:opacity .3s ease-out;">
       <img src="/mogsy-logo-text.png" alt="" aria-hidden="true" width="264" height="176" style="height:7rem;object-fit:contain;opacity:0;transition:opacity .2s ease-out;" fetchpriority="high" decoding="async" onload="this.style.opacity=1" />

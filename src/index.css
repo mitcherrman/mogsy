@@ -400,3 +400,23 @@
 .swipe-thin-scroll:hover { scrollbar-width: thin; }
 .swipe-thin-scroll:hover::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
 .swipe-thin-scroll:hover::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+
+/* ===== User accessibility preferences (toggled from Settings) ===== */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html.large-text { font-size: 18px; }
+html.high-contrast {
+  --foreground: 0 0% 100%;
+  --background: 0 0% 0%;
+  --border: 0 0% 100%;
+  --muted-foreground: 0 0% 90%;
+  --primary: 50 100% 60%;
+  --primary-foreground: 0 0% 0%;
+}
+html.high-contrast * { text-shadow: none !important; }
