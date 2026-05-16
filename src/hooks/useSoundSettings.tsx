@@ -75,14 +75,35 @@ export function invalidateSoundSettingsCache() {
 }
 
 export function useSoundSettings() {
-  const [settings, setSettings] = useState<SoundSettings>(cachedSettings || SOUND_DEFAULTS);
+function applyMute(s: SoundSettings): SoundSettings {
+  try {
+    if (typeof window !== "undefined" && localStorage.getItem("mogsy-sounds-muted") === "1") {
+      const muted = { ...s };
+      (Object.keys(muted) as (keyof SoundSettings)[]).forEach((k) => { muted[k] = false; });
+      return muted;
+    }
+  } catch {}
+  return s;
+}
+
+export function useSoundSettings() {
+  const [settings, setSettings] = useState<SoundSettings>(applyMute(cachedSettings || SOUND_DEFAULTS));
   const [loading, setLoading] = useState(!cachedSettings);
 
   useEffect(() => {
     fetchSoundSettings().then((s) => {
-      setSettings(s);
+      setSettings(applyMute(s));
       setLoading(false);
     });
+    const onChange = () => {
+      setSettings(applyMute(cachedSettings || SOUND_DEFAULTS));
+    };
+    window.addEventListener("mogsy-sounds-muted-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("mogsy-sounds-muted-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
   }, []);
 
   return { soundSettings: settings, loading };
