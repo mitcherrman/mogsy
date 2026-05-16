@@ -1,34 +1,64 @@
 ## Goal
+Eliminate the hard vertical line where the centered content column (`max-w-7xl`) meets the surrounding body background on desktop. Replace it with a very soft, glowy fade so foreground and background blend seamlessly.
 
-In `SwipeHub` (the `/swipe` page), the two auto-scrolling bubble rows currently let the buttons clip hard against the left and right viewport edges. Add smooth fade-to-background gutters so bubbles appear to glide in/out of view instead of being chopped off.
+## What's happening today
+- `index.html` paints `<body>` at `#0a0a1a`.
+- `src/components/Layout.tsx` wraps the app in `min-h-screen bg-background` (dark mode `hsl(222 47% 11%)` ≈ `#0f172a`), full viewport width.
+- Because both layers are full-width, on a clean page there's no edge — but on themed pages and on the home/profile/swipe routes the inner `<main>` (`max-w-7xl mx-auto`) sits over a content column that's visually distinguishable from the body, especially when the theme applies a `pageBg` gradient to the outer div but cards inside use `bg-card`. The result on ≥1280px viewports is a vertical "shelf" at ±640px from center.
 
-## Approach
+## Approach (very soft, level 5)
+Stop painting `bg-background` (and any theme `pageBg`) across the full viewport. Instead, paint it only behind the centered column and feather both vertical edges with a CSS mask + an ambient outer glow so it dissolves into the body color.
 
-Use a CSS mask gradient on the scroll track. This is the modern, GPU-friendly way to fade scrolling content into the page background — it works regardless of background color (no need to match `#0a0a1a` solid blocks), it doesn't intercept pointer events, and it animates cleanly with the marquee.
+### Changes (all in `src/components/Layout.tsx` + a small utility in `src/index.css`)
 
-### Change
+1. **Restructure Layout wrapper**
+   - Outer `<div>`: keep `min-h-screen`, but set background to body color (`#0a0a1a`) — i.e. drop `bg-background`. Move theme `pageBg` off this element.
+   - Insert a new "stage" wrapper inside, centered, `max-w-[88rem]` (slightly wider than content so the fade lives in the gutter, not over text):
+     - `bg-background` (or theme `pageBg`) applied here.
+     - `mx-auto relative`.
+     - Apply `mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%)` and the `-webkit-mask-image` equivalent so the column's own background fades to transparent at both vertical edges.
+   - Keep `<main className="max-w-7xl mx-auto …">` inside the stage so content stays at current width; the stage's extra ~64px on each side becomes the fade gutter.
 
-In `src/components/SwipeHub.tsx` → `AutoScrollRow`'s outer scroll `<div>`:
+2. **Ambient outer glow (optional polish, still inside the stage)**
+   - Add two absolutely-positioned `pointer-events-none` divs at `left:-120px` / `right:-120px`, full height, `w-60`, with `bg-[radial-gradient(...)]` using `hsl(var(--background)/0.5)` fading to transparent. Behind content (`z-0`).
+   - Gives a halo so the column feels lit rather than cut.
 
-- Add a horizontal mask: transparent at the left/right edges, opaque in the middle.
-- Width of fade: ~64px on mobile, ~96px on desktop (uses Tailwind responsive arbitrary values via inline style with `clamp()` so it scales).
-- Apply via inline style:
-  ```ts
-  style={{
-    scrollbarWidth: "none",
-    WebkitMaskImage:
-      "linear-gradient(to right, transparent 0, #000 clamp(40px,8%,96px), #000 calc(100% - clamp(40px,8%,96px)), transparent 100%)",
-    maskImage:
-      "linear-gradient(to right, transparent 0, #000 clamp(40px,8%,96px), #000 calc(100% - clamp(40px,8%,96px)), transparent 100%)",
-  }}
-  ```
-- Add a small horizontal `padding` (e.g. `paddingLeft`/`paddingRight: bubbleSize * 0.5`) on the inner flex track so the first/last bubble doesn't sit fully under the mask before the loop wraps.
+3. **Below the small breakpoint**
+   - On `< md`, the column already fills the viewport (px-0), so the mask is a no-op visually — but keep it on so theme transitions look continuous.
 
-Optional polish (kept minimal so it stays "modern app" and not busy):
-- No extra DOM overlays, no borders, no shadows — the gradient mask alone gives the smooth fade the user is asking for.
+4. **`src/index.css` — add reusable utility**
+   ```css
+   @layer utilities {
+     .mask-fade-x {
+       -webkit-mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px,6vw,96px), #000 calc(100% - clamp(24px,6vw,96px)), transparent 100%);
+       mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px,6vw,96px), #000 calc(100% - clamp(24px,6vw,96px)), transparent 100%);
+     }
+   }
+   ```
+   Use it on the stage wrapper.
 
-### Files
+5. **Theme integration**
+   - When a sitewide theme is enabled, apply `theme.styles.pageBg` to the stage wrapper instead of the outer div, so the themed gradient also fades into the body color at the edges (matches the rest of the soft treatment).
 
-- `src/components/SwipeHub.tsx` — only `AutoScrollRow`'s scroll container style + inner padding. No logic, no layout, no animation timing changes.
+### What is intentionally NOT changed
+- No edits to individual page files (Home, Profile, Swipe, etc.) — they keep their existing card styles.
+- Navbar, floating buttons, theme overlay, cycle-fade overlay all stay full-viewport (they should bridge the gutter; they already do via `fixed`).
+- `bg-card` rectangles inside pages are untouched (user picked "vertical column edge" only).
 
-No backend, routing, or other component changes.
+## Diagram
+
+```text
+viewport (body #0a0a1a)
+┌──────────────────────────────────────────────────────────────┐
+│   fade gutter   ┌──────── stage (bg-background) ────────┐ … │
+│  (mask→transp.) │   <main max-w-7xl>  content cards     │   │
+│                 │                                       │   │
+│                 └───────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Verification
+- Open `/home`, `/profile`, `/swipe-hub` on 1336px wide preview: confirm no hard vertical line; column dissolves into body.
+- Toggle a sitewide theme (e.g. via FloatingThemeSwitcher): confirm themed gradient also feathers, no shelf.
+- Resize to < 768px: confirm content is unaffected and fills width.
+- Confirm fixed Navbar and floating FABs are unaffected (still span full viewport).

@@ -144,6 +144,11 @@
     background-clip: text;
   }
 
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
+  }
+
   .bg-gradient-primary {
     background: var(--gradient-primary);
   }
