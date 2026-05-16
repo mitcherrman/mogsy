@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
+import type React from "react";
 
 /**
  * Wraps dynamic imports so a stale chunk (after a redeploy, when the cached
