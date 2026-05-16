@@ -10,37 +10,70 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
+import type React from "react";
 
-const Index = lazy(() => import("./pages/Index"));
+/**
+ * Wraps dynamic imports so a stale chunk (after a redeploy, when the cached
+ * index.html references an old asset hash that no longer exists) triggers a
+ * one-time hard reload instead of a blank screen.
+ */
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      const isChunkError =
+        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
+          msg
+        );
+      if (isChunkError && typeof window !== "undefined") {
+        const key = "__lov_chunk_reloaded__";
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, "1");
+          window.location.reload();
+          // Return a never-resolving promise so Suspense keeps the fallback
+          // until the reload kicks in.
+          return new Promise(() => {}) as any;
+        }
+      }
+      throw err;
+    }
+  });
+}
+
+const Index = lazyWithRetry(() => import("./pages/Index"));
 
 // Lazy-load all non-landing routes to reduce initial JS bundle
-const Home = lazy(() => import("./pages/Home"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Play = lazy(() => import("./pages/Play"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Swipe = lazy(() => import("./pages/Swipe"));
-const SwipeHub = lazy(() => import("./pages/SwipeHub"));
-const Leagues = lazy(() => import("./pages/Leagues"));
-const Leaderboard = lazy(() => import("./pages/Leaderboard"));
-const SwipePreset = lazy(() => import("./pages/SwipePreset"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Referral = lazy(() => import("./pages/Referral"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Shop = lazy(() => import("./pages/Shop"));
-const EloCheck = lazy(() => import("./pages/EloCheck"));
-const SwipeLeagues = lazy(() => import("./pages/SwipeLeagues"));
-const UserProfile = lazy(() => import("./pages/UserProfile"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const AdminPlay = lazy(() => import("./pages/AdminPlay"));
-const AdminData = lazy(() => import("./pages/AdminData"));
-const AdminDemo = lazy(() => import("./pages/AdminDemo"));
-const AdminGaming = lazy(() => import("./pages/AdminGaming"));
-const SecretRoom = lazy(() => import("./pages/SecretRoom"));
-const Moderator = lazy(() => import("./pages/Moderator"));
-const CustomLink = lazy(() => import("./pages/CustomLink"));
-const Multiplayer = lazy(() => import("./pages/Multiplayer"));
-const MultiplayerGame = lazy(() => import("./pages/MultiplayerGame"));
-const Feedback = lazy(() => import("./pages/Feedback"));
+const Home = lazyWithRetry(() => import("./pages/Home"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Play = lazyWithRetry(() => import("./pages/Play"));
+const Profile = lazyWithRetry(() => import("./pages/Profile"));
+const Swipe = lazyWithRetry(() => import("./pages/Swipe"));
+const SwipeHub = lazyWithRetry(() => import("./pages/SwipeHub"));
+const Leagues = lazyWithRetry(() => import("./pages/Leagues"));
+const Leaderboard = lazyWithRetry(() => import("./pages/Leaderboard"));
+const SwipePreset = lazyWithRetry(() => import("./pages/SwipePreset"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Referral = lazyWithRetry(() => import("./pages/Referral"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const Shop = lazyWithRetry(() => import("./pages/Shop"));
+const EloCheck = lazyWithRetry(() => import("./pages/EloCheck"));
+const SwipeLeagues = lazyWithRetry(() => import("./pages/SwipeLeagues"));
+const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const AdminPlay = lazyWithRetry(() => import("./pages/AdminPlay"));
+const AdminData = lazyWithRetry(() => import("./pages/AdminData"));
+const AdminDemo = lazyWithRetry(() => import("./pages/AdminDemo"));
+const AdminGaming = lazyWithRetry(() => import("./pages/AdminGaming"));
+const SecretRoom = lazyWithRetry(() => import("./pages/SecretRoom"));
+const Moderator = lazyWithRetry(() => import("./pages/Moderator"));
+const CustomLink = lazyWithRetry(() => import("./pages/CustomLink"));
+const Multiplayer = lazyWithRetry(() => import("./pages/Multiplayer"));
+const MultiplayerGame = lazyWithRetry(() => import("./pages/MultiplayerGame"));
+const Feedback = lazyWithRetry(() => import("./pages/Feedback"));
 
 const queryClient = new QueryClient();
 
