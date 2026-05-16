@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { LogOut, LogIn, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast } from "lucide-react";
+import { LogOut, LogIn, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
+import TwoFactorAuth from "@/components/TwoFactorAuth";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -28,9 +29,11 @@ export default function Settings() {
   const isAnonymousOrNoUser = !user || user.is_anonymous;
 
   // Security
+  const [currentPwdForPwd, setCurrentPwdForPwd] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
+  const [currentPwdForEmail, setCurrentPwdForEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
 
@@ -59,19 +62,43 @@ export default function Settings() {
   }, [soundsMuted]);
 
   const handleChangePassword = async () => {
+    if (!currentPwdForPwd) { toast.error("Enter your current password"); return; }
     if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
     if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    if (!user?.email) { toast.error("No email on account"); return; }
     setSavingPwd(true);
+    // Reauthenticate by re-verifying the current password
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPwdForPwd,
+    });
+    if (reauthError) {
+      setSavingPwd(false);
+      toast.error("Current password is incorrect");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSavingPwd(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Password updated");
-    setNewPassword(""); setConfirmPassword("");
+    setNewPassword(""); setConfirmPassword(""); setCurrentPwdForPwd("");
   };
 
   const handleChangeEmail = async () => {
+    if (!currentPwdForEmail) { toast.error("Enter your current password to confirm"); return; }
     if (!newEmail.includes("@")) { toast.error("Enter a valid email"); return; }
+    if (!user?.email) { toast.error("No email on account"); return; }
+    if (newEmail.toLowerCase() === user.email.toLowerCase()) { toast.error("New email matches current email"); return; }
     setSavingEmail(true);
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPwdForEmail,
+    });
+    if (reauthError) {
+      setSavingEmail(false);
+      toast.error("Current password is incorrect");
+      return;
+    }
     const { error } = await supabase.auth.updateUser(
       { email: newEmail },
       { emailRedirectTo: window.location.origin }
@@ -79,7 +106,7 @@ export default function Settings() {
     setSavingEmail(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Confirmation email sent to your new address");
-    setNewEmail("");
+    setNewEmail(""); setCurrentPwdForEmail("");
   };
 
   return (
@@ -111,9 +138,10 @@ export default function Settings() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Change password</Label>
+                <Input type="password" autoComplete="current-password" placeholder="Current password" value={currentPwdForPwd} onChange={(e) => setCurrentPwdForPwd(e.target.value)} />
                 <Input type="password" placeholder="New password (min 8 chars)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                 <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                <Button onClick={handleChangePassword} disabled={savingPwd || !newPassword} className="w-full sm:w-auto">
+                <Button onClick={handleChangePassword} disabled={savingPwd || !newPassword || !currentPwdForPwd} className="w-full sm:w-auto">
                   {savingPwd ? "Updating..." : "Update password"}
                 </Button>
               </div>
@@ -122,10 +150,16 @@ export default function Settings() {
                 <Label className="text-sm font-medium flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Change email</Label>
                 <p className="text-xs text-muted-foreground">Current: {user?.email}</p>
                 <Input type="email" placeholder="new@email.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-                <Button onClick={handleChangeEmail} disabled={savingEmail || !newEmail} className="w-full sm:w-auto">
+                <Input type="password" autoComplete="current-password" placeholder="Confirm with current password" value={currentPwdForEmail} onChange={(e) => setCurrentPwdForEmail(e.target.value)} />
+                <Button onClick={handleChangeEmail} disabled={savingEmail || !newEmail || !currentPwdForEmail} className="w-full sm:w-auto">
                   {savingEmail ? "Sending..." : "Send confirmation"}
                 </Button>
                 <p className="text-xs text-muted-foreground">You'll receive a confirmation link at the new address.</p>
+              </div>
+
+              <div className="space-y-2 pt-4 border-t border-border">
+                <Label className="text-sm font-medium flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> Two-factor authentication</Label>
+                <TwoFactorAuth />
               </div>
             </div>
           </motion.section>
