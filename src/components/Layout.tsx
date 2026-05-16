@@ -69,16 +69,29 @@ export default function Layout() {
 function RouteLoader() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center"
+      className="min-h-screen relative flex items-center justify-center"
       style={{ background: "#0a0a1a" }}
     >
+      {/* Feathered stage so the loader matches the app's soft column edges */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-x"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[96rem]"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 80% at 50% 50%, hsl(var(--background) / 0.35), transparent 70%)",
+        }}
+      />
       <img
         src="/mogsy-logo-text.png"
         alt=""
         aria-hidden="true"
         width={264}
         height={176}
-        className="h-20 sm:h-24 object-contain opacity-70 animate-pulse"
+        className="relative z-10 h-20 sm:h-24 object-contain opacity-70 animate-pulse"
         decoding="async"
       />
     </div>
