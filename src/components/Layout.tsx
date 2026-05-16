@@ -68,7 +68,10 @@ export default function Layout() {
  *  Mirrors the static FCP shell in index.html so transitions feel continuous. */
 function RouteLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "#0a0a1a" }}
+    >
       <img
         src="/mogsy-logo-text.png"
         alt=""
