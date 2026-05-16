@@ -294,10 +294,10 @@ export default function UserProfile() {
       const leagueIds = membershipsRes.data.map((m) => m.league_id);
       const { data: leagues } = await supabase
         .from("leagues")
-        .select("id, name, type")
+        .select("id, name, type, category")
         .in("id", leagueIds);
 
-      const leagueMap = new Map((leagues || []).map((l) => [l.id, { name: l.name, type: l.type }]));
+      const leagueMap = new Map((leagues || []).map((l) => [l.id, { name: l.name, type: l.type, category: (l as any).category || "Other" }]));
 
       // Get ranks for each league
       const statsPromises = membershipsRes.data.map(async (m) => {
@@ -325,6 +325,7 @@ export default function UserProfile() {
         return {
           league_id: m.league_id,
           league_name: leagueInfo?.name || "Unknown",
+          category: leagueInfo?.category || "Other",
           elo: m.elo,
           matches_played: m.matches_played,
           rank,
