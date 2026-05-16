@@ -1,62 +1,26 @@
-# Fix: empty-template flash after onboarding completes
+## Cause
 
-## Where the handoff happens
+The initial shell in `index.html` paints before any image bytes are on disk:
 
-The transition from "onboarding finished" to "Home screen visible" lives entirely in `src/pages/Home.tsx`:
+```html
+<img src="/mogsy-logo-text.png" alt="Mogsy" width="264" height="176" ... />
+```
 
-- **Render gate** (lines 773–779):
-  ```tsx
-  if (showOnboarding) return <OnboardingFlow onComplete={handleOnboardingComplete} />;
-  if (loading) return <div className="min-h-screen bg-background" />;
-  ```
-- **Completion handler** (lines 209–215):
-  ```tsx
-  const handleOnboardingComplete = async (categories) => {
-    setShowOnboarding(false);          // (A) unmount onboarding
-    setPreferredCategories(categories);
-    if (!user) return;
-    const { data: profile } = await supabase.from("profiles").select("id")...;
-    if (profile) await loadData(profile.id, categories);  // (B) sets loading=true inside
-  };
-  ```
+Until the PNG decodes, the browser renders the `alt="Mogsy"` text inside a 264×176 box. That is the "flashes of the word Mogsy" you see right after a hard refresh — same root cause on the homescreen as on `/swipe`. Once the logo decodes (or React mounts and `RouteLoader` swaps in), it disappears.
 
-## Why the flash happens
-
-When the user lands on `/home` for the first time, the path through `checkOnboardingAndLoad` sets `loading=false` *before* showing onboarding (line 174). When `handleOnboardingComplete` runs:
-
-1. `setShowOnboarding(false)` flips the gate — Home re-renders.
-2. `loading` is still `false`, and all data arrays (`leagues`, `bannerItems`, `categorySections`, `playCollections`, `playCompetes`, `recentSwipes`, `topComments`, `previewImages`, etc.) are still their initial empty values.
-3. React paints one frame of the full Home layout with empty sections — that is the "outlines/templates/textboxes of old code" the user sees.
-4. A microtask later, `loadData` runs, calls `setLoading(true)`, and Home swaps to the blank loader, then to real content.
-
-So the flash window = the gap between step 1 and `setLoading(true)` inside `loadData` (one render + one async profile fetch).
+The runtime `RouteLoader` in `src/components/Layout.tsx` has the same issue (`alt=""` is fine there, but it uses `animate-pulse` which can briefly show an empty box too).
 
 ## Fix
 
-Eliminate the gap by entering the loading state in the *same* React update that hides onboarding, before any await:
+1. In `index.html`, make the shell image decorative and hide it until it has actually loaded so no alt text is ever painted:
+   - `alt=""` + `aria-hidden="true"`
+   - inline `opacity:0` with an `onload="this.style.opacity=1"` handler (kept inline so it works before any JS module loads)
+   - keep the existing `width`/`height`/`fetchpriority`/`decoding` attributes so layout is reserved and LCP is unchanged
+2. Keep the page background `#0a0a1a` so the hidden state looks like a clean dark screen rather than a flashing text block.
+3. No change to `src/main.tsx` shell-removal logic — the fade-out still works.
 
-```tsx
-const handleOnboardingComplete = async (categories: string[]) => {
-  // Set loading first so the gate falls through to the loader, not empty Home
-  setLoading(true);
-  setShowOnboarding(false);
-  setPreferredCategories(categories);
-  if (!user) return;
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
-  if (profile) await loadData(profile.id, categories);
-  else setLoading(false);
-};
-```
+## Files
 
-Both `setLoading(true)` and `setShowOnboarding(false)` are batched into one render, so the next paint hits the `if (loading)` branch (the branded loader/blank shell) instead of an empty Home, and the flash disappears.
+- `index.html` — update the `#initial-shell` `<img>` only.
 
-## Optional polish (same file)
-
-- Use the branded `RouteLoader` from `src/components/Layout.tsx` instead of the bare `<div className="min-h-screen bg-background" />` at line 778, so the post-onboarding wait matches the boot shell visually.
-- Add a defensive `setLoading(false)` in the `if (!user)` early return to avoid a stuck loader if the user signs out mid-flow.
-
-## Files touched
-
-- `src/pages/Home.tsx` — only `handleOnboardingComplete` (and optionally the `loading` fallback markup).
-
-No backend, schema, or routing changes required.
+No other files, no routing, no backend changes.
