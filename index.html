@@ -102,7 +102,7 @@
   <body style="background:#0a0a1a">
     <!-- Static shell painted immediately for fast FCP — lives OUTSIDE #root so React doesn't destroy it -->
     <div id="initial-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a1a;position:fixed;inset:0;z-index:9999;transition:opacity .3s ease-out;">
-      <img src="/mogsy-logo-text.png" alt="Mogsy" width="264" height="176" style="height:7rem;object-fit:contain;" fetchpriority="high" decoding="async" />
+      <img src="/mogsy-logo-text.png" alt="" aria-hidden="true" width="264" height="176" style="height:7rem;object-fit:contain;opacity:0;transition:opacity .2s ease-out;" fetchpriority="high" decoding="async" onload="this.style.opacity=1" />
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
