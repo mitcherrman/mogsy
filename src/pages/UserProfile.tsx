@@ -41,6 +41,7 @@ interface ProfileData {
 interface LeagueStat {
   league_id: string;
   league_name: string;
+  category: string;
   elo: number;
   matches_played: number;
   rank: number;
