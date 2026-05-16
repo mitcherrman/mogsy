@@ -1,26 +1,34 @@
-## Cause
+## Goal
 
-The initial shell in `index.html` paints before any image bytes are on disk:
+In `SwipeHub` (the `/swipe` page), the two auto-scrolling bubble rows currently let the buttons clip hard against the left and right viewport edges. Add smooth fade-to-background gutters so bubbles appear to glide in/out of view instead of being chopped off.
 
-```html
-<img src="/mogsy-logo-text.png" alt="Mogsy" width="264" height="176" ... />
-```
+## Approach
 
-Until the PNG decodes, the browser renders the `alt="Mogsy"` text inside a 264×176 box. That is the "flashes of the word Mogsy" you see right after a hard refresh — same root cause on the homescreen as on `/swipe`. Once the logo decodes (or React mounts and `RouteLoader` swaps in), it disappears.
+Use a CSS mask gradient on the scroll track. This is the modern, GPU-friendly way to fade scrolling content into the page background — it works regardless of background color (no need to match `#0a0a1a` solid blocks), it doesn't intercept pointer events, and it animates cleanly with the marquee.
 
-The runtime `RouteLoader` in `src/components/Layout.tsx` has the same issue (`alt=""` is fine there, but it uses `animate-pulse` which can briefly show an empty box too).
+### Change
 
-## Fix
+In `src/components/SwipeHub.tsx` → `AutoScrollRow`'s outer scroll `<div>`:
 
-1. In `index.html`, make the shell image decorative and hide it until it has actually loaded so no alt text is ever painted:
-   - `alt=""` + `aria-hidden="true"`
-   - inline `opacity:0` with an `onload="this.style.opacity=1"` handler (kept inline so it works before any JS module loads)
-   - keep the existing `width`/`height`/`fetchpriority`/`decoding` attributes so layout is reserved and LCP is unchanged
-2. Keep the page background `#0a0a1a` so the hidden state looks like a clean dark screen rather than a flashing text block.
-3. No change to `src/main.tsx` shell-removal logic — the fade-out still works.
+- Add a horizontal mask: transparent at the left/right edges, opaque in the middle.
+- Width of fade: ~64px on mobile, ~96px on desktop (uses Tailwind responsive arbitrary values via inline style with `clamp()` so it scales).
+- Apply via inline style:
+  ```ts
+  style={{
+    scrollbarWidth: "none",
+    WebkitMaskImage:
+      "linear-gradient(to right, transparent 0, #000 clamp(40px,8%,96px), #000 calc(100% - clamp(40px,8%,96px)), transparent 100%)",
+    maskImage:
+      "linear-gradient(to right, transparent 0, #000 clamp(40px,8%,96px), #000 calc(100% - clamp(40px,8%,96px)), transparent 100%)",
+  }}
+  ```
+- Add a small horizontal `padding` (e.g. `paddingLeft`/`paddingRight: bubbleSize * 0.5`) on the inner flex track so the first/last bubble doesn't sit fully under the mask before the loop wraps.
 
-## Files
+Optional polish (kept minimal so it stays "modern app" and not busy):
+- No extra DOM overlays, no borders, no shadows — the gradient mask alone gives the smooth fade the user is asking for.
 
-- `index.html` — update the `#initial-shell` `<img>` only.
+### Files
 
-No other files, no routing, no backend changes.
+- `src/components/SwipeHub.tsx` — only `AutoScrollRow`'s scroll container style + inner padding. No logic, no layout, no animation timing changes.
+
+No backend, routing, or other component changes.
