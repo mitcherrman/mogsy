@@ -74,7 +74,6 @@ export function invalidateSoundSettingsCache() {
   fetchPromise = null;
 }
 
-export function useSoundSettings() {
 function applyMute(s: SoundSettings): SoundSettings {
   try {
     if (typeof window !== "undefined" && localStorage.getItem("mogsy-sounds-muted") === "1") {
