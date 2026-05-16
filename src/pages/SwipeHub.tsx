@@ -260,13 +260,30 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
   const h = bubbleSize;
   const br = getBorderRadius();
 
+  const fadeMask =
+    "linear-gradient(to right, transparent 0, #000 clamp(40px, 8%, 96px), #000 calc(100% - clamp(40px, 8%, 96px)), transparent 100%)";
+
   return (
     <div
       ref={scrollRef}
       className="overflow-x-auto swipe-thin-scroll group"
-      style={{ scrollbarWidth: "none" }}
+      style={{
+        scrollbarWidth: "none",
+        WebkitMaskImage: fadeMask,
+        maskImage: fadeMask,
+      }}
     >
-      <div className="flex items-center" style={{ gap, width: "max-content", paddingTop: bubbleSize * 0.1, paddingBottom: bubbleSize * 0.1 }}>
+      <div
+        className="flex items-center"
+        style={{
+          gap,
+          width: "max-content",
+          paddingTop: bubbleSize * 0.1,
+          paddingBottom: bubbleSize * 0.1,
+          paddingLeft: bubbleSize * 0.5,
+          paddingRight: bubbleSize * 0.5,
+        }}
+      >
         {items.map((option, i) => {
           const league = leagues[option.key];
           return (
