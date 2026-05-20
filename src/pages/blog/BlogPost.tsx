@@ -102,8 +102,10 @@ export default function BlogPost() {
 
       <BlogThemeWrapper theme={post.theme as BlogTheme}>
         {post.cover_url && (post.theme as BlogTheme)?.cover !== "boxed" && (
-          <div className="w-full aspect-[21/9] max-h-[60vh] overflow-hidden">
-            <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover" />
+          <div className="w-full max-w-3xl mx-auto px-4 pt-6">
+            <div className="w-full aspect-[21/9] max-h-[32vh] overflow-hidden rounded-xl border-4 border-black">
+              <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover opacity-60" />
+            </div>
           </div>
         )}
         <article className="max-w-3xl mx-auto px-4 py-10">
@@ -119,7 +121,7 @@ export default function BlogPost() {
             <p className="text-xs blog-muted mt-4">{new Date(post.published_at).toLocaleDateString(undefined, { dateStyle: "long" })}</p>
           )}
           {(post.theme as BlogTheme)?.cover === "boxed" && post.cover_url && (
-            <img src={post.cover_url} alt={post.title} className="w-full rounded-2xl mt-8 aspect-[16/9] object-cover" />
+            <img src={post.cover_url} alt={post.title} className="w-full max-w-xl mx-auto rounded-2xl mt-8 aspect-[16/9] object-cover border-4 border-black opacity-60" />
           )}
           <div className="mt-10">
             <BlogRenderer content={post.content as BlogContent} />
