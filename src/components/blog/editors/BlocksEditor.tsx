@@ -498,6 +498,19 @@ function BlockInspector({ block, onChange }: { block: BlogBlock; onChange: (patc
         <Field label="League ID"><input className={inputCls} value={p.leagueId ?? ""} onChange={(e) => setProp("leagueId", e.target.value)} /></Field>
         <Field label="Days"><input type="number" className={inputCls} value={p.days ?? 30} onChange={(e) => setProp("days", Number(e.target.value))} /></Field>
       </>}
+      {block.type === "adsense" && <>
+        <Field label="AdSense slot ID"><input className={inputCls} value={p.slot ?? ""} onChange={(e) => setProp("slot", e.target.value)} placeholder="e.g. 1234567890" /></Field>
+        <Field label="Client ID (optional)"><input className={inputCls} value={p.clientId ?? ""} onChange={(e) => setProp("clientId", e.target.value)} placeholder="ca-pub-… (defaults to global)" /></Field>
+        <Field label="Layout">
+          <select className={inputCls} value={p.layout ?? "rectangle"} onChange={(e) => setProp("layout", e.target.value)}>
+            <option value="rectangle">Rectangle (in-article)</option>
+            <option value="horizontal">Horizontal banner</option>
+            <option value="leaderboard">Leaderboard (top/bottom)</option>
+          </select>
+        </Field>
+        <Field label="Min height (px)"><input type="number" className={inputCls} value={p.height ?? 280} onChange={(e) => setProp("height", Number(e.target.value))} /></Field>
+        <p className="text-[11px] text-muted-foreground">Leave slot empty to show a placeholder until you create a real AdSense slot.</p>
+      </>}
 
       <div className="pt-3 border-t border-border space-y-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Style</div>
