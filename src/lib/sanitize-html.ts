@@ -1,7 +1,7 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config } from "dompurify";
 
 /** Strict allowlist for rich-text block content (no scripts, no event handlers, no iframes). */
-const RICH_TEXT_CONFIG: DOMPurify.Config = {
+const RICH_TEXT_CONFIG: Config = {
   ALLOWED_TAGS: [
     "b", "strong", "i", "em", "u", "s", "strike", "sub", "sup",
     "a", "br", "p", "span", "ul", "ol", "li", "blockquote",
@@ -14,8 +14,8 @@ const RICH_TEXT_CONFIG: DOMPurify.Config = {
   FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "style"],
 };
 
-/** Even stricter — used for the embed block which historically rendered raw HTML. */
-const EMBED_CONFIG: DOMPurify.Config = {
+/** Embed block — limited iframe/img allowance for trusted embed snippets. */
+const EMBED_CONFIG: Config = {
   ALLOWED_TAGS: [
     "iframe", "a", "p", "div", "span", "br", "img",
     "b", "strong", "i", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
