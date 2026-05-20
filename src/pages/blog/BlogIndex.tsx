@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, BookOpen, ArrowRight } from "lucide-react";
-import { useBlogList } from "@/hooks/blog/useBlogPosts";
+import { useBlogList, useBlogTags } from "@/hooks/blog/useBlogPosts";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -10,21 +10,24 @@ import { getBlogTheme } from "@/lib/blog/themes";
 export default function BlogIndex() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState<string | undefined>(undefined);
-  const { data: posts = [], isLoading } = useBlogList({ limit: 60, search: search || undefined, tag });
-  // Stable tag list — derived from an unfiltered query so categories don't
+  const { data: posts = [], isLoading } = useBlogList({ limit: 40, search: search || undefined, tag });
+  // Stable tag list — derived from a tiny tags-only query so categories don't
   // disappear/jump when the user selects a tag or types a search.
-  const { data: allPosts = [] } = useBlogList({ limit: 100 });
-  const allTags = Array.from(new Set(allPosts.flatMap((p) => p.tags ?? []))).slice(0, 12);
+  const { data: tagData = [] } = useBlogTags();
+  const allTags = tagData.slice(0, 12);
 
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  // Rotate only through the first few posts so we don't thrash the browser by
+  // loading dozens of large GIFs as featured covers.
+  const rotationCount = Math.min(posts.length, 5);
   useEffect(() => {
-    if (posts.length <= 1) return;
+    if (rotationCount <= 1) return;
     const id = setInterval(() => {
-      setFeaturedIndex((i) => (i + 1) % posts.length);
-    }, 5000);
+      setFeaturedIndex((i) => (i + 1) % rotationCount);
+    }, 7000);
     return () => clearInterval(id);
-  }, [posts.length]);
-  const safeIndex = posts.length ? featuredIndex % posts.length : 0;
+  }, [rotationCount]);
+  const safeIndex = posts.length ? featuredIndex % rotationCount : 0;
   const hero = posts[safeIndex];
   const rest = posts.filter((_, i) => i !== safeIndex);
 
@@ -144,13 +147,17 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
               src={post.cover_url}
               alt=""
               aria-hidden="true"
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-30"
             />
             <img
               src={post.cover_url}
               alt={post.title}
               className="relative w-full h-full object-contain"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
             />
           </>
         ) : (

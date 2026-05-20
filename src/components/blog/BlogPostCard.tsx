@@ -13,7 +13,13 @@ export default function BlogPostCard({ post, size = "md" }: { post: BlogPostRow;
     >
       <div className={`${aspect} relative overflow-hidden border-4 border-black`} style={{ background: theme.vars["--blog-bg"] }}>
         {post.cover_url ? (
-          <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" />
+          <img
+            src={post.cover_url}
+            alt={post.title}
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ color: theme.vars["--blog-accent"] }}>
             <span className={`${size === "sm" ? "text-xl" : "text-3xl"} font-bold opacity-40`}>{post.title?.slice(0, 1) || "M"}</span>
