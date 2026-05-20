@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, BookOpen, ArrowRight } from "lucide-react";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -16,7 +16,17 @@ export default function BlogIndex() {
   const { data: allPosts = [] } = useBlogList({ limit: 100 });
   const allTags = Array.from(new Set(allPosts.flatMap((p) => p.tags ?? []))).slice(0, 12);
 
-  const [hero, ...rest] = posts;
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  useEffect(() => {
+    if (posts.length <= 1) return;
+    const id = setInterval(() => {
+      setFeaturedIndex((i) => (i + 1) % posts.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [posts.length]);
+  const safeIndex = posts.length ? featuredIndex % posts.length : 0;
+  const hero = posts[safeIndex];
+  const rest = posts.filter((_, i) => i !== safeIndex);
 
   return (
     <div className="min-h-dvh bg-background">
@@ -86,7 +96,7 @@ export default function BlogIndex() {
         ) : (
           <>
             {hero && (
-              <FeaturedHero post={hero} />
+              <FeaturedHero key={hero.id} post={hero} />
             )}
             {rest.length > 0 && (
               <div className="mt-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1.5">
