@@ -9,6 +9,18 @@ interface SEOHeadProps {
   image?: string;
   /** Optional JSON-LD structured data object(s) injected for this route. */
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  /** og:type, defaults to "website". Use "article" for blog posts. */
+  type?: "website" | "article" | "profile";
+  /** Article-specific Open Graph metadata, applied when type === "article". */
+  article?: {
+    publishedTime?: string | null;
+    modifiedTime?: string | null;
+    section?: string | null;
+    tags?: string[] | null;
+    author?: string | null;
+  };
+  /** Comma-separated keywords for the page. */
+  keywords?: string;
 }
 
 function upsertMeta(selector: string, attr: "name" | "property", key: string, content: string) {
@@ -21,7 +33,7 @@ function upsertMeta(selector: string, attr: "name" | "property", key: string, co
   el.setAttribute("content", content);
 }
 
-export default function SEOHead({ title, description, path, image, jsonLd }: SEOHeadProps) {
+export default function SEOHead({ title, description, path, image, jsonLd, type, article, keywords }: SEOHeadProps) {
   useEffect(() => {
     document.title = title;
     upsertMeta('meta[name="description"]', "name", "description", description);
@@ -42,12 +54,34 @@ export default function SEOHead({ title, description, path, image, jsonLd }: SEO
     upsertMeta('meta[property="og:title"]', "property", "og:title", title);
     upsertMeta('meta[property="og:description"]', "property", "og:description", description);
     upsertMeta('meta[property="og:url"]', "property", "og:url", url);
+    upsertMeta('meta[property="og:type"]', "property", "og:type", type ?? "website");
+    upsertMeta('meta[property="og:site_name"]', "property", "og:site_name", "Mogsy");
     if (image) upsertMeta('meta[property="og:image"]', "property", "og:image", image);
 
     // Twitter
+    upsertMeta('meta[name="twitter:card"]', "name", "twitter:card", image ? "summary_large_image" : "summary");
     upsertMeta('meta[name="twitter:title"]', "name", "twitter:title", title);
     upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
     if (image) upsertMeta('meta[name="twitter:image"]', "name", "twitter:image", image);
+
+    if (keywords) upsertMeta('meta[name="keywords"]', "name", "keywords", keywords);
+
+    // Article metadata + per-tag <meta property="article:tag"> nodes
+    const articleNodes: HTMLMetaElement[] = [];
+    if (type === "article" && article) {
+      if (article.publishedTime) upsertMeta('meta[property="article:published_time"]', "property", "article:published_time", article.publishedTime);
+      if (article.modifiedTime) upsertMeta('meta[property="article:modified_time"]', "property", "article:modified_time", article.modifiedTime);
+      if (article.section) upsertMeta('meta[property="article:section"]', "property", "article:section", article.section);
+      if (article.author) upsertMeta('meta[property="article:author"]', "property", "article:author", article.author);
+      for (const tag of article.tags ?? []) {
+        const node = document.createElement("meta");
+        node.setAttribute("property", "article:tag");
+        node.setAttribute("content", tag);
+        node.dataset.seoRoute = "true";
+        document.head.appendChild(node);
+        articleNodes.push(node);
+      }
+    }
 
     // Per-route JSON-LD. Tagged so we can clean up on unmount/route change.
     const ldNodes: HTMLScriptElement[] = [];
@@ -64,8 +98,9 @@ export default function SEOHead({ title, description, path, image, jsonLd }: SEO
     }
     return () => {
       for (const node of ldNodes) node.remove();
+      for (const node of articleNodes) node.remove();
     };
-  }, [title, description, path, image, jsonLd]);
+  }, [title, description, path, image, jsonLd, type, article, keywords]);
 
   return null;
 }
