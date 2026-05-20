@@ -51,26 +51,26 @@ export default function BlogIndex() {
           },
         ]}
       />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-2 mb-2 text-primary">
-          <BookOpen className="h-5 w-5" />
-          <span className="text-xs uppercase tracking-widest font-bold">The Blog</span>
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex items-center gap-2 mb-1 text-primary">
+          <BookOpen className="h-4 w-4" />
+          <span className="text-[10px] uppercase tracking-widest font-bold">The Blog</span>
         </div>
-        <h1 className="text-3xl md:text-5xl font-bold text-foreground">Stories from Mogsy</h1>
-        <p className="text-muted-foreground mt-2 max-w-xl">Rankings, recaps, and ridiculous deep dives.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Stories from Mogsy</h1>
+        <p className="text-xs text-muted-foreground mt-1 max-w-xl">Rankings, recaps, and ridiculous deep dives.</p>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-3 flex flex-col gap-2">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts…"
-              className="w-full pl-9 pr-3 py-2 rounded-full border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full pl-9 pr-3 py-1.5 rounded-full border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
           {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 min-h-[28px]">
+            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
               <TagPill active={!tag} onClick={() => setTag(undefined)}>All</TagPill>
               {allTags.map((t) => (
                 <TagPill key={t} active={tag === t} onClick={() => setTag(t)}>{t}</TagPill>
@@ -89,8 +89,8 @@ export default function BlogIndex() {
               <FeaturedHero post={hero} />
             )}
             {rest.length > 0 && (
-              <div className="mt-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {rest.map((p) => <BlogPostCard key={p.id} post={p} />)}
+              <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {rest.map((p) => <BlogPostCard key={p.id} post={p} size="sm" />)}
               </div>
             )}
           </>
@@ -104,7 +104,7 @@ function TagPill({ active, onClick, children }: { active: boolean; onClick: () =
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/40"}`}
+      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/40"}`}
     >
       {children}
     </button>
@@ -116,7 +116,7 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group mt-6 grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors"
+      className="group mt-3 grid grid-cols-2 md:grid-cols-[1fr_1.2fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors max-h-[180px]"
     >
       <div
         className="relative aspect-[16/9] md:aspect-auto md:h-full overflow-hidden"
@@ -131,24 +131,24 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ color: theme.vars["--blog-accent"] }}>
-            <span className="text-5xl font-bold opacity-40">{post.title?.slice(0, 1) || "M"}</span>
+            <span className="text-3xl font-bold opacity-40">{post.title?.slice(0, 1) || "M"}</span>
           </div>
         )}
-        <div className="absolute top-3 left-3 px-2 py-1 rounded-full bg-primary text-primary-foreground text-[10px] uppercase tracking-widest font-bold">
+        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[9px] uppercase tracking-widest font-bold">
           Featured
         </div>
       </div>
-      <div className="p-5 md:p-6 flex flex-col justify-center">
+      <div className="p-3 md:p-4 flex flex-col justify-center">
         {post.tags?.length > 0 && (
-          <div className="text-[10px] uppercase tracking-widest text-primary font-semibold mb-2">{post.tags[0]}</div>
+          <div className="text-[9px] uppercase tracking-widest text-primary font-semibold mb-1">{post.tags[0]}</div>
         )}
-        <h2 className="font-bold text-foreground text-xl md:text-2xl leading-tight line-clamp-3">{post.title}</h2>
+        <h2 className="font-bold text-foreground text-sm md:text-base leading-tight line-clamp-2">{post.title}</h2>
         {post.subtitle && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{post.subtitle}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{post.subtitle}</p>
         )}
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
           {post.published_at && <span>{new Date(post.published_at).toLocaleDateString()}</span>}
-          <span className="ml-auto inline-flex items-center gap-1 text-primary font-semibold">
+          <span className="ml-auto inline-flex items-center gap-1 text-primary font-semibold text-[10px]">
             Read <ArrowRight className="h-3 w-3" />
           </span>
         </div>
