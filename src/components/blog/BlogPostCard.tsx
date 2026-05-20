@@ -11,7 +11,7 @@ export default function BlogPostCard({ post, size = "md" }: { post: BlogPostRow;
       title={post.title}
       className={`group block ${size === "sm" ? "rounded-lg" : "rounded-2xl"} overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors`}
     >
-      <div className={`${aspect} relative overflow-hidden`} style={{ background: theme.vars["--blog-bg"] }}>
+      <div className={`${aspect} relative overflow-hidden border-4 border-black`} style={{ background: theme.vars["--blog-bg"] }}>
         {post.cover_url ? (
           <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" />
         ) : (

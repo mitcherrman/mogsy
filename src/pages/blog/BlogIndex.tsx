@@ -129,7 +129,7 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
       className="group mt-3 w-full max-w-5xl grid grid-cols-2 md:grid-cols-[1.4fr_1fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors animate-fade-in"
     >
       <div
-        className="relative overflow-hidden aspect-[16/10]"
+        className="relative overflow-hidden aspect-[16/10] border-4 border-black"
         style={{ background: theme.vars["--blog-bg"] }}
       >
         {post.cover_url ? (
