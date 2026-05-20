@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { Search, BookOpen } from "lucide-react";
+import { Search, BookOpen, ArrowRight } from "lucide-react";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
+import { Link } from "react-router-dom";
+import { getBlogTheme } from "@/lib/blog/themes";
 
 export default function BlogIndex() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState<string | undefined>(undefined);
   const { data: posts = [], isLoading } = useBlogList({ limit: 60, search: search || undefined, tag });
-  const allTags = Array.from(new Set(posts.flatMap((p) => p.tags ?? []))).slice(0, 12);
+  // Stable tag list — derived from an unfiltered query so categories don't
+  // disappear/jump when the user selects a tag or types a search.
+  const { data: allPosts = [] } = useBlogList({ limit: 100 });
+  const allTags = Array.from(new Set(allPosts.flatMap((p) => p.tags ?? []))).slice(0, 12);
 
   const [hero, ...rest] = posts;
 
@@ -54,8 +59,8 @@ export default function BlogIndex() {
         <h1 className="text-3xl md:text-5xl font-bold text-foreground">Stories from Mogsy</h1>
         <p className="text-muted-foreground mt-2 max-w-xl">Rankings, recaps, and ridiculous deep dives.</p>
 
-        <div className="mt-6 flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[220px] max-w-md">
+        <div className="mt-6 flex flex-col gap-3">
+          <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               value={search}
@@ -65,7 +70,7 @@ export default function BlogIndex() {
             />
           </div>
           {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 min-h-[28px]">
               <TagPill active={!tag} onClick={() => setTag(undefined)}>All</TagPill>
               {allTags.map((t) => (
                 <TagPill key={t} active={tag === t} onClick={() => setTag(t)}>{t}</TagPill>
@@ -81,12 +86,10 @@ export default function BlogIndex() {
         ) : (
           <>
             {hero && (
-              <div className="mt-8">
-                <BlogPostCard post={hero} size="lg" />
-              </div>
+              <FeaturedHero post={hero} />
             )}
             {rest.length > 0 && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+              <div className="mt-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {rest.map((p) => <BlogPostCard key={p.id} post={p} />)}
               </div>
             )}
@@ -105,5 +108,51 @@ function TagPill({ active, onClick, children }: { active: boolean; onClick: () =
     >
       {children}
     </button>
+  );
+}
+
+function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }) {
+  const theme = getBlogTheme(post.theme?.preset);
+  return (
+    <Link
+      to={`/blog/${post.slug}`}
+      className="group mt-6 grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors"
+    >
+      <div
+        className="relative aspect-[16/9] md:aspect-auto md:h-full overflow-hidden"
+        style={{ background: theme.vars["--blog-bg"] }}
+      >
+        {post.cover_url ? (
+          <img
+            src={post.cover_url}
+            alt={post.title}
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ color: theme.vars["--blog-accent"] }}>
+            <span className="text-5xl font-bold opacity-40">{post.title?.slice(0, 1) || "M"}</span>
+          </div>
+        )}
+        <div className="absolute top-3 left-3 px-2 py-1 rounded-full bg-primary text-primary-foreground text-[10px] uppercase tracking-widest font-bold">
+          Featured
+        </div>
+      </div>
+      <div className="p-5 md:p-6 flex flex-col justify-center">
+        {post.tags?.length > 0 && (
+          <div className="text-[10px] uppercase tracking-widest text-primary font-semibold mb-2">{post.tags[0]}</div>
+        )}
+        <h2 className="font-bold text-foreground text-xl md:text-2xl leading-tight line-clamp-3">{post.title}</h2>
+        {post.subtitle && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{post.subtitle}</p>
+        )}
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          {post.published_at && <span>{new Date(post.published_at).toLocaleDateString()}</span>}
+          <span className="ml-auto inline-flex items-center gap-1 text-primary font-semibold">
+            Read <ArrowRight className="h-3 w-3" />
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
