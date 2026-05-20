@@ -436,3 +436,82 @@ html.high-contrast {
   --primary-foreground: 0 0% 0%;
 }
 html.high-contrast * { text-shadow: none !important; }
+
+/* ===== Blog scope ===== */
+/* All blog post styling is scoped inside .blog-scope so theme presets and
+   per-block fonts/colors never leak out into the app shell. */
+.blog-scope {
+  background: var(--blog-bg);
+  color: var(--blog-text);
+  font-family: var(--blog-body-font, 'Inter', system-ui, sans-serif);
+  line-height: 1.6;
+}
+.blog-scope a { color: var(--blog-accent); }
+.blog-scope h1, .blog-scope h2, .blog-scope h3, .blog-scope h4 {
+  font-family: var(--blog-heading-font, 'Inter', system-ui, sans-serif);
+  color: var(--blog-text);
+  line-height: 1.1;
+}
+.blog-scope .blog-surface { background: var(--blog-surface); border: 1px solid var(--blog-border); }
+.blog-scope .blog-accent { color: var(--blog-accent); }
+.blog-scope .blog-accent-bg { background: var(--blog-accent); color: var(--blog-bg); }
+.blog-scope .blog-muted { color: var(--blog-muted); }
+.blog-scope .blog-border { border-color: var(--blog-border); }
+
+/* Tiptap rich-text rendering inside the blog */
+.blog-scope .ProseMirror { outline: none; min-height: 4rem; }
+.blog-scope .ProseMirror p { margin: 0.6em 0; }
+.blog-scope .ProseMirror h1 { font-size: 2.4rem; margin: 0.8em 0 0.4em; font-weight: 700; }
+.blog-scope .ProseMirror h2 { font-size: 1.8rem; margin: 0.8em 0 0.4em; font-weight: 700; }
+.blog-scope .ProseMirror h3 { font-size: 1.4rem; margin: 0.6em 0 0.3em; font-weight: 600; }
+.blog-scope .ProseMirror ul, .blog-scope .ProseMirror ol { padding-left: 1.5em; margin: 0.6em 0; }
+.blog-scope .ProseMirror blockquote {
+  border-left: 3px solid var(--blog-accent);
+  padding-left: 1rem;
+  margin: 1em 0;
+  font-style: italic;
+  color: var(--blog-muted);
+}
+.blog-scope .ProseMirror code {
+  background: var(--blog-surface);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+}
+.blog-scope .ProseMirror img { max-width: 100%; border-radius: 8px; margin: 1em 0; }
+.blog-scope .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--blog-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Block animations */
+@keyframes blog-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes blog-slide-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blog-scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes blog-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.blog-anim-fade-in { animation: blog-fade-in 0.7s ease-out both; }
+.blog-anim-slide-up { animation: blog-slide-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.blog-anim-scale-in { animation: blog-scale-in 0.6s ease-out both; }
+.blog-anim-shimmer {
+  background: linear-gradient(110deg, var(--blog-surface) 30%, var(--blog-accent) 50%, var(--blog-surface) 70%);
+  background-size: 200% 100%;
+  animation: blog-shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Canvas editor grid */
+.blog-canvas-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
