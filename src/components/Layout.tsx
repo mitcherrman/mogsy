@@ -75,7 +75,7 @@ export function RouteLoader() {
       {/* Feathered stage so the loader matches the app's soft column edges */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-x"
+        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-xy"
       />
       <div
         aria-hidden="true"
