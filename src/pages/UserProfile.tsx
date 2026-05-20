@@ -457,7 +457,7 @@ export default function UserProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
@@ -465,7 +465,7 @@ export default function UserProfile() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Profile not found</p>
         <Button variant="outline" onClick={() => navigate(-1)}>Go back</Button>
       </div>
@@ -473,7 +473,7 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen relative" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
+    <div className="min-h-dvh relative" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
       <ThemeOverlay themeId={theme.id} />
       <SEOHead
         title={`${profile.display_name || "User"} — Mogsy`}
@@ -498,7 +498,7 @@ export default function UserProfile() {
         <div className="relative container mx-auto max-w-2xl lg:max-w-3xl px-4 pt-6 pb-8 z-20">
             <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Go back"
             onClick={() => navigate(-1)}
             className={cn("mb-4", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
           >

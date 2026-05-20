@@ -13,7 +13,7 @@ export default function BlogIndex() {
   const [hero, ...rest] = posts;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <SEOHead title="Blog — Mogsy" description="Stories, rankings, and deep dives from the Mogsy team." />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-2 mb-2 text-primary">

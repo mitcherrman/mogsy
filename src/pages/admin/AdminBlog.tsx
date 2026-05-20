@@ -51,11 +51,11 @@ export default function AdminBlog() {
     navigate(`/admin/blog/${data.id}`);
   }
 
-  if (checking) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">…</div>;
+  if (checking) return <div className="min-h-dvh flex items-center justify-center text-muted-foreground">…</div>;
   if (!allowed) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>

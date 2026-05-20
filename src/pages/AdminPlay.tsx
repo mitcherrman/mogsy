@@ -464,12 +464,12 @@ export default function AdminPlay() {
     }
   };
 
-  if (loading || !authorized) return <div className="min-h-screen" />;
+  if (loading || !authorized) return <div className="min-h-dvh" />;
 
   // League items detail view
   if (viewingLeague) {
     return (
-      <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+      <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
         <div className="container mx-auto max-w-2xl">
           <AdminPlayLeagueItems
             leagueId={viewingLeague.id}
@@ -495,11 +495,11 @@ export default function AdminPlay() {
   const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id) && (showHidden || !l.hidden)).sort((a, b) => a.order - b.order);
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={() => navigate(isModerator ? "/moderator" : "/admin")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(isModerator ? "/moderator" : "/admin")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl sm:text-2xl font-extrabold text-foreground flex-1">Play Layout</h1>
@@ -819,12 +819,12 @@ function Section({ title, expanded, onToggle, onAdd, sectionId, children }: { ti
   return (
     <div className="mb-4" id={sectionId}>
       <div className="flex items-center gap-1">
-        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+        <button aria-label="Expand" onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           <span className="text-sm font-bold text-foreground">{title}</span>
         </button>
         {onAdd && (
-          <button onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
+          <button aria-label="Add" onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
             <Plus className="h-4 w-4 text-primary" />
           </button>
         )}

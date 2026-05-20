@@ -289,7 +289,7 @@ function BlockShell({
       {/* Floating side controls */}
       <div className="absolute -left-2 top-2 -translate-x-full flex-col gap-0.5 hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity">
         <button title="Move up (⌘⇧↑)" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="p-1 rounded hover:bg-muted"><ChevronUp className="h-3.5 w-3.5" /></button>
-        <button title="Drag handle" className="p-1 cursor-grab" tabIndex={-1}><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /></button>
+        <button aria-label="Drag to reorder" title="Drag handle" className="p-1 cursor-grab" tabIndex={-1}><GripVertical className="h-3.5 w-3.5 text-muted-foreground" /></button>
         <button title="Move down (⌘⇧↓)" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="p-1 rounded hover:bg-muted"><ChevronDown className="h-3.5 w-3.5" /></button>
       </div>
 

@@ -18,7 +18,7 @@ export default function SwipeInventoryButton({ rewinds, shields, reveals }: Prop
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
+          size="icon" aria-label="Open inventory"
           className="h-8 w-8 relative text-muted-foreground hover:text-foreground"
           title="Power-ups"
         >

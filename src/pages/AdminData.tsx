@@ -247,7 +247,7 @@ export default function AdminData() {
     });
   };
 
-  if (loading || !authorized) return <div className="min-h-screen bg-background" />;
+  if (loading || !authorized) return <div className="min-h-dvh bg-background" />;
 
   const dataSources = getDataSources();
   const categories = getCategories();
@@ -255,12 +255,12 @@ export default function AdminData() {
   const timeLabel = timeAgo < 5 ? "just now" : timeAgo < 60 ? `${timeAgo}s ago` : `${Math.round(timeAgo / 60)}m ago`;
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+            <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/admin")} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <BarChart3 className="h-5 w-5 text-primary" />
@@ -329,6 +329,7 @@ export default function AdminData() {
                     key={t}
                     variant={selectedChart === t ? "default" : "outline"}
                     size="icon"
+                    aria-label={`${t} chart`}
                     className="h-9 w-9"
                     onClick={() => setSelectedChart(t)}
                   >

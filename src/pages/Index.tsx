@@ -76,7 +76,7 @@ export default function Landing() {
 
   return (
     <main
-      className="min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden relative"
+      className="min-h-dvh flex flex-col items-center justify-center px-4 overflow-hidden relative"
     >
       <SEOHead
         title="Mogsy — Vote, Rank, Compete"

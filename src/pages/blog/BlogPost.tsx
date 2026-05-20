@@ -32,11 +32,11 @@ export default function BlogPost() {
   }, [post?.id]);
 
   if (isLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading…</div>;
+    return <div className="min-h-dvh bg-background flex items-center justify-center text-muted-foreground">Loading…</div>;
   }
   if (!post || post.status !== "published") {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-muted-foreground">
+      <div className="min-h-dvh bg-background flex flex-col items-center justify-center gap-4 text-muted-foreground">
         <p>Post not found.</p>
         <Link to="/blog" className="text-primary hover:underline">Back to blog</Link>
       </div>
@@ -54,7 +54,7 @@ export default function BlogPost() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <SEOHead
         title={post.seo_title || `${post.title} — Mogsy`}
         description={post.seo_description || post.subtitle || ""}

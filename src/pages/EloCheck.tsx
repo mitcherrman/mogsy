@@ -403,7 +403,7 @@ export default function EloCheck() {
   const currentItems = gameMode === "items" ? presetItems : userItems;
 
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   return (
@@ -411,7 +411,7 @@ export default function EloCheck() {
       <SEOHead title="Aura Check — Mogsy" description="Guess who's ranked higher in Mogsy's Aura Check game. Test your knowledge across all leagues and prove your ranking instincts." />
       <div className="container mx-auto max-w-2xl flex flex-col flex-1">
         <div className="flex items-center gap-3 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/play")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-extrabold text-foreground flex-1"><span className="uppercase tracking-wider">Aura</span> Check</h1>

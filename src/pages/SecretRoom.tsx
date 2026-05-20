@@ -7,13 +7,13 @@ export default function SecretRoom() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      className="min-h-dvh flex flex-col items-center justify-center relative overflow-hidden"
       style={{ background: "hsl(230,40%,8%)" }}
     >
       {/* Back button */}
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Go back"
         onClick={() => navigate(-1)}
         className="absolute top-4 left-4 z-20 text-[hsl(180,60%,60%)] hover:text-[hsl(180,80%,70%)]"
       >

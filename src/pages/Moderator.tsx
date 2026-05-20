@@ -56,14 +56,14 @@ export default function Moderator() {
   }, [user]);
 
   if (loading || !authorized) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-dvh bg-background" />;
   }
 
   const totalPages = Math.ceil(modTabs.length / TABS_PER_PAGE);
   const paginatedTabs = modTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE);
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-4xl">
         <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6">
           <ShieldCheck className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />

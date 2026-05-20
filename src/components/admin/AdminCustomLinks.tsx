@@ -279,8 +279,8 @@ export default function AdminCustomLinks() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => copyLink(link.slug)} className="h-8 w-8"><Copy className="h-3.5 w-3.5" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : link.id)} className="h-8 w-8">
+                    <Button size="icon" aria-label="Copy" variant="ghost" onClick={() => copyLink(link.slug)} className="h-8 w-8"><Copy className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" aria-label="Move up" variant="ghost" onClick={() => setExpandedId(isExpanded ? null : link.id)} className="h-8 w-8">
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </Button>
                   </div>

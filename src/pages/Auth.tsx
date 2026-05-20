@@ -183,7 +183,7 @@ export default function Auth() {
   // Confirmation sent / Reset sent screens
   if (mode === "confirm-sent" || mode === "reset-sent") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <SEOHead title="Check Your Email — Mogsy" description="Confirm your email to finish signing up for Mogsy." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -239,7 +239,7 @@ export default function Auth() {
   // Forgot password screen
   if (mode === "forgot") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <SEOHead title="Reset Password — Mogsy" description="Reset your Mogsy password." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -286,7 +286,7 @@ export default function Auth() {
 
   // Main sign in / sign up form
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4">
       <SEOHead
         title={mode === "signup" ? "Sign Up — Mogsy" : "Sign In — Mogsy"}
         description="Sign in or create your Mogsy account. Start voting, competing, and climbing the leaderboard."

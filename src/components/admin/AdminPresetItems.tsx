@@ -388,8 +388,8 @@ export default function AdminPresetItems() {
                     </div>
                     <p className="text-xs text-muted-foreground">Elo: {item.elo}</p>
                   </button>
-                  <Button size="icon" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(item)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="icon" aria-label="Edit" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" aria-label="Delete" variant="ghost" onClick={() => handleDeleteItem(item)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                 </>
               )}
             </motion.div>

@@ -212,7 +212,7 @@ export default function MultiplayerLobby({
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-foreground">Invite a Friend</h3>
-                <Button variant="ghost" size="icon" onClick={() => setShowInvite(false)}>
+                <Button variant="ghost" size="icon" aria-label="Close" onClick={() => setShowInvite(false)}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>

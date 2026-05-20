@@ -58,13 +58,13 @@ export default function AdminGaming() {
       });
   }, [user]);
 
-  if (loading || !isAdmin) return <div className="min-h-screen" />;
+  if (loading || !isAdmin) return <div className="min-h-dvh" />;
 
   const totalPages = Math.ceil(allTabs.length / TABS_PER_PAGE);
   const paginatedTabs = allTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE);
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-4xl">
         <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6">
           <button

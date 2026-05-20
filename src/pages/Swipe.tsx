@@ -410,12 +410,12 @@ export default function Swipe() {
     return map;
   }, [profiles, localElos]);
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   if (!pair || profiles.length < 2) {
     return (
-      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+      <div className="min-h-dvh px-4 py-8 flex items-center justify-center">
         <p className="text-muted-foreground">Not enough profiles to compare yet. Invite friends to join!</p>
       </div>
     );
@@ -445,7 +445,7 @@ export default function Swipe() {
 
         {/* Floating back button on mobile */}
         {isMobile && (
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
+          <Button variant="outline" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -454,12 +454,12 @@ export default function Swipe() {
           {/* Controls bar — desktop only */}
           {!isMobile && (
             <div className="flex items-center gap-2 mb-2">
-              <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+              <Button variant="outline" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={() => {
                   setGauntletMode(!gauntletMode);
                   setGauntletChampion(null);
@@ -496,7 +496,7 @@ export default function Swipe() {
                 )}
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="icon" aria-label="Take screenshot"
                   onClick={capture}
                   className="h-8 w-8 text-muted-foreground hover:text-primary"
                   title="Save snapshot"
@@ -504,7 +504,7 @@ export default function Swipe() {
                   <Camera className="h-4 w-4" />
                 </Button>
                 {globalLeagueId && (
-                  <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
+                  <Button variant="outline" size="icon" aria-label="View leaderboard" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-8 w-8 text-xs">
                     <Trophy className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -660,7 +660,7 @@ export default function Swipe() {
             <div className="flex items-center justify-center gap-3 mt-1">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={() => {
                   setGauntletMode(!gauntletMode);
                   setGauntletChampion(null);
@@ -683,7 +683,7 @@ export default function Swipe() {
               )}
               <Button
                 variant="outline"
-                size="icon"
+                size="icon" aria-label="Take screenshot"
                 onClick={capture}
                 className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Save snapshot"
@@ -691,13 +691,13 @@ export default function Swipe() {
                 <Camera className="h-3.5 w-3.5" />
               </Button>
               {globalLeagueId && (
-                <Button variant="outline" size="icon" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-7 w-7 text-xs">
+                <Button variant="outline" size="icon" aria-label="View leaderboard" onClick={() => navigate(`/leaderboard/${globalLeagueId}`)} className="h-7 w-7 text-xs">
                   <Trophy className="h-3 w-3" />
                 </Button>
               )}
               <Button
                 variant="outline"
-                size="icon"
+                size="icon" aria-label="Open comments"
                 onClick={() => setCommentsOpen(true)}
                 className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Comments"

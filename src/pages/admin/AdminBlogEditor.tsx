@@ -57,10 +57,10 @@ export default function AdminBlogEditor() {
     toast.success("Deleted"); navigate("/admin/blog");
   }
 
-  if (isLoading || !draft) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">…</div>;
+  if (isLoading || !draft) return <div className="min-h-dvh flex items-center justify-center text-muted-foreground">…</div>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/admin/blog" className="p-1.5 rounded hover:bg-muted"><ArrowLeft className="h-4 w-4" /></Link>

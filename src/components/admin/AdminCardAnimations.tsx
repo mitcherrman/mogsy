@@ -347,11 +347,11 @@ function CustomAnimCard({
           </div>
         </div>
         <div className="flex flex-col gap-1.5 items-end shrink-0">
-          <button onClick={onPreview} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Preview">
+          <button aria-label="Toggle visibility" onClick={onPreview} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Preview">
             <Eye className="h-3.5 w-3.5" />
           </button>
           <button onClick={onEdit} className="text-[10px] text-primary hover:underline">Edit</button>
-          <button onClick={onDelete} className="h-7 w-7 rounded-md flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete">
+          <button aria-label="Delete" onClick={onDelete} className="h-7 w-7 rounded-md flex items-center justify-center text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -518,7 +518,7 @@ function AnimationCreatorDialog({
             </Label>
             {soundUrl ? (
               <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
-                <button onClick={previewSound} className="h-8 w-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 transition-colors">
+                <button aria-label="Preview" onClick={previewSound} className="h-8 w-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 transition-colors">
                   <Play className="h-4 w-4" />
                 </button>
                 <span className="text-xs text-foreground truncate flex-1">Sound loaded</span>

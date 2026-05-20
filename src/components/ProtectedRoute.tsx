@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const { settings, loading: settingsLoading } = useAppSettings();
 
   if (authLoading || settingsLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-dvh bg-background" />;
   }
 
   // If auth is not required, let everyone through (anonymous session already established by AuthProvider)

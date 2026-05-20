@@ -132,7 +132,7 @@ function ItemDetailHeader({ item, rank, wins, losses, onUpdate }: {
                 <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-muted-foreground">{name.charAt(0)}</div>
               )}
               <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => fileRef.current?.click()}>
+                <Button size="icon" aria-label="Upload image" variant="secondary" className="h-8 w-8" onClick={() => fileRef.current?.click()}>
                   <Upload className="h-4 w-4" />
                 </Button>
               </div>
@@ -211,7 +211,7 @@ function ItemDetailHeader({ item, rank, wins, losses, onUpdate }: {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button size="icon" variant="ghost" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground">
+        <Button size="icon" aria-label="Edit" variant="ghost" onClick={() => setEditing(true)} className="text-muted-foreground hover:text-foreground">
           <Pencil className="h-4 w-4" />
         </Button>
       </div>
@@ -592,7 +592,7 @@ export default function AdminCollections() {
                   {/* Overlay with action buttons */}
                   <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <Button
-                      size="icon"
+                      size="icon" aria-label="Expand image"
                       variant="secondary"
                       className="h-8 w-8"
                       onClick={() => setViewingImage(img.image_url)}
@@ -601,7 +601,7 @@ export default function AdminCollections() {
                       <Maximize2 className="h-4 w-4" />
                     </Button>
                     <Button
-                      size="icon"
+                      size="icon" aria-label="Toggle visibility"
                       variant={img.is_hidden ? "default" : "secondary"}
                       className="h-8 w-8"
                       onClick={() => handleToggleImageVisibility(img)}
@@ -611,7 +611,7 @@ export default function AdminCollections() {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="destructive" className="h-8 w-8" title="Delete image">
+                        <Button size="icon" aria-label="Delete" variant="destructive" className="h-8 w-8" title="Delete image">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -833,8 +833,8 @@ export default function AdminCollections() {
                         </div>
                         <p className="text-xs text-muted-foreground">Elo: {item.elo}</p>
                       </button>
-                      <Button size="icon" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDeleteItem(item)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="icon" aria-label="Edit" variant="ghost" onClick={() => setEditingItem(item.id)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" aria-label="Delete" variant="ghost" onClick={() => handleDeleteItem(item)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                     </>
                   )}
                 </motion.div>

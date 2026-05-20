@@ -1261,7 +1261,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         </div>
         <Button
           variant="outline"
-          size="icon"
+          size="icon" aria-label="Refresh"
           className="shrink-0 h-9 w-9"
           disabled={loading}
           onClick={() => fetchProfiles()}

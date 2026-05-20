@@ -185,13 +185,13 @@ export default function Leagues() {
   // Reset index when search changes
   useEffect(() => { setCurrentIndex(0); }, [searchQuery]);
 
-  if (loading) return <div className="min-h-screen" />;
+  if (loading) return <div className="min-h-dvh" />;
 
   const title = isCompete ? "Compete" : "Collections";
   const currentLeague = filteredLeagues[currentIndex];
 
   return (
-    <div className="min-h-screen px-4 py-8 pb-24">
+    <div className="min-h-dvh px-4 py-8 pb-24">
       <SEOHead
         title={isCompete ? "Compete leagues — Mogsy" : "Collections — Mogsy"}
         description={
@@ -203,7 +203,7 @@ export default function Leagues() {
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -213,7 +213,7 @@ export default function Leagues() {
             <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">{filteredLeagues.length} leagues</p>
           </div>
           {isMobile && (
-            <Button variant="outline" size="icon" onClick={() => setSearchOpen(true)} className="flex-shrink-0">
+            <Button variant="outline" size="icon" aria-label="Search" onClick={() => setSearchOpen(true)} className="flex-shrink-0">
               <Search className="h-4 w-4" />
             </Button>
           )}
@@ -252,13 +252,13 @@ export default function Leagues() {
               <div className="flex flex-col items-center gap-4">
                 {/* Navigation controls */}
                 <div className="flex items-center justify-between w-full">
-                  <Button variant="ghost" size="icon" onClick={goPrev} disabled={currentIndex === 0} className="text-muted-foreground">
+                  <Button variant="ghost" size="icon" aria-label="Previous" onClick={goPrev} disabled={currentIndex === 0} className="text-muted-foreground">
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
                   <span className="text-xs text-muted-foreground font-medium">
                     {currentIndex + 1} / {filteredLeagues.length}
                   </span>
-                  <Button variant="ghost" size="icon" onClick={goNext} disabled={currentIndex === filteredLeagues.length - 1} className="text-muted-foreground">
+                  <Button variant="ghost" size="icon" aria-label="Next" onClick={goNext} disabled={currentIndex === filteredLeagues.length - 1} className="text-muted-foreground">
                     <ChevronRight className="h-5 w-5" />
                   </Button>
                 </div>
@@ -305,7 +305,7 @@ export default function Leagues() {
                       autoFocus
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <button aria-label="Clear search" onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
                         <X className="h-4 w-4 text-muted-foreground" />
                       </button>
                     )}
