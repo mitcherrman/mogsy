@@ -783,13 +783,13 @@ export default function Home() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-dvh bg-background" />;
   }
 
   const currentBanner = bannerItems[bannerIndex];
 
   return (
-    <div className="min-h-screen px-4 py-2">
+    <div className="min-h-dvh px-4 py-2">
       <SEOHead
         title="Mogsy — Rank anything, climb the Aura leaderboard"
         description="Swipe head-to-head matchups across hundreds of Collections, climb personal and global Aura leaderboards, and Compete with friends on Mogsy."

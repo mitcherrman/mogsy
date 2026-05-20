@@ -367,11 +367,11 @@ export default function Leaderboard() {
   };
 
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   return (
-    <div className="min-h-screen px-4 py-8">
+    <div className="min-h-dvh px-4 py-8">
       <SEOHead
         title={`${leagueName || "Leaderboard"} — Mogsy`}
         description={`See the top-ranked ${leagueType === "preset" ? "items" : "players"} in ${leagueName || "this league"} on Mogsy. Climb the Aura leaderboard.`}

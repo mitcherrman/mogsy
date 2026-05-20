@@ -23,7 +23,7 @@ export default function Layout() {
 
   return (
     <div
-      className="min-h-screen relative animate-page-fade-in"
+      className="min-h-dvh relative animate-page-fade-in"
       style={{ background: "#0a0a1a" }}
     >
       {/* Stage: paints the app background only behind the centered column,
@@ -69,7 +69,7 @@ export default function Layout() {
 export function RouteLoader() {
   return (
     <div
-      className="min-h-screen relative flex items-center justify-center"
+      className="min-h-dvh relative flex items-center justify-center"
       style={{ background: "#0a0a1a" }}
     >
       {/* Feathered stage so the loader matches the app's soft column edges */}

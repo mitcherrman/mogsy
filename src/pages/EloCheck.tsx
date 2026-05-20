@@ -403,7 +403,7 @@ export default function EloCheck() {
   const currentItems = gameMode === "items" ? presetItems : userItems;
 
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   return (

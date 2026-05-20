@@ -146,7 +146,7 @@ export default function Feedback() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <p className="text-muted-foreground">Please sign in to submit feedback.</p>
       </div>
     );

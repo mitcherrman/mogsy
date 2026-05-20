@@ -369,7 +369,7 @@ export default function Profile() {
   };
 
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   const socialIcons: Record<string, React.ElementType> = {
@@ -377,7 +377,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-2 sm:px-4 py-4 sm:py-8">
       <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
       <div className="container mx-auto max-w-4xl xl:max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

@@ -676,12 +676,12 @@ export default function SwipePreset() {
   );
 
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   if (!matchups.length || items.length < 2) {
     return (
-      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+      <div className="min-h-dvh px-4 py-8 flex items-center justify-center">
         <p className="text-muted-foreground">Not enough items to compare yet.</p>
       </div>
     );
@@ -694,7 +694,7 @@ export default function SwipePreset() {
 
   if (finished) {
     return (
-      <div className="min-h-screen px-4 py-8">
+      <div className="min-h-dvh px-4 py-8">
         <div className="container mx-auto max-w-lg">
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">

@@ -410,12 +410,12 @@ export default function Swipe() {
     return map;
   }, [profiles, localElos]);
   if (loading) {
-    return <div className="min-h-screen" />;
+    return <div className="min-h-dvh" />;
   }
 
   if (!pair || profiles.length < 2) {
     return (
-      <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+      <div className="min-h-dvh px-4 py-8 flex items-center justify-center">
         <p className="text-muted-foreground">Not enough profiles to compare yet. Invite friends to join!</p>
       </div>
     );

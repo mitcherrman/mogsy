@@ -247,7 +247,7 @@ export default function AdminData() {
     });
   };
 
-  if (loading || !authorized) return <div className="min-h-screen bg-background" />;
+  if (loading || !authorized) return <div className="min-h-dvh bg-background" />;
 
   const dataSources = getDataSources();
   const categories = getCategories();
@@ -255,7 +255,7 @@ export default function AdminData() {
   const timeLabel = timeAgo < 5 ? "just now" : timeAgo < 60 ? `${timeAgo}s ago` : `${Math.round(timeAgo / 60)}m ago`;
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

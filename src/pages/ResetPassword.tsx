@@ -61,7 +61,7 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <CheckCircle className="h-16 w-16 text-primary mx-auto mb-4" />
           <h2 className="text-xl font-bold text-foreground">Password updated!</h2>
@@ -73,7 +73,7 @@ export default function ResetPassword() {
 
   if (!hasRecoveryToken) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Invalid or expired reset link.</p>
           <Button onClick={() => navigate("/auth")}>Back to Sign In</Button>
@@ -83,7 +83,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4">
       <SEOHead title="Reset Password — Mogsy" description="Set a new password for your Mogsy account." />
       <motion.div
         initial={{ opacity: 0, y: 20 }}

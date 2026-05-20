@@ -464,12 +464,12 @@ export default function AdminPlay() {
     }
   };
 
-  if (loading || !authorized) return <div className="min-h-screen" />;
+  if (loading || !authorized) return <div className="min-h-dvh" />;
 
   // League items detail view
   if (viewingLeague) {
     return (
-      <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+      <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
         <div className="container mx-auto max-w-2xl">
           <AdminPlayLeagueItems
             leagueId={viewingLeague.id}
@@ -495,7 +495,7 @@ export default function AdminPlay() {
   const userLeagues = config.leagues.filter(l => userLeagueIds.has(l.id) && (showHidden || !l.hidden)).sort((a, b) => a.order - b.order);
 
   return (
-    <div className="min-h-screen px-3 sm:px-4 py-4 sm:py-8">
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
       <div className="container mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">

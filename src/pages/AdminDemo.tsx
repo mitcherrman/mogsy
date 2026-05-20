@@ -355,7 +355,7 @@ export default function AdminDemo() {
   }, []);
 
   if (authLoading || !authorized) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-dvh bg-background" />;
   }
 
   const themeStyle = theme.styles.pageBg ? { background: theme.styles.pageBg } : {};
@@ -941,7 +941,7 @@ export default function AdminDemo() {
   );
 
   return (
-    <div className="min-h-screen px-3 py-4" style={themeStyle}>
+    <div className="min-h-dvh px-3 py-4" style={themeStyle}>
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">

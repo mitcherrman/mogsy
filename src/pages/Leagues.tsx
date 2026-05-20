@@ -185,13 +185,13 @@ export default function Leagues() {
   // Reset index when search changes
   useEffect(() => { setCurrentIndex(0); }, [searchQuery]);
 
-  if (loading) return <div className="min-h-screen" />;
+  if (loading) return <div className="min-h-dvh" />;
 
   const title = isCompete ? "Compete" : "Collections";
   const currentLeague = filteredLeagues[currentIndex];
 
   return (
-    <div className="min-h-screen px-4 py-8 pb-24">
+    <div className="min-h-dvh px-4 py-8 pb-24">
       <SEOHead
         title={isCompete ? "Compete leagues — Mogsy" : "Collections — Mogsy"}
         description={

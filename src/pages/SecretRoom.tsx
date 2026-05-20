@@ -7,7 +7,7 @@ export default function SecretRoom() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      className="min-h-dvh flex flex-col items-center justify-center relative overflow-hidden"
       style={{ background: "hsl(230,40%,8%)" }}
     >
       {/* Back button */}
