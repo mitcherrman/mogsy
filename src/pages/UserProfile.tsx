@@ -747,7 +747,7 @@ export default function UserProfile() {
                 return (
                   <a
                     key={key}
-                    href={value}
+                    href={/^https?:\/\//i.test(String(value).trim()) ? value : "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors border", theme.styles.innerBg || "bg-background/50", theme.styles.innerBorder || "border-border", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}

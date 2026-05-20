@@ -4,6 +4,8 @@ import ProfileCardBlock from "./data-blocks/ProfileCardBlock";
 import LeaderboardBlock from "./data-blocks/LeaderboardBlock";
 import ChartBlock from "./data-blocks/ChartBlock";
 import AdBanner from "@/components/AdBanner";
+import { sanitizeRichText, sanitizeEmbed } from "@/lib/sanitize-html";
+import { safeHref } from "@/lib/safe-url";
 
 function styleToCss(s?: BlockStyle): React.CSSProperties {
   if (!s) return {};
@@ -44,10 +46,10 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
   switch (block.type) {
     case "heading": {
       const Tag = (p.level === 1 ? "h1" : p.level === 3 ? "h3" : "h2") as keyof JSX.IntrinsicElements;
-      return <Tag className={cls} style={css} dangerouslySetInnerHTML={{ __html: p.text || "Heading" }} />;
+      return <Tag className={cls} style={css} dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.text || "Heading") }} />;
     }
     case "paragraph":
-      return <p className={cls} style={css} dangerouslySetInnerHTML={{ __html: p.text || "" }} />;
+      return <p className={cls} style={css} dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.text) }} />;
     case "image":
       return p.src ? (
         <figure className={cls} style={css}>
@@ -62,15 +64,15 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
     case "quote":
       return (
         <blockquote className={`border-l-4 pl-4 italic blog-border ${cls}`} style={css}>
-          <div dangerouslySetInnerHTML={{ __html: p.text || "" }} />
-          {p.attribution && <footer className="not-italic text-sm blog-muted mt-2" dangerouslySetInnerHTML={{ __html: `— ${p.attribution}` }} />}
+          <div dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.text) }} />
+          {p.attribution && <footer className="not-italic text-sm blog-muted mt-2" dangerouslySetInnerHTML={{ __html: sanitizeRichText(`— ${p.attribution}`) }} />}
         </blockquote>
       );
     case "callout":
       return (
         <div className={`blog-surface rounded-xl p-4 ${cls}`} style={css}>
-          {p.title && <div className="font-bold mb-1" dangerouslySetInnerHTML={{ __html: p.title }} />}
-          <div className="text-sm" dangerouslySetInnerHTML={{ __html: p.text || "" }} />
+          {p.title && <div className="font-bold mb-1" dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.title) }} />}
+          <div className="text-sm" dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.text) }} />
         </div>
       );
     case "divider":
@@ -79,12 +81,12 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
       return <div style={{ height: p.height ?? 32 }} />;
     case "button":
       return p.href ? (
-        <a href={p.href} target={p.newTab ? "_blank" : undefined} rel="noopener" className={`inline-block px-5 py-2.5 rounded-full font-semibold blog-accent-bg ${cls}`} style={css}
-           dangerouslySetInnerHTML={{ __html: p.label || "Click" }} />
+        <a href={safeHref(p.href)} target={p.newTab ? "_blank" : undefined} rel="noopener" className={`inline-block px-5 py-2.5 rounded-full font-semibold blog-accent-bg ${cls}`} style={css}
+           dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.label || "Click") }} />
       ) : null;
     case "embed":
       return p.html ? (
-        <div className={cls} style={css} dangerouslySetInnerHTML={{ __html: p.html }} />
+        <div className={cls} style={css} dangerouslySetInnerHTML={{ __html: sanitizeEmbed(p.html) }} />
       ) : null;
     case "columns": {
       const cols = Array.isArray(p.columns) ? p.columns : [];
