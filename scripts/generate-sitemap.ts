@@ -86,6 +86,33 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
     });
   }
 
+  const profileEntries = await fetchUserProfileEntries(supabase);
+  entries.push(...profileEntries);
+
+  return entries;
+}
+
+// Public user profiles — one per non-bot, non-anonymous profile
+async function fetchUserProfileEntries(supabase: ReturnType<typeof createClient>): Promise<SitemapEntry[]> {
+  const entries: SitemapEntry[] = [];
+  const { data: profiles, error } = await supabase
+    .from("public_profiles")
+    .select("id, updated_at")
+    .eq("is_bot", false)
+    .eq("is_anonymous", false)
+    .limit(2000);
+  if (error) {
+    console.warn("[sitemap] public_profiles fetch failed:", error.message);
+    return entries;
+  }
+  for (const p of profiles ?? []) {
+    entries.push({
+      path: `/user/${p.id}`,
+      lastmod: p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : undefined,
+      changefreq: "weekly",
+      priority: "0.5",
+    });
+  }
   return entries;
 }
 
