@@ -9,6 +9,7 @@ import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { BlogContent, BlogTheme } from "@/lib/blog/types";
+import { SITE_URL } from "@/lib/site-config";
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
@@ -43,24 +44,52 @@ export default function BlogPost() {
     );
   }
 
-  const jsonLd = {
+  const canonicalPath = `/blog/${post.slug}`;
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
+  const heroImage = post.og_image_url || post.cover_url || undefined;
+
+  const articleLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
     headline: post.title,
-    description: post.seo_description || post.subtitle,
-    image: post.og_image_url || post.cover_url,
+    name: post.title,
+    description: post.seo_description || post.subtitle || undefined,
+    image: heroImage ? [heroImage] : undefined,
     datePublished: post.published_at,
     dateModified: post.updated_at,
+    inLanguage: "en",
+    url: canonicalUrl,
+    keywords: (post.tags ?? []).join(", ") || undefined,
+    articleSection: post.category || (post.tags?.[0] ?? undefined),
+    author: { "@type": "Organization", name: "Mogsy", url: SITE_URL },
+    publisher: {
+      "@type": "Organization",
+      name: "Mogsy",
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/mogsy-logo.png` },
+    },
+  };
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+      { "@type": "ListItem", position: 3, name: post.title, item: canonicalUrl },
+    ],
   };
 
   return (
     <div className="min-h-dvh bg-background">
       <SEOHead
         title={post.seo_title || `${post.title} — Mogsy`}
-        description={post.seo_description || post.subtitle || ""}
-        image={post.og_image_url || post.cover_url || undefined}
+        description={post.seo_description || post.subtitle || `${post.title} on Mogsy.`}
+        path={canonicalPath}
+        image={heroImage}
+        jsonLd={[articleLd, breadcrumbLd]}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <BlogThemeWrapper theme={post.theme as BlogTheme}>
         {post.cover_url && (post.theme as BlogTheme)?.cover !== "boxed" && (
