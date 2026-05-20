@@ -103,7 +103,8 @@ export default function BlogPost() {
       {isAdmin && (
         <Link
           to={`/admin/blog/${post.id}`}
-          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-90"
+          aria-label="Edit this post"
+          className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-90 min-h-11"
         >
           <Pencil className="h-4 w-4" /> Edit post
         </Link>
