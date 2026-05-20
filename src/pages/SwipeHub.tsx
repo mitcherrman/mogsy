@@ -172,7 +172,7 @@ export default function SwipeHub() {
   return (
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
-      <div className="h-[100dvh] overflow-hidden px-4 py-6 flex flex-col">
+      <div className="h-[100dvh] overflow-hidden py-6 flex flex-col px-0">
         <div className="container mx-auto w-full flex-1 min-h-0 flex flex-col" style={{ maxWidth: "100%" }}>
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
