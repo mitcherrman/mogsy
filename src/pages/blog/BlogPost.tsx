@@ -88,6 +88,15 @@ export default function BlogPost() {
         description={post.seo_description || post.subtitle || `${post.title} on Mogsy.`}
         path={canonicalPath}
         image={heroImage}
+        type="article"
+        keywords={(post.tags ?? []).join(", ") || undefined}
+        article={{
+          publishedTime: post.published_at,
+          modifiedTime: post.updated_at,
+          section: post.category || post.tags?.[0] || null,
+          tags: post.tags ?? [],
+          author: "Mogsy",
+        }}
         jsonLd={[articleLd, breadcrumbLd]}
       />
 
