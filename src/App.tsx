@@ -77,9 +77,7 @@ const Feedback = lazyWithRetry(() => import("./pages/Feedback"));
 
 const queryClient = new QueryClient();
 
-const LazyFallback = () => (
-  <div className="min-h-screen bg-background" />
-);
+import { RouteLoader } from "@/components/Layout";
 
 function AuthQuerySyncBridge() {
   useAuthQuerySync();
