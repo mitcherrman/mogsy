@@ -1582,4 +1582,34 @@
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
+  <url>
+    <loc>https://mogsy.app/blog/best-anime-tier-list-2025</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/blog/best-movie-of-all-time-leaderboard</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/blog/best-video-game-of-all-time-2026</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/blog/best-marvel-movie-ranked</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/blog/best-animated-movies-pixar-ghibli</loc>
+    <lastmod>2026-05-20</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>
