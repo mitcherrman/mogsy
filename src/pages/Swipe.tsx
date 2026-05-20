@@ -459,7 +459,7 @@ export default function Swipe() {
               </Button>
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={() => {
                   setGauntletMode(!gauntletMode);
                   setGauntletChampion(null);
@@ -660,7 +660,7 @@ export default function Swipe() {
             <div className="flex items-center justify-center gap-3 mt-1">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={() => {
                   setGauntletMode(!gauntletMode);
                   setGauntletChampion(null);
