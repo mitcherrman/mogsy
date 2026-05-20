@@ -116,7 +116,7 @@ export default function Referral() {
       <SEOHead title="Invite Friends — Mogsy" description="Invite friends to Mogsy and earn rewards!" />
       <div className="container mx-auto max-w-lg">
         <div className="flex items-center gap-3 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-extrabold text-foreground">Invite Friends</h1>

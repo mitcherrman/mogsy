@@ -230,7 +230,7 @@ export default function AdminComments() {
                     <div className="flex items-center gap-1 justify-end">
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="icon" aria-label="Toggle visibility"
                         className="h-7 w-7"
                         onClick={() => toggleHide(comment)}
                         title={comment.is_hidden ? "Unhide" : "Hide"}
@@ -239,7 +239,7 @@ export default function AdminComments() {
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="icon" aria-label="Delete"
                         className="h-7 w-7 text-destructive hover:text-destructive"
                         onClick={() => handleDelete(comment.id)}
                         title="Delete permanently"

@@ -394,7 +394,7 @@ export default function Leaderboard() {
       <div className="container mx-auto max-w-2xl lg:max-w-3xl">
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-xl pb-4 mb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
+            <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground flex-shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1 min-w-0">

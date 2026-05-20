@@ -257,7 +257,7 @@ export default function Shop() {
       <div className="container mx-auto max-w-3xl lg:max-w-4xl">
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <h1 className="text-xl sm:text-3xl font-extrabold text-foreground">Shop</h1>

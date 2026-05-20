@@ -13,7 +13,7 @@ export default function SecretRoom() {
       {/* Back button */}
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Go back"
         onClick={() => navigate(-1)}
         className="absolute top-4 left-4 z-20 text-[hsl(180,60%,60%)] hover:text-[hsl(180,80%,70%)]"
       >

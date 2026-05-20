@@ -554,14 +554,14 @@ function NudgeSlider({ label, value, min, max, onChange, decIcon, incIcon }: {
       <div className="flex items-center justify-between">
         <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</label>
         <div className="flex items-center gap-0.5">
-          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => onChange(Math.max(min, value - 1))}>{decIcon}</Button>
+          <Button size="icon" aria-label="Edit value" variant="ghost" className="h-5 w-5" onClick={() => onChange(Math.max(min, value - 1))}>{decIcon}</Button>
           <Input
             type="number" min={min} max={max}
             value={value}
             onChange={e => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) onChange(Math.max(min, Math.min(max, n))); }}
             className="w-14 h-6 text-[10px] text-right px-1 font-mono"
           />
-          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => onChange(Math.min(max, value + 1))}>{incIcon}</Button>
+          <Button size="icon" aria-label="Adjust" variant="ghost" className="h-5 w-5" onClick={() => onChange(Math.min(max, value + 1))}>{incIcon}</Button>
         </div>
       </div>
       <Slider min={min} max={max} step={1} value={[value]} onValueChange={([v]) => onChange(v)} />

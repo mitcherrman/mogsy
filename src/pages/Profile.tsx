@@ -383,7 +383,7 @@ export default function Profile() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+              <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Edit Profile</h1>
@@ -393,7 +393,7 @@ export default function Profile() {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="icon" aria-label="Account security"
                   onClick={() => navigate("/moderator")}
                   className="text-primary hover:text-primary hover:bg-primary/10 h-8 w-8 sm:h-10 sm:w-10"
                   title="Moderator Panel"
@@ -404,7 +404,7 @@ export default function Profile() {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Open referral"
                 onClick={() => navigate("/referral")}
                 className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
               >
@@ -413,7 +413,7 @@ export default function Profile() {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Open settings"
                 onClick={() => navigate("/settings")}
                 className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
               >

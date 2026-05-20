@@ -697,7 +697,7 @@ export default function SwipePreset() {
       <div className="min-h-dvh px-4 py-8">
         <div className="container mx-auto max-w-lg">
           <div className="flex items-center gap-3 mb-6">
-            <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Go back" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-2xl font-extrabold text-foreground flex-1">{leagueName} Results</h1>
@@ -770,7 +770,7 @@ export default function SwipePreset() {
 
         {/* Floating back button on mobile */}
         {isMobile && (
-          <Button variant="outline" size="icon" onClick={handleBack} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
+          <Button variant="outline" size="icon" aria-label="Go back" onClick={handleBack} className="absolute top-1 left-2 z-30 h-7 w-7 text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-sm">
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -779,12 +779,12 @@ export default function SwipePreset() {
           {/* Controls bar — desktop keeps full bar, mobile collapses */}
           {!isMobile && (
             <div className="flex items-center gap-2 mb-1.5">
-              <Button variant="outline" size="icon" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+              <Button variant="outline" size="icon" aria-label="Go back" onClick={handleBack} className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={handleToggleGauntlet}
                 className={`h-8 w-8 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
@@ -814,7 +814,7 @@ export default function SwipePreset() {
                 )}
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="icon" aria-label="Take screenshot"
                   onClick={capture}
                   className="h-8 w-8 text-muted-foreground hover:text-primary"
                   title="Save snapshot"
@@ -822,7 +822,7 @@ export default function SwipePreset() {
                   <Camera className="h-4 w-4" />
                 </Button>
                 <Link to={`/leaderboard/${leagueId}`}>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
+                  <Button variant="outline" size="icon" aria-label="View leaderboard" className="h-8 w-8">
                     <Trophy className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
@@ -1022,7 +1022,7 @@ export default function SwipePreset() {
             <div className="flex items-center justify-center gap-3 mt-1 relative z-40 flex-shrink-0">
               <Button
                 variant={gauntletMode ? "default" : "outline"}
-                size="icon"
+                size="icon" aria-label="Toggle gauntlet mode"
                 onClick={handleToggleGauntlet}
                 className={`h-7 w-7 shrink-0 ${gauntletMode ? "text-primary-foreground" : "text-muted-foreground hover:text-primary"}`}
                 title={gauntletMode ? "Gauntlet Mode ON" : "Gauntlet Mode OFF"}
@@ -1041,7 +1041,7 @@ export default function SwipePreset() {
               )}
               <Button
                 variant="outline"
-                size="icon"
+                size="icon" aria-label="Take screenshot"
                 onClick={capture}
                 className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Save snapshot"
@@ -1050,7 +1050,7 @@ export default function SwipePreset() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon" aria-label="Toggle visibility"
                 onClick={() => {
                   const next = !(userShowElo && userShowRank);
                   setUserShowElo(next);
@@ -1062,13 +1062,13 @@ export default function SwipePreset() {
                 {userShowElo && userShowRank ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
               <Link to={`/leaderboard/${leagueId}`}>
-                <Button variant="outline" size="icon" className="h-7 w-7">
+                <Button variant="outline" size="icon" aria-label="View leaderboard" className="h-7 w-7">
                   <Trophy className="h-3 w-3" />
                 </Button>
               </Link>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon" aria-label="Open comments"
                 onClick={() => setCommentsOpen(true)}
                 className="h-7 w-7 text-muted-foreground hover:text-primary"
                 title="Comments"

@@ -144,7 +144,7 @@ export default function AdminBots() {
                 <p className="text-sm font-medium text-foreground">{bot.display_name}</p>
                 <p className="text-xs text-muted-foreground">{bot.location || "No location"} · {bot.age || "?"} yrs</p>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => handleDeleteBot(bot.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" aria-label="Delete" variant="ghost" onClick={() => handleDeleteBot(bot.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
             </div>
           ))}
           {botProfiles.length === 0 && <p className="text-center text-muted-foreground text-sm py-8">No bot profiles yet.</p>}

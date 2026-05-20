@@ -689,7 +689,7 @@ export default function Play() {
       <SEOHead title="Play — Mogsy" description="Pick your favorite in head-to-head matchups." />
       <div className={`container mx-auto ${isMobile ? 'max-w-md' : 'max-w-4xl'}`}>
         <div className="flex items-center gap-3 mb-12">
-          <Button variant="ghost" size="icon" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={handleBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-extrabold text-foreground flex-1">Play</h1>

@@ -545,14 +545,14 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                 <div key={img.id} className={`relative rounded-xl border overflow-hidden group ${img.is_hidden ? "opacity-40 border-destructive" : isPreview ? "border-primary border-2" : "border-border"}`}>
                   <img src={img.image_url} alt="" className="w-full aspect-square object-cover bg-muted cursor-pointer" onClick={() => setViewingImage(img.image_url)} />
                   <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 flex-wrap">
-                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
+                    <Button size="icon" aria-label="Expand image" variant="secondary" className="h-8 w-8" onClick={() => setViewingImage(img.image_url)}>
                       <Maximize2 className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="secondary" className="h-8 w-8" onClick={() => { setPreviewEditorImageId(img.id); setPreviewEditorOpen(true); }} title="Preview Editor">
+                    <Button size="icon" aria-label="Move" variant="secondary" className="h-8 w-8" onClick={() => { setPreviewEditorImageId(img.id); setPreviewEditorOpen(true); }} title="Preview Editor">
                       <Move className="h-4 w-4" />
                     </Button>
                     <Button
-                      size="icon"
+                      size="icon" aria-label="Toggle preview"
                       variant={isPreview ? "default" : "secondary"}
                       className="h-8 w-8"
                       onClick={() => setPreviewImage(img.image_url)}
@@ -560,12 +560,12 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
                     >
                       <Star className={`h-4 w-4 ${isPreview ? "fill-current" : ""}`} />
                     </Button>
-                    <Button size="icon" variant={img.is_hidden ? "default" : "secondary"} className="h-8 w-8" onClick={() => handleToggleImageVisibility(img)}>
+                    <Button size="icon" aria-label="Toggle visibility" variant={img.is_hidden ? "default" : "secondary"} className="h-8 w-8" onClick={() => handleToggleImageVisibility(img)}>
                       {img.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="destructive" className="h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" aria-label="Delete" variant="destructive" className="h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
@@ -696,7 +696,7 @@ export default function AdminPlayLeagueItems({ leagueId, leagueName, onClose }: 
               </button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                  <Button size="icon" aria-label="Delete" variant="ghost" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>

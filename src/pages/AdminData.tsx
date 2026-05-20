@@ -260,7 +260,7 @@ export default function AdminData() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+            <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/admin")} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <BarChart3 className="h-5 w-5 text-primary" />

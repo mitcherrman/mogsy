@@ -945,7 +945,7 @@ export default function AdminDemo() {
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={() => navigate(isFullAdmin ? "/admin" : isModerator ? "/moderator" : "/")} className="h-8 w-8">
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(isFullAdmin ? "/admin" : isModerator ? "/moderator" : "/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-xl font-extrabold text-foreground">Demo Studio</h1>
@@ -1053,7 +1053,7 @@ export default function AdminDemo() {
           >
             {/* Top bar */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
+              <Button variant="ghost" size="icon" aria-label="Go back" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm font-bold text-foreground truncate flex-1">{leagueName}</span>
@@ -1072,7 +1072,7 @@ export default function AdminDemo() {
                   <Monitor className="h-3 w-3" /> Desktop
                 </button>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
+              <Button variant="ghost" size="icon" aria-label="Close" className="h-8 w-8 shrink-0" onClick={() => setFullscreenPreview(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>

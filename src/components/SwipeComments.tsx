@@ -573,7 +573,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
             }}
           />
           <Button
-            size="icon"
+            size="icon" aria-label="Send"
             className="h-8 w-8 shrink-0"
             onClick={handleSubmit}
             disabled={!newComment.trim() || submitting}

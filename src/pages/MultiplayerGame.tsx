@@ -90,7 +90,7 @@ export default function MultiplayerGame() {
   return (
     <div className="px-4 py-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/multiplayer")}>
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/multiplayer")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl font-black text-foreground capitalize">

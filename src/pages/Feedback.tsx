@@ -156,7 +156,7 @@ export default function Feedback() {
     return (
       <div className="px-4 py-6 max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/home")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-black text-foreground">Feedback</h1>
@@ -171,7 +171,7 @@ export default function Feedback() {
       <SEOHead title="Feedback — Mogsy" description="Share your feedback and suggestions." />
 
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/home")}>
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/home")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">

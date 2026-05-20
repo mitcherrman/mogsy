@@ -67,7 +67,7 @@ export default function Multiplayer() {
       <SEOHead title="Multiplayer — Mogsy" description="Play 2v2 games with friends." />
 
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/play")}>
+        <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/play")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

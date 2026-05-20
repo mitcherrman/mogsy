@@ -498,7 +498,7 @@ export default function UserProfile() {
         <div className="relative container mx-auto max-w-2xl lg:max-w-3xl px-4 pt-6 pb-8 z-20">
             <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Go back"
             onClick={() => navigate(-1)}
             className={cn("mb-4", theme.styles.mutedColor || "text-muted-foreground", "hover:opacity-80")}
           >
