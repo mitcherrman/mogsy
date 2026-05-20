@@ -74,6 +74,10 @@ const CustomLink = lazyWithRetry(() => import("./pages/CustomLink"));
 const Multiplayer = lazyWithRetry(() => import("./pages/Multiplayer"));
 const MultiplayerGame = lazyWithRetry(() => import("./pages/MultiplayerGame"));
 const Feedback = lazyWithRetry(() => import("./pages/Feedback"));
+const BlogIndex = lazyWithRetry(() => import("./pages/blog/BlogIndex"));
+const BlogPost = lazyWithRetry(() => import("./pages/blog/BlogPost"));
+const AdminBlog = lazyWithRetry(() => import("./pages/admin/AdminBlog"));
+const AdminBlogEditor = lazyWithRetry(() => import("./pages/admin/AdminBlogEditor"));
 
 const queryClient = new QueryClient();
 
@@ -121,6 +125,10 @@ const App = () => (
                   <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Multiplayer /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Feedback /></Suspense></ProtectedRoute>} />
+                  <Route path="/blog" element={<Suspense fallback={<RouteLoader />}><BlogIndex /></Suspense>} />
+                  <Route path="/blog/:slug" element={<Suspense fallback={<RouteLoader />}><BlogPost /></Suspense>} />
+                  <Route path="/admin/blog" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/blog/:id" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
