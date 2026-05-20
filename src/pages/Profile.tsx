@@ -739,7 +739,21 @@ export default function Profile() {
                         <button
                           key={frame.id}
                           type="button"
-                          onClick={() => setSelectedFrame(frame.id)}
+                          onClick={async () => {
+                            setSelectedFrame(frame.id);
+                            if (!profileId) return;
+                            // Persist immediately so every surface that reads
+                            // profile_frame (swipe cards, public profile, etc.) updates.
+                            const { error } = await supabase
+                              .from("profiles")
+                              .update({ profile_frame: frame.id })
+                              .eq("id", profileId);
+                            if (error) {
+                              toast({ title: "Failed to save frame", variant: "destructive" });
+                            } else {
+                              toast({ title: `Frame changed to ${frame.label}` });
+                            }
+                          }}
                           className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                             selectedFrame === frame.id
                               ? "border-primary bg-primary/5"
