@@ -305,7 +305,7 @@ export default function Leagues() {
                       autoFocus
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <button aria-label="Clear search" onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
                         <X className="h-4 w-4 text-muted-foreground" />
                       </button>
                     )}
