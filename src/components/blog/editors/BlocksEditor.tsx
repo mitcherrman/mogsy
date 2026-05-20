@@ -184,7 +184,7 @@ export default function BlocksEditor({
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
       <div>
         {/* Sticky format toolbar */}
-        <div className="sticky top-[88px] z-30 mb-3">
+        <div className="sticky top-2 sm:top-[88px] z-30 mb-3">
           <FormatToolbar />
         </div>
 
