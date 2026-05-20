@@ -126,19 +126,27 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group mt-3 w-full max-w-3xl grid grid-cols-2 md:grid-cols-[1fr_1.2fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors max-h-[50dvh] animate-fade-in"
+      className="group mt-3 w-full max-w-5xl grid grid-cols-2 md:grid-cols-[1.4fr_1fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors animate-fade-in"
     >
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden aspect-[16/10]"
         style={{ background: theme.vars["--blog-bg"] }}
       >
         {post.cover_url ? (
-          <img
-            src={post.cover_url}
-            alt={post.title}
-            className="block w-full h-auto max-h-[50dvh] object-contain"
-            loading="lazy"
-          />
+          <>
+            <img
+              src={post.cover_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-30"
+            />
+            <img
+              src={post.cover_url}
+              alt={post.title}
+              className="relative w-full h-full object-contain"
+              loading="lazy"
+            />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ color: theme.vars["--blog-accent"] }}>
             <span className="text-3xl font-bold opacity-40">{post.title?.slice(0, 1) || "M"}</span>
