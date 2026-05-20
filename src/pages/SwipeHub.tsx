@@ -130,7 +130,7 @@ export default function SwipeHub() {
     }
     const league = leagues[option.key];
     if (league) {
-      navigate(`/swipe/preset/${league.id}`, { state: { subcategory: option.label } });
+      navigate(`/swipe/preset/${league.id}`, { state: { subcategory: option.label, from: "/swipe" } });
     }
   };
 

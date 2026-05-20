@@ -667,7 +667,12 @@ export default function SwipePreset() {
   };
 
   const handleBack = () => {
-    navigate("/play", { state: { restoreCategory: leagueCategory, restoreSubcategory: leagueSubcategory } });
+    const from = (location.state as { from?: string } | null)?.from;
+    if (from === "/swipe") {
+      navigate("/swipe");
+    } else {
+      navigate("/play", { state: { restoreCategory: leagueCategory, restoreSubcategory: leagueSubcategory } });
+    }
   };
 
   const sortedResults = useMemo(
