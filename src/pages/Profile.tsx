@@ -149,7 +149,9 @@ export default function Profile() {
       setProfileId(profile.id);
       setIsPro(profile.is_pro || false);
       setSelectedFrame(profile.profile_frame || "default");
-      setSelectedTheme(profile.custom_theme || "default");
+      // Sync sitewide theme to whatever the DB says if it differs from the local active theme.
+      const dbTheme = profile.custom_theme || "default";
+      if (dbTheme !== activeThemeId) setActiveTheme(dbTheme);
       setBoostCredits(profile.boost_credits || 0);
       setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
@@ -372,7 +374,7 @@ export default function Profile() {
       status_message: form.statusMessage,
       socials,
       profile_frame: isPro ? selectedFrame : "default",
-      custom_theme: selectedTheme,
+      custom_theme: activeThemeId,
     };
     // Set avatar_url to a random photo from the first 3
     if (photos.length > 0) {
