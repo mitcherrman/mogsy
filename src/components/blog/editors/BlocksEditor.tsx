@@ -9,7 +9,7 @@ import FormatToolbar from "./FormatToolbar";
 
 const BLOCK_TYPES: BlockType[] = [
   "heading", "paragraph", "image", "video", "quote", "callout", "divider", "columns",
-  "button", "embed", "spacer", "item-card", "profile-card", "leaderboard", "chart",
+  "button", "embed", "spacer", "item-card", "profile-card", "leaderboard", "chart", "adsense",
 ];
 const TEXT_BLOCK_TYPES: BlockType[] = ["heading", "paragraph", "quote", "callout"];
 
@@ -31,6 +31,7 @@ function defaultProps(type: BlockType): Record<string, any> {
     case "profile-card": return { profileId: "" };
     case "leaderboard": return { leagueId: "", limit: 10 };
     case "chart": return { kind: "aura-history", days: 30, height: 240 };
+    case "adsense": return { slot: "", layout: "rectangle", height: 280 };
     default: return {};
   }
 }
