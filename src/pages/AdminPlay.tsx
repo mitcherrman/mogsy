@@ -819,12 +819,12 @@ function Section({ title, expanded, onToggle, onAdd, sectionId, children }: { ti
   return (
     <div className="mb-4" id={sectionId}>
       <div className="flex items-center gap-1">
-        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+        <button aria-label="Expand" onClick={onToggle} className="flex items-center gap-2 flex-1 text-left py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           <span className="text-sm font-bold text-foreground">{title}</span>
         </button>
         {onAdd && (
-          <button onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
+          <button aria-label="Add" onClick={onAdd} className="shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" title={`Add to ${title}`}>
             <Plus className="h-4 w-4 text-primary" />
           </button>
         )}

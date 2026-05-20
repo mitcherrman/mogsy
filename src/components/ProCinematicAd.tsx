@@ -30,7 +30,7 @@ export default function ProCinematicAd({ onClose, onSubscribe }: ProCinematicAdP
         onClick={e => e.stopPropagation()}
       >
         {/* Close button */}
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 h-8 w-8 rounded-full bg-card/80 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+        <button aria-label="Close" onClick={onClose} className="absolute top-3 right-3 z-10 h-8 w-8 rounded-full bg-card/80 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
           <X className="h-4 w-4" />
         </button>
 

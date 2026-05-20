@@ -63,7 +63,7 @@ export default function TutorialTipPopup() {
               <Lightbulb className="h-4 w-4 text-primary" />
             </div>
             <span className="text-xs font-bold text-primary uppercase tracking-wide">Tip {currentIndex + 1}/{tips.length}</span>
-            <button
+            <button aria-label="Close"
               onClick={handleDismissAll}
               className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
             >
