@@ -225,7 +225,7 @@ export default function SwipeComments({ leagueId, blogPostId }: SwipeCommentsPro
     setSubmitting(false);
 
     // Persist in background
-    const { error } = await supabase.from("comments").insert(insertData);
+    const { error } = await supabase.from("comments").insert(insertData as never);
     if (error) {
       toast.error("Failed to post comment");
       // Rollback
