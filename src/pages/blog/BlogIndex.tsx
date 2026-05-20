@@ -126,7 +126,7 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group mt-3 w-full max-w-3xl grid grid-cols-2 md:grid-cols-[1fr_1.2fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors max-h-[50dvh]"
+      className="group mt-3 w-full max-w-3xl grid grid-cols-2 md:grid-cols-[1fr_1.2fr] gap-0 rounded-xl overflow-hidden border border-border bg-card hover:border-primary/40 transition-colors max-h-[50dvh] animate-fade-in"
     >
       <div
         className="relative overflow-hidden"
