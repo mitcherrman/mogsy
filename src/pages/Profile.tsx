@@ -769,42 +769,69 @@ export default function Profile() {
                     <h3 className="font-bold text-sm text-foreground">Theme</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {profileThemes.map((t) => {
-                      const locked = t.isPro && !isPro;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          disabled={locked}
-                          onClick={async () => {
-                            if (locked || !profileId) return;
-                            setSelectedTheme(t.id);
-                            const { error } = await supabase
-                              .from("profiles")
-                              .update({ custom_theme: t.id })
-                              .eq("id", profileId);
-                            if (error) {
-                              toast({ title: "Failed to save theme", variant: "destructive" });
-                            } else {
+                    {(() => {
+                      // Mirror FloatingThemeSwitcher visibility/lock rules so all entry points stay in sync.
+                      const visible = profileThemes.filter((t) => {
+                        if (t.id === "default") return true;
+                        return !themeConfig?.disabled_themes?.includes(t.id);
+                      });
+                      // Move cycle to the end
+                      const cycleIdx = visible.findIndex((t) => t.id === "cycle");
+                      if (cycleIdx > -1) {
+                        const [c] = visible.splice(cycleIdx, 1);
+                        visible.push(c);
+                      }
+                      const isThemePro = (id: string) => {
+                        if (id === "default") return false;
+                        if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
+                        return profileThemes.find((t) => t.id === id)?.isPro ?? false;
+                      };
+                      const canUse = (id: string) => {
+                        if (id === "default") return true;
+                        if (isPro) return true;
+                        if (chosenFreeTheme === id) return true;
+                        if (themeConfig) return themeConfig.free_themes?.includes(id) ?? false;
+                        return !(profileThemes.find((t) => t.id === id)?.isPro ?? false);
+                      };
+                      return visible.map((t) => {
+                        const locked = !canUse(t.id);
+                        const isActive = activeThemeId === t.id;
+                        const pro = isThemePro(t.id);
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={locked}
+                            onClick={() => {
+                              if (locked) return;
+                              // Routed through the sitewide hook so the FAB, navbar and
+                              // page theme all update together (and DB stays consistent).
+                              setActiveTheme(t.id);
                               toast({ title: `Theme changed to ${t.label}` });
-                            }
-                          }}
-                          className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                            selectedTheme === t.id
-                              ? "border-primary bg-primary/5"
-                              : locked
-                              ? "border-border opacity-50 cursor-not-allowed"
-                              : "border-border hover:border-primary/30"
-                          }`}
-                        >
-                          <div className={`w-full h-6 rounded-md ${t.preview}`} />
-                          <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
-                          {locked && (
-                            <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
-                          )}
-                        </button>
-                      );
-                    })}
+                            }}
+                            className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                              isActive
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                                : locked
+                                ? "border-border opacity-50 cursor-not-allowed"
+                                : "border-border hover:border-primary/30"
+                            }`}
+                          >
+                            <div
+                              className={`w-full h-6 rounded-md ${t.preview}`}
+                              style={t.id === "cycle" && isActive ? { animation: "spin 4s linear infinite" } : undefined}
+                            />
+                            <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
+                            {locked && (
+                              <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
+                            )}
+                            {pro && !locked && !isActive && (
+                              <Crown className="absolute top-1 right-1 h-3 w-3 text-[hsl(45,100%,55%)]" />
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
