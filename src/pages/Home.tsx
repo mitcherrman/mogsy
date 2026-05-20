@@ -918,6 +918,9 @@ export default function Home() {
         {/* Friends Section */}
         <HomeFriendsSection />
 
+        {/* Blog strip */}
+        <HomeBlogStrip />
+
         {/* Category Bubble Sections - Side by Side */}
         {categorySections.length > 0 && (
           <section className="mb-10">
