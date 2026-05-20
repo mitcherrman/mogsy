@@ -45,7 +45,7 @@ export function useBlogProfile(profileId?: string | null) {
     queryFn: async () => {
       const { data } = await supabase
         .from("public_profiles")
-        .select("id, display_name, avatar_url, global_elo, is_pro")
+        .select("id, display_name, avatar_url, is_pro")
         .eq("id", profileId!)
         .maybeSingle();
       return data;
