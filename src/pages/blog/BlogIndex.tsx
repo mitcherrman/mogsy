@@ -89,7 +89,7 @@ export default function BlogIndex() {
               <FeaturedHero post={hero} />
             )}
             {rest.length > 0 && (
-              <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+              <div className="mt-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1.5">
                 {rest.map((p) => <BlogPostCard key={p.id} post={p} size="sm" />)}
               </div>
             )}
