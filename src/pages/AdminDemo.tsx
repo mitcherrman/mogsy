@@ -391,7 +391,7 @@ export default function AdminDemo() {
                 className="w-full px-2 py-1.5 text-left text-xs hover:bg-secondary flex items-center gap-2"
               >
                 {(r.imageUrl || r.image_url) ? (
-                  <img src={r.imageUrl || r.image_url} className="h-5 w-5 rounded object-cover" />
+                  <img src={r.imageUrl || r.image_url} alt="" className="h-5 w-5 rounded object-cover" />
                 ) : (
                   <div className="h-5 w-5 rounded bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">{r.name?.charAt(0)}</div>
                 )}
