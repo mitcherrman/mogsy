@@ -377,6 +377,38 @@
   --ring: 320 100% 55%;
 }
 
+/* League of Legends — auto-applied on LoL preset leagues */
+.theme-lol {
+  --background: 220 45% 7%;
+  --foreground: 45 60% 92%;
+  --card: 220 35% 11%;
+  --card-foreground: 45 50% 90%;
+  --popover: 220 35% 11%;
+  --popover-foreground: 45 50% 90%;
+  --primary: 45 95% 55%;
+  --primary-foreground: 220 45% 7%;
+  --secondary: 200 70% 45%;
+  --secondary-foreground: 220 45% 7%;
+  --muted: 220 25% 16%;
+  --muted-foreground: 220 15% 60%;
+  --accent: 200 70% 35%;
+  --accent-foreground: 45 90% 90%;
+  --border: 45 60% 30%;
+  --input: 45 60% 30%;
+  --ring: 45 95% 55%;
+}
+
+.theme-lol body {
+  background-color: hsl(var(--background));
+  background-image:
+    linear-gradient(180deg, hsl(220 50% 5% / 0.78) 0%, hsl(220 50% 5% / 0.92) 70%, hsl(220 50% 5%) 100%),
+    url("/themes/lol-bg.png");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
 @keyframes page-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
