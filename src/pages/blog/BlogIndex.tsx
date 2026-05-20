@@ -99,8 +99,14 @@ export default function BlogIndex() {
               <FeaturedHero key={hero.id} post={hero} />
             )}
             {rest.length > 0 && (
-              <div className="mt-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-1.5">
-                {rest.map((p) => <BlogPostCard key={p.id} post={p} size="sm" />)}
+              <div className="mt-3 -mx-4 px-4 overflow-x-auto blog-slidebar">
+                <div className="flex gap-2 pb-3 min-w-max">
+                  {rest.map((p) => (
+                    <div key={p.id} className="w-[95px] sm:w-[110px] md:w-[125px] flex-shrink-0">
+                      <BlogPostCard post={p} size="sm" />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>
