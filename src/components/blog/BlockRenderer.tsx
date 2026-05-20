@@ -43,10 +43,10 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
   switch (block.type) {
     case "heading": {
       const Tag = (p.level === 1 ? "h1" : p.level === 3 ? "h3" : "h2") as keyof JSX.IntrinsicElements;
-      return <Tag className={cls} style={css}>{p.text || "Heading"}</Tag>;
+      return <Tag className={cls} style={css} dangerouslySetInnerHTML={{ __html: p.text || "Heading" }} />;
     }
     case "paragraph":
-      return <p className={cls} style={css}>{p.text || ""}</p>;
+      return <p className={cls} style={css} dangerouslySetInnerHTML={{ __html: p.text || "" }} />;
     case "image":
       return p.src ? (
         <figure className={cls} style={css}>
@@ -61,15 +61,15 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
     case "quote":
       return (
         <blockquote className={`border-l-4 pl-4 italic blog-border ${cls}`} style={css}>
-          <p>{p.text || ""}</p>
-          {p.attribution && <footer className="not-italic text-sm blog-muted mt-2">— {p.attribution}</footer>}
+          <div dangerouslySetInnerHTML={{ __html: p.text || "" }} />
+          {p.attribution && <footer className="not-italic text-sm blog-muted mt-2" dangerouslySetInnerHTML={{ __html: `— ${p.attribution}` }} />}
         </blockquote>
       );
     case "callout":
       return (
         <div className={`blog-surface rounded-xl p-4 ${cls}`} style={css}>
-          {p.title && <div className="font-bold mb-1">{p.title}</div>}
-          <div className="text-sm">{p.text}</div>
+          {p.title && <div className="font-bold mb-1" dangerouslySetInnerHTML={{ __html: p.title }} />}
+          <div className="text-sm" dangerouslySetInnerHTML={{ __html: p.text || "" }} />
         </div>
       );
     case "divider":
@@ -78,9 +78,8 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
       return <div style={{ height: p.height ?? 32 }} />;
     case "button":
       return p.href ? (
-        <a href={p.href} target={p.newTab ? "_blank" : undefined} rel="noopener" className={`inline-block px-5 py-2.5 rounded-full font-semibold blog-accent-bg ${cls}`} style={css}>
-          {p.label || "Click"}
-        </a>
+        <a href={p.href} target={p.newTab ? "_blank" : undefined} rel="noopener" className={`inline-block px-5 py-2.5 rounded-full font-semibold blog-accent-bg ${cls}`} style={css}
+           dangerouslySetInnerHTML={{ __html: p.label || "Click" }} />
       ) : null;
     case "embed":
       return p.html ? (
