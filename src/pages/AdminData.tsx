@@ -329,6 +329,7 @@ export default function AdminData() {
                     key={t}
                     variant={selectedChart === t ? "default" : "outline"}
                     size="icon"
+                    aria-label={`${t} chart`}
                     className="h-9 w-9"
                     onClick={() => setSelectedChart(t)}
                   >
