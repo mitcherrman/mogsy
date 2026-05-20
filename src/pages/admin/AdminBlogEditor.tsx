@@ -62,33 +62,41 @@ export default function AdminBlogEditor() {
   return (
     <div className="min-h-dvh bg-background">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/admin/blog" className="p-1.5 rounded hover:bg-muted"><ArrowLeft className="h-4 w-4" /></Link>
-          <input value={draft.title} onChange={(e) => setField("title", e.target.value)} placeholder="Post title"
-            className="flex-1 min-w-0 px-2 py-1.5 rounded bg-transparent text-lg font-bold focus:outline-none focus:bg-muted/50" />
-          <div className="flex items-center gap-1.5 text-xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex flex-wrap items-center gap-2 sm:gap-3">
+          <Link to="/admin/blog" aria-label="Back to blog list" className="p-1.5 rounded hover:bg-muted shrink-0"><ArrowLeft className="h-4 w-4" /></Link>
+          <input
+            value={draft.title}
+            onChange={(e) => setField("title", e.target.value)}
+            placeholder="Post title"
+            aria-label="Post title"
+            className="order-3 sm:order-none w-full sm:flex-1 sm:min-w-0 px-2 py-1.5 rounded bg-transparent text-base sm:text-lg font-bold focus:outline-none focus:bg-muted/50"
+          />
+          <div className="hidden sm:flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{draft.editor_mode}</span>
             <span className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${draft.status === "published" ? "bg-primary/10 text-primary" : "bg-muted"}`}>{draft.status}</span>
           </div>
-          <button onClick={() => save()} disabled={saving} className="px-3 py-1.5 rounded-full border border-border text-sm font-semibold inline-flex items-center gap-1 disabled:opacity-50"><Save className="h-3.5 w-3.5" /> Save</button>
-          {draft.status !== "published" ? (
-            <button onClick={() => save("published")} disabled={saving} className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold">Publish</button>
-          ) : (
-            <button onClick={() => save("draft")} className="px-3 py-1.5 rounded-full border border-border text-sm font-semibold">Unpublish</button>
-          )}
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span className={`sm:hidden px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${draft.status === "published" ? "bg-primary/10 text-primary" : "bg-muted"}`}>{draft.status}</span>
+            <button onClick={() => save()} disabled={saving} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-xs sm:text-sm font-semibold inline-flex items-center gap-1 min-h-9 disabled:opacity-50"><Save className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Save</span><span className="xs:hidden sr-only">Save</span></button>
+            {draft.status !== "published" ? (
+              <button onClick={() => save("published")} disabled={saving} className="px-2.5 sm:px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs sm:text-sm font-semibold min-h-9">Publish</button>
+            ) : (
+              <button onClick={() => save("draft")} className="px-2.5 sm:px-3 py-1.5 rounded-full border border-border text-xs sm:text-sm font-semibold min-h-9">Unpublish</button>
+            )}
+          </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 flex gap-1 border-t border-border">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 flex gap-1 border-t border-border overflow-x-auto">
           {(["editor", "settings", "preview"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-semibold border-b-2 ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            <button key={t} onClick={() => setTab(t)} className={`px-3 sm:px-4 py-2 text-sm font-semibold border-b-2 whitespace-nowrap ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
               {t === "editor" ? "Editor" : t === "settings" ? "Settings" : "Preview"}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {tab === "editor" && (
-          <BlogThemeWrapper theme={theme} className="rounded-2xl p-6">
+          <BlogThemeWrapper theme={theme} className="rounded-2xl p-3 sm:p-6">
             {draft.editor_mode === "blocks" && (
               <BlocksEditor value={(draft.content as any) ?? { mode: "blocks", blocks: [] }} onChange={(v) => setField("content", v as any)} />
             )}
