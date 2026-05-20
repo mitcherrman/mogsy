@@ -2500,6 +2500,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_custom_link_visits: {
+        Args: { _slug: string }
+        Returns: undefined
+      }
       is_friendship_party: { Args: { _profile_id: string }; Returns: boolean }
       is_game_player: { Args: { _game_id: string }; Returns: boolean }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
@@ -2567,6 +2571,21 @@ export type Database = {
       redeem_invite_link: {
         Args: { _code: string; _user_id: string }
         Returns: Json
+      }
+      resolve_custom_link: {
+        Args: { _slug: string }
+        Returns: {
+          default_swipe_animation: string
+          default_theme: string
+          destination_type: string
+          id: string
+          label: string
+          league_id: string
+          recommended_categories: string[]
+          recommended_league_ids: string[]
+          slug: string
+          visits: number
+        }[]
       }
       rewind_user_match: {
         Args: {

@@ -91,14 +91,10 @@ export default function CustomLink() {
       }
     }
 
-    // Check custom_links table
-    const { data, error } = await supabase
-      .from("custom_links")
-      .select("id, slug, destination_type, league_id, recommended_categories, recommended_league_ids, default_theme, default_swipe_animation, label, is_active, visits, created_at")
-      .eq("slug", lower)
-      .eq("is_active", true)
-      .maybeSingle();
-
+    // Resolve via SECURITY DEFINER RPC (only safe columns are returned)
+    const { data: resolved, error } = await supabase
+      .rpc("resolve_custom_link" as any, { _slug: lower });
+    const data = Array.isArray(resolved) ? resolved[0] : resolved;
     if (!error && data) {
       handleCustomLink(s, data);
       return;
@@ -122,10 +118,8 @@ export default function CustomLink() {
 
   const handleCustomLink = (s: string, data: any) => {
 
-    // Increment visits (fire-and-forget)
+    // Increment visits (fire-and-forget) via SECURITY DEFINER RPC
     supabase.rpc("increment_custom_link_visits" as any, { _slug: s.toLowerCase() }).then(() => {});
-    // Fallback: direct update if RPC doesn't exist
-    supabase.from("custom_links").update({ visits: (data.visits ?? 0) + 1 } as any).eq("id", data.id).then(() => {});
 
     if (data.destination_type === "league" && data.league_id) {
       navigate(`/swipe/preset/${data.league_id}`, { replace: true, state: { subcategory: data.label || undefined } });
