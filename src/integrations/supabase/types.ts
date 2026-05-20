@@ -2460,6 +2460,15 @@ export type Database = {
         Args: { _game_id: string; _result: Json }
         Returns: undefined
       }
+      get_my_referral_code: {
+        Args: never
+        Returns: {
+          code: string
+          created_at: string
+          is_active: boolean
+          times_used: number
+        }[]
+      }
       get_own_profile: {
         Args: never
         Returns: {
