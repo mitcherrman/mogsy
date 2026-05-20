@@ -149,6 +149,17 @@
     mask-image: linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
   }
 
+  .mask-fade-xy {
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
+    mask-composite: intersect;
+  }
+
   .bg-gradient-primary {
     background: var(--gradient-primary);
   }

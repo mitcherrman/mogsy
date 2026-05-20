@@ -1,29 +1,31 @@
 ## Problem
 
-When navigating between sections (Home → Leaderboard → Swipe → Profile, etc.), a brief loading screen appears with a visible vertical seam. The route-level `Suspense` fallback in `src/App.tsx` is:
+When navigating between sections, the `RouteLoader` (Mogsy logo on `bg-background`) briefly shows with a visible rectangular border. This happens because the inner `<Suspense fallback={<RouteLoader />}>` in `src/components/Layout.tsx` renders inside `<main>` (constrained to `max-w-7xl` with vertical padding `pt-14 pb-16`), so the loader's `bg-background` rectangle has hard top/bottom edges against the `#0a0a1a` page background.
 
-```tsx
-const LazyFallback = () => (
-  <div className="min-h-screen bg-background" />
-);
-```
-
-`bg-background` ends abruptly against the outer `#0a0a1a` page color — same hard edge we previously fixed for `RouteLoader` in `src/components/Layout.tsx` using the feathered "stage" (`max-w-[88rem]` + `.mask-fade-x` + radial halo).
-
-Every `<Suspense>` in `App.tsx` (~15 routes including `/`, `/auth`, `/admin/*`, `/multiplayer`, `/:slug`, etc.) uses this same fallback, so the seam appears on every section transition.
+The current loader stage uses `.mask-fade-x`, which only feathers the left/right edges — top/bottom stay sharp.
 
 ## Fix
 
-Unify on a single feathered loader so transitions stay seamless.
+Make the loader's "stage" rectangle fade on all four sides so it dissolves into the outer `#0a0a1a` regardless of whether it's rendered full-screen or inside the Layout column.
 
-1. Export `RouteLoader` from `src/components/Layout.tsx` (currently it's a private component already used for the inner Suspense and as `<RouteLoader />` when `useNavigation()` reports loading).
-2. In `src/App.tsx`, replace the local `LazyFallback` with the exported `RouteLoader` and use it for every `<Suspense fallback={...}>` (drop the `LazyFallback` definition).
+1. Add a new utility `.mask-fade-xy` in `src/index.css` that combines horizontal and vertical linear-gradient masks (using the same `clamp(24px, 6vw, 96px)` falloff so it matches the existing horizontal feather):
 
-This means the static FCP shell → route Suspense fallback → `Layout` Suspense fallback → page content all share the same `#0a0a1a` outer background and `bg-background` column with `.mask-fade-x` masked edges, so there is no visible vertical line at any stage of the transition.
+   ```css
+   .mask-fade-xy {
+     -webkit-mask-image:
+       linear-gradient(to right, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%),
+       linear-gradient(to bottom, transparent 0, #000 clamp(24px, 6vw, 96px), #000 calc(100% - clamp(24px, 6vw, 96px)), transparent 100%);
+     -webkit-mask-composite: source-in;
+     mask-image: /* same */;
+     mask-composite: intersect;
+   }
+   ```
+
+2. In `src/components/Layout.tsx` `RouteLoader`, swap the stage's `mask-fade-x` for `mask-fade-xy` so both vertical and horizontal edges feather. The ambient radial halo stays as-is (it already fades naturally).
+
+No changes to routing, the FCP shell, or any page UI. The full-screen Suspense fallbacks in `App.tsx` are unaffected visually (their edges run off-screen anyway).
 
 ## Files touched
 
-- `src/components/Layout.tsx` — `export function RouteLoader()` (or named re-export); no visual change.
-- `src/App.tsx` — import `RouteLoader`, swap all `fallback={<LazyFallback />}` to `fallback={<RouteLoader />}`, remove `LazyFallback`.
-
-No changes to backend, routing logic, or per-page UI.
+- `src/index.css` — add `.mask-fade-xy` utility.
+- `src/components/Layout.tsx` — `RouteLoader` uses `mask-fade-xy` instead of `mask-fade-x`.
