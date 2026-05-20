@@ -3,6 +3,7 @@ import { Search, BookOpen } from "lucide-react";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
+import { SITE_URL } from "@/lib/site-config";
 
 export default function BlogIndex() {
   const [search, setSearch] = useState("");
@@ -14,7 +15,37 @@ export default function BlogIndex() {
 
   return (
     <div className="min-h-dvh bg-background">
-      <SEOHead title="Blog — Mogsy" description="Stories, rankings, and deep dives from the Mogsy team." />
+      <SEOHead
+        title="Mogsy Blog — Rankings, Tier Lists & Pop Culture Deep Dives"
+        description="Anime tier lists, video game rankings, movie debates and Marvel hot takes — explore community-ranked stories from Mogsy."
+        path="/blog"
+        keywords="anime tier list, video game rankings, movie tier list, marvel ranking, pop culture, mogsy"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            name: "Mogsy Blog",
+            url: `${SITE_URL}/blog`,
+            description: "Rankings, tier lists, and deep dives from the Mogsy community.",
+            publisher: { "@type": "Organization", name: "Mogsy", url: SITE_URL },
+            blogPost: posts.slice(0, 20).map((p) => ({
+              "@type": "BlogPosting",
+              headline: p.title,
+              url: `${SITE_URL}/blog/${p.slug}`,
+              datePublished: p.published_at,
+              image: p.cover_url || undefined,
+            })),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+            ],
+          },
+        ]}
+      />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-2 mb-2 text-primary">
           <BookOpen className="h-5 w-5" />
