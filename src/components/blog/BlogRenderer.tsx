@@ -100,7 +100,5 @@ function renderNode(node: any, key: number, widgets: Record<string, any>): React
 
 function BlockRendererDispatch({ type, props }: { type: any; props: any }) {
   const block = { id: "w", type, props } as BlogBlock;
-  // Lazy import via dynamic require would be heavy — reuse BlockRenderer directly.
-  const BlockRenderer = require("./BlockRenderer").default;
   return <BlockRenderer block={block} />;
 }
