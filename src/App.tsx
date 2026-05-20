@@ -77,9 +77,7 @@ const Feedback = lazyWithRetry(() => import("./pages/Feedback"));
 
 const queryClient = new QueryClient();
 
-const LazyFallback = () => (
-  <div className="min-h-screen bg-background" />
-);
+import { RouteLoader } from "@/components/Layout";
 
 function AuthQuerySyncBridge() {
   useAuthQuerySync();
@@ -96,9 +94,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Suspense fallback={<LazyFallback />}><Index /></Suspense>} />
-                <Route path="/auth" element={<Suspense fallback={<LazyFallback />}><Auth /></Suspense>} />
-                <Route path="/reset-password" element={<Suspense fallback={<LazyFallback />}><ResetPassword /></Suspense>} />
+                <Route path="/" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
+                <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
+                <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
                   <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                   <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
@@ -115,17 +113,17 @@ const App = () => (
                   <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
                   <Route path="/user/:profileId" element={<UserProfile />} />
                   <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-                  <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminPlay /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminData /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminDemo /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/gaming" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><AdminGaming /></Suspense></ProtectedRoute>} />
-                  <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Moderator /></Suspense></ProtectedRoute>} />
-                  <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Multiplayer /></Suspense></ProtectedRoute>} />
-                  <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
-                  <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<LazyFallback />}><Feedback /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminPlay /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminData /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminDemo /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/gaming" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminGaming /></Suspense></ProtectedRoute>} />
+                  <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Moderator /></Suspense></ProtectedRoute>} />
+                  <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Multiplayer /></Suspense></ProtectedRoute>} />
+                  <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
+                  <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Feedback /></Suspense></ProtectedRoute>} />
                 </Route>
-                <Route path="/secret-room" element={<Suspense fallback={<LazyFallback />}><SecretRoom /></Suspense>} />
-                <Route path="/:slug" element={<Suspense fallback={<LazyFallback />}><CustomLink /></Suspense>} />
+                <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
+                <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
           </BrowserRouter>

@@ -66,7 +66,7 @@ export default function Layout() {
 
 /** Lightweight branded loader for in-app route transitions and auth/settings boot.
  *  Mirrors the static FCP shell in index.html so transitions feel continuous. */
-function RouteLoader() {
+export function RouteLoader() {
   return (
     <div
       className="min-h-screen relative flex items-center justify-center"
