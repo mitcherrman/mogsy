@@ -7,6 +7,7 @@ import BlogRenderer from "@/components/blog/BlogRenderer";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
 import BlogShareButtons from "@/components/blog/BlogShareButtons";
+import SwipeComments from "@/components/SwipeComments";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { BlogContent, BlogTheme } from "@/lib/blog/types";
@@ -128,6 +129,9 @@ export default function BlogPost() {
             <BlogRenderer content={post.content as BlogContent} />
           </div>
           <BlogShareButtons slug={post.slug} title={post.title} description={post.seo_description || post.subtitle} />
+          <div className="mt-6">
+            <SwipeComments blogPostId={post.id} />
+          </div>
         </article>
       </BlogThemeWrapper>
 

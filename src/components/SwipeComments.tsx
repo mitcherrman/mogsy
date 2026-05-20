@@ -28,7 +28,8 @@ interface Comment {
 }
 
 interface SwipeCommentsProps {
-  leagueId: string;
+  leagueId?: string;
+  blogPostId?: string;
 }
 
 interface DeletedComment {
@@ -37,7 +38,12 @@ interface DeletedComment {
   timeout: ReturnType<typeof setTimeout>;
 }
 
-export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
+export default function SwipeComments({ leagueId, blogPostId }: SwipeCommentsProps) {
+  if (!leagueId && !blogPostId) {
+    console.warn("SwipeComments requires leagueId or blogPostId");
+  }
+  const scopeColumn = blogPostId ? "blog_post_id" : "league_id";
+  const scopeValue = blogPostId ?? leagueId ?? "";
   const { user } = useAuth();
   const navigate = useNavigate();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -69,7 +75,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     const { data: commentsData } = await supabase
       .from("comments")
       .select("id, profile_id, content, is_hidden, created_at, parent_comment_id")
-      .eq("league_id", leagueId)
+      .eq(scopeColumn, scopeValue)
       .eq("is_hidden", false)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -141,7 +147,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
 
     setComments(topLevel);
     setLoading(false);
-  }, [leagueId, myProfileId]);
+  }, [scopeColumn, scopeValue, myProfileId]);
 
   useEffect(() => {
     loadComments();
@@ -162,10 +168,10 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
 
     setSubmitting(true);
     const contentTrimmed = newComment.trim();
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       profile_id: myProfileId,
-      league_id: leagueId,
       content: contentTrimmed,
+      [scopeColumn]: scopeValue,
     };
     if (replyingTo) {
       insertData.parent_comment_id = replyingTo.id;
@@ -219,7 +225,7 @@ export default function SwipeComments({ leagueId }: SwipeCommentsProps) {
     setSubmitting(false);
 
     // Persist in background
-    const { error } = await supabase.from("comments").insert(insertData);
+    const { error } = await supabase.from("comments").insert(insertData as never);
     if (error) {
       toast.error("Failed to post comment");
       // Rollback
