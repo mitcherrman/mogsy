@@ -1,18 +1,29 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useBlogPost, useBlogList } from "@/hooks/blog/useBlogPosts";
 import BlogThemeWrapper from "@/components/blog/BlogThemeWrapper";
 import BlogRenderer from "@/components/blog/BlogRenderer";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { BlogContent, BlogTheme } from "@/lib/blog/types";
 
 export default function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
   const { data: post, isLoading } = useBlogPost(slug);
   const { data: related = [] } = useBlogList({ limit: 4 });
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      const roles = (data ?? []).map((r) => r.role as string);
+      setIsAdmin(roles.includes("admin") || roles.includes("master_admin"));
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!post?.id) return;
@@ -87,6 +98,15 @@ export default function BlogPost() {
             ))}
           </div>
         </div>
+      )}
+
+      {isAdmin && (
+        <Link
+          to={`/admin/blog/${post.id}`}
+          className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold text-sm shadow-lg hover:opacity-90"
+        >
+          <Pencil className="h-4 w-4" /> Edit post
+        </Link>
       )}
     </div>
   );

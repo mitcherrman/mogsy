@@ -5,6 +5,7 @@ interface AdBannerProps {
   format?: "auto" | "rectangle" | "horizontal";
   className?: string;
   clientId?: string;
+  onStatusChange?: (status: "waiting" | "filled" | "unfilled") => void;
 }
 
 declare global {
@@ -13,7 +14,7 @@ declare global {
   }
 }
 
-export default function AdBanner({ slot, format = "auto", className = "", clientId }: AdBannerProps) {
+export default function AdBanner({ slot, format = "auto", className = "", clientId, onStatusChange }: AdBannerProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const insRef = useRef<HTMLModElement | null>(null);
   const pushed = useRef(false);
@@ -49,12 +50,15 @@ export default function AdBanner({ slot, format = "auto", className = "", client
       const s = el.getAttribute("data-ad-status");
       if (s === "filled") {
         setStatus("filled");
+        onStatusChange?.("filled");
         clearInterval(interval);
       } else if (s === "unfilled") {
         setStatus("unfilled");
+        onStatusChange?.("unfilled");
         clearInterval(interval);
       } else if (Date.now() - start > 6000) {
         setStatus("unfilled");
+        onStatusChange?.("unfilled");
         clearInterval(interval);
       }
     }, 400);

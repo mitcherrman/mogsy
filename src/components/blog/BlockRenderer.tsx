@@ -3,6 +3,7 @@ import ItemCardBlock from "./data-blocks/ItemCardBlock";
 import ProfileCardBlock from "./data-blocks/ProfileCardBlock";
 import LeaderboardBlock from "./data-blocks/LeaderboardBlock";
 import ChartBlock from "./data-blocks/ChartBlock";
+import AdBanner from "@/components/AdBanner";
 
 function styleToCss(s?: BlockStyle): React.CSSProperties {
   if (!s) return {};
@@ -103,6 +104,23 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
       return <div className={cls} style={css}><LeaderboardBlock leagueId={p.leagueId} limit={p.limit ?? 10} /></div>;
     case "chart":
       return <div className={cls} style={css}><ChartBlock {...p} /></div>;
+    case "adsense": {
+      const layout = p.layout ?? "rectangle";
+      const heightPx = p.height ?? (layout === "horizontal" ? 120 : layout === "leaderboard" ? 100 : 280);
+      return (
+        <div className={`my-6 ${cls}`} style={css}>
+          <p className="text-[10px] uppercase tracking-widest blog-muted text-center mb-1.5">Advertisement</p>
+          <div style={{ minHeight: heightPx }} className="rounded-xl overflow-hidden">
+            <AdBanner
+              slot={p.slot || ""}
+              format={layout === "horizontal" || layout === "leaderboard" ? "horizontal" : "rectangle"}
+              clientId={p.clientId || undefined}
+              className="w-full"
+            />
+          </div>
+        </div>
+      );
+    }
     default:
       return null;
   }

@@ -46,7 +46,8 @@ export type BlockType =
   | "item-card"
   | "profile-card"
   | "leaderboard"
-  | "chart";
+  | "chart"
+  | "adsense";
 
 export interface BlogBlock {
   id: string;
@@ -139,4 +140,5 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   "profile-card": "Profile card",
   leaderboard: "Leaderboard",
   chart: "Chart",
+  adsense: "Ad slot (AdSense)",
 };
