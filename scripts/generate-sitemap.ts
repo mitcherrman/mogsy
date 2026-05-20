@@ -35,6 +35,7 @@ const staticEntries: SitemapEntry[] = [
   { path: "/auth", changefreq: "monthly", priority: "0.5" },
   { path: "/profile", changefreq: "weekly", priority: "0.6" },
   { path: "/referral", changefreq: "monthly", priority: "0.5" },
+  { path: "/blog", changefreq: "daily", priority: "0.9" },
 ];
 
 async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
@@ -89,6 +90,9 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
   const profileEntries = await fetchUserProfileEntries(supabase);
   entries.push(...profileEntries);
 
+  const blogEntries = await fetchBlogPostEntries(supabase);
+  entries.push(...blogEntries);
+
   return entries;
 }
 
@@ -111,6 +115,31 @@ async function fetchUserProfileEntries(supabase: ReturnType<typeof createClient>
       lastmod: p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : undefined,
       changefreq: "weekly",
       priority: "0.5",
+    });
+  }
+  return entries;
+}
+
+// Published blog posts — one per slug
+async function fetchBlogPostEntries(supabase: ReturnType<typeof createClient>): Promise<SitemapEntry[]> {
+  const entries: SitemapEntry[] = [];
+  const { data: posts, error } = await supabase
+    .from("blog_posts")
+    .select("slug, updated_at, published_at")
+    .eq("status", "published")
+    .limit(5000);
+  if (error) {
+    console.warn("[sitemap] blog_posts fetch failed:", error.message);
+    return entries;
+  }
+  for (const p of posts ?? []) {
+    if (!p.slug) continue;
+    const last = p.updated_at || p.published_at;
+    entries.push({
+      path: `/blog/${p.slug}`,
+      lastmod: last ? new Date(last).toISOString().slice(0, 10) : undefined,
+      changefreq: "weekly",
+      priority: "0.8",
     });
   }
   return entries;
