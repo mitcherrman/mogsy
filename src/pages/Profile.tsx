@@ -16,6 +16,7 @@ import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
 import { profileThemes } from "@/lib/profile-themes";
 import FavoritesEditor from "@/components/FavoritesEditor";
+import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 
 
 const frameOptions = [
@@ -25,6 +26,12 @@ const frameOptions = [
   { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
   { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
 ];
+
+interface ThemeConfig {
+  free_themes: string[];
+  pro_themes: string[];
+  disabled_themes: string[];
+}
 
 const SOCIAL_PLACEHOLDERS: Record<string, string> = {
   instagram: "https://instagram.com/yourname",
@@ -44,7 +51,8 @@ export default function Profile() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState("default");
-  const [selectedTheme, setSelectedTheme] = useState("default");
+  const { themeId: activeThemeId, setActiveTheme, chosenFreeTheme } = useSitewideTheme();
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
   const [boostActive, setBoostActive] = useState(false);
   const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
@@ -54,6 +62,24 @@ export default function Profile() {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
+
+  // Load + listen for theme config so locks stay in sync with the FAB
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "theme_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setThemeConfig(data.value as any);
+      });
+    const handler = (e: Event) => {
+      const cfg = (e as CustomEvent).detail;
+      if (cfg) setThemeConfig(cfg);
+    };
+    window.addEventListener("theme-config-updated", handler);
+    return () => window.removeEventListener("theme-config-updated", handler);
+  }, []);
 
   const [form, setForm] = useState({
     displayName: "",
