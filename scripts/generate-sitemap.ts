@@ -86,6 +86,9 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
     });
   }
 
+  const profileEntries = await fetchUserProfileEntries(supabase);
+  entries.push(...profileEntries);
+
   return entries;
 }
 
