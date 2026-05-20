@@ -437,6 +437,13 @@ html.high-contrast {
 }
 html.high-contrast * { text-shadow: none !important; }
 
+/* Subtle horizontal scrollbar for blog index strip */
+.blog-slidebar { scrollbar-width: thin; scrollbar-color: hsl(var(--primary) / 0.45) transparent; }
+.blog-slidebar::-webkit-scrollbar { height: 6px; }
+.blog-slidebar::-webkit-scrollbar-track { background: transparent; }
+.blog-slidebar::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.4); border-radius: 999px; }
+.blog-slidebar::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.7); }
+
 /* ===== Blog scope ===== */
 /* All blog post styling is scoped inside .blog-scope so theme presets and
    per-block fonts/colors never leak out into the app shell. */
