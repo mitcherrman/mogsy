@@ -44,12 +44,13 @@ export default function Referral() {
 
     const [{ data: settingsData }, { data: linkData }, { data: redemptionData }] = await Promise.all([
       supabase.from("user_invite_settings").select("*").limit(1).single(),
-      supabase.from("invite_links").select("*").eq("created_by_user_id", user.id).eq("type", "user").limit(1).single(),
+      supabase.rpc("get_my_referral_code" as any),
       supabase.from("invite_redemptions").select("id, redeemed_by_user_id, created_at").eq("referrer_user_id", user.id).order("created_at", { ascending: false }),
     ]);
 
     setSettings(settingsData as ReferralSettings | null);
-    setReferralCode(linkData?.code || null);
+    const rpcRow = Array.isArray(linkData) ? linkData[0] : linkData;
+    setReferralCode((rpcRow as any)?.code || null);
 
     const rData = redemptionData || [];
     setReferralCount(rData.length);
