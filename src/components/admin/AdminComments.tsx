@@ -6,42 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Trash2, Eye, EyeOff, Flag, MessageSquare } from "lucide-react";
+import { Search, Trash2, Eye, EyeOff, MessageSquare } from "lucide-react";
 
 interface AdminComment {
   id: string;
   profile_id: string;
   league_id: string | null;
+  blog_post_id: string | null;
   content: string;
   is_hidden: boolean;
   hidden_by_admin: boolean;
   created_at: string;
   display_name: string;
   avatar_url: string | null;
-  league_name: string;
+  scope_label: string;
+  scope_kind: "league" | "blog" | "none";
   report_count: number;
   reaction_count: number;
 }
+
+type ScopeFilter = "all" | "league" | "blog";
 
 export default function AdminComments() {
   const [comments, setComments] = useState<AdminComment[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [showHidden, setShowHidden] = useState(false);
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
 
     let query = supabase
       .from("comments")
-      .select("id, profile_id, league_id, content, is_hidden, hidden_by_admin, created_at")
+      .select("id, profile_id, league_id, blog_post_id, content, is_hidden, hidden_by_admin, created_at")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(300);
 
     if (!showHidden) {
       query = query.eq("is_hidden", false);
     }
+    if (scopeFilter === "league") query = query.not("league_id", "is", null);
+    if (scopeFilter === "blog") query = query.not("blog_post_id", "is", null);
 
     const { data: commentsData } = await query;
 
@@ -68,6 +77,13 @@ export default function AdminComments() {
       : { data: [] };
     const leagueMap = new Map((leagues || []).map((l) => [l.id, l.name]));
 
+    // Fetch blog posts
+    const blogIds = [...new Set(commentsData.filter((c) => c.blog_post_id).map((c) => c.blog_post_id!))];
+    const { data: blogs } = blogIds.length > 0
+      ? await supabase.from("blog_posts").select("id, title").in("id", blogIds)
+      : { data: [] };
+    const blogMap = new Map((blogs || []).map((b: any) => [b.id, b.title]));
+
     // Fetch report counts
     const commentIds = commentsData.map((c) => c.id);
     const { data: reports } = await supabase
@@ -91,19 +107,25 @@ export default function AdminComments() {
 
     const mapped: AdminComment[] = commentsData.map((c) => {
       const profile = profileMap.get(c.profile_id);
+      let scope_kind: "league" | "blog" | "none" = "none";
+      let scope_label = "N/A";
+      if (c.league_id) { scope_kind = "league"; scope_label = leagueMap.get(c.league_id) || "Unknown league"; }
+      else if (c.blog_post_id) { scope_kind = "blog"; scope_label = blogMap.get(c.blog_post_id) || "Unknown post"; }
       return {
         ...c,
         display_name: profile?.display_name || "Unknown",
         avatar_url: profile?.avatar_url || null,
-        league_name: c.league_id ? leagueMap.get(c.league_id) || "Unknown" : "N/A",
+        scope_kind,
+        scope_label,
         report_count: reportCounts.get(c.id) || 0,
         reaction_count: reactionCounts.get(c.id) || 0,
       };
     });
 
     setComments(mapped);
+    setSelected(new Set());
     setLoading(false);
-  }, [showHidden]);
+  }, [showHidden, scopeFilter]);
 
   useEffect(() => {
     fetchComments();
@@ -135,14 +157,52 @@ export default function AdminComments() {
     toast.success(newHidden ? "Comment hidden" : "Comment unhidden");
   };
 
+  const bulkHide = async (hide: boolean) => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    const { error } = await supabase
+      .from("comments")
+      .update({ is_hidden: hide, hidden_by_admin: hide })
+      .in("id", ids);
+    if (error) { toast.error("Bulk update failed"); return; }
+    setComments((prev) => prev.map((c) => ids.includes(c.id) ? { ...c, is_hidden: hide, hidden_by_admin: hide } : c));
+    toast.success(`${ids.length} comment${ids.length !== 1 ? "s" : ""} ${hide ? "hidden" : "unhidden"}`);
+    setSelected(new Set());
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    if (!confirm(`Permanently delete ${ids.length} comment${ids.length !== 1 ? "s" : ""}?`)) return;
+    const { error } = await supabase.from("comments").delete().in("id", ids);
+    if (error) { toast.error("Bulk delete failed"); return; }
+    setComments((prev) => prev.filter((c) => !ids.includes(c.id)));
+    toast.success(`${ids.length} deleted`);
+    setSelected(new Set());
+  };
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const filtered = comments.filter((c) => {
     const q = search.toLowerCase();
     return (
       c.content.toLowerCase().includes(q) ||
       c.display_name.toLowerCase().includes(q) ||
-      c.league_name.toLowerCase().includes(q)
+      c.scope_label.toLowerCase().includes(q)
     );
   });
+
+  const allSelected = filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map((c) => c.id)));
+  };
 
   const formatDate = (d: string) => new Date(d).toLocaleString();
 
@@ -152,11 +212,22 @@ export default function AdminComments() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search comments, users, leagues..."
+            placeholder="Search comments, users, leagues, posts..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
           />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-0.5">
+          {(["all", "league", "blog"] as ScopeFilter[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setScopeFilter(s)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${scopeFilter === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {s}
+            </button>
+          ))}
         </div>
         <div className="flex items-center gap-2">
           <Switch checked={showHidden} onCheckedChange={setShowHidden} />
@@ -164,9 +235,25 @@ export default function AdminComments() {
         </div>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        <MessageSquare className="h-3 w-3 inline mr-1" />
-        {filtered.length} comment{filtered.length !== 1 ? "s" : ""}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground">
+          <MessageSquare className="h-3 w-3 inline mr-1" />
+          {filtered.length} comment{filtered.length !== 1 ? "s" : ""}
+          {selected.size > 0 && <span className="ml-2 text-primary font-semibold">· {selected.size} selected</span>}
+        </div>
+        {selected.size > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkHide(true)}>
+              <EyeOff className="h-3 w-3 mr-1" /> Hide
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => bulkHide(false)}>
+              <Eye className="h-3 w-3 mr-1" /> Unhide
+            </Button>
+            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={bulkDelete}>
+              <Trash2 className="h-3 w-3 mr-1" /> Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -178,9 +265,12 @@ export default function AdminComments() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
+                </TableHead>
                 <TableHead className="text-xs">User</TableHead>
                 <TableHead className="text-xs">Comment</TableHead>
-                <TableHead className="text-xs">League</TableHead>
+                <TableHead className="text-xs">Scope</TableHead>
                 <TableHead className="text-xs text-center">📊</TableHead>
                 <TableHead className="text-xs text-center">🚩</TableHead>
                 <TableHead className="text-xs">Date</TableHead>
@@ -190,6 +280,13 @@ export default function AdminComments() {
             <TableBody>
               {filtered.map((comment) => (
                 <TableRow key={comment.id} className={comment.is_hidden ? "opacity-50" : ""}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selected.has(comment.id)}
+                      onCheckedChange={() => toggleOne(comment.id)}
+                      aria-label="Select comment"
+                    />
+                  </TableCell>
                   <TableCell className="text-xs font-medium">
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded-full bg-secondary overflow-hidden flex-shrink-0">
@@ -212,8 +309,15 @@ export default function AdminComments() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground truncate max-w-[100px]">
-                    {comment.league_name}
+                  <TableCell className="text-xs max-w-[140px]">
+                    <div className="flex items-center gap-1.5">
+                      {comment.scope_kind !== "none" && (
+                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider shrink-0">
+                          {comment.scope_kind}
+                        </Badge>
+                      )}
+                      <span className="text-muted-foreground truncate">{comment.scope_label}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-center">{comment.reaction_count}</TableCell>
                   <TableCell className="text-xs text-center">
