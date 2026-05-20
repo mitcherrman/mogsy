@@ -6,7 +6,6 @@ import BlogThemeWrapper from "@/components/blog/BlogThemeWrapper";
 import BlogRenderer from "@/components/blog/BlogRenderer";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
-import SwipeComments from "@/components/SwipeComments";
 import { supabase } from "@/integrations/supabase/client";
 import type { BlogContent, BlogTheme } from "@/lib/blog/types";
 
@@ -78,11 +77,6 @@ export default function BlogPost() {
           </div>
         </article>
       </BlogThemeWrapper>
-
-      <div className="max-w-3xl mx-auto px-4 pb-10">
-        <h2 className="text-lg font-bold text-foreground mb-4">Comments</h2>
-        <SwipeComments blogPostId={post.id} />
-      </div>
 
       {related.filter((r) => r.id !== post.id).length > 0 && (
         <div className="max-w-7xl mx-auto px-4 pb-16">
