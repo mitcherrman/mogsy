@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, ChevronRight, ChevronLeft, Bell, Download, BarChart3, Gamepad2 } from "lucide-react";
+import { Shield, ChevronRight, ChevronLeft, Bell, Download, BarChart3, Gamepad2, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -138,6 +138,12 @@ export default function Admin() {
                 className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
               >
                 <Gamepad2 className="h-3 w-3" /> Gaming
+              </button>
+              <button
+                onClick={() => navigate("/admin/blog")}
+                className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              >
+                <BookOpen className="h-3 w-3" /> Blog
               </button>
               <button
                 disabled={csvExporting}

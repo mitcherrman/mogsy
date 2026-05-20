@@ -23,6 +23,7 @@ import OnboardingFlow from "@/components/OnboardingFlow";
 import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-text-logo.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
+import HomeBlogStrip from "@/components/blog/HomeBlogStrip";
 import { getCuratedConfig, clearCuratedConfig } from "@/pages/CustomLink";
 import SEOHead from "@/components/SEOHead";
 
@@ -916,6 +917,9 @@ export default function Home() {
 
         {/* Friends Section */}
         <HomeFriendsSection />
+
+        {/* Blog strip */}
+        <HomeBlogStrip />
 
         {/* Category Bubble Sections - Side by Side */}
         {categorySections.length > 0 && (
