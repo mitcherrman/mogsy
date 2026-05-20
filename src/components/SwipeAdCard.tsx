@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Megaphone } from "lucide-react";
+import { ExternalLink, Megaphone, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/AdBanner";
@@ -30,6 +30,7 @@ interface SwipeAdCardProps {
 export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClientId, placement = "swipe", adSource = "custom", profileId }: SwipeAdCardProps) {
   const duration = creative?.view_duration_seconds ?? 5;
   const [countdown, setCountdown] = useState(duration);
+  const [adStatus, setAdStatus] = useState<"waiting" | "filled" | "unfilled">("waiting");
   const logged = useRef(false);
 
   useEffect(() => {
@@ -70,6 +71,26 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
         </Badge>
       </div>
 
+      {isAdsense && (
+        <div className="absolute top-2 right-2 z-10">
+          {adStatus === "filled" && (
+            <Badge className="text-[10px] gap-1 bg-primary/15 text-primary border-0">
+              <CheckCircle2 className="h-2.5 w-2.5" /> AdSense live
+            </Badge>
+          )}
+          {adStatus === "waiting" && (
+            <Badge className="text-[10px] gap-1 bg-muted text-muted-foreground border-0">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" /> AdSense pending
+            </Badge>
+          )}
+          {adStatus === "unfilled" && (
+            <Badge className="text-[10px] gap-1 bg-amber-500/20 text-amber-500 border-0">
+              <AlertTriangle className="h-2.5 w-2.5" /> No fill from Google
+            </Badge>
+          )}
+        </div>
+      )}
+
       {/* Content area — fills all available space */}
       <div className="w-full flex-1 min-h-0 bg-muted/30 overflow-hidden relative">
         {isAdsense ? (
@@ -79,6 +100,7 @@ export default function SwipeAdCard({ creative, onSkip, adsenseSlot, adsenseClie
               format="rectangle"
               clientId={adsenseClientId}
               className="w-full h-full"
+              onStatusChange={setAdStatus}
             />
           </div>
         ) : creative?.image_url ? (
