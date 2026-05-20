@@ -184,6 +184,107 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_post_views: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          profile_id: string | null
+          view_day: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          profile_id?: string | null
+          view_day?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          profile_id?: string | null
+          view_day?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_views_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_posts: {
+        Row: {
+          author_user_id: string
+          category: string | null
+          content: Json
+          cover_url: string | null
+          created_at: string
+          editor_mode: Database["public"]["Enums"]["blog_editor_mode"]
+          id: string
+          og_image_url: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: Database["public"]["Enums"]["blog_post_status"]
+          subtitle: string
+          tags: string[]
+          theme: Json
+          title: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          author_user_id: string
+          category?: string | null
+          content?: Json
+          cover_url?: string | null
+          created_at?: string
+          editor_mode?: Database["public"]["Enums"]["blog_editor_mode"]
+          id?: string
+          og_image_url?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: Database["public"]["Enums"]["blog_post_status"]
+          subtitle?: string
+          tags?: string[]
+          theme?: Json
+          title?: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          author_user_id?: string
+          category?: string | null
+          content?: Json
+          cover_url?: string | null
+          created_at?: string
+          editor_mode?: Database["public"]["Enums"]["blog_editor_mode"]
+          id?: string
+          og_image_url?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: Database["public"]["Enums"]["blog_post_status"]
+          subtitle?: string
+          tags?: string[]
+          theme?: Json
+          title?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: []
+      }
       boosts: {
         Row: {
           active_until: string | null
@@ -317,6 +418,7 @@ export type Database = {
       }
       comments: {
         Row: {
+          blog_post_id: string | null
           content: string
           created_at: string
           hidden_by_admin: boolean
@@ -328,6 +430,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          blog_post_id?: string | null
           content: string
           created_at?: string
           hidden_by_admin?: boolean
@@ -339,6 +442,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          blog_post_id?: string | null
           content?: string
           created_at?: string
           hidden_by_admin?: boolean
@@ -350,6 +454,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_blog_post_id_fkey"
+            columns: ["blog_post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_league_id_fkey"
             columns: ["league_id"]
@@ -2624,6 +2735,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "master_admin" | "demo_access"
+      blog_editor_mode: "blocks" | "rich" | "canvas"
+      blog_post_status: "draft" | "scheduled" | "published"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2752,6 +2865,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "master_admin", "demo_access"],
+      blog_editor_mode: ["blocks", "rich", "canvas"],
+      blog_post_status: ["draft", "scheduled", "published"],
     },
   },
 } as const
