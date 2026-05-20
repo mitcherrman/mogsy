@@ -16,6 +16,7 @@ import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
 import { profileThemes } from "@/lib/profile-themes";
 import FavoritesEditor from "@/components/FavoritesEditor";
+import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 
 
 const frameOptions = [
@@ -25,6 +26,12 @@ const frameOptions = [
   { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
   { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
 ];
+
+interface ThemeConfig {
+  free_themes: string[];
+  pro_themes: string[];
+  disabled_themes: string[];
+}
 
 const SOCIAL_PLACEHOLDERS: Record<string, string> = {
   instagram: "https://instagram.com/yourname",
@@ -44,7 +51,8 @@ export default function Profile() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState("default");
-  const [selectedTheme, setSelectedTheme] = useState("default");
+  const { themeId: activeThemeId, setActiveTheme, chosenFreeTheme } = useSitewideTheme();
+  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
   const [boostActive, setBoostActive] = useState(false);
   const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
@@ -54,6 +62,24 @@ export default function Profile() {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
+
+  // Load + listen for theme config so locks stay in sync with the FAB
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "theme_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setThemeConfig(data.value as any);
+      });
+    const handler = (e: Event) => {
+      const cfg = (e as CustomEvent).detail;
+      if (cfg) setThemeConfig(cfg);
+    };
+    window.addEventListener("theme-config-updated", handler);
+    return () => window.removeEventListener("theme-config-updated", handler);
+  }, []);
 
   const [form, setForm] = useState({
     displayName: "",
@@ -123,7 +149,9 @@ export default function Profile() {
       setProfileId(profile.id);
       setIsPro(profile.is_pro || false);
       setSelectedFrame(profile.profile_frame || "default");
-      setSelectedTheme(profile.custom_theme || "default");
+      // Sync sitewide theme to whatever the DB says if it differs from the local active theme.
+      const dbTheme = profile.custom_theme || "default";
+      if (dbTheme !== activeThemeId) setActiveTheme(dbTheme);
       setBoostCredits(profile.boost_credits || 0);
       setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
@@ -346,7 +374,7 @@ export default function Profile() {
       status_message: form.statusMessage,
       socials,
       profile_frame: isPro ? selectedFrame : "default",
-      custom_theme: selectedTheme,
+      custom_theme: activeThemeId,
     };
     // Set avatar_url to a random photo from the first 3
     if (photos.length > 0) {
@@ -711,7 +739,21 @@ export default function Profile() {
                         <button
                           key={frame.id}
                           type="button"
-                          onClick={() => setSelectedFrame(frame.id)}
+                          onClick={async () => {
+                            setSelectedFrame(frame.id);
+                            if (!profileId) return;
+                            // Persist immediately so every surface that reads
+                            // profile_frame (swipe cards, public profile, etc.) updates.
+                            const { error } = await supabase
+                              .from("profiles")
+                              .update({ profile_frame: frame.id })
+                              .eq("id", profileId);
+                            if (error) {
+                              toast({ title: "Failed to save frame", variant: "destructive" });
+                            } else {
+                              toast({ title: `Frame changed to ${frame.label}` });
+                            }
+                          }}
                           className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
                             selectedFrame === frame.id
                               ? "border-primary bg-primary/5"
@@ -741,42 +783,69 @@ export default function Profile() {
                     <h3 className="font-bold text-sm text-foreground">Theme</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {profileThemes.map((t) => {
-                      const locked = t.isPro && !isPro;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          disabled={locked}
-                          onClick={async () => {
-                            if (locked || !profileId) return;
-                            setSelectedTheme(t.id);
-                            const { error } = await supabase
-                              .from("profiles")
-                              .update({ custom_theme: t.id })
-                              .eq("id", profileId);
-                            if (error) {
-                              toast({ title: "Failed to save theme", variant: "destructive" });
-                            } else {
+                    {(() => {
+                      // Mirror FloatingThemeSwitcher visibility/lock rules so all entry points stay in sync.
+                      const visible = profileThemes.filter((t) => {
+                        if (t.id === "default") return true;
+                        return !themeConfig?.disabled_themes?.includes(t.id);
+                      });
+                      // Move cycle to the end
+                      const cycleIdx = visible.findIndex((t) => t.id === "cycle");
+                      if (cycleIdx > -1) {
+                        const [c] = visible.splice(cycleIdx, 1);
+                        visible.push(c);
+                      }
+                      const isThemePro = (id: string) => {
+                        if (id === "default") return false;
+                        if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
+                        return profileThemes.find((t) => t.id === id)?.isPro ?? false;
+                      };
+                      const canUse = (id: string) => {
+                        if (id === "default") return true;
+                        if (isPro) return true;
+                        if (chosenFreeTheme === id) return true;
+                        if (themeConfig) return themeConfig.free_themes?.includes(id) ?? false;
+                        return !(profileThemes.find((t) => t.id === id)?.isPro ?? false);
+                      };
+                      return visible.map((t) => {
+                        const locked = !canUse(t.id);
+                        const isActive = activeThemeId === t.id;
+                        const pro = isThemePro(t.id);
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={locked}
+                            onClick={() => {
+                              if (locked) return;
+                              // Routed through the sitewide hook so the FAB, navbar and
+                              // page theme all update together (and DB stays consistent).
+                              setActiveTheme(t.id);
                               toast({ title: `Theme changed to ${t.label}` });
-                            }
-                          }}
-                          className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                            selectedTheme === t.id
-                              ? "border-primary bg-primary/5"
-                              : locked
-                              ? "border-border opacity-50 cursor-not-allowed"
-                              : "border-border hover:border-primary/30"
-                          }`}
-                        >
-                          <div className={`w-full h-6 rounded-md ${t.preview}`} />
-                          <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
-                          {locked && (
-                            <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
-                          )}
-                        </button>
-                      );
-                    })}
+                            }}
+                            className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                              isActive
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                                : locked
+                                ? "border-border opacity-50 cursor-not-allowed"
+                                : "border-border hover:border-primary/30"
+                            }`}
+                          >
+                            <div
+                              className={`w-full h-6 rounded-md ${t.preview}`}
+                              style={t.id === "cycle" && isActive ? { animation: "spin 4s linear infinite" } : undefined}
+                            />
+                            <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
+                            {locked && (
+                              <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
+                            )}
+                            {pro && !locked && !isActive && (
+                              <Crown className="absolute top-1 right-1 h-3 w-3 text-[hsl(45,100%,55%)]" />
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
