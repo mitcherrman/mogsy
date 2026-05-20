@@ -123,12 +123,21 @@ function FeaturedHero({ post }: { post: import("@/lib/blog/types").BlogPostRow }
         style={{ background: theme.vars["--blog-bg"] }}
       >
         {post.cover_url ? (
-          <img
-            src={post.cover_url}
-            alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-            loading="lazy"
-          />
+          <>
+            <img
+              src={post.cover_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-30"
+              loading="lazy"
+            />
+            <img
+              src={post.cover_url}
+              alt={post.title}
+              className="relative w-full h-full object-contain"
+              loading="lazy"
+            />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ color: theme.vars["--blog-accent"] }}>
             <span className="text-3xl font-bold opacity-40">{post.title?.slice(0, 1) || "M"}</span>
