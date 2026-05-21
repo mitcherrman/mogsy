@@ -78,6 +78,7 @@ const BlogIndex = lazyWithRetry(() => import("./pages/blog/BlogIndex"));
 const BlogPost = lazyWithRetry(() => import("./pages/blog/BlogPost"));
 const AdminBlog = lazyWithRetry(() => import("./pages/admin/AdminBlog"));
 const AdminBlogEditor = lazyWithRetry(() => import("./pages/admin/AdminBlogEditor"));
+const CombatLab = lazyWithRetry(() => import("./pages/CombatLab"));
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,7 @@ const App = () => (
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteLoader />}><BlogPost /></Suspense>} />
                   <Route path="/admin/blog" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/blog/:id" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></ProtectedRoute>} />
+                  <Route path="/combat-lab" element={<Suspense fallback={<RouteLoader />}><CombatLab /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
