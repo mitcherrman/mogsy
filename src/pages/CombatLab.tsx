@@ -1114,48 +1114,123 @@ function ResultsSummary({ summary }: { summary: SimulationResult["summary"] }) {
   );
 }
 
+/**
+ * Damage-type tone helpers (future-ready). Backend may emit damage_type:
+ * "physical" | "magic" | "true". We expose stable tone tokens so a richer
+ * color system can plug in without touching the renderer.
+ */
+function damageTypeTone(type?: string): {
+  dot: string;
+  text: string;
+  border: string;
+  bg: string;
+  label?: string;
+} {
+  switch ((type || "").toLowerCase()) {
+    case "physical":
+      return {
+        dot: "bg-orange-400",
+        text: "text-orange-300",
+        border: "border-orange-500/30",
+        bg: "bg-orange-500/5",
+        label: "PHYS",
+      };
+    case "magic":
+      return {
+        dot: "bg-sky-400",
+        text: "text-sky-300",
+        border: "border-sky-500/30",
+        bg: "bg-sky-500/5",
+        label: "MAG",
+      };
+    case "true":
+      return {
+        dot: "bg-fuchsia-400",
+        text: "text-fuchsia-300",
+        border: "border-fuchsia-500/30",
+        bg: "bg-fuchsia-500/5",
+        label: "TRUE",
+      };
+    default:
+      return {
+        dot: "bg-primary",
+        text: "text-primary",
+        border: "border-primary/30",
+        bg: "bg-primary/5",
+      };
+  }
+}
+
 function TimelineViewer({ events }: { events: TimelineEvent[] }) {
-  if (!events.length) return null;
+  if (!events.length) {
+    return (
+      <SectionCard title="Timeline" icon={Timer}>
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+          No timeline events returned.
+        </div>
+      </SectionCard>
+    );
+  }
   return (
     <SectionCard title="Timeline" icon={Timer}>
-      <ol className="relative space-y-2 border-l border-border/60 pl-4">
+      <ol className="relative space-y-3 border-l border-border/60 pl-5">
         {events.map((e, i) => {
-          const t = e.t ?? e.timestamp ?? 0;
-          const name = e.event || e.name || "Event";
-          const dmg = typeof e.damage === "number" ? e.damage : null;
+          const t = getEventTime(e);
+          const name = getEventLabel(e);
+          const dmg = getEventDamage(e);
           const isDamage = dmg != null && dmg > 0;
+          const tone = damageTypeTone(e.damage_type);
           return (
             <motion.li
               key={i}
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(i * 0.02, 0.4) }}
-              className={`group relative rounded-md border p-3 transition ${
+              transition={{ delay: Math.min(i * 0.025, 0.5), duration: 0.25, ease: "easeOut" }}
+              className={`group relative rounded-md border p-3 transition-colors ${
                 isDamage
-                  ? "border-primary/30 bg-primary/5 hover:border-primary/50"
-                  : "border-border/50 bg-muted/20 hover:border-border"
+                  ? `${tone.border} ${tone.bg} hover:border-opacity-70`
+                  : "border-border/50 bg-muted/10 hover:border-border"
               }`}
             >
               <span
-                className={`absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full ring-2 ring-background ${
-                  isDamage ? "bg-primary" : "bg-muted-foreground/60"
+                className={`absolute -left-[26px] top-4 h-2.5 w-2.5 rounded-full ring-2 ring-background ${
+                  isDamage ? tone.dot : "bg-muted-foreground/50"
                 }`}
               />
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {Number(t).toFixed(3)}s
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {Number(t).toFixed(2)}s
                   </span>
-                  <span className="text-sm font-semibold text-foreground">{name}</span>
+                  <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+                  {e.source && (
+                    <span className="hidden truncate text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:inline">
+                      · {e.source}
+                    </span>
+                  )}
+                  {isDamage && tone.label && (
+                    <span
+                      className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${tone.border} ${tone.text}`}
+                    >
+                      {tone.label}
+                    </span>
+                  )}
                 </div>
                 {dmg != null && (
-                  <span className={`text-sm font-bold ${isDamage ? "text-primary" : "text-muted-foreground"}`}>
-                    {dmg.toFixed(2)}
+                  <span
+                    className={`font-mono text-base font-bold tabular-nums ${
+                      isDamage ? tone.text : "text-muted-foreground"
+                    }`}
+                  >
+                    {isDamage ? "−" : ""}
+                    {dmg.toFixed(1)}
                   </span>
                 )}
               </div>
               {e.notes && (
-                <div className="mt-1 text-xs text-muted-foreground">{e.notes}</div>
+                <div className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                  {e.notes}
+                </div>
               )}
             </motion.li>
           );
