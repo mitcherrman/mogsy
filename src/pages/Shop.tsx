@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star, Plus, Wrench } from "lucide-react";
+import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star, Plus, Wrench, Gift, Copy, Heart, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,14 @@ const proFeatures = [
 ];
 
 const STRIPE_PRO_PRICE_ID = "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
+const STRIPE_PRO_ANNUAL_PRICE_ID = "price_1TZRqtD9NqEQUIGhXUSpw5DI";
+const STRIPE_GIFT_PRO_MONTHLY_PRICE_ID = "price_1TZS2yD9NqEQUIGhP9HWjgy1";
+const STRIPE_GIFT_PRO_ANNUAL_PRICE_ID = "price_1TZS92D9NqEQUIGhCx5fczRp";
+const WINBACK_COUPON_ID = "sCkrnnuL"; // 30% off 3 months
+
+const PRO_MONTHLY_PRICE = 9.99;
+const PRO_ANNUAL_PRICE = 83.99;
+const PRO_ANNUAL_SAVINGS_PCT = Math.round((1 - PRO_ANNUAL_PRICE / (PRO_MONTHLY_PRICE * 12)) * 100); // 30%
 
 const diamondPacks = [
   { id: "pack_50", amount: 50, price: 0.99, stripePriceId: "price_1T3UbgD9NqEQUIGhYrBcRg9p", tag: null },
@@ -85,6 +93,15 @@ export default function Shop() {
   const [needDiamondsPrompt, setNeedDiamondsPrompt] = useState<{ needed: number; have: number; name: string } | null>(null);
   const [showProAd, setShowProAd] = useState(false);
   const [shopAdConfig, setShopAdConfig] = useState<{ enabled: boolean; type: string; headline: string; subtext: string } | null>(null);
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
+  const [wasCustomer, setWasCustomer] = useState(false);
+  const [giftType, setGiftType] = useState<"pro_monthly" | "pro_annual" | "diamonds">("pro_monthly");
+  const [giftDiamondPackId, setGiftDiamondPackId] = useState(diamondPacks[2].id);
+  const [giftRecipient, setGiftRecipient] = useState("");
+  const [giftMessage, setGiftMessage] = useState("");
+  const [giftSuccess, setGiftSuccess] = useState<{ code: string; recipient: string; gift_type: string } | null>(null);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
   const diamondSectionRef = useRef<HTMLElement>(null);
   const { playPurchaseSound, playDiamondTap, playPowerUpSound } = useShopSound();
 
@@ -113,6 +130,18 @@ export default function Shop() {
     if (searchParams.get("canceled") === "true") {
       toast({ title: "Payment canceled", description: "No charges were made.", variant: "destructive" });
     }
+    const giftCode = searchParams.get("code");
+    if (searchParams.get("gift_success") === "1" && giftCode) {
+      (async () => {
+        try {
+          const { data } = await supabase.functions.invoke("verify-gift", { body: { code: giftCode } });
+          if (data?.redeem_code) {
+            setGiftSuccess({ code: data.redeem_code, recipient: data.recipient_email, gift_type: data.gift_type });
+            playPurchaseSound();
+          }
+        } catch {}
+      })();
+    }
   }, [searchParams]);
 
   const loadProfile = async () => {
@@ -133,7 +162,12 @@ export default function Shop() {
       if (data?.subscribed) {
         setSubscriptionEnd(data.subscription_end);
         setIsTrial(data.is_trial || false);
+        setBillingInterval(data.interval === "year" ? "year" : "month");
+      } else {
+        setSubscriptionEnd(null);
+        setIsTrial(false);
       }
+      setWasCustomer(!!data?.was_customer);
     } catch {}
   };
 
@@ -146,13 +180,13 @@ export default function Shop() {
   };
 
   const loadShopAdConfig = async () => {
-    const { data } = await supabase.from("app_settings").select("value").eq("key", "shop_ad_config").single();
+    const { data } = await supabase.from("app_settings").select("value").eq("key", "shop_ad_config").maybeSingle();
     if (data?.value) {
       setShopAdConfig(data.value as any);
     }
   };
 
-  const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription") => {
+  const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription", extras?: { couponId?: string; gift?: any }) => {
     setPurchasing(priceId);
     if (mode === "payment") {
       playDiamondTap();
@@ -161,16 +195,58 @@ export default function Shop() {
     }
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId, mode },
+        body: { priceId, mode, ...(extras || {}) },
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        const win = window.open(data.url, "_blank", "noopener,noreferrer");
+        if (!win || win.closed || typeof win.closed === "undefined") {
+          // Popup blocked — fall back to in-tab navigation so user can still complete checkout
+          window.location.href = data.url;
+        }
       }
     } catch (err: any) {
       toast({ title: "Checkout error", description: err.message || "Something went wrong", variant: "destructive" });
     }
     setPurchasing(null);
+  };
+
+  const handleGiftCheckout = async () => {
+    const email = giftRecipient.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid email", description: "Enter a valid recipient email.", variant: "destructive" });
+      return;
+    }
+    let priceId = "";
+    let gift: any = { recipient_email: email, message: giftMessage, gift_type: giftType };
+    if (giftType === "pro_monthly") priceId = STRIPE_GIFT_PRO_MONTHLY_PRICE_ID;
+    else if (giftType === "pro_annual") priceId = STRIPE_GIFT_PRO_ANNUAL_PRICE_ID;
+    else {
+      const pack = diamondPacks.find(p => p.id === giftDiamondPackId);
+      if (!pack) return;
+      priceId = pack.stripePriceId;
+      gift.diamond_amount = pack.amount;
+    }
+    await handleStripeCheckout(priceId, "payment", { gift });
+  };
+
+  const handleRedeemGift = async () => {
+    const code = redeemCode.trim().toUpperCase();
+    if (!code) return;
+    setRedeeming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("redeem-gift", { body: { code } });
+      if (error || !data?.success) {
+        toast({ title: "Could not redeem", description: data?.reason || error?.message || "Invalid code", variant: "destructive" });
+      } else {
+        toast({ title: "🎁 Gift redeemed!", description: data.gift_type === "diamonds" ? `+${data.diamond_amount} 💎 added.` : "Mogsy Pro is now active!" });
+        setRedeemCode("");
+        await loadProfile();
+        await checkSubscription();
+      }
+    } finally {
+      setRedeeming(false);
+    }
   };
 
   const handleManageSubscription = async () => {
