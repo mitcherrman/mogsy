@@ -494,7 +494,7 @@ export default function CombatLab() {
   });
 
   const [simulating, setSimulating] = useState(false);
-  const [result, setResult] = useState<SimulateResponse["result"] | null>(null);
+  const [result, setResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -556,8 +556,19 @@ export default function CombatLab() {
     };
   }, []);
 
-  const critModes =
-    (options?.crit_modes && options.crit_modes.length ? options.crit_modes : DEFAULT_CRIT_MODES);
+  const critModes = useMemo<readonly CritMode[]>(() => {
+    const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
+      (ALLOWED_CRIT_MODES as readonly string[]).includes(m)
+    );
+    return fromApi.length ? fromApi : ALLOWED_CRIT_MODES;
+  }, [options]);
+
+  // Keep crit_mode valid if backend whitelist narrows
+  useEffect(() => {
+    if (config.crit_mode && !critModes.includes(config.crit_mode)) {
+      setConfig((c) => ({ ...c, crit_mode: critModes[0] }));
+    }
+  }, [critModes, config.crit_mode]);
 
   const update = <K extends keyof SimulateRequest>(key: K, val: SimulateRequest[K]) =>
     setConfig((c) => ({ ...c, [key]: val }));
@@ -592,6 +603,7 @@ export default function CombatLab() {
     setSimulating(true);
     try {
       const res = await combatApi.simulate(config);
+      assertSimulationResponse(res);
       setResult(res.result);
     } catch (e: any) {
       setError(e?.message || "Simulation failed");
