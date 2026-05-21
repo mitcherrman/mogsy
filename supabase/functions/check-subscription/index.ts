@@ -68,11 +68,20 @@ serve(async (req) => {
     const hasActiveSub = allSubs.length > 0;
     let subscriptionEnd = null;
     let isTrial = false;
+    let interval: string | null = null;
+
+    // Win-back signal: had subs in the past but none active right now
+    let wasCustomer = false;
+    if (!hasActiveSub) {
+      const past = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 1 });
+      wasCustomer = past.data.length > 0;
+    }
 
     if (hasActiveSub) {
       const sub = allSubs[0];
       subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
       isTrial = sub.status === "trialing";
+      interval = sub.items.data[0]?.price?.recurring?.interval ?? null;
     }
 
     // Always sync pro status to profiles table — revoke when no active sub
@@ -93,6 +102,8 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       subscription_end: subscriptionEnd,
       is_trial: isTrial,
+      interval,
+      was_customer: wasCustomer,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
