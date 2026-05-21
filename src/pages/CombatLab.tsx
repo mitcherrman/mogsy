@@ -690,6 +690,7 @@ export default function CombatLab() {
                 options={champions}
                 onChange={(v) => update("champion", v)}
                 loading={metaLoading}
+                withIcons
               />
               <SearchSelect
                 label="Target profile"
@@ -708,7 +709,7 @@ export default function CombatLab() {
                     <button
                       key={m}
                       type="button"
-                      onClick={() => update("crit_mode", m)}
+                      onClick={() => update("crit_mode", m as CritMode)}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                         config.crit_mode === m
                           ? "border-primary/60 bg-primary/15 text-primary"
