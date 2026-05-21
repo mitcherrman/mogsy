@@ -812,6 +812,7 @@ export default function CombatLab() {
                 onChange={(v) => update("items", v)}
                 max={6}
                 loading={metaLoading}
+                withIcons
               />
             </SectionCard>
             <SectionCard title="Runes" icon={Sparkles}>
@@ -822,6 +823,7 @@ export default function CombatLab() {
                 onChange={(v) => update("runes", v)}
                 grouped
                 loading={metaLoading}
+                withIcons
               />
             </SectionCard>
           </div>
@@ -910,11 +912,38 @@ export default function CombatLab() {
 
         {/* RIGHT: results */}
         <div className="space-y-6">
+          {apiStatus === "offline" && (
+            <Card className="border-destructive/40 bg-destructive/10">
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <WifiOff className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-destructive">Backend offline</div>
+                  <div className="mt-1 text-xs text-foreground/80 break-all">
+                    Couldn't reach <span className="font-mono">{COMBAT_API_BASE_URL}</span>.
+                    Start the simulation API and it will reconnect automatically.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {error && (
             <Card className="border-destructive/50 bg-destructive/10">
-              <CardContent className="p-4 text-sm text-destructive-foreground">
-                <div className="font-semibold text-destructive">Simulation failed</div>
-                <div className="mt-1 text-foreground/80 break-words">{error}</div>
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-destructive">Simulation failed</div>
+                  <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={runSimulation}
+                    disabled={simulating || apiStatus === "offline"}
+                  >
+                    Retry
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -922,14 +951,15 @@ export default function CombatLab() {
           {simulating && !result && <ResultsSkeleton />}
 
           {result && (
-            <>
+            <div className="space-y-6" data-results-area>
               <ResultsSummary summary={result.summary} />
+              {/* future graph panels (DPS over time, damage-source pie) slot in here */}
               <TimelineViewer events={result.timeline || []} />
               <FinalStatePanel state={result.final_state || {}} />
-            </>
+            </div>
           )}
 
-          {!result && !simulating && !error && (
+          {!result && !simulating && !error && apiStatus !== "offline" && (
             <Card className="border-dashed border-border/60 bg-card/40">
               <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
                 <Swords className="h-8 w-8 text-primary/60" />
@@ -1043,7 +1073,7 @@ function AnimatedNumber({ value, decimals = 2 }: { value: number; decimals?: num
   return <>{display.toFixed(decimals)}</>;
 }
 
-function ResultsSummary({ summary }: { summary: SimulateResponse["result"]["summary"] }) {
+function ResultsSummary({ summary }: { summary: SimulationResult["summary"] }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard
