@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Swords,
@@ -16,32 +16,39 @@ import {
   ChevronUp,
   Copy,
   Download,
+  WifiOff,
+  AlertTriangle,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import {
   combatApi,
   COMBAT_API_BASE_URL,
   PRESETS,
+  CRIT_MODES,
+  assertSimulationResponse,
+  getEventTime,
+  getEventDamage,
+  getEventLabel,
   type Champion,
   type Item,
   type Rune,
   type TargetProfile,
   type OptionsMeta,
   type SimulateRequest,
-  type SimulateResponse,
+  type SimulationResult,
   type TimelineEvent,
+  type CritMode,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
-const DEFAULT_CRIT_MODES = ["none", "expected", "always", "never"];
+const ALLOWED_CRIT_MODES = CRIT_MODES;
 
 type ApiStatus = "checking" | "online" | "offline";
 
@@ -58,6 +65,74 @@ const defaultConfig: SimulateRequest = {
   attack_speed: 1.2,
   crit_mode: "expected",
 };
+
+/* ─────────────── hooks ─────────────── */
+
+function useOutsideClose(
+  active: boolean,
+  onClose: () => void
+) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown, { passive: true });
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [active, onClose]);
+  return ref;
+}
+
+/* ─────────────── icon placeholder (icon-ready) ─────────────── */
+
+function IconBubble({
+  name,
+  src,
+  size = "md",
+  tone = "muted",
+}: {
+  name: string;
+  src?: string;
+  size?: "sm" | "md";
+  tone?: "muted" | "primary";
+}) {
+  const initials = name
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const sz = size === "sm" ? "h-5 w-5 text-[9px]" : "h-7 w-7 text-[10px]";
+  const toneCls =
+    tone === "primary"
+      ? "bg-primary/15 text-primary border-primary/30"
+      : "bg-muted/40 text-muted-foreground border-border/60";
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border font-semibold ${sz} ${toneCls}`}
+      aria-hidden="true"
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials || "?"
+      )}
+    </span>
+  );
+}
 
 /* ─────────────── small primitives ─────────────── */
 
@@ -92,10 +167,12 @@ function Chip({
   label,
   onRemove,
   tone = "default",
+  icon,
 }: {
   label: string;
   onRemove?: () => void;
   tone?: "default" | "primary" | "accent";
+  icon?: React.ReactNode;
 }) {
   const toneCls =
     tone === "primary"
@@ -107,6 +184,7 @@ function Chip({
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toneCls}`}
     >
+      {icon}
       {label}
       {onRemove && (
         <button
@@ -129,6 +207,7 @@ function SearchSelect<T extends { name: string }>({
   options,
   onChange,
   loading,
+  withIcons = false,
 }: {
   label?: string;
   placeholder: string;
@@ -136,9 +215,11 @@ function SearchSelect<T extends { name: string }>({
   options: T[];
   onChange: (v: string) => void;
   loading?: boolean;
+  withIcons?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
   const filtered = useMemo(
     () =>
       options.filter((o) =>
@@ -146,27 +227,56 @@ function SearchSelect<T extends { name: string }>({
       ),
     [options, query]
   );
+  useEffect(() => setActiveIdx(0), [query, open]);
+  const containerRef = useOutsideClose(open, () => setOpen(false));
+  const select = (name: string) => {
+    onChange(name);
+    setOpen(false);
+    setQuery("");
+  };
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(filtered.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const o = filtered[activeIdx];
+      if (o) select(o.name);
+    }
+  };
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {label && <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background/60 px-3 text-sm hover:border-primary/40 transition-colors"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background/60 px-3 text-sm hover:border-primary/40 transition-colors"
       >
-        <span className={value ? "text-foreground" : "text-muted-foreground"}>
-          {value || placeholder}
+        <span className="flex min-w-0 items-center gap-2">
+          {withIcons && value && <IconBubble name={value} size="sm" tone="primary" />}
+          <span className={`truncate ${value ? "text-foreground" : "text-muted-foreground"}`}>
+            {value || placeholder}
+          </span>
         </span>
         <ChevronDown className={`h-4 w-4 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
+        <div
+          role="listbox"
+          className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl"
+        >
           <div className="flex items-center gap-2 border-b border-border/60 px-2">
             <Search className="h-3.5 w-3.5 text-muted-foreground" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onKeyDown}
               placeholder="Search…"
               className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -176,20 +286,20 @@ function SearchSelect<T extends { name: string }>({
             {!loading && filtered.length === 0 && (
               <div className="px-3 py-2 text-xs text-muted-foreground">No matches</div>
             )}
-            {filtered.map((o) => (
+            {filtered.map((o, idx) => (
               <button
                 key={o.name}
                 type="button"
-                onClick={() => {
-                  onChange(o.name);
-                  setOpen(false);
-                  setQuery("");
-                }}
-                className={`flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
-                  o.name === value ? "text-primary" : "text-foreground/90"
-                }`}
+                onMouseEnter={() => setActiveIdx(idx)}
+                onClick={() => select(o.name)}
+                role="option"
+                aria-selected={o.name === value}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors ${
+                  idx === activeIdx ? "bg-primary/10" : ""
+                } ${o.name === value ? "text-primary" : "text-foreground/90"}`}
               >
-                {o.name}
+                {withIcons && <IconBubble name={o.name} size="sm" />}
+                <span className="truncate">{o.name}</span>
               </button>
             ))}
           </div>
@@ -208,6 +318,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   max,
   grouped,
   loading,
+  withIcons = false,
 }: {
   label?: string;
   placeholder: string;
@@ -217,9 +328,11 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   max?: number;
   grouped?: boolean;
   loading?: boolean;
+  withIcons?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const containerRef = useOutsideClose(open, () => setOpen(false));
   const filtered = useMemo(
     () => options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase())),
     [options, query]
@@ -247,7 +360,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {label && (
         <div className="mb-1.5 flex items-center justify-between">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
@@ -261,6 +374,8 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="min-h-10 w-full rounded-md border border-input bg-background/60 px-2 py-1.5 text-left text-sm hover:border-primary/40 transition-colors"
       >
         {values.length === 0 ? (
@@ -272,6 +387,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                 key={v}
                 label={v}
                 tone="primary"
+                icon={withIcons ? <IconBubble name={v} size="sm" tone="primary" /> : undefined}
                 onRemove={() => onChange(values.filter((x) => x !== v))}
               />
             ))}
@@ -286,6 +402,9 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setOpen(false);
+              }}
               placeholder="Search…"
               className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -314,11 +433,14 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                           key={o.name}
                           type="button"
                           onClick={() => toggle(o.name)}
-                          className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
                             selected ? "text-primary" : "text-foreground/90"
                           }`}
                         >
-                          <span>{o.name}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            {withIcons && <IconBubble name={o.name} size="sm" />}
+                            <span className="truncate">{o.name}</span>
+                          </span>
                           {selected && <span className="text-xs">✓</span>}
                         </button>
                       );
@@ -332,11 +454,14 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                       key={o.name}
                       type="button"
                       onClick={() => toggle(o.name)}
-                      className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
+                      className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
                         selected ? "text-primary" : "text-foreground/90"
                       }`}
                     >
-                      <span>{o.name}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        {withIcons && <IconBubble name={o.name} size="sm" />}
+                        <span className="truncate">{o.name}</span>
+                      </span>
                       {selected && <span className="text-xs">✓</span>}
                     </button>
                   );
@@ -369,7 +494,7 @@ export default function CombatLab() {
   });
 
   const [simulating, setSimulating] = useState(false);
-  const [result, setResult] = useState<SimulateResponse["result"] | null>(null);
+  const [result, setResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -431,8 +556,19 @@ export default function CombatLab() {
     };
   }, []);
 
-  const critModes =
-    (options?.crit_modes && options.crit_modes.length ? options.crit_modes : DEFAULT_CRIT_MODES);
+  const critModes = useMemo<readonly CritMode[]>(() => {
+    const fromApi = (options?.crit_modes || []).filter((m): m is CritMode =>
+      (ALLOWED_CRIT_MODES as readonly string[]).includes(m)
+    );
+    return fromApi.length ? fromApi : ALLOWED_CRIT_MODES;
+  }, [options]);
+
+  // Keep crit_mode valid if backend whitelist narrows
+  useEffect(() => {
+    if (config.crit_mode && !critModes.includes(config.crit_mode)) {
+      setConfig((c) => ({ ...c, crit_mode: critModes[0] }));
+    }
+  }, [critModes, config.crit_mode]);
 
   const update = <K extends keyof SimulateRequest>(key: K, val: SimulateRequest[K]) =>
     setConfig((c) => ({ ...c, [key]: val }));
@@ -467,6 +603,7 @@ export default function CombatLab() {
     setSimulating(true);
     try {
       const res = await combatApi.simulate(config);
+      assertSimulationResponse(res);
       setResult(res.result);
     } catch (e: any) {
       setError(e?.message || "Simulation failed");
@@ -553,6 +690,7 @@ export default function CombatLab() {
                 options={champions}
                 onChange={(v) => update("champion", v)}
                 loading={metaLoading}
+                withIcons
               />
               <SearchSelect
                 label="Target profile"
@@ -571,7 +709,7 @@ export default function CombatLab() {
                     <button
                       key={m}
                       type="button"
-                      onClick={() => update("crit_mode", m)}
+                      onClick={() => update("crit_mode", m as CritMode)}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                         config.crit_mode === m
                           ? "border-primary/60 bg-primary/15 text-primary"
@@ -674,6 +812,7 @@ export default function CombatLab() {
                 onChange={(v) => update("items", v)}
                 max={6}
                 loading={metaLoading}
+                withIcons
               />
             </SectionCard>
             <SectionCard title="Runes" icon={Sparkles}>
@@ -684,6 +823,7 @@ export default function CombatLab() {
                 onChange={(v) => update("runes", v)}
                 grouped
                 loading={metaLoading}
+                withIcons
               />
             </SectionCard>
           </div>
@@ -772,11 +912,38 @@ export default function CombatLab() {
 
         {/* RIGHT: results */}
         <div className="space-y-6">
+          {apiStatus === "offline" && (
+            <Card className="border-destructive/40 bg-destructive/10">
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <WifiOff className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-destructive">Backend offline</div>
+                  <div className="mt-1 text-xs text-foreground/80 break-all">
+                    Couldn't reach <span className="font-mono">{COMBAT_API_BASE_URL}</span>.
+                    Start the simulation API and it will reconnect automatically.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {error && (
             <Card className="border-destructive/50 bg-destructive/10">
-              <CardContent className="p-4 text-sm text-destructive-foreground">
-                <div className="font-semibold text-destructive">Simulation failed</div>
-                <div className="mt-1 text-foreground/80 break-words">{error}</div>
+              <CardContent className="flex items-start gap-3 p-4 text-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-destructive">Simulation failed</div>
+                  <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={runSimulation}
+                    disabled={simulating || apiStatus === "offline"}
+                  >
+                    Retry
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -784,14 +951,15 @@ export default function CombatLab() {
           {simulating && !result && <ResultsSkeleton />}
 
           {result && (
-            <>
+            <div className="space-y-6" data-results-area>
               <ResultsSummary summary={result.summary} />
+              {/* future graph panels (DPS over time, damage-source pie) slot in here */}
               <TimelineViewer events={result.timeline || []} />
               <FinalStatePanel state={result.final_state || {}} />
-            </>
+            </div>
           )}
 
-          {!result && !simulating && !error && (
+          {!result && !simulating && !error && apiStatus !== "offline" && (
             <Card className="border-dashed border-border/60 bg-card/40">
               <CardContent className="flex flex-col items-center gap-2 p-8 text-center text-sm text-muted-foreground">
                 <Swords className="h-8 w-8 text-primary/60" />
@@ -905,7 +1073,7 @@ function AnimatedNumber({ value, decimals = 2 }: { value: number; decimals?: num
   return <>{display.toFixed(decimals)}</>;
 }
 
-function ResultsSummary({ summary }: { summary: SimulateResponse["result"]["summary"] }) {
+function ResultsSummary({ summary }: { summary: SimulationResult["summary"] }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard
@@ -946,48 +1114,123 @@ function ResultsSummary({ summary }: { summary: SimulateResponse["result"]["summ
   );
 }
 
+/**
+ * Damage-type tone helpers (future-ready). Backend may emit damage_type:
+ * "physical" | "magic" | "true". We expose stable tone tokens so a richer
+ * color system can plug in without touching the renderer.
+ */
+function damageTypeTone(type?: string): {
+  dot: string;
+  text: string;
+  border: string;
+  bg: string;
+  label?: string;
+} {
+  switch ((type || "").toLowerCase()) {
+    case "physical":
+      return {
+        dot: "bg-orange-400",
+        text: "text-orange-300",
+        border: "border-orange-500/30",
+        bg: "bg-orange-500/5",
+        label: "PHYS",
+      };
+    case "magic":
+      return {
+        dot: "bg-sky-400",
+        text: "text-sky-300",
+        border: "border-sky-500/30",
+        bg: "bg-sky-500/5",
+        label: "MAG",
+      };
+    case "true":
+      return {
+        dot: "bg-fuchsia-400",
+        text: "text-fuchsia-300",
+        border: "border-fuchsia-500/30",
+        bg: "bg-fuchsia-500/5",
+        label: "TRUE",
+      };
+    default:
+      return {
+        dot: "bg-primary",
+        text: "text-primary",
+        border: "border-primary/30",
+        bg: "bg-primary/5",
+      };
+  }
+}
+
 function TimelineViewer({ events }: { events: TimelineEvent[] }) {
-  if (!events.length) return null;
+  if (!events.length) {
+    return (
+      <SectionCard title="Timeline" icon={Timer}>
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+          No timeline events returned.
+        </div>
+      </SectionCard>
+    );
+  }
   return (
     <SectionCard title="Timeline" icon={Timer}>
-      <ol className="relative space-y-2 border-l border-border/60 pl-4">
+      <ol className="relative space-y-3 border-l border-border/60 pl-5">
         {events.map((e, i) => {
-          const t = e.t ?? e.timestamp ?? 0;
-          const name = e.event || e.name || "Event";
-          const dmg = typeof e.damage === "number" ? e.damage : null;
+          const t = getEventTime(e);
+          const name = getEventLabel(e);
+          const dmg = getEventDamage(e);
           const isDamage = dmg != null && dmg > 0;
+          const tone = damageTypeTone(e.damage_type);
           return (
             <motion.li
               key={i}
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(i * 0.02, 0.4) }}
-              className={`group relative rounded-md border p-3 transition ${
+              transition={{ delay: Math.min(i * 0.025, 0.5), duration: 0.25, ease: "easeOut" }}
+              className={`group relative rounded-md border p-3 transition-colors ${
                 isDamage
-                  ? "border-primary/30 bg-primary/5 hover:border-primary/50"
-                  : "border-border/50 bg-muted/20 hover:border-border"
+                  ? `${tone.border} ${tone.bg} hover:border-opacity-70`
+                  : "border-border/50 bg-muted/10 hover:border-border"
               }`}
             >
               <span
-                className={`absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full ring-2 ring-background ${
-                  isDamage ? "bg-primary" : "bg-muted-foreground/60"
+                className={`absolute -left-[26px] top-4 h-2.5 w-2.5 rounded-full ring-2 ring-background ${
+                  isDamage ? tone.dot : "bg-muted-foreground/50"
                 }`}
               />
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {Number(t).toFixed(3)}s
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {Number(t).toFixed(2)}s
                   </span>
-                  <span className="text-sm font-semibold text-foreground">{name}</span>
+                  <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+                  {e.source && (
+                    <span className="hidden truncate text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:inline">
+                      · {e.source}
+                    </span>
+                  )}
+                  {isDamage && tone.label && (
+                    <span
+                      className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${tone.border} ${tone.text}`}
+                    >
+                      {tone.label}
+                    </span>
+                  )}
                 </div>
                 {dmg != null && (
-                  <span className={`text-sm font-bold ${isDamage ? "text-primary" : "text-muted-foreground"}`}>
-                    {dmg.toFixed(2)}
+                  <span
+                    className={`font-mono text-base font-bold tabular-nums ${
+                      isDamage ? tone.text : "text-muted-foreground"
+                    }`}
+                  >
+                    {isDamage ? "−" : ""}
+                    {dmg.toFixed(1)}
                   </span>
                 )}
               </div>
               {e.notes && (
-                <div className="mt-1 text-xs text-muted-foreground">{e.notes}</div>
+                <div className="mt-1.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                  {e.notes}
+                </div>
               )}
             </motion.li>
           );
