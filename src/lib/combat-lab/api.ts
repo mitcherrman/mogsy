@@ -129,9 +129,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function asNameList<T extends { name?: string }>(data: any): T[] {
-  if (Array.isArray(data)) return data as T[];
-  if (data && Array.isArray(data.items)) return data.items as T[];
-  if (data && Array.isArray(data.data)) return data.data as T[];
+  const normalize = (arr: any[]): T[] =>
+    arr
+      .map((it) => {
+        if (typeof it === "string") return { name: it } as any;
+        if (it && typeof it === "object") {
+          if (typeof it.name === "string") return it as T;
+          // Try common fallback fields
+          const fallback = it.id || it.key || it.label || it.title;
+          if (typeof fallback === "string") return { ...it, name: fallback } as T;
+        }
+        return null;
+      })
+      .filter((x): x is T => x !== null);
+  if (Array.isArray(data)) return normalize(data);
+  if (data && Array.isArray(data.items)) return normalize(data.items);
+  if (data && Array.isArray(data.data)) return normalize(data.data);
   if (data && typeof data === "object") {
     // grouped object: { Precision: [...], Domination: [...] }
     const flat: T[] = [];
@@ -139,7 +152,15 @@ function asNameList<T extends { name?: string }>(data: any): T[] {
       if (Array.isArray(arr)) {
         for (const it of arr as any[]) {
           if (typeof it === "string") flat.push({ name: it, tree: group } as any);
-          else flat.push({ ...it, tree: it.tree || group } as any);
+          else if (it && typeof it === "object") {
+            const name =
+              typeof it.name === "string"
+                ? it.name
+                : it.id || it.key || it.label || it.title;
+            if (typeof name === "string") {
+              flat.push({ ...it, name, tree: it.tree || group } as any);
+            }
+          }
         }
       }
     }

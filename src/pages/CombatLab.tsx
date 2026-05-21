@@ -223,7 +223,7 @@ function SearchSelect<T extends { name: string }>({
   const filtered = useMemo(
     () =>
       options.filter((o) =>
-        o.name.toLowerCase().includes(query.toLowerCase())
+        (o?.name ?? "").toLowerCase().includes(query.toLowerCase())
       ),
     [options, query]
   );
@@ -334,7 +334,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   const [query, setQuery] = useState("");
   const containerRef = useOutsideClose(open, () => setOpen(false));
   const filtered = useMemo(
-    () => options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase())),
+    () => options.filter((o) => (o?.name ?? "").toLowerCase().includes(query.toLowerCase())),
     [options, query]
   );
   const groups = useMemo(() => {
