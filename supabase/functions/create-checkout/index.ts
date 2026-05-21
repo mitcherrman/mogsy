@@ -139,6 +139,21 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
+    // If this was a gift checkout, persist the session id to our gifts row for verification later
+    if (sessionConfig.metadata?.gift_id) {
+      try {
+        const adminClient = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          { auth: { persistSession: false } }
+        );
+        await adminClient.from("gifts").update({
+          stripe_session_id: session.id,
+          amount_cents: session.amount_total ?? null,
+        }).eq("id", sessionConfig.metadata.gift_id);
+      } catch (e) { console.error("gift session_id update failed", e); }
+    }
+
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
