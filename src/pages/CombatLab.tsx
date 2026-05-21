@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Swords,
@@ -16,32 +16,39 @@ import {
   ChevronUp,
   Copy,
   Download,
+  WifiOff,
+  AlertTriangle,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import {
   combatApi,
   COMBAT_API_BASE_URL,
   PRESETS,
+  CRIT_MODES,
+  assertSimulationResponse,
+  getEventTime,
+  getEventDamage,
+  getEventLabel,
   type Champion,
   type Item,
   type Rune,
   type TargetProfile,
   type OptionsMeta,
   type SimulateRequest,
-  type SimulateResponse,
+  type SimulationResult,
   type TimelineEvent,
+  type CritMode,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
-const DEFAULT_CRIT_MODES = ["none", "expected", "always", "never"];
+const ALLOWED_CRIT_MODES = CRIT_MODES;
 
 type ApiStatus = "checking" | "online" | "offline";
 
@@ -58,6 +65,74 @@ const defaultConfig: SimulateRequest = {
   attack_speed: 1.2,
   crit_mode: "expected",
 };
+
+/* ─────────────── hooks ─────────────── */
+
+function useOutsideClose(
+  active: boolean,
+  onClose: () => void
+) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown, { passive: true });
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [active, onClose]);
+  return ref;
+}
+
+/* ─────────────── icon placeholder (icon-ready) ─────────────── */
+
+function IconBubble({
+  name,
+  src,
+  size = "md",
+  tone = "muted",
+}: {
+  name: string;
+  src?: string;
+  size?: "sm" | "md";
+  tone?: "muted" | "primary";
+}) {
+  const initials = name
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(/\s+/)
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const sz = size === "sm" ? "h-5 w-5 text-[9px]" : "h-7 w-7 text-[10px]";
+  const toneCls =
+    tone === "primary"
+      ? "bg-primary/15 text-primary border-primary/30"
+      : "bg-muted/40 text-muted-foreground border-border/60";
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border font-semibold ${sz} ${toneCls}`}
+      aria-hidden="true"
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials || "?"
+      )}
+    </span>
+  );
+}
 
 /* ─────────────── small primitives ─────────────── */
 
@@ -92,10 +167,12 @@ function Chip({
   label,
   onRemove,
   tone = "default",
+  icon,
 }: {
   label: string;
   onRemove?: () => void;
   tone?: "default" | "primary" | "accent";
+  icon?: React.ReactNode;
 }) {
   const toneCls =
     tone === "primary"
@@ -107,6 +184,7 @@ function Chip({
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toneCls}`}
     >
+      {icon}
       {label}
       {onRemove && (
         <button
@@ -129,6 +207,7 @@ function SearchSelect<T extends { name: string }>({
   options,
   onChange,
   loading,
+  withIcons = false,
 }: {
   label?: string;
   placeholder: string;
@@ -136,9 +215,11 @@ function SearchSelect<T extends { name: string }>({
   options: T[];
   onChange: (v: string) => void;
   loading?: boolean;
+  withIcons?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeIdx, setActiveIdx] = useState(0);
   const filtered = useMemo(
     () =>
       options.filter((o) =>
@@ -146,27 +227,56 @@ function SearchSelect<T extends { name: string }>({
       ),
     [options, query]
   );
+  useEffect(() => setActiveIdx(0), [query, open]);
+  const containerRef = useOutsideClose(open, () => setOpen(false));
+  const select = (name: string) => {
+    onChange(name);
+    setOpen(false);
+    setQuery("");
+  };
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(filtered.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const o = filtered[activeIdx];
+      if (o) select(o.name);
+    }
+  };
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {label && <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background/60 px-3 text-sm hover:border-primary/40 transition-colors"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background/60 px-3 text-sm hover:border-primary/40 transition-colors"
       >
-        <span className={value ? "text-foreground" : "text-muted-foreground"}>
-          {value || placeholder}
+        <span className="flex min-w-0 items-center gap-2">
+          {withIcons && value && <IconBubble name={value} size="sm" tone="primary" />}
+          <span className={`truncate ${value ? "text-foreground" : "text-muted-foreground"}`}>
+            {value || placeholder}
+          </span>
         </span>
         <ChevronDown className={`h-4 w-4 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl">
+        <div
+          role="listbox"
+          className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-xl"
+        >
           <div className="flex items-center gap-2 border-b border-border/60 px-2">
             <Search className="h-3.5 w-3.5 text-muted-foreground" />
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onKeyDown}
               placeholder="Search…"
               className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -176,20 +286,20 @@ function SearchSelect<T extends { name: string }>({
             {!loading && filtered.length === 0 && (
               <div className="px-3 py-2 text-xs text-muted-foreground">No matches</div>
             )}
-            {filtered.map((o) => (
+            {filtered.map((o, idx) => (
               <button
                 key={o.name}
                 type="button"
-                onClick={() => {
-                  onChange(o.name);
-                  setOpen(false);
-                  setQuery("");
-                }}
-                className={`flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
-                  o.name === value ? "text-primary" : "text-foreground/90"
-                }`}
+                onMouseEnter={() => setActiveIdx(idx)}
+                onClick={() => select(o.name)}
+                role="option"
+                aria-selected={o.name === value}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors ${
+                  idx === activeIdx ? "bg-primary/10" : ""
+                } ${o.name === value ? "text-primary" : "text-foreground/90"}`}
               >
-                {o.name}
+                {withIcons && <IconBubble name={o.name} size="sm" />}
+                <span className="truncate">{o.name}</span>
               </button>
             ))}
           </div>
@@ -208,6 +318,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   max,
   grouped,
   loading,
+  withIcons = false,
 }: {
   label?: string;
   placeholder: string;
@@ -217,9 +328,11 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   max?: number;
   grouped?: boolean;
   loading?: boolean;
+  withIcons?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const containerRef = useOutsideClose(open, () => setOpen(false));
   const filtered = useMemo(
     () => options.filter((o) => o.name.toLowerCase().includes(query.toLowerCase())),
     [options, query]
@@ -247,7 +360,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {label && (
         <div className="mb-1.5 flex items-center justify-between">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
@@ -261,6 +374,8 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="min-h-10 w-full rounded-md border border-input bg-background/60 px-2 py-1.5 text-left text-sm hover:border-primary/40 transition-colors"
       >
         {values.length === 0 ? (
@@ -272,6 +387,7 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                 key={v}
                 label={v}
                 tone="primary"
+                icon={withIcons ? <IconBubble name={v} size="sm" tone="primary" /> : undefined}
                 onRemove={() => onChange(values.filter((x) => x !== v))}
               />
             ))}
@@ -286,6 +402,9 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setOpen(false);
+              }}
               placeholder="Search…"
               className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -314,11 +433,14 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                           key={o.name}
                           type="button"
                           onClick={() => toggle(o.name)}
-                          className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
+                          className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
                             selected ? "text-primary" : "text-foreground/90"
                           }`}
                         >
-                          <span>{o.name}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            {withIcons && <IconBubble name={o.name} size="sm" />}
+                            <span className="truncate">{o.name}</span>
+                          </span>
                           {selected && <span className="text-xs">✓</span>}
                         </button>
                       );
@@ -332,11 +454,14 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
                       key={o.name}
                       type="button"
                       onClick={() => toggle(o.name)}
-                      className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
+                      className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-primary/10 ${
                         selected ? "text-primary" : "text-foreground/90"
                       }`}
                     >
-                      <span>{o.name}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        {withIcons && <IconBubble name={o.name} size="sm" />}
+                        <span className="truncate">{o.name}</span>
+                      </span>
                       {selected && <span className="text-xs">✓</span>}
                     </button>
                   );
