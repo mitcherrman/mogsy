@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star, Plus, Wrench } from "lucide-react";
+import { Crown, Zap, Eye, Undo2, Shield, Sparkles, Check, Diamond, ArrowLeft, ExternalLink, CreditCard, Star, Plus, Wrench, Gift, Copy, Heart, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,14 @@ const proFeatures = [
 ];
 
 const STRIPE_PRO_PRICE_ID = "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
+const STRIPE_PRO_ANNUAL_PRICE_ID = "price_1TZRqtD9NqEQUIGhXUSpw5DI";
+const STRIPE_GIFT_PRO_MONTHLY_PRICE_ID = "price_1TZS2yD9NqEQUIGhP9HWjgy1";
+const STRIPE_GIFT_PRO_ANNUAL_PRICE_ID = "price_1TZS92D9NqEQUIGhCx5fczRp";
+const WINBACK_COUPON_ID = "sCkrnnuL"; // 30% off 3 months
+
+const PRO_MONTHLY_PRICE = 9.99;
+const PRO_ANNUAL_PRICE = 83.99;
+const PRO_ANNUAL_SAVINGS_PCT = Math.round((1 - PRO_ANNUAL_PRICE / (PRO_MONTHLY_PRICE * 12)) * 100); // 30%
 
 const diamondPacks = [
   { id: "pack_50", amount: 50, price: 0.99, stripePriceId: "price_1T3UbgD9NqEQUIGhYrBcRg9p", tag: null },
@@ -85,6 +93,15 @@ export default function Shop() {
   const [needDiamondsPrompt, setNeedDiamondsPrompt] = useState<{ needed: number; have: number; name: string } | null>(null);
   const [showProAd, setShowProAd] = useState(false);
   const [shopAdConfig, setShopAdConfig] = useState<{ enabled: boolean; type: string; headline: string; subtext: string } | null>(null);
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
+  const [wasCustomer, setWasCustomer] = useState(false);
+  const [giftType, setGiftType] = useState<"pro_monthly" | "pro_annual" | "diamonds">("pro_monthly");
+  const [giftDiamondPackId, setGiftDiamondPackId] = useState(diamondPacks[2].id);
+  const [giftRecipient, setGiftRecipient] = useState("");
+  const [giftMessage, setGiftMessage] = useState("");
+  const [giftSuccess, setGiftSuccess] = useState<{ code: string; recipient: string; gift_type: string } | null>(null);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
   const diamondSectionRef = useRef<HTMLElement>(null);
   const { playPurchaseSound, playDiamondTap, playPowerUpSound } = useShopSound();
 
@@ -113,6 +130,18 @@ export default function Shop() {
     if (searchParams.get("canceled") === "true") {
       toast({ title: "Payment canceled", description: "No charges were made.", variant: "destructive" });
     }
+    const giftCode = searchParams.get("code");
+    if (searchParams.get("gift_success") === "1" && giftCode) {
+      (async () => {
+        try {
+          const { data } = await supabase.functions.invoke("verify-gift", { body: { code: giftCode } });
+          if (data?.redeem_code) {
+            setGiftSuccess({ code: data.redeem_code, recipient: data.recipient_email, gift_type: data.gift_type });
+            playPurchaseSound();
+          }
+        } catch {}
+      })();
+    }
   }, [searchParams]);
 
   const loadProfile = async () => {
@@ -133,7 +162,12 @@ export default function Shop() {
       if (data?.subscribed) {
         setSubscriptionEnd(data.subscription_end);
         setIsTrial(data.is_trial || false);
+        setBillingInterval(data.interval === "year" ? "year" : "month");
+      } else {
+        setSubscriptionEnd(null);
+        setIsTrial(false);
       }
+      setWasCustomer(!!data?.was_customer);
     } catch {}
   };
 
@@ -146,13 +180,13 @@ export default function Shop() {
   };
 
   const loadShopAdConfig = async () => {
-    const { data } = await supabase.from("app_settings").select("value").eq("key", "shop_ad_config").single();
+    const { data } = await supabase.from("app_settings").select("value").eq("key", "shop_ad_config").maybeSingle();
     if (data?.value) {
       setShopAdConfig(data.value as any);
     }
   };
 
-  const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription") => {
+  const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription", extras?: { couponId?: string; gift?: any }) => {
     setPurchasing(priceId);
     if (mode === "payment") {
       playDiamondTap();
@@ -161,16 +195,58 @@ export default function Shop() {
     }
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId, mode },
+        body: { priceId, mode, ...(extras || {}) },
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        const win = window.open(data.url, "_blank", "noopener,noreferrer");
+        if (!win || win.closed || typeof win.closed === "undefined") {
+          // Popup blocked — fall back to in-tab navigation so user can still complete checkout
+          window.location.href = data.url;
+        }
       }
     } catch (err: any) {
       toast({ title: "Checkout error", description: err.message || "Something went wrong", variant: "destructive" });
     }
     setPurchasing(null);
+  };
+
+  const handleGiftCheckout = async () => {
+    const email = giftRecipient.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid email", description: "Enter a valid recipient email.", variant: "destructive" });
+      return;
+    }
+    let priceId = "";
+    let gift: any = { recipient_email: email, message: giftMessage, gift_type: giftType };
+    if (giftType === "pro_monthly") priceId = STRIPE_GIFT_PRO_MONTHLY_PRICE_ID;
+    else if (giftType === "pro_annual") priceId = STRIPE_GIFT_PRO_ANNUAL_PRICE_ID;
+    else {
+      const pack = diamondPacks.find(p => p.id === giftDiamondPackId);
+      if (!pack) return;
+      priceId = pack.stripePriceId;
+      gift.diamond_amount = pack.amount;
+    }
+    await handleStripeCheckout(priceId, "payment", { gift });
+  };
+
+  const handleRedeemGift = async () => {
+    const code = redeemCode.trim().toUpperCase();
+    if (!code) return;
+    setRedeeming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("redeem-gift", { body: { code } });
+      if (error || !data?.success) {
+        toast({ title: "Could not redeem", description: data?.reason || error?.message || "Invalid code", variant: "destructive" });
+      } else {
+        toast({ title: "🎁 Gift redeemed!", description: data.gift_type === "diamonds" ? `+${data.diamond_amount} 💎 added.` : "Mogsy Pro is now active!" });
+        setRedeemCode("");
+        await loadProfile();
+        await checkSubscription();
+      }
+    } finally {
+      setRedeeming(false);
+    }
   };
 
   const handleManageSubscription = async () => {
@@ -456,7 +532,9 @@ export default function Shop() {
                 </motion.div>
                 <div>
                   <h2 className="text-lg sm:text-2xl font-extrabold text-foreground">Mogsy Pro</h2>
-                  <p className="text-muted-foreground text-xs sm:text-sm">$9.99/month · 7-day free trial</p>
+                  <p className="text-muted-foreground text-xs sm:text-sm">
+                    From ${PRO_MONTHLY_PRICE}/mo · 7-day free trial
+                  </p>
                 </div>
                 {profile?.is_pro && (
                   <motion.span
@@ -484,6 +562,51 @@ export default function Shop() {
                 ))}
               </ul>
 
+              {/* Win-back banner for lapsed subscribers */}
+              {!profile?.is_pro && wasCustomer && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 flex items-center gap-2"
+                  role="status"
+                >
+                  <Heart className="h-4 w-4 text-accent shrink-0" />
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <span className="font-bold">Welcome back!</span> We miss you — get{" "}
+                    <span className="font-bold text-accent">30% off your first 3 months</span> applied automatically.
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Billing interval toggle (hidden if already Pro) */}
+              {!profile?.is_pro && (
+                <div
+                  className="inline-flex items-center rounded-full border border-border bg-card p-0.5 mb-3"
+                  role="tablist"
+                  aria-label="Billing period"
+                >
+                  <button
+                    role="tab"
+                    aria-selected={billingInterval === "month"}
+                    onClick={() => setBillingInterval("month")}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-full transition-colors ${billingInterval === "month" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={billingInterval === "year"}
+                    onClick={() => setBillingInterval("year")}
+                    className={`px-3 py-1.5 text-xs sm:text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 ${billingInterval === "year" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Yearly
+                    <span className="text-[9px] sm:text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground">
+                      Save {PRO_ANNUAL_SAVINGS_PCT}%
+                    </span>
+                  </button>
+                </div>
+              )}
+
               {profile?.is_pro ? (
                 <div className="space-y-1.5 sm:space-y-2">
                   <p className="text-xs sm:text-sm text-primary font-medium">
@@ -506,11 +629,20 @@ export default function Shop() {
                       variant="hero"
                       size="lg"
                       className="w-full sm:w-auto gap-1.5 sm:gap-2 h-9 text-xs sm:h-12 sm:text-base"
-                      onClick={() => handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription")}
-                      disabled={purchasing === STRIPE_PRO_PRICE_ID}
+                      onClick={() => {
+                        const priceId = billingInterval === "year" ? STRIPE_PRO_ANNUAL_PRICE_ID : STRIPE_PRO_PRICE_ID;
+                        const extras = wasCustomer && billingInterval === "month" ? { couponId: WINBACK_COUPON_ID } : undefined;
+                        handleStripeCheckout(priceId, "subscription", extras);
+                      }}
+                      disabled={purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID}
+                      aria-label={billingInterval === "year" ? `Start Mogsy Pro yearly for ${PRO_ANNUAL_PRICE} dollars` : `Start Mogsy Pro monthly free trial`}
                     >
                       <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      {purchasing === STRIPE_PRO_PRICE_ID ? "Opening checkout…" : "Start Free Trial — $9.99/mo"}
+                      {(purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID)
+                        ? "Opening checkout…"
+                        : billingInterval === "year"
+                          ? `Get Pro Yearly — $${PRO_ANNUAL_PRICE}/yr`
+                          : `Start Free Trial — $${PRO_MONTHLY_PRICE}/mo`}
                       <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </Button>
                   </motion.div>
@@ -519,12 +651,125 @@ export default function Shop() {
                     size="sm"
                     className="h-9 text-xs sm:h-12 sm:text-sm gap-1.5"
                     onClick={() => setShowProAd(true)}
+                    aria-label="Preview Pro features"
                   >
                     <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                     Preview Pro
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </motion.section>
+
+        {/* 4. Gift section */}
+        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-10">
+          <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-4 sm:p-6">
+            <h2 className="text-sm sm:text-lg font-bold text-foreground flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+              <Gift className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" /> Send a Gift
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+              Give Pro or a diamond pack to a friend. They'll get a redemption code to claim it.
+            </p>
+
+            <fieldset className="mb-3">
+              <legend className="text-xs font-bold text-muted-foreground mb-1.5">Gift type</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "pro_monthly", label: "Pro · 1 mo", sub: `$${PRO_MONTHLY_PRICE}` },
+                  { id: "pro_annual", label: "Pro · 1 yr", sub: `$${PRO_ANNUAL_PRICE}` },
+                  { id: "diamonds", label: "Diamonds", sub: "Pick pack" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setGiftType(opt.id as any)}
+                    aria-pressed={giftType === opt.id}
+                    className={`rounded-lg border px-2 py-2 text-center transition-colors ${giftType === opt.id ? "border-accent bg-accent/10" : "border-border hover:border-accent/40"}`}
+                  >
+                    <p className="text-xs sm:text-sm font-bold text-foreground">{opt.label}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{opt.sub}</p>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {giftType === "diamonds" && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {diamondPacks.map((pack) => (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    onClick={() => setGiftDiamondPackId(pack.id)}
+                    aria-pressed={giftDiamondPackId === pack.id}
+                    className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${giftDiamondPackId === pack.id ? "border-accent bg-accent/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {pack.amount} 💎 · ${pack.price}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <label className="block text-xs font-bold text-muted-foreground mb-1" htmlFor="gift-email">
+              Recipient email
+            </label>
+            <Input
+              id="gift-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="friend@example.com"
+              value={giftRecipient}
+              onChange={(e) => setGiftRecipient(e.target.value)}
+              className="mb-2"
+            />
+            <label className="block text-xs font-bold text-muted-foreground mb-1" htmlFor="gift-message">
+              Note (optional)
+            </label>
+            <Input
+              id="gift-message"
+              type="text"
+              maxLength={140}
+              placeholder="Happy birthday!"
+              value={giftMessage}
+              onChange={(e) => setGiftMessage(e.target.value)}
+              className="mb-3"
+            />
+
+            <Button
+              onClick={handleGiftCheckout}
+              disabled={!giftRecipient || !!purchasing}
+              className="w-full sm:w-auto gap-1.5"
+              aria-label="Continue to gift checkout"
+            >
+              <Gift className="h-4 w-4" />
+              Continue to checkout
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </div>
+        </motion.section>
+
+        {/* 5. Redeem a gift */}
+        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-10">
+          <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-4 sm:p-6">
+            <h2 className="text-sm sm:text-lg font-bold text-foreground flex items-center gap-1.5 sm:gap-2 mb-2">
+              <Tag className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" /> Redeem a Gift Code
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+              Got a code from a friend? Enter it here.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                aria-label="Gift redemption code"
+                placeholder="ABCDE12345"
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                maxLength={20}
+                className="uppercase tracking-widest"
+              />
+              <Button onClick={handleRedeemGift} disabled={!redeemCode || redeeming}>
+                {redeeming ? "…" : "Redeem"}
+              </Button>
             </div>
           </div>
         </motion.section>
@@ -578,6 +823,61 @@ export default function Shop() {
       {/* Pro Cinematic Ad */}
       <AnimatePresence>
         {showProAd && <ProCinematicAd onClose={() => setShowProAd(false)} onSubscribe={() => { setShowProAd(false); handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription"); }} />}
+      </AnimatePresence>
+
+      {/* Gift purchased — show code modal */}
+      <AnimatePresence>
+        {giftSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
+            onClick={() => setGiftSuccess(null)}
+            role="dialog"
+            aria-labelledby="gift-success-title"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="rounded-2xl border border-border bg-card p-6 max-w-sm w-full shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-4">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 border border-accent/20 mb-3">
+                  <Gift className="h-7 w-7 text-accent" />
+                </div>
+                <h3 id="gift-success-title" className="text-lg font-extrabold text-foreground">Gift purchased! 🎁</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Share this code with <span className="font-bold text-foreground">{giftSuccess.recipient}</span>:
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mb-3 rounded-lg border border-border bg-background p-2.5">
+                <code className="flex-1 font-mono text-center text-lg font-extrabold tracking-widest text-primary">
+                  {giftSuccess.code}
+                </code>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Copy gift code"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(giftSuccess.code);
+                    toast({ title: "Copied!", description: "Code copied to clipboard." });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground text-center mb-3">
+                They can redeem it at <span className="font-mono">/shop</span> → Redeem a Gift Code.
+              </p>
+              <Button className="w-full" onClick={() => setGiftSuccess(null)}>
+                Done
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

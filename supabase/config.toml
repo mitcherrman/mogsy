@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.purge-anonymous-users]
 verify_jwt = false
+
+[functions.verify-gift]
+verify_jwt = false
