@@ -3,15 +3,21 @@ const API_BASE_URL =
   "http://127.0.0.1:8000";
 
 export type Champion = { id?: string; name: string; icon?: string };
-export type Item = { id?: string; name: string; type?: string; gold?: number };
-export type Rune = { id?: string; name: string; tree?: string };
+export type Item = { id?: string; name: string; type?: string; gold?: number; icon?: string };
+export type Rune = { id?: string; name: string; tree?: string; icon?: string };
 export type TargetProfile = { id?: string; name: string; description?: string };
-export type Summoner = { id?: string; name: string };
+export type Summoner = { id?: string; name: string; icon?: string };
+
+export const CRIT_MODES = ["none", "force", "expected"] as const;
+export type CritMode = (typeof CRIT_MODES)[number];
+
 export type OptionsMeta = {
   crit_modes?: string[];
   branches?: Record<string, string[]>;
   [k: string]: unknown;
 };
+
+export type DamageType = "physical" | "magic" | "true" | string;
 
 export type SimulateRequest = {
   champion: string;
@@ -24,35 +30,85 @@ export type SimulateRequest = {
   branches?: Record<string, string>;
   ad?: number;
   attack_speed?: number;
-  crit_mode?: string;
+  crit_mode?: CritMode;
 };
 
 export type TimelineEvent = {
+  // timestamps (backend uses `time`, accept legacy fields too)
+  time?: number;
   t?: number;
   timestamp?: number;
+  // labels
   event?: string;
   name?: string;
+  // damage (backend uses `final_damage`)
+  final_damage?: number;
   damage?: number;
+  damage_type?: DamageType;
+  source?: string;
   notes?: string;
   type?: string;
+  icon?: string;
   [k: string]: unknown;
+};
+
+export type SimulationResult = {
+  summary: {
+    total_damage: number;
+    duration: number;
+    dps: number;
+    lethal: boolean;
+    remaining_hp: number;
+  };
+  timeline: TimelineEvent[];
+  final_state: Record<string, unknown>;
 };
 
 export type SimulateResponse = {
   ok: boolean;
   request?: unknown;
-  result: {
-    summary: {
-      total_damage: number;
-      duration: number;
-      dps: number;
-      lethal: boolean;
-      remaining_hp: number;
-    };
-    timeline: TimelineEvent[];
-    final_state: Record<string, unknown>;
-  };
+  result: SimulationResult;
 };
+
+/** Throws if the simulate response is malformed. */
+export function assertSimulationResponse(
+  res: unknown
+): asserts res is SimulateResponse {
+  const r = res as any;
+  if (!r || typeof r !== "object") {
+    throw new Error("Empty simulation response");
+  }
+  if (!r.result || typeof r.result !== "object") {
+    throw new Error("Malformed simulation response (missing result)");
+  }
+  const s = r.result.summary;
+  if (!s || typeof s !== "object") {
+    throw new Error("Malformed simulation response (missing summary)");
+  }
+  if (typeof s.total_damage !== "number" || typeof s.dps !== "number") {
+    throw new Error("Malformed simulation response (invalid summary fields)");
+  }
+}
+
+/** Normalized accessors so the UI never depends on a single field name. */
+export function getEventTime(e: TimelineEvent): number {
+  return (
+    (typeof e.time === "number" ? e.time : undefined) ??
+    (typeof e.t === "number" ? e.t : undefined) ??
+    (typeof e.timestamp === "number" ? e.timestamp : undefined) ??
+    0
+  );
+}
+
+export function getEventDamage(e: TimelineEvent): number | null {
+  if (typeof e.final_damage === "number") return e.final_damage;
+  if (typeof e.damage === "number") return e.damage;
+  return null;
+}
+
+export function getEventLabel(e: TimelineEvent): string {
+  return e.event || e.name || e.type || "Event";
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
