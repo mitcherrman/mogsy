@@ -896,6 +896,69 @@ export type Database = {
           },
         ]
       }
+      gifts: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          diamond_amount: number | null
+          gift_type: string
+          id: string
+          message: string | null
+          metadata: Json | null
+          paid_at: string | null
+          recipient_email: string | null
+          recipient_user_id: string | null
+          redeem_code: string
+          redeemed_at: string | null
+          sender_email: string | null
+          sender_user_id: string | null
+          status: string
+          stripe_price_id: string | null
+          stripe_session_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          diamond_amount?: number | null
+          gift_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          paid_at?: string | null
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          redeem_code?: string
+          redeemed_at?: string | null
+          sender_email?: string | null
+          sender_user_id?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          diamond_amount?: number | null
+          gift_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          paid_at?: string | null
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          redeem_code?: string
+          redeemed_at?: string | null
+          sender_email?: string | null
+          sender_user_id?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       global_elo_snapshots: {
         Row: {
           elo: number
@@ -2688,6 +2751,7 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_gift_code: { Args: { _code: string }; Returns: Json }
       redeem_invite_link: {
         Args: { _code: string; _user_id: string }
         Returns: Json

@@ -25,7 +25,7 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
 
     const body = await req.json();
-    const { priceId, mode, quantity } = body;
+    const { priceId, mode, quantity, couponId, gift } = body;
 
     // Input validation
     if (!priceId || typeof priceId !== 'string' || !priceId.startsWith('price_')) {
@@ -75,10 +75,66 @@ serve(async (req) => {
     };
 
     // Add 7-day free trial for subscriptions
-    if (mode === "subscription") {
+    if (mode === "subscription" && !gift) {
       sessionConfig.subscription_data = {
         trial_period_days: 7,
       };
+    }
+
+    // Apply optional discount (win-back / promo offers)
+    if (couponId && typeof couponId === "string" && /^[a-zA-Z0-9_-]{3,40}$/.test(couponId)) {
+      sessionConfig.discounts = [{ coupon: couponId }];
+    } else {
+      sessionConfig.allow_promotion_codes = true;
+    }
+
+    // Gift flow: create a gift row and embed gift id in metadata
+    if (gift && typeof gift === "object") {
+      const recipientEmail = String(gift.recipient_email || "").trim().toLowerCase();
+      if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+        return new Response(JSON.stringify({ error: "Invalid recipient email" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
+        });
+      }
+      const giftType = String(gift.gift_type || "");
+      if (!["pro_monthly", "pro_annual", "diamonds"].includes(giftType)) {
+        return new Response(JSON.stringify({ error: "Invalid gift type" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
+        });
+      }
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      const { data: giftRow, error: giftErr } = await adminClient.from("gifts").insert({
+        sender_user_id: user.id,
+        sender_email: user.email,
+        recipient_email: recipientEmail,
+        gift_type: giftType,
+        diamond_amount: Number(gift.diamond_amount) || 0,
+        stripe_price_id: priceId,
+        message: typeof gift.message === "string" ? gift.message.slice(0, 500) : null,
+      }).select("id, redeem_code").single();
+      if (giftErr || !giftRow) {
+        console.error("gift insert error", giftErr);
+        return new Response(JSON.stringify({ error: "Could not create gift" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500,
+        });
+      }
+      sessionConfig.mode = giftType === "diamonds" ? "payment" : "payment";
+      // Gift Pro subscriptions are sold as a one-time payment for the period;
+      // recipient gets is_pro extended by 30/365 days when they redeem.
+      sessionConfig.line_items = [{ price: priceId, quantity: 1 }];
+      sessionConfig.metadata = {
+        gift_id: giftRow.id,
+        gift_type: giftType,
+        recipient_email: recipientEmail,
+        redeem_code: giftRow.redeem_code,
+      };
+      sessionConfig.success_url = `${origin}/shop?gift_success=1&code=${giftRow.redeem_code}`;
+      sessionConfig.cancel_url = `${origin}/shop?canceled=true`;
+      delete sessionConfig.subscription_data;
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
