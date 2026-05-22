@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
@@ -10,12 +10,19 @@ import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 
 export default function Layout() {
   useTrackActivity();
   const { loading } = useAuth();
   const { loading: settingsLoading } = useAppSettings();
   const { theme, themeId, visualThemeId, isEnabled, isCycleFading } = useSitewideTheme();
+
+  // After first paint, warm the chunks the user is most likely to visit next.
+  useEffect(() => {
+    if (loading || settingsLoading) return;
+    prefetchLikelyRoutes(["/home", "/play", "/swipe", "/profile", "/shop"]);
+  }, [loading, settingsLoading]);
 
   if (loading || settingsLoading) {
     return <RouteLoader />;
