@@ -76,6 +76,9 @@ export default function SwipeHub() {
         .in("name", leagueNames);
 
       const map: Record<string, { id: string; imageUrl?: string | null }> = {};
+      // Pool of extra image URLs we warm into the browser cache so the
+      // first matchup of whichever category the user taps renders instantly.
+      const warmPool: string[] = [];
 
       if (leagueData && leagueData.length > 0) {
         const leagueIds = leagueData.map(l => l.id);
@@ -113,6 +116,10 @@ export default function SwipeHub() {
                 id: league.id,
                 imageUrl: imgs.length > 0 ? imgs[Math.floor(Math.random() * imgs.length)] : null,
               };
+              // Warm up to 6 images per league so an opening matchup is cached.
+              for (let i = 0; i < Math.min(6, imgs.length); i++) {
+                warmPool.push(imgs[i]);
+              }
             }
           }
         }
@@ -125,7 +132,10 @@ export default function SwipeHub() {
       // a category feels instant rather than waiting on a network round trip.
       prefetchRoute("/swipe/preset/_");
       prefetchRoute("/swipe-game");
-      prefetchImages(Object.values(map).map((l) => l.imageUrl));
+      prefetchImages([
+        ...Object.values(map).map((l) => l.imageUrl),
+        ...warmPool,
+      ]);
     };
     load();
   }, []);
