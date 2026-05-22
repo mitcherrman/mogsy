@@ -2619,6 +2619,70 @@ export type Database = {
     }
     Functions: {
       activate_boost: { Args: never; Returns: string }
+      admin_list_feedback: {
+        Args: { _show_archived?: boolean }
+        Returns: {
+          admin_notes: string | null
+          body: string
+          category: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          page_reference: string | null
+          priority: string
+          profile_id: string
+          status: string
+          title: string
+          updated_at: string
+          upvotes: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "feedback"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_list_profiles: {
+        Args: never
+        Returns: {
+          active_boost_until: string | null
+          admin_notes: string | null
+          ads_enabled: boolean | null
+          age: number | null
+          avatar_url: string | null
+          boost_credits: number | null
+          created_at: string
+          custom_theme: string | null
+          diamonds: number | null
+          display_name: string
+          elo_shields: number | null
+          elocheck_animation: string | null
+          id: string
+          is_anonymous: boolean | null
+          is_bot: boolean | null
+          is_flagged_underage: boolean | null
+          is_pro: boolean | null
+          last_seen_at: string | null
+          location: string | null
+          onboarding_completed: boolean | null
+          preferred_categories: string[] | null
+          profile_frame: string | null
+          reveals: number | null
+          rewinds: number | null
+          socials: Json | null
+          status_message: string | null
+          swipe_animation: string | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       create_multiplayer_game: {
         Args: {
           _config?: Json
