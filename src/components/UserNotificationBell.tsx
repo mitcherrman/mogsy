@@ -51,12 +51,17 @@ export default function UserNotificationBell() {
   const [readFriendIds, setReadFriendIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const myProfileIdRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
-    loadNotifications();
-    loadFriendNotifs();
+    (async () => {
+      const { data } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+      myProfileIdRef.current = data?.id ?? null;
+      loadNotifications();
+      loadFriendNotifs();
+    })();
 
     // Real-time subscription for system notifications
     const channel = supabase
@@ -66,6 +71,11 @@ export default function UserNotificationBell() {
         { event: "INSERT", schema: "public", table: "user_notifications" },
         (payload) => {
           const notif = payload.new as UserNotification;
+          // Defense-in-depth: ignore any row that isn't actually targeted at this user.
+          const isForMe =
+            notif.target_type === "all" ||
+            (notif.profile_id != null && notif.profile_id === myProfileIdRef.current);
+          if (!isForMe) return;
           setNotifications(prev => [notif, ...prev]);
           toast(notif.title, {
             description: notif.message || undefined,
