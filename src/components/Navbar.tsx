@@ -9,6 +9,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
+import { prefetchRoute } from "@/lib/route-prefetch";
 
 const baseNavItems = [
   { path: "/home", label: "Home", icon: Home },
@@ -105,7 +106,14 @@ export default function Navbar({ themeId }: { themeId?: string }) {
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
-                  <Link key={item.path} to={item.path} className="relative px-1.5 sm:px-3 py-2 text-sm font-medium transition-colors">
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onMouseEnter={() => prefetchRoute(item.path)}
+                    onFocus={() => prefetchRoute(item.path)}
+                    onTouchStart={() => prefetchRoute(item.path)}
+                    className="relative px-1.5 sm:px-3 py-2 text-sm font-medium transition-colors"
+                  >
                     <span className={`flex items-center gap-1 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
                       <item.icon className="h-4 w-4" />
                       <span className="hidden md:inline text-xs">{item.label}</span>
@@ -191,7 +199,13 @@ export default function Navbar({ themeId }: { themeId?: string }) {
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
-                  <Link key={item.path} to={item.path} className="relative flex flex-col items-center gap-0.5 py-1 px-3">
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onTouchStart={() => prefetchRoute(item.path)}
+                    onMouseEnter={() => prefetchRoute(item.path)}
+                    className="relative flex flex-col items-center gap-0.5 py-1 px-3"
+                  >
                     <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined} />
                     <span className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
                       {item.label}
