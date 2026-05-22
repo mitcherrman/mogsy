@@ -22,4 +22,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.verify-gift]
-verify_jwt = false
+verify_jwt = true
