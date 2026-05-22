@@ -87,15 +87,10 @@ export default function AdminFeedback() {
       .single();
     if (cfgData?.value) setConfig(cfgData.value as unknown as FeedbackConfig);
 
-    // Feedback
-    let query = supabase
-      .from("feedback")
-      .select("*")
-      .eq("is_archived", showArchived)
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    const { data: fbData } = await query;
+    // Feedback (admin-only RPC returns admin_notes too)
+    const { data: fbData } = await supabase.rpc("admin_list_feedback", {
+      _show_archived: showArchived,
+    });
 
     if (fbData && fbData.length > 0) {
       const profileIds = [...new Set(fbData.map(f => f.profile_id))];
