@@ -9,78 +9,55 @@ import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
-import { lazy, Suspense } from "react";
-import type React from "react";
+import { Suspense } from "react";
+import { Routes as R } from "@/lib/route-prefetch";
 
-/**
- * Wraps dynamic imports so a stale chunk (after a redeploy, when the cached
- * index.html references an old asset hash that no longer exists) triggers a
- * one-time hard reload instead of a blank screen.
- */
-function lazyWithRetry<T extends React.ComponentType<any>>(
-  factory: () => Promise<{ default: T }>
-) {
-  return lazy(async () => {
-    try {
-      return await factory();
-    } catch (err: any) {
-      const msg = String(err?.message || err);
-      const isChunkError =
-        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
-          msg
-        );
-      if (isChunkError && typeof window !== "undefined") {
-        const key = "__lov_chunk_reloaded__";
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, "1");
-          window.location.reload();
-          // Return a never-resolving promise so Suspense keeps the fallback
-          // until the reload kicks in.
-          return new Promise(() => {}) as any;
-        }
-      }
-      throw err;
-    }
-  });
-}
+const Index = R.Index.Component;
+const Home = R.Home.Component;
+const Auth = R.Auth.Component;
+const Play = R.Play.Component;
+const Profile = R.Profile.Component;
+const Swipe = R.Swipe.Component;
+const SwipeHub = R.SwipeHub.Component;
+const Leagues = R.Leagues.Component;
+const Leaderboard = R.Leaderboard.Component;
+const SwipePreset = R.SwipePreset.Component;
+const Settings = R.Settings.Component;
+const Referral = R.Referral.Component;
+const Admin = R.Admin.Component;
+const Shop = R.Shop.Component;
+const EloCheck = R.EloCheck.Component;
+const SwipeLeagues = R.SwipeLeagues.Component;
+const UserProfile = R.UserProfile.Component;
+const ResetPassword = R.ResetPassword.Component;
+const AdminPlay = R.AdminPlay.Component;
+const AdminData = R.AdminData.Component;
+const AdminDemo = R.AdminDemo.Component;
+const AdminGaming = R.AdminGaming.Component;
+const SecretRoom = R.SecretRoom.Component;
+const Moderator = R.Moderator.Component;
+const CustomLink = R.CustomLink.Component;
+const Multiplayer = R.Multiplayer.Component;
+const MultiplayerGame = R.MultiplayerGame.Component;
+const Feedback = R.Feedback.Component;
+const BlogIndex = R.BlogIndex.Component;
+const BlogPost = R.BlogPost.Component;
+const AdminBlog = R.AdminBlog.Component;
+const AdminBlogEditor = R.AdminBlogEditor.Component;
+const CombatLab = R.CombatLab.Component;
 
-const Index = lazyWithRetry(() => import("./pages/Index"));
-
-// Lazy-load all non-landing routes to reduce initial JS bundle
-const Home = lazyWithRetry(() => import("./pages/Home"));
-const Auth = lazyWithRetry(() => import("./pages/Auth"));
-const Play = lazyWithRetry(() => import("./pages/Play"));
-const Profile = lazyWithRetry(() => import("./pages/Profile"));
-const Swipe = lazyWithRetry(() => import("./pages/Swipe"));
-const SwipeHub = lazyWithRetry(() => import("./pages/SwipeHub"));
-const Leagues = lazyWithRetry(() => import("./pages/Leagues"));
-const Leaderboard = lazyWithRetry(() => import("./pages/Leaderboard"));
-const SwipePreset = lazyWithRetry(() => import("./pages/SwipePreset"));
-const Settings = lazyWithRetry(() => import("./pages/Settings"));
-const Referral = lazyWithRetry(() => import("./pages/Referral"));
-const Admin = lazyWithRetry(() => import("./pages/Admin"));
-const Shop = lazyWithRetry(() => import("./pages/Shop"));
-const EloCheck = lazyWithRetry(() => import("./pages/EloCheck"));
-const SwipeLeagues = lazyWithRetry(() => import("./pages/SwipeLeagues"));
-const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
-const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
-const AdminPlay = lazyWithRetry(() => import("./pages/AdminPlay"));
-const AdminData = lazyWithRetry(() => import("./pages/AdminData"));
-const AdminDemo = lazyWithRetry(() => import("./pages/AdminDemo"));
-const AdminGaming = lazyWithRetry(() => import("./pages/AdminGaming"));
-const SecretRoom = lazyWithRetry(() => import("./pages/SecretRoom"));
-const Moderator = lazyWithRetry(() => import("./pages/Moderator"));
-const CustomLink = lazyWithRetry(() => import("./pages/CustomLink"));
-const Multiplayer = lazyWithRetry(() => import("./pages/Multiplayer"));
-const MultiplayerGame = lazyWithRetry(() => import("./pages/MultiplayerGame"));
-const Feedback = lazyWithRetry(() => import("./pages/Feedback"));
-const BlogIndex = lazyWithRetry(() => import("./pages/blog/BlogIndex"));
-const BlogPost = lazyWithRetry(() => import("./pages/blog/BlogPost"));
-const AdminBlog = lazyWithRetry(() => import("./pages/admin/AdminBlog"));
-const AdminBlogEditor = lazyWithRetry(() => import("./pages/admin/AdminBlogEditor"));
-const CombatLab = lazyWithRetry(() => import("./pages/CombatLab"));
-
-const queryClient = new QueryClient();
+// Keep cached data warm so navigating back to a screen doesn't refetch.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,        // 1 min — most lists/configs don't change second-to-second
+      gcTime: 10 * 60_000,      // keep cache 10 min after unmount
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
 
 import { RouteLoader } from "@/components/Layout";
 
