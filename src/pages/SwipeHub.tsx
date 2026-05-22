@@ -6,6 +6,7 @@ import CategoryBubble from "@/components/CategoryBubble";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { prefetchRoute, prefetchImages } from "@/lib/route-prefetch";
 
 interface SwipeOption {
   key: string;
@@ -119,6 +120,12 @@ export default function SwipeHub() {
 
       setLeagues(map);
       setLoading(false);
+
+      // Warm the swipe game chunks + league cover images so tapping
+      // a category feels instant rather than waiting on a network round trip.
+      prefetchRoute("/swipe/preset/_");
+      prefetchRoute("/swipe-game");
+      prefetchImages(Object.values(map).map((l) => l.imageUrl));
     };
     load();
   }, []);
