@@ -15,6 +15,7 @@ interface UserNotification {
   target_type: string;
   target_league_ids: string[] | null;
   target_categories: string[] | null;
+  profile_id: string | null;
   metadata: any;
   action_url: string | null;
 }
