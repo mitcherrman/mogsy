@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck } from "lucide-react";
+import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck, ShieldAlert, MessageSquare, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -30,6 +30,15 @@ interface FriendNotif {
   created_at: string;
 }
 
+interface AdminNotif {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  created_at: string;
+  metadata: any;
+}
+
 const typeIcons: Record<string, typeof Bell> = {
   general: Bell,
   new_item: Star,
@@ -41,6 +50,17 @@ const typeIcons: Record<string, typeof Bell> = {
   spotlight: Crown,
   friend_request: UserPlus,
   friend_accepted: UserCheck,
+  comment_reply: MessageSquare,
+  comment_reaction: MessageSquare,
+};
+
+const adminTypeIcons: Record<string, typeof Bell> = {
+  image_report: ShieldAlert,
+  image_report_critical: ShieldAlert,
+  comment_report: MessageSquare,
+  user_report: Flag,
+  feedback: MessageSquare,
+  mod_delete_request: ShieldAlert,
 };
 
 export default function UserNotificationBell() {
@@ -48,6 +68,9 @@ export default function UserNotificationBell() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [friendNotifs, setFriendNotifs] = useState<FriendNotif[]>([]);
+  const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
+  const [readAdminIds, setReadAdminIds] = useState<Set<string>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [readFriendIds, setReadFriendIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
@@ -60,8 +83,16 @@ export default function UserNotificationBell() {
     (async () => {
       const { data } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
       myProfileIdRef.current = data?.id ?? null;
+      // Check admin/master_admin role
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const admin = (roles || []).some((r: any) => r.role === "admin" || r.role === "master_admin");
+      setIsAdmin(admin);
       loadNotifications();
       loadFriendNotifs();
+      if (admin) loadAdminNotifs();
     })();
 
     // Real-time subscription for system notifications
@@ -102,6 +133,24 @@ export default function UserNotificationBell() {
     };
   }, [user]);
 
+  // Admin-only: realtime stream of admin_notifications with toast
+  useEffect(() => {
+    if (!isAdmin) return;
+    const channel = supabase
+      .channel("bell-admin-notifs")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "admin_notifications" },
+        (payload) => {
+          const n = payload.new as AdminNotif;
+          setAdminNotifs(prev => [n, ...prev].slice(0, 30));
+          toast(n.title, { description: n.message || undefined, icon: "🛡️" });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin]);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -124,6 +173,17 @@ export default function UserNotificationBell() {
     setNotifications((notifRes.data as UserNotification[]) || []);
     setReadIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
     setLoaded(true);
+  };
+
+  const loadAdminNotifs = async () => {
+    const { data } = await supabase
+      .from("admin_notifications")
+      .select("id, type, title, message, created_at, metadata, is_read")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const items = (data || []) as any[];
+    setAdminNotifs(items.map(({ is_read, ...rest }) => rest));
+    setReadAdminIds(new Set(items.filter((n: any) => n.is_read).map((n: any) => n.id)));
   };
 
   const loadFriendNotifs = async () => {
@@ -211,7 +271,11 @@ export default function UserNotificationBell() {
   };
 
   const unreadFriendCount = friendNotifs.filter(n => !readFriendIds.has(n.id)).length;
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length + unreadFriendCount;
+  const unreadAdminCount = adminNotifs.filter(n => !readAdminIds.has(n.id)).length;
+  const unreadCount =
+    notifications.filter(n => !readIds.has(n.id)).length +
+    unreadFriendCount +
+    unreadAdminCount;
 
   if (!user || !loaded) return null;
 
@@ -244,6 +308,47 @@ export default function UserNotificationBell() {
             <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
           ) : (
             <>
+              {/* Admin notifications (admins only) */}
+              {isAdmin && adminNotifs.map(an => {
+                const Icon = adminTypeIcons[an.type] || ShieldAlert;
+                const isRead = readAdminIds.has(an.id);
+                return (
+                  <button
+                    key={`adm-${an.id}`}
+                    onClick={async () => {
+                      if (!isRead) {
+                        setReadAdminIds(prev => new Set(prev).add(an.id));
+                        await supabase.from("admin_notifications").update({ is_read: true }).eq("id", an.id);
+                      }
+                      setOpen(false);
+                      navigate("/admin");
+                    }}
+                    className={`w-full text-left px-3 py-2.5 border-b border-border last:border-0 transition-colors ${
+                      isRead ? "bg-card" : "bg-destructive/5"
+                    } hover:bg-secondary`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <Icon className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${isRead ? "text-muted-foreground" : "text-foreground"}`}>
+                          <span className="text-[9px] uppercase tracking-wider mr-1.5 px-1 py-0.5 rounded bg-destructive/15 text-destructive font-bold">Admin</span>
+                          {an.title}
+                        </p>
+                        {an.message && (
+                          <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{an.message}</p>
+                        )}
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          {new Date(an.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      {!isRead && (
+                        <span className="h-2 w-2 rounded-full bg-destructive shrink-0 mt-1" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+
               {/* Friend notifications */}
               {friendNotifs.map(fn => {
                 const isRead = readFriendIds.has(fn.id);
