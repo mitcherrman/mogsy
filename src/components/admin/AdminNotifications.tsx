@@ -36,7 +36,6 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
             updateUnreadCount(next);
             return next;
           });
-          toast(n.title, { description: n.message || undefined, icon: "🔔" });
         }
       )
       .subscribe();
