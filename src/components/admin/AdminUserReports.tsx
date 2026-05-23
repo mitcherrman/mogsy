@@ -25,6 +25,18 @@ export default function AdminUserReports() {
     loadReports();
   }, []);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-user-reports-stream")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "user_reports" },
+        () => { loadReports(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const loadReports = async () => {
     setLoading(true);
     const { data } = await supabase

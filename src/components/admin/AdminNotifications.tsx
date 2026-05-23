@@ -22,6 +22,26 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
     loadNotifications();
   }, []);
 
+  // Realtime: refresh & toast when new admin notifications arrive
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-notifications-stream")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "admin_notifications" },
+        (payload) => {
+          const n = payload.new as Notification;
+          setNotifications(prev => {
+            const next = [n, ...prev].slice(0, 50);
+            updateUnreadCount(next);
+            return next;
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const updateUnreadCount = (notifs: Notification[]) => {
     const count = notifs.filter(n => !n.is_read).length;
     onReadChange?.(count);

@@ -76,6 +76,20 @@ export default function AdminFeedback() {
 
   useEffect(() => { loadData(); }, [showArchived]);
 
+  // Real-time refresh on new feedback so admins see it immediately
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-feedback-stream")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "feedback" },
+        () => { loadData(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchived]);
+
   const loadData = async () => {
     setLoading(true);
 
