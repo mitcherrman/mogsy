@@ -61,18 +61,24 @@ export default function SwipeHub() {
     const body = document.body;
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
+    const prevHtmlTouchAction = html.style.touchAction;
     const prevBodyTouchAction = body.style.touchAction;
+    const prevHtmlOverscroll = html.style.overscrollBehavior;
     const prevBodyOverscroll = body.style.overscrollBehavior;
 
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
+    html.style.touchAction = "none";
     body.style.touchAction = "none";
+    html.style.overscrollBehavior = "none";
     body.style.overscrollBehavior = "none";
 
     return () => {
       html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
+      html.style.touchAction = prevHtmlTouchAction;
       body.style.touchAction = prevBodyTouchAction;
+      html.style.overscrollBehavior = prevHtmlOverscroll;
       body.style.overscrollBehavior = prevBodyOverscroll;
     };
   }, []);
