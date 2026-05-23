@@ -304,7 +304,7 @@ export default function UserNotificationBell() {
             )}
           </div>
 
-          {notifications.length === 0 && friendNotifs.length === 0 ? (
+          {notifications.length === 0 && friendNotifs.length === 0 && adminNotifs.length === 0 ? (
             <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
           ) : (
             <>
