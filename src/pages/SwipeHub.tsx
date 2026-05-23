@@ -55,6 +55,34 @@ export default function SwipeHub() {
   const [config, setConfig] = useState<SwipeTabConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
 
+  // Lock vertical scroll across all browsers — the category hub is a fixed-viewport stage.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlTouchAction = html.style.touchAction;
+    const prevBodyTouchAction = body.style.touchAction;
+    const prevHtmlOverscroll = html.style.overscrollBehavior;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.touchAction = "none";
+    body.style.touchAction = "none";
+    html.style.overscrollBehavior = "none";
+    body.style.overscrollBehavior = "none";
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.style.touchAction = prevHtmlTouchAction;
+      body.style.touchAction = prevBodyTouchAction;
+      html.style.overscrollBehavior = prevHtmlOverscroll;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+    };
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       // Load config
@@ -189,7 +217,13 @@ export default function SwipeHub() {
   return (
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
-      <div className="h-[100dvh] overflow-hidden py-6 flex flex-col px-0">
+      <div
+        className="overflow-hidden py-6 flex flex-col px-0 h-[calc(100dvh-3.5rem)] max-sm:h-[calc(100dvh-3.5rem-4rem)]"
+        style={{
+          touchAction: "none",
+          overscrollBehaviorY: "none",
+        }}
+      >
         <div className="container mx-auto w-full flex-1 min-h-0 flex flex-col" style={{ maxWidth: "100%" }}>
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
