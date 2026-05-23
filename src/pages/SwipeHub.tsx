@@ -212,9 +212,8 @@ export default function SwipeHub() {
     <>
       <SEOHead title="Swipe | Mogsy" description="Pick a category and start swiping!" />
       <div
-        className="overflow-hidden py-6 flex flex-col px-0"
+        className="overflow-hidden py-6 flex flex-col px-0 h-[calc(100dvh-3.5rem)] max-sm:h-[calc(100dvh-3.5rem-4rem)]"
         style={{
-          height: "calc(100dvh - 3.5rem - 4rem)",
           touchAction: "none",
           overscrollBehaviorY: "none",
         }}
