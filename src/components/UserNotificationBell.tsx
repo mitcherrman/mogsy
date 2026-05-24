@@ -108,6 +108,9 @@ export default function UserNotificationBell() {
             notif.target_type === "all" ||
             (notif.profile_id != null && notif.profile_id === myProfileIdRef.current);
           if (!isForMe) return;
+          // Ignore notifications created before this user signed up
+          const signedUpAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+          if (signedUpAt && new Date(notif.created_at).getTime() < signedUpAt) return;
           setNotifications(prev => [notif, ...prev]);
           toast(notif.title, {
             description: notif.message || undefined,
@@ -165,8 +168,16 @@ export default function UserNotificationBell() {
   const loadNotifications = async () => {
     if (!user) return;
 
+    // Only load notifications created at or after the user's signup time
+    const signupCutoff = user.created_at ?? new Date(0).toISOString();
+
     const [notifRes, readRes] = await Promise.all([
-      supabase.from("user_notifications").select("*").order("created_at", { ascending: false }).limit(30),
+      supabase
+        .from("user_notifications")
+        .select("*")
+        .gte("created_at", signupCutoff)
+        .order("created_at", { ascending: false })
+        .limit(30),
       supabase.from("user_notification_reads").select("notification_id").eq("user_id", user.id),
     ]);
 
