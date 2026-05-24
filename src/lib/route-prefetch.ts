@@ -68,6 +68,7 @@ export const Routes = {
   AdminBlog: lazyWithRetry(() => import("@/pages/admin/AdminBlog")),
   AdminBlogEditor: lazyWithRetry(() => import("@/pages/admin/AdminBlogEditor")),
   CombatLab: lazyWithRetry(() => import("@/pages/CombatLab")),
+  LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
 } as const;
 
 /** Map URL path → list of route keys to warm. Supports basic prefix matching. */
@@ -81,6 +82,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/settings", keys: ["Settings"] },
   { test: (p) => p === "/shop", keys: ["Shop"] },
   { test: (p) => p === "/combat-lab", keys: ["CombatLab"] },
+  { test: (p) => p === "/lol", keys: ["LolHub", "CombatLab"] },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },

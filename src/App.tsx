@@ -45,6 +45,7 @@ const BlogPost = R.BlogPost.Component;
 const AdminBlog = R.AdminBlog.Component;
 const AdminBlogEditor = R.AdminBlogEditor.Component;
 const CombatLab = R.CombatLab.Component;
+const LolHub = R.LolHub.Component;
 
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
@@ -108,6 +109,7 @@ const App = () => (
                   <Route path="/admin/blog" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/blog/:id" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></ProtectedRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteLoader />}><CombatLab /></Suspense>} />
+                  <Route path="/lol" element={<Suspense fallback={<RouteLoader />}><LolHub /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
