@@ -82,7 +82,7 @@ export default function AdminFeedback() {
       .channel("admin-feedback-stream")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "feedback" },
+        { event: "INSERT", schema: "public", table: "admin_notifications", filter: "type=eq.feedback" },
         () => { loadData(); }
       )
       .subscribe();
