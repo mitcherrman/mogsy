@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import mogsyLogo from "@/assets/mogsy-logo-text.png";
+import lolIcon from "@/assets/lol-icon.png";
 import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
 import { prefetchRoute } from "@/lib/route-prefetch";
@@ -96,6 +97,18 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         <div className="container mx-auto flex h-14 items-center px-4 gap-1">
           <Link to="/" className="flex items-center shrink-0">
             <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12 -ml-2 sm:ml-0" />
+          </Link>
+
+          <Link
+            to="/lol"
+            onMouseEnter={() => prefetchRoute("/lol")}
+            onFocus={() => prefetchRoute("/lol")}
+            onTouchStart={() => prefetchRoute("/lol")}
+            aria-label="League of Legends hub"
+            title="League of Legends"
+            className="shrink-0 rounded-md ring-1 ring-transparent hover:ring-primary/40 transition-all hover:scale-105 active:scale-95"
+          >
+            <img src={lolIcon} alt="League of Legends" className="h-7 w-7 sm:h-8 sm:w-8 rounded" />
           </Link>
 
           <NavBanner />
