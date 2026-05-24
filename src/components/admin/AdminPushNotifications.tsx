@@ -256,6 +256,29 @@ export default function AdminPushNotifications() {
 
   return (
     <div className="space-y-6">
+      {/* Notification System Settings (read-only summary of current behavior) */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-primary" />
+          <h3 className="font-bold text-foreground text-sm">Notification Settings</h3>
+          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold ml-auto">Current</span>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-2 text-[11px]">
+          <div className="rounded-lg border border-border bg-background/40 p-2.5">
+            <p className="font-semibold text-foreground flex items-center gap-1.5"><Clock className="h-3 w-3 text-primary" /> Signup cutoff</p>
+            <p className="text-muted-foreground mt-1">Users only see notifications created at or after their signup time. Old test/system notifications are hidden from new members.</p>
+          </div>
+          <div className="rounded-lg border border-border bg-background/40 p-2.5">
+            <p className="font-semibold text-foreground flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Automated triggers</p>
+            <ul className="text-muted-foreground mt-1 space-y-0.5 list-disc list-inside">
+              <li>Comment replies & reactions → comment owner</li>
+              <li>Friend requests & acceptances → both parties</li>
+              <li>Reports / feedback → admins (real-time)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Toggle */}
       <div className="flex items-center gap-2">
         <Button variant={showHistory ? "outline" : "default"} size="sm" onClick={() => setShowHistory(false)} className="gap-1.5">
