@@ -30,7 +30,7 @@ export default function AdminUserReports() {
       .channel("admin-user-reports-stream")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "user_reports" },
+        { event: "INSERT", schema: "public", table: "admin_notifications", filter: "type=eq.user_report" },
         () => { loadReports(); }
       )
       .subscribe();
