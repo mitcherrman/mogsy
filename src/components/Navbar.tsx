@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Play, User, Diamond, ChevronRight, Users, Palette, Flame, Swords } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight, Users, Palette, Flame } from "lucide-react";
 import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
