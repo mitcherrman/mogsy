@@ -16,7 +16,7 @@ const baseNavItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/play", label: "Play", icon: Play, mode: "play" as const },
   { path: "/swipe", label: "Swipe", icon: Flame, mode: "swipe" as const },
-  { path: "/combat-lab", label: "Combat Lab", icon: Swords },
+  
   { path: "/profile", label: "Profile", icon: User },
 ];
 
