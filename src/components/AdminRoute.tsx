@@ -49,7 +49,10 @@ export default function AdminRoute({ children, roles = ["admin", "master_admin"]
   }, [user, authLoading, roles.join(",")]);
 
   if (authLoading || status === "checking") {
-    return <div className="min-h-dvh bg-background" />;
+    // Layout chrome (navbar/background) is already mounted around us — keep
+    // the fallback minimal so we don't repaint the whole viewport and cause a
+    // flash between navigations.
+    return <div aria-hidden className="min-h-[50vh]" />;
   }
   if (status === "denied") {
     return <Navigate to="/" replace />;
