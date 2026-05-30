@@ -7,6 +7,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { Suspense } from "react";
@@ -95,19 +96,19 @@ const App = () => (
                   <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
                   <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
                   <Route path="/user/:profileId" element={<UserProfile />} />
-                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-                  <Route path="/admin/play" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminPlay /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/data" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminData /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/demo" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminDemo /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/gaming" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminGaming /></Suspense></ProtectedRoute>} />
-                  <Route path="/moderator" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Moderator /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+                  <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminPlay /></Suspense></AdminRoute>} />
+                  <Route path="/admin/data" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminData /></Suspense></AdminRoute>} />
+                  <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminDemo /></Suspense></AdminRoute>} />
+                  <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminGaming /></Suspense></AdminRoute>} />
+                  <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteLoader />}><Moderator /></Suspense></AdminRoute>} />
                   <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Multiplayer /></Suspense></ProtectedRoute>} />
                   <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteLoader />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteLoader />}><BlogPost /></Suspense>} />
-                  <Route path="/admin/blog" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/blog/:id" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></ProtectedRoute>} />
+                  <Route path="/admin/blog" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></AdminRoute>} />
+                  <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteLoader />}><CombatLab /></Suspense>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteLoader />}><LolHub /></Suspense>} />
                 </Route>
