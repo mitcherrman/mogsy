@@ -63,6 +63,14 @@ const queryClient = new QueryClient({
 
 import { RouteLoader } from "@/components/Layout";
 
+/**
+ * Subtle in-Layout fallback used while a lazy route chunk resolves.
+ * The outer Layout (navbar, background, theme) stays mounted, so we only
+ * need to hold the content area open with a transparent placeholder —
+ * avoiding the full-screen logo "blink" between navigations.
+ */
+const RouteFallback = () => <div aria-hidden className="min-h-[50vh]" />;
+
 function AuthQuerySyncBridge() {
   useAuthQuerySync();
   return null;
@@ -97,20 +105,20 @@ const App = () => (
                   <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
                   <Route path="/user/:profileId" element={<UserProfile />} />
                   <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-                  <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminPlay /></Suspense></AdminRoute>} />
-                  <Route path="/admin/data" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminData /></Suspense></AdminRoute>} />
-                  <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminDemo /></Suspense></AdminRoute>} />
-                  <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminGaming /></Suspense></AdminRoute>} />
-                  <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteLoader />}><Moderator /></Suspense></AdminRoute>} />
-                  <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Multiplayer /></Suspense></ProtectedRoute>} />
-                  <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
-                  <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteLoader />}><Feedback /></Suspense></ProtectedRoute>} />
-                  <Route path="/blog" element={<Suspense fallback={<RouteLoader />}><BlogIndex /></Suspense>} />
-                  <Route path="/blog/:slug" element={<Suspense fallback={<RouteLoader />}><BlogPost /></Suspense>} />
-                  <Route path="/admin/blog" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminBlog /></Suspense></AdminRoute>} />
-                  <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteLoader />}><AdminBlogEditor /></Suspense></AdminRoute>} />
-                  <Route path="/combat-lab" element={<Suspense fallback={<RouteLoader />}><CombatLab /></Suspense>} />
-                  <Route path="/lol" element={<Suspense fallback={<RouteLoader />}><LolHub /></Suspense>} />
+                  <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense></AdminRoute>} />
+                  <Route path="/admin/data" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminData /></Suspense></AdminRoute>} />
+                  <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense></AdminRoute>} />
+                  <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense></AdminRoute>} />
+                  <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
+                  <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Multiplayer /></Suspense></ProtectedRoute>} />
+                  <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
+                  <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
+                  <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
+                  <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
+                  <Route path="/admin/blog" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense></AdminRoute>} />
+                  <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
+                  <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
+                  <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
