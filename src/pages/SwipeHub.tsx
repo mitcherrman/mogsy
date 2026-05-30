@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import SEOHead from "@/components/SEOHead";
 import CategoryBubble from "@/components/CategoryBubble";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Search } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { prefetchRoute, prefetchImages } from "@/lib/route-prefetch";
 
@@ -54,7 +54,6 @@ export default function SwipeHub() {
   const [leagues, setLeagues] = useState<Record<string, { id: string; imageUrl?: string | null }>>({});
   const [config, setConfig] = useState<SwipeTabConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Lock vertical scroll across all browsers — the category hub is a fixed-viewport stage.
   useEffect(() => {
@@ -197,11 +196,6 @@ export default function SwipeHub() {
     .map(key => ALL_SWIPE_OPTIONS.find(o => o.key === key))
     .filter(Boolean) as SwipeOption[];
 
-  // Filter by search
-  const filteredOptions = searchQuery.trim()
-    ? orderedOptions.filter(o => o.label.toLowerCase().includes(searchQuery.trim().toLowerCase()))
-    : orderedOptions;
-
   // Shape styles
   const getBorderRadius = () => {
     if (shape === "circle") return "50%";
@@ -216,8 +210,8 @@ export default function SwipeHub() {
   };
 
   // Split into two rows for auto-scrolling marquee
-  const row1 = filteredOptions.filter((_, i) => i % 2 === 0);
-  const row2 = filteredOptions.filter((_, i) => i % 2 === 1);
+  const row1 = orderedOptions.filter((_, i) => i % 2 === 0);
+  const row2 = orderedOptions.filter((_, i) => i % 2 === 1);
   const gap = bubbleSize > 200 ? 24 : bubbleSize > 120 ? 16 : 12;
 
   return (
@@ -234,29 +228,10 @@ export default function SwipeHub() {
           <motion.h1
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl font-extrabold text-center mb-4 shrink-0"
+            className="text-2xl font-extrabold text-center mb-6 shrink-0"
           >
             Swipe
           </motion.h1>
-
-          {/* Search bar */}
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mx-auto w-full max-w-md px-4 mb-4 shrink-0"
-          >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Find a category..."
-                className="w-full h-10 pl-9 pr-4 rounded-full bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
-              />
-            </div>
-          </motion.div>
 
           <div className="flex-1 min-h-0 flex flex-col justify-center gap-4">
             <AutoScrollRow
@@ -276,7 +251,7 @@ export default function SwipeHub() {
               bubbleSize={bubbleSize}
               shape={shape}
               gap={gap}
-              direction={-1}
+              direction={1}
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
@@ -302,10 +277,6 @@ interface AutoScrollRowProps {
 
 function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, getBorderRadius, getButtonWidth, onSelect }: AutoScrollRowProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const isHovered = useRef(false);
-  const isDragging = useRef(false);
-  const dragStartX = useRef(0);
-  const scrollStartX = useRef(0);
 
   useEffect(() => {
     if (options.length === 0) return;
@@ -313,15 +284,10 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
     if (!el) return;
     let raf = 0;
     let last = performance.now();
-    const speed = 18; // px per second — slower, more subtle
+    const speed = 30; // px per second
     let pos = el.scrollLeft;
 
     const tick = (now: number) => {
-      if (isHovered.current || isDragging.current) {
-        last = now;
-        raf = requestAnimationFrame(tick);
-        return;
-      }
       const dt = (now - last) / 1000;
       last = now;
       const half = el.scrollWidth / 2;
@@ -351,29 +317,12 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
   return (
     <div
       ref={scrollRef}
-      className="overflow-x-auto swipe-thin-scroll group cursor-grab active:cursor-grabbing"
+      className="overflow-x-auto swipe-thin-scroll group"
       style={{
         scrollbarWidth: "none",
         WebkitMaskImage: fadeMask,
         maskImage: fadeMask,
-        scrollSnapType: "x mandatory",
-        touchAction: "pan-x",
       }}
-      onMouseEnter={() => { isHovered.current = true; }}
-      onMouseLeave={() => { isHovered.current = false; isDragging.current = false; }}
-      onMouseDown={(e) => {
-        isDragging.current = true;
-        dragStartX.current = e.clientX;
-        scrollStartX.current = scrollRef.current?.scrollLeft ?? 0;
-      }}
-      onMouseMove={(e) => {
-        if (!isDragging.current || !scrollRef.current) return;
-        const dx = dragStartX.current - e.clientX;
-        scrollRef.current.scrollLeft = scrollStartX.current + dx;
-      }}
-      onMouseUp={() => { isDragging.current = false; }}
-      onTouchStart={() => { isDragging.current = true; }}
-      onTouchEnd={() => { isDragging.current = false; }}
     >
       <div
         className="flex items-center"
@@ -389,7 +338,7 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
         {items.map((option, i) => {
           const league = leagues[option.key];
           return (
-            <div key={`${option.key}-${i}`} className="shrink-0" style={{ scrollSnapAlign: "start" }}>
+            <div key={`${option.key}-${i}`} className="shrink-0">
               {shape === "circle" ? (
                 <CategoryBubble
                   size={bubbleSize}
