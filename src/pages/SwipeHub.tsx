@@ -251,7 +251,7 @@ export default function SwipeHub() {
               bubbleSize={bubbleSize}
               shape={shape}
               gap={gap}
-              direction={1}
+              direction={-1}
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
@@ -277,6 +277,8 @@ interface AutoScrollRowProps {
 
 function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, getBorderRadius, getButtonWidth, onSelect }: AutoScrollRowProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const lastInteractionRef = useRef<number>(0);
+  const hoveringRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (options.length === 0) return;
@@ -285,22 +287,46 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
     let raf = 0;
     let last = performance.now();
     const speed = 30; // px per second
-    let pos = el.scrollLeft;
 
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
       const half = el.scrollWidth / 2;
-      if (half > 0) {
-        pos += direction * speed * dt;
+      const idle = now - lastInteractionRef.current > 1500 && !hoveringRef.current;
+      if (half > 0 && idle) {
+        let pos = el.scrollLeft + direction * speed * dt;
         if (pos >= half) pos -= half;
         if (pos < 0) pos += half;
         el.scrollLeft = pos;
+      } else if (half > 0) {
+        // Keep manual scroll within the loop window so resume is seamless.
+        if (el.scrollLeft >= half) el.scrollLeft -= half;
+        else if (el.scrollLeft < 0) el.scrollLeft += half;
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+
+    const mark = () => { lastInteractionRef.current = performance.now(); };
+    const onEnter = () => { hoveringRef.current = true; };
+    const onLeave = () => { hoveringRef.current = false; lastInteractionRef.current = performance.now(); };
+
+    el.addEventListener("pointerdown", mark);
+    el.addEventListener("wheel", mark, { passive: true });
+    el.addEventListener("touchstart", mark, { passive: true });
+    el.addEventListener("scroll", mark, { passive: true });
+    el.addEventListener("mouseenter", onEnter);
+    el.addEventListener("mouseleave", onLeave);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("pointerdown", mark);
+      el.removeEventListener("wheel", mark);
+      el.removeEventListener("touchstart", mark);
+      el.removeEventListener("scroll", mark);
+      el.removeEventListener("mouseenter", onEnter);
+      el.removeEventListener("mouseleave", onLeave);
+    };
   }, [options.length, direction]);
 
   if (options.length === 0) return null;
@@ -319,7 +345,8 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
       ref={scrollRef}
       className="overflow-x-auto swipe-thin-scroll group"
       style={{
-        scrollbarWidth: "none",
+        scrollbarWidth: "thin",
+        touchAction: "pan-x",
         WebkitMaskImage: fadeMask,
         maskImage: fadeMask,
       }}
