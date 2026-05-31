@@ -251,7 +251,7 @@ export default function SwipeHub() {
               bubbleSize={bubbleSize}
               shape={shape}
               gap={gap}
-              direction={1}
+              direction={-1}
               getBorderRadius={getBorderRadius}
               getButtonWidth={getButtonWidth}
               onSelect={handleSelect}
@@ -284,7 +284,7 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
     if (!el) return;
     let raf = 0;
     let last = performance.now();
-    const speed = 30; // px per second
+    const speed = 22; // px per second — subtle ambient drift
     let pos = el.scrollLeft;
 
     const tick = (now: number) => {
