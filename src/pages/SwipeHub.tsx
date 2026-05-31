@@ -314,7 +314,6 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
     el.addEventListener("pointerdown", mark);
     el.addEventListener("wheel", mark, { passive: true });
     el.addEventListener("touchstart", mark, { passive: true });
-    el.addEventListener("scroll", mark, { passive: true });
     el.addEventListener("mouseenter", onEnter);
     el.addEventListener("mouseleave", onLeave);
 
@@ -323,7 +322,6 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
       el.removeEventListener("pointerdown", mark);
       el.removeEventListener("wheel", mark);
       el.removeEventListener("touchstart", mark);
-      el.removeEventListener("scroll", mark);
       el.removeEventListener("mouseenter", onEnter);
       el.removeEventListener("mouseleave", onLeave);
     };
