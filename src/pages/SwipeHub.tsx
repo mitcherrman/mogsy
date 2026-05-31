@@ -292,16 +292,14 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
       const dt = (now - last) / 1000;
       last = now;
       const half = el.scrollWidth / 2;
-      const idle = now - lastInteractionRef.current > 1500 && !hoveringRef.current;
-      if (half > 0 && idle) {
-        let pos = el.scrollLeft + direction * speed * dt;
+      const recentlyInteracted = now - lastInteractionRef.current < 1500;
+      const slowed = recentlyInteracted || hoveringRef.current;
+      const effectiveSpeed = slowed ? speed * 0.2 : speed;
+      if (half > 0) {
+        let pos = el.scrollLeft + direction * effectiveSpeed * dt;
         if (pos >= half) pos -= half;
         if (pos < 0) pos += half;
         el.scrollLeft = pos;
-      } else if (half > 0) {
-        // Keep manual scroll within the loop window so resume is seamless.
-        if (el.scrollLeft >= half) el.scrollLeft -= half;
-        else if (el.scrollLeft < 0) el.scrollLeft += half;
       }
       raf = requestAnimationFrame(tick);
     };
