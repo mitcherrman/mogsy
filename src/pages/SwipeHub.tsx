@@ -279,26 +279,32 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const lastInteractionRef = useRef<number>(0);
   const hoveringRef = useRef<boolean>(false);
+  const repeatCount = 8;
+  const buttonWidth = getButtonWidth();
+  const segmentWidth = options.length * (buttonWidth + gap);
 
   useEffect(() => {
-    if (options.length === 0) return;
+    if (options.length === 0 || segmentWidth <= 0) return;
     const el = scrollRef.current;
     if (!el) return;
     let raf = 0;
     let last = performance.now();
-    const speed = 30; // px per second
+    const speed = 48; // px per second
+    el.scrollLeft = segmentWidth;
 
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      const half = el.scrollWidth / 2;
+      const maxScroll = el.scrollWidth - el.clientWidth;
       const recentlyInteracted = now - lastInteractionRef.current < 1500;
       const slowed = recentlyInteracted || hoveringRef.current;
-      const effectiveSpeed = slowed ? speed * 0.2 : speed;
-      if (half > 0) {
+      const effectiveSpeed = slowed ? speed * 0.35 : speed;
+      if (maxScroll > 0) {
         let pos = el.scrollLeft + direction * effectiveSpeed * dt;
-        if (pos >= half) pos -= half;
-        if (pos < 0) pos += half;
+        const minLoop = segmentWidth * 0.5;
+        const maxLoop = Math.min(maxScroll, segmentWidth * (repeatCount - 2));
+        while (pos >= maxLoop) pos -= segmentWidth;
+        while (pos < minLoop) pos += segmentWidth;
         el.scrollLeft = pos;
       }
       raf = requestAnimationFrame(tick);
@@ -323,13 +329,13 @@ function AutoScrollRow({ options, leagues, bubbleSize, shape, gap, direction, ge
       el.removeEventListener("mouseenter", onEnter);
       el.removeEventListener("mouseleave", onLeave);
     };
-  }, [options.length, direction]);
+  }, [options.length, direction, segmentWidth]);
 
   if (options.length === 0) return null;
 
   // Duplicate for seamless looping
-  const items = [...options, ...options];
-  const w = getButtonWidth();
+  const items = Array.from({ length: repeatCount }, () => options).flat();
+  const w = buttonWidth;
   const h = bubbleSize;
   const br = getBorderRadius();
 
