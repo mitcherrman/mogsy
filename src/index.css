@@ -442,11 +442,9 @@
   from { transform: translateY(-40px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-.swipe-thin-scroll { scrollbar-width: none; }
+.swipe-thin-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
 .swipe-thin-scroll::-webkit-scrollbar { height: 6px; background: transparent; }
-.swipe-thin-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; transition: background 0.2s; }
-.swipe-thin-scroll:hover { scrollbar-width: thin; }
-.swipe-thin-scroll:hover::-webkit-scrollbar-thumb { background: hsl(var(--border)); }
+.swipe-thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; transition: background 0.2s; }
 .swipe-thin-scroll:hover::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
 
 /* ===== User accessibility preferences (toggled from Settings) ===== */
