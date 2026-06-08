@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clipboard,
   Loader2,
+  PlayCircle,
   RefreshCw,
   Server,
   Swords,
@@ -426,6 +427,7 @@ export default function CombatLabDiagnostics() {
   const [interactiveLoading, setInteractiveLoading] = useState<string | null>(
     null
   );
+  const [runAllLoading, setRunAllLoading] = useState(false);
 
   const [lastCall, setLastCall] = useState<LastCall | null>(null);
 
@@ -538,6 +540,21 @@ export default function CombatLabDiagnostics() {
       });
     }
     setInteractiveLoading(null);
+  };
+
+  const runAllInteractive = async () => {
+    setRunAllLoading(true);
+    try {
+      for (const t of INTERACTIVE_TESTS) {
+        await runInteractive(t);
+      }
+      toast({
+        title: "Interactive tests complete",
+        description: `Ran ${INTERACTIVE_TESTS.length} scenarios. Copy the debug report now.`,
+      });
+    } finally {
+      setRunAllLoading(false);
+    }
   };
 
   // Auto-run health + meta once on mount
@@ -665,6 +682,20 @@ export default function CombatLabDiagnostics() {
               <ArrowLeft className="h-4 w-4" />
               Back to Combat Lab
             </Link>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            onClick={runAllInteractive}
+            disabled={runAllLoading || !!interactiveLoading}
+          >
+            {runAllLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlayCircle className="h-4 w-4" />
+            )}
+            Run All Interactive Tests
           </Button>
           <Button
             variant="default"
@@ -816,7 +847,26 @@ export default function CombatLabDiagnostics() {
         </Panel>
 
         {/* Interactive */}
-        <Panel title="Interactive Scenarios" icon={Swords}>
+        <Panel
+          title="Interactive Scenarios"
+          icon={Swords}
+          right={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={runAllInteractive}
+              disabled={runAllLoading || !!interactiveLoading}
+            >
+              {runAllLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <PlayCircle className="h-3.5 w-3.5" />
+              )}
+              Run All
+            </Button>
+          }
+        >
           <div className="grid gap-2 sm:grid-cols-2">
             {INTERACTIVE_TESTS.map((t) => {
               const r = interactive[t.id];
