@@ -32,6 +32,12 @@ import {
   COMBAT_API_BASE_URL,
   DEFAULT_ATTACKER_STATS,
   DEFAULT_TARGET_STATS,
+  normalizeChampionsResponse,
+  normalizeItemsResponse,
+  normalizeRunesResponse,
+  normalizeTargetsResponse,
+  normalizeSummonersResponse,
+  normalizeActionsResponse,
 } from "@/lib/combat-lab/api";
 
 /* ─────────────── helpers ─────────────── */
@@ -92,19 +98,36 @@ async function timedFetch(
   }
 }
 
-function countOf(data: any): number | null {
-  if (Array.isArray(data)) return data.length;
-  if (data && typeof data === "object") {
-    if (Array.isArray(data.items)) return data.items.length;
-    if (Array.isArray(data.data)) return data.data.length;
-    if (Array.isArray(data.actions)) return data.actions.length;
-    // grouped { tree: [...] }
-    const vals = Object.values(data);
-    if (vals.length && vals.every((v) => Array.isArray(v))) {
-      return vals.reduce<number>((a, v) => a + (v as any[]).length, 0);
-    }
+/**
+ * Diagnostics count helper — must match the api.ts normalizers exactly so the
+ * audit panel and the diagnostics page never disagree.
+ */
+function countOf(data: any, key?: string): number | null {
+  if (data == null) return null;
+  switch (key) {
+    case "champions":
+      return normalizeChampionsResponse(data).length;
+    case "items":
+      return normalizeItemsResponse(data).length;
+    case "runes":
+      return normalizeRunesResponse(data).length;
+    case "targets":
+      return normalizeTargetsResponse(data).length;
+    case "summoners":
+      return normalizeSummonersResponse(data).length;
+    case "actions":
+      return normalizeActionsResponse(data).length;
+    case "options":
+      return null;
+    default:
+      if (Array.isArray(data)) return data.length;
+      if (data && typeof data === "object") {
+        for (const k of ["items", "data", "results", "champions", "runes", "actions", "summoners", "target_profiles"]) {
+          if (Array.isArray((data as any)[k])) return (data as any)[k].length;
+        }
+      }
+      return null;
   }
-  return null;
 }
 
 /* ─────────────── small UI primitives ─────────────── */
@@ -489,7 +512,7 @@ export default function CombatLabDiagnostics() {
       response: Object.fromEntries(
         Object.entries(next).map(([k, v]) => [
           k,
-          { ok: v.ok, status: v.status, count: countOf(v.data) },
+          { ok: v.ok, status: v.status, count: countOf(v.data, k) },
         ])
       ),
       at: new Date().toISOString(),
@@ -649,7 +672,7 @@ export default function CombatLabDiagnostics() {
                   status: r.status,
                   url: r.url,
                   duration_ms: Math.round(r.durationMs),
-                  count: countOf(r.data),
+                  count: countOf(r.data, ep.key),
                   error: r.error,
                 }
               : null,
@@ -859,7 +882,7 @@ export default function CombatLabDiagnostics() {
                 : r.ok
                 ? "ok"
                 : "fail";
-              const count = r?.ok ? countOf(r.data) : null;
+              const count = r?.ok ? countOf(r.data, ep.key) : null;
               return (
                 <motion.div
                   key={ep.key}
