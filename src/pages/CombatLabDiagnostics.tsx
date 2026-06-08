@@ -828,6 +828,10 @@ export default function CombatLabDiagnostics() {
                 : r.ok
                 ? "ok"
                 : "fail";
+              const lastStep = r?.steps[r.steps.length - 1];
+              const lastErr = lastStep?.result.error;
+              const totalEvents = r?.steps.reduce((a, s) => a + s.eventCount, 0) ?? 0;
+              const scopeKeys = lastStep?.targetHpKeys ?? [];
               return (
                 <button
                   key={t.id}
@@ -840,16 +844,22 @@ export default function CombatLabDiagnostics() {
                     <StatusPill state={state} />
                   </div>
                   <span className="truncate font-mono text-[10px] text-muted-foreground">
-                    POST {t.path}
+                    {t.steps.length} step{t.steps.length === 1 ? "" : "s"} · POST{" "}
+                    {t.steps[0]?.path}
                   </span>
                   {r?.durationMs !== undefined && (
                     <span className="text-[10px] text-muted-foreground">
-                      {Math.round(r.durationMs)}ms
-                      {r.status ? ` · ${r.status}` : ""}
+                      {Math.round(r.durationMs)}ms · {r.steps.length}/{t.steps.length} steps
+                      {totalEvents ? ` · ${totalEvents} events` : ""}
                     </span>
                   )}
-                  {r?.error && (
-                    <span className="text-[10px] text-rose-300">{r.error}</span>
+                  {scopeKeys.length > 0 && (
+                    <span className="text-[10px] text-emerald-300/80">
+                      scopes: {scopeKeys.join(", ")}
+                    </span>
+                  )}
+                  {lastErr && (
+                    <span className="text-[10px] text-rose-300">{lastErr}</span>
                   )}
                 </button>
               );
