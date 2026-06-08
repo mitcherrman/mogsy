@@ -1056,6 +1056,7 @@ export default function CombatLab() {
             items={items}
             runes={runes}
             targets={targets}
+            summoners={summoners}
             critModes={critModes}
             metaLoading={metaLoading}
             apiStatus={apiStatus}
@@ -1530,6 +1531,7 @@ type SandboxProps = {
   items: Item[];
   runes: Rune[];
   targets: TargetProfile[];
+  summoners: Summoner[];
   critModes: readonly CritMode[];
   metaLoading: boolean;
   apiStatus: ApiStatus;
@@ -1558,6 +1560,7 @@ function InteractiveSandbox({
   items,
   runes,
   targets,
+  summoners,
   critModes,
   metaLoading,
   apiStatus,
