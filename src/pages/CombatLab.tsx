@@ -2044,6 +2044,8 @@ function InteractiveSandbox({
 
         <RuntimeStatePanel state={state} />
 
+        <CombatHeader events={events} state={state} />
+
         <SandboxTimeline events={events} containerRef={timelineRef} />
 
         {devMode && (
