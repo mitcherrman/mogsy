@@ -198,82 +198,135 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-function asNameList<T extends { name?: string }>(data: any): T[] {
-  const normalize = (arr: any[]): T[] =>
-    arr
-      .map((it) => {
-        if (typeof it === "string") return { name: it } as any;
-        if (it && typeof it === "object") {
-          if (typeof it.name === "string") return it as T;
-          // Try common fallback fields
-          const fallback = it.id || it.key || it.label || it.title;
-          if (typeof fallback === "string") return { ...it, name: fallback } as T;
-        }
-        return null;
-      })
-      .filter((x): x is T => x !== null);
-  if (Array.isArray(data)) return normalize(data);
-  if (data && Array.isArray(data.items)) return normalize(data.items);
-  if (data && Array.isArray(data.data)) return normalize(data.data);
-  if (data && typeof data === "object") {
-    // grouped object: { Precision: [...], Domination: [...] }
-    const flat: T[] = [];
-    for (const [group, arr] of Object.entries(data)) {
-      if (Array.isArray(arr)) {
-        for (const it of arr as any[]) {
-          if (typeof it === "string") flat.push({ name: it, tree: group } as any);
-          else if (it && typeof it === "object") {
-            const name =
-              typeof it.name === "string"
-                ? it.name
-                : it.id || it.key || it.label || it.title;
-            if (typeof name === "string") {
-              flat.push({ ...it, name, tree: it.tree || group } as any);
-            }
-          }
-        }
+/**
+ * Generic metadata normalizer.
+ *
+ * Handles all common Combat Lab backend response shapes:
+ *   - bare array:                     [ ... ]
+ *   - wrapped:                        { items|data|results|<key>: [ ... ] }
+ *   - grouped (rune-tree style):      { Precision: [...], Domination: [...] }
+ *
+ * Each item may be a string, or an object whose name lives under one of several
+ * aliases (`name`, `<entity>_name`, `id`, `label`, `title`, etc.).
+ */
+function extractArray(data: any, wrapperKeys: string[]): any[] {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== "object") return [];
+  const tryKeys = [...wrapperKeys, "items", "data", "results"];
+  for (const k of tryKeys) {
+    if (Array.isArray(data[k])) return data[k];
+  }
+  // grouped object → flatten array values, tagging each with its group key
+  const grouped: any[] = [];
+  let hasArray = false;
+  for (const [group, arr] of Object.entries(data)) {
+    if (Array.isArray(arr)) {
+      hasArray = true;
+      for (const it of arr as any[]) {
+        if (it && typeof it === "object") grouped.push({ ...it, _group: group });
+        else grouped.push(it);
       }
     }
-    if (flat.length) return flat;
   }
-  return [];
+  return hasArray ? grouped : [];
 }
+
+function pickName(it: any, nameAliases: string[]): string | null {
+  if (typeof it === "string") return it;
+  if (!it || typeof it !== "object") return null;
+  for (const k of nameAliases) {
+    if (typeof it[k] === "string" && it[k].trim()) return it[k];
+  }
+  return null;
+}
+
+function normalizeList<T extends { name: string }>(
+  data: any,
+  wrapperKeys: string[],
+  nameAliases: string[],
+  shape: (raw: any, name: string) => T = (raw, name) =>
+    (typeof raw === "string" ? { name } : { ...raw, name }) as T
+): T[] {
+  const arr = extractArray(data, wrapperKeys);
+  const out: T[] = [];
+  for (const it of arr) {
+    const name = pickName(it, nameAliases);
+    if (!name) continue;
+    out.push(shape(it, name));
+  }
+  return out;
+}
+
+/* Per-endpoint normalizers (exported for diagnostics use) */
+export const normalizeChampionsResponse = (data: any): Champion[] =>
+  normalizeList<Champion>(data, ["champions"], ["name", "champion_name", "id"]);
+
+export const normalizeItemsResponse = (data: any): Item[] =>
+  normalizeList<Item>(
+    data,
+    ["items"],
+    ["name", "item_name", "id"],
+    (raw, name) =>
+      typeof raw === "string"
+        ? { name }
+        : {
+            ...raw,
+            name,
+            type: raw.type ?? raw.item_type,
+            gold: raw.gold ?? raw.cost,
+          }
+  );
+
+export const normalizeRunesResponse = (data: any): Rune[] =>
+  normalizeList<Rune>(
+    data,
+    ["runes"],
+    ["name", "rune_name", "id"],
+    (raw, name) =>
+      typeof raw === "string"
+        ? { name }
+        : { ...raw, name, tree: raw.tree ?? raw.tree_name ?? raw._group }
+  );
+
+export const normalizeTargetsResponse = (data: any): TargetProfile[] =>
+  normalizeList<TargetProfile>(
+    data,
+    ["target_profiles", "targets", "profiles"],
+    ["name", "profile_name", "id"]
+  );
+
+export const normalizeSummonersResponse = (data: any): Summoner[] =>
+  normalizeList<Summoner>(data, ["summoners"], ["name", "summoner_name", "id"]);
+
+export const normalizeActionsResponse = (data: any): CombatAction[] => {
+  const arr = extractArray(data, ["actions", "combat_lab_actions"]);
+  const out: CombatAction[] = [];
+  for (const a of arr) {
+    if (!a || typeof a !== "object") continue;
+    const id = a.id || a.action_id || a.key || a.name;
+    if (!id) continue;
+    out.push({ ...a, id, label: a.label || a.name || id });
+  }
+  return out;
+};
 
 export const combatApi = {
   baseUrl: API_BASE_URL,
   health: () => request<{ ok?: boolean; status?: string }>("/api/health"),
-  champions: async () => asNameList<Champion>(await request<any>("/api/meta/champions")),
-  items: async () => asNameList<Item>(await request<any>("/api/meta/items")),
-  runes: async () => asNameList<Rune>(await request<any>("/api/meta/runes")),
+  champions: async () => normalizeChampionsResponse(await request<any>("/api/meta/champions")),
+  items: async () => normalizeItemsResponse(await request<any>("/api/meta/items")),
+  runes: async () => normalizeRunesResponse(await request<any>("/api/meta/runes")),
   targetProfiles: async () =>
-    asNameList<TargetProfile>(await request<any>("/api/meta/target-profiles")),
-  summoners: async () => asNameList<Summoner>(await request<any>("/api/meta/summoners")),
+    normalizeTargetsResponse(await request<any>("/api/meta/target-profiles")),
+  summoners: async () => normalizeSummonersResponse(await request<any>("/api/meta/summoners")),
   options: () => request<OptionsMeta>("/api/meta/options"),
   simulate: (payload: SimulateRequest) =>
     request<SimulateResponse>("/api/combat/simulate", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  combatLabActions: async (): Promise<CombatAction[]> => {
-    const data = await request<any>("/api/meta/combat-lab-actions");
-    const arr = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.actions)
-      ? data.actions
-      : Array.isArray(data?.data)
-      ? data.data
-      : [];
-    return arr
-      .map((a: any) => {
-        if (!a || typeof a !== "object") return null;
-        const id = a.id || a.action_id || a.key || a.name;
-        if (!id) return null;
-        return { ...a, id, label: a.label || a.name || id } as CombatAction;
-      })
-      .filter(Boolean) as CombatAction[];
-  },
+  combatLabActions: async (): Promise<CombatAction[]> =>
+    normalizeActionsResponse(await request<any>("/api/meta/combat-lab-actions")),
   basicAttack: async (payload: CombatLabBasicAttackRequest) =>
     unwrapInteractive(
       await request<any>("/api/combat-lab/basic-attack", {
