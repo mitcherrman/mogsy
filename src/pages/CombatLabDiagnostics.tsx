@@ -387,12 +387,15 @@ type ScenarioStepResult = {
   eventCount: number;
   remainingByScope?: Record<string, unknown>;
   targetHpKeys: string[];
+  stackWarnings: string[];
+  stackSnapshot: Record<string, number>;
 };
 
 type ScenarioResult = {
   ok: boolean;
   durationMs: number;
   steps: ScenarioStepResult[];
+  stackWarnings: string[];
 };
 
 /* ─────────────── page ─────────────── */
