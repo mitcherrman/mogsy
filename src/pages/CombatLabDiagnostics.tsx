@@ -963,6 +963,12 @@ export default function CombatLabDiagnostics() {
                       scopes: {scopeKeys.join(", ")}
                     </span>
                   )}
+                  {r?.stackWarnings && r.stackWarnings.length > 0 && (
+                    <span className="text-[10px] text-amber-300">
+                      ⚠ {r.stackWarnings.length} stack reset
+                      {r.stackWarnings.length === 1 ? "" : "s"} detected
+                    </span>
+                  )}
                   {lastErr && (
                     <span className="text-[10px] text-rose-300">{lastErr}</span>
                   )}
