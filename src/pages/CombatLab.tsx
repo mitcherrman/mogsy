@@ -59,8 +59,11 @@ import {
   type CritMode,
   type CombatAction,
   type SandboxStepResponse,
-  type SandboxBaseConfig,
   type TargetScopeInfo,
+  DEFAULT_ATTACKER_STATS,
+  DEFAULT_TARGET_STATS,
+  type CombatLabBasicAttackRequest,
+  type CombatLabActiveRequest,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
