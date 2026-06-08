@@ -504,6 +504,8 @@ export default function CombatLab() {
   const [items, setItems] = useState<Item[]>([]);
   const [runes, setRunes] = useState<Rune[]>([]);
   const [targets, setTargets] = useState<TargetProfile[]>([]);
+  const [summoners, setSummoners] = useState<Summoner[]>([]);
+  const [actionsMeta, setActionsMeta] = useState<CombatAction[]>([]);
   const [options, setOptions] = useState<OptionsMeta | null>(null);
   const [metaLoading, setMetaLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
@@ -560,11 +562,13 @@ export default function CombatLab() {
           return fallback;
         }
       };
-      const [ch, it, ru, tg, op] = await Promise.all([
+      const [ch, it, ru, tg, sm, ac, op] = await Promise.all([
         settle(combatApi.champions(), [] as Champion[]),
         settle(combatApi.items(), [] as Item[]),
         settle(combatApi.runes(), [] as Rune[]),
         settle(combatApi.targetProfiles(), [] as TargetProfile[]),
+        settle(combatApi.summoners(), [] as Summoner[]),
+        settle(combatApi.combatLabActions(), [] as CombatAction[]),
         settle(combatApi.options(), {} as OptionsMeta),
       ]);
       if (cancelled) return;
@@ -572,6 +576,8 @@ export default function CombatLab() {
       setItems(it);
       setRunes(ru);
       setTargets(tg);
+      setSummoners(sm);
+      setActionsMeta(ac);
       setOptions(op);
       setMetaLoading(false);
     })();
