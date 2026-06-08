@@ -710,8 +710,10 @@ export default function CombatLab() {
         actions={actionsMeta}
       />
 
-      <Tabs defaultValue="rotation" className="w-full">
-        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
+      <Tabs defaultValue="sandbox" className="w-full">
+        {/* Rotation Simulator hidden in Phase 2A — Interactive Sandbox is the primary experience.
+            Code retained but TabsList omitted so only the Sandbox renders. */}
+        <TabsList className="hidden h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
           <TabsTrigger
             value="rotation"
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
