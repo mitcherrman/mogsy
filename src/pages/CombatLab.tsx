@@ -1508,19 +1508,20 @@ type SandboxProps = {
   apiStatus: ApiStatus;
 };
 
-function toBase(config: SimulateRequest): SandboxBaseConfig {
-  return {
-    champion: config.champion,
-    items: config.items,
-    runes: config.runes,
-    target_profile: config.target_profile,
-    stats: config.stats,
-    ranks: config.ranks,
-    branches: config.branches,
-    ad: config.ad,
-    attack_speed: config.attack_speed,
-    crit_mode: config.crit_mode,
-  };
+function buildAttackerStats(config: SimulateRequest): Record<string, number> {
+  const merged: Record<string, number> = { ...DEFAULT_ATTACKER_STATS };
+  if (typeof config.ad === "number") merged.AD = config.ad;
+  if (config.stats) {
+    for (const [k, v] of Object.entries(config.stats)) {
+      if (typeof v === "number") merged[k.toUpperCase().replace(/\s+/g, "_")] = v;
+    }
+  }
+  if (config.ranks) {
+    for (const [k, v] of Object.entries(config.ranks)) {
+      if (typeof v === "number") merged[`${k.toUpperCase()}_RANK`] = v;
+    }
+  }
+  return merged;
 }
 
 function InteractiveSandbox({
