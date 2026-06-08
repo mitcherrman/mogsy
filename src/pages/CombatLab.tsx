@@ -18,6 +18,15 @@ import {
   Download,
   WifiOff,
   AlertTriangle,
+  Crosshair,
+  Target as TargetIcon,
+  Layers,
+  RotateCcw,
+  Hand,
+  BarChart3,
+  LineChart,
+  PieChart,
+  Flame,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -25,6 +34,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import {
   combatApi,
@@ -44,6 +56,10 @@ import {
   type SimulationResult,
   type TimelineEvent,
   type CritMode,
+  type CombatAction,
+  type SandboxStepResponse,
+  type SandboxBaseConfig,
+  type TargetScopeInfo,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
