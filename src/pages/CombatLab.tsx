@@ -675,6 +675,25 @@ export default function CombatLab() {
         <ApiStatusBadge status={apiStatus} />
       </div>
 
+      <Tabs defaultValue="rotation" className="w-full">
+        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
+          <TabsTrigger
+            value="rotation"
+            className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
+          >
+            <Zap className="h-4 w-4" />
+            Rotation Simulator
+          </TabsTrigger>
+          <TabsTrigger
+            value="sandbox"
+            className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
+          >
+            <Crosshair className="h-4 w-4" />
+            Interactive Sandbox
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="rotation" className="mt-0">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* LEFT: configuration */}
         <div className="space-y-6 lg:col-span-2">
@@ -986,6 +1005,22 @@ export default function CombatLab() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="sandbox" className="mt-0">
+          <InteractiveSandbox
+            config={config}
+            update={update}
+            champions={champions}
+            items={items}
+            runes={runes}
+            targets={targets}
+            critModes={critModes}
+            metaLoading={metaLoading}
+            apiStatus={apiStatus}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
