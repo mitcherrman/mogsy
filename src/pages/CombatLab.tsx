@@ -28,6 +28,9 @@ import {
   LineChart,
   PieChart,
   Flame,
+  Database,
+  Filter,
+  Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,7 @@ import {
   type Item,
   type Rune,
   type TargetProfile,
+  type Summoner,
   type OptionsMeta,
   type SimulateRequest,
   type SimulationResult,
@@ -500,6 +504,8 @@ export default function CombatLab() {
   const [items, setItems] = useState<Item[]>([]);
   const [runes, setRunes] = useState<Rune[]>([]);
   const [targets, setTargets] = useState<TargetProfile[]>([]);
+  const [summoners, setSummoners] = useState<Summoner[]>([]);
+  const [actionsMeta, setActionsMeta] = useState<CombatAction[]>([]);
   const [options, setOptions] = useState<OptionsMeta | null>(null);
   const [metaLoading, setMetaLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
@@ -556,11 +562,13 @@ export default function CombatLab() {
           return fallback;
         }
       };
-      const [ch, it, ru, tg, op] = await Promise.all([
+      const [ch, it, ru, tg, sm, ac, op] = await Promise.all([
         settle(combatApi.champions(), [] as Champion[]),
         settle(combatApi.items(), [] as Item[]),
         settle(combatApi.runes(), [] as Rune[]),
         settle(combatApi.targetProfiles(), [] as TargetProfile[]),
+        settle(combatApi.summoners(), [] as Summoner[]),
+        settle(combatApi.combatLabActions(), [] as CombatAction[]),
         settle(combatApi.options(), {} as OptionsMeta),
       ]);
       if (cancelled) return;
@@ -568,6 +576,8 @@ export default function CombatLab() {
       setItems(it);
       setRunes(ru);
       setTargets(tg);
+      setSummoners(sm);
+      setActionsMeta(ac);
       setOptions(op);
       setMetaLoading(false);
     })();
@@ -688,6 +698,17 @@ export default function CombatLab() {
           Diagnostics
         </Link>
       </div>
+
+      <MetadataAuditPanel
+        loading={metaLoading}
+        apiStatus={apiStatus}
+        champions={champions}
+        items={items}
+        runes={runes}
+        targets={targets}
+        summoners={summoners}
+        actions={actionsMeta}
+      />
 
       <Tabs defaultValue="rotation" className="w-full">
         <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
@@ -1035,6 +1056,7 @@ export default function CombatLab() {
             items={items}
             runes={runes}
             targets={targets}
+            summoners={summoners}
             critModes={critModes}
             metaLoading={metaLoading}
             apiStatus={apiStatus}
@@ -1509,6 +1531,7 @@ type SandboxProps = {
   items: Item[];
   runes: Rune[];
   targets: TargetProfile[];
+  summoners: Summoner[];
   critModes: readonly CritMode[];
   metaLoading: boolean;
   apiStatus: ApiStatus;
@@ -1537,6 +1560,7 @@ function InteractiveSandbox({
   items,
   runes,
   targets,
+  summoners,
   critModes,
   metaLoading,
   apiStatus,
@@ -1559,6 +1583,21 @@ function InteractiveSandbox({
     | null
   >(null);
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
+  const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("combat-lab:summoners");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(0, 2) : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:summoners", JSON.stringify(summonerPicks));
+    } catch {}
+  }, [summonerPicks]);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
@@ -1791,6 +1830,12 @@ function InteractiveSandbox({
               loading={metaLoading}
               withIcons
             />
+            <SummonerPicker
+              options={summoners}
+              values={summonerPicks}
+              onChange={setSummonerPicks}
+              loading={metaLoading}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
@@ -1998,6 +2043,8 @@ function InteractiveSandbox({
         <TargetsPanel scopes={scopes} state={state} />
 
         <RuntimeStatePanel state={state} />
+
+        <CombatHeader events={events} state={state} />
 
         <SandboxTimeline events={events} containerRef={timelineRef} />
 
@@ -2394,16 +2441,57 @@ function SandboxTimeline({
   events: TimelineEvent[];
   containerRef: React.RefObject<HTMLDivElement>;
 }) {
+  type Filter = "all" | "damage" | "champion" | "item" | "rune" | "state";
+  const [filter, setFilter] = useState<Filter>("all");
+  const classify = (e: TimelineEvent): Filter[] => {
+    const tags: Filter[] = [];
+    if (typeof getEventDamage(e) === "number" && (getEventDamage(e) as number) > 0) tags.push("damage");
+    const src = (e.source || (e as any).type || "").toString().toLowerCase();
+    const name = getEventLabel(e).toLowerCase();
+    if (/rune|electrocute|conqueror|press_the_attack|lethal/.test(src + " " + name)) tags.push("rune");
+    if (/item|guinsoo|runaan|kraken|botrk|bork|ie|infinity|shadowflame|lichbane/.test(src + " " + name)) tags.push("item");
+    if (/champion|q_cast|w_cast|e_cast|r_cast|silver_bolts|plasma|blight|rend|moonsilver|double_strike/.test(src + " " + name)) tags.push("champion");
+    if (/state|stack|charge|proc/.test(name)) tags.push("state");
+    return tags;
+  };
+  const filtered = filter === "all" ? events : events.filter((e) => classify(e).includes(filter));
+  const filters: { id: Filter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "damage", label: "Damage" },
+    { id: "champion", label: "Champion" },
+    { id: "item", label: "Item" },
+    { id: "rune", label: "Rune" },
+    { id: "state", label: "State" },
+  ];
   return (
     <SectionCard
       title="Combat Timeline"
       icon={Timer}
       right={
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {events.length} events
+          {filtered.length}/{events.length} events
         </span>
       }
     >
+      {events.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <Filter className="h-3 w-3 text-muted-foreground" />
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition ${
+                filter === f.id
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
       {events.length === 0 ? (
         <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-8 text-center text-xs text-muted-foreground">
           No combat yet — press Basic Attack or an active to begin.
@@ -2414,7 +2502,7 @@ function SandboxTimeline({
           className="max-h-[460px] overflow-y-auto pr-1"
         >
           <ol className="relative space-y-2 border-l border-border/60 pl-4">
-            {events.map((e, i) => {
+            {filtered.map((e, i) => {
               const t = getEventTime(e);
               const name = getEventLabel(e);
               const dmg = getEventDamage(e);
@@ -2649,5 +2737,215 @@ function FuturePanelsInner() {
         ))}
       </div>
     </SectionCard>
+  );
+}
+
+/* ─────────────── Metadata Audit (Phase 1) ─────────────── */
+
+function MetadataAuditPanel({
+  loading,
+  apiStatus,
+  champions,
+  items,
+  runes,
+  targets,
+  summoners,
+  actions,
+}: {
+  loading: boolean;
+  apiStatus: ApiStatus;
+  champions: Champion[];
+  items: Item[];
+  runes: Rune[];
+  targets: TargetProfile[];
+  summoners: Summoner[];
+  actions: CombatAction[];
+}) {
+  const [open, setOpen] = useState(false);
+  const rows: { label: string; count: number; icon: React.ElementType }[] = [
+    { label: "Champions", count: champions.length, icon: Swords },
+    { label: "Items", count: items.length, icon: Sparkles },
+    { label: "Runes", count: runes.length, icon: Flame },
+    { label: "Summoners", count: summoners.length, icon: Wand2 },
+    { label: "Target Profiles", count: targets.length, icon: TargetIcon },
+    { label: "Actions", count: actions.length, icon: Hand },
+  ];
+  const total = rows.reduce((a, r) => a + r.count, 0);
+  return (
+    <Card className="mb-6 border-border/60 bg-card/40 backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <Database className="h-4 w-4 text-primary" />
+          Metadata Audit
+          <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+            {loading ? "loading…" : apiStatus === "offline" ? "offline" : `${total} entries`}
+          </span>
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 opacity-60" /> : <ChevronDown className="h-4 w-4 opacity-60" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="grid gap-2 px-4 pb-4 sm:grid-cols-3 lg:grid-cols-6">
+              {rows.map((r) => {
+                const empty = !loading && r.count === 0;
+                return (
+                  <div
+                    key={r.label}
+                    className={`rounded-md border px-3 py-2 ${
+                      empty
+                        ? "border-destructive/40 bg-destructive/5"
+                        : "border-border/60 bg-background/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <r.icon className="h-3 w-3" />
+                      {r.label}
+                    </div>
+                    <div
+                      className={`mt-0.5 font-mono text-lg font-bold tabular-nums ${
+                        empty ? "text-destructive" : "text-foreground"
+                      }`}
+                    >
+                      {loading ? "…" : r.count}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
+}
+
+/* ─────────────── Summoner picker (Phase 2) ─────────────── */
+
+function SummonerPicker({
+  options,
+  values,
+  onChange,
+  loading,
+}: {
+  options: Summoner[];
+  values: string[];
+  onChange: (v: string[]) => void;
+  loading: boolean;
+}) {
+  const toggle = (name: string) => {
+    if (values.includes(name)) {
+      onChange(values.filter((v) => v !== name));
+    } else if (values.length < 2) {
+      onChange([...values, name]);
+    } else {
+      onChange([values[1], name]);
+    }
+  };
+  return (
+    <div>
+      <Label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+        <Wand2 className="h-3 w-3" />
+        Summoner spells (max 2)
+      </Label>
+      {loading ? (
+        <Skeleton className="h-8 w-full" />
+      ) : options.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-3 py-2 text-[11px] text-muted-foreground">
+          No summoner metadata returned.
+        </div>
+      ) : (
+        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-border/50 bg-background/40 p-2">
+          {options.map((s) => {
+            const active = values.includes(s.name);
+            return (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => toggle(s.name)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                  active
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {values.length > 0 && (
+        <div className="mt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Selected: <span className="text-foreground">{values.join(" · ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────── Combat header (Phase 3) ─────────────── */
+
+function CombatHeader({
+  events,
+  state,
+}: {
+  events: TimelineEvent[];
+  state: Record<string, unknown> | null;
+}) {
+  const lastTime = events.length > 0 ? getEventTime(events[events.length - 1]) : 0;
+  const stateTime = state && typeof (state as any).current_time === "number"
+    ? ((state as any).current_time as number)
+    : (state as any)?.states && typeof (state as any).states.CURRENT_TIME === "number"
+    ? ((state as any).states.CURRENT_TIME as number)
+    : null;
+  const totalDamage = events.reduce((a, e) => {
+    const d = getEventDamage(e);
+    return typeof d === "number" && d > 0 ? a + d : a;
+  }, 0);
+  const stats: { label: string; value: string; icon: React.ElementType }[] = [
+    { label: "Combat Time", value: `${(stateTime ?? lastTime).toFixed(2)}s`, icon: Timer },
+    { label: "Events", value: String(events.length), icon: Activity },
+    { label: "Damage", value: totalDamage.toFixed(1), icon: Flame },
+    {
+      label: "State Keys",
+      value: state
+        ? String(
+            ((state as any).states && typeof (state as any).states === "object"
+              ? Object.keys((state as any).states)
+              : Object.keys(state)
+            ).length
+          )
+        : "0",
+      icon: Layers,
+    },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="rounded-lg border border-border/60 bg-gradient-to-br from-primary/5 to-transparent px-3 py-2"
+        >
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <s.icon className="h-3 w-3" />
+            {s.label}
+          </div>
+          <div className="mt-0.5 font-mono text-base font-bold tabular-nums text-foreground">
+            {s.value}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
