@@ -1583,6 +1583,21 @@ function InteractiveSandbox({
     | null
   >(null);
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
+  const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("combat-lab:summoners");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(0, 2) : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:summoners", JSON.stringify(summonerPicks));
+    } catch {}
+  }, [summonerPicks]);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
