@@ -1623,11 +1623,29 @@ function InteractiveSandbox({
     setError(null);
     setBusy(action_id || kind);
     try {
-      const payload = { ...toBase(config), state: state ?? undefined, action_id };
+      const attacker_stats = buildAttackerStats(config);
+      const target_stats = { ...DEFAULT_TARGET_STATS };
+      const safeState = state ?? {};
       const res =
         kind === "basic-attack"
-          ? await combatApi.basicAttack(payload)
-          : await combatApi.active(payload);
+          ? await combatApi.basicAttack({
+              champion_name: config.champion,
+              item_names: config.items,
+              rune_names: config.runes,
+              attacker_stats,
+              target_stats,
+              state: safeState,
+              current_time: 0,
+            } as CombatLabBasicAttackRequest)
+          : await combatApi.active({
+              champion_name: config.champion,
+              attacker_stats,
+              target_stats,
+              state: safeState,
+              active_name: action_id || "",
+              target_scope: "PRIMARY",
+              piercing_arrow_charge_bonus_percent: 0,
+            } as CombatLabActiveRequest);
       applyResponse(res);
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);
