@@ -1549,6 +1549,16 @@ function InteractiveSandbox({
   const [actionsLoading, setActionsLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
+  const [lastRequest, setLastRequest] = useState<unknown>(null);
+  const [lastResponse, setLastResponse] = useState<unknown>(null);
+  const [lastEndpoint, setLastEndpoint] = useState<string>("");
+  const [lastAction, setLastAction] = useState<
+    | { kind: "basic-attack" }
+    | { kind: "active"; action_id: string }
+    | null
+  >(null);
+  const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
@@ -1628,36 +1638,86 @@ function InteractiveSandbox({
     }
     setError(null);
     setBusy(action_id || kind);
+    setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
     try {
       const attacker_stats = buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
       const safeState = state ?? {};
-      const res =
-        kind === "basic-attack"
-          ? await combatApi.basicAttack({
-              champion_name: config.champion,
-              item_names: config.items,
-              rune_names: config.runes,
-              attacker_stats,
-              target_stats,
-              state: safeState,
-              current_time: 0,
-            } as CombatLabBasicAttackRequest)
-          : await combatApi.active({
-              champion_name: config.champion,
-              attacker_stats,
-              target_stats,
-              state: safeState,
-              active_name: action_id || "",
-              target_scope: "PRIMARY",
-              piercing_arrow_charge_bonus_percent: 0,
-            } as CombatLabActiveRequest);
+      let payload: unknown;
+      let endpoint: string;
+      let res: SandboxStepResponse;
+      if (kind === "basic-attack") {
+        endpoint = "/api/combat-lab/basic-attack";
+        payload = {
+          champion_name: config.champion,
+          item_names: config.items,
+          rune_names: config.runes,
+          attacker_stats,
+          target_stats,
+          state: safeState,
+          current_time: 0,
+        } as CombatLabBasicAttackRequest;
+        setLastEndpoint(endpoint);
+        setLastRequest(payload);
+        res = await combatApi.basicAttack(payload as CombatLabBasicAttackRequest);
+      } else {
+        endpoint = "/api/combat-lab/active";
+        payload = {
+          champion_name: config.champion,
+          attacker_stats,
+          target_stats,
+          state: safeState,
+          active_name: action_id || "",
+          target_scope: activeTargetScope || "PRIMARY",
+          piercing_arrow_charge_bonus_percent: 0,
+        } as CombatLabActiveRequest;
+        setLastEndpoint(endpoint);
+        setLastRequest(payload);
+        res = await combatApi.active(payload as CombatLabActiveRequest);
+      }
+      setLastResponse(res);
       applyResponse(res);
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);
+      setLastResponse({ error: e?.message || String(e) });
     } finally {
       setBusy(null);
     }
+  };
+
+  const retryLast = () => {
+    if (!lastAction) return;
+    if (lastAction.kind === "basic-attack") sendStep("basic-attack");
+    else sendStep("active", lastAction.action_id);
+  };
+
+  const copyJson = async (data: unknown, label: string) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data ?? {}, null, 2));
+      toast({ title: `${label} copied` });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  const copyDebugReport = () => {
+    const report = {
+      champion: config.champion,
+      items: config.items,
+      runes: config.runes,
+      target_profile: config.target_profile,
+      endpoint: lastEndpoint,
+      last_request: lastRequest,
+      last_response: lastResponse,
+      current_state: state,
+      events_collected: events.length,
+      scopes,
+      attacker_stats: attackerStats,
+      error,
+      api_base: COMBAT_API_BASE_URL,
+      timestamp: new Date().toISOString(),
+    };
+    copyJson(report, "Debug report");
   };
 
   const resetCombat = () => {
@@ -1666,6 +1726,10 @@ function InteractiveSandbox({
     setScopes({});
     setAttackerStats({});
     setError(null);
+    setLastRequest(null);
+    setLastResponse(null);
+    setLastEndpoint("");
+    setLastAction(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
@@ -1673,6 +1737,16 @@ function InteractiveSandbox({
   };
 
   const offline = apiStatus === "offline";
+
+  const metaFallback =
+    !metaLoading &&
+    (champions.length === 0 || items.length === 0 || runes.length === 0);
+
+  const scopeOptions = useMemo(() => {
+    const set = new Set<string>(["PRIMARY"]);
+    for (const k of Object.keys(scopes)) set.add(k);
+    return Array.from(set);
+  }, [scopes]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -1777,6 +1851,29 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
+            {visibleActions.length > 0 && (
+              <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+                <Label className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Active target scope
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {scopeOptions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setActiveTargetScope(s)}
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                        activeTargetScope === s
+                          ? "border-primary/60 bg-primary/15 text-primary"
+                          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {actionsLoading && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
                 Loading champion actions…
@@ -1835,6 +1932,40 @@ function InteractiveSandbox({
           </Card>
         )}
 
+        {metaFallback && !offline && (
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="flex items-start gap-3 p-4 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-amber-300">Metadata partially unavailable</div>
+                <div className="mt-1 text-xs text-foreground/80">
+                  Backend metadata endpoints returned empty results. Champion / item / rune
+                  selectors may be missing entries.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/40 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Activity className="h-3.5 w-3.5" />
+            <span>Developer mode</span>
+            <span className="text-[10px] text-muted-foreground/70">— raw request / response</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDevMode((v) => !v)}
+            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold transition-colors ${
+              devMode
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+            }`}
+          >
+            {devMode ? "ON" : "OFF"}
+          </button>
+        </div>
+
         {error && (
           <Card className="border-destructive/50 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
@@ -1842,16 +1973,46 @@ function InteractiveSandbox({
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-destructive">Action failed</div>
                 <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                {lastEndpoint && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Endpoint: <span className="font-mono">{lastEndpoint}</span>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {lastAction && (
+                    <Button size="sm" variant="outline" onClick={retryLast} disabled={!!busy}>
+                      <RotateCcw className="h-3.5 w-3.5" /> Retry
+                    </Button>
+                  )}
+                  {devMode && lastRequest && (
+                    <Button size="sm" variant="outline" onClick={() => copyJson(lastRequest, "Last request")}>
+                      <Copy className="h-3.5 w-3.5" /> Copy request
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        <TargetsPanel scopes={scopes} />
+        <TargetsPanel scopes={scopes} state={state} />
 
         <RuntimeStatePanel state={state} />
 
         <SandboxTimeline events={events} containerRef={timelineRef} />
+
+        {devMode && (
+          <DeveloperPanel
+            endpoint={lastEndpoint}
+            request={lastRequest}
+            response={lastResponse}
+            state={state}
+            onCopyRequest={() => copyJson(lastRequest, "Last request")}
+            onCopyResponse={() => copyJson(lastResponse, "Last response")}
+            onCopyState={() => copyJson(state, "Current state")}
+            onCopyReport={copyDebugReport}
+          />
+        )}
 
         <FuturePanels />
 
