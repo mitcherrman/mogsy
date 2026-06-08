@@ -666,6 +666,7 @@ export default function CombatLabDiagnostics() {
                   ok: r.ok,
                   total_duration_ms: Math.round(r.durationMs),
                   step_count: r.steps.length,
+                  stack_warnings: r.stackWarnings,
                   steps: r.steps.map((s) => ({
                     note: s.note,
                     path: s.path,
@@ -676,6 +677,8 @@ export default function CombatLabDiagnostics() {
                     event_count: s.eventCount,
                     target_hp_keys: s.targetHpKeys,
                     remaining_by_scope: s.remainingByScope,
+                    stack_snapshot: s.stackSnapshot,
+                    stack_warnings: s.stackWarnings,
                     request: s.payload,
                     response: s.result.data,
                   })),
