@@ -2441,16 +2441,57 @@ function SandboxTimeline({
   events: TimelineEvent[];
   containerRef: React.RefObject<HTMLDivElement>;
 }) {
+  type Filter = "all" | "damage" | "champion" | "item" | "rune" | "state";
+  const [filter, setFilter] = useState<Filter>("all");
+  const classify = (e: TimelineEvent): Filter[] => {
+    const tags: Filter[] = [];
+    if (typeof getEventDamage(e) === "number" && (getEventDamage(e) as number) > 0) tags.push("damage");
+    const src = (e.source || (e as any).type || "").toString().toLowerCase();
+    const name = getEventLabel(e).toLowerCase();
+    if (/rune|electrocute|conqueror|press_the_attack|lethal/.test(src + " " + name)) tags.push("rune");
+    if (/item|guinsoo|runaan|kraken|botrk|bork|ie|infinity|shadowflame|lichbane/.test(src + " " + name)) tags.push("item");
+    if (/champion|q_cast|w_cast|e_cast|r_cast|silver_bolts|plasma|blight|rend|moonsilver|double_strike/.test(src + " " + name)) tags.push("champion");
+    if (/state|stack|charge|proc/.test(name)) tags.push("state");
+    return tags;
+  };
+  const filtered = filter === "all" ? events : events.filter((e) => classify(e).includes(filter));
+  const filters: { id: Filter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "damage", label: "Damage" },
+    { id: "champion", label: "Champion" },
+    { id: "item", label: "Item" },
+    { id: "rune", label: "Rune" },
+    { id: "state", label: "State" },
+  ];
   return (
     <SectionCard
       title="Combat Timeline"
       icon={Timer}
       right={
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {events.length} events
+          {filtered.length}/{events.length} events
         </span>
       }
     >
+      {events.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <Filter className="h-3 w-3 text-muted-foreground" />
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition ${
+                filter === f.id
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
       {events.length === 0 ? (
         <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-8 text-center text-xs text-muted-foreground">
           No combat yet — press Basic Attack or an active to begin.
@@ -2461,7 +2502,7 @@ function SandboxTimeline({
           className="max-h-[460px] overflow-y-auto pr-1"
         >
           <ol className="relative space-y-2 border-l border-border/60 pl-4">
-            {events.map((e, i) => {
+            {filtered.map((e, i) => {
               const t = getEventTime(e);
               const name = getEventLabel(e);
               const dmg = getEventDamage(e);
