@@ -68,6 +68,7 @@ export const Routes = {
   AdminBlog: lazyWithRetry(() => import("@/pages/admin/AdminBlog")),
   AdminBlogEditor: lazyWithRetry(() => import("@/pages/admin/AdminBlogEditor")),
   CombatLab: lazyWithRetry(() => import("@/pages/CombatLab")),
+  CombatLabDiagnostics: lazyWithRetry(() => import("@/pages/CombatLabDiagnostics")),
   LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
 } as const;
