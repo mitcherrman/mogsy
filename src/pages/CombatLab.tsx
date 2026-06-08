@@ -2070,7 +2070,9 @@ function InteractiveSandbox({
 
         <TargetsPanel scopes={scopes} state={state} />
 
-        <RuntimeStatePanel state={state} />
+        <RuntimeStatePanel state={state} changedKeys={changedKeys} />
+
+        <DamageBreakdownPanel events={events} />
 
         <CombatHeader events={events} state={state} />
 
@@ -2088,8 +2090,6 @@ function InteractiveSandbox({
             onCopyReport={copyDebugReport}
           />
         )}
-
-        <FuturePanels />
 
         {state && (
           <FinalStatePanel state={state as Record<string, unknown>} />
