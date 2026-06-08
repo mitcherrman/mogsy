@@ -1830,6 +1830,12 @@ function InteractiveSandbox({
               loading={metaLoading}
               withIcons
             />
+            <SummonerPicker
+              options={summoners}
+              values={summonerPicks}
+              onChange={setSummonerPicks}
+              loading={metaLoading}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
