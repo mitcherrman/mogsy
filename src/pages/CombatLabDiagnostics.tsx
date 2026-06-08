@@ -27,7 +27,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
-import { COMBAT_API_BASE_URL } from "@/lib/combat-lab/api";
+import {
+  COMBAT_API_BASE_URL,
+  DEFAULT_ATTACKER_STATS,
+  DEFAULT_TARGET_STATS,
+} from "@/lib/combat-lab/api";
 
 /* ─────────────── helpers ─────────────── */
 
@@ -256,84 +260,139 @@ const META_ENDPOINTS = [
 type InteractiveTest = {
   id: string;
   label: string;
-  path: string;
-  body: Record<string, unknown>;
+  /** Sequential steps. Each step receives the prior step's response state. */
+  steps: Array<{
+    path: string;
+    /** Build body given the running state from the previous step. */
+    build: (state: Record<string, unknown>) => Record<string, unknown>;
+    note?: string;
+  }>;
 };
 
-const baseConfig = {
-  items: [] as string[],
-  runes: [] as string[],
-  target_profile: "Tank",
-  stats: { LEVEL: 18 },
-  ad: 100,
-  attack_speed: 1.5,
-  crit_mode: "expected" as const,
-};
+const BASIC_ATTACK_PATH = "/api/combat-lab/basic-attack";
+const ACTIVE_PATH = "/api/combat-lab/active";
+
+function basicAttackBody(
+  champion_name: string,
+  item_names: string[],
+  state: Record<string, unknown>,
+  current_time = 0
+) {
+  return {
+    champion_name,
+    item_names,
+    rune_names: [] as string[],
+    attacker_stats: DEFAULT_ATTACKER_STATS,
+    target_stats: DEFAULT_TARGET_STATS,
+    state: state ?? {},
+    current_time,
+  };
+}
+
+function activeBody(
+  champion_name: string,
+  active_name: string,
+  state: Record<string, unknown>,
+  target_scope = "PRIMARY"
+) {
+  return {
+    champion_name,
+    attacker_stats: DEFAULT_ATTACKER_STATS,
+    target_stats: DEFAULT_TARGET_STATS,
+    state: state ?? {},
+    active_name,
+    target_scope,
+    piercing_arrow_charge_bonus_percent: 0,
+  };
+}
+
+function repeatBasic(
+  champion_name: string,
+  item_names: string[],
+  times: number
+) {
+  return Array.from({ length: times }, (_, i) => ({
+    path: BASIC_ATTACK_PATH,
+    note: `Basic Attack #${i + 1}`,
+    build: (state: Record<string, unknown>) =>
+      basicAttackBody(champion_name, item_names, state, i),
+  }));
+}
 
 const INTERACTIVE_TESTS: InteractiveTest[] = [
   {
     id: "basic",
-    label: "Basic Attack",
-    path: "/api/combat-lab/basic-attack",
-    body: { champion: "Ashe", ...baseConfig, state: null },
+    label: "Basic Attack (Ashe)",
+    steps: [
+      {
+        path: BASIC_ATTACK_PATH,
+        note: "Single basic attack",
+        build: (state) => basicAttackBody("Ashe", [], state, 0),
+      },
+    ],
   },
   {
     id: "vayne",
-    label: "Vayne + Guinsoo",
-    path: "/api/combat-lab/basic-attack",
-    body: {
-      champion: "Vayne",
-      ...baseConfig,
-      items: ["Guinsoo's Rageblade"],
-      state: null,
-    },
+    label: "Vayne + Guinsoo (×3)",
+    steps: repeatBasic("Vayne", ["Guinsoo's Rageblade"], 3),
   },
   {
     id: "kaisa",
-    label: "Kai'Sa + Guinsoo",
-    path: "/api/combat-lab/basic-attack",
-    body: {
-      champion: "Kai'Sa",
-      ...baseConfig,
-      items: ["Guinsoo's Rageblade"],
-      state: null,
-    },
+    label: "Kai'Sa + Guinsoo (×5)",
+    steps: repeatBasic("Kai'Sa", ["Guinsoo's Rageblade"], 5),
   },
   {
     id: "varus",
-    label: "Varus + Runaan's",
-    path: "/api/combat-lab/basic-attack",
-    body: {
-      champion: "Varus",
-      ...baseConfig,
-      items: ["Runaan's Hurricane"],
-      state: null,
-    },
+    label: "Varus + Runaan (×3)",
+    steps: repeatBasic("Varus", ["Runaan's Hurricane"], 3),
   },
   {
     id: "kalista",
     label: "Kalista + Runaan + Rend",
-    path: "/api/combat-lab/active",
-    body: {
-      champion: "Kalista",
-      ...baseConfig,
-      items: ["Runaan's Hurricane"],
-      action_id: "rend",
-      state: null,
-    },
+    steps: [
+      ...repeatBasic("Kalista", ["Runaan's Hurricane"], 3),
+      {
+        path: ACTIVE_PATH,
+        note: "Rend → PRIMARY",
+        build: (state) => activeBody("Kalista", "kalista_rend", state, "PRIMARY"),
+      },
+      {
+        path: ACTIVE_PATH,
+        note: "Rend → RUNAANS_BOLT_1",
+        build: (state) =>
+          activeBody("Kalista", "kalista_rend", state, "RUNAANS_BOLT_1"),
+      },
+      {
+        path: ACTIVE_PATH,
+        note: "Rend → RUNAANS_BOLT_2",
+        build: (state) =>
+          activeBody("Kalista", "kalista_rend", state, "RUNAANS_BOLT_2"),
+      },
+    ],
   },
   {
     id: "yi",
-    label: "Master Yi + Guinsoo",
-    path: "/api/combat-lab/basic-attack",
-    body: {
-      champion: "Master Yi",
-      ...baseConfig,
-      items: ["Guinsoo's Rageblade"],
-      state: null,
-    },
+    label: "Master Yi + Guinsoo (×4)",
+    steps: repeatBasic("Master Yi", ["Guinsoo's Rageblade"], 4),
   },
 ];
+
+type ScenarioStepResult = {
+  note?: string;
+  path: string;
+  payload: Record<string, unknown>;
+  result: FetchResult;
+  state: Record<string, unknown>;
+  eventCount: number;
+  remainingByScope?: Record<string, unknown>;
+  targetHpKeys: string[];
+};
+
+type ScenarioResult = {
+  ok: boolean;
+  durationMs: number;
+  steps: ScenarioStepResult[];
+};
 
 /* ─────────────── page ─────────────── */
 
@@ -362,7 +421,7 @@ export default function CombatLabDiagnostics() {
   const [metaLoading, setMetaLoading] = useState(false);
 
   const [interactive, setInteractive] = useState<
-    Record<string, FetchResult | undefined>
+    Record<string, ScenarioResult | undefined>
   >({});
   const [interactiveLoading, setInteractiveLoading] = useState<string | null>(
     null
@@ -412,21 +471,72 @@ export default function CombatLabDiagnostics() {
 
   const runInteractive = async (t: InteractiveTest) => {
     setInteractiveLoading(t.id);
-    const res = await timedFetch(t.path, {
-      method: "POST",
-      body: JSON.stringify(t.body),
-    });
-    setInteractive((s) => ({ ...s, [t.id]: res }));
-    recordCall({
-      url: res.url,
-      method: "POST",
-      payload: t.body,
-      response: res.data,
-      error: res.error,
-      status: res.status,
-      durationMs: res.durationMs,
-      at: new Date().toISOString(),
-    });
+    const stepResults: ScenarioStepResult[] = [];
+    let runningState: Record<string, unknown> = {};
+    let allOk = true;
+    let totalMs = 0;
+    let lastPayload: Record<string, unknown> | undefined;
+    let lastResult: FetchResult | undefined;
+
+    for (const step of t.steps) {
+      const payload = step.build(runningState);
+      const res = await timedFetch(step.path, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      totalMs += res.durationMs;
+      lastPayload = payload;
+      lastResult = res;
+
+      const data = res.data as any;
+      const nextState =
+        data && typeof data === "object" && data.state && typeof data.state === "object"
+          ? (data.state as Record<string, unknown>)
+          : runningState;
+      const events = Array.isArray(data?.events) ? data.events : [];
+      const remaining =
+        data?.remaining_by_scope && typeof data.remaining_by_scope === "object"
+          ? data.remaining_by_scope
+          : undefined;
+      const targetHpKeys = remaining ? Object.keys(remaining) : [];
+
+      const stepOk = res.ok && (data?.ok === undefined || data?.ok === true);
+      if (!stepOk) allOk = false;
+
+      stepResults.push({
+        note: step.note,
+        path: step.path,
+        payload,
+        result: res,
+        state: nextState,
+        eventCount: events.length,
+        remainingByScope: remaining,
+        targetHpKeys,
+      });
+
+      runningState = nextState;
+      if (!stepOk) break;
+    }
+
+    const scenario: ScenarioResult = {
+      ok: allOk,
+      durationMs: totalMs,
+      steps: stepResults,
+    };
+    setInteractive((s) => ({ ...s, [t.id]: scenario }));
+
+    if (lastResult) {
+      recordCall({
+        url: lastResult.url,
+        method: "POST",
+        payload: lastPayload,
+        response: lastResult.data,
+        error: lastResult.error,
+        status: lastResult.status,
+        durationMs: lastResult.durationMs,
+        at: new Date().toISOString(),
+      });
+    }
     setInteractiveLoading(null);
   };
 
@@ -485,11 +595,21 @@ export default function CombatLabDiagnostics() {
             r
               ? {
                   ok: r.ok,
-                  status: r.status,
-                  url: r.url,
-                  duration_ms: Math.round(r.durationMs),
-                  error: r.error,
-                  sample: r.data,
+                  total_duration_ms: Math.round(r.durationMs),
+                  step_count: r.steps.length,
+                  steps: r.steps.map((s) => ({
+                    note: s.note,
+                    path: s.path,
+                    status: s.result.status,
+                    duration_ms: Math.round(s.result.durationMs),
+                    ok: s.result.ok,
+                    error: s.result.error,
+                    event_count: s.eventCount,
+                    target_hp_keys: s.targetHpKeys,
+                    remaining_by_scope: s.remainingByScope,
+                    request: s.payload,
+                    response: s.result.data,
+                  })),
                 }
               : null,
           ];
@@ -708,6 +828,10 @@ export default function CombatLabDiagnostics() {
                 : r.ok
                 ? "ok"
                 : "fail";
+              const lastStep = r?.steps[r.steps.length - 1];
+              const lastErr = lastStep?.result.error;
+              const totalEvents = r?.steps.reduce((a, s) => a + s.eventCount, 0) ?? 0;
+              const scopeKeys = lastStep?.targetHpKeys ?? [];
               return (
                 <button
                   key={t.id}
@@ -720,16 +844,22 @@ export default function CombatLabDiagnostics() {
                     <StatusPill state={state} />
                   </div>
                   <span className="truncate font-mono text-[10px] text-muted-foreground">
-                    POST {t.path}
+                    {t.steps.length} step{t.steps.length === 1 ? "" : "s"} · POST{" "}
+                    {t.steps[0]?.path}
                   </span>
                   {r?.durationMs !== undefined && (
                     <span className="text-[10px] text-muted-foreground">
-                      {Math.round(r.durationMs)}ms
-                      {r.status ? ` · ${r.status}` : ""}
+                      {Math.round(r.durationMs)}ms · {r.steps.length}/{t.steps.length} steps
+                      {totalEvents ? ` · ${totalEvents} events` : ""}
                     </span>
                   )}
-                  {r?.error && (
-                    <span className="text-[10px] text-rose-300">{r.error}</span>
+                  {scopeKeys.length > 0 && (
+                    <span className="text-[10px] text-emerald-300/80">
+                      scopes: {scopeKeys.join(", ")}
+                    </span>
+                  )}
+                  {lastErr && (
+                    <span className="text-[10px] text-rose-300">{lastErr}</span>
                   )}
                 </button>
               );

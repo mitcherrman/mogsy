@@ -59,8 +59,11 @@ import {
   type CritMode,
   type CombatAction,
   type SandboxStepResponse,
-  type SandboxBaseConfig,
   type TargetScopeInfo,
+  DEFAULT_ATTACKER_STATS,
+  DEFAULT_TARGET_STATS,
+  type CombatLabBasicAttackRequest,
+  type CombatLabActiveRequest,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -1505,19 +1508,20 @@ type SandboxProps = {
   apiStatus: ApiStatus;
 };
 
-function toBase(config: SimulateRequest): SandboxBaseConfig {
-  return {
-    champion: config.champion,
-    items: config.items,
-    runes: config.runes,
-    target_profile: config.target_profile,
-    stats: config.stats,
-    ranks: config.ranks,
-    branches: config.branches,
-    ad: config.ad,
-    attack_speed: config.attack_speed,
-    crit_mode: config.crit_mode,
-  };
+function buildAttackerStats(config: SimulateRequest): Record<string, number> {
+  const merged: Record<string, number> = { ...DEFAULT_ATTACKER_STATS };
+  if (typeof config.ad === "number") merged.AD = config.ad;
+  if (config.stats) {
+    for (const [k, v] of Object.entries(config.stats)) {
+      if (typeof v === "number") merged[k.toUpperCase().replace(/\s+/g, "_")] = v;
+    }
+  }
+  if (config.ranks) {
+    for (const [k, v] of Object.entries(config.ranks)) {
+      if (typeof v === "number") merged[`${k.toUpperCase()}_RANK`] = v;
+    }
+  }
+  return merged;
 }
 
 function InteractiveSandbox({
@@ -1619,11 +1623,29 @@ function InteractiveSandbox({
     setError(null);
     setBusy(action_id || kind);
     try {
-      const payload = { ...toBase(config), state: state ?? undefined, action_id };
+      const attacker_stats = buildAttackerStats(config);
+      const target_stats = { ...DEFAULT_TARGET_STATS };
+      const safeState = state ?? {};
       const res =
         kind === "basic-attack"
-          ? await combatApi.basicAttack(payload)
-          : await combatApi.active(payload);
+          ? await combatApi.basicAttack({
+              champion_name: config.champion,
+              item_names: config.items,
+              rune_names: config.runes,
+              attacker_stats,
+              target_stats,
+              state: safeState,
+              current_time: 0,
+            } as CombatLabBasicAttackRequest)
+          : await combatApi.active({
+              champion_name: config.champion,
+              attacker_stats,
+              target_stats,
+              state: safeState,
+              active_name: action_id || "",
+              target_scope: "PRIMARY",
+              piercing_arrow_charge_bonus_percent: 0,
+            } as CombatLabActiveRequest);
       applyResponse(res);
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);

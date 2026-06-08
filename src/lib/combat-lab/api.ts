@@ -100,22 +100,44 @@ export type SandboxStepResponse = {
   [k: string]: unknown;
 };
 
-export type SandboxBaseConfig = {
-  champion: string;
-  items: string[];
-  runes: string[];
-  target_profile: string;
-  stats?: Record<string, number>;
-  ranks?: Record<string, number>;
-  branches?: Record<string, string>;
-  ad?: number;
-  attack_speed?: number;
-  crit_mode?: CritMode;
+/** Backend-aligned request shapes. */
+export type CombatLabBasicAttackRequest = {
+  champion_name: string;
+  item_names: string[];
+  rune_names: string[];
+  attacker_stats: Record<string, number>;
+  target_stats: Record<string, number>;
+  state: Record<string, unknown>;
+  current_time: number;
 };
 
-export type SandboxRequest = SandboxBaseConfig & {
-  state?: Record<string, unknown> | null;
-  action_id?: string;
+export type CombatLabActiveRequest = {
+  champion_name: string;
+  attacker_stats: Record<string, number>;
+  target_stats: Record<string, number>;
+  state: Record<string, unknown>;
+  active_name: string;
+  target_scope: string;
+  piercing_arrow_charge_bonus_percent: number;
+};
+
+export type CombatLabInteractiveResponse = SandboxStepResponse;
+
+/** Default diagnostic stat shapes. */
+export const DEFAULT_ATTACKER_STATS: Record<string, number> = {
+  LEVEL: 18,
+  AD: 100,
+  AP: 300,
+  BONUS_AD: 100,
+  W_RANK: 5,
+  E_RANK: 5,
+  ATTACK_SPEED_RATIO: 0.658,
+};
+
+export const DEFAULT_TARGET_STATS: Record<string, number> = {
+  HP: 4000,
+  ARMOR: 0,
+  MR: 0,
 };
 
 /** Throws if the simulate response is malformed. */
@@ -252,13 +274,13 @@ export const combatApi = {
       })
       .filter(Boolean) as CombatAction[];
   },
-  basicAttack: (payload: SandboxRequest) =>
-    request<SandboxStepResponse>("/api/combat-lab/basic-attack", {
+  basicAttack: (payload: CombatLabBasicAttackRequest) =>
+    request<CombatLabInteractiveResponse>("/api/combat-lab/basic-attack", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  active: (payload: SandboxRequest) =>
-    request<SandboxStepResponse>("/api/combat-lab/active", {
+  active: (payload: CombatLabActiveRequest) =>
+    request<CombatLabInteractiveResponse>("/api/combat-lab/active", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
