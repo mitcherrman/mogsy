@@ -699,6 +699,17 @@ export default function CombatLab() {
         </Link>
       </div>
 
+      <MetadataAuditPanel
+        loading={metaLoading}
+        apiStatus={apiStatus}
+        champions={champions}
+        items={items}
+        runes={runes}
+        targets={targets}
+        summoners={summoners}
+        actions={actionsMeta}
+      />
+
       <Tabs defaultValue="rotation" className="w-full">
         <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
           <TabsTrigger
