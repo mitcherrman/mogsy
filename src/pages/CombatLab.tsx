@@ -2211,18 +2211,53 @@ function TargetCard({
 /* ─────────────── Runtime State ─────────────── */
 
 function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null }) {
-  const entries = useMemo(() => extractRuntimeStateEntries(state), [state]);
+  const [query, setQuery] = useState("");
+  const all = useMemo(() => extractRuntimeStateEntries(state), [state]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      (e) => e.key.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)
+    );
+  }, [all, query]);
   return (
-    <SectionCard title="Runtime State" icon={Layers}>
-      {!state || entries.length === 0 ? (
+    <SectionCard
+      title="Runtime State"
+      icon={Layers}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {all.length} keys
+        </span>
+      }
+    >
+      {!state ? (
         <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
-          {state ? "No active stacks." : "Perform an action to start tracking state."}
+          Perform an action to start tracking state.
         </div>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {entries.map((e) => (
-            <StateCard key={e.key} entry={e} />
-          ))}
+        <div className="space-y-3">
+          {all.length > 6 && (
+            <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-2">
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter state keys…"
+                className="h-8 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
+          {filtered.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+              No matches.
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((e) => (
+                <StateCard key={e.key} entry={e} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </SectionCard>
@@ -2247,46 +2282,63 @@ function humanizeKey(k: string) {
     .replace(/\bYi\b/i, "Yi");
 }
 
+const RUNTIME_SKIP_TOP = new Set([
+  "timeline",
+  "events",
+  "remaining_by_scope",
+  "attacker_stats",
+  "config",
+  "scopes",
+]);
+
 function extractRuntimeStateEntries(
   state: Record<string, unknown> | null
 ): RuntimeEntry[] {
   if (!state) return [];
   const out: RuntimeEntry[] = [];
-  const visit = (obj: unknown, prefix = "") => {
-    if (!obj || typeof obj !== "object") return;
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      const key = prefix ? `${prefix}.${k}` : k;
-      const lk = k.toLowerCase();
-      // skip non-runtime sections
-      if (prefix === "" && ["timeline", "events", "remaining_by_scope", "attacker_stats", "config", "scopes"].includes(lk)) {
-        continue;
-      }
-      if (typeof v === "number") {
-        if (
-          lk.includes("stack") ||
-          lk.includes("count") ||
-          lk.includes("counter") ||
-          lk.includes("charges") ||
-          lk.includes("rend") ||
-          lk.includes("blight") ||
-          lk.includes("plasma") ||
-          lk.includes("bolts") ||
-          lk.includes("phantom") ||
-          lk.endsWith("_value") ||
-          prefix.length > 0
-        ) {
-          out.push({ key, label: humanizeKey(key), value: v });
-        }
-      } else if (typeof v === "string") {
-        if (prefix.length > 0) out.push({ key, label: humanizeKey(key), value: v });
-      } else if (v && typeof v === "object" && !Array.isArray(v)) {
-        // recurse one level only
-        if (!prefix) visit(v, k);
-      }
+  // Prefer state.states if present (canonical backend shape).
+  const statesObj =
+    (state as any).states && typeof (state as any).states === "object"
+      ? ((state as any).states as Record<string, unknown>)
+      : null;
+  const pushLeaf = (key: string, v: unknown) => {
+    if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
+      out.push({
+        key,
+        label: humanizeKey(key),
+        value: typeof v === "boolean" ? (v ? "yes" : "no") : (v as number | string),
+      });
     }
   };
-  visit(state);
-  return out.slice(0, 18);
+  if (statesObj) {
+    for (const [k, v] of Object.entries(statesObj)) pushLeaf(k, v);
+  } else {
+    const visit = (obj: unknown, prefix = "") => {
+      if (!obj || typeof obj !== "object") return;
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (prefix === "" && RUNTIME_SKIP_TOP.has(k.toLowerCase())) continue;
+        if (v && typeof v === "object" && !Array.isArray(v)) {
+          visit(v, key);
+        } else {
+          pushLeaf(key, v);
+        }
+      }
+    };
+    visit(state);
+  }
+  // Sort: important patterns first.
+  const importance = (k: string) => {
+    const u = k.toUpperCase();
+    if (/SILVER_BOLTS|KAISA_PLASMA|VARUS_BLIGHT|KALISTA_REND|DIANA_MOONSILVER|MASTERYI_DOUBLE_STRIKE|GUINSOO|RUNAANS_BOLT/.test(u)) return 0;
+    if (/STACK|COUNT|CHARGES|READY|PHANTOM/.test(u)) return 1;
+    return 2;
+  };
+  out.sort((a, b) => {
+    const d = importance(a.key) - importance(b.key);
+    return d !== 0 ? d : a.key.localeCompare(b.key);
+  });
+  return out;
 }
 
 function StateCard({ entry }: { entry: RuntimeEntry }) {
