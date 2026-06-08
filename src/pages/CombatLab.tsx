@@ -2548,6 +2548,84 @@ function extractEventMetadata(e: TimelineEvent): { key: string; value: string }[
 /* ─────────────── Future chart placeholders ─────────────── */
 
 function FuturePanels() {
+  // unchanged
+  return <FuturePanelsInner />;
+}
+
+function DeveloperPanel({
+  endpoint,
+  request,
+  response,
+  state,
+  onCopyRequest,
+  onCopyResponse,
+  onCopyState,
+  onCopyReport,
+}: {
+  endpoint: string;
+  request: unknown;
+  response: unknown;
+  state: Record<string, unknown> | null;
+  onCopyRequest: () => void;
+  onCopyResponse: () => void;
+  onCopyState: () => void;
+  onCopyReport: () => void;
+}) {
+  return (
+    <SectionCard
+      title="Developer Mode"
+      icon={Activity}
+      right={
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={onCopyReport}>
+            <Copy className="h-3 w-3" /> Debug report
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {endpoint && (
+          <div className="text-[11px] text-muted-foreground">
+            Last endpoint: <span className="font-mono text-foreground/90">{endpoint}</span>
+          </div>
+        )}
+        <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
+        <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+        <DevJsonBlock label="Current State" data={state} onCopy={onCopyState} />
+      </div>
+    </SectionCard>
+  );
+}
+
+function DevJsonBlock({
+  label,
+  data,
+  onCopy,
+}: {
+  label: string;
+  data: unknown;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/50">
+      <div className="flex items-center justify-between border-b border-border/50 px-2.5 py-1.5">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          <Copy className="h-3 w-3" /> Copy
+        </button>
+      </div>
+      <pre className="max-h-64 overflow-auto px-2.5 py-2 text-[10px] leading-snug text-foreground/90">
+        {data == null ? "—" : JSON.stringify(data, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function FuturePanelsInner() {
   const slots = [
     { label: "Damage Breakdown", icon: BarChart3 },
     { label: "Damage Sources", icon: PieChart },
