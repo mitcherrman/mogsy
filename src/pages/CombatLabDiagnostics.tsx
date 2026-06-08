@@ -512,7 +512,7 @@ export default function CombatLabDiagnostics() {
       response: Object.fromEntries(
         Object.entries(next).map(([k, v]) => [
           k,
-          { ok: v.ok, status: v.status, count: countOf(v.data) },
+          { ok: v.ok, status: v.status, count: countOf(v.data, k) },
         ])
       ),
       at: new Date().toISOString(),
@@ -672,7 +672,7 @@ export default function CombatLabDiagnostics() {
                   status: r.status,
                   url: r.url,
                   duration_ms: Math.round(r.durationMs),
-                  count: countOf(r.data),
+                  count: countOf(r.data, ep.key),
                   error: r.error,
                 }
               : null,
@@ -882,7 +882,7 @@ export default function CombatLabDiagnostics() {
                 : r.ok
                 ? "ok"
                 : "fail";
-              const count = r?.ok ? countOf(r.data) : null;
+              const count = r?.ok ? countOf(r.data, ep.key) : null;
               return (
                 <motion.div
                   key={ep.key}
