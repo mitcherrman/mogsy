@@ -2829,3 +2829,123 @@ function MetadataAuditPanel({
     </Card>
   );
 }
+
+/* ─────────────── Summoner picker (Phase 2) ─────────────── */
+
+function SummonerPicker({
+  options,
+  values,
+  onChange,
+  loading,
+}: {
+  options: Summoner[];
+  values: string[];
+  onChange: (v: string[]) => void;
+  loading: boolean;
+}) {
+  const toggle = (name: string) => {
+    if (values.includes(name)) {
+      onChange(values.filter((v) => v !== name));
+    } else if (values.length < 2) {
+      onChange([...values, name]);
+    } else {
+      onChange([values[1], name]);
+    }
+  };
+  return (
+    <div>
+      <Label className="mb-1.5 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+        <Wand2 className="h-3 w-3" />
+        Summoner spells (max 2)
+      </Label>
+      {loading ? (
+        <Skeleton className="h-8 w-full" />
+      ) : options.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-3 py-2 text-[11px] text-muted-foreground">
+          No summoner metadata returned.
+        </div>
+      ) : (
+        <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-border/50 bg-background/40 p-2">
+          {options.map((s) => {
+            const active = values.includes(s.name);
+            return (
+              <button
+                key={s.name}
+                type="button"
+                onClick={() => toggle(s.name)}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                  active
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {values.length > 0 && (
+        <div className="mt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Selected: <span className="text-foreground">{values.join(" · ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────── Combat header (Phase 3) ─────────────── */
+
+function CombatHeader({
+  events,
+  state,
+}: {
+  events: TimelineEvent[];
+  state: Record<string, unknown> | null;
+}) {
+  const lastTime = events.length > 0 ? getEventTime(events[events.length - 1]) : 0;
+  const stateTime = state && typeof (state as any).current_time === "number"
+    ? ((state as any).current_time as number)
+    : (state as any)?.states && typeof (state as any).states.CURRENT_TIME === "number"
+    ? ((state as any).states.CURRENT_TIME as number)
+    : null;
+  const totalDamage = events.reduce((a, e) => {
+    const d = getEventDamage(e);
+    return typeof d === "number" && d > 0 ? a + d : a;
+  }, 0);
+  const stats: { label: string; value: string; icon: React.ElementType }[] = [
+    { label: "Combat Time", value: `${(stateTime ?? lastTime).toFixed(2)}s`, icon: Timer },
+    { label: "Events", value: String(events.length), icon: Activity },
+    { label: "Damage", value: totalDamage.toFixed(1), icon: Flame },
+    {
+      label: "State Keys",
+      value: state
+        ? String(
+            ((state as any).states && typeof (state as any).states === "object"
+              ? Object.keys((state as any).states)
+              : Object.keys(state)
+            ).length
+          )
+        : "0",
+      icon: Layers,
+    },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="rounded-lg border border-border/60 bg-gradient-to-br from-primary/5 to-transparent px-3 py-2"
+        >
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <s.icon className="h-3 w-3" />
+            {s.label}
+          </div>
+          <div className="mt-0.5 font-mono text-base font-bold tabular-nums text-foreground">
+            {s.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
