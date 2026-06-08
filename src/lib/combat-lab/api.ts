@@ -274,17 +274,56 @@ export const combatApi = {
       })
       .filter(Boolean) as CombatAction[];
   },
-  basicAttack: (payload: CombatLabBasicAttackRequest) =>
-    request<CombatLabInteractiveResponse>("/api/combat-lab/basic-attack", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  active: (payload: CombatLabActiveRequest) =>
-    request<CombatLabInteractiveResponse>("/api/combat-lab/active", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  basicAttack: async (payload: CombatLabBasicAttackRequest) =>
+    unwrapInteractive(
+      await request<any>("/api/combat-lab/basic-attack", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    ),
+  active: async (payload: CombatLabActiveRequest) =>
+    unwrapInteractive(
+      await request<any>("/api/combat-lab/active", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    ),
 };
+
+/**
+ * Normalize Combat Lab interactive responses.
+ * Backend may return either:
+ *   { ok, result: { state, events, remaining_by_scope, ... } }
+ * or a flat shape with state/events at the top.
+ * Throws if ok === false.
+ */
+function unwrapInteractive(raw: any): CombatLabInteractiveResponse {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("Empty response from combat engine");
+  }
+  if (raw.ok === false) {
+    const msg =
+      (typeof raw.error === "string" && raw.error) ||
+      (raw.error && typeof raw.error.message === "string" && raw.error.message) ||
+      "Backend reported ok=false";
+    throw new Error(msg);
+  }
+  const inner = raw.result && typeof raw.result === "object" ? raw.result : raw;
+  return {
+    ok: raw.ok ?? true,
+    state: inner.state ?? {},
+    events: Array.isArray(inner.events) ? inner.events : [],
+    remaining_by_scope:
+      inner.remaining_by_scope && typeof inner.remaining_by_scope === "object"
+        ? inner.remaining_by_scope
+        : {},
+    attacker_stats:
+      inner.attacker_stats && typeof inner.attacker_stats === "object"
+        ? inner.attacker_stats
+        : {},
+    ...inner,
+  };
+}
 
 export const COMBAT_API_BASE_URL = API_BASE_URL;
 
