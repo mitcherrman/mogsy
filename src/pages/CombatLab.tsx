@@ -1789,11 +1789,30 @@ function InteractiveSandbox({
     return Array.from(set);
   }, [scopes]);
 
+  // Track previous runtime state to highlight changed keys after an action.
+  const prevStatesRef = useRef<Record<string, unknown>>({});
+  const currentStates = useMemo(() => {
+    if (!state) return {} as Record<string, unknown>;
+    const s: any = state;
+    return (s.states && typeof s.states === "object" ? s.states : s) as Record<string, unknown>;
+  }, [state]);
+  const changedKeys = useMemo(() => {
+    const out = new Set<string>();
+    const prev = prevStatesRef.current || {};
+    for (const [k, v] of Object.entries(currentStates)) {
+      if (prev[k] !== v) out.add(k);
+    }
+    return out;
+  }, [currentStates]);
+  useEffect(() => {
+    prevStatesRef.current = currentStates;
+  }, [currentStates]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* LEFT: setup + actions */}
       <div className="space-y-6 lg:col-span-1">
-        <SectionCard title="Setup" icon={Swords}>
+        <SectionCard title="Build Configuration" icon={Swords}>
           <div className="space-y-3">
             <SearchSelect
               label="Champion"
@@ -1804,6 +1823,21 @@ function InteractiveSandbox({
               loading={metaLoading}
               withIcons
             />
+            <div>
+              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+                Level
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={18}
+                value={config.stats?.LEVEL ?? 18}
+                onChange={(e) => {
+                  const lvl = Math.max(1, Math.min(18, Number(e.target.value) || 1));
+                  update("stats", { ...(config.stats || {}), LEVEL: lvl });
+                }}
+              />
+            </div>
             <SearchSelect
               label="Target profile"
               placeholder="Select target…"
@@ -1879,6 +1913,13 @@ function InteractiveSandbox({
           </div>
         </SectionCard>
 
+        <LiveStatsPanel
+          config={config}
+          runtimeAttackerStats={attackerStats}
+          runtimeStates={currentStates}
+          changedKeys={changedKeys}
+        />
+
         <SectionCard
           title="Actions"
           icon={Hand}
@@ -1946,21 +1987,6 @@ function InteractiveSandbox({
             ))}
           </div>
         </SectionCard>
-
-        {Object.keys(attackerStats).length > 0 && (
-          <SectionCard title="Attacker stats" icon={Activity}>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(attackerStats).map(([k, v]) => (
-                <div key={k} className="rounded-md border border-border/50 bg-background/40 px-2 py-1.5">
-                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{k}</div>
-                  <div className="font-mono text-sm font-semibold text-foreground">
-                    {typeof v === "number" ? v.toFixed(2).replace(/\.00$/, "") : String(v)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
       </div>
 
       {/* RIGHT: targets, runtime state, timeline */}
