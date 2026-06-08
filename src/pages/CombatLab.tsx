@@ -710,8 +710,10 @@ export default function CombatLab() {
         actions={actionsMeta}
       />
 
-      <Tabs defaultValue="rotation" className="w-full">
-        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
+      <Tabs defaultValue="sandbox" className="w-full">
+        {/* Rotation Simulator hidden in Phase 2A — Interactive Sandbox is the primary experience.
+            Code retained but TabsList omitted so only the Sandbox renders. */}
+        <TabsList className="hidden h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
           <TabsTrigger
             value="rotation"
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
@@ -1787,11 +1789,30 @@ function InteractiveSandbox({
     return Array.from(set);
   }, [scopes]);
 
+  // Track previous runtime state to highlight changed keys after an action.
+  const prevStatesRef = useRef<Record<string, unknown>>({});
+  const currentStates = useMemo(() => {
+    if (!state) return {} as Record<string, unknown>;
+    const s: any = state;
+    return (s.states && typeof s.states === "object" ? s.states : s) as Record<string, unknown>;
+  }, [state]);
+  const changedKeys = useMemo(() => {
+    const out = new Set<string>();
+    const prev = prevStatesRef.current || {};
+    for (const [k, v] of Object.entries(currentStates)) {
+      if (prev[k] !== v) out.add(k);
+    }
+    return out;
+  }, [currentStates]);
+  useEffect(() => {
+    prevStatesRef.current = currentStates;
+  }, [currentStates]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* LEFT: setup + actions */}
       <div className="space-y-6 lg:col-span-1">
-        <SectionCard title="Setup" icon={Swords}>
+        <SectionCard title="Build Configuration" icon={Swords}>
           <div className="space-y-3">
             <SearchSelect
               label="Champion"
@@ -1802,6 +1823,21 @@ function InteractiveSandbox({
               loading={metaLoading}
               withIcons
             />
+            <div>
+              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+                Level
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={18}
+                value={config.stats?.LEVEL ?? 18}
+                onChange={(e) => {
+                  const lvl = Math.max(1, Math.min(18, Number(e.target.value) || 1));
+                  update("stats", { ...(config.stats || {}), LEVEL: lvl });
+                }}
+              />
+            </div>
             <SearchSelect
               label="Target profile"
               placeholder="Select target…"
@@ -1877,6 +1913,13 @@ function InteractiveSandbox({
           </div>
         </SectionCard>
 
+        <LiveStatsPanel
+          config={config}
+          runtimeAttackerStats={attackerStats}
+          runtimeStates={currentStates}
+          changedKeys={changedKeys}
+        />
+
         <SectionCard
           title="Actions"
           icon={Hand}
@@ -1944,21 +1987,6 @@ function InteractiveSandbox({
             ))}
           </div>
         </SectionCard>
-
-        {Object.keys(attackerStats).length > 0 && (
-          <SectionCard title="Attacker stats" icon={Activity}>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(attackerStats).map(([k, v]) => (
-                <div key={k} className="rounded-md border border-border/50 bg-background/40 px-2 py-1.5">
-                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{k}</div>
-                  <div className="font-mono text-sm font-semibold text-foreground">
-                    {typeof v === "number" ? v.toFixed(2).replace(/\.00$/, "") : String(v)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
       </div>
 
       {/* RIGHT: targets, runtime state, timeline */}
@@ -2042,7 +2070,9 @@ function InteractiveSandbox({
 
         <TargetsPanel scopes={scopes} state={state} />
 
-        <RuntimeStatePanel state={state} />
+        <RuntimeStatePanel state={state} changedKeys={changedKeys} />
+
+        <DamageBreakdownPanel events={events} />
 
         <CombatHeader events={events} state={state} />
 
@@ -2060,8 +2090,6 @@ function InteractiveSandbox({
             onCopyReport={copyDebugReport}
           />
         )}
-
-        <FuturePanels />
 
         {state && (
           <FinalStatePanel state={state as Record<string, unknown>} />
@@ -2257,7 +2285,13 @@ function TargetCard({
 
 /* ─────────────── Runtime State ─────────────── */
 
-function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null }) {
+function RuntimeStatePanel({
+  state,
+  changedKeys,
+}: {
+  state: Record<string, unknown> | null;
+  changedKeys?: Set<string>;
+}) {
   const [query, setQuery] = useState("");
   const all = useMemo(() => extractRuntimeStateEntries(state), [state]);
   const filtered = useMemo(() => {
@@ -2267,6 +2301,7 @@ function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null })
       (e) => e.key.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)
     );
   }, [all, query]);
+  const grouped = useMemo(() => groupRuntimeEntries(filtered), [filtered]);
   return (
     <SectionCard
       title="Runtime State"
@@ -2299,9 +2334,25 @@ function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null })
               No matches.
             </div>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((e) => (
-                <StateCard key={e.key} entry={e} />
+            <div className="space-y-4">
+              {grouped.map((g) => (
+                <div key={g.label}>
+                  <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="h-px flex-1 bg-border/60" />
+                    <span className="font-semibold">{g.label}</span>
+                    <span className="text-muted-foreground/70">{g.entries.length}</span>
+                    <span className="h-px flex-1 bg-border/60" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {g.entries.map((e) => (
+                      <StateCard
+                        key={e.key}
+                        entry={e}
+                        changed={changedKeys?.has(e.key)}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -2388,22 +2439,30 @@ function extractRuntimeStateEntries(
   return out;
 }
 
-function StateCard({ entry }: { entry: RuntimeEntry }) {
+function StateCard({ entry, changed }: { entry: RuntimeEntry; changed?: boolean }) {
   const numeric = typeof entry.value === "number";
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="rounded-md border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-2.5"
+      className={`rounded-md border p-2.5 transition-colors ${
+        changed
+          ? "border-primary/60 bg-primary/10 shadow-[0_0_18px_-6px_hsl(var(--primary)/0.6)]"
+          : "border-border/60 bg-gradient-to-br from-primary/5 to-transparent"
+      }`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
           {entry.label}
         </span>
-        {numeric && (
+        {changed ? (
+          <span className="rounded-sm border border-primary/50 px-1 py-px text-[8px] font-bold uppercase tracking-wider text-primary">
+            new
+          </span>
+        ) : numeric ? (
           <Layers className="h-3 w-3 text-primary/70" />
-        )}
+        ) : null}
       </div>
       <div className="mt-1 font-mono text-lg font-bold tabular-nums text-foreground">
         {numeric ? (entry.value as number).toString() : String(entry.value)}
@@ -2947,5 +3006,379 @@ function CombatHeader({
         </div>
       ))}
     </div>
+  );
+}
+
+/* ─────────────── Live Stats (Phase 2A) ─────────────── */
+
+type LiveStatDef = {
+  key: string;        // canonical key (uppercase, underscored)
+  label: string;      // friendly label
+  aliases?: string[]; // alternate keys to look up in stat sources
+  fmt?: "int" | "float" | "pct";
+};
+
+const LIVE_STAT_DEFS: LiveStatDef[] = [
+  { key: "HP", label: "HP", aliases: ["HEALTH", "MAX_HP"], fmt: "int" },
+  { key: "MANA", label: "Mana", aliases: ["MP", "MAX_MANA"], fmt: "int" },
+  { key: "AD", label: "Attack Damage", aliases: ["ATTACK_DAMAGE"], fmt: "int" },
+  { key: "BONUS_AD", label: "Bonus AD", aliases: ["BONUS AD"], fmt: "int" },
+  { key: "AP", label: "Ability Power", aliases: ["ABILITY_POWER"], fmt: "int" },
+  { key: "ATTACK_SPEED", label: "Attack Speed", aliases: ["ATTACK_SPEED_RATIO", "AS"], fmt: "float" },
+  { key: "CRIT_CHANCE", label: "Crit Chance", aliases: ["CRIT", "CRITICAL_STRIKE_CHANCE"], fmt: "pct" },
+  { key: "CRIT_DAMAGE", label: "Crit Damage", aliases: ["CRITICAL_DAMAGE"], fmt: "pct" },
+  { key: "ARMOR", label: "Armor", fmt: "int" },
+  { key: "MR", label: "Magic Resist", aliases: ["MAGIC_RESIST"], fmt: "int" },
+  { key: "ABILITY_HASTE", label: "Ability Haste", aliases: ["AH", "CDR"], fmt: "int" },
+  { key: "MOVE_SPEED", label: "Move Speed", aliases: ["MOVEMENT_SPEED", "MS"], fmt: "int" },
+  { key: "ATTACK_RANGE", label: "Attack Range", aliases: ["RANGE"], fmt: "int" },
+];
+
+function normalizeStatKey(k: string) {
+  return k.toUpperCase().replace(/\s+/g, "_");
+}
+
+function lookupStat(
+  sources: Array<Record<string, unknown> | undefined>,
+  def: LiveStatDef
+): number | null {
+  const candidates = [def.key, ...(def.aliases || [])].map(normalizeStatKey);
+  for (const src of sources) {
+    if (!src) continue;
+    const map: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(src)) map[normalizeStatKey(k)] = v;
+    for (const c of candidates) {
+      const v = map[c];
+      if (typeof v === "number" && !Number.isNaN(v)) return v;
+    }
+  }
+  return null;
+}
+
+function formatStat(v: number | null, fmt?: LiveStatDef["fmt"]): string {
+  if (v == null) return "—";
+  if (fmt === "pct") return `${(v <= 1 ? v * 100 : v).toFixed(1)}%`;
+  if (fmt === "float") return v.toFixed(2).replace(/\.00$/, "");
+  return Math.round(v).toString();
+}
+
+function LiveStatsPanel({
+  config,
+  runtimeAttackerStats,
+  runtimeStates,
+  changedKeys,
+}: {
+  config: SimulateRequest;
+  runtimeAttackerStats: Record<string, number | string>;
+  runtimeStates: Record<string, unknown>;
+  changedKeys: Set<string>;
+}) {
+  const [mode, setMode] = useState<"build" | "runtime">("build");
+
+  const buildSource: Record<string, unknown> = useMemo(() => {
+    const base: Record<string, unknown> = { ...DEFAULT_ATTACKER_STATS };
+    if (typeof config.ad === "number") base.AD = config.ad;
+    if (typeof config.attack_speed === "number") base.ATTACK_SPEED = config.attack_speed;
+    if (config.stats) {
+      for (const [k, v] of Object.entries(config.stats)) {
+        if (typeof v === "number") base[normalizeStatKey(k)] = v;
+      }
+    }
+    // Re-derive whenever items/runes/summoners change so the panel re-renders.
+    base.__BUILD_HASH = JSON.stringify({
+      champ: config.champion,
+      items: config.items,
+      runes: config.runes,
+      crit: config.crit_mode,
+    });
+    return base;
+  }, [config]);
+
+  const sources: Array<Record<string, unknown>> =
+    mode === "build"
+      ? [buildSource]
+      : [
+          runtimeAttackerStats as Record<string, unknown>,
+          runtimeStates,
+          buildSource,
+        ];
+
+  const hasRuntime =
+    Object.keys(runtimeAttackerStats || {}).length > 0 ||
+    Object.keys(runtimeStates || {}).length > 0;
+
+  // Identify runtime buff / temp-modifier keys for the runtime view.
+  const buffEntries = useMemo(() => {
+    if (mode !== "runtime") return [];
+    const out: { key: string; value: string; changed: boolean }[] = [];
+    for (const [k, v] of Object.entries(runtimeStates)) {
+      const u = k.toUpperCase();
+      if (!/BUFF|STACK|CHARGE|CONQUEROR|LETHAL|TEMPO|PROC|RAGEBLADE|EMPOWER|MODIFIER/.test(u))
+        continue;
+      if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
+        out.push({
+          key: humanizeKey(k),
+          value: typeof v === "boolean" ? (v ? "yes" : "no") : String(v),
+          changed: changedKeys.has(k),
+        });
+      }
+    }
+    return out.slice(0, 12);
+  }, [mode, runtimeStates, changedKeys]);
+
+  return (
+    <SectionCard
+      title="Live Stats"
+      icon={Activity}
+      right={
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/40 p-0.5">
+          {(["build", "runtime"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              disabled={m === "runtime" && !hasRuntime}
+              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                mode === m
+                  ? "bg-primary/20 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m === "build" ? "Build" : "Runtime"}
+            </button>
+          ))}
+        </div>
+      }
+    >
+      <div className="grid grid-cols-2 gap-2">
+        {LIVE_STAT_DEFS.map((def) => {
+          const v = lookupStat(sources, def);
+          const isChanged =
+            mode === "runtime" &&
+            [def.key, ...(def.aliases || [])].some((k) =>
+              changedKeys.has(normalizeStatKey(k))
+            );
+          return (
+            <div
+              key={def.key}
+              className={`rounded-md border px-2 py-1.5 transition-colors ${
+                isChanged
+                  ? "border-primary/60 bg-primary/10"
+                  : v == null
+                  ? "border-border/40 bg-background/20 opacity-70"
+                  : "border-border/50 bg-background/40"
+              }`}
+            >
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                {def.label}
+              </div>
+              <div className="font-mono text-sm font-bold tabular-nums text-foreground">
+                {formatStat(v, def.fmt)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {mode === "runtime" && (
+        <div className="mt-3">
+          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Buffs & temporary modifiers
+          </div>
+          {buffEntries.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] text-muted-foreground">
+              No active buffs detected.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {buffEntries.map((b) => (
+                <span
+                  key={b.key}
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    b.changed
+                      ? "border-primary/60 bg-primary/10 text-primary"
+                      : "border-border bg-muted/30 text-foreground/80"
+                  }`}
+                >
+                  {b.key}: <span className="font-mono">{b.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {mode === "build" && (
+        <div className="mt-2 text-[10px] text-muted-foreground">
+          Pre-combat values from your build. Updates instantly as you change
+          champion, level, items, runes, or summoners.
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ─────────────── Runtime state grouping ─────────────── */
+
+type RuntimeGroup = { label: string; entries: RuntimeEntry[] };
+
+function classifyStateKey(key: string): RuntimeGroup["label"] {
+  const u = key.toUpperCase();
+  if (/TARGET|RUNAANS_BOLT/.test(u)) return "Target States";
+  if (/GUINSOO|RUNAAN|KRAKEN|BOTRK|BORK|IE|INFINITY|SHADOWFLAME|LICHBANE|RAGEBLADE|ITEM/.test(u))
+    return "Item States";
+  if (/ELECTROCUTE|CONQUEROR|LETHAL|TEMPO|PRESS_THE_ATTACK|RUNE/.test(u))
+    return "Rune States";
+  if (/CURRENT_TIME|TICK|GLOBAL|SYSTEM/.test(u)) return "System States";
+  return "Champion States";
+}
+
+const GROUP_ORDER = [
+  "Champion States",
+  "Item States",
+  "Rune States",
+  "Target States",
+  "System States",
+];
+
+function groupRuntimeEntries(entries: RuntimeEntry[]): RuntimeGroup[] {
+  const buckets: Record<string, RuntimeEntry[]> = {};
+  for (const e of entries) {
+    const label = classifyStateKey(e.key);
+    (buckets[label] ||= []).push(e);
+  }
+  return GROUP_ORDER.filter((g) => buckets[g]?.length).map((label) => ({
+    label,
+    entries: buckets[label],
+  }));
+}
+
+/* ─────────────── Damage Breakdown (Phase 2A) ─────────────── */
+
+function eventCategory(e: TimelineEvent): "item" | "rune" | "basic" | "champion" {
+  const ctx = ((e.source || "") + " " + getEventLabel(e)).toLowerCase();
+  if (/rune|electrocute|conqueror|press_the_attack|lethal|tempo/.test(ctx)) return "rune";
+  if (/guinsoo|runaan|kraken|botrk|bork|infinity|shadowflame|lichbane|rageblade|item/.test(ctx))
+    return "item";
+  if (/basic|auto|aa|attack(?!_speed)/.test(ctx)) return "basic";
+  return "champion";
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  basic: "Basic Attack",
+  champion: "Champion Damage",
+  item: "Item Damage",
+  rune: "Rune Damage",
+};
+
+function DamageBreakdownPanel({ events }: { events: TimelineEvent[] }) {
+  const damageEvents = events.filter(
+    (e) => typeof getEventDamage(e) === "number" && (getEventDamage(e) as number) > 0
+  );
+  const total = damageEvents.reduce((a, e) => a + (getEventDamage(e) as number), 0);
+
+  const bySource = new Map<string, { cat: string; total: number }>();
+  const byType = new Map<string, number>();
+  for (const e of damageEvents) {
+    const dmg = getEventDamage(e) as number;
+    const label = getEventLabel(e);
+    const cat = eventCategory(e);
+    const existing = bySource.get(label);
+    if (existing) existing.total += dmg;
+    else bySource.set(label, { cat, total: dmg });
+    const t = (e.damage_type || "unknown").toString().toLowerCase();
+    byType.set(t, (byType.get(t) || 0) + dmg);
+  }
+  const sources = Array.from(bySource.entries())
+    .map(([label, v]) => ({ label, cat: v.cat, total: v.total }))
+    .sort((a, b) => b.total - a.total);
+  const types = Array.from(byType.entries())
+    .map(([type, value]) => ({ type, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const typeTone = (t: string) =>
+    t === "physical"
+      ? "border-amber-500/40 text-amber-300 bg-amber-500/10"
+      : t === "magic"
+      ? "border-violet-500/40 text-violet-300 bg-violet-500/10"
+      : t === "true"
+      ? "border-rose-500/40 text-rose-300 bg-rose-500/10"
+      : "border-border bg-muted/30 text-muted-foreground";
+
+  return (
+    <SectionCard
+      title="Damage Breakdown"
+      icon={BarChart3}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {total > 0 ? `${total.toFixed(1)} total` : "no damage yet"}
+        </span>
+      }
+    >
+      {total === 0 ? (
+        <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-3 py-6 text-center text-xs text-muted-foreground">
+          Damage will appear here as actions occur.
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+              By Source
+            </div>
+            <div className="space-y-1.5">
+              {sources.map((s) => {
+                const pct = (s.total / total) * 100;
+                return (
+                  <div
+                    key={s.label}
+                    className="rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-semibold text-foreground">
+                          {s.label}
+                        </span>
+                        <span className="rounded-sm border border-border/60 px-1 py-px text-[9px] uppercase tracking-wider text-muted-foreground">
+                          {CATEGORY_LABELS[s.cat] || s.cat}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-baseline gap-2 font-mono tabular-nums">
+                        <span className="text-foreground">{s.total.toFixed(1)}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={pct} className="mt-1 h-1" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+              By Type
+            </div>
+            <div className="space-y-1.5">
+              {types.map((t) => {
+                const pct = (t.value / total) * 100;
+                return (
+                  <div
+                    key={t.type}
+                    className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs ${typeTone(t.type)}`}
+                  >
+                    <span className="font-bold uppercase tracking-wider">
+                      {t.type}
+                    </span>
+                    <div className="flex items-baseline gap-2 font-mono tabular-nums">
+                      <span>{t.value.toFixed(1)}</span>
+                      <span className="text-[10px] opacity-80">{pct.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </SectionCard>
   );
 }
