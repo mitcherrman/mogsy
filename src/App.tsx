@@ -46,6 +46,7 @@ const BlogPost = R.BlogPost.Component;
 const AdminBlog = R.AdminBlog.Component;
 const AdminBlogEditor = R.AdminBlogEditor.Component;
 const CombatLab = R.CombatLab.Component;
+const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
 const LolHub = R.LolHub.Component;
 const AdminAbout = R.AdminAbout.Component;
 
@@ -120,6 +121,7 @@ const App = () => (
                   <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
+                  <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />

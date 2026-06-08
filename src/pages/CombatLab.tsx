@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Swords,
@@ -673,6 +674,16 @@ export default function CombatLab() {
           </p>
         </div>
         <ApiStatusBadge status={apiStatus} />
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <Link
+          to="/combat-lab/diagnostics"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <Activity className="h-3 w-3" />
+          Diagnostics
+        </Link>
       </div>
 
       <Tabs defaultValue="rotation" className="w-full">
