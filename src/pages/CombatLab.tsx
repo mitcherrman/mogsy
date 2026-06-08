@@ -2675,3 +2675,93 @@ function FuturePanelsInner() {
     </SectionCard>
   );
 }
+
+/* ─────────────── Metadata Audit (Phase 1) ─────────────── */
+
+function MetadataAuditPanel({
+  loading,
+  apiStatus,
+  champions,
+  items,
+  runes,
+  targets,
+  summoners,
+  actions,
+}: {
+  loading: boolean;
+  apiStatus: ApiStatus;
+  champions: Champion[];
+  items: Item[];
+  runes: Rune[];
+  targets: TargetProfile[];
+  summoners: Summoner[];
+  actions: CombatAction[];
+}) {
+  const [open, setOpen] = useState(false);
+  const rows: { label: string; count: number; icon: React.ElementType }[] = [
+    { label: "Champions", count: champions.length, icon: Swords },
+    { label: "Items", count: items.length, icon: Sparkles },
+    { label: "Runes", count: runes.length, icon: Flame },
+    { label: "Summoners", count: summoners.length, icon: Wand2 },
+    { label: "Target Profiles", count: targets.length, icon: TargetIcon },
+    { label: "Actions", count: actions.length, icon: Hand },
+  ];
+  const total = rows.reduce((a, r) => a + r.count, 0);
+  return (
+    <Card className="mb-6 border-border/60 bg-card/40 backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <Database className="h-4 w-4 text-primary" />
+          Metadata Audit
+          <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+            {loading ? "loading…" : apiStatus === "offline" ? "offline" : `${total} entries`}
+          </span>
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 opacity-60" /> : <ChevronDown className="h-4 w-4 opacity-60" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="grid gap-2 px-4 pb-4 sm:grid-cols-3 lg:grid-cols-6">
+              {rows.map((r) => {
+                const empty = !loading && r.count === 0;
+                return (
+                  <div
+                    key={r.label}
+                    className={`rounded-md border px-3 py-2 ${
+                      empty
+                        ? "border-destructive/40 bg-destructive/5"
+                        : "border-border/60 bg-background/40"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <r.icon className="h-3 w-3" />
+                      {r.label}
+                    </div>
+                    <div
+                      className={`mt-0.5 font-mono text-lg font-bold tabular-nums ${
+                        empty ? "text-destructive" : "text-foreground"
+                      }`}
+                    >
+                      {loading ? "…" : r.count}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
+}
