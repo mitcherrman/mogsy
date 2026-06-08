@@ -273,6 +273,29 @@ type InteractiveTest = {
 const BASIC_ATTACK_PATH = "/api/combat-lab/basic-attack";
 const ACTIVE_PATH = "/api/combat-lab/active";
 
+/**
+ * Walks a state object and collects numeric leaf values whose key path looks
+ * like a "stack" counter (bolts, plasma, stacks, charges, blight, rend, etc.).
+ * Used to detect resets between sequential attacks.
+ */
+const STACK_KEY_RE = /(stack|stacks|charge|count|bolt|plasma|rend|blight|mark|fury|seal)/i;
+function collectStackLikeNumbers(
+  obj: unknown,
+  prefix = "",
+  out: Record<string, number> = {}
+): Record<string, number> {
+  if (!obj || typeof obj !== "object") return out;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    const path = prefix ? `${prefix}.${k}` : k;
+    if (typeof v === "number") {
+      if (STACK_KEY_RE.test(k)) out[path] = v;
+    } else if (v && typeof v === "object") {
+      collectStackLikeNumbers(v, path, out);
+    }
+  }
+  return out;
+}
+
 function basicAttackBody(
   champion_name: string,
   item_names: string[],
@@ -387,12 +410,15 @@ type ScenarioStepResult = {
   eventCount: number;
   remainingByScope?: Record<string, unknown>;
   targetHpKeys: string[];
+  stackWarnings: string[];
+  stackSnapshot: Record<string, number>;
 };
 
 type ScenarioResult = {
   ok: boolean;
   durationMs: number;
   steps: ScenarioStepResult[];
+  stackWarnings: string[];
 };
 
 /* ─────────────── page ─────────────── */
@@ -479,6 +505,8 @@ export default function CombatLabDiagnostics() {
     let totalMs = 0;
     let lastPayload: Record<string, unknown> | undefined;
     let lastResult: FetchResult | undefined;
+    let prevStacks: Record<string, number> = {};
+    const scenarioWarnings: string[] = [];
 
     for (const step of t.steps) {
       const payload = step.build(runningState);
@@ -491,19 +519,40 @@ export default function CombatLabDiagnostics() {
       lastResult = res;
 
       const data = res.data as any;
+      // Backend may wrap payload as { ok, result: {...} } or return flat.
+      const inner =
+        data && typeof data === "object" && data.result && typeof data.result === "object"
+          ? data.result
+          : data;
       const nextState =
-        data && typeof data === "object" && data.state && typeof data.state === "object"
-          ? (data.state as Record<string, unknown>)
+        inner && typeof inner === "object" && inner.state && typeof inner.state === "object"
+          ? (inner.state as Record<string, unknown>)
           : runningState;
-      const events = Array.isArray(data?.events) ? data.events : [];
+      const events = Array.isArray(inner?.events) ? inner.events : [];
       const remaining =
-        data?.remaining_by_scope && typeof data.remaining_by_scope === "object"
-          ? data.remaining_by_scope
+        inner?.remaining_by_scope && typeof inner.remaining_by_scope === "object"
+          ? inner.remaining_by_scope
           : undefined;
       const targetHpKeys = remaining ? Object.keys(remaining) : [];
 
       const stepOk = res.ok && (data?.ok === undefined || data?.ok === true);
       if (!stepOk) allOk = false;
+
+      // Stack-reset detection: walk leaf numeric values whose key hints at
+      // stack-like state, and warn if they decreased between attacks.
+      const stackSnapshot = collectStackLikeNumbers(nextState);
+      const stepWarnings: string[] = [];
+      if (Object.keys(prevStacks).length > 0) {
+        for (const [k, v] of Object.entries(stackSnapshot)) {
+          const prev = prevStacks[k];
+          if (typeof prev === "number" && v < prev) {
+            const msg = `Stack reset: ${k} ${prev} → ${v}`;
+            stepWarnings.push(msg);
+            scenarioWarnings.push(`[${step.note ?? step.path}] ${msg}`);
+          }
+        }
+      }
+      prevStacks = stackSnapshot;
 
       stepResults.push({
         note: step.note,
@@ -514,6 +563,8 @@ export default function CombatLabDiagnostics() {
         eventCount: events.length,
         remainingByScope: remaining,
         targetHpKeys,
+        stackWarnings: stepWarnings,
+        stackSnapshot,
       });
 
       runningState = nextState;
@@ -524,6 +575,7 @@ export default function CombatLabDiagnostics() {
       ok: allOk,
       durationMs: totalMs,
       steps: stepResults,
+      stackWarnings: scenarioWarnings,
     };
     setInteractive((s) => ({ ...s, [t.id]: scenario }));
 
@@ -614,6 +666,7 @@ export default function CombatLabDiagnostics() {
                   ok: r.ok,
                   total_duration_ms: Math.round(r.durationMs),
                   step_count: r.steps.length,
+                  stack_warnings: r.stackWarnings,
                   steps: r.steps.map((s) => ({
                     note: s.note,
                     path: s.path,
@@ -624,6 +677,8 @@ export default function CombatLabDiagnostics() {
                     event_count: s.eventCount,
                     target_hp_keys: s.targetHpKeys,
                     remaining_by_scope: s.remainingByScope,
+                    stack_snapshot: s.stackSnapshot,
+                    stack_warnings: s.stackWarnings,
                     request: s.payload,
                     response: s.result.data,
                   })),
@@ -906,6 +961,12 @@ export default function CombatLabDiagnostics() {
                   {scopeKeys.length > 0 && (
                     <span className="text-[10px] text-emerald-300/80">
                       scopes: {scopeKeys.join(", ")}
+                    </span>
+                  )}
+                  {r?.stackWarnings && r.stackWarnings.length > 0 && (
+                    <span className="text-[10px] text-amber-300">
+                      ⚠ {r.stackWarnings.length} stack reset
+                      {r.stackWarnings.length === 1 ? "" : "s"} detected
                     </span>
                   )}
                   {lastErr && (
