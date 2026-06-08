@@ -696,14 +696,20 @@ export default function CombatLab() {
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
           >
             <Zap className="h-4 w-4" />
-            Rotation Simulator
+            <span className="flex flex-col items-start leading-tight">
+              <span>Rotation Simulator</span>
+              <span className="text-[10px] font-normal text-muted-foreground/80">Full combo / DPS / build testing</span>
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="sandbox"
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
           >
             <Crosshair className="h-4 w-4" />
-            Interactive Sandbox
+            <span className="flex flex-col items-start leading-tight">
+              <span>Interactive Sandbox</span>
+              <span className="text-[10px] font-normal text-muted-foreground/80">Step-by-step stateful combat</span>
+            </span>
           </TabsTrigger>
         </TabsList>
 
