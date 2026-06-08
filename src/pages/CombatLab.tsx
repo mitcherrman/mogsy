@@ -2285,7 +2285,13 @@ function TargetCard({
 
 /* ─────────────── Runtime State ─────────────── */
 
-function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null }) {
+function RuntimeStatePanel({
+  state,
+  changedKeys,
+}: {
+  state: Record<string, unknown> | null;
+  changedKeys?: Set<string>;
+}) {
   const [query, setQuery] = useState("");
   const all = useMemo(() => extractRuntimeStateEntries(state), [state]);
   const filtered = useMemo(() => {
@@ -2295,6 +2301,7 @@ function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null })
       (e) => e.key.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)
     );
   }, [all, query]);
+  const grouped = useMemo(() => groupRuntimeEntries(filtered), [filtered]);
   return (
     <SectionCard
       title="Runtime State"
@@ -2327,9 +2334,25 @@ function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null })
               No matches.
             </div>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((e) => (
-                <StateCard key={e.key} entry={e} />
+            <div className="space-y-4">
+              {grouped.map((g) => (
+                <div key={g.label}>
+                  <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="h-px flex-1 bg-border/60" />
+                    <span className="font-semibold">{g.label}</span>
+                    <span className="text-muted-foreground/70">{g.entries.length}</span>
+                    <span className="h-px flex-1 bg-border/60" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {g.entries.map((e) => (
+                      <StateCard
+                        key={e.key}
+                        entry={e}
+                        changed={changedKeys?.has(e.key)}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -2416,22 +2439,30 @@ function extractRuntimeStateEntries(
   return out;
 }
 
-function StateCard({ entry }: { entry: RuntimeEntry }) {
+function StateCard({ entry, changed }: { entry: RuntimeEntry; changed?: boolean }) {
   const numeric = typeof entry.value === "number";
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="rounded-md border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-2.5"
+      className={`rounded-md border p-2.5 transition-colors ${
+        changed
+          ? "border-primary/60 bg-primary/10 shadow-[0_0_18px_-6px_hsl(var(--primary)/0.6)]"
+          : "border-border/60 bg-gradient-to-br from-primary/5 to-transparent"
+      }`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
           {entry.label}
         </span>
-        {numeric && (
+        {changed ? (
+          <span className="rounded-sm border border-primary/50 px-1 py-px text-[8px] font-bold uppercase tracking-wider text-primary">
+            new
+          </span>
+        ) : numeric ? (
           <Layers className="h-3 w-3 text-primary/70" />
-        )}
+        ) : null}
       </div>
       <div className="mt-1 font-mono text-lg font-bold tabular-nums text-foreground">
         {numeric ? (entry.value as number).toString() : String(entry.value)}
