@@ -18,6 +18,15 @@ import {
   Download,
   WifiOff,
   AlertTriangle,
+  Crosshair,
+  Target as TargetIcon,
+  Layers,
+  RotateCcw,
+  Hand,
+  BarChart3,
+  LineChart,
+  PieChart,
+  Flame,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -25,6 +34,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import {
   combatApi,
@@ -44,6 +56,10 @@ import {
   type SimulationResult,
   type TimelineEvent,
   type CritMode,
+  type CombatAction,
+  type SandboxStepResponse,
+  type SandboxBaseConfig,
+  type TargetScopeInfo,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -659,6 +675,25 @@ export default function CombatLab() {
         <ApiStatusBadge status={apiStatus} />
       </div>
 
+      <Tabs defaultValue="rotation" className="w-full">
+        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-lg border border-border/60 bg-card/40 p-1 backdrop-blur-sm">
+          <TabsTrigger
+            value="rotation"
+            className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
+          >
+            <Zap className="h-4 w-4" />
+            Rotation Simulator
+          </TabsTrigger>
+          <TabsTrigger
+            value="sandbox"
+            className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
+          >
+            <Crosshair className="h-4 w-4" />
+            Interactive Sandbox
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="rotation" className="mt-0">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* LEFT: configuration */}
         <div className="space-y-6 lg:col-span-2">
@@ -970,6 +1005,22 @@ export default function CombatLab() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="sandbox" className="mt-0">
+          <InteractiveSandbox
+            config={config}
+            update={update}
+            champions={champions}
+            items={items}
+            runes={runes}
+            targets={targets}
+            critModes={critModes}
+            metaLoading={metaLoading}
+            apiStatus={apiStatus}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -1425,5 +1476,812 @@ function KeyStringEditor({
         </div>
       </div>
     </div>
+  );
+}
+/* ─────────────── Interactive Sandbox ─────────────── */
+
+const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
+
+type SandboxProps = {
+  config: SimulateRequest;
+  update: <K extends keyof SimulateRequest>(key: K, val: SimulateRequest[K]) => void;
+  champions: Champion[];
+  items: Item[];
+  runes: Rune[];
+  targets: TargetProfile[];
+  critModes: readonly CritMode[];
+  metaLoading: boolean;
+  apiStatus: ApiStatus;
+};
+
+function toBase(config: SimulateRequest): SandboxBaseConfig {
+  return {
+    champion: config.champion,
+    items: config.items,
+    runes: config.runes,
+    target_profile: config.target_profile,
+    stats: config.stats,
+    ranks: config.ranks,
+    branches: config.branches,
+    ad: config.ad,
+    attack_speed: config.attack_speed,
+    crit_mode: config.crit_mode,
+  };
+}
+
+function InteractiveSandbox({
+  config,
+  update,
+  champions,
+  items,
+  runes,
+  targets,
+  critModes,
+  metaLoading,
+  apiStatus,
+}: SandboxProps) {
+  const [state, setState] = useState<Record<string, unknown> | null>(null);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [scopes, setScopes] = useState<Record<string, TargetScopeInfo>>({});
+  const [attackerStats, setAttackerStats] = useState<Record<string, number | string>>({});
+  const [actions, setActions] = useState<CombatAction[]>([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+
+  // load actions
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setActionsLoading(true);
+      try {
+        const data = await combatApi.combatLabActions();
+        if (!cancelled) setActions(data);
+      } catch {
+        if (!cancelled) setActions([]);
+      } finally {
+        if (!cancelled) setActionsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // restore last sandbox snapshot
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SANDBOX_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) setState(parsed.state);
+      if (Array.isArray(parsed?.events)) setEvents(parsed.events);
+      if (parsed?.scopes) setScopes(parsed.scopes);
+      if (parsed?.attackerStats) setAttackerStats(parsed.attackerStats);
+    } catch {}
+  }, []);
+
+  // persist snapshot
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SANDBOX_STORAGE_KEY,
+        JSON.stringify({ state, events, scopes, attackerStats })
+      );
+    } catch {}
+  }, [state, events, scopes, attackerStats]);
+
+  const visibleActions = useMemo(() => {
+    const champ = (config.champion || "").toLowerCase();
+    return actions.filter((a) => {
+      if (!a.champion) return true;
+      return a.champion.toLowerCase() === champ;
+    });
+  }, [actions, config.champion]);
+
+  const applyResponse = (res: SandboxStepResponse) => {
+    if (res.state) setState(res.state);
+    if (res.remaining_by_scope) setScopes(res.remaining_by_scope);
+    if (res.attacker_stats) setAttackerStats(res.attacker_stats);
+    if (Array.isArray(res.events) && res.events.length) {
+      setEvents((prev) => [...prev, ...res.events!]);
+      // scroll to bottom of timeline
+      requestAnimationFrame(() => {
+        timelineRef.current?.scrollTo({
+          top: timelineRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      });
+    }
+  };
+
+  const sendStep = async (kind: "basic-attack" | "active", action_id?: string) => {
+    if (!config.champion) {
+      toast({ title: "Pick a champion first", variant: "destructive" });
+      return;
+    }
+    if (!config.target_profile) {
+      toast({ title: "Pick a target profile first", variant: "destructive" });
+      return;
+    }
+    setError(null);
+    setBusy(action_id || kind);
+    try {
+      const payload = { ...toBase(config), state: state ?? undefined, action_id };
+      const res =
+        kind === "basic-attack"
+          ? await combatApi.basicAttack(payload)
+          : await combatApi.active(payload);
+      applyResponse(res);
+    } catch (e: any) {
+      setError(e?.message || `${kind} failed`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const resetCombat = () => {
+    setState(null);
+    setEvents([]);
+    setScopes({});
+    setAttackerStats({});
+    setError(null);
+    try {
+      localStorage.removeItem(SANDBOX_STORAGE_KEY);
+    } catch {}
+    toast({ title: "Combat reset", description: "Sandbox state cleared." });
+  };
+
+  const offline = apiStatus === "offline";
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* LEFT: setup + actions */}
+      <div className="space-y-6 lg:col-span-1">
+        <SectionCard title="Setup" icon={Swords}>
+          <div className="space-y-3">
+            <SearchSelect
+              label="Champion"
+              placeholder="Select champion…"
+              value={config.champion}
+              options={champions}
+              onChange={(v) => update("champion", v)}
+              loading={metaLoading}
+              withIcons
+            />
+            <SearchSelect
+              label="Target profile"
+              placeholder="Select target…"
+              value={config.target_profile}
+              options={targets}
+              onChange={(v) => update("target_profile", v)}
+              loading={metaLoading}
+            />
+            <MultiSelect
+              label="Items (max 6)"
+              placeholder="Select items…"
+              values={config.items}
+              options={items}
+              onChange={(v) => update("items", v)}
+              max={6}
+              loading={metaLoading}
+              withIcons
+            />
+            <MultiSelect
+              label="Runes"
+              placeholder="Select runes…"
+              values={config.runes}
+              options={runes}
+              onChange={(v) => update("runes", v)}
+              grouped
+              loading={metaLoading}
+              withIcons
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
+                <Input
+                  type="number"
+                  value={config.ad ?? 0}
+                  onChange={(e) => update("ad", Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AS</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={config.attack_speed ?? 0}
+                  onChange={(e) => update("attack_speed", Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">Crit mode</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {critModes.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => update("crit_mode", m as CritMode)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      config.crit_mode === m
+                        ? "border-primary/60 bg-primary/15 text-primary"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Actions"
+          icon={Hand}
+          right={
+            <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
+              <RotateCcw className="h-3.5 w-3.5" /> Reset Combat
+            </Button>
+          }
+        >
+          <div className="space-y-2">
+            <ActionButton
+              label="Basic Attack"
+              hint="Auto-attack the primary target"
+              icon={Swords}
+              tone="primary"
+              busy={busy === "basic-attack"}
+              disabled={!!busy || offline}
+              onClick={() => sendStep("basic-attack")}
+            />
+            {actionsLoading && (
+              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
+                Loading champion actions…
+              </div>
+            )}
+            {!actionsLoading && visibleActions.length === 0 && config.champion && (
+              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
+                No champion-specific actives for{" "}
+                <span className="font-semibold text-foreground/90">{config.champion}</span>.
+              </div>
+            )}
+            {visibleActions.map((a) => (
+              <ActionButton
+                key={a.id}
+                label={a.label || a.name || a.id}
+                hint={a.description}
+                icon={Flame}
+                tone="accent"
+                busy={busy === a.id}
+                disabled={!!busy || offline}
+                onClick={() => sendStep("active", a.id)}
+              />
+            ))}
+          </div>
+        </SectionCard>
+
+        {Object.keys(attackerStats).length > 0 && (
+          <SectionCard title="Attacker stats" icon={Activity}>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(attackerStats).map(([k, v]) => (
+                <div key={k} className="rounded-md border border-border/50 bg-background/40 px-2 py-1.5">
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{k}</div>
+                  <div className="font-mono text-sm font-semibold text-foreground">
+                    {typeof v === "number" ? v.toFixed(2).replace(/\.00$/, "") : String(v)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+      </div>
+
+      {/* RIGHT: targets, runtime state, timeline */}
+      <div className="space-y-6 lg:col-span-2">
+        {offline && (
+          <Card className="border-destructive/40 bg-destructive/10">
+            <CardContent className="flex items-start gap-3 p-4 text-sm">
+              <WifiOff className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-destructive">Backend offline</div>
+                <div className="mt-1 text-xs text-foreground/80 break-all">
+                  Couldn't reach <span className="font-mono">{COMBAT_API_BASE_URL}</span>.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {error && (
+          <Card className="border-destructive/50 bg-destructive/10">
+            <CardContent className="flex items-start gap-3 p-4 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-destructive">Action failed</div>
+                <div className="mt-1 text-foreground/80 break-words">{error}</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <TargetsPanel scopes={scopes} />
+
+        <RuntimeStatePanel state={state} />
+
+        <SandboxTimeline events={events} containerRef={timelineRef} />
+
+        <FuturePanels />
+
+        {state && (
+          <FinalStatePanel state={state as Record<string, unknown>} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  hint,
+  icon: Icon,
+  tone = "primary",
+  busy,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  hint?: string;
+  icon: React.ElementType;
+  tone?: "primary" | "accent";
+  busy?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const toneCls =
+    tone === "accent"
+      ? "border-accent/40 bg-gradient-to-br from-accent/15 to-accent/0 text-accent hover:border-accent/70"
+      : "border-primary/40 bg-gradient-to-br from-primary/15 to-primary/0 text-primary hover:border-primary/70";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)] disabled:cursor-not-allowed disabled:opacity-50 ${toneCls}`}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-current/30 bg-background/30">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold text-foreground">{label}</span>
+        {hint && (
+          <span className="block truncate text-[11px] text-muted-foreground">{hint}</span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/* ─────────────── Targets ─────────────── */
+
+const TARGET_SLOTS: { key: string; label: string; sub: string }[] = [
+  { key: "PRIMARY", label: "Primary Target", sub: "Main focus" },
+  { key: "RUNAANS_BOLT_1", label: "Runaan's Bolt 1", sub: "Secondary" },
+  { key: "RUNAANS_BOLT_2", label: "Runaan's Bolt 2", sub: "Secondary" },
+];
+
+function pickScope(
+  scopes: Record<string, TargetScopeInfo>,
+  key: string
+): TargetScopeInfo | undefined {
+  if (scopes[key]) return scopes[key];
+  // tolerate case variants
+  const found = Object.entries(scopes).find(
+    ([k]) => k.toLowerCase() === key.toLowerCase()
+  );
+  return found?.[1];
+}
+
+function TargetsPanel({ scopes }: { scopes: Record<string, TargetScopeInfo> }) {
+  return (
+    <SectionCard title="Targets" icon={TargetIcon}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {TARGET_SLOTS.map((slot) => {
+          const data = pickScope(scopes, slot.key);
+          return <TargetCard key={slot.key} slot={slot} data={data} />;
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
+function TargetCard({
+  slot,
+  data,
+}: {
+  slot: { key: string; label: string; sub: string };
+  data?: TargetScopeInfo;
+}) {
+  const inactive = !data;
+  const hp = typeof data?.current_hp === "number" ? data!.current_hp! : null;
+  const max = typeof data?.max_hp === "number" ? data!.max_hp! : null;
+  const pct =
+    typeof data?.remaining_pct === "number"
+      ? data!.remaining_pct!
+      : hp != null && max != null && max > 0
+      ? (hp / max) * 100
+      : null;
+  const status = data?.status || (inactive ? "inactive" : "active");
+  const dead = pct != null && pct <= 0;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`relative overflow-hidden rounded-lg border p-3 backdrop-blur-sm transition ${
+        inactive
+          ? "border-dashed border-border/50 bg-background/30 opacity-60"
+          : dead
+          ? "border-destructive/50 bg-destructive/10"
+          : "border-border/60 bg-card/60"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <Crosshair className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {slot.key}
+            </span>
+          </div>
+          <div className="mt-0.5 truncate text-sm font-bold text-foreground">{slot.label}</div>
+        </div>
+        <Badge
+          variant="outline"
+          className={`text-[9px] uppercase tracking-wider ${
+            dead
+              ? "border-destructive/50 text-destructive"
+              : inactive
+              ? "border-border/50 text-muted-foreground"
+              : "border-emerald-500/40 text-emerald-400"
+          }`}
+        >
+          {dead ? "dead" : status}
+        </Badge>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        <div className="flex items-baseline justify-between text-xs">
+          <span className="text-muted-foreground">HP</span>
+          <span className="font-mono tabular-nums text-foreground">
+            {hp != null && max != null
+              ? `${Math.max(0, Math.round(hp))} / ${Math.round(max)}`
+              : "—"}
+          </span>
+        </div>
+        <Progress
+          value={pct != null ? Math.max(0, Math.min(100, pct)) : 0}
+          className={`h-1.5 ${dead ? "[&>div]:bg-destructive" : ""}`}
+        />
+        <div className="text-right text-[10px] text-muted-foreground tabular-nums">
+          {pct != null ? `${pct.toFixed(1)}%` : "—"}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────── Runtime State ─────────────── */
+
+function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null }) {
+  const entries = useMemo(() => extractRuntimeStateEntries(state), [state]);
+  return (
+    <SectionCard title="Runtime State" icon={Layers}>
+      {!state || entries.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+          {state ? "No active stacks." : "Perform an action to start tracking state."}
+        </div>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {entries.map((e) => (
+            <StateCard key={e.key} entry={e} />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+type RuntimeEntry = {
+  key: string;
+  label: string;
+  value: number | string;
+  max?: number;
+  raw?: unknown;
+};
+
+function humanizeKey(k: string) {
+  return k
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bGuinsoo\b/i, "Guinsoo")
+    .replace(/\bKaisa\b/i, "Kai'Sa")
+    .replace(/\bKalista\b/i, "Kalista")
+    .replace(/\bYi\b/i, "Yi");
+}
+
+function extractRuntimeStateEntries(
+  state: Record<string, unknown> | null
+): RuntimeEntry[] {
+  if (!state) return [];
+  const out: RuntimeEntry[] = [];
+  const visit = (obj: unknown, prefix = "") => {
+    if (!obj || typeof obj !== "object") return;
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      const lk = k.toLowerCase();
+      // skip non-runtime sections
+      if (prefix === "" && ["timeline", "events", "remaining_by_scope", "attacker_stats", "config", "scopes"].includes(lk)) {
+        continue;
+      }
+      if (typeof v === "number") {
+        if (
+          lk.includes("stack") ||
+          lk.includes("count") ||
+          lk.includes("counter") ||
+          lk.includes("charges") ||
+          lk.includes("rend") ||
+          lk.includes("blight") ||
+          lk.includes("plasma") ||
+          lk.includes("bolts") ||
+          lk.includes("phantom") ||
+          lk.endsWith("_value") ||
+          prefix.length > 0
+        ) {
+          out.push({ key, label: humanizeKey(key), value: v });
+        }
+      } else if (typeof v === "string") {
+        if (prefix.length > 0) out.push({ key, label: humanizeKey(key), value: v });
+      } else if (v && typeof v === "object" && !Array.isArray(v)) {
+        // recurse one level only
+        if (!prefix) visit(v, k);
+      }
+    }
+  };
+  visit(state);
+  return out.slice(0, 18);
+}
+
+function StateCard({ entry }: { entry: RuntimeEntry }) {
+  const numeric = typeof entry.value === "number";
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="rounded-md border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-2.5"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+          {entry.label}
+        </span>
+        {numeric && (
+          <Layers className="h-3 w-3 text-primary/70" />
+        )}
+      </div>
+      <div className="mt-1 font-mono text-lg font-bold tabular-nums text-foreground">
+        {numeric ? (entry.value as number).toString() : String(entry.value)}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────── Sandbox Timeline ─────────────── */
+
+function getEventScope(e: TimelineEvent): string | null {
+  const s = (e as any).target_scope || (e as any).scope || (e as any).target;
+  return typeof s === "string" ? s : null;
+}
+
+function isPhantomHit(e: TimelineEvent): boolean {
+  const name = getEventLabel(e).toLowerCase();
+  if (name.includes("phantom")) return true;
+  return Boolean((e as any).phantom || (e as any).is_phantom);
+}
+
+function scopeBadge(scope: string) {
+  const upper = scope.toUpperCase();
+  if (upper.startsWith("RUNAAN"))
+    return { label: upper.replace("RUNAANS_", "BOLT "), cls: "border-cyan-500/40 text-cyan-300" };
+  if (upper === "PRIMARY")
+    return { label: "PRIMARY", cls: "border-amber-500/40 text-amber-300" };
+  return { label: upper, cls: "border-border text-muted-foreground" };
+}
+
+function SandboxTimeline({
+  events,
+  containerRef,
+}: {
+  events: TimelineEvent[];
+  containerRef: React.RefObject<HTMLDivElement>;
+}) {
+  return (
+    <SectionCard
+      title="Combat Timeline"
+      icon={Timer}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {events.length} events
+        </span>
+      }
+    >
+      {events.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-8 text-center text-xs text-muted-foreground">
+          No combat yet — press Basic Attack or an active to begin.
+        </div>
+      ) : (
+        <div
+          ref={containerRef}
+          className="max-h-[460px] overflow-y-auto pr-1"
+        >
+          <ol className="relative space-y-2 border-l border-border/60 pl-4">
+            {events.map((e, i) => {
+              const t = getEventTime(e);
+              const name = getEventLabel(e);
+              const dmg = getEventDamage(e);
+              const isDamage = dmg != null && dmg > 0;
+              const tone = damageTypeTone(e.damage_type);
+              const scope = getEventScope(e);
+              const phantom = isPhantomHit(e);
+              const meta = extractEventMetadata(e);
+              return (
+                <motion.li
+                  key={i}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className={`relative rounded-md border p-2.5 ${
+                    phantom
+                      ? "border-violet-500/40 bg-violet-500/5"
+                      : isDamage
+                      ? `${tone.border} ${tone.bg}`
+                      : "border-border/50 bg-muted/10"
+                  }`}
+                >
+                  <span
+                    className={`absolute -left-[21px] top-3 h-2 w-2 rounded-full ring-2 ring-background ${
+                      phantom ? "bg-violet-400" : isDamage ? tone.dot : "bg-muted-foreground/50"
+                    }`}
+                  />
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        {Number(t).toFixed(2)}s
+                      </span>
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {name}
+                      </span>
+                      {e.source && (
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                          · {e.source}
+                        </span>
+                      )}
+                      {isDamage && tone.label && (
+                        <span className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${tone.border} ${tone.text}`}>
+                          {tone.label}
+                        </span>
+                      )}
+                      {scope && (() => {
+                        const sb = scopeBadge(scope);
+                        return (
+                          <span className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${sb.cls}`}>
+                            {sb.label}
+                          </span>
+                        );
+                      })()}
+                      {phantom && (
+                        <span className="rounded-sm border border-violet-500/40 px-1 py-px text-[9px] font-bold tracking-wider text-violet-300">
+                          PHANTOM HIT
+                        </span>
+                      )}
+                    </div>
+                    {dmg != null && (
+                      <span
+                        className={`font-mono text-sm font-bold tabular-nums ${
+                          isDamage ? tone.text : "text-muted-foreground"
+                        }`}
+                      >
+                        {isDamage ? "−" : ""}
+                        {dmg.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                  {e.notes && (
+                    <div className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                      {e.notes}
+                    </div>
+                  )}
+                  {meta.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {meta.map((m) => (
+                        <span
+                          key={m.key}
+                          className="rounded border border-border/50 bg-background/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          <span className="text-foreground/70">{m.key}:</span>{" "}
+                          <span className="font-mono">{m.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+const META_SKIP = new Set([
+  "time",
+  "t",
+  "timestamp",
+  "event",
+  "name",
+  "type",
+  "icon",
+  "damage",
+  "final_damage",
+  "damage_type",
+  "source",
+  "notes",
+  "target_scope",
+  "scope",
+  "target",
+  "phantom",
+  "is_phantom",
+]);
+
+function extractEventMetadata(e: TimelineEvent): { key: string; value: string }[] {
+  const out: { key: string; value: string }[] = [];
+  for (const [k, v] of Object.entries(e)) {
+    if (META_SKIP.has(k)) continue;
+    if (v == null) continue;
+    if (typeof v === "number") out.push({ key: k, value: v.toString() });
+    else if (typeof v === "string") out.push({ key: k, value: v });
+    else if (typeof v === "boolean") out.push({ key: k, value: v ? "yes" : "no" });
+  }
+  return out.slice(0, 6);
+}
+
+/* ─────────────── Future chart placeholders ─────────────── */
+
+function FuturePanels() {
+  const slots = [
+    { label: "Damage Breakdown", icon: BarChart3 },
+    { label: "Damage Sources", icon: PieChart },
+    { label: "DPS Graph", icon: LineChart },
+    { label: "Damage Timeline", icon: Activity },
+  ];
+  return (
+    <SectionCard title="Analytics (coming soon)" icon={BarChart3}>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {slots.map((s) => (
+          <div
+            key={s.label}
+            className="flex items-center gap-3 rounded-md border border-dashed border-border/50 bg-background/30 p-3"
+          >
+            <s.icon className="h-4 w-4 text-primary/60" />
+            <div>
+              <div className="text-xs font-semibold text-foreground/80">{s.label}</div>
+              <div className="text-[10px] text-muted-foreground">Wiring up to combat events…</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
   );
 }

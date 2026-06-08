@@ -70,6 +70,54 @@ export type SimulateResponse = {
   result: SimulationResult;
 };
 
+/* ─────────────── Interactive Sandbox types ─────────────── */
+
+export type CombatAction = {
+  id: string;
+  label?: string;
+  name?: string;
+  champion?: string;
+  description?: string;
+  requires?: string[];
+  icon?: string;
+  [k: string]: unknown;
+};
+
+export type TargetScopeInfo = {
+  current_hp?: number;
+  max_hp?: number;
+  remaining_pct?: number;
+  status?: string;
+  [k: string]: unknown;
+};
+
+export type SandboxStepResponse = {
+  ok?: boolean;
+  state?: Record<string, unknown>;
+  events?: TimelineEvent[];
+  remaining_by_scope?: Record<string, TargetScopeInfo>;
+  attacker_stats?: Record<string, number | string>;
+  [k: string]: unknown;
+};
+
+export type SandboxBaseConfig = {
+  champion: string;
+  items: string[];
+  runes: string[];
+  target_profile: string;
+  stats?: Record<string, number>;
+  ranks?: Record<string, number>;
+  branches?: Record<string, string>;
+  ad?: number;
+  attack_speed?: number;
+  crit_mode?: CritMode;
+};
+
+export type SandboxRequest = SandboxBaseConfig & {
+  state?: Record<string, unknown> | null;
+  action_id?: string;
+};
+
 /** Throws if the simulate response is malformed. */
 export function assertSimulationResponse(
   res: unknown
@@ -181,6 +229,36 @@ export const combatApi = {
   options: () => request<OptionsMeta>("/api/meta/options"),
   simulate: (payload: SimulateRequest) =>
     request<SimulateResponse>("/api/combat/simulate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  combatLabActions: async (): Promise<CombatAction[]> => {
+    const data = await request<any>("/api/meta/combat-lab-actions");
+    const arr = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.actions)
+      ? data.actions
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
+    return arr
+      .map((a: any) => {
+        if (!a || typeof a !== "object") return null;
+        const id = a.id || a.action_id || a.key || a.name;
+        if (!id) return null;
+        return { ...a, id, label: a.label || a.name || id } as CombatAction;
+      })
+      .filter(Boolean) as CombatAction[];
+  },
+  basicAttack: (payload: SandboxRequest) =>
+    request<SandboxStepResponse>("/api/combat-lab/basic-attack", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  active: (payload: SandboxRequest) =>
+    request<SandboxStepResponse>("/api/combat-lab/active", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
