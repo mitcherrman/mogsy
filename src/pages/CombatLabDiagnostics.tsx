@@ -273,6 +273,29 @@ type InteractiveTest = {
 const BASIC_ATTACK_PATH = "/api/combat-lab/basic-attack";
 const ACTIVE_PATH = "/api/combat-lab/active";
 
+/**
+ * Walks a state object and collects numeric leaf values whose key path looks
+ * like a "stack" counter (bolts, plasma, stacks, charges, blight, rend, etc.).
+ * Used to detect resets between sequential attacks.
+ */
+const STACK_KEY_RE = /(stack|stacks|charge|count|bolt|plasma|rend|blight|mark|fury|seal)/i;
+function collectStackLikeNumbers(
+  obj: unknown,
+  prefix = "",
+  out: Record<string, number> = {}
+): Record<string, number> {
+  if (!obj || typeof obj !== "object") return out;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    const path = prefix ? `${prefix}.${k}` : k;
+    if (typeof v === "number") {
+      if (STACK_KEY_RE.test(k)) out[path] = v;
+    } else if (v && typeof v === "object") {
+      collectStackLikeNumbers(v, path, out);
+    }
+  }
+  return out;
+}
+
 function basicAttackBody(
   champion_name: string,
   item_names: string[],
