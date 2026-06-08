@@ -28,6 +28,9 @@ import {
   LineChart,
   PieChart,
   Flame,
+  Database,
+  Filter,
+  Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -52,6 +55,7 @@ import {
   type Item,
   type Rune,
   type TargetProfile,
+  type Summoner,
   type OptionsMeta,
   type SimulateRequest,
   type SimulationResult,
