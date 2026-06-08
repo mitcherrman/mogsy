@@ -696,14 +696,20 @@ export default function CombatLab() {
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
           >
             <Zap className="h-4 w-4" />
-            Rotation Simulator
+            <span className="flex flex-col items-start leading-tight">
+              <span>Rotation Simulator</span>
+              <span className="text-[10px] font-normal text-muted-foreground/80">Full combo / DPS / build testing</span>
+            </span>
           </TabsTrigger>
           <TabsTrigger
             value="sandbox"
             className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none gap-2 px-4 py-2"
           >
             <Crosshair className="h-4 w-4" />
-            Interactive Sandbox
+            <span className="flex flex-col items-start leading-tight">
+              <span>Interactive Sandbox</span>
+              <span className="text-[10px] font-normal text-muted-foreground/80">Step-by-step stateful combat</span>
+            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -1543,6 +1549,16 @@ function InteractiveSandbox({
   const [actionsLoading, setActionsLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
+  const [lastRequest, setLastRequest] = useState<unknown>(null);
+  const [lastResponse, setLastResponse] = useState<unknown>(null);
+  const [lastEndpoint, setLastEndpoint] = useState<string>("");
+  const [lastAction, setLastAction] = useState<
+    | { kind: "basic-attack" }
+    | { kind: "active"; action_id: string }
+    | null
+  >(null);
+  const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
@@ -1622,36 +1638,86 @@ function InteractiveSandbox({
     }
     setError(null);
     setBusy(action_id || kind);
+    setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
     try {
       const attacker_stats = buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
       const safeState = state ?? {};
-      const res =
-        kind === "basic-attack"
-          ? await combatApi.basicAttack({
-              champion_name: config.champion,
-              item_names: config.items,
-              rune_names: config.runes,
-              attacker_stats,
-              target_stats,
-              state: safeState,
-              current_time: 0,
-            } as CombatLabBasicAttackRequest)
-          : await combatApi.active({
-              champion_name: config.champion,
-              attacker_stats,
-              target_stats,
-              state: safeState,
-              active_name: action_id || "",
-              target_scope: "PRIMARY",
-              piercing_arrow_charge_bonus_percent: 0,
-            } as CombatLabActiveRequest);
+      let payload: unknown;
+      let endpoint: string;
+      let res: SandboxStepResponse;
+      if (kind === "basic-attack") {
+        endpoint = "/api/combat-lab/basic-attack";
+        payload = {
+          champion_name: config.champion,
+          item_names: config.items,
+          rune_names: config.runes,
+          attacker_stats,
+          target_stats,
+          state: safeState,
+          current_time: 0,
+        } as CombatLabBasicAttackRequest;
+        setLastEndpoint(endpoint);
+        setLastRequest(payload);
+        res = await combatApi.basicAttack(payload as CombatLabBasicAttackRequest);
+      } else {
+        endpoint = "/api/combat-lab/active";
+        payload = {
+          champion_name: config.champion,
+          attacker_stats,
+          target_stats,
+          state: safeState,
+          active_name: action_id || "",
+          target_scope: activeTargetScope || "PRIMARY",
+          piercing_arrow_charge_bonus_percent: 0,
+        } as CombatLabActiveRequest;
+        setLastEndpoint(endpoint);
+        setLastRequest(payload);
+        res = await combatApi.active(payload as CombatLabActiveRequest);
+      }
+      setLastResponse(res);
       applyResponse(res);
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);
+      setLastResponse({ error: e?.message || String(e) });
     } finally {
       setBusy(null);
     }
+  };
+
+  const retryLast = () => {
+    if (!lastAction) return;
+    if (lastAction.kind === "basic-attack") sendStep("basic-attack");
+    else sendStep("active", lastAction.action_id);
+  };
+
+  const copyJson = async (data: unknown, label: string) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data ?? {}, null, 2));
+      toast({ title: `${label} copied` });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
+  };
+
+  const copyDebugReport = () => {
+    const report = {
+      champion: config.champion,
+      items: config.items,
+      runes: config.runes,
+      target_profile: config.target_profile,
+      endpoint: lastEndpoint,
+      last_request: lastRequest,
+      last_response: lastResponse,
+      current_state: state,
+      events_collected: events.length,
+      scopes,
+      attacker_stats: attackerStats,
+      error,
+      api_base: COMBAT_API_BASE_URL,
+      timestamp: new Date().toISOString(),
+    };
+    copyJson(report, "Debug report");
   };
 
   const resetCombat = () => {
@@ -1660,6 +1726,10 @@ function InteractiveSandbox({
     setScopes({});
     setAttackerStats({});
     setError(null);
+    setLastRequest(null);
+    setLastResponse(null);
+    setLastEndpoint("");
+    setLastAction(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
@@ -1667,6 +1737,16 @@ function InteractiveSandbox({
   };
 
   const offline = apiStatus === "offline";
+
+  const metaFallback =
+    !metaLoading &&
+    (champions.length === 0 || items.length === 0 || runes.length === 0);
+
+  const scopeOptions = useMemo(() => {
+    const set = new Set<string>(["PRIMARY"]);
+    for (const k of Object.keys(scopes)) set.add(k);
+    return Array.from(set);
+  }, [scopes]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -1771,6 +1851,29 @@ function InteractiveSandbox({
               disabled={!!busy || offline}
               onClick={() => sendStep("basic-attack")}
             />
+            {visibleActions.length > 0 && (
+              <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+                <Label className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Active target scope
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {scopeOptions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setActiveTargetScope(s)}
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                        activeTargetScope === s
+                          ? "border-primary/60 bg-primary/15 text-primary"
+                          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {actionsLoading && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
                 Loading champion actions…
@@ -1829,6 +1932,40 @@ function InteractiveSandbox({
           </Card>
         )}
 
+        {metaFallback && !offline && (
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="flex items-start gap-3 p-4 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold text-amber-300">Metadata partially unavailable</div>
+                <div className="mt-1 text-xs text-foreground/80">
+                  Backend metadata endpoints returned empty results. Champion / item / rune
+                  selectors may be missing entries.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/40 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Activity className="h-3.5 w-3.5" />
+            <span>Developer mode</span>
+            <span className="text-[10px] text-muted-foreground/70">— raw request / response</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDevMode((v) => !v)}
+            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold transition-colors ${
+              devMode
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+            }`}
+          >
+            {devMode ? "ON" : "OFF"}
+          </button>
+        </div>
+
         {error && (
           <Card className="border-destructive/50 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
@@ -1836,16 +1973,46 @@ function InteractiveSandbox({
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-destructive">Action failed</div>
                 <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                {lastEndpoint && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Endpoint: <span className="font-mono">{lastEndpoint}</span>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {lastAction && (
+                    <Button size="sm" variant="outline" onClick={retryLast} disabled={!!busy}>
+                      <RotateCcw className="h-3.5 w-3.5" /> Retry
+                    </Button>
+                  )}
+                  {devMode && lastRequest && (
+                    <Button size="sm" variant="outline" onClick={() => copyJson(lastRequest, "Last request")}>
+                      <Copy className="h-3.5 w-3.5" /> Copy request
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        <TargetsPanel scopes={scopes} />
+        <TargetsPanel scopes={scopes} state={state} />
 
         <RuntimeStatePanel state={state} />
 
         <SandboxTimeline events={events} containerRef={timelineRef} />
+
+        {devMode && (
+          <DeveloperPanel
+            endpoint={lastEndpoint}
+            request={lastRequest}
+            response={lastResponse}
+            state={state}
+            onCopyRequest={() => copyJson(lastRequest, "Last request")}
+            onCopyResponse={() => copyJson(lastResponse, "Last response")}
+            onCopyState={() => copyJson(state, "Current state")}
+            onCopyReport={copyDebugReport}
+          />
+        )}
 
         <FuturePanels />
 
@@ -1918,17 +2085,53 @@ function pickScope(
   return found?.[1];
 }
 
-function TargetsPanel({ scopes }: { scopes: Record<string, TargetScopeInfo> }) {
+function TargetsPanel({
+  scopes,
+  state,
+}: {
+  scopes: Record<string, TargetScopeInfo>;
+  state: Record<string, unknown> | null;
+}) {
   return (
     <SectionCard title="Targets" icon={TargetIcon}>
       <div className="grid gap-3 sm:grid-cols-3">
         {TARGET_SLOTS.map((slot) => {
-          const data = pickScope(scopes, slot.key);
+          const data = pickScope(scopes, slot.key) || deriveScopeFromState(state, slot.key);
           return <TargetCard key={slot.key} slot={slot} data={data} />;
         })}
       </div>
     </SectionCard>
   );
+}
+
+const SCOPE_STATE_PREFIX: Record<string, string> = {
+  PRIMARY: "TARGET",
+  RUNAANS_BOLT_1: "RUNAANS_BOLT_1_TARGET",
+  RUNAANS_BOLT_2: "RUNAANS_BOLT_2_TARGET",
+};
+
+function deriveScopeFromState(
+  state: Record<string, unknown> | null,
+  scopeKey: string
+): TargetScopeInfo | undefined {
+  if (!state) return undefined;
+  const states = (state as any).states && typeof (state as any).states === "object"
+    ? ((state as any).states as Record<string, unknown>)
+    : (state as Record<string, unknown>);
+  const prefix = SCOPE_STATE_PREFIX[scopeKey];
+  if (!prefix) return undefined;
+  const hpKey = `${prefix}_REMAINING_HP`;
+  const maxKey = `${prefix}_MAX_HP`;
+  const hp = typeof states[hpKey] === "number" ? (states[hpKey] as number) : undefined;
+  const max = typeof states[maxKey] === "number" ? (states[maxKey] as number) : undefined;
+  if (hp == null && max == null) return undefined;
+  const pct = hp != null && max != null && max > 0 ? (hp / max) * 100 : undefined;
+  return {
+    current_hp: hp,
+    max_hp: max,
+    remaining_pct: pct,
+    status: hp != null && hp <= 0 ? "dead" : "active",
+  };
 }
 
 function TargetCard({
@@ -2008,18 +2211,53 @@ function TargetCard({
 /* ─────────────── Runtime State ─────────────── */
 
 function RuntimeStatePanel({ state }: { state: Record<string, unknown> | null }) {
-  const entries = useMemo(() => extractRuntimeStateEntries(state), [state]);
+  const [query, setQuery] = useState("");
+  const all = useMemo(() => extractRuntimeStateEntries(state), [state]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      (e) => e.key.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)
+    );
+  }, [all, query]);
   return (
-    <SectionCard title="Runtime State" icon={Layers}>
-      {!state || entries.length === 0 ? (
+    <SectionCard
+      title="Runtime State"
+      icon={Layers}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {all.length} keys
+        </span>
+      }
+    >
+      {!state ? (
         <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
-          {state ? "No active stacks." : "Perform an action to start tracking state."}
+          Perform an action to start tracking state.
         </div>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {entries.map((e) => (
-            <StateCard key={e.key} entry={e} />
-          ))}
+        <div className="space-y-3">
+          {all.length > 6 && (
+            <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-2">
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter state keys…"
+                className="h-8 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
+          {filtered.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+              No matches.
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((e) => (
+                <StateCard key={e.key} entry={e} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </SectionCard>
@@ -2044,46 +2282,63 @@ function humanizeKey(k: string) {
     .replace(/\bYi\b/i, "Yi");
 }
 
+const RUNTIME_SKIP_TOP = new Set([
+  "timeline",
+  "events",
+  "remaining_by_scope",
+  "attacker_stats",
+  "config",
+  "scopes",
+]);
+
 function extractRuntimeStateEntries(
   state: Record<string, unknown> | null
 ): RuntimeEntry[] {
   if (!state) return [];
   const out: RuntimeEntry[] = [];
-  const visit = (obj: unknown, prefix = "") => {
-    if (!obj || typeof obj !== "object") return;
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      const key = prefix ? `${prefix}.${k}` : k;
-      const lk = k.toLowerCase();
-      // skip non-runtime sections
-      if (prefix === "" && ["timeline", "events", "remaining_by_scope", "attacker_stats", "config", "scopes"].includes(lk)) {
-        continue;
-      }
-      if (typeof v === "number") {
-        if (
-          lk.includes("stack") ||
-          lk.includes("count") ||
-          lk.includes("counter") ||
-          lk.includes("charges") ||
-          lk.includes("rend") ||
-          lk.includes("blight") ||
-          lk.includes("plasma") ||
-          lk.includes("bolts") ||
-          lk.includes("phantom") ||
-          lk.endsWith("_value") ||
-          prefix.length > 0
-        ) {
-          out.push({ key, label: humanizeKey(key), value: v });
-        }
-      } else if (typeof v === "string") {
-        if (prefix.length > 0) out.push({ key, label: humanizeKey(key), value: v });
-      } else if (v && typeof v === "object" && !Array.isArray(v)) {
-        // recurse one level only
-        if (!prefix) visit(v, k);
-      }
+  // Prefer state.states if present (canonical backend shape).
+  const statesObj =
+    (state as any).states && typeof (state as any).states === "object"
+      ? ((state as any).states as Record<string, unknown>)
+      : null;
+  const pushLeaf = (key: string, v: unknown) => {
+    if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
+      out.push({
+        key,
+        label: humanizeKey(key),
+        value: typeof v === "boolean" ? (v ? "yes" : "no") : (v as number | string),
+      });
     }
   };
-  visit(state);
-  return out.slice(0, 18);
+  if (statesObj) {
+    for (const [k, v] of Object.entries(statesObj)) pushLeaf(k, v);
+  } else {
+    const visit = (obj: unknown, prefix = "") => {
+      if (!obj || typeof obj !== "object") return;
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (prefix === "" && RUNTIME_SKIP_TOP.has(k.toLowerCase())) continue;
+        if (v && typeof v === "object" && !Array.isArray(v)) {
+          visit(v, key);
+        } else {
+          pushLeaf(key, v);
+        }
+      }
+    };
+    visit(state);
+  }
+  // Sort: important patterns first.
+  const importance = (k: string) => {
+    const u = k.toUpperCase();
+    if (/SILVER_BOLTS|KAISA_PLASMA|VARUS_BLIGHT|KALISTA_REND|DIANA_MOONSILVER|MASTERYI_DOUBLE_STRIKE|GUINSOO|RUNAANS_BOLT/.test(u)) return 0;
+    if (/STACK|COUNT|CHARGES|READY|PHANTOM/.test(u)) return 1;
+    return 2;
+  };
+  out.sort((a, b) => {
+    const d = importance(a.key) - importance(b.key);
+    return d !== 0 ? d : a.key.localeCompare(b.key);
+  });
+  return out;
 }
 
 function StateCard({ entry }: { entry: RuntimeEntry }) {
@@ -2293,6 +2548,84 @@ function extractEventMetadata(e: TimelineEvent): { key: string; value: string }[
 /* ─────────────── Future chart placeholders ─────────────── */
 
 function FuturePanels() {
+  // unchanged
+  return <FuturePanelsInner />;
+}
+
+function DeveloperPanel({
+  endpoint,
+  request,
+  response,
+  state,
+  onCopyRequest,
+  onCopyResponse,
+  onCopyState,
+  onCopyReport,
+}: {
+  endpoint: string;
+  request: unknown;
+  response: unknown;
+  state: Record<string, unknown> | null;
+  onCopyRequest: () => void;
+  onCopyResponse: () => void;
+  onCopyState: () => void;
+  onCopyReport: () => void;
+}) {
+  return (
+    <SectionCard
+      title="Developer Mode"
+      icon={Activity}
+      right={
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={onCopyReport}>
+            <Copy className="h-3 w-3" /> Debug report
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {endpoint && (
+          <div className="text-[11px] text-muted-foreground">
+            Last endpoint: <span className="font-mono text-foreground/90">{endpoint}</span>
+          </div>
+        )}
+        <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
+        <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+        <DevJsonBlock label="Current State" data={state} onCopy={onCopyState} />
+      </div>
+    </SectionCard>
+  );
+}
+
+function DevJsonBlock({
+  label,
+  data,
+  onCopy,
+}: {
+  label: string;
+  data: unknown;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/50">
+      <div className="flex items-center justify-between border-b border-border/50 px-2.5 py-1.5">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          <Copy className="h-3 w-3" /> Copy
+        </button>
+      </div>
+      <pre className="max-h-64 overflow-auto px-2.5 py-2 text-[10px] leading-snug text-foreground/90">
+        {data == null ? "—" : JSON.stringify(data, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function FuturePanelsInner() {
   const slots = [
     { label: "Damage Breakdown", icon: BarChart3 },
     { label: "Damage Sources", icon: PieChart },
