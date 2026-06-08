@@ -2085,17 +2085,53 @@ function pickScope(
   return found?.[1];
 }
 
-function TargetsPanel({ scopes }: { scopes: Record<string, TargetScopeInfo> }) {
+function TargetsPanel({
+  scopes,
+  state,
+}: {
+  scopes: Record<string, TargetScopeInfo>;
+  state: Record<string, unknown> | null;
+}) {
   return (
     <SectionCard title="Targets" icon={TargetIcon}>
       <div className="grid gap-3 sm:grid-cols-3">
         {TARGET_SLOTS.map((slot) => {
-          const data = pickScope(scopes, slot.key);
+          const data = pickScope(scopes, slot.key) || deriveScopeFromState(state, slot.key);
           return <TargetCard key={slot.key} slot={slot} data={data} />;
         })}
       </div>
     </SectionCard>
   );
+}
+
+const SCOPE_STATE_PREFIX: Record<string, string> = {
+  PRIMARY: "TARGET",
+  RUNAANS_BOLT_1: "RUNAANS_BOLT_1_TARGET",
+  RUNAANS_BOLT_2: "RUNAANS_BOLT_2_TARGET",
+};
+
+function deriveScopeFromState(
+  state: Record<string, unknown> | null,
+  scopeKey: string
+): TargetScopeInfo | undefined {
+  if (!state) return undefined;
+  const states = (state as any).states && typeof (state as any).states === "object"
+    ? ((state as any).states as Record<string, unknown>)
+    : (state as Record<string, unknown>);
+  const prefix = SCOPE_STATE_PREFIX[scopeKey];
+  if (!prefix) return undefined;
+  const hpKey = `${prefix}_REMAINING_HP`;
+  const maxKey = `${prefix}_MAX_HP`;
+  const hp = typeof states[hpKey] === "number" ? (states[hpKey] as number) : undefined;
+  const max = typeof states[maxKey] === "number" ? (states[maxKey] as number) : undefined;
+  if (hp == null && max == null) return undefined;
+  const pct = hp != null && max != null && max > 0 ? (hp / max) * 100 : undefined;
+  return {
+    current_hp: hp,
+    max_hp: max,
+    remaining_pct: pct,
+    status: hp != null && hp <= 0 ? "dead" : "active",
+  };
 }
 
 function TargetCard({
