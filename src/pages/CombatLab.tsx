@@ -1837,16 +1837,23 @@ function InteractiveSandbox({
               withIcons
             />
             <div>
-              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-                Level
-              </Label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Level
+                </Label>
+                {(config.stats?.LEVEL ?? 18) >= 19 && (
+                  <Badge variant="outline" className="text-[10px] h-5 border-amber-500/40 text-amber-400 bg-amber-500/10">
+                    Extended
+                  </Badge>
+                )}
+              </div>
               <Input
                 type="number"
                 min={1}
-                max={18}
+                max={20}
                 value={config.stats?.LEVEL ?? 18}
                 onChange={(e) => {
-                  const lvl = Math.max(1, Math.min(18, Number(e.target.value) || 1));
+                  const lvl = Math.max(1, Math.min(20, Number(e.target.value) || 1));
                   update("stats", { ...(config.stats || {}), LEVEL: lvl });
                 }}
               />
@@ -3130,7 +3137,7 @@ function LiveStatsPanel({
   const [retryNonce, setRetryNonce] = useState(0);
 
   const level =
-    typeof config.stats?.LEVEL === "number" ? Math.max(1, Math.min(18, config.stats.LEVEL)) : 18;
+    typeof config.stats?.LEVEL === "number" ? Math.max(1, Math.min(20, config.stats.LEVEL)) : 18;
 
   const payload: CombatLabBuildPreviewRequest | null = useMemo(() => {
     if (!config.champion) return null;
