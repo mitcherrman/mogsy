@@ -33,6 +33,7 @@ import {
   Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
+import ChampionProfile from "@/components/combat-lab/ChampionProfile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -665,7 +666,7 @@ export default function CombatLab() {
   };
 
   return (
-    <div className="px-4 md:px-0 py-6 md:py-10">
+    <div className="px-4 md:px-0 py-6 md:py-10 xl:w-[120%] xl:-ml-[10%]">
       <SEOHead
         title="Combat Lab — Mogsy"
         description="League of Legends combat simulator. Build combos, pick items and runes, and benchmark damage with the Mogsy Combat Lab."
@@ -1800,8 +1801,8 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
-      {/* TOP: Build Configuration (left) + Live Stats (dominant right) */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      {/* TOP: Build Configuration + Champion Profile + Live Stats */}
+      <div className="grid gap-6 lg:grid-cols-7">
         <div className="space-y-6 lg:col-span-2">
         <SectionCard title="Build Configuration" icon={Swords}>
           <div className="space-y-3">
@@ -1903,6 +1904,13 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        </div>
+
+        <div className="lg:col-span-2">
+          <ChampionProfile
+            championId={config.champion}
+            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+          />
         </div>
 
         <div className="lg:col-span-3">
