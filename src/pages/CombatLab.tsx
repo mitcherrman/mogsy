@@ -1801,8 +1801,8 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
-      {/* TOP: Build Configuration (left) + Live Stats (dominant right) */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      {/* TOP: Build Configuration + Champion Profile + Live Stats */}
+      <div className="grid gap-6 lg:grid-cols-7">
         <div className="space-y-6 lg:col-span-2">
         <SectionCard title="Build Configuration" icon={Swords}>
           <div className="space-y-3">
@@ -1904,6 +1904,13 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        </div>
+
+        <div className="lg:col-span-2">
+          <ChampionProfile
+            championId={config.champion}
+            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+          />
         </div>
 
         <div className="lg:col-span-3">
