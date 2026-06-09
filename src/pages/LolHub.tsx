@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Swords, Flame, Newspaper, ArrowRight } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -61,6 +61,13 @@ export default function LolHub() {
             description="Tap into the swipe game and rank League of Legends content head-to-head."
             Icon={Flame}
             accent="from-[#5c2018] to-[#0a0a1a]"
+          />
+          <HubTile
+            to="/lol/tier-list"
+            title="LoL Tier List"
+            description="Meta rankings for every role this patch — Top, Jungle, Mid, ADC and Support."
+            Icon={Trophy}
+            accent="from-[#3a2d10] to-[#0a0a1a]"
           />
         </div>
 
