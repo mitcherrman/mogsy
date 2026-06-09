@@ -1686,7 +1686,14 @@ function InteractiveSandbox({
     setBusy(action_id || kind);
     setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
     try {
-      const attacker_stats = buildAttackerStats(config);
+      // Source of truth: backend runtime_stats from build-preview.
+      // Developer mode allows manual overrides via config.ad / config.attack_speed / config.stats.
+      const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
+      const overrides = devMode ? buildAttackerStats(config) : {};
+      const attacker_stats: Record<string, number> =
+        Object.keys(backendStats).length > 0
+          ? { ...backendStats, ...overrides }
+          : buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
       const safeState = state ?? {};
       let payload: unknown;
