@@ -1548,6 +1548,16 @@ function buildAttackerStats(config: SimulateRequest): Record<string, number> {
   return merged;
 }
 
+function numericMap(src: Record<string, unknown> | undefined | null): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!src) return out;
+  for (const [k, v] of Object.entries(src)) {
+    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+    if (Number.isFinite(n)) out[k] = n;
+  }
+  return out;
+}
+
 function InteractiveSandbox({
   config,
   update,
@@ -1578,6 +1588,8 @@ function InteractiveSandbox({
     | null
   >(null);
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
+  const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
+  const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
   const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -1674,7 +1686,14 @@ function InteractiveSandbox({
     setBusy(action_id || kind);
     setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
     try {
-      const attacker_stats = buildAttackerStats(config);
+      // Source of truth: backend runtime_stats from build-preview.
+      // Developer mode allows manual overrides via config.ad / config.attack_speed / config.stats.
+      const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
+      const overrides = devMode ? buildAttackerStats(config) : {};
+      const attacker_stats: Record<string, number> =
+        Object.keys(backendStats).length > 0
+          ? { ...backendStats, ...overrides }
+          : buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
       const safeState = state ?? {};
       let payload: unknown;
@@ -1866,25 +1885,39 @@ function InteractiveSandbox({
               onChange={setSummonerPicks}
               loading={metaLoading}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
-                <Input
-                  type="number"
-                  value={config.ad ?? 0}
-                  onChange={(e) => update("ad", Number(e.target.value))}
-                />
+            {devMode ? (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  Developer Overrides
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
+                    <Input
+                      type="number"
+                      value={config.ad ?? 0}
+                      onChange={(e) => update("ad", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AS</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={config.attack_speed ?? 0}
+                      onChange={(e) => update("attack_speed", Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 text-[10px] text-muted-foreground">
+                  Overrides are merged on top of backend runtime_stats when sending actions.
+                </div>
               </div>
-              <div>
-                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AS</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={config.attack_speed ?? 0}
-                  onChange={(e) => update("attack_speed", Number(e.target.value))}
-                />
+            ) : (
+              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-2 text-[10px] text-muted-foreground">
+                Stats come from backend build-preview. Toggle Developer mode below to override AD / AS manually.
               </div>
-            </div>
+            )}
             <div>
               <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">Crit mode</Label>
               <div className="flex flex-wrap gap-1.5">
@@ -1923,6 +1956,10 @@ function InteractiveSandbox({
             runtimeAttackerStats={attackerStats}
             runtimeStates={currentStates}
             changedKeys={changedKeys}
+            onPreviewStats={(b, r) => {
+              setPreviewBuildStats(b);
+              setPreviewRuntimeStats(r);
+            }}
           />
         </div>
       </div>
@@ -3074,6 +3111,7 @@ function LiveStatsPanel({
   runtimeAttackerStats,
   runtimeStates,
   changedKeys,
+  onPreviewStats,
 }: {
   config: SimulateRequest;
   summonerPicks: string[];
@@ -3081,6 +3119,7 @@ function LiveStatsPanel({
   runtimeAttackerStats: Record<string, number | string>;
   runtimeStates: Record<string, unknown>;
   changedKeys: Set<string>;
+  onPreviewStats?: (build: Record<string, number>, runtime: Record<string, number>) => void;
 }) {
   const [mode, setMode] = useState<"build" | "runtime">("build");
   const [devMode, setDevMode] = useState(false);
@@ -3124,6 +3163,12 @@ function LiveStatsPanel({
         .then((res) => {
           if (cancelled) return;
           setLastResponse(res);
+          if (onPreviewStats) {
+            onPreviewStats(
+              numericMap(res?.result?.build_stats as any),
+              numericMap(res?.result?.runtime_stats as any)
+            );
+          }
         })
         .catch((e) => {
           if (cancelled) return;
@@ -3149,11 +3194,14 @@ function LiveStatsPanel({
 
   // Identify runtime buff / temp-modifier keys for the runtime view.
   const buffEntries = useMemo(() => {
-    if (mode !== "runtime") return [];
     const out: { key: string; value: string; changed: boolean }[] = [];
     for (const [k, v] of Object.entries(runtimeStates)) {
       const u = k.toUpperCase();
-      if (!/BUFF|STACK|CHARGE|CONQUEROR|LETHAL|TEMPO|PROC|RAGEBLADE|EMPOWER|MODIFIER/.test(u))
+      if (
+        !/BUFF|STACK|CHARGE|CONQUEROR|LETHAL|TEMPO|PROC|RAGEBLADE|EMPOWER|MODIFIER|COUNT|READY|BOLT|BLIGHT|REND|SILVER|PHANTOM|GUINSOO|RUNAAN|KRAKEN|KAISA|VAYNE|VARUS|KALISTA/.test(
+          u
+        )
+      )
         continue;
       if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
         out.push({
@@ -3163,8 +3211,8 @@ function LiveStatsPanel({
         });
       }
     }
-    return out.slice(0, 12);
-  }, [mode, runtimeStates, changedKeys]);
+    return out.slice(0, 16);
+  }, [runtimeStates, changedKeys]);
 
   return (
     <SectionCard
@@ -3249,6 +3297,16 @@ function LiveStatsPanel({
             [def.key, ...(def.aliases || [])].some((k) =>
               changedKeys.has(normalizeStatKey(k))
             );
+          // Build → Runtime delta indicator (shown in build mode when runtime differs).
+          const buildV = lookupStat([buildStats], def);
+          const runtimeV = lookupStat([runtimeStats], def);
+          const showDelta =
+            mode === "build" &&
+            hasRuntime &&
+            buildV != null &&
+            runtimeV != null &&
+            Math.abs(buildV - runtimeV) > 0.001;
+          const positive = showDelta && (runtimeV as number) > (buildV as number);
           return (
             <div
               key={def.key}
@@ -3266,37 +3324,46 @@ function LiveStatsPanel({
               <div className="font-mono text-sm font-bold tabular-nums text-foreground">
                 {formatStat(v, def.fmt)}
               </div>
+              {showDelta && (
+                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] tabular-nums">
+                  <span className="text-muted-foreground/80">
+                    {formatStat(buildV, def.fmt)}
+                  </span>
+                  <span className="text-muted-foreground/60">→</span>
+                  <span className={positive ? "text-emerald-400" : "text-amber-400"}>
+                    {formatStat(runtimeV, def.fmt)}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      {mode === "runtime" && (
-        <div className="mt-3">
-          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Buffs & temporary modifiers
-          </div>
-          {buffEntries.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] text-muted-foreground">
-              No active buffs detected.
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {buffEntries.map((b) => (
-                <span
-                  key={b.key}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                    b.changed
-                      ? "border-primary/60 bg-primary/10 text-primary"
-                      : "border-border bg-muted/30 text-foreground/80"
-                  }`}
-                >
-                  {b.key}: <span className="font-mono">{b.value}</span>
-                </span>
-              ))}
-            </div>
-          )}
+      <div className="mt-3">
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Runtime effects
         </div>
-      )}
+        {buffEntries.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] text-muted-foreground">
+            No active stacks, buffs, or counters yet. Take an action to populate runtime state.
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {buffEntries.map((b) => (
+              <span
+                key={b.key}
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  b.changed
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border bg-muted/30 text-foreground/80"
+                }`}
+              >
+                {b.key}: <span className="font-mono">{b.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       {mode === "build" && (
         <div className="mt-2 text-[10px] text-muted-foreground">
           Real backend build_stats. Updates automatically when champion, level,
