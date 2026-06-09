@@ -3135,6 +3135,11 @@ function LiveStatsPanel({
   const [lastRequest, setLastRequest] = useState<CombatLabBuildPreviewRequest | null>(null);
   const [lastResponse, setLastResponse] = useState<CombatLabBuildPreviewResponse | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  // Per-source preview responses (Dev Mode only). Derived from extra build-preview calls
+  // with subsets of the loadout so we can show exactly which group contributed which stat.
+  const [itemsOnly, setItemsOnly] = useState<Record<string, number> | null>(null);
+  const [runesOnly, setRunesOnly] = useState<Record<string, number> | null>(null);
+  const [summOnly, setSummOnly] = useState<Record<string, number> | null>(null);
 
   const level =
     typeof config.stats?.LEVEL === "number" ? Math.max(1, Math.min(20, config.stats.LEVEL)) : 18;
@@ -3192,9 +3197,66 @@ function LiveStatsPanel({
     };
   }, [payloadKey, retryNonce]);
 
+  // Dev-mode source breakdown: run extra build-preview calls with subsets.
+  // Each subset's build_stats minus base_stats = that group's contribution.
+  useEffect(() => {
+    if (!devMode || !payload) {
+      setItemsOnly(null);
+      setRunesOnly(null);
+      setSummOnly(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const make = (overrides: Partial<CombatLabBuildPreviewRequest>) => ({
+        ...payload,
+        item_names: [],
+        rune_names: [],
+        summoner_names: [],
+        state: {},
+        ...overrides,
+      });
+      const tasks: Array<[
+        "items" | "runes" | "summ",
+        CombatLabBuildPreviewRequest
+      ]> = [];
+      if ((payload.item_names || []).length)
+        tasks.push(["items", make({ item_names: payload.item_names })]);
+      if ((payload.rune_names || []).length)
+        tasks.push(["runes", make({ rune_names: payload.rune_names })]);
+      if ((payload.summoner_names || []).length)
+        tasks.push(["summ", make({ summoner_names: payload.summoner_names })]);
+      const results = await Promise.allSettled(
+        tasks.map(([, req]) => combatApi.buildPreview(req))
+      );
+      if (cancelled) return;
+      const next: Record<string, Record<string, number> | null> = {
+        items: null,
+        runes: null,
+        summ: null,
+      };
+      results.forEach((r, i) => {
+        const tag = tasks[i][0];
+        if (r.status === "fulfilled") {
+          next[tag] = numericMap(r.value?.result?.build_stats as any);
+        }
+      });
+      setItemsOnly(next.items);
+      setRunesOnly(next.runes);
+      setSummOnly(next.summ);
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [devMode, payloadKey]);
+
   const buildStats = lastResponse?.result?.build_stats || {};
   const runtimeStats = lastResponse?.result?.runtime_stats || {};
+  const baseStats = lastResponse?.result?.base_stats || {};
+  const loadoutStats = lastResponse?.result?.loadout_stats || {};
   const hasRuntime = Object.keys(runtimeStats).length > 0;
+  const verified = !!lastResponse && Object.keys(buildStats).length > 0 && !error;
 
   const sources: Array<Record<string, unknown>> =
     mode === "runtime" && hasRuntime ? [runtimeStats] : [buildStats];
@@ -3221,12 +3283,64 @@ function LiveStatsPanel({
     return out.slice(0, 16);
   }, [runtimeStates, changedKeys]);
 
+  // Per-stat source breakdown for tooltips + Source Breakdown panel.
+  const computeBreakdown = (def: LiveStatDef) => {
+    const baseV = lookupStat([baseStats], def);
+    const itemsV = itemsOnly ? lookupStat([itemsOnly], def) : null;
+    const runesV = runesOnly ? lookupStat([runesOnly], def) : null;
+    const summV = summOnly ? lookupStat([summOnly], def) : null;
+    const buildV = lookupStat([buildStats], def);
+    const runtimeV = lookupStat([runtimeStats], def);
+    const rows: { label: string; value: number }[] = [];
+    if (baseV != null) rows.push({ label: "Champion Base", value: baseV });
+    if (itemsV != null && baseV != null && Math.abs(itemsV - baseV) > 0.001)
+      rows.push({ label: "Items", value: itemsV - baseV });
+    if (runesV != null && baseV != null && Math.abs(runesV - baseV) > 0.001)
+      rows.push({ label: "Runes", value: runesV - baseV });
+    if (summV != null && baseV != null && Math.abs(summV - baseV) > 0.001)
+      rows.push({ label: "Summoners", value: summV - baseV });
+    if (
+      runtimeV != null &&
+      buildV != null &&
+      Math.abs(runtimeV - buildV) > 0.001
+    )
+      rows.push({ label: "Runtime Modifiers", value: runtimeV - buildV });
+    return { rows, buildV, runtimeV };
+  };
+
+  const tooltipFor = (def: LiveStatDef): string => {
+    const { rows, buildV, runtimeV } = computeBreakdown(def);
+    if (!rows.length) return `${def.label}: backend source unavailable`;
+    const lines = rows.map(
+      (r) =>
+        `${r.label}: ${r.value >= 0 ? "+" : ""}${formatStat(r.value, def.fmt)}`
+    );
+    if (buildV != null) lines.push(`Build total: ${formatStat(buildV, def.fmt)}`);
+    if (runtimeV != null && buildV != null && Math.abs(runtimeV - buildV) > 0.001)
+      lines.push(`Runtime: ${formatStat(runtimeV, def.fmt)}`);
+    return `${def.label}\n${lines.join("\n")}`;
+  };
+
   return (
     <SectionCard
       title="Live Stats"
       icon={Activity}
       right={
         <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+              verified
+                ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                : "border-amber-500/50 bg-amber-500/10 text-amber-400"
+            }`}
+            title={
+              verified
+                ? "Stats sourced from POST /api/combat-lab/build-preview"
+                : "Backend preview unavailable — UI is showing fallback / cached values"
+            }
+          >
+            {verified ? "Backend Verified" : "Fallback Values"}
+          </span>
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           <button
             type="button"
@@ -3317,6 +3431,7 @@ function LiveStatsPanel({
           return (
             <div
               key={def.key}
+              title={tooltipFor(def)}
               className={`rounded-md border px-2 py-1.5 transition-colors ${
                 isChanged
                   ? "border-primary/60 bg-primary/10"
@@ -3346,6 +3461,66 @@ function LiveStatsPanel({
           );
         })}
       </div>
+      {devMode && verified && (
+        <div className="mt-3 rounded-md border border-border/60 bg-background/40 p-2">
+          <div className="mb-1.5 flex items-center justify-between">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-primary">
+              Source Breakdown
+            </div>
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              backend-derived
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+            {LIVE_STAT_DEFS.map((def) => {
+              const { rows, buildV } = computeBreakdown(def);
+              if (!rows.length) return null;
+              return (
+                <div
+                  key={def.key}
+                  className="rounded border border-border/40 bg-background/30 p-1.5"
+                >
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/80">
+                      {def.label}
+                    </span>
+                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {buildV != null ? `= ${formatStat(buildV, def.fmt)}` : ""}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {rows.map((r) => (
+                      <div
+                        key={r.label}
+                        className="flex items-center justify-between font-mono text-[10px] tabular-nums"
+                      >
+                        <span className="text-muted-foreground">{r.label}</span>
+                        <span
+                          className={
+                            r.label === "Champion Base"
+                              ? "text-foreground/80"
+                              : r.value >= 0
+                              ? "text-emerald-400"
+                              : "text-amber-400"
+                          }
+                        >
+                          {r.label === "Champion Base"
+                            ? formatStat(r.value, def.fmt)
+                            : `${r.value >= 0 ? "+" : ""}${formatStat(r.value, def.fmt)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-[9px] text-muted-foreground">
+            Contributions derived from extra build-preview calls per group (Items / Runes / Summoners). No
+            stats calculated client-side.
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
           Runtime effects
@@ -3355,19 +3530,39 @@ function LiveStatsPanel({
             No active stacks, buffs, or counters yet. Take an action to populate runtime state.
           </div>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {buffEntries.map((b) => (
-              <span
-                key={b.key}
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                  b.changed
-                    ? "border-primary/60 bg-primary/10 text-primary"
-                    : "border-border bg-muted/30 text-foreground/80"
-                }`}
-              >
-                {b.key}: <span className="font-mono">{b.value}</span>
-              </span>
-            ))}
+          <div className="overflow-hidden rounded-md border border-border/50">
+            <table className="w-full text-[10px]">
+              <thead className="bg-background/40 text-[9px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1 text-left font-semibold">Source</th>
+                  <th className="px-2 py-1 text-right font-semibold">Value</th>
+                  <th className="px-2 py-1 text-right font-semibold">Stacks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {buffEntries.map((b) => {
+                  const u = b.key.toUpperCase();
+                  const looksLikeStack =
+                    /STACK|COUNT|CHARGE|BOLT|REND|PROC/.test(u);
+                  return (
+                    <tr
+                      key={b.key}
+                      className={`border-t border-border/40 ${
+                        b.changed ? "bg-primary/5" : "bg-background/20"
+                      }`}
+                    >
+                      <td className="px-2 py-1 text-foreground/80">{b.key}</td>
+                      <td className="px-2 py-1 text-right font-mono text-foreground">
+                        {looksLikeStack ? "—" : b.value}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono text-muted-foreground">
+                        {looksLikeStack ? b.value : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
