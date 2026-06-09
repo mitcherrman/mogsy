@@ -46,6 +46,21 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://mogsy.app/lol</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/lol/tier-list</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/combat-lab</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://mogsy.app/shop</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
