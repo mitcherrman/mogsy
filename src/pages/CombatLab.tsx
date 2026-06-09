@@ -672,25 +672,22 @@ export default function CombatLab() {
       />
 
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary/80">
-            <Swords className="h-3.5 w-3.5" />
-            Combat Lab
-          </div>
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary/80 m-0">
+          <Swords className="h-3.5 w-3.5" />
+          Combat Lab
+        </h1>
+        <div className="flex items-center gap-2">
+          <ApiStatusBadge status={apiStatus} />
+          <Link
+            to="/combat-lab/diagnostics"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <Activity className="h-3 w-3" />
+            Diagnostics
+          </Link>
         </div>
-        <ApiStatusBadge status={apiStatus} />
-      </div>
-
-      <div className="mb-4 flex justify-end">
-        <Link
-          to="/combat-lab/diagnostics"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-        >
-          <Activity className="h-3 w-3" />
-          Diagnostics
-        </Link>
-      </div>
+      </header>
 
       <MetadataAuditPanel
         loading={metaLoading}
