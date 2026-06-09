@@ -1548,6 +1548,16 @@ function buildAttackerStats(config: SimulateRequest): Record<string, number> {
   return merged;
 }
 
+function numericMap(src: Record<string, unknown> | undefined | null): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!src) return out;
+  for (const [k, v] of Object.entries(src)) {
+    const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+    if (Number.isFinite(n)) out[k] = n;
+  }
+  return out;
+}
+
 function InteractiveSandbox({
   config,
   update,
