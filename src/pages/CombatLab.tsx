@@ -3194,11 +3194,14 @@ function LiveStatsPanel({
 
   // Identify runtime buff / temp-modifier keys for the runtime view.
   const buffEntries = useMemo(() => {
-    if (mode !== "runtime") return [];
     const out: { key: string; value: string; changed: boolean }[] = [];
     for (const [k, v] of Object.entries(runtimeStates)) {
       const u = k.toUpperCase();
-      if (!/BUFF|STACK|CHARGE|CONQUEROR|LETHAL|TEMPO|PROC|RAGEBLADE|EMPOWER|MODIFIER/.test(u))
+      if (
+        !/BUFF|STACK|CHARGE|CONQUEROR|LETHAL|TEMPO|PROC|RAGEBLADE|EMPOWER|MODIFIER|COUNT|READY|BOLT|BLIGHT|REND|SILVER|PHANTOM|GUINSOO|RUNAAN|KRAKEN|KAISA|VAYNE|VARUS|KALISTA/.test(
+          u
+        )
+      )
         continue;
       if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
         out.push({
@@ -3208,8 +3211,8 @@ function LiveStatsPanel({
         });
       }
     }
-    return out.slice(0, 12);
-  }, [mode, runtimeStates, changedKeys]);
+    return out.slice(0, 16);
+  }, [runtimeStates, changedKeys]);
 
   return (
     <SectionCard
