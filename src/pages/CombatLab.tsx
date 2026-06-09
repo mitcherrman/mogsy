@@ -1885,25 +1885,39 @@ function InteractiveSandbox({
               onChange={setSummonerPicks}
               loading={metaLoading}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
-                <Input
-                  type="number"
-                  value={config.ad ?? 0}
-                  onChange={(e) => update("ad", Number(e.target.value))}
-                />
+            {devMode ? (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  Developer Overrides
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AD</Label>
+                    <Input
+                      type="number"
+                      value={config.ad ?? 0}
+                      onChange={(e) => update("ad", Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AS</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={config.attack_speed ?? 0}
+                      onChange={(e) => update("attack_speed", Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 text-[10px] text-muted-foreground">
+                  Overrides are merged on top of backend runtime_stats when sending actions.
+                </div>
               </div>
-              <div>
-                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">AS</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={config.attack_speed ?? 0}
-                  onChange={(e) => update("attack_speed", Number(e.target.value))}
-                />
+            ) : (
+              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-2 text-[10px] text-muted-foreground">
+                Stats come from backend build-preview. Toggle Developer mode below to override AD / AS manually.
               </div>
-            </div>
+            )}
             <div>
               <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">Crit mode</Label>
               <div className="flex flex-wrap gap-1.5">
