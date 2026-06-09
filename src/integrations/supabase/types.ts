@@ -2796,6 +2796,7 @@ export type Database = {
         }
         Returns: Json
       }
+      realtime_is_admin_topic: { Args: { _topic: string }; Returns: boolean }
       realtime_is_game_topic_player: {
         Args: { _topic: string }
         Returns: boolean
