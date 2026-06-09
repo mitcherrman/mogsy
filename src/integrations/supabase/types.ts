@@ -324,6 +324,30 @@ export type Database = {
           },
         ]
       }
+      champion_images: {
+        Row: {
+          champion_id: string
+          created_at: string
+          storage_path: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          champion_id: string
+          created_at?: string
+          storage_path: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          champion_id?: string
+          created_at?: string
+          storage_path?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       comment_reactions: {
         Row: {
           comment_id: string
