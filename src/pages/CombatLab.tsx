@@ -678,13 +678,6 @@ export default function CombatLab() {
             <Swords className="h-3.5 w-3.5" />
             Combat Lab
           </div>
-          <h1 className="mt-1 text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
-            League of Legends damage simulator
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Configure a champion, build a combo, then run a deterministic
-            backend simulation. All math runs server-side.
-          </p>
         </div>
         <ApiStatusBadge status={apiStatus} />
       </div>
