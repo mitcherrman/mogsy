@@ -123,6 +123,36 @@ export type CombatLabActiveRequest = {
 
 export type CombatLabInteractiveResponse = SandboxStepResponse;
 
+/** Build Explorer / Live Stats endpoint. */
+export type CombatLabBuildPreviewRequest = {
+  champion_name: string;
+  level: number;
+  item_names: string[];
+  rune_names: string[];
+  summoner_names: string[];
+  base_stats: Record<string, unknown>;
+  state: Record<string, unknown>;
+};
+
+export type CombatLabBuildPreviewResult = {
+  champion_name: string;
+  level: number;
+  item_names: string[];
+  rune_names: string[];
+  summoner_names: string[];
+  base_stats: Record<string, number>;
+  loadout_stats: Record<string, number>;
+  build_stats: Record<string, number>;
+  runtime_stats: Record<string, number>;
+  state: Record<string, unknown>;
+  loadout: Record<string, unknown>;
+};
+
+export type CombatLabBuildPreviewResponse = {
+  ok: boolean;
+  result: CombatLabBuildPreviewResult;
+};
+
 /** Default diagnostic stat shapes. */
 export const DEFAULT_ATTACKER_STATS: Record<string, number> = {
   LEVEL: 18,
@@ -341,6 +371,11 @@ export const combatApi = {
         body: JSON.stringify(payload),
       })
     ),
+  buildPreview: (payload: CombatLabBuildPreviewRequest) =>
+    request<CombatLabBuildPreviewResponse>("/api/combat-lab/build-preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 /**

@@ -69,6 +69,8 @@ import {
   DEFAULT_TARGET_STATS,
   type CombatLabBasicAttackRequest,
   type CombatLabActiveRequest,
+  type CombatLabBuildPreviewRequest,
+  type CombatLabBuildPreviewResponse,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -1916,6 +1918,8 @@ function InteractiveSandbox({
         <div className="lg:col-span-3">
           <LiveStatsPanel
             config={config}
+            summonerPicks={summonerPicks}
+            combatState={state}
             runtimeAttackerStats={attackerStats}
             runtimeStates={currentStates}
             changedKeys={changedKeys}
@@ -3065,48 +3069,83 @@ function formatStat(v: number | null, fmt?: LiveStatDef["fmt"]): string {
 
 function LiveStatsPanel({
   config,
+  summonerPicks,
+  combatState,
   runtimeAttackerStats,
   runtimeStates,
   changedKeys,
 }: {
   config: SimulateRequest;
+  summonerPicks: string[];
+  combatState: Record<string, unknown> | null;
   runtimeAttackerStats: Record<string, number | string>;
   runtimeStates: Record<string, unknown>;
   changedKeys: Set<string>;
 }) {
   const [mode, setMode] = useState<"build" | "runtime">("build");
+  const [devMode, setDevMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRequest, setLastRequest] = useState<CombatLabBuildPreviewRequest | null>(null);
+  const [lastResponse, setLastResponse] = useState<CombatLabBuildPreviewResponse | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
-  const buildSource: Record<string, unknown> = useMemo(() => {
-    const base: Record<string, unknown> = { ...DEFAULT_ATTACKER_STATS };
-    if (typeof config.ad === "number") base.AD = config.ad;
-    if (typeof config.attack_speed === "number") base.ATTACK_SPEED = config.attack_speed;
-    if (config.stats) {
-      for (const [k, v] of Object.entries(config.stats)) {
-        if (typeof v === "number") base[normalizeStatKey(k)] = v;
-      }
+  const level =
+    typeof config.stats?.LEVEL === "number" ? Math.max(1, Math.min(18, config.stats.LEVEL)) : 18;
+
+  const payload: CombatLabBuildPreviewRequest | null = useMemo(() => {
+    if (!config.champion) return null;
+    return {
+      champion_name: config.champion,
+      level,
+      item_names: config.items || [],
+      rune_names: config.runes || [],
+      summoner_names: summonerPicks || [],
+      base_stats: {},
+      state: combatState && typeof combatState === "object" ? combatState : {},
+    };
+  }, [config.champion, level, config.items, config.runes, summonerPicks, combatState]);
+
+  const payloadKey = useMemo(() => (payload ? JSON.stringify(payload) : ""), [payload]);
+
+  useEffect(() => {
+    if (!payload) {
+      setLastResponse(null);
+      setError(null);
+      return;
     }
-    // Re-derive whenever items/runes/summoners change so the panel re-renders.
-    base.__BUILD_HASH = JSON.stringify({
-      champ: config.champion,
-      items: config.items,
-      runes: config.runes,
-      crit: config.crit_mode,
-    });
-    return base;
-  }, [config]);
+    let cancelled = false;
+    const t = setTimeout(() => {
+      setLoading(true);
+      setError(null);
+      setLastRequest(payload);
+      combatApi
+        .buildPreview(payload)
+        .then((res) => {
+          if (cancelled) return;
+          setLastResponse(res);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setLastResponse(null);
+          setError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [payloadKey, retryNonce]);
+
+  const buildStats = lastResponse?.result?.build_stats || {};
+  const runtimeStats = lastResponse?.result?.runtime_stats || {};
+  const hasRuntime = Object.keys(runtimeStats).length > 0;
 
   const sources: Array<Record<string, unknown>> =
-    mode === "build"
-      ? [buildSource]
-      : [
-          runtimeAttackerStats as Record<string, unknown>,
-          runtimeStates,
-          buildSource,
-        ];
-
-  const hasRuntime =
-    Object.keys(runtimeAttackerStats || {}).length > 0 ||
-    Object.keys(runtimeStates || {}).length > 0;
+    mode === "runtime" && hasRuntime ? [runtimeStats] : [buildStats];
 
   // Identify runtime buff / temp-modifier keys for the runtime view.
   const buffEntries = useMemo(() => {
@@ -3132,25 +3171,76 @@ function LiveStatsPanel({
       title="Live Stats"
       icon={Activity}
       right={
-        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/40 p-0.5">
-          {(["build", "runtime"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              disabled={m === "runtime" && !hasRuntime}
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                mode === m
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {m === "build" ? "Build" : "Runtime"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          <button
+            type="button"
+            onClick={() => setDevMode((v) => !v)}
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              devMode
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border/60 bg-background/40 text-muted-foreground hover:text-foreground"
+            }`}
+            title="Toggle Developer Mode"
+          >
+            Dev
+          </button>
+          <div className="flex items-center gap-1 rounded-full border border-border/60 bg-background/40 p-0.5">
+            {(["build", "runtime"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                disabled={m === "runtime" && !hasRuntime}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  mode === m
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {m === "build" ? "Build" : "Runtime"}
+              </button>
+            ))}
+          </div>
         </div>
       }
     >
+      {!config.champion && (
+        <div className="mb-3 rounded-md border border-dashed border-border/50 bg-background/30 px-3 py-4 text-center text-xs text-muted-foreground">
+          Select a champion to load real build stats from the backend.
+        </div>
+      )}
+      {error && (
+        <div className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="font-bold uppercase tracking-wider text-destructive">
+              Build preview failed
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setRetryNonce((n) => n + 1)}
+            >
+              <RotateCcw className="h-3 w-3" /> Retry
+            </Button>
+          </div>
+          <div className="font-mono text-[10px] text-muted-foreground">
+            POST {COMBAT_API_BASE_URL}/api/combat-lab/build-preview
+          </div>
+          <div className="mt-1 font-mono text-[11px] text-destructive/90 break-all">{error}</div>
+          {lastRequest && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[10px] text-muted-foreground">
+                Request payload
+              </summary>
+              <pre className="mt-1 max-h-40 overflow-auto rounded bg-background/60 p-2 font-mono text-[10px] leading-tight">
+                {JSON.stringify(lastRequest, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {LIVE_STAT_DEFS.map((def) => {
           const v = lookupStat(sources, def);
@@ -3209,8 +3299,47 @@ function LiveStatsPanel({
       )}
       {mode === "build" && (
         <div className="mt-2 text-[10px] text-muted-foreground">
-          Pre-combat values from your build. Updates instantly as you change
-          champion, level, items, runes, or summoners.
+          Real backend build_stats. Updates automatically when champion, level,
+          items, runes, or summoners change.
+        </div>
+      )}
+      {devMode && (
+        <div className="mt-3 space-y-2 rounded-md border border-border/60 bg-background/40 p-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-primary">
+            Developer Mode
+          </div>
+          <details open>
+            <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground">
+              Last request
+            </summary>
+            <pre className="mt-1 max-h-40 overflow-auto rounded bg-background/60 p-2 font-mono text-[10px] leading-tight">
+              {lastRequest ? JSON.stringify(lastRequest, null, 2) : "—"}
+            </pre>
+          </details>
+          <details>
+            <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground">
+              Last response
+            </summary>
+            <pre className="mt-1 max-h-40 overflow-auto rounded bg-background/60 p-2 font-mono text-[10px] leading-tight">
+              {lastResponse ? JSON.stringify(lastResponse, null, 2) : "—"}
+            </pre>
+          </details>
+          <details>
+            <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground">
+              build_stats
+            </summary>
+            <pre className="mt-1 max-h-40 overflow-auto rounded bg-background/60 p-2 font-mono text-[10px] leading-tight">
+              {JSON.stringify(buildStats, null, 2)}
+            </pre>
+          </details>
+          <details>
+            <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground">
+              runtime_stats
+            </summary>
+            <pre className="mt-1 max-h-40 overflow-auto rounded bg-background/60 p-2 font-mono text-[10px] leading-tight">
+              {JSON.stringify(runtimeStats, null, 2)}
+            </pre>
+          </details>
         </div>
       )}
     </SectionCard>
