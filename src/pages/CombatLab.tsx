@@ -3111,6 +3111,7 @@ function LiveStatsPanel({
   runtimeAttackerStats,
   runtimeStates,
   changedKeys,
+  onPreviewStats,
 }: {
   config: SimulateRequest;
   summonerPicks: string[];
@@ -3118,6 +3119,7 @@ function LiveStatsPanel({
   runtimeAttackerStats: Record<string, number | string>;
   runtimeStates: Record<string, unknown>;
   changedKeys: Set<string>;
+  onPreviewStats?: (build: Record<string, number>, runtime: Record<string, number>) => void;
 }) {
   const [mode, setMode] = useState<"build" | "runtime">("build");
   const [devMode, setDevMode] = useState(false);
@@ -3161,6 +3163,12 @@ function LiveStatsPanel({
         .then((res) => {
           if (cancelled) return;
           setLastResponse(res);
+          if (onPreviewStats) {
+            onPreviewStats(
+              numericMap(res?.result?.build_stats as any),
+              numericMap(res?.result?.runtime_stats as any)
+            );
+          }
         })
         .catch((e) => {
           if (cancelled) return;
