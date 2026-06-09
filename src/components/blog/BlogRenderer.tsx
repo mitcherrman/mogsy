@@ -1,5 +1,6 @@
 import type { BlogContent, BlogBlock, CanvasNode } from "@/lib/blog/types";
 import BlockRenderer from "./BlockRenderer";
+import { safeHref } from "@/lib/safe-url";
 
 /** Renders any of the three editor modes back to read-only HTML. */
 export default function BlogRenderer({ content }: { content: BlogContent | Record<string, never> | null | undefined }) {
@@ -80,7 +81,7 @@ function renderNode(node: any, key: number, widgets: Record<string, any>): React
         else if (mark.type === "code") el = <code>{el}</code>;
         else if (mark.type === "underline") el = <u>{el}</u>;
         else if (mark.type === "strike") el = <s>{el}</s>;
-        else if (mark.type === "link") el = <a href={mark.attrs?.href} target="_blank" rel="noopener">{el}</a>;
+        else if (mark.type === "link") el = <a href={safeHref(mark.attrs?.href)} target="_blank" rel="noopener noreferrer">{el}</a>;
       }
       return <span key={key}>{el}</span>;
     }
