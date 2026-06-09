@@ -1588,6 +1588,8 @@ function InteractiveSandbox({
     | null
   >(null);
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
+  const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
+  const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
   const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
