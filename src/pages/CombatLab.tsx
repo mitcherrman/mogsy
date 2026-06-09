@@ -3297,6 +3297,16 @@ function LiveStatsPanel({
             [def.key, ...(def.aliases || [])].some((k) =>
               changedKeys.has(normalizeStatKey(k))
             );
+          // Build → Runtime delta indicator (shown in build mode when runtime differs).
+          const buildV = lookupStat([buildStats], def);
+          const runtimeV = lookupStat([runtimeStats], def);
+          const showDelta =
+            mode === "build" &&
+            hasRuntime &&
+            buildV != null &&
+            runtimeV != null &&
+            Math.abs(buildV - runtimeV) > 0.001;
+          const positive = showDelta && (runtimeV as number) > (buildV as number);
           return (
             <div
               key={def.key}
@@ -3314,37 +3324,46 @@ function LiveStatsPanel({
               <div className="font-mono text-sm font-bold tabular-nums text-foreground">
                 {formatStat(v, def.fmt)}
               </div>
+              {showDelta && (
+                <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] tabular-nums">
+                  <span className="text-muted-foreground/80">
+                    {formatStat(buildV, def.fmt)}
+                  </span>
+                  <span className="text-muted-foreground/60">→</span>
+                  <span className={positive ? "text-emerald-400" : "text-amber-400"}>
+                    {formatStat(runtimeV, def.fmt)}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      {mode === "runtime" && (
-        <div className="mt-3">
-          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Buffs & temporary modifiers
-          </div>
-          {buffEntries.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] text-muted-foreground">
-              No active buffs detected.
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {buffEntries.map((b) => (
-                <span
-                  key={b.key}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                    b.changed
-                      ? "border-primary/60 bg-primary/10 text-primary"
-                      : "border-border bg-muted/30 text-foreground/80"
-                  }`}
-                >
-                  {b.key}: <span className="font-mono">{b.value}</span>
-                </span>
-              ))}
-            </div>
-          )}
+      <div className="mt-3">
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Runtime effects
         </div>
-      )}
+        {buffEntries.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-2 py-2 text-[11px] text-muted-foreground">
+            No active stacks, buffs, or counters yet. Take an action to populate runtime state.
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {buffEntries.map((b) => (
+              <span
+                key={b.key}
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  b.changed
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border bg-muted/30 text-foreground/80"
+                }`}
+              >
+                {b.key}: <span className="font-mono">{b.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       {mode === "build" && (
         <div className="mt-2 text-[10px] text-muted-foreground">
           Real backend build_stats. Updates automatically when champion, level,
