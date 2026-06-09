@@ -13,17 +13,25 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 ) {
   const wrapped = async () => {
     try {
-      return await factory();
+      const mod = await factory();
+      if (typeof window !== "undefined") {
+        try { sessionStorage.removeItem("__lov_chunk_reloaded__"); } catch {}
+      }
+      return mod;
     } catch (err: any) {
       const msg = String(err?.message || err);
       const isChunkError =
-        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
+        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|error loading dynamically imported module/i.test(
           msg,
         );
       if (isChunkError && typeof window !== "undefined") {
-        const key = "__lov_chunk_reloaded__";
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, "1");
+        const key = "__lov_chunk_reloaded_at__";
+        const last = Number(sessionStorage.getItem(key) || "0");
+        const now = Date.now();
+        // Allow a reload at most once every 30s to break stale-chunk loops
+        // after a redeploy without trapping the user if reload doesn't help.
+        if (now - last > 30_000) {
+          sessionStorage.setItem(key, String(now));
           window.location.reload();
           return new Promise(() => {}) as any;
         }
