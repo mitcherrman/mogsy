@@ -69,6 +69,8 @@ import {
   DEFAULT_TARGET_STATS,
   type CombatLabBasicAttackRequest,
   type CombatLabActiveRequest,
+  type CombatLabBuildPreviewRequest,
+  type CombatLabBuildPreviewResponse,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
