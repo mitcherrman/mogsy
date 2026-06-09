@@ -1956,6 +1956,10 @@ function InteractiveSandbox({
             runtimeAttackerStats={attackerStats}
             runtimeStates={currentStates}
             changedKeys={changedKeys}
+            onPreviewStats={(b, r) => {
+              setPreviewBuildStats(b);
+              setPreviewRuntimeStats(r);
+            }}
           />
         </div>
       </div>
