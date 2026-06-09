@@ -36,6 +36,9 @@ const staticEntries: SitemapEntry[] = [
   { path: "/profile", changefreq: "weekly", priority: "0.6" },
   { path: "/referral", changefreq: "monthly", priority: "0.5" },
   { path: "/blog", changefreq: "daily", priority: "0.9" },
+  { path: "/lol", changefreq: "weekly", priority: "0.8" },
+  { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
+  { path: "/combat-lab", changefreq: "weekly", priority: "0.7" },
 ];
 
 async function fetchDynamicEntries(): Promise<SitemapEntry[]> {

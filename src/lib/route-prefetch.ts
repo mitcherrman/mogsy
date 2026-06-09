@@ -70,6 +70,7 @@ export const Routes = {
   CombatLab: lazyWithRetry(() => import("@/pages/CombatLab")),
   CombatLabDiagnostics: lazyWithRetry(() => import("@/pages/CombatLabDiagnostics")),
   LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
+  LolTierList: lazyWithRetry(() => import("@/pages/LolTierList")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
 } as const;
 
@@ -85,6 +86,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/shop", keys: ["Shop"] },
   { test: (p) => p === "/combat-lab", keys: ["CombatLab"] },
   { test: (p) => p === "/lol", keys: ["LolHub", "CombatLab"] },
+  { test: (p) => p === "/lol/tier-list", keys: ["LolTierList"] },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },

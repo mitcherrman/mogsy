@@ -48,6 +48,7 @@ const AdminBlogEditor = R.AdminBlogEditor.Component;
 const CombatLab = R.CombatLab.Component;
 const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
 const LolHub = R.LolHub.Component;
+const LolTierList = R.LolTierList.Component;
 const AdminAbout = R.AdminAbout.Component;
 
 // Keep cached data warm so navigating back to a screen doesn't refetch.
@@ -123,6 +124,7 @@ const App = () => (
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
+                  <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
