@@ -666,7 +666,7 @@ export default function CombatLab() {
   };
 
   return (
-    <div className="px-4 md:px-0 py-6 md:py-10">
+    <div className="px-4 md:px-0 py-6 md:py-10 xl:w-[120%] xl:-ml-[10%]">
       <SEOHead
         title="Combat Lab — Mogsy"
         description="League of Legends combat simulator. Build combos, pick items and runes, and benchmark damage with the Mogsy Combat Lab."
