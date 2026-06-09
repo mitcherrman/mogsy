@@ -1918,6 +1918,8 @@ function InteractiveSandbox({
         <div className="lg:col-span-3">
           <LiveStatsPanel
             config={config}
+            summonerPicks={summonerPicks}
+            combatState={state}
             runtimeAttackerStats={attackerStats}
             runtimeStates={currentStates}
             changedKeys={changedKeys}
