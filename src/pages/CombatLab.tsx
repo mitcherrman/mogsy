@@ -1809,9 +1809,10 @@ function InteractiveSandbox({
   }, [currentStates]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      {/* LEFT: setup + actions */}
-      <div className="space-y-6 lg:col-span-1">
+    <div className="space-y-6">
+      {/* TOP: Build Configuration (left) + Live Stats (dominant right) */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="space-y-6 lg:col-span-2">
         <SectionCard title="Build Configuration" icon={Swords}>
           <div className="space-y-3">
             <SearchSelect
@@ -1912,14 +1913,20 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        </div>
 
-        <LiveStatsPanel
-          config={config}
-          runtimeAttackerStats={attackerStats}
-          runtimeStates={currentStates}
-          changedKeys={changedKeys}
-        />
+        <div className="lg:col-span-3">
+          <LiveStatsPanel
+            config={config}
+            runtimeAttackerStats={attackerStats}
+            runtimeStates={currentStates}
+            changedKeys={changedKeys}
+          />
+        </div>
+      </div>
 
+      {/* BELOW: everything else, full width */}
+      <div className="space-y-6">
         <SectionCard
           title="Actions"
           icon={Hand}
@@ -1987,10 +1994,6 @@ function InteractiveSandbox({
             ))}
           </div>
         </SectionCard>
-      </div>
-
-      {/* RIGHT: targets, runtime state, timeline */}
-      <div className="space-y-6 lg:col-span-2">
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
