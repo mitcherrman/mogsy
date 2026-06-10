@@ -2130,16 +2130,19 @@ function InteractiveSandbox({
         <SandboxTimeline events={events} containerRef={timelineRef} />
 
         {devMode && (
-          <DeveloperPanel
-            endpoint={lastEndpoint}
-            request={lastRequest}
-            response={lastResponse}
-            state={state}
-            onCopyRequest={() => copyJson(lastRequest, "Last request")}
-            onCopyResponse={() => copyJson(lastResponse, "Last response")}
-            onCopyState={() => copyJson(state, "Current state")}
-            onCopyReport={copyDebugReport}
-          />
+          <>
+            <DeveloperPanel
+              endpoint={lastEndpoint}
+              request={lastRequest}
+              response={lastResponse}
+              state={state}
+              onCopyRequest={() => copyJson(lastRequest, "Last request")}
+              onCopyResponse={() => copyJson(lastResponse, "Last response")}
+              onCopyState={() => copyJson(state, "Current state")}
+              onCopyReport={copyDebugReport}
+            />
+            <EngineCoveragePanel devMode={devMode} />
+          </>
         )}
 
         {state && (
