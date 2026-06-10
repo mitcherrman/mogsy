@@ -71,6 +71,8 @@ import {
   type CombatLabActiveRequest,
   type CombatLabBuildPreviewRequest,
   type CombatLabBuildPreviewResponse,
+  type CoverageResponse,
+  type CoverageChampion,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -2128,16 +2130,19 @@ function InteractiveSandbox({
         <SandboxTimeline events={events} containerRef={timelineRef} />
 
         {devMode && (
-          <DeveloperPanel
-            endpoint={lastEndpoint}
-            request={lastRequest}
-            response={lastResponse}
-            state={state}
-            onCopyRequest={() => copyJson(lastRequest, "Last request")}
-            onCopyResponse={() => copyJson(lastResponse, "Last response")}
-            onCopyState={() => copyJson(state, "Current state")}
-            onCopyReport={copyDebugReport}
-          />
+          <>
+            <DeveloperPanel
+              endpoint={lastEndpoint}
+              request={lastRequest}
+              response={lastResponse}
+              state={state}
+              onCopyRequest={() => copyJson(lastRequest, "Last request")}
+              onCopyResponse={() => copyJson(lastResponse, "Last response")}
+              onCopyState={() => copyJson(state, "Current state")}
+              onCopyReport={copyDebugReport}
+            />
+            <EngineCoveragePanel devMode={devMode} />
+          </>
         )}
 
         {state && (
@@ -3779,5 +3784,356 @@ function DamageBreakdownPanel({ events }: { events: TimelineEvent[] }) {
         </div>
       )}
     </SectionCard>
+  );
+}
+
+/* ─────────────── Engine Coverage (Developer Mode) ─────────────── */
+
+function EngineCoveragePanel({ devMode }: { devMode: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<CoverageResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [activeList, setActiveList] = useState<
+    "tested-champions" | "tested-items" | "tested-runes" | "special" | "generic"
+  >("tested-champions");
+
+  const fetchCoverage = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await combatApi.coverage();
+      setData(res);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load coverage");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!devMode) return;
+    // Load once when devMode is active and no data/error yet
+    if (!data && !error && !loading) {
+      fetchCoverage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devMode]);
+
+  const summary = data?.summary;
+
+  const summaryCards = summary
+    ? [
+        { label: "Champions", value: summary.champion_count },
+        { label: "Items", value: summary.item_count },
+        { label: "Runes", value: summary.rune_count },
+        { label: "Champion Runtime Profiles", value: summary.champion_runtime_profile_count },
+        { label: "Item Effects", value: summary.item_effect_count },
+        { label: "Rune Effects", value: summary.rune_effect_count },
+        { label: "Tested Champions", value: summary.tested_champion_count },
+        { label: "Tested Items", value: summary.tested_item_count },
+        { label: "Tested Runes", value: summary.tested_rune_count },
+        { label: "Special Attention Champions", value: summary.special_champion_count },
+        { label: "Generic / Formula-Driven Champions", value: summary.generic_champion_count },
+      ]
+    : [];
+
+  const q = query.trim().toLowerCase();
+
+  const testedChampions: CoverageChampion[] = useMemo(() => {
+    const arr = data?.champions?.special_attention || [];
+    const filtered = arr.filter((c) => c.tested);
+    if (!q) return filtered;
+    return filtered.filter((c) => c.name.toLowerCase().includes(q));
+  }, [data, q]);
+
+  const specialChampions: CoverageChampion[] = useMemo(() => {
+    const arr = data?.champions?.special_attention || [];
+    if (!q) return arr;
+    return arr.filter((c) => c.name.toLowerCase().includes(q));
+  }, [data, q]);
+
+  const genericChampions: CoverageChampion[] = useMemo(() => {
+    const arr = data?.champions?.generic_or_formula_driven || [];
+    if (!q) return arr;
+    return arr.filter((c) => c.name.toLowerCase().includes(q));
+  }, [data, q]);
+
+  const testedItems: string[] = useMemo(() => {
+    const arr = data?.items?.tested || [];
+    if (!q) return arr;
+    return arr.filter((n) => n.toLowerCase().includes(q));
+  }, [data, q]);
+
+  const testedRunes: string[] = useMemo(() => {
+    const arr = data?.runes?.tested || [];
+    if (!q) return arr;
+    return arr.filter((n) => n.toLowerCase().includes(q));
+  }, [data, q]);
+
+  const listTabs: {
+    id: typeof activeList;
+    label: string;
+    count: number;
+  }[] = [
+    { id: "tested-champions", label: "Tested Champions", count: testedChampions.length },
+    { id: "tested-items", label: "Tested Items", count: testedItems.length },
+    { id: "tested-runes", label: "Tested Runes", count: testedRunes.length },
+    { id: "special", label: "Special Attention", count: specialChampions.length },
+    { id: "generic", label: "Generic / Formula-Driven", count: genericChampions.length },
+  ];
+
+  const renderList = () => {
+    switch (activeList) {
+      case "tested-champions":
+        return (
+          <div className="space-y-2">
+            {testedChampions.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No tested champions.</div>
+            ) : (
+              testedChampions.map((c) => (
+                <div
+                  key={c.name}
+                  className="flex items-center justify-between rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5"
+                >
+                  <span className="text-xs font-semibold text-foreground">{c.name}</span>
+                  <Badge variant="outline" className="text-[9px] h-5 border-emerald-500/40 text-emerald-400">
+                    Tested
+                  </Badge>
+                </div>
+              ))
+            )}
+          </div>
+        );
+      case "tested-items":
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {testedItems.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No tested items.</div>
+            ) : (
+              testedItems.map((n) => (
+                <Chip key={n} label={n} tone="primary" />
+              ))
+            )}
+          </div>
+        );
+      case "tested-runes":
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {testedRunes.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No tested runes.</div>
+            ) : (
+              testedRunes.map((n) => (
+                <Chip key={n} label={n} tone="accent" />
+              ))
+            )}
+          </div>
+        );
+      case "special":
+        return (
+          <div className="space-y-2">
+            {specialChampions.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No special attention champions.</div>
+            ) : (
+              specialChampions.map((c) => (
+                <div
+                  key={c.name}
+                  className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-foreground">{c.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      {c.status && (
+                        <span className="text-[10px] text-muted-foreground">{c.status}</span>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] h-5 ${
+                          c.tested
+                            ? "border-emerald-500/40 text-emerald-400"
+                            : "border-amber-500/40 text-amber-400"
+                        }`}
+                      >
+                        {c.tested ? "Tested" : "Untested"}
+                      </Badge>
+                    </div>
+                  </div>
+                  {c.special_notes && (
+                    <div className="mt-1 text-[10px] text-muted-foreground">{c.special_notes}</div>
+                  )}
+                  {typeof c.runtime_profile_count === "number" && (
+                    <div className="mt-1 text-[10px] text-muted-foreground">
+                      Runtime profiles: <span className="font-mono text-foreground/80">{c.runtime_profile_count}</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        );
+      case "generic":
+        return (
+          <div className="space-y-2">
+            {genericChampions.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No generic champions.</div>
+            ) : (
+              genericChampions.map((c) => (
+                <div
+                  key={c.name}
+                  className="flex items-center justify-between rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5"
+                >
+                  <span className="text-xs font-semibold text-foreground">{c.name}</span>
+                  {c.status && (
+                    <span className="text-[10px] text-muted-foreground">{c.status}</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card className="border-border/60 bg-card/40 backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          Engine Coverage
+          <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+            {loading ? "loading…" : error ? "error" : summary ? `${summary.champion_count} entries` : "dev only"}
+          </span>
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 opacity-60" /> : <ChevronDown className="h-4 w-4 opacity-60" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-4 px-4 pb-4">
+              {error && (
+                <Card className="border-destructive/50 bg-destructive/10">
+                  <CardContent className="flex items-start gap-3 p-4 text-sm">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-destructive">Coverage endpoint failed</div>
+                      <div className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        GET {COMBAT_API_BASE_URL}/api/combat-lab/audit/coverage
+                      </div>
+                      <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 h-7 text-[11px]"
+                        onClick={fetchCoverage}
+                        disabled={loading}
+                      >
+                        <RotateCcw className="h-3 w-3" /> Retry
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!error && (
+                <>
+                  {/* Summary cards */}
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {loading
+                      ? Array.from({ length: 8 }).map((_, i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))
+                      : summaryCards.map((s) => (
+                          <div
+                            key={s.label}
+                            className="rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                          >
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {s.label}
+                            </div>
+                            <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-foreground">
+                              {s.value}
+                            </div>
+                          </div>
+                        ))}
+                  </div>
+
+                  {/* Search */}
+                  <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-2">
+                    <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Filter coverage lists…"
+                      className="h-8 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => setQuery("")}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List tabs */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {listTabs.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setActiveList(t.id)}
+                        className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                          activeList === t.id
+                            ? "border-primary/60 bg-primary/15 text-primary"
+                            : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        {t.label} ({t.count})
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Active list */}
+                  <div>
+                    <div className="mb-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {listTabs.find((t) => t.id === activeList)?.label}
+                    </div>
+                    {loading ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <Skeleton key={i} className="h-8 w-full" />
+                        ))}
+                      </div>
+                    ) : (
+                      renderList()
+                    )}
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="rounded-md border border-border/50 bg-background/30 px-3 py-2 text-[10px] text-muted-foreground">
+                    Coverage reflects backend engine metadata and automated regression status.
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
   );
 }
