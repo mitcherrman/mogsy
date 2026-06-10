@@ -71,6 +71,8 @@ import {
   type CombatLabActiveRequest,
   type CombatLabBuildPreviewRequest,
   type CombatLabBuildPreviewResponse,
+  type CoverageResponse,
+  type CoverageChampion,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
