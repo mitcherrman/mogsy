@@ -73,6 +73,8 @@ import {
   type CombatLabBuildPreviewResponse,
   type CoverageResponse,
   type CoverageChampion,
+  type ChampionConfidenceResponse,
+  type ChampionConfidence,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -2142,6 +2144,7 @@ function InteractiveSandbox({
               onCopyReport={copyDebugReport}
             />
             <EngineCoveragePanel devMode={devMode} />
+            <ChampionConfidencePanel devMode={devMode} />
           </>
         )}
 
@@ -4127,6 +4130,278 @@ function EngineCoveragePanel({ devMode }: { devMode: boolean }) {
                   {/* Disclaimer */}
                   <div className="rounded-md border border-border/50 bg-background/30 px-3 py-2 text-[10px] text-muted-foreground">
                     Coverage reflects backend engine metadata and automated regression status.
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
+}
+
+/* ─────────────── Champion Confidence (Developer Mode) ─────────────── */
+
+function tierBadgeCls(tier: string) {
+  switch (tier) {
+    case "high_confidence":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
+    case "medium_confidence":
+      return "border-blue-500/40 bg-blue-500/10 text-blue-400";
+    case "smoke_validated":
+      return "border-amber-500/40 bg-amber-500/10 text-amber-400";
+    case "needs_review":
+      return "border-red-500/40 bg-red-500/10 text-red-400";
+    default:
+      return "border-border bg-muted/30 text-muted-foreground";
+  }
+}
+
+function tierLabel(tier: string) {
+  switch (tier) {
+    case "high_confidence":
+      return "High Confidence";
+    case "medium_confidence":
+      return "Medium Confidence";
+    case "smoke_validated":
+      return "Smoke Validated";
+    case "needs_review":
+      return "Needs Review";
+    default:
+      return tier;
+  }
+}
+
+function ChampionConfidencePanel({ devMode }: { devMode: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<ChampionConfidenceResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const fetchConfidence = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await combatApi.championConfidence();
+      setData(res);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load champion confidence");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!devMode) return;
+    if (!data && !error && !loading) {
+      fetchConfidence();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devMode]);
+
+  const summary = data?.summary;
+
+  const summaryCards = summary
+    ? [
+        { label: "Total Champions", value: summary.total_champions },
+        { label: "High Confidence", value: summary.high_confidence },
+        { label: "Medium Confidence", value: summary.medium_confidence },
+        { label: "Smoke Validated", value: summary.smoke_validated },
+        { label: "Needs Review", value: summary.needs_review },
+        { label: "Basic Attack Pass", value: summary.basic_attack_pass },
+        { label: "Rotation Pass", value: summary.rotation_pass },
+      ]
+    : [];
+
+  const q = query.trim().toLowerCase();
+
+  const filteredChampions: ChampionConfidence[] = useMemo(() => {
+    const arr = data?.champions || [];
+    if (!q) return arr;
+    return arr.filter(
+      (c) =>
+        c.champion.toLowerCase().includes(q) ||
+        (c.status && c.status.toLowerCase().includes(q)) ||
+        tierLabel(c.confidence_tier).toLowerCase().includes(q)
+    );
+  }, [data, q]);
+
+  return (
+    <Card className="border-border/60 bg-card/40 backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <Crosshair className="h-4 w-4 text-primary" />
+          Champion Confidence
+          <span className="text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+            {loading ? "loading…" : error ? "error" : summary ? `${summary.total_champions} entries` : "dev only"}
+          </span>
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 opacity-60" /> : <ChevronDown className="h-4 w-4 opacity-60" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-4 px-4 pb-4">
+              {error && (
+                <Card className="border-destructive/50 bg-destructive/10">
+                  <CardContent className="flex items-start gap-3 p-4 text-sm">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-destructive">Champion confidence endpoint failed</div>
+                      <div className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        GET {COMBAT_API_BASE_URL}/api/combat-lab/audit/champion-confidence
+                      </div>
+                      <div className="mt-1 text-foreground/80 break-words">{error}</div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 h-7 text-[11px]"
+                        onClick={fetchConfidence}
+                        disabled={loading}
+                      >
+                        <RotateCcw className="h-3 w-3" /> Retry
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!error && (
+                <>
+                  {/* Summary cards */}
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {loading
+                      ? Array.from({ length: 7 }).map((_, i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))
+                      : summaryCards.map((s) => (
+                          <div
+                            key={s.label}
+                            className="rounded-md border border-border/60 bg-background/40 px-3 py-2"
+                          >
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {s.label}
+                            </div>
+                            <div className="mt-0.5 font-mono text-lg font-bold tabular-nums text-foreground">
+                              {s.value}
+                            </div>
+                          </div>
+                        ))}
+                  </div>
+
+                  {/* Search */}
+                  <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-2">
+                    <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Filter champions by name, tier, or status…"
+                      className="h-8 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => setQuery("")}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Champion table */}
+                  <div className="overflow-x-auto rounded-md border border-border/60">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/60 bg-muted/40">
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Champion</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Confidence Tier</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Score</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Status</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tested</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Basic Attack</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Rotation</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Runtime Profiles</th>
+                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Interactions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loading ? (
+                          Array.from({ length: 6 }).map((_, i) => (
+                            <tr key={i} className="border-b border-border/40">
+                              <td colSpan={9} className="px-3 py-2">
+                                <Skeleton className="h-5 w-full" />
+                              </td>
+                            </tr>
+                          ))
+                        ) : filteredChampions.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                              No champions match your filter.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredChampions.map((c) => (
+                            <tr key={c.champion} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
+                              <td className="px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">{c.champion}</td>
+                              <td className="px-3 py-2">
+                                <Badge variant="outline" className={`text-[9px] h-5 ${tierBadgeCls(c.confidence_tier)}`}>
+                                  {tierLabel(c.confidence_tier)}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-2 text-xs font-mono tabular-nums text-foreground">
+                                {typeof c.confidence_score === "number" ? c.confidence_score.toFixed(1) : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{c.status || "—"}</td>
+                              <td className="px-3 py-2">
+                                {c.tested ? (
+                                  <Badge variant="outline" className="text-[9px] h-5 border-emerald-500/40 text-emerald-400">Yes</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] h-5 border-amber-500/40 text-amber-400">No</Badge>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                {c.basic_attack_pass ? (
+                                  <span className="text-[10px] text-emerald-400">Pass</span>
+                                ) : (
+                                  <span className="text-[10px] text-red-400">Fail</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                {c.rotation_pass ? (
+                                  <span className="text-[10px] text-emerald-400">Pass</span>
+                                ) : (
+                                  <span className="text-[10px] text-red-400">Fail</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-xs font-mono tabular-nums text-foreground">
+                                {typeof c.runtime_profile_count === "number" ? c.runtime_profile_count : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-xs font-mono tabular-nums text-foreground">
+                                {typeof c.interactions === "number" ? c.interactions : "—"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Explanation */}
+                  <div className="rounded-md border border-border/50 bg-background/30 px-3 py-2 text-[10px] text-muted-foreground">
+                    Smoke validated means the champion loads, basic attacks, and completes a standard rotation without crashing. It does not guarantee every champion-specific edge case is fully verified.
                   </div>
                 </>
               )}
