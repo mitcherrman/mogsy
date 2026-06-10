@@ -418,6 +418,7 @@ export const combatApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  coverage: () => request<CoverageResponse>("/api/combat-lab/audit/coverage"),
 };
 
 /**
