@@ -2,6 +2,32 @@ const API_BASE_URL =
   (import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
   "http://127.0.0.1:8000";
 
+export type ChampionConfidence = {
+  champion: string;
+  confidence_tier: "high_confidence" | "medium_confidence" | "smoke_validated" | "needs_review";
+  confidence_score?: number;
+  status?: string;
+  tested?: boolean;
+  basic_attack_pass?: boolean;
+  rotation_pass?: boolean;
+  runtime_profile_count?: number;
+  interactions?: number;
+};
+
+export type ChampionConfidenceResponse = {
+  ok: boolean;
+  summary: {
+    total_champions: number;
+    high_confidence: number;
+    medium_confidence: number;
+    smoke_validated: number;
+    needs_review: number;
+    basic_attack_pass: number;
+    rotation_pass: number;
+  };
+  champions: ChampionConfidence[];
+};
+
 export type Champion = { id?: string; name: string; icon?: string };
 export type Item = { id?: string; name: string; type?: string; gold?: number; icon?: string };
 export type Rune = { id?: string; name: string; tree?: string; icon?: string };
