@@ -123,6 +123,48 @@ export type CombatLabActiveRequest = {
 
 export type CombatLabInteractiveResponse = SandboxStepResponse;
 
+export type CoverageChampion = {
+  name: string;
+  status?: string;
+  tested?: boolean;
+  special_notes?: string;
+  runtime_profile_count?: number;
+};
+
+export type CoverageSummary = {
+  champion_count: number;
+  item_count: number;
+  rune_count: number;
+  champion_runtime_profile_count: number;
+  item_effect_count: number;
+  rune_effect_count: number;
+  tested_champion_count: number;
+  tested_item_count: number;
+  tested_rune_count: number;
+  special_champion_count: number;
+  generic_champion_count: number;
+};
+
+export type CoverageResponse = {
+  ok: boolean;
+  summary: CoverageSummary;
+  tested_systems?: string[];
+  champions?: {
+    special_attention?: CoverageChampion[];
+    generic_or_formula_driven?: CoverageChampion[];
+  };
+  items?: {
+    all?: string[];
+    tested?: string[];
+    effects?: string[];
+  };
+  runes?: {
+    all?: string[];
+    tested?: string[];
+    effects?: string[];
+  };
+};
+
 /** Build Explorer / Live Stats endpoint. */
 export type CombatLabBuildPreviewRequest = {
   champion_name: string;
