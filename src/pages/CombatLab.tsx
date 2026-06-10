@@ -2144,6 +2144,7 @@ function InteractiveSandbox({
               onCopyReport={copyDebugReport}
             />
             <EngineCoveragePanel devMode={devMode} />
+            <ChampionConfidencePanel devMode={devMode} />
           </>
         )}
 
