@@ -445,6 +445,7 @@ export const combatApi = {
       body: JSON.stringify(payload),
     }),
   coverage: () => request<CoverageResponse>("/api/combat-lab/audit/coverage"),
+  championConfidence: () => request<ChampionConfidenceResponse>("/api/combat-lab/audit/champion-confidence"),
 };
 
 /**
