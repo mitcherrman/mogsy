@@ -1550,6 +1550,8 @@ type SandboxProps = {
   critModes: readonly CritMode[];
   metaLoading: boolean;
   apiStatus: ApiStatus;
+  devMode: boolean;
+  setDevMode: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 function buildAttackerStats(config: SimulateRequest): Record<string, number> {
