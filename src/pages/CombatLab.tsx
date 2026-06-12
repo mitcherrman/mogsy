@@ -1677,29 +1677,54 @@ function InteractiveSandbox({
 
   const visibleActions = useMemo(() => {
     const champ = (config.champion || "").toLowerCase();
+    const isBasicAttack = (s?: unknown) =>
+      typeof s === "string" && /^basic[_\s-]*attack$/i.test(s.trim());
     return actions.filter((a) => {
+      // strip duplicate Basic Attack entries — we always render one at the top
+      if (
+        isBasicAttack(a.id) ||
+        isBasicAttack(a.label) ||
+        isBasicAttack(a.name) ||
+        isBasicAttack((a as any).active_name)
+      ) {
+        return false;
+      }
       if (Array.isArray(a.champions) && a.champions.length > 0) {
         return a.champions.some((c) => c.toLowerCase() === champ);
       }
       if (a.champion) {
         return a.champion.toLowerCase() === champ;
       }
-      return true;
+      // generic non-champion-tagged actions are not shown — Basic Attack is hardcoded
+      return false;
     });
   }, [actions, config.champion]);
 
   const hasChampionSpecificActions = useMemo(() => {
-    const champ = (config.champion || "").toLowerCase();
-    return actions.some((a) => {
-      if (Array.isArray(a.champions) && a.champions.length > 0) {
-        return a.champions.some((c) => c.toLowerCase() === champ);
-      }
-      if (a.champion) {
-        return a.champion.toLowerCase() === champ;
-      }
-      return false;
-    });
-  }, [actions, config.champion]);
+    return visibleActions.length > 0;
+  }, [visibleActions]);
+
+  // Fallback Q/W/E/R cards when the backend exposes no champion-specific runtime
+  // actions. These hit the same /api/combat-lab/active endpoint with active_name
+  // = "Q"|"W"|"E"|"R" so damage stays backend-driven.
+  const fallbackAbilityActions = useMemo(() => {
+    if (!config.champion || hasChampionSpecificActions) return [];
+    return (["Q", "W", "E", "R"] as const).map((slot) => ({
+      id: slot,
+      label: slot,
+      hint: `Cast ${slot} (formula)`,
+    }));
+  }, [config.champion, hasChampionSpecificActions]);
+
+  // Total damage from current session events — used for overkill display.
+  const totalSessionDamage = useMemo(() => {
+    let sum = 0;
+    for (const e of events) {
+      const d = getEventDamage(e);
+      if (typeof d === "number") sum += d;
+    }
+    return sum;
+  }, [events]);
 
   const applyResponse = (res: SandboxStepResponse) => {
     if (res.state) setState(res.state);
