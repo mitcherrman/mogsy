@@ -2144,14 +2144,16 @@ function InteractiveSandbox({
                 <Label className="mb-1.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
                   Hijack target
                 </Label>
-                <Input
+                <SearchSelect
+                  placeholder="Select champion to hijack…"
                   value={hijackTarget}
-                  onChange={(e) => setHijackTarget(e.target.value)}
-                  placeholder="Malphite"
-                  className="h-8 text-xs"
+                  options={champions}
+                  onChange={(v) => setHijackTarget(v || "Malphite")}
+                  loading={metaLoading}
+                  withIcons
                 />
                 <div className="mt-1 text-[10px] text-muted-foreground">
-                  Champion to hijack ultimate from. Defaults to Malphite if empty.
+                  Champion to hijack ultimate from. Used by both Hijack Target and Cast Hijacked Ultimate.
                 </div>
               </div>
             )}
@@ -2160,7 +2162,7 @@ function InteractiveSandbox({
                 Loading champion actions…
               </div>
             )}
-            {!actionsLoading && config.champion && !hasChampionSpecificActions && (
+            {!actionsLoading && config.champion && !hasChampionSpecificActions && fallbackAbilityActions.length === 0 && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
                 No special runtime actions for this champion.
               </div>
@@ -2177,6 +2179,25 @@ function InteractiveSandbox({
                 onClick={() => sendStep("active", a.id, a.extra)}
               />
             ))}
+            {fallbackAbilityActions.length > 0 && (
+              <>
+                <div className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Ability formulas
+                </div>
+                {fallbackAbilityActions.map((a) => (
+                  <ActionButton
+                    key={a.id}
+                    label={a.label}
+                    hint={a.hint}
+                    icon={Zap}
+                    tone="accent"
+                    busy={busy === a.id}
+                    disabled={!!busy || offline}
+                    onClick={() => sendStep("active", a.id)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </SectionCard>
         <DamageBreakdownPanel events={events} className="h-full" />
@@ -2240,7 +2261,7 @@ function InteractiveSandbox({
           </Card>
         )}
 
-        <TargetsPanel scopes={scopes} state={state} />
+        <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
 
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
