@@ -1075,6 +1075,8 @@ export default function CombatLab() {
             critModes={critModes}
             metaLoading={metaLoading}
             apiStatus={apiStatus}
+            devMode={devMode}
+            setDevMode={setDevMode}
           />
         </TabsContent>
       </Tabs>
