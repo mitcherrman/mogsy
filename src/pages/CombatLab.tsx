@@ -2009,9 +2009,11 @@ function InteractiveSandbox({
 
       {/* BELOW: everything else, full width */}
       <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
         <SectionCard
           title="Actions"
           icon={Hand}
+          className="h-full"
           right={
             <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
               <RotateCcw className="h-3.5 w-3.5" /> Reset Combat
@@ -2097,6 +2099,8 @@ function InteractiveSandbox({
             ))}
           </div>
         </SectionCard>
+        <DamageBreakdownPanel events={events} className="h-full" />
+        </div>
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
