@@ -1677,29 +1677,54 @@ function InteractiveSandbox({
 
   const visibleActions = useMemo(() => {
     const champ = (config.champion || "").toLowerCase();
+    const isBasicAttack = (s?: unknown) =>
+      typeof s === "string" && /^basic[_\s-]*attack$/i.test(s.trim());
     return actions.filter((a) => {
+      // strip duplicate Basic Attack entries — we always render one at the top
+      if (
+        isBasicAttack(a.id) ||
+        isBasicAttack(a.label) ||
+        isBasicAttack(a.name) ||
+        isBasicAttack((a as any).active_name)
+      ) {
+        return false;
+      }
       if (Array.isArray(a.champions) && a.champions.length > 0) {
         return a.champions.some((c) => c.toLowerCase() === champ);
       }
       if (a.champion) {
         return a.champion.toLowerCase() === champ;
       }
-      return true;
+      // generic non-champion-tagged actions are not shown — Basic Attack is hardcoded
+      return false;
     });
   }, [actions, config.champion]);
 
   const hasChampionSpecificActions = useMemo(() => {
-    const champ = (config.champion || "").toLowerCase();
-    return actions.some((a) => {
-      if (Array.isArray(a.champions) && a.champions.length > 0) {
-        return a.champions.some((c) => c.toLowerCase() === champ);
-      }
-      if (a.champion) {
-        return a.champion.toLowerCase() === champ;
-      }
-      return false;
-    });
-  }, [actions, config.champion]);
+    return visibleActions.length > 0;
+  }, [visibleActions]);
+
+  // Fallback Q/W/E/R cards when the backend exposes no champion-specific runtime
+  // actions. These hit the same /api/combat-lab/active endpoint with active_name
+  // = "Q"|"W"|"E"|"R" so damage stays backend-driven.
+  const fallbackAbilityActions = useMemo(() => {
+    if (!config.champion || hasChampionSpecificActions) return [];
+    return (["Q", "W", "E", "R"] as const).map((slot) => ({
+      id: slot,
+      label: slot,
+      hint: `Cast ${slot} (formula)`,
+    }));
+  }, [config.champion, hasChampionSpecificActions]);
+
+  // Total damage from current session events — used for overkill display.
+  const totalSessionDamage = useMemo(() => {
+    let sum = 0;
+    for (const e of events) {
+      const d = getEventDamage(e);
+      if (typeof d === "number") sum += d;
+    }
+    return sum;
+  }, [events]);
 
   const applyResponse = (res: SandboxStepResponse) => {
     if (res.state) setState(res.state);
@@ -1838,11 +1863,47 @@ function InteractiveSandbox({
     setLastResponse(null);
     setLastEndpoint("");
     setLastAction(null);
+    setActiveTargetScope("PRIMARY");
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
     toast({ title: "Combat reset", description: "Sandbox state cleared." });
   };
+
+  // Auto-reset session when champion/level/target/items/runes/summoners change.
+  // This prevents state keys (e.g. SYLAS_*, APHELIOS_*) from leaking across champions.
+  const resetKey = useMemo(
+    () =>
+      JSON.stringify({
+        c: config.champion,
+        l: config.stats?.LEVEL ?? null,
+        t: config.target_profile,
+        i: config.items,
+        r: config.runes,
+        s: summonerPicks,
+      }),
+    [config.champion, config.stats?.LEVEL, config.target_profile, config.items, config.runes, summonerPicks]
+  );
+  const firstResetRef = useRef(true);
+  useEffect(() => {
+    if (firstResetRef.current) {
+      firstResetRef.current = false;
+      return;
+    }
+    setState(null);
+    setEvents([]);
+    setScopes({});
+    setAttackerStats({});
+    setError(null);
+    setLastRequest(null);
+    setLastResponse(null);
+    setLastEndpoint("");
+    setLastAction(null);
+    setActiveTargetScope("PRIMARY");
+    try {
+      localStorage.removeItem(SANDBOX_STORAGE_KEY);
+    } catch {}
+  }, [resetKey]);
 
   const offline = apiStatus === "offline";
 
@@ -2083,14 +2144,16 @@ function InteractiveSandbox({
                 <Label className="mb-1.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
                   Hijack target
                 </Label>
-                <Input
+                <SearchSelect
+                  placeholder="Select champion to hijack…"
                   value={hijackTarget}
-                  onChange={(e) => setHijackTarget(e.target.value)}
-                  placeholder="Malphite"
-                  className="h-8 text-xs"
+                  options={champions}
+                  onChange={(v) => setHijackTarget(v || "Malphite")}
+                  loading={metaLoading}
+                  withIcons
                 />
                 <div className="mt-1 text-[10px] text-muted-foreground">
-                  Champion to hijack ultimate from. Defaults to Malphite if empty.
+                  Champion to hijack ultimate from. Used by both Hijack Target and Cast Hijacked Ultimate.
                 </div>
               </div>
             )}
@@ -2099,7 +2162,7 @@ function InteractiveSandbox({
                 Loading champion actions…
               </div>
             )}
-            {!actionsLoading && config.champion && !hasChampionSpecificActions && (
+            {!actionsLoading && config.champion && !hasChampionSpecificActions && fallbackAbilityActions.length === 0 && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
                 No special runtime actions for this champion.
               </div>
@@ -2116,6 +2179,25 @@ function InteractiveSandbox({
                 onClick={() => sendStep("active", a.id, a.extra)}
               />
             ))}
+            {fallbackAbilityActions.length > 0 && (
+              <>
+                <div className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Ability formulas
+                </div>
+                {fallbackAbilityActions.map((a) => (
+                  <ActionButton
+                    key={a.id}
+                    label={a.label}
+                    hint={a.hint}
+                    icon={Zap}
+                    tone="accent"
+                    busy={busy === a.id}
+                    disabled={!!busy || offline}
+                    onClick={() => sendStep("active", a.id)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </SectionCard>
         <DamageBreakdownPanel events={events} className="h-full" />
@@ -2179,7 +2261,7 @@ function InteractiveSandbox({
           </Card>
         )}
 
-        <TargetsPanel scopes={scopes} state={state} />
+        <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
 
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
@@ -2274,16 +2356,25 @@ function pickScope(
 function TargetsPanel({
   scopes,
   state,
+  totalDamage,
 }: {
   scopes: Record<string, TargetScopeInfo>;
   state: Record<string, unknown> | null;
+  totalDamage?: number;
 }) {
   return (
     <SectionCard title="Targets" icon={TargetIcon}>
       <div className="grid gap-3 sm:grid-cols-3">
         {TARGET_SLOTS.map((slot) => {
           const data = pickScope(scopes, slot.key) || deriveScopeFromState(state, slot.key);
-          return <TargetCard key={slot.key} slot={slot} data={data} />;
+          return (
+            <TargetCard
+              key={slot.key}
+              slot={slot}
+              data={data}
+              totalDamage={slot.key === "PRIMARY" ? totalDamage : undefined}
+            />
+          );
         })}
       </div>
     </SectionCard>
@@ -2323,9 +2414,11 @@ function deriveScopeFromState(
 function TargetCard({
   slot,
   data,
+  totalDamage,
 }: {
   slot: { key: string; label: string; sub: string };
   data?: TargetScopeInfo;
+  totalDamage?: number;
 }) {
   const inactive = !data;
   const hp = typeof data?.current_hp === "number" ? data!.current_hp! : null;
@@ -2337,7 +2430,13 @@ function TargetCard({
       ? (hp / max) * 100
       : null;
   const status = data?.status || (inactive ? "inactive" : "active");
-  const dead = pct != null && pct <= 0;
+  const dead = (hp != null && hp <= 0) || (pct != null && pct <= 0);
+  // Overkill: prefer negative HP from backend, fall back to totalDamage - max.
+  let overkill = 0;
+  if (hp != null && hp < 0) overkill = -hp;
+  else if (dead && typeof totalDamage === "number" && max != null && totalDamage > max) {
+    overkill = totalDamage - max;
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -2378,7 +2477,7 @@ function TargetCard({
           <span className="text-muted-foreground">HP</span>
           <span className="font-mono tabular-nums text-foreground">
             {hp != null && max != null
-              ? `${Math.max(0, Math.round(hp))} / ${Math.round(max)}`
+              ? `${Math.round(hp)} / ${Math.round(max)}`
               : "—"}
           </span>
         </div>
@@ -2389,6 +2488,16 @@ function TargetCard({
         <div className="text-right text-[10px] text-muted-foreground tabular-nums">
           {pct != null ? `${pct.toFixed(1)}%` : "—"}
         </div>
+        {dead && overkill > 0 && (
+          <div className="mt-1 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            Target defeated — overkill: {Math.round(overkill).toLocaleString()}
+          </div>
+        )}
+        {dead && overkill <= 0 && (
+          <div className="mt-1 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            Target defeated
+          </div>
+        )}
       </div>
     </motion.div>
   );
