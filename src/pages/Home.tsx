@@ -801,6 +801,9 @@ export default function Home() {
           <motion.img
             src={mogsyLogo}
             alt="Mogsy"
+            width={280}
+            height={102}
+            fetchPriority="high"
             className="h-[51px] sm:h-[77px] md:h-[102px] object-contain drop-shadow-[0_0_25px_hsl(var(--primary)/0.3)]"
             initial={{ opacity: 0, scale: 0.9, filter: "blur(8px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
