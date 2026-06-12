@@ -2477,7 +2477,7 @@ function TargetCard({
           <span className="text-muted-foreground">HP</span>
           <span className="font-mono tabular-nums text-foreground">
             {hp != null && max != null
-              ? `${Math.max(0, Math.round(hp))} / ${Math.round(max)}`
+              ? `${Math.round(hp)} / ${Math.round(max)}`
               : "—"}
           </span>
         </div>
@@ -2488,6 +2488,16 @@ function TargetCard({
         <div className="text-right text-[10px] text-muted-foreground tabular-nums">
           {pct != null ? `${pct.toFixed(1)}%` : "—"}
         </div>
+        {dead && overkill > 0 && (
+          <div className="mt-1 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            Target defeated — overkill: {Math.round(overkill).toLocaleString()}
+          </div>
+        )}
+        {dead && overkill <= 0 && (
+          <div className="mt-1 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            Target defeated
+          </div>
+        )}
       </div>
     </motion.div>
   );
