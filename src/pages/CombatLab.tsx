@@ -532,6 +532,7 @@ export default function CombatLab() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [devMode, setDevMode] = useState(false);
 
   /* persist config */
   useEffect(() => {
@@ -695,6 +696,19 @@ export default function CombatLab() {
             <Activity className="h-3 w-3" />
             Diagnostics
           </Link>
+          <button
+            type="button"
+            onClick={() => setDevMode((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors ${
+              devMode
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border/50 bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-primary"
+            }`}
+            title="Toggle developer mode"
+          >
+            <Activity className="h-3 w-3" />
+            Dev Mode {devMode ? "ON" : "OFF"}
+          </button>
         </div>
       </header>
 
@@ -1061,6 +1075,8 @@ export default function CombatLab() {
             critModes={critModes}
             metaLoading={metaLoading}
             apiStatus={apiStatus}
+            devMode={devMode}
+            setDevMode={setDevMode}
           />
         </TabsContent>
       </Tabs>
@@ -1536,6 +1552,8 @@ type SandboxProps = {
   critModes: readonly CritMode[];
   metaLoading: boolean;
   apiStatus: ApiStatus;
+  devMode: boolean;
+  setDevMode: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 function buildAttackerStats(config: SimulateRequest): Record<string, number> {
@@ -1575,6 +1593,8 @@ function InteractiveSandbox({
   critModes,
   metaLoading,
   apiStatus,
+  devMode,
+  setDevMode,
 }: SandboxProps) {
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -1585,7 +1605,6 @@ function InteractiveSandbox({
   const [hijackTarget, setHijackTarget] = useState<string>("Malphite");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [devMode, setDevMode] = useState(false);
   const [lastRequest, setLastRequest] = useState<unknown>(null);
   const [lastResponse, setLastResponse] = useState<unknown>(null);
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
@@ -1691,7 +1710,7 @@ function InteractiveSandbox({
       // scroll to bottom of timeline
       requestAnimationFrame(() => {
         timelineRef.current?.scrollTo({
-          top: timelineRef.current.scrollHeight,
+          left: timelineRef.current.scrollWidth,
           behavior: "smooth",
         });
       });
@@ -2101,6 +2120,7 @@ function InteractiveSandbox({
         </SectionCard>
         <DamageBreakdownPanel events={events} className="h-full" />
         </div>
+        <SandboxTimeline events={events} containerRef={timelineRef} />
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
@@ -2129,25 +2149,6 @@ function InteractiveSandbox({
             </CardContent>
           </Card>
         )}
-
-        <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/40 px-3 py-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Activity className="h-3.5 w-3.5" />
-            <span>Developer mode</span>
-            <span className="text-[10px] text-muted-foreground/70">— raw request / response</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDevMode((v) => !v)}
-            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold transition-colors ${
-              devMode
-                ? "border-primary/60 bg-primary/15 text-primary"
-                : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
-            }`}
-          >
-            {devMode ? "ON" : "OFF"}
-          </button>
-        </div>
 
         {error && (
           <Card className="border-destructive/50 bg-destructive/10">
@@ -2183,8 +2184,6 @@ function InteractiveSandbox({
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
         <CombatHeader events={events} state={state} />
-
-        <SandboxTimeline events={events} containerRef={timelineRef} />
 
         {devMode && (
           <>
@@ -2670,9 +2669,14 @@ function SandboxTimeline({
       ) : (
         <div
           ref={containerRef}
-          className="max-h-[460px] overflow-y-auto pr-1"
+          className="overflow-x-auto pb-2"
         >
-          <ol className="relative space-y-2 border-l border-border/60 pl-4">
+          <ol className="relative flex items-stretch gap-3 pt-8 min-w-max">
+            {/* horizontal rail */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 right-0 top-[26px] h-px bg-border/60"
+            />
             {filtered.map((e, i) => {
               const t = getEventTime(e);
               const name = getEventLabel(e);
@@ -2685,10 +2689,10 @@ function SandboxTimeline({
               return (
                 <motion.li
                   key={i}
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.18 }}
-                  className={`relative rounded-md border p-2.5 ${
+                  className={`relative flex w-56 flex-shrink-0 flex-col rounded-md border p-2.5 ${
                     phantom
                       ? "border-violet-500/40 bg-violet-500/5"
                       : isDamage
@@ -2697,15 +2701,27 @@ function SandboxTimeline({
                   }`}
                 >
                   <span
-                    className={`absolute -left-[21px] top-3 h-2 w-2 rounded-full ring-2 ring-background ${
+                    className={`absolute left-1/2 -top-[7px] h-3 w-3 -translate-x-1/2 rounded-full ring-2 ring-background ${
                       phantom ? "bg-violet-400" : isDamage ? tone.dot : "bg-muted-foreground/50"
                     }`}
                   />
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-baseline justify-between gap-2">
                       <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {Number(t).toFixed(2)}s
                       </span>
+                      {dmg != null && (
+                        <span
+                          className={`font-mono text-sm font-bold tabular-nums ${
+                            isDamage ? tone.text : "text-muted-foreground"
+                          }`}
+                        >
+                          {isDamage ? "−" : ""}
+                          {dmg.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
                       <span className="truncate text-sm font-semibold text-foreground">
                         {name}
                       </span>
@@ -2714,6 +2730,8 @@ function SandboxTimeline({
                           · {e.source}
                         </span>
                       )}
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-1">
                       {isDamage && tone.label && (
                         <span className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${tone.border} ${tone.text}`}>
                           {tone.label}
@@ -2733,19 +2751,9 @@ function SandboxTimeline({
                         </span>
                       )}
                     </div>
-                    {dmg != null && (
-                      <span
-                        className={`font-mono text-sm font-bold tabular-nums ${
-                          isDamage ? tone.text : "text-muted-foreground"
-                        }`}
-                      >
-                        {isDamage ? "−" : ""}
-                        {dmg.toFixed(1)}
-                      </span>
-                    )}
                   </div>
                   {e.notes && (
-                    <div className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                    <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
                       {e.notes}
                     </div>
                   )}
