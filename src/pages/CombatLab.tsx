@@ -2182,8 +2182,6 @@ function InteractiveSandbox({
 
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
-        <DamageBreakdownPanel events={events} />
-
         <CombatHeader events={events} state={state} />
 
         <SandboxTimeline events={events} containerRef={timelineRef} />
