@@ -2017,6 +2017,12 @@ function InteractiveSandbox({
           }
         >
           <div className="space-y-2">
+            {config.champion && (
+              <div className="text-[11px] text-muted-foreground">
+                Showing actions for{" "}
+                <span className="font-medium text-foreground/80">{config.champion}</span>
+              </div>
+            )}
             <ActionButton
               label="Basic Attack"
               hint="Auto-attack the primary target"
@@ -2049,15 +2055,30 @@ function InteractiveSandbox({
                 </div>
               </div>
             )}
+            {config.champion === "Sylas" && (
+              <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+                <Label className="mb-1.5 block text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Hijack target
+                </Label>
+                <Input
+                  value={hijackTarget}
+                  onChange={(e) => setHijackTarget(e.target.value)}
+                  placeholder="Malphite"
+                  className="h-8 text-xs"
+                />
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  Champion to hijack ultimate from. Defaults to Malphite if empty.
+                </div>
+              </div>
+            )}
             {actionsLoading && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
                 Loading champion actions…
               </div>
             )}
-            {!actionsLoading && visibleActions.length === 0 && config.champion && (
+            {!actionsLoading && config.champion && !hasChampionSpecificActions && (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
-                No champion-specific actives for{" "}
-                <span className="font-semibold text-foreground/90">{config.champion}</span>.
+                No special runtime actions for this champion.
               </div>
             )}
             {visibleActions.map((a) => (
@@ -2069,7 +2090,7 @@ function InteractiveSandbox({
                 tone="accent"
                 busy={busy === a.id}
                 disabled={!!busy || offline}
-                onClick={() => sendStep("active", a.id)}
+                onClick={() => sendStep("active", a.id, a.extra)}
               />
             ))}
           </div>
