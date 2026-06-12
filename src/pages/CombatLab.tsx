@@ -2120,6 +2120,7 @@ function InteractiveSandbox({
         </SectionCard>
         <DamageBreakdownPanel events={events} className="h-full" />
         </div>
+        <SandboxTimeline events={events} containerRef={timelineRef} />
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
@@ -2148,25 +2149,6 @@ function InteractiveSandbox({
             </CardContent>
           </Card>
         )}
-
-        <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/40 px-3 py-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Activity className="h-3.5 w-3.5" />
-            <span>Developer mode</span>
-            <span className="text-[10px] text-muted-foreground/70">— raw request / response</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDevMode((v) => !v)}
-            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold transition-colors ${
-              devMode
-                ? "border-primary/60 bg-primary/15 text-primary"
-                : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
-            }`}
-          >
-            {devMode ? "ON" : "OFF"}
-          </button>
-        </div>
 
         {error && (
           <Card className="border-destructive/50 bg-destructive/10">
@@ -2202,8 +2184,6 @@ function InteractiveSandbox({
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
         <CombatHeader events={events} state={state} />
-
-        <SandboxTimeline events={events} containerRef={timelineRef} />
 
         {devMode && (
           <>
