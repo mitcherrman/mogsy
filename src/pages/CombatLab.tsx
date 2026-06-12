@@ -2356,16 +2356,25 @@ function pickScope(
 function TargetsPanel({
   scopes,
   state,
+  totalDamage,
 }: {
   scopes: Record<string, TargetScopeInfo>;
   state: Record<string, unknown> | null;
+  totalDamage?: number;
 }) {
   return (
     <SectionCard title="Targets" icon={TargetIcon}>
       <div className="grid gap-3 sm:grid-cols-3">
         {TARGET_SLOTS.map((slot) => {
           const data = pickScope(scopes, slot.key) || deriveScopeFromState(state, slot.key);
-          return <TargetCard key={slot.key} slot={slot} data={data} />;
+          return (
+            <TargetCard
+              key={slot.key}
+              slot={slot}
+              data={data}
+              totalDamage={slot.key === "PRIMARY" ? totalDamage : undefined}
+            />
+          );
         })}
       </div>
     </SectionCard>
@@ -2405,9 +2414,11 @@ function deriveScopeFromState(
 function TargetCard({
   slot,
   data,
+  totalDamage,
 }: {
   slot: { key: string; label: string; sub: string };
   data?: TargetScopeInfo;
+  totalDamage?: number;
 }) {
   const inactive = !data;
   const hp = typeof data?.current_hp === "number" ? data!.current_hp! : null;
@@ -2419,7 +2430,13 @@ function TargetCard({
       ? (hp / max) * 100
       : null;
   const status = data?.status || (inactive ? "inactive" : "active");
-  const dead = pct != null && pct <= 0;
+  const dead = (hp != null && hp <= 0) || (pct != null && pct <= 0);
+  // Overkill: prefer negative HP from backend, fall back to totalDamage - max.
+  let overkill = 0;
+  if (hp != null && hp < 0) overkill = -hp;
+  else if (dead && typeof totalDamage === "number" && max != null && totalDamage > max) {
+    overkill = totalDamage - max;
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
