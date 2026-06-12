@@ -2669,9 +2669,14 @@ function SandboxTimeline({
       ) : (
         <div
           ref={containerRef}
-          className="max-h-[460px] overflow-y-auto pr-1"
+          className="overflow-x-auto pb-2"
         >
-          <ol className="relative space-y-2 border-l border-border/60 pl-4">
+          <ol className="relative flex items-stretch gap-3 pt-8 min-w-max">
+            {/* horizontal rail */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 right-0 top-[26px] h-px bg-border/60"
+            />
             {filtered.map((e, i) => {
               const t = getEventTime(e);
               const name = getEventLabel(e);
@@ -2684,10 +2689,10 @@ function SandboxTimeline({
               return (
                 <motion.li
                   key={i}
-                  initial={{ opacity: 0, x: -4 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.18 }}
-                  className={`relative rounded-md border p-2.5 ${
+                  className={`relative flex w-56 flex-shrink-0 flex-col rounded-md border p-2.5 ${
                     phantom
                       ? "border-violet-500/40 bg-violet-500/5"
                       : isDamage
@@ -2696,15 +2701,27 @@ function SandboxTimeline({
                   }`}
                 >
                   <span
-                    className={`absolute -left-[21px] top-3 h-2 w-2 rounded-full ring-2 ring-background ${
+                    className={`absolute left-1/2 -top-[7px] h-3 w-3 -translate-x-1/2 rounded-full ring-2 ring-background ${
                       phantom ? "bg-violet-400" : isDamage ? tone.dot : "bg-muted-foreground/50"
                     }`}
                   />
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-baseline justify-between gap-2">
                       <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {Number(t).toFixed(2)}s
                       </span>
+                      {dmg != null && (
+                        <span
+                          className={`font-mono text-sm font-bold tabular-nums ${
+                            isDamage ? tone.text : "text-muted-foreground"
+                          }`}
+                        >
+                          {isDamage ? "−" : ""}
+                          {dmg.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
                       <span className="truncate text-sm font-semibold text-foreground">
                         {name}
                       </span>
@@ -2713,6 +2730,8 @@ function SandboxTimeline({
                           · {e.source}
                         </span>
                       )}
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-1">
                       {isDamage && tone.label && (
                         <span className={`rounded-sm border px-1 py-px text-[9px] font-bold tracking-wider ${tone.border} ${tone.text}`}>
                           {tone.label}
@@ -2732,19 +2751,9 @@ function SandboxTimeline({
                         </span>
                       )}
                     </div>
-                    {dmg != null && (
-                      <span
-                        className={`font-mono text-sm font-bold tabular-nums ${
-                          isDamage ? tone.text : "text-muted-foreground"
-                        }`}
-                      >
-                        {isDamage ? "−" : ""}
-                        {dmg.toFixed(1)}
-                      </span>
-                    )}
                   </div>
                   {e.notes && (
-                    <div className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                    <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
                       {e.notes}
                     </div>
                   )}
