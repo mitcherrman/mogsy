@@ -103,9 +103,11 @@ export type CombatAction = {
   label?: string;
   name?: string;
   champion?: string;
+  champions?: string[];
   description?: string;
   requires?: string[];
   icon?: string;
+  extra?: Record<string, unknown>;
   [k: string]: unknown;
 };
 
@@ -145,6 +147,7 @@ export type CombatLabActiveRequest = {
   active_name: string;
   target_scope: string;
   piercing_arrow_charge_bonus_percent: number;
+  [k: string]: unknown;
 };
 
 export type CombatLabInteractiveResponse = SandboxStepResponse;
