@@ -147,6 +147,7 @@ export type CombatLabActiveRequest = {
   active_name: string;
   target_scope: string;
   piercing_arrow_charge_bonus_percent: number;
+  [k: string]: unknown;
 };
 
 export type CombatLabInteractiveResponse = SandboxStepResponse;
