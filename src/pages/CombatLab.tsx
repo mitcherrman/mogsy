@@ -1696,7 +1696,11 @@ function InteractiveSandbox({
     }
   };
 
-  const sendStep = async (kind: "basic-attack" | "active", action_id?: string) => {
+  const sendStep = async (
+    kind: "basic-attack" | "active",
+    action_id?: string,
+    extra?: Record<string, unknown>
+  ) => {
     if (!config.champion) {
       toast({ title: "Pick a champion first", variant: "destructive" });
       return;
@@ -1738,6 +1742,11 @@ function InteractiveSandbox({
         res = await combatApi.basicAttack(payload as CombatLabBasicAttackRequest);
       } else {
         endpoint = "/api/combat-lab/active";
+        const sylasExtra: Record<string, unknown> = {};
+        if (config.champion === "Sylas") {
+          sylasExtra.copied_champion = hijackTarget || "Malphite";
+          sylasExtra.hijack_target = hijackTarget || "Malphite";
+        }
         payload = {
           champion_name: config.champion,
           attacker_stats,
@@ -1746,6 +1755,8 @@ function InteractiveSandbox({
           active_name: action_id || "",
           target_scope: activeTargetScope || "PRIMARY",
           piercing_arrow_charge_bonus_percent: 0,
+          ...extra,
+          ...sylasExtra,
         } as CombatLabActiveRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
