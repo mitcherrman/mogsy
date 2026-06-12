@@ -696,6 +696,19 @@ export default function CombatLab() {
             <Activity className="h-3 w-3" />
             Diagnostics
           </Link>
+          <button
+            type="button"
+            onClick={() => setDevMode((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors ${
+              devMode
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-border/50 bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-primary"
+            }`}
+            title="Toggle developer mode"
+          >
+            <Activity className="h-3 w-3" />
+            Dev Mode {devMode ? "ON" : "OFF"}
+          </button>
         </div>
       </header>
 
