@@ -3771,6 +3771,7 @@ function DamageBreakdownPanel({ events, className }: { events: TimelineEvent[]; 
     <SectionCard
       title="Damage Breakdown"
       icon={BarChart3}
+      className={className}
       right={
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {total > 0 ? `${total.toFixed(1)} total` : "no damage yet"}
