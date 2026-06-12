@@ -1593,6 +1593,8 @@ function InteractiveSandbox({
   critModes,
   metaLoading,
   apiStatus,
+  devMode,
+  setDevMode,
 }: SandboxProps) {
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -1603,7 +1605,6 @@ function InteractiveSandbox({
   const [hijackTarget, setHijackTarget] = useState<string>("Malphite");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [devMode, setDevMode] = useState(false);
   const [lastRequest, setLastRequest] = useState<unknown>(null);
   const [lastResponse, setLastResponse] = useState<unknown>(null);
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
