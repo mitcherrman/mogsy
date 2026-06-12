@@ -103,9 +103,11 @@ export type CombatAction = {
   label?: string;
   name?: string;
   champion?: string;
+  champions?: string[];
   description?: string;
   requires?: string[];
   icon?: string;
+  extra?: Record<string, unknown>;
   [k: string]: unknown;
 };
 
