@@ -1863,11 +1863,47 @@ function InteractiveSandbox({
     setLastResponse(null);
     setLastEndpoint("");
     setLastAction(null);
+    setActiveTargetScope("PRIMARY");
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
     toast({ title: "Combat reset", description: "Sandbox state cleared." });
   };
+
+  // Auto-reset session when champion/level/target/items/runes/summoners change.
+  // This prevents state keys (e.g. SYLAS_*, APHELIOS_*) from leaking across champions.
+  const resetKey = useMemo(
+    () =>
+      JSON.stringify({
+        c: config.champion,
+        l: config.stats?.LEVEL ?? null,
+        t: config.target_profile,
+        i: config.items,
+        r: config.runes,
+        s: summonerPicks,
+      }),
+    [config.champion, config.stats?.LEVEL, config.target_profile, config.items, config.runes, summonerPicks]
+  );
+  const firstResetRef = useRef(true);
+  useEffect(() => {
+    if (firstResetRef.current) {
+      firstResetRef.current = false;
+      return;
+    }
+    setState(null);
+    setEvents([]);
+    setScopes({});
+    setAttackerStats({});
+    setError(null);
+    setLastRequest(null);
+    setLastResponse(null);
+    setLastEndpoint("");
+    setLastAction(null);
+    setActiveTargetScope("PRIMARY");
+    try {
+      localStorage.removeItem(SANDBOX_STORAGE_KEY);
+    } catch {}
+  }, [resetKey]);
 
   const offline = apiStatus === "offline";
 
