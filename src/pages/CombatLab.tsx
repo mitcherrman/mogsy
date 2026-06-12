@@ -1657,8 +1657,26 @@ function InteractiveSandbox({
   const visibleActions = useMemo(() => {
     const champ = (config.champion || "").toLowerCase();
     return actions.filter((a) => {
-      if (!a.champion) return true;
-      return a.champion.toLowerCase() === champ;
+      if (Array.isArray(a.champions) && a.champions.length > 0) {
+        return a.champions.some((c) => c.toLowerCase() === champ);
+      }
+      if (a.champion) {
+        return a.champion.toLowerCase() === champ;
+      }
+      return true;
+    });
+  }, [actions, config.champion]);
+
+  const hasChampionSpecificActions = useMemo(() => {
+    const champ = (config.champion || "").toLowerCase();
+    return actions.some((a) => {
+      if (Array.isArray(a.champions) && a.champions.length > 0) {
+        return a.champions.some((c) => c.toLowerCase() === champ);
+      }
+      if (a.champion) {
+        return a.champion.toLowerCase() === champ;
+      }
+      return false;
     });
   }, [actions, config.champion]);
 
