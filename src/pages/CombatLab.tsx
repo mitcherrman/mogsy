@@ -3733,7 +3733,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   rune: "Rune Damage",
 };
 
-function DamageBreakdownPanel({ events }: { events: TimelineEvent[] }) {
+function DamageBreakdownPanel({ events, className }: { events: TimelineEvent[]; className?: string }) {
   const damageEvents = events.filter(
     (e) => typeof getEventDamage(e) === "number" && (getEventDamage(e) as number) > 0
   );
