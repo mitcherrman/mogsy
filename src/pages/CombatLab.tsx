@@ -532,6 +532,7 @@ export default function CombatLab() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [devMode, setDevMode] = useState(false);
 
   /* persist config */
   useEffect(() => {
