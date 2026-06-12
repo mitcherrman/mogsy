@@ -172,14 +172,16 @@ function SectionCard({
   icon: Icon,
   children,
   right,
+  className,
 }: {
   title: string;
   icon?: React.ElementType;
   children: React.ReactNode;
   right?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+    <Card className={`border-border/60 bg-card/60 backdrop-blur-sm ${className ?? ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2 text-foreground/90">
@@ -2007,9 +2009,11 @@ function InteractiveSandbox({
 
       {/* BELOW: everything else, full width */}
       <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
         <SectionCard
           title="Actions"
           icon={Hand}
+          className="h-full"
           right={
             <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
               <RotateCcw className="h-3.5 w-3.5" /> Reset Combat
@@ -2095,6 +2099,8 @@ function InteractiveSandbox({
             ))}
           </div>
         </SectionCard>
+        <DamageBreakdownPanel events={events} className="h-full" />
+        </div>
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
             <CardContent className="flex items-start gap-3 p-4 text-sm">
@@ -2175,8 +2181,6 @@ function InteractiveSandbox({
         <TargetsPanel scopes={scopes} state={state} />
 
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
-
-        <DamageBreakdownPanel events={events} />
 
         <CombatHeader events={events} state={state} />
 
@@ -3727,7 +3731,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   rune: "Rune Damage",
 };
 
-function DamageBreakdownPanel({ events }: { events: TimelineEvent[] }) {
+function DamageBreakdownPanel({ events, className }: { events: TimelineEvent[]; className?: string }) {
   const damageEvents = events.filter(
     (e) => typeof getEventDamage(e) === "number" && (getEventDamage(e) as number) > 0
   );
@@ -3765,6 +3769,7 @@ function DamageBreakdownPanel({ events }: { events: TimelineEvent[] }) {
     <SectionCard
       title="Damage Breakdown"
       icon={BarChart3}
+      className={className}
       right={
         <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {total > 0 ? `${total.toFixed(1)} total` : "no damage yet"}
