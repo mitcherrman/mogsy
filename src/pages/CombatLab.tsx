@@ -172,14 +172,16 @@ function SectionCard({
   icon: Icon,
   children,
   right,
+  className,
 }: {
   title: string;
   icon?: React.ElementType;
   children: React.ReactNode;
   right?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+    <Card className={`border-border/60 bg-card/60 backdrop-blur-sm ${className ?? ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2 text-foreground/90">
