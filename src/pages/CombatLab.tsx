@@ -1580,6 +1580,7 @@ function InteractiveSandbox({
   const [attackerStats, setAttackerStats] = useState<Record<string, number | string>>({});
   const [actions, setActions] = useState<CombatAction[]>([]);
   const [actionsLoading, setActionsLoading] = useState(false);
+  const [hijackTarget, setHijackTarget] = useState<string>("Malphite");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
