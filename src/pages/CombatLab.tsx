@@ -1710,7 +1710,7 @@ function InteractiveSandbox({
       // scroll to bottom of timeline
       requestAnimationFrame(() => {
         timelineRef.current?.scrollTo({
-          top: timelineRef.current.scrollHeight,
+          left: timelineRef.current.scrollWidth,
           behavior: "smooth",
         });
       });
