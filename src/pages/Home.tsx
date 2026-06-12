@@ -828,7 +828,13 @@ export default function Home() {
                   className="absolute inset-0 flex items-center justify-start gap-3 sm:gap-4 px-3 sm:px-5"
                 >
                   <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
-                    <img src={currentBanner.image} alt={currentBanner.name} className="w-full h-full object-cover" />
+                    <img
+                      src={currentBanner.image}
+                      alt={currentBanner.name}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
 
                   <div className="flex-1 min-w-0">
