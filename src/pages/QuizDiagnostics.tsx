@@ -391,6 +391,7 @@ export default function QuizDiagnostics() {
     const health = results["health"];
     const setsRes = results["sets"];
     const qRes = results["sampleQuestions"];
+    const statsRes = results["stats"];
 
     const reportLines = [
       `Quiz Diagnostics Report`,
@@ -421,6 +422,18 @@ export default function QuizDiagnostics() {
       qRes?.durationMs ? `Duration: ${Math.round(qRes.durationMs)} ms` : null,
       `Question count: ${questions?.length ?? "N/A"}`,
       qRes?.error ? `Error: ${qRes.error}` : null,
+      ``,
+      `--- Quiz Stats ---`,
+      `URL: ${statsRes?.url || `${quizApi.baseUrl}/api/quiz/stats`}`,
+      `Status: ${statsRes?.ok ? "OK" : "FAILED"}`,
+      statsRes?.status ? `HTTP: ${statsRes.status}` : null,
+      statsRes?.durationMs ? `Duration: ${Math.round(statsRes.durationMs)} ms` : null,
+      statsData ? `Total questions: ${statsData.total_questions}` : null,
+      statsData ? `Total attempts: ${statsData.total_attempts}` : null,
+      statsData ? `Overall accuracy: ${(statsData.overall_accuracy * 100).toFixed(1)}%` : null,
+      statsData ? `Category count: ${statsData.categories.length}` : null,
+      statsData ? `Set count: ${statsData.sets.length}` : null,
+      statsRes?.error ? `Error: ${statsRes.error}` : null,
       ``,
       `--- Summary ---`,
       summary.issue,
