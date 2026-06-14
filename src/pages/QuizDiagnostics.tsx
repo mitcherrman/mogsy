@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { quizApi, type QuizSet, type QuizQuestion } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizStats } from "@/lib/quiz/api";
 
 /* ─────────────── helpers ─────────────── */
 
