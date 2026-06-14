@@ -124,6 +124,7 @@ const App = () => (
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
+                  <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                 </Route>
