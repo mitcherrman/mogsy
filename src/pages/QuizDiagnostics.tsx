@@ -607,7 +607,7 @@ export default function QuizDiagnostics() {
                       <div className="flex shrink-0 items-center gap-2">
                         {count !== null && (
                           <span className="text-[11px] text-muted-foreground">
-                            {count} {ep.key === "sets" ? "sets" : "questions"}
+                            {count} {ep.key === "sets" ? "sets" : ep.key === "stats" ? "total" : "questions"}
                           </span>
                         )}
                         {r?.durationMs !== undefined && (
