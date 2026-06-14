@@ -457,7 +457,7 @@ export default function QuizDiagnostics() {
     ? "pending"
     : !results["health"]
     ? "idle"
-    : summary.healthOk && summary.setsOk
+    : summary.healthOk && summary.setsOk && summary.statsOk
     ? "ok"
     : "fail";
 
