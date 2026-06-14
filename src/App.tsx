@@ -45,9 +45,10 @@ const BlogIndex = R.BlogIndex.Component;
 const BlogPost = R.BlogPost.Component;
 const AdminBlog = R.AdminBlog.Component;
 const AdminBlogEditor = R.AdminBlogEditor.Component;
-const CombatLab = R.CombatLab.Component;
-const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
-const LolHub = R.LolHub.Component;
+  const CombatLab = R.CombatLab.Component;
+  const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
+  const Quiz = R.Quiz.Component;
+  const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
 const AdminAbout = R.AdminAbout.Component;
 
