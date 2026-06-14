@@ -779,13 +779,20 @@ export default function QuizDiagnostics() {
                 </div>
               </div>
 
-              {statsData.formats && Object.keys(statsData.formats).length > 0 && (
+              {statsData.formats && (Array.isArray(statsData.formats) ? statsData.formats.length > 0 : Object.keys(statsData.formats).length > 0) && (
                 <div>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Formats</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(statsData.formats).map(([fmt, count]) => (
-                      <Badge key={fmt} variant="secondary" className="text-[10px]">
-                        {fmt}: {count}
+                    {(Array.isArray(statsData.formats)
+                      ? (statsData.formats as any[]).map((f, i) => {
+                          const name = f?.format ?? f?.name ?? String(i);
+                          const count = f?.question_count ?? f?.count ?? 0;
+                          return [name, count] as [string, number];
+                        })
+                      : Object.entries(statsData.formats as Record<string, number>)
+                    ).map(([fmt, count]) => (
+                      <Badge key={String(fmt)} variant="secondary" className="text-[10px]">
+                        {String(fmt)}: {String(count)}
                       </Badge>
                     ))}
                   </div>
