@@ -337,23 +337,35 @@ export default function QuizDiagnostics() {
     const health = results["health"];
     const setsRes = results["sets"];
     const qRes = results["sampleQuestions"];
+    const statsRes = results["stats"];
 
     const healthOk = !!health?.ok;
     const setsOk = !!setsRes?.ok;
     const setsEmpty = setsOk && (sets?.length ?? 0) === 0;
     const qOk = !!qRes?.ok;
+    const statsOk = !!statsRes?.ok;
+    const statsHasQuestions = statsOk && (statsData?.total_questions ?? 0) > 0;
 
     const firstError = [
       health?.error,
       setsRes?.error,
       qRes?.error,
+      statsRes?.error,
     ].find(Boolean) as string | undefined;
 
     let issue = "";
     if (!healthOk) {
       issue = "Combat Lab API is unreachable from frontend.";
+    } else if (statsRes?.status === 404) {
+      issue = "Quiz stats endpoint is missing on the Railway backend.";
     } else if (setsRes?.status === 404) {
       issue = "Quiz endpoints are missing on the Railway backend.";
+    } else if (setsOk && statsOk && statsHasQuestions) {
+      issue = "Quiz stats endpoint healthy.";
+    } else if (setsOk && statsOk && !statsHasQuestions) {
+      issue = "Quiz stats endpoint works but no active questions are present.";
+    } else if (setsOk && !statsOk) {
+      issue = "Quiz sets work, but stats endpoint is missing or failing.";
     } else if (setsEmpty) {
       issue =
         "Backend is online, but quiz tables/endpoints may not be deployed or seeded.";
@@ -369,9 +381,11 @@ export default function QuizDiagnostics() {
       healthOk,
       setsOk,
       qOk,
+      statsOk,
+      statsHasQuestions,
       setsEmpty,
     };
-  }, [results, sets]);
+  }, [results, sets, statsData]);
 
   const copyDebugReport = async () => {
     const health = results["health"];
