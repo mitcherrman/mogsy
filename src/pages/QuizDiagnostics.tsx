@@ -545,6 +545,7 @@ export default function QuizDiagnostics() {
           <KV k="Health" v={results["health"]?.ok ? "Online" : results["health"] ? "Failed" : "Pending"} />
           <KV k="Quiz Sets" v={results["sets"]?.ok ? "Reachable" : results["sets"] ? "Failed" : "Pending"} />
           <KV k="Sample Questions" v={results["sampleQuestions"]?.ok ? "Reachable" : results["sampleQuestions"] ? "Failed" : "Pending"} />
+          <KV k="Quiz Stats" v={results["stats"]?.ok ? "Reachable" : results["stats"] ? "Failed" : "Pending"} />
         </Panel>
 
         {/* Endpoint checks */}
