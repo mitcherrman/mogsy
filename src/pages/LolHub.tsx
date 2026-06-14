@@ -56,6 +56,13 @@ export default function LolHub() {
             accent="from-[#1e3a5f] to-[#0a1428]"
           />
           <HubTile
+            to="/quiz"
+            title="League Quiz"
+            description="Test your LoL knowledge with champion trivia, mechanics questions, and more."
+            Icon={BrainCircuit}
+            accent="from-[#1a3a2a] to-[#0a0a1a]"
+          />
+          <HubTile
             to="/swipe"
             title="Swipe LoL Champions"
             description="Tap into the swipe game and rank League of Legends content head-to-head."
