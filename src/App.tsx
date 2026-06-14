@@ -47,6 +47,7 @@ const AdminBlog = R.AdminBlog.Component;
 const AdminBlogEditor = R.AdminBlogEditor.Component;
 const CombatLab = R.CombatLab.Component;
 const CombatLabDiagnostics = R.CombatLabDiagnostics.Component;
+const Quiz = R.Quiz.Component;
 const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
 const AdminAbout = R.AdminAbout.Component;
@@ -123,6 +124,7 @@ const App = () => (
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
+                  <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                 </Route>

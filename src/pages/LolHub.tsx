@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Swords, Flame, Newspaper, ArrowRight, Trophy } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -54,6 +54,13 @@ export default function LolHub() {
             description="Simulate champion matchups, theorycraft builds and run damage tests."
             Icon={Swords}
             accent="from-[#1e3a5f] to-[#0a1428]"
+          />
+          <HubTile
+            to="/quiz"
+            title="League Quiz"
+            description="Test your LoL knowledge with champion trivia, mechanics questions, and more."
+            Icon={BrainCircuit}
+            accent="from-[#1a3a2a] to-[#0a0a1a]"
           />
           <HubTile
             to="/swipe"
