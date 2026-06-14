@@ -742,6 +742,97 @@ export default function QuizDiagnostics() {
           )}
         </Panel>
 
+        {/* Quiz Stats Report */}
+        <Panel
+          title="Quiz Stats Report"
+          icon={Activity}
+          right={
+            statsData === null ? (
+              <span className="text-[11px] text-muted-foreground">Not loaded</span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                {(statsData.total_questions ?? 0)} Q / {(statsData.total_attempts ?? 0)} A
+              </span>
+            )
+          }
+        >
+          {statsData === null ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Questions</div>
+                  <div className="text-lg font-semibold">{statsData.total_questions}</div>
+                </div>
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Attempts</div>
+                  <div className="text-lg font-semibold">{statsData.total_attempts}</div>
+                </div>
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Overall Accuracy</div>
+                  <div className="text-lg font-semibold">{(statsData.overall_accuracy * 100).toFixed(1)}%</div>
+                </div>
+              </div>
+
+              {statsData.formats && Object.keys(statsData.formats).length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Formats</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(statsData.formats).map(([fmt, count]) => (
+                      <Badge key={fmt} variant="secondary" className="text-[10px]">
+                        {fmt}: {count}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statsData.categories && statsData.categories.length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Categories</div>
+                  <div className="space-y-1 max-h-40 overflow-auto">
+                    {statsData.categories.map((cat) => (
+                      <div
+                        key={cat.name}
+                        className="flex items-center justify-between rounded-md border border-border/40 bg-background/40 px-3 py-1.5"
+                      >
+                        <span className="text-sm">{cat.name}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {cat.question_count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statsData.sets && statsData.sets.length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Sets</div>
+                  <div className="space-y-1 max-h-40 overflow-auto">
+                    {statsData.sets.map((s) => (
+                      <div
+                        key={s.name}
+                        className="flex items-center justify-between rounded-md border border-border/40 bg-background/40 px-3 py-1.5"
+                      >
+                        <span className="text-sm">{s.name}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {s.question_count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Panel>
+
         {/* Debug summary card */}
         <div className="lg:col-span-2">
           <Panel title="Debug Summary" icon={Stethoscope}>
