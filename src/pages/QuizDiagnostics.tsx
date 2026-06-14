@@ -248,6 +248,11 @@ const ENDPOINTS = [
     label: "Sample Questions",
     path: `/api/quiz/questions?set=${encodeURIComponent("New Player Basics")}&limit=3`,
   },
+  {
+    key: "stats",
+    label: "Quiz Stats",
+    path: "/api/quiz/stats",
+  },
 ] as const;
 
 /* ─────────────── page ─────────────── */
