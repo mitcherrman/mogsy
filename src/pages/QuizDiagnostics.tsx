@@ -747,15 +747,17 @@ export default function QuizDiagnostics() {
           <Panel title="Debug Summary" icon={Stethoscope}>
             <div
               className={`rounded-md border px-4 py-3 text-sm ${
-                summary.healthOk && summary.setsOk && !summary.setsEmpty
+                summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  : summary.healthOk && summary.setsOk && summary.statsOk
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
                   : summary.healthOk
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
                   : "border-rose-500/30 bg-rose-500/10 text-rose-200"
               }`}
             >
               <div className="flex items-center gap-2 font-semibold mb-1">
-                {summary.healthOk && summary.setsOk && !summary.setsEmpty ? (
+                {summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions ? (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
                     Likely Issue
