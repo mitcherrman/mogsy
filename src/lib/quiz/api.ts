@@ -26,7 +26,15 @@ export type QuizAnswerResult = {
   explanation: string;
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export type QuizStats = {
+  total_questions: number;
+  total_attempts: number;
+  overall_accuracy: number;
+  formats: Record<string, number>;
+  categories: Array<{ name: string; question_count: number }>;
+  sets: Array<{ name: string; question_count: number }>;
+};
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
