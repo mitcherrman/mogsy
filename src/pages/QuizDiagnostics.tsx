@@ -269,6 +269,7 @@ export default function QuizDiagnostics() {
 
   const [sets, setSets] = useState<QuizSet[] | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
+  const [statsData, setStatsData] = useState<QuizStats | null>(null);
 
   const runCheck = async (key: string, path: string) => {
     const res = await timedFetchQuiz(path);
