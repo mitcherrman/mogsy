@@ -321,6 +321,15 @@ export default function QuizDiagnostics() {
     } else if (qResult && !qResult.ok) {
       setQuestions(null);
     }
+
+    const statsResult = results["stats"];
+    if (statsResult?.ok && statsResult.data) {
+      const d = statsResult.data;
+      if (d.stats) setStatsData(d.stats);
+      else setStatsData(d);
+    } else if (statsResult && !statsResult.ok) {
+      setStatsData(null);
+    }
   }, [results]);
 
   // Debug summary
