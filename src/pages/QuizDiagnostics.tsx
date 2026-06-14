@@ -584,6 +584,8 @@ export default function QuizDiagnostics() {
                     ? sets?.length ?? null
                     : ep.key === "sampleQuestions"
                     ? questions?.length ?? null
+                    : ep.key === "stats"
+                    ? statsData?.total_questions ?? null
                     : null;
 
                 return (
