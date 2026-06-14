@@ -26,6 +26,15 @@ export type QuizAnswerResult = {
   explanation: string;
 };
 
+export type QuizStats = {
+  total_questions: number;
+  total_attempts: number;
+  overall_accuracy: number;
+  formats: Record<string, number>;
+  categories: Array<{ name: string; question_count: number }>;
+  sets: Array<{ name: string; question_count: number }>;
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -51,6 +60,7 @@ export const quizApi = {
     request<{ questions: QuizQuestion[] }>(
       `/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`
     ),
+  stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
   submitAnswer: (payload: {
     user_id?: string;
     question_id: number | string;

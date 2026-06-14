@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { quizApi, type QuizSet, type QuizQuestion } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizStats } from "@/lib/quiz/api";
 
 /* ─────────────── helpers ─────────────── */
 
@@ -248,6 +248,11 @@ const ENDPOINTS = [
     label: "Sample Questions",
     path: `/api/quiz/questions?set=${encodeURIComponent("New Player Basics")}&limit=3`,
   },
+  {
+    key: "stats",
+    label: "Quiz Stats",
+    path: "/api/quiz/stats",
+  },
 ] as const;
 
 /* ─────────────── page ─────────────── */
@@ -264,6 +269,7 @@ export default function QuizDiagnostics() {
 
   const [sets, setSets] = useState<QuizSet[] | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
+  const [statsData, setStatsData] = useState<QuizStats | null>(null);
 
   const runCheck = async (key: string, path: string) => {
     const res = await timedFetchQuiz(path);
@@ -315,6 +321,15 @@ export default function QuizDiagnostics() {
     } else if (qResult && !qResult.ok) {
       setQuestions(null);
     }
+
+    const statsResult = results["stats"];
+    if (statsResult?.ok && statsResult.data) {
+      const d = statsResult.data;
+      if (d.stats) setStatsData(d.stats);
+      else setStatsData(d);
+    } else if (statsResult && !statsResult.ok) {
+      setStatsData(null);
+    }
   }, [results]);
 
   // Debug summary
@@ -322,23 +337,35 @@ export default function QuizDiagnostics() {
     const health = results["health"];
     const setsRes = results["sets"];
     const qRes = results["sampleQuestions"];
+    const statsRes = results["stats"];
 
     const healthOk = !!health?.ok;
     const setsOk = !!setsRes?.ok;
     const setsEmpty = setsOk && (sets?.length ?? 0) === 0;
     const qOk = !!qRes?.ok;
+    const statsOk = !!statsRes?.ok;
+    const statsHasQuestions = statsOk && (statsData?.total_questions ?? 0) > 0;
 
     const firstError = [
       health?.error,
       setsRes?.error,
       qRes?.error,
+      statsRes?.error,
     ].find(Boolean) as string | undefined;
 
     let issue = "";
     if (!healthOk) {
       issue = "Combat Lab API is unreachable from frontend.";
+    } else if (statsRes?.status === 404) {
+      issue = "Quiz stats endpoint is missing on the Railway backend.";
     } else if (setsRes?.status === 404) {
       issue = "Quiz endpoints are missing on the Railway backend.";
+    } else if (setsOk && statsOk && statsHasQuestions) {
+      issue = "Quiz stats endpoint healthy.";
+    } else if (setsOk && statsOk && !statsHasQuestions) {
+      issue = "Quiz stats endpoint works but no active questions are present.";
+    } else if (setsOk && !statsOk) {
+      issue = "Quiz sets work, but stats endpoint is missing or failing.";
     } else if (setsEmpty) {
       issue =
         "Backend is online, but quiz tables/endpoints may not be deployed or seeded.";
@@ -354,14 +381,17 @@ export default function QuizDiagnostics() {
       healthOk,
       setsOk,
       qOk,
+      statsOk,
+      statsHasQuestions,
       setsEmpty,
     };
-  }, [results, sets]);
+  }, [results, sets, statsData]);
 
   const copyDebugReport = async () => {
     const health = results["health"];
     const setsRes = results["sets"];
     const qRes = results["sampleQuestions"];
+    const statsRes = results["stats"];
 
     const reportLines = [
       `Quiz Diagnostics Report`,
@@ -393,6 +423,18 @@ export default function QuizDiagnostics() {
       `Question count: ${questions?.length ?? "N/A"}`,
       qRes?.error ? `Error: ${qRes.error}` : null,
       ``,
+      `--- Quiz Stats ---`,
+      `URL: ${statsRes?.url || `${quizApi.baseUrl}/api/quiz/stats`}`,
+      `Status: ${statsRes?.ok ? "OK" : "FAILED"}`,
+      statsRes?.status ? `HTTP: ${statsRes.status}` : null,
+      statsRes?.durationMs ? `Duration: ${Math.round(statsRes.durationMs)} ms` : null,
+      statsData ? `Total questions: ${statsData.total_questions}` : null,
+      statsData ? `Total attempts: ${statsData.total_attempts}` : null,
+      statsData ? `Overall accuracy: ${(statsData.overall_accuracy * 100).toFixed(1)}%` : null,
+      statsData ? `Category count: ${statsData.categories.length}` : null,
+      statsData ? `Set count: ${statsData.sets.length}` : null,
+      statsRes?.error ? `Error: ${statsRes.error}` : null,
+      ``,
       `--- Summary ---`,
       summary.issue,
       summary.firstError ? `First error: ${summary.firstError}` : null,
@@ -415,7 +457,7 @@ export default function QuizDiagnostics() {
     ? "pending"
     : !results["health"]
     ? "idle"
-    : summary.healthOk && summary.setsOk
+    : summary.healthOk && summary.setsOk && summary.statsOk
     ? "ok"
     : "fail";
 
@@ -503,6 +545,7 @@ export default function QuizDiagnostics() {
           <KV k="Health" v={results["health"]?.ok ? "Online" : results["health"] ? "Failed" : "Pending"} />
           <KV k="Quiz Sets" v={results["sets"]?.ok ? "Reachable" : results["sets"] ? "Failed" : "Pending"} />
           <KV k="Sample Questions" v={results["sampleQuestions"]?.ok ? "Reachable" : results["sampleQuestions"] ? "Failed" : "Pending"} />
+          <KV k="Quiz Stats" v={results["stats"]?.ok ? "Reachable" : results["stats"] ? "Failed" : "Pending"} />
         </Panel>
 
         {/* Endpoint checks */}
@@ -541,6 +584,8 @@ export default function QuizDiagnostics() {
                     ? sets?.length ?? null
                     : ep.key === "sampleQuestions"
                     ? questions?.length ?? null
+                    : ep.key === "stats"
+                    ? statsData?.total_questions ?? null
                     : null;
 
                 return (
@@ -562,7 +607,7 @@ export default function QuizDiagnostics() {
                       <div className="flex shrink-0 items-center gap-2">
                         {count !== null && (
                           <span className="text-[11px] text-muted-foreground">
-                            {count} {ep.key === "sets" ? "sets" : "questions"}
+                            {count} {ep.key === "sets" ? "sets" : ep.key === "stats" ? "total" : "questions"}
                           </span>
                         )}
                         {r?.durationMs !== undefined && (
@@ -697,20 +742,113 @@ export default function QuizDiagnostics() {
           )}
         </Panel>
 
+        {/* Quiz Stats Report */}
+        <Panel
+          title="Quiz Stats Report"
+          icon={Activity}
+          right={
+            statsData === null ? (
+              <span className="text-[11px] text-muted-foreground">Not loaded</span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">
+                {(statsData.total_questions ?? 0)} Q / {(statsData.total_attempts ?? 0)} A
+              </span>
+            )
+          }
+        >
+          {statsData === null ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Questions</div>
+                  <div className="text-lg font-semibold">{statsData.total_questions}</div>
+                </div>
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Attempts</div>
+                  <div className="text-lg font-semibold">{statsData.total_attempts}</div>
+                </div>
+                <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Overall Accuracy</div>
+                  <div className="text-lg font-semibold">{(statsData.overall_accuracy * 100).toFixed(1)}%</div>
+                </div>
+              </div>
+
+              {statsData.formats && Object.keys(statsData.formats).length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Formats</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(statsData.formats).map(([fmt, count]) => (
+                      <Badge key={fmt} variant="secondary" className="text-[10px]">
+                        {fmt}: {count}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statsData.categories && statsData.categories.length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Categories</div>
+                  <div className="space-y-1 max-h-40 overflow-auto">
+                    {statsData.categories.map((cat) => (
+                      <div
+                        key={cat.name}
+                        className="flex items-center justify-between rounded-md border border-border/40 bg-background/40 px-3 py-1.5"
+                      >
+                        <span className="text-sm">{cat.name}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {cat.question_count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statsData.sets && statsData.sets.length > 0 && (
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Sets</div>
+                  <div className="space-y-1 max-h-40 overflow-auto">
+                    {statsData.sets.map((s) => (
+                      <div
+                        key={s.name}
+                        className="flex items-center justify-between rounded-md border border-border/40 bg-background/40 px-3 py-1.5"
+                      >
+                        <span className="text-sm">{s.name}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {s.question_count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Panel>
+
         {/* Debug summary card */}
         <div className="lg:col-span-2">
           <Panel title="Debug Summary" icon={Stethoscope}>
             <div
               className={`rounded-md border px-4 py-3 text-sm ${
-                summary.healthOk && summary.setsOk && !summary.setsEmpty
+                summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  : summary.healthOk && summary.setsOk && summary.statsOk
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
                   : summary.healthOk
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
                   : "border-rose-500/30 bg-rose-500/10 text-rose-200"
               }`}
             >
               <div className="flex items-center gap-2 font-semibold mb-1">
-                {summary.healthOk && summary.setsOk && !summary.setsEmpty ? (
+                {summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions ? (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
                     Likely Issue
