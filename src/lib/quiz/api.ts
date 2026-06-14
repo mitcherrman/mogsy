@@ -35,6 +35,7 @@ export type QuizStats = {
   sets: Array<{ name: string; question_count: number }>;
 };
 
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
@@ -59,6 +60,7 @@ export const quizApi = {
     request<{ questions: QuizQuestion[] }>(
       `/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`
     ),
+  stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
   submitAnswer: (payload: {
     user_id?: string;
     question_id: number | string;
