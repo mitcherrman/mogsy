@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Swords, Flame, Newspaper, ArrowRight, Trophy } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
