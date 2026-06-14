@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -165,14 +166,22 @@ export default function Quiz() {
 
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="rounded-xl bg-primary/10 border border-primary/20 p-2.5">
-            <BrainCircuit className="h-6 w-6 text-primary" />
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-primary/10 border border-primary/20 p-2.5">
+              <BrainCircuit className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-foreground">League Quiz</h1>
+              <p className="text-xs text-muted-foreground">Test your League of Legends knowledge</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">League Quiz</h1>
-            <p className="text-xs text-muted-foreground">Test your League of Legends knowledge</p>
-          </div>
+          <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+            <Link to="/quiz/diagnostics">
+              <Stethoscope className="h-3.5 w-3.5" />
+              Diagnostics
+            </Link>
+          </Button>
         </div>
 
         {/* Error state */}
