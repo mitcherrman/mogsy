@@ -474,7 +474,16 @@ export default function Quiz() {
                         )}
                       </div>
 
-                      <div className="flex justify-end mt-3">
+                      <div className="flex justify-between items-center mt-3 gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={openReportDialog}
+                          className="text-xs text-muted-foreground hover:text-foreground gap-1"
+                        >
+                          <Flag className="h-3.5 w-3.5" />
+                          Report issue
+                        </Button>
                         <Button onClick={handleNext}>
                           {currentIndex + 1 >= questions.length ? "See results" : "Next question"}
                           <ArrowRight className="h-4 w-4 ml-2" />
