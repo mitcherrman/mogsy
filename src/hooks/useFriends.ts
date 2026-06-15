@@ -9,7 +9,7 @@ interface FriendProfile {
   display_name: string | null;
   avatar_url: string | null;
   is_pro: boolean | null;
-  is_bot: boolean | null;
+  is_bot?: boolean | null;
 }
 
 export interface FriendRow {
@@ -79,7 +79,7 @@ export function useFriends() {
     if (otherIds.length > 0) {
       const { data: profiles } = await supabase
         .from("public_profiles")
-        .select("id, display_name, avatar_url, is_pro, is_bot")
+        .select("id, display_name, avatar_url, is_pro")
         .in("id", otherIds);
       if (profiles) {
         profiles.forEach((p) => {
@@ -97,7 +97,6 @@ export function useFriends() {
           display_name: "Unknown",
           avatar_url: null,
           is_pro: false,
-          is_bot: false,
         },
       };
     });
