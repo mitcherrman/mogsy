@@ -571,6 +571,99 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
       </div>
     ),
   },
+  {
+    id: "recent-updates",
+    title: "24. Recent Updates",
+    keywords:
+      "recent updates changelog quiz league quiz quiz admin quiz diagnostics quiz reports report issue lol hub tier list combat lab diagnostics rewind security override question",
+    body: (
+      <>
+        <P>
+          Highlights shipped since this reference was last refreshed. Older mechanics are documented in
+          their dedicated sections above.
+        </P>
+
+        <H>League Quiz (<Tag>/quiz</Tag>)</H>
+        <UL>
+          <li>
+            New standalone quiz experience driven by the generator in <Tag>src/lib/quiz/api.ts</Tag>.
+            Questions are sourced from league data and answered head-to-head style.
+          </li>
+          <li>
+            <strong>Report issue</strong> button appears after a question is answered. Opens a dialog with
+            report type dropdown (<Tag>wrong_answer</Tag>, <Tag>confusing_question</Tag>,{" "}
+            <Tag>wrong_image</Tag>, <Tag>typo</Tag>, <Tag>other</Tag>), optional "what you chose",
+            "what it should be", and free-form notes. Submits to <Tag>quizApi.reportQuestion()</Tag> →
+            <Tag>POST /api/quiz/reports</Tag>. Pre-fills <Tag>question_id</Tag> and the user's selected
+            answer. Reports never mutate the live answer.
+          </li>
+        </UL>
+
+        <H>Quiz Admin (<Tag>/quiz/admin</Tag>)</H>
+        <UL>
+          <li>
+            New admin review surface for user-submitted quiz reports. Tabs for Open / Resolved / All,
+            with per-report actions: <strong>Mark fixed</strong>, <strong>Mark invalid</strong>, or{" "}
+            <strong>Apply override</strong>.
+          </li>
+          <li>
+            Override dialog edits the live correct answer, explanation, and admin notes. Backed by{" "}
+            <Tag>quizApi.getReports()</Tag>, <Tag>quizApi.resolveReport()</Tag>, and{" "}
+            <Tag>quizApi.overrideQuestion()</Tag>.
+          </li>
+          <li>
+            Warning banner reminds admins that overrides patch the live quiz immediately but do{" "}
+            <em>not</em> propagate back to the source generator data.
+          </li>
+          <li>Linked from <Tag>/quiz/diagnostics</Tag> for quick triage.</li>
+        </UL>
+
+        <H>Quiz Diagnostics (<Tag>/quiz/diagnostics</Tag>)</H>
+        <P>
+          Internal diagnostics surface for inspecting generated quiz questions, validating data shape, and
+          jumping into the Quiz Admin review queue.
+        </P>
+
+        <H>LoL Hub & Tier List</H>
+        <UL>
+          <li><Tag>/lol</Tag> — landing hub for League of Legends-themed content.</li>
+          <li><Tag>/lol/tier-list</Tag> — community tier list view.</li>
+        </UL>
+
+        <H>Combat Lab Diagnostics</H>
+        <P>
+          <Tag>/combat-lab/diagnostics</Tag> added for inspecting Combat Lab champion data and matchup
+          generation. Combat Lab gameplay itself is unchanged.
+        </P>
+
+        <H>Security Hardening</H>
+        <UL>
+          <li>
+            <Tag>public.rewind_user_match</Tag> rewritten to prevent ELO injection: caller must be a
+            match participant, ELO bounds-checked (0–5000), deltas clamped to ±32 and validated zero-sum,
+            a recent (≤24h) recorded match between the two profiles in the league is required, the
+            original match row is deleted on rewind, and one rewind charge is deducted from the caller.
+          </li>
+          <li>
+            Profile directory + friends hooks tightened to read user info exclusively through the{" "}
+            <Tag>public_profiles</Tag> view so RLS on <Tag>profiles</Tag> is respected.
+          </li>
+        </UL>
+
+        <H>Quiz API surface (<Tag>src/lib/quiz/api.ts</Tag>)</H>
+        <UL>
+          <li><Tag>reportQuestion(payload)</Tag> — user-facing report submission.</li>
+          <li><Tag>getReports(status?)</Tag> — admin list with optional status filter.</li>
+          <li><Tag>resolveReport(reportId, payload)</Tag> — mark fixed / invalid.</li>
+          <li><Tag>overrideQuestion(payload)</Tag> — live-patch correct answer + explanation.</li>
+          <li>
+            <Tag>QuizQuestion</Tag> type now exposes both <Tag>question_key</Tag> and{" "}
+            <Tag>question_text</Tag>.
+          </li>
+        </UL>
+      </>
+    ),
+  },
 ];
 
 export default function AdminAbout() {
