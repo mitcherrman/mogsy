@@ -42,34 +42,6 @@ export default function Quiz() {
   const [reportReason, setReportReason] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  const openReportDialog = useCallback(() => {
-    setReportType("wrong_answer");
-    setReportChosen(selectedAnswer || fillBlankValue || "");
-    setReportExpected(answerResult?.correct_answer || "");
-    setReportReason("");
-    setReportOpen(true);
-  }, [selectedAnswer, fillBlankValue, answerResult]);
-
-  const handleSubmitReport = useCallback(async () => {
-    if (!currentQuestion) return;
-    setReportSubmitting(true);
-    try {
-      await quizApi.reportQuestion({
-        question_id: currentQuestion.id,
-        report_type: reportType,
-        reported_answer: reportChosen || undefined,
-        expected_answer: reportExpected || undefined,
-        reason: reportReason || undefined,
-      });
-      toast.success("Report submitted.");
-      setReportOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to submit report.");
-    } finally {
-      setReportSubmitting(false);
-    }
-  }, [currentQuestion, reportType, reportChosen, reportExpected, reportReason]);
-
   // Load quiz sets on mount
   useEffect(() => {
     let cancelled = false;
