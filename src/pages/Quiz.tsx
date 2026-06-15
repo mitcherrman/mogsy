@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -24,6 +25,7 @@ export default function Quiz() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [fillBlankValue, setFillBlankValue] = useState("");
   const [answerResult, setAnswerResult] = useState<QuizAnswerResult | null>(null);
   const [score, setScore] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
@@ -57,6 +59,7 @@ export default function Quiz() {
     setScore(0);
     setCurrentIndex(0);
     setSelectedAnswer(null);
+    setFillBlankValue("");
     setAnswerResult(null);
     setErrorMsg("");
     try {
@@ -104,6 +107,7 @@ export default function Quiz() {
     } else {
       setCurrentIndex((i) => i + 1);
       setSelectedAnswer(null);
+      setFillBlankValue("");
       setAnswerResult(null);
     }
   }, [currentIndex, questions.length]);
@@ -118,6 +122,7 @@ export default function Quiz() {
       setScore(0);
       setCurrentIndex(0);
       setSelectedAnswer(null);
+      setFillBlankValue("");
       setAnswerResult(null);
     }
   }, [currentSet, handleSelectSet]);
@@ -130,6 +135,7 @@ export default function Quiz() {
     setScore(0);
     setCurrentIndex(0);
     setSelectedAnswer(null);
+    setFillBlankValue("");
     setAnswerResult(null);
     // Re-fetch sets if none loaded
     if (sets.length === 0) {
@@ -321,8 +327,33 @@ export default function Quiz() {
                   </div>
                 )}
 
+                {currentQuestion.format === "fill_blank" ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={fillBlankValue}
+                      onChange={(e) => setFillBlankValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && fillBlankValue.trim() && !answerResult) {
+                          e.preventDefault();
+                          handleSelectAnswer(fillBlankValue.trim());
+                        }
+                      }}
+                      placeholder="Type your answer..."
+                      disabled={!!answerResult}
+                      autoFocus
+                      className="text-sm"
+                    />
+                    <Button
+                      onClick={() => handleSelectAnswer(fillBlankValue.trim())}
+                      disabled={!fillBlankValue.trim() || !!answerResult}
+                      className="w-full"
+                    >
+                      Submit answer
+                    </Button>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 gap-2.5">
-                  {currentQuestion.choices.map((choice, idx) => {
+                  {(currentQuestion.choices || []).map((choice, idx) => {
                     const label = getChoiceLabel(choice);
                     const isSelected = selectedAnswer === label;
                     const isCorrect = answerResult?.correct_answer === label;
@@ -363,6 +394,7 @@ export default function Quiz() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Answer feedback */}
                 <AnimatePresence>
