@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -30,6 +35,12 @@ export default function Quiz() {
   const [score, setScore] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [setsLoading, setSetsLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportType, setReportType] = useState<string>("wrong_answer");
+  const [reportChosen, setReportChosen] = useState("");
+  const [reportExpected, setReportExpected] = useState("");
+  const [reportReason, setReportReason] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   // Load quiz sets on mount
   useEffect(() => {
@@ -80,6 +91,34 @@ export default function Quiz() {
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
+
+  const openReportDialog = useCallback(() => {
+    setReportType("wrong_answer");
+    setReportChosen(selectedAnswer || fillBlankValue || "");
+    setReportExpected(answerResult?.correct_answer || "");
+    setReportReason("");
+    setReportOpen(true);
+  }, [selectedAnswer, fillBlankValue, answerResult]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!currentQuestion) return;
+    setReportSubmitting(true);
+    try {
+      await quizApi.reportQuestion({
+        question_id: currentQuestion.id,
+        report_type: reportType,
+        reported_answer: reportChosen || undefined,
+        expected_answer: reportExpected || undefined,
+        reason: reportReason || undefined,
+      });
+      toast.success("Report submitted.");
+      setReportOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit report.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [currentQuestion, reportType, reportChosen, reportExpected, reportReason]);
 
   const handleSelectAnswer = useCallback(async (choice: string) => {
     if (!currentQuestion || answerResult) return;
@@ -435,7 +474,16 @@ export default function Quiz() {
                         )}
                       </div>
 
-                      <div className="flex justify-end mt-3">
+                      <div className="flex justify-between items-center mt-3 gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={openReportDialog}
+                          className="text-xs text-muted-foreground hover:text-foreground gap-1"
+                        >
+                          <Flag className="h-3.5 w-3.5" />
+                          Report issue
+                        </Button>
                         <Button onClick={handleNext}>
                           {currentIndex + 1 >= questions.length ? "See results" : "Next question"}
                           <ArrowRight className="h-4 w-4 ml-2" />
@@ -503,6 +551,65 @@ export default function Quiz() {
           </motion.div>
         )}
       </div>
+
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report an issue</DialogTitle>
+            <DialogDescription>
+              Help us improve the quiz. Your report will be reviewed by a moderator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Issue type</Label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wrong_answer">Wrong answer</SelectItem>
+                  <SelectItem value="confusing_question">Confusing question</SelectItem>
+                  <SelectItem value="wrong_image">Wrong image</SelectItem>
+                  <SelectItem value="typo">Typo</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">What answer did you choose?</Label>
+              <Input
+                value={reportChosen}
+                onChange={(e) => setReportChosen(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">What should the answer be?</Label>
+              <Input
+                value={reportExpected}
+                onChange={(e) => setReportExpected(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes / reason</Label>
+              <Textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Optional"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)} disabled={reportSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitReport} disabled={reportSubmitting}>
+              {reportSubmitting ? "Submitting..." : "Submit report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
