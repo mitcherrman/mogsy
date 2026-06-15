@@ -327,8 +327,33 @@ export default function Quiz() {
                   </div>
                 )}
 
+                {currentQuestion.format === "fill_blank" ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={fillBlankValue}
+                      onChange={(e) => setFillBlankValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && fillBlankValue.trim() && !answerResult) {
+                          e.preventDefault();
+                          handleSelectAnswer(fillBlankValue.trim());
+                        }
+                      }}
+                      placeholder="Type your answer..."
+                      disabled={!!answerResult}
+                      autoFocus
+                      className="text-sm"
+                    />
+                    <Button
+                      onClick={() => handleSelectAnswer(fillBlankValue.trim())}
+                      disabled={!fillBlankValue.trim() || !!answerResult}
+                      className="w-full"
+                    >
+                      Submit answer
+                    </Button>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 gap-2.5">
-                  {currentQuestion.choices.map((choice, idx) => {
+                  {(currentQuestion.choices || []).map((choice, idx) => {
                     const label = getChoiceLabel(choice);
                     const isSelected = selectedAnswer === label;
                     const isCorrect = answerResult?.correct_answer === label;
@@ -369,6 +394,7 @@ export default function Quiz() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Answer feedback */}
                 <AnimatePresence>
