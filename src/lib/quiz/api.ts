@@ -10,8 +10,8 @@ export type QuizSet = {
 export type QuizQuestion = {
   id: number | string;
   category: string;
-  question_key?: string;
   question_key?: string | null;
+  question_text?: string | null;
   format: "multiple_choice" | string;
   choices: Array<string | { label: string; raw_stats?: string[] }>;
   image_path?: string;
