@@ -53,6 +53,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export type QuizReport = {
+  id: number | string;
+  question_id: number | string;
+  category?: string;
+  question_text?: string;
+  current_correct_answer?: string;
+  reported_answer?: string;
+  expected_answer?: string;
+  reason?: string;
+  report_type?: string;
+  reporter_id?: string;
+  status?: "open" | "resolved" | "invalid" | string;
+  created_at?: string;
+};
+
 export const quizApi = {
   baseUrl: API_BASE_URL,
   sets: () => request<{ sets: QuizSet[] }>("/api/quiz/sets"),
@@ -80,6 +95,29 @@ export const quizApi = {
     reason?: string;
   }) =>
     request<{ ok?: boolean; id?: number | string }>("/api/quiz/reports", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getReports: (status?: string) =>
+    request<{ reports: QuizReport[] }>(
+      `/api/quiz/admin/reports${status ? `?status=${encodeURIComponent(status)}` : ""}`
+    ),
+  resolveReport: (
+    reportId: number | string,
+    payload: { resolution: "resolved" | "invalid"; notes?: string }
+  ) =>
+    request<{ ok?: boolean }>(
+      `/api/quiz/admin/reports/${encodeURIComponent(String(reportId))}/resolve`,
+      { method: "POST", body: JSON.stringify(payload) }
+    ),
+  overrideQuestion: (payload: {
+    question_id: number | string;
+    new_correct_answer: string;
+    new_explanation?: string;
+    notes?: string;
+    report_id?: number | string;
+  }) =>
+    request<{ ok?: boolean }>("/api/quiz/admin/override-question", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

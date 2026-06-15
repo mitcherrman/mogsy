@@ -490,6 +490,12 @@ export default function QuizDiagnostics() {
               Back to Quiz
             </Link>
           </Button>
+          <Button asChild variant="ghost" size="sm" className="gap-1">
+            <Link to="/quiz/admin">
+              <Stethoscope className="h-4 w-4" />
+              Admin
+            </Link>
+          </Button>
           <Button
             variant="secondary"
             size="sm"
