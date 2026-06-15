@@ -551,6 +551,65 @@ export default function Quiz() {
           </motion.div>
         )}
       </div>
+
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report an issue</DialogTitle>
+            <DialogDescription>
+              Help us improve the quiz. Your report will be reviewed by a moderator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Issue type</Label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wrong_answer">Wrong answer</SelectItem>
+                  <SelectItem value="confusing_question">Confusing question</SelectItem>
+                  <SelectItem value="wrong_image">Wrong image</SelectItem>
+                  <SelectItem value="typo">Typo</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">What answer did you choose?</Label>
+              <Input
+                value={reportChosen}
+                onChange={(e) => setReportChosen(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">What should the answer be?</Label>
+              <Input
+                value={reportExpected}
+                onChange={(e) => setReportExpected(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes / reason</Label>
+              <Textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Optional"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)} disabled={reportSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitReport} disabled={reportSubmitting}>
+              {reportSubmitting ? "Submitting..." : "Submit report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
