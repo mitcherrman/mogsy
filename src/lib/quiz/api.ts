@@ -71,4 +71,16 @@ export const quizApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  reportQuestion: (payload: {
+    question_id: number | string;
+    reporter_id?: string;
+    report_type: string;
+    reported_answer?: string;
+    expected_answer?: string;
+    reason?: string;
+  }) =>
+    request<{ ok?: boolean; id?: number | string }>("/api/quiz/reports", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
