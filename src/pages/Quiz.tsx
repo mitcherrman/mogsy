@@ -92,6 +92,34 @@ export default function Quiz() {
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
 
+  const openReportDialog = useCallback(() => {
+    setReportType("wrong_answer");
+    setReportChosen(selectedAnswer || fillBlankValue || "");
+    setReportExpected(answerResult?.correct_answer || "");
+    setReportReason("");
+    setReportOpen(true);
+  }, [selectedAnswer, fillBlankValue, answerResult]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!currentQuestion) return;
+    setReportSubmitting(true);
+    try {
+      await quizApi.reportQuestion({
+        question_id: currentQuestion.id,
+        report_type: reportType,
+        reported_answer: reportChosen || undefined,
+        expected_answer: reportExpected || undefined,
+        reason: reportReason || undefined,
+      });
+      toast.success("Report submitted.");
+      setReportOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit report.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [currentQuestion, reportType, reportChosen, reportExpected, reportReason]);
+
   const handleSelectAnswer = useCallback(async (choice: string) => {
     if (!currentQuestion || answerResult) return;
     setSelectedAnswer(choice);
