@@ -27,7 +27,7 @@ export default function AdminProfileDirectory() {
 
   const loadProfiles = async () => {
     const { data } = await supabase
-      .from("public_profiles")
+      .from("profiles")
       .select("id, display_name, avatar_url, is_pro, is_bot, created_at")
       .eq("is_anonymous", false)
       .order("created_at", { ascending: false })
