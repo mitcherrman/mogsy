@@ -1,6 +1,4 @@
-const API_BASE_URL =
-  (import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
-  "http://127.0.0.1:8000";
+const API_BASE_URL = (import.meta.env.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
 
 export type QuizSet = {
   id: number | string;
@@ -12,7 +10,7 @@ export type QuizSet = {
 export type QuizQuestion = {
   id: number | string;
   category: string;
-  question_text: string;
+  question_key?: string | null;
   format: "multiple_choice" | string;
   choices: Array<string | { label: string; raw_stats?: string[] }>;
   image_path?: string;
@@ -72,9 +70,7 @@ export const quizApi = {
   baseUrl: API_BASE_URL,
   sets: () => request<{ sets: QuizSet[] }>("/api/quiz/sets"),
   questions: (quizSet: string, limit = 10) =>
-    request<{ questions: QuizQuestion[] }>(
-      `/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`
-    ),
+    request<{ questions: QuizQuestion[] }>(`/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`),
   stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
   submitAnswer: (payload: {
     user_id?: string;
@@ -100,16 +96,13 @@ export const quizApi = {
     }),
   getReports: (status?: string) =>
     request<{ reports: QuizReport[] }>(
-      `/api/quiz/admin/reports${status ? `?status=${encodeURIComponent(status)}` : ""}`
+      `/api/quiz/admin/reports${status ? `?status=${encodeURIComponent(status)}` : ""}`,
     ),
-  resolveReport: (
-    reportId: number | string,
-    payload: { resolution: "resolved" | "invalid"; notes?: string }
-  ) =>
-    request<{ ok?: boolean }>(
-      `/api/quiz/admin/reports/${encodeURIComponent(String(reportId))}/resolve`,
-      { method: "POST", body: JSON.stringify(payload) }
-    ),
+  resolveReport: (reportId: number | string, payload: { resolution: "resolved" | "invalid"; notes?: string }) =>
+    request<{ ok?: boolean }>(`/api/quiz/admin/reports/${encodeURIComponent(String(reportId))}/resolve`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   overrideQuestion: (payload: {
     question_id: number | string;
     new_correct_answer: string;
