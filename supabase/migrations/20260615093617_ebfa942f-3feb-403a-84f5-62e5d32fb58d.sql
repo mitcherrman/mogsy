@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Recipients view their gifts" ON public.gifts;
