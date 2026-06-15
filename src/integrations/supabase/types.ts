@@ -2585,7 +2585,6 @@ export type Database = {
     Views: {
       public_profiles: {
         Row: {
-          active_boost_until: string | null
           age: number | null
           avatar_url: string | null
           created_at: string | null
@@ -2593,7 +2592,6 @@ export type Database = {
           display_name: string | null
           id: string | null
           is_anonymous: boolean | null
-          is_bot: boolean | null
           is_pro: boolean | null
           location: string | null
           profile_frame: string | null
@@ -2603,7 +2601,6 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          active_boost_until?: string | null
           age?: number | null
           avatar_url?: string | null
           created_at?: string | null
@@ -2611,7 +2608,6 @@ export type Database = {
           display_name?: string | null
           id?: string | null
           is_anonymous?: boolean | null
-          is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null
@@ -2621,7 +2617,6 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          active_boost_until?: string | null
           age?: number | null
           avatar_url?: string | null
           created_at?: string | null
@@ -2629,7 +2624,6 @@ export type Database = {
           display_name?: string | null
           id?: string | null
           is_anonymous?: boolean | null
-          is_bot?: boolean | null
           is_pro?: boolean | null
           location?: string | null
           profile_frame?: string | null
