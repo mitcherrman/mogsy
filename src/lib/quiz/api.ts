@@ -194,4 +194,7 @@ export const quizApi = {
       `/api/quiz/admin/overrides/${encodeURIComponent(String(overrideId))}/${active ? "activate" : "deactivate"}`,
       { method: "POST" },
     ),
+  /** Category breakdown for a user. Pass `"anonymous"` for guest aggregate. */
+  getCategories: (userId: string) =>
+    request<{ categories: QuizCategoryStat[] }>(`/api/quiz/categories/${encodeURIComponent(userId)}`),
 };
