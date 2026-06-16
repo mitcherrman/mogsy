@@ -898,10 +898,10 @@ export default function QuizDiagnostics() {
                     )}
                     <div className="min-w-0">
                       <div className="text-sm font-bold">
-                        {progressData.rank_name || progressData.rank || "Unranked"}
+                        {progressData.rank_name || (typeof progressData.rank === "string" ? progressData.rank : undefined) || "Unranked"}
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        Next: {progressData.next_rank_name || progressData.next_rank || "—"}
+                        Next: {progressData.next_rank_name || (typeof progressData.next_rank === "string" ? progressData.next_rank : undefined) || "—"}
                       </div>
                     </div>
                   </div>
