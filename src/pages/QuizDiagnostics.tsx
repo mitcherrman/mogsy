@@ -862,8 +862,70 @@ export default function QuizDiagnostics() {
 
         {/* Debug summary card */}
         <div className="lg:col-span-2">
+          {/* Quiz Progress */}
+          <div className="mb-6">
+            <Panel
+              title="Quiz Progress (anonymous)"
+              icon={Activity}
+              right={
+                <StatusPill
+                  state={
+                    !results["progress"]
+                      ? "idle"
+                      : results["progress"].ok
+                      ? "ok"
+                      : "fail"
+                  }
+                />
+              }
+            >
+              {!progressData ? (
+                <div className="rounded-md border border-dashed border-border bg-background/30 p-4 text-center text-xs text-muted-foreground">
+                  No progression data returned yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    {progressData.rank_icon && (
+                      <img
+                        src={resolveQuizAssetUrl(progressData.rank_icon)}
+                        alt={progressData.rank || "Rank"}
+                        className="h-12 w-12 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold">
+                        {progressData.rank_name || progressData.rank || "Unranked"}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Next: {progressData.next_rank_name || progressData.next_rank || "—"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <KV k="XP" v={progressData.xp ?? "—"} />
+                    <KV
+                      k="Accuracy"
+                      v={progressData.accuracy !== undefined ? `${Number(progressData.accuracy).toFixed(2)}%` : "—"}
+                    />
+                    <KV k="Streak" v={progressData.current_streak ?? "—"} />
+                    <KV k="Best Streak" v={progressData.best_streak ?? "—"} />
+                    <KV k="Attempts" v={progressData.attempts ?? "—"} />
+                    <KV
+                      k="Progress"
+                      v={progressData.progress_percent !== undefined ? `${Number(progressData.progress_percent).toFixed(2)}%` : "—"}
+                    />
+                  </div>
+                  <JsonViewer data={progressData} label="Raw JSON" />
+                </div>
+              )}
+            </Panel>
+          </div>
+
           <Panel title="Debug Summary" icon={Stethoscope}>
-            {/* Progress preview rendered above is in its own panel */}
             <div
               className={`rounded-md border px-4 py-3 text-sm ${
                 summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions
