@@ -512,6 +512,42 @@ export default function Quiz() {
                         )}
                       </div>
 
+                      {/* XP reward */}
+                      {(answerResult.xp_earned !== undefined || answerResult.rank || answerResult.current_xp !== undefined) && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ delay: 0.1, type: "spring", stiffness: 280, damping: 18 }}
+                          className="mt-3 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3"
+                        >
+                          {answerResult.rank_icon && (
+                            <img
+                              src={resolveQuizAssetUrl(answerResult.rank_icon)}
+                              alt={answerResult.rank || "Rank"}
+                              className="h-9 w-9 object-contain shrink-0"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            {answerResult.xp_earned !== undefined && (
+                              <div className="flex items-center gap-1.5 text-sm font-bold text-primary">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                +{answerResult.xp_earned} XP
+                              </div>
+                            )}
+                            {(answerResult.rank || answerResult.current_xp !== undefined) && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {answerResult.rank && <span className="font-medium text-foreground/80">{answerResult.rank}</span>}
+                                {answerResult.rank && answerResult.current_xp !== undefined && " · "}
+                                {answerResult.current_xp !== undefined && (
+                                  <span>{answerResult.current_xp.toLocaleString()} XP total</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+
                       <div className="flex justify-between items-center mt-3 gap-2">
                         <Button
                           variant="ghost"
