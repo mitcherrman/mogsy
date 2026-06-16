@@ -53,35 +53,35 @@ export default function LolHub() {
             title="Combat Lab"
             description="Simulate champion matchups, theorycraft builds and run damage tests."
             Icon={Swords}
-            accent="from-[#1e3a5f] to-[#0a1428]"
+            accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
           />
           <HubTile
             to="/quiz"
             title="League Quiz"
             description="Test your LoL knowledge with champion trivia, mechanics questions, and more."
             Icon={BrainCircuit}
-            accent="from-[#1a3a2a] to-[#0a0a1a]"
+            accent="from-[#1a3a2a]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/swipe"
             title="Swipe LoL Champions"
             description="Tap into the swipe game and rank League of Legends content head-to-head."
             Icon={Flame}
-            accent="from-[#5c2018] to-[#0a0a1a]"
+            accent="from-[#5c2018]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/lol/tier-list"
             title="LoL Tier List"
             description="Meta rankings for every role this patch — Top, Jungle, Mid, ADC and Support."
             Icon={Trophy}
-            accent="from-[#3a2d10] to-[#0a0a1a]"
+            accent="from-[#3a2d10]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/lol/docs"
             title="League Docs"
             description="Searchable, timestamped log of every change to LoL pages — copy entries for ChatGPT."
             Icon={FileText}
-            accent="from-[#1a2238] to-[#0a0a1a]"
+            accent="from-[#1a2238]/90 to-[#0a0a1a]/90"
           />
         </div>
 
