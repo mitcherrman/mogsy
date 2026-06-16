@@ -340,6 +340,15 @@ export default function Quiz() {
           />
         </div>
 
+        {/* Achievements */}
+        <div className="mb-6">
+          <QuizAchievementsCard
+            achievements={achievements}
+            loading={achievementsLoading}
+            error={achievementsError}
+          />
+        </div>
+
         {/* Error state */}
         {phase === "error" && (
           <motion.div
