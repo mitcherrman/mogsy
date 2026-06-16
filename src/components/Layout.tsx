@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useLayoutEffect } from "react";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
@@ -30,21 +30,19 @@ export default function Layout() {
     pathname === "/quiz" ||
     pathname.startsWith("/quiz/");
 
-  useEffect(() => {
+  // Use useLayoutEffect so the LoL theme class is applied AFTER the sitewide
+  // theme provider's effect on every render — including theme cycles and
+  // post-refresh hydration — guaranteeing the LoL palette always wins.
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (isLolSection) {
-      // Strip any sitewide theme-* class so the LoL palette wins, regardless
-      // of what the sitewide cycle is currently showing.
       root.className = root.className.replace(/theme-\S+/g, "").trim();
       root.classList.add("dark");
       root.classList.add("theme-lol");
     } else {
       root.classList.remove("theme-lol");
     }
-    return () => {
-      if (isLolSection) root.classList.remove("theme-lol");
-    };
-  }, [isLolSection, visualThemeId]);
+  }, [isLolSection, visualThemeId, themeId]);
 
   // While the LoL section is active, disable all sitewide overlays/backgrounds
   // so nothing competes with the dedicated theme.
@@ -96,7 +94,7 @@ export default function Layout() {
         </Suspense>
       </main>
       <FloatingFriendsButton />
-      <FloatingThemeSwitcher />
+      {!isLolSection && <FloatingThemeSwitcher />}
       <FloatingScrollButton />
       <TutorialTipPopup />
     </div>
