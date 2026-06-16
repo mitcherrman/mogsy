@@ -13,10 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
+import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
@@ -50,6 +51,10 @@ export default function Quiz() {
   const [progressLoading, setProgressLoading] = useState(true);
   const [progressError, setProgressError] = useState<string | null>(null);
 
+  const [categoryStats, setCategoryStats] = useState<QuizCategoryStat[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
   const loadProgress = useCallback(async () => {
     setProgressError(null);
     try {
@@ -63,10 +68,28 @@ export default function Quiz() {
     }
   }, [userId]);
 
+  const loadCategories = useCallback(async () => {
+    setCategoriesError(null);
+    try {
+      const data = await quizApi.getCategories(userId);
+      setCategoryStats(data.categories || []);
+    } catch (err: any) {
+      setCategoriesError(err?.message || "Category stats unavailable.");
+      setCategoryStats([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     setProgressLoading(true);
     loadProgress();
   }, [loadProgress]);
+
+  useEffect(() => {
+    setCategoriesLoading(true);
+    loadCategories();
+  }, [loadCategories]);
 
   // Load quiz sets on mount
   useEffect(() => {
@@ -264,6 +287,15 @@ export default function Quiz() {
             progress={userProgress}
             loading={progressLoading}
             error={progressError}
+          />
+        </div>
+
+        {/* Knowledge breakdown */}
+        <div className="mb-6">
+          <QuizKnowledgeCard
+            categories={categoryStats}
+            loading={categoriesLoading}
+            error={categoriesError}
           />
         </div>
 
