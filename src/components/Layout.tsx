@@ -33,7 +33,7 @@ export default function Layout() {
   // Use useLayoutEffect so the LoL theme class is applied AFTER the sitewide
   // theme provider's effect on every render — including theme cycles and
   // post-refresh hydration — guaranteeing the LoL palette always wins.
-  useLayoutEffect(() => {
+  useEffect(() => {
     const root = document.documentElement;
     if (isLolSection) {
       root.className = root.className.replace(/theme-\S+/g, "").trim();
