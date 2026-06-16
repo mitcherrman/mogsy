@@ -52,6 +52,7 @@ const QuizDiagnostics = R.QuizDiagnostics.Component;
 const QuizAdmin = R.QuizAdmin.Component;
 const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
+const LolDocumentation = R.LolDocumentation.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 
@@ -133,6 +134,7 @@ const App = () => (
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
+                  <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LolDocumentation /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
