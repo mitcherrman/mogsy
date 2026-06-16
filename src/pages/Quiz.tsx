@@ -180,6 +180,17 @@ export default function Quiz() {
       });
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+      // Surface any unlocked achievements
+      const unlocked = (result as any).unlocked_achievements;
+      if (Array.isArray(unlocked) && unlocked.length > 0) {
+        unlocked.forEach((a: any) => {
+          const name = a?.name || "Achievement unlocked";
+          toast.success(name, {
+            description: a?.description || undefined,
+            icon: "🏆",
+          });
+        });
+      }
       // Refresh progression in the background
       loadProgress();
     } catch (err: any) {
