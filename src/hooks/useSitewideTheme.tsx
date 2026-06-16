@@ -142,6 +142,18 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    // The LoL section owns its own theme class (theme-lol) applied by Layout.
+    // Skip sitewide theme class mutations while the user is in that section so
+    // we don't fight the LoL theme on cycle ticks or post-refresh hydration.
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const isLolSection =
+      path === "/lol" ||
+      path.startsWith("/lol/") ||
+      path === "/combat-lab" ||
+      path.startsWith("/combat-lab/") ||
+      path === "/quiz" ||
+      path.startsWith("/quiz/");
+    if (isLolSection) return;
     root.className = root.className.replace(/theme-\S+/g, "").trim();
 
     if (visualThemeId === "default") {
