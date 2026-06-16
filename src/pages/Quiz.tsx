@@ -418,21 +418,103 @@ export default function Quiz() {
 
             <Progress value={progress} className="h-2" />
 
-            <Card className="bg-card/80 backdrop-blur-sm">
+            {(() => {
+              const meta = (currentQuestion.metadata || {}) as Record<string, any>;
+              const championIcon = resolveQuizAssetUrl(meta.champion_icon_path as string | undefined);
+              const championSplash = resolveQuizAssetUrl(meta.champion_splash_path as string | undefined);
+              const assetPath = resolveQuizAssetUrl(meta.asset_path as string | undefined);
+              const rawImage = currentQuestion.image_path
+                ? resolveQuizAssetUrl(currentQuestion.image_path) || currentQuestion.image_path
+                : assetPath;
+              const mainVisual = championIcon || rawImage;
+              const hasChampionTheme = !!(championIcon || championSplash);
+              return (
+            <Card
+              className={
+                hasChampionTheme
+                  ? "relative overflow-hidden border bg-[#0a1428] backdrop-blur-sm"
+                  : "bg-card/80 backdrop-blur-sm"
+              }
+              style={
+                hasChampionTheme
+                  ? {
+                      borderColor: "rgba(201, 168, 76, 0.45)",
+                      boxShadow:
+                        "0 0 0 1px rgba(201,168,76,0.15) inset, 0 0 24px rgba(80,170,220,0.18), 0 0 48px rgba(201,168,76,0.10)",
+                    }
+                  : undefined
+              }
+            >
+              {championSplash && (
+                <>
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      backgroundImage: `url(${championSplash})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      opacity: 0.22,
+                      filter: "saturate(1.05)",
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.85) 60%, rgba(10,20,40,0.95) 100%)",
+                    }}
+                  />
+                </>
+              )}
+              <div className="relative">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base md:text-lg font-semibold leading-snug">
+                <CardTitle
+                  className={
+                    hasChampionTheme
+                      ? "text-base md:text-lg font-semibold leading-snug text-[#f0e6d2]"
+                      : "text-base md:text-lg font-semibold leading-snug"
+                  }
+                >
                   {currentQuestion.question_text}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {currentQuestion.image_path && (
-                  <div className="rounded-lg overflow-hidden border border-border bg-black/20">
-                    <img
-                      src={currentQuestion.image_path}
-                      alt="Question visual"
-                      className="w-full max-h-56 object-contain"
-                      loading="lazy"
-                    />
+                {mainVisual && (
+                  <div
+                    className={
+                      championIcon
+                        ? "flex justify-center"
+                        : "rounded-lg overflow-hidden border border-border bg-black/20"
+                    }
+                  >
+                    {championIcon ? (
+                      <div
+                        className="relative rounded-xl overflow-hidden"
+                        style={{
+                          borderWidth: 2,
+                          borderStyle: "solid",
+                          borderColor: "#c9a84c",
+                          boxShadow:
+                            "0 0 18px rgba(80,170,220,0.45), 0 0 32px rgba(201,168,76,0.25)",
+                        }}
+                      >
+                        <img
+                          src={mainVisual}
+                          alt="Champion"
+                          className="h-32 w-32 md:h-40 md:w-40 object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <img
+                        src={mainVisual}
+                        alt="Question visual"
+                        className="w-full max-h-56 object-contain"
+                        loading="lazy"
+                      />
+                    )}
                   </div>
                 )}
 
@@ -599,7 +681,10 @@ export default function Quiz() {
                   )}
                 </AnimatePresence>
               </CardContent>
+              </div>
             </Card>
+              );
+            })()}
           </motion.div>
         )}
 
