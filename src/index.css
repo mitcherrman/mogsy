@@ -229,6 +229,17 @@
   animation: champion-pulse 0.8s ease-out 1;
 }
 
+/* Ken Burns slow pan/zoom for champion splash backgrounds */
+@keyframes ken-burns {
+  0% { transform: scale(1.05) translate(0%, 0%); }
+  50% { transform: scale(1.15) translate(-2%, -1.5%); }
+  100% { transform: scale(1.08) translate(1.5%, 1%); }
+}
+.animate-ken-burns {
+  animation: ken-burns 18s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
 /* Sitewide theme CSS variable overrides */
 .theme-midnight {
   --background: 230 30% 8%;
