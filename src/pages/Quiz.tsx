@@ -290,6 +290,15 @@ export default function Quiz() {
           />
         </div>
 
+        {/* Knowledge breakdown */}
+        <div className="mb-6">
+          <QuizKnowledgeCard
+            categories={categoryStats}
+            loading={categoriesLoading}
+            error={categoriesError}
+          />
+        </div>
+
         {/* Error state */}
         {phase === "error" && (
           <motion.div
