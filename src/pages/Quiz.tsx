@@ -423,6 +423,7 @@ export default function Quiz() {
               const championIcon = resolveQuizAssetUrl(meta.champion_icon_path as string | undefined);
               const championSplash = resolveQuizAssetUrl(meta.champion_splash_path as string | undefined);
               const assetPath = resolveQuizAssetUrl(meta.asset_path as string | undefined);
+              const championName = typeof meta.champion_name === "string" ? meta.champion_name : undefined;
               const rawImage = currentQuestion.image_path
                 ? resolveQuizAssetUrl(currentQuestion.image_path) || currentQuestion.image_path
                 : assetPath;
@@ -447,15 +448,30 @@ export default function Quiz() {
             >
               {championSplash && (
                 <>
+                  <motion.div
+                    key={`splash-${currentIndex}`}
+                    aria-hidden
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.32 }}
+                    transition={{ duration: 0.9, ease: "easeOut" }}
+                    className="absolute inset-0 pointer-events-none overflow-hidden"
+                  >
+                    <div
+                      className="absolute inset-0 animate-ken-burns"
+                      style={{
+                        backgroundImage: `url(${championSplash})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        filter: "saturate(1.1) contrast(1.05)",
+                      }}
+                    />
+                  </motion.div>
                   <div
                     aria-hidden
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                      backgroundImage: `url(${championSplash})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      opacity: 0.22,
-                      filter: "saturate(1.05)",
+                      background:
+                        "linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.78) 55%, rgba(10,20,40,0.92) 100%)",
                     }}
                   />
                   <div
@@ -463,7 +479,7 @@ export default function Quiz() {
                     className="absolute inset-0 pointer-events-none"
                     style={{
                       background:
-                        "linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.85) 60%, rgba(10,20,40,0.95) 100%)",
+                        "radial-gradient(120% 80% at 50% 0%, rgba(80,170,220,0.10) 0%, transparent 60%)",
                     }}
                   />
                 </>
@@ -485,28 +501,67 @@ export default function Quiz() {
                   <div
                     className={
                       championIcon
-                        ? "flex justify-center"
+                        ? "flex flex-col items-center gap-2"
                         : "rounded-lg overflow-hidden border border-border bg-black/20"
                     }
                   >
                     {championIcon ? (
-                      <div
-                        className="relative rounded-xl overflow-hidden"
-                        style={{
-                          borderWidth: 2,
-                          borderStyle: "solid",
-                          borderColor: "#c9a84c",
-                          boxShadow:
-                            "0 0 18px rgba(80,170,220,0.45), 0 0 32px rgba(201,168,76,0.25)",
-                        }}
-                      >
-                        <img
-                          src={mainVisual}
-                          alt="Champion"
-                          className="h-32 w-32 md:h-40 md:w-40 object-cover"
-                          loading="lazy"
-                        />
-                      </div>
+                      <>
+                        <motion.div
+                          key={`icon-${currentIndex}`}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                          className="relative rounded-xl"
+                          style={{
+                            padding: 3,
+                            background:
+                              "linear-gradient(145deg, #f0d78c 0%, #c9a84c 35%, #7a5e22 65%, #c9a84c 100%)",
+                            boxShadow:
+                              "0 0 0 1px rgba(0,0,0,0.6), 0 0 22px rgba(80,170,220,0.55), 0 0 44px rgba(201,168,76,0.35), 0 8px 24px rgba(0,0,0,0.55)",
+                          }}
+                        >
+                          <div
+                            className="relative rounded-lg overflow-hidden"
+                            style={{
+                              boxShadow:
+                                "inset 0 0 0 1px rgba(10,20,40,0.9), inset 0 0 18px rgba(80,170,220,0.35)",
+                            }}
+                          >
+                            <img
+                              src={mainVisual}
+                              alt={championName || "Champion"}
+                              className="h-32 w-32 md:h-40 md:w-40 object-cover block"
+                              loading="lazy"
+                            />
+                            <div
+                              aria-hidden
+                              className="absolute inset-0 pointer-events-none"
+                              style={{
+                                background:
+                                  "radial-gradient(70% 60% at 50% 0%, rgba(255,235,180,0.18) 0%, transparent 60%)",
+                              }}
+                            />
+                          </div>
+                        </motion.div>
+                        {championName && (
+                          <motion.div
+                            key={`name-${currentIndex}`}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.2 }}
+                            className="text-sm md:text-base font-semibold tracking-wide uppercase"
+                            style={{
+                              color: "#f0d78c",
+                              textShadow:
+                                "0 1px 0 rgba(0,0,0,0.8), 0 0 12px rgba(201,168,76,0.45)",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {championName}
+                          </motion.div>
+                        )}
+                      </>
                     ) : (
                       <img
                         src={mainVisual}
@@ -560,9 +615,9 @@ export default function Quiz() {
                     return (
                       <motion.div
                         key={idx}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 + idx * 0.07, duration: 0.35, ease: "easeOut" }}
                       >
                         <Button
                           variant={btnVariant}
