@@ -13,10 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
+import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
