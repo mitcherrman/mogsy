@@ -55,6 +55,30 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-16T15:30:00Z",
+    title: "League Quiz Achievements panel (Quiz + Diagnostics)",
+    type: "feature",
+    scopes: ["quiz"],
+    summary:
+      "Added a Hextech-styled Achievements panel to /quiz (rendered below the Knowledge Breakdown) and a compact variant with a collapsible raw JSON viewer to /quiz/diagnostics. Both surfaces hit the new GET /api/quiz/achievements/{user_id} endpoint using the same user id already used for quiz progress (auth user or 'anonymous').",
+    details: [
+      "New API helper quizApi.getAchievements(userId) and types QuizAchievement / QuizAchievementsResponse in src/lib/quiz/api.ts. Response is normalized so backends that return either { achievements: [] } or split { unlocked: [], locked: [] } both work.",
+      "New component src/components/quiz/QuizAchievementsCard.tsx: unlocked tiles first then locked, each tile shows icon (resolveQuizAssetUrl), title, description, unlocked badge / lock badge, unlocked_at date when present, and optional progress/goal for locked items.",
+      "Unlocked tiles use a gold (#c9a84c) border, inner glow and subtle gold top-edge highlight with a Trophy icon; locked tiles render dimmed and grayscale with a Lock icon.",
+      "Layout: compact grid on desktop (sm:2 cols, lg:3 cols) and stacked on mobile. A `compact` prop renders the tighter diagnostics layout (sm:2 cols, no card chrome).",
+      "Quiz page wiring: loadAchievements() runs on mount and re-runs whenever a submitted answer returns unlocked_achievements, so the panel refreshes immediately after an unlock.",
+      "Diagnostics: new 'Achievements (anonymous)' panel above the Debug Summary with the QuizAchievementsCard in compact mode plus a collapsible Raw JSON viewer.",
+      "Existing quiz, reports, progress, visuals, diagnostics, and admin behavior left untouched.",
+    ],
+    files: [
+      "src/components/quiz/QuizAchievementsCard.tsx",
+      "src/lib/quiz/api.ts",
+      "src/pages/Quiz.tsx",
+      "src/pages/QuizDiagnostics.tsx",
+    ],
+    routes: ["/quiz", "/quiz/diagnostics"],
+  },
+  {
     timestamp: "2026-06-16T15:10:00Z",
     title: "League Docs auto-update convention + recent LoL changes logged",
     type: "docs",
