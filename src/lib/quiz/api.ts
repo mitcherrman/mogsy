@@ -24,10 +24,16 @@ export type QuizAnswerResult = {
   correct_answer: string;
   explanation: string;
   xp_earned?: number;
-  rank?: string;
+  rank?: string | Record<string, any>;
   rank_icon?: string;
   current_xp?: number;
   current_streak?: number;
+  unlocked_achievements?: Array<{
+    id?: string | number;
+    name?: string;
+    description?: string;
+    icon_path?: string;
+  }>;
 };
 
 export type QuizStats = {

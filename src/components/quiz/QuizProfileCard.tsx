@@ -61,7 +61,9 @@ export default function QuizProfileCard({
     (typeof progress?.next_rank === "string" ? progress.next_rank : null);
   const iconUrl =
     resolveQuizAssetUrl(progress?.rank_icon) ||
+    resolveQuizAssetUrl(rankObj?.large_icon_path) ||
     resolveQuizAssetUrl(rankObj?.icon_path) ||
+    resolveQuizAssetUrl(rankObj?.small_icon_path) ||
     resolveQuizAssetUrl("assets/ranks/unranked.png");
   const xp = progress?.xp ?? rankObj?.progress_xp ?? 0;
   const pct = Math.max(
@@ -77,26 +79,32 @@ export default function QuizProfileCard({
     >
       <Card className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-sm border-primary/20">
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative shrink-0">
+          <div className="flex items-center gap-4">
+            <motion.div
+              key={`rank-${rankName}`}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="relative shrink-0"
+            >
               {iconUrl ? (
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-14 w-14 object-contain drop-shadow-[0_0_10px_hsl(var(--primary)/0.3)]"
+                  className="h-20 w-20 md:h-24 md:w-24 object-contain drop-shadow-[0_0_18px_hsl(var(--primary)/0.45)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
               ) : (
-                <div className="h-14 w-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Shield className="h-7 w-7 text-primary" />
+                <div className="h-20 w-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Shield className="h-10 w-10 text-primary" />
                 </div>
               )}
-            </div>
+            </motion.div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold leading-tight">{rankName}</h2>
+                <h2 className="text-lg md:text-xl font-bold leading-tight tracking-wide">{rankName}</h2>
                 {hasProgress && (
                   <Badge variant="secondary" className="text-[10px]">
                     {xp.toLocaleString()} XP
@@ -104,7 +112,7 @@ export default function QuizProfileCard({
                 )}
               </div>
               <div className="mt-1">
-                <Progress value={pct} className="h-1.5" />
+                <Progress value={pct} className="h-2 transition-all" />
                 <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
                   <span className="truncate">
                     {hasProgress
