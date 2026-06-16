@@ -272,9 +272,9 @@ export default function QuizAdmin() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-[10px]">Report #{r.id}</Badge>
                     <Badge variant="secondary" className="text-[10px]">Q #{r.question_id}</Badge>
-                    {(r as any).question_key && (
+                    {r.question_key && (
                       <Badge variant="outline" className="text-[10px] font-mono">
-                        {(r as any).question_key}
+                        {r.question_key}
                       </Badge>
                     )}
                     {r.category && (
