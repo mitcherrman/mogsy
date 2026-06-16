@@ -681,7 +681,10 @@ export default function Quiz() {
                   )}
                 </AnimatePresence>
               </CardContent>
+              </div>
             </Card>
+              );
+            })()}
           </motion.div>
         )}
 
