@@ -53,6 +53,7 @@ const QuizAdmin = R.QuizAdmin.Component;
 const LolHub = R.LolHub.Component;
 const LolTierList = R.LolTierList.Component;
 const AdminAbout = R.AdminAbout.Component;
+const AdminDiagnostics = R.AdminDiagnostics.Component;
 
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
@@ -124,6 +125,7 @@ const App = () => (
                   <Route path="/admin/blog" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense></AdminRoute>} />
                   <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
+                  <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
