@@ -468,6 +468,34 @@
   animation: page-fade-in 0.3s ease-out both;
 }
 
+/* ===== Hextech ambience (LoL section overlay) ===== */
+@keyframes hextech-float {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0.55; }
+  50%  { transform: translate3d(8px, -18px, 0) rotate(8deg); opacity: 0.9; }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0.55; }
+}
+.hextech-float {
+  animation-name: hextech-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes hextech-mist {
+  0%   { transform: translateX(-6%); opacity: 0.35; }
+  50%  { transform: translateX(6%);  opacity: 0.55; }
+  100% { transform: translateX(-6%); opacity: 0.35; }
+}
+.hextech-mist {
+  background:
+    radial-gradient(60% 100% at 20% 50%, rgba(92,189,217,0.18), transparent 70%),
+    radial-gradient(50% 100% at 80% 50%, rgba(92,189,217,0.14), transparent 70%);
+  filter: blur(14px);
+  animation: hextech-mist 18s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hextech-float, .hextech-mist { animation: none; }
+}
+
 /* Custom animation preview keyframes */
 @keyframes fadeIn {
   from { opacity: 0; } to { opacity: 1; }

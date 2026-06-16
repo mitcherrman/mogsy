@@ -6,6 +6,7 @@ import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import FloatingScrollButton from "./FloatingScrollButton";
 import FloatingFriendsButton from "./FloatingFriendsButton";
+import HextechAmbience from "./HextechAmbience";
 import TutorialTipPopup from "./TutorialTipPopup";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
@@ -96,6 +97,7 @@ export default function Layout() {
       />
       <Navbar themeId={themingActive ? visualThemeId : (isLolSection ? "lol" : undefined)} />
       {themingActive && <ThemeOverlay themeId={visualThemeId} />}
+      {isLolSection && <HextechAmbience />}
       <main className="pt-14 pb-16 sm:pb-0 relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
         <Suspense fallback={<RouteLoader />}>
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
