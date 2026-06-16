@@ -51,6 +51,10 @@ export default function Quiz() {
   const [progressLoading, setProgressLoading] = useState(true);
   const [progressError, setProgressError] = useState<string | null>(null);
 
+  const [categoryStats, setCategoryStats] = useState<QuizCategoryStat[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
   const loadProgress = useCallback(async () => {
     setProgressError(null);
     try {
@@ -64,10 +68,28 @@ export default function Quiz() {
     }
   }, [userId]);
 
+  const loadCategories = useCallback(async () => {
+    setCategoriesError(null);
+    try {
+      const data = await quizApi.getCategories(userId);
+      setCategoryStats(data.categories || []);
+    } catch (err: any) {
+      setCategoriesError(err?.message || "Category stats unavailable.");
+      setCategoryStats([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     setProgressLoading(true);
     loadProgress();
   }, [loadProgress]);
+
+  useEffect(() => {
+    setCategoriesLoading(true);
+    loadCategories();
+  }, [loadCategories]);
 
   // Load quiz sets on mount
   useEffect(() => {
