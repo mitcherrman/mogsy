@@ -110,6 +110,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export type QuizReport = {
   id: number | string;
   question_id: number | string;
+  question_key?: string;
   category?: string;
   question_text?: string;
   current_correct_answer?: string;
