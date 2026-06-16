@@ -440,6 +440,13 @@ export default function Quiz() {
                 : assetPath;
               const mainVisual = championIcon || rawImage;
               const hasChampionTheme = !!(championIcon || championSplash);
+              const cat = (currentQuestion.category || "").toLowerCase();
+              const isItem = !hasChampionTheme && !!rawImage && (cat.includes("item") || !!meta.item_id || !!meta.item_name);
+              const isRune = !hasChampionTheme && !!rawImage && (cat.includes("rune") || !!meta.rune_id || !!meta.rune_name);
+              const isSummoner = !hasChampionTheme && !!rawImage && (cat.includes("summoner") || cat.includes("spell") || !!meta.summoner_id || !!meta.summoner_name);
+              const itemName = typeof meta.item_name === "string" ? meta.item_name : undefined;
+              const runeName = typeof meta.rune_name === "string" ? meta.rune_name : undefined;
+              const summonerName = typeof meta.summoner_name === "string" ? meta.summoner_name : undefined;
               return (
             <Card
               className={
@@ -463,7 +470,7 @@ export default function Quiz() {
                     key={`splash-${currentIndex}`}
                     aria-hidden
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.32 }}
+                    animate={{ opacity: 0.5 }}
                     transition={{ duration: 0.9, ease: "easeOut" }}
                     className="absolute inset-0 pointer-events-none overflow-hidden"
                   >
@@ -473,7 +480,7 @@ export default function Quiz() {
                         backgroundImage: `url(${championSplash})`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
-                        filter: "saturate(1.1) contrast(1.05)",
+                        filter: "saturate(1.15) contrast(1.08)",
                       }}
                     />
                   </motion.div>
@@ -482,7 +489,7 @@ export default function Quiz() {
                     className="absolute inset-0 pointer-events-none"
                     style={{
                       background:
-                        "linear-gradient(180deg, rgba(10,20,40,0.55) 0%, rgba(10,20,40,0.78) 55%, rgba(10,20,40,0.92) 100%)",
+                        "linear-gradient(180deg, rgba(5,10,25,0.50) 0%, rgba(5,10,25,0.72) 50%, rgba(0,0,0,0.92) 100%)",
                     }}
                   />
                   <div
@@ -513,7 +520,9 @@ export default function Quiz() {
                     className={
                       championIcon
                         ? "flex flex-col items-center gap-2"
-                        : "rounded-lg overflow-hidden border border-border bg-black/20"
+                        : (isItem || isRune || isSummoner)
+                          ? "flex flex-col items-center gap-2"
+                          : "rounded-lg overflow-hidden border border-border bg-black/20"
                     }
                   >
                     {championIcon ? (
@@ -571,6 +580,108 @@ export default function Quiz() {
                           >
                             {championName}
                           </motion.div>
+                        )}
+                      </>
+                    ) : isItem ? (
+                      <>
+                        <motion.div
+                          key={`item-${currentIndex}`}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                          className="relative"
+                          style={{
+                            padding: 3,
+                            background:
+                              "linear-gradient(145deg, #d4a857 0%, #8a6a2a 50%, #d4a857 100%)",
+                            boxShadow:
+                              "0 0 18px rgba(212,168,87,0.45), 0 6px 18px rgba(0,0,0,0.55)",
+                          }}
+                        >
+                          <div
+                            className="relative overflow-hidden bg-[#0a0a14]"
+                            style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.85), inset 0 0 18px rgba(212,168,87,0.18)" }}
+                          >
+                            <img
+                              src={mainVisual}
+                              alt={itemName || "Item"}
+                              className="h-28 w-28 md:h-36 md:w-36 object-cover block"
+                              loading="lazy"
+                            />
+                          </div>
+                        </motion.div>
+                        {itemName && (
+                          <div className="text-xs md:text-sm font-semibold tracking-wide uppercase text-[#f0d78c]" style={{ letterSpacing: "0.08em" }}>
+                            {itemName}
+                          </div>
+                        )}
+                      </>
+                    ) : isRune ? (
+                      <>
+                        <motion.div
+                          key={`rune-${currentIndex}`}
+                          initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                          className="relative rounded-full"
+                          style={{
+                            padding: 3,
+                            background:
+                              "conic-gradient(from 180deg at 50% 50%, #8b5cf6, #38bdf8, #c084fc, #8b5cf6)",
+                            boxShadow:
+                              "0 0 22px rgba(139,92,246,0.55), 0 0 44px rgba(56,189,248,0.30), 0 6px 20px rgba(0,0,0,0.55)",
+                          }}
+                        >
+                          <div
+                            className="rounded-full overflow-hidden bg-[#0a0a1a]"
+                            style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.85), inset 0 0 18px rgba(139,92,246,0.25)" }}
+                          >
+                            <img
+                              src={mainVisual}
+                              alt={runeName || "Rune"}
+                              className="h-28 w-28 md:h-32 md:w-32 object-cover block rounded-full"
+                              loading="lazy"
+                            />
+                          </div>
+                        </motion.div>
+                        {runeName && (
+                          <div className="text-xs md:text-sm font-semibold tracking-wide uppercase text-[#c4b5fd]" style={{ letterSpacing: "0.08em" }}>
+                            {runeName}
+                          </div>
+                        )}
+                      </>
+                    ) : isSummoner ? (
+                      <>
+                        <motion.div
+                          key={`summ-${currentIndex}`}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                          className="relative rounded-lg"
+                          style={{
+                            padding: 3,
+                            background:
+                              "linear-gradient(145deg, #67e8f9 0%, #0ea5e9 50%, #1e3a8a 100%)",
+                            boxShadow:
+                              "0 0 22px rgba(56,189,248,0.55), 0 0 44px rgba(56,189,248,0.25), 0 6px 18px rgba(0,0,0,0.55)",
+                          }}
+                        >
+                          <div
+                            className="rounded-md overflow-hidden bg-[#06121f]"
+                            style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.85), inset 0 0 18px rgba(56,189,248,0.30)" }}
+                          >
+                            <img
+                              src={mainVisual}
+                              alt={summonerName || "Summoner spell"}
+                              className="h-24 w-24 md:h-28 md:w-28 object-cover block"
+                              loading="lazy"
+                            />
+                          </div>
+                        </motion.div>
+                        {summonerName && (
+                          <div className="text-xs md:text-sm font-semibold tracking-wide uppercase text-[#a5f3fc]" style={{ letterSpacing: "0.08em" }}>
+                            {summonerName}
+                          </div>
                         )}
                       </>
                     ) : (
