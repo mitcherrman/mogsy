@@ -41,10 +41,10 @@ export type QuizStats = {
 
 export type QuizProgress = {
   user_id?: string;
-  rank?: string;
+  rank?: string | Record<string, any>;
   rank_name?: string;
   rank_icon?: string;
-  next_rank?: string;
+  next_rank?: string | Record<string, any>;
   next_rank_name?: string;
   next_rank_icon?: string;
   xp?: number;
