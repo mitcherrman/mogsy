@@ -83,6 +83,7 @@ export const Routes = {
   LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
   LolTierList: lazyWithRetry(() => import("@/pages/LolTierList")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
+  AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
 } as const;
 
 /** Map URL path → list of route keys to warm. Supports basic prefix matching. */
