@@ -110,7 +110,7 @@ function classifyRoute(r: RouteResult): Severity {
   if (r.renderMs != null) {
     if (r.renderMs >= RENDER_FAIL_MS) bump("fail");
     else if (r.renderMs >= RENDER_WARN_MS) bump("warn");
-  } else if (r.status !== "pending") {
+  } else if ((r.status as Severity) !== "pending") {
     bump("warn");
   }
   if (r.errors.length > 0) bump("fail");
