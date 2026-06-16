@@ -889,7 +889,7 @@ export default function QuizDiagnostics() {
                     {progressData.rank_icon && (
                       <img
                         src={resolveQuizAssetUrl(progressData.rank_icon)}
-                        alt={progressData.rank || "Rank"}
+                        alt={(typeof progressData.rank === "string" ? progressData.rank : progressData.rank_name) || "Rank"}
                         className="h-12 w-12 object-contain"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
