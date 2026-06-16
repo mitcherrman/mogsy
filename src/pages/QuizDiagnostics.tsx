@@ -863,6 +863,7 @@ export default function QuizDiagnostics() {
         {/* Debug summary card */}
         <div className="lg:col-span-2">
           <Panel title="Debug Summary" icon={Stethoscope}>
+            {/* Progress preview rendered above is in its own panel */}
             <div
               className={`rounded-md border px-4 py-3 text-sm ${
                 summary.healthOk && summary.setsOk && summary.statsOk && summary.statsHasQuestions
