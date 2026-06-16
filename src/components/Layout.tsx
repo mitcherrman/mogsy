@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect } from "react";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
@@ -17,6 +17,38 @@ export default function Layout() {
   const { loading } = useAuth();
   const { loading: settingsLoading } = useAppSettings();
   const { theme, themeId, visualThemeId, isEnabled, isCycleFading } = useSitewideTheme();
+  const { pathname } = useLocation();
+
+  // League of Legends section uses its own LoLdle-inspired theme and overrides
+  // any sitewide Mogsy theme so the visual language stays cohesive across the
+  // /lol, /combat-lab and /quiz surface area.
+  const isLolSection =
+    pathname === "/lol" ||
+    pathname.startsWith("/lol/") ||
+    pathname === "/combat-lab" ||
+    pathname.startsWith("/combat-lab/") ||
+    pathname === "/quiz" ||
+    pathname.startsWith("/quiz/");
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isLolSection) {
+      // Strip any sitewide theme-* class so the LoL palette wins, regardless
+      // of what the sitewide cycle is currently showing.
+      root.className = root.className.replace(/theme-\S+/g, "").trim();
+      root.classList.add("dark");
+      root.classList.add("theme-lol");
+    } else {
+      root.classList.remove("theme-lol");
+    }
+    return () => {
+      if (isLolSection) root.classList.remove("theme-lol");
+    };
+  }, [isLolSection, visualThemeId]);
+
+  // While the LoL section is active, disable all sitewide overlays/backgrounds
+  // so nothing competes with the dedicated theme.
+  const themingActive = isEnabled && !isLolSection;
 
   // After first paint, warm the chunks the user is most likely to visit next.
   useEffect(() => {
@@ -39,7 +71,7 @@ export default function Layout() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-x z-0"
         style={{
-          ...(isEnabled && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
+          ...(themingActive && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
         }}
       />
       {/* Ambient halo so the column feels lit rather than cut */}
@@ -54,13 +86,13 @@ export default function Layout() {
       {/* Fade-to-black overlay for cycle theme transitions */}
       <div
         className="fixed inset-0 bg-black pointer-events-none z-[15] transition-opacity duration-700 ease-in-out"
-        style={{ opacity: isCycleFading ? 1 : 0 }}
+        style={{ opacity: themingActive && isCycleFading ? 1 : 0 }}
       />
-      <Navbar themeId={isEnabled ? visualThemeId : undefined} />
-      {isEnabled && <ThemeOverlay themeId={visualThemeId} />}
+      <Navbar themeId={themingActive ? visualThemeId : (isLolSection ? "lol" : undefined)} />
+      {themingActive && <ThemeOverlay themeId={visualThemeId} />}
       <main className="pt-14 pb-16 sm:pb-0 relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
         <Suspense fallback={<RouteLoader />}>
-          <Outlet context={{ sitewideTheme: isEnabled ? theme : null, sitewideThemeId: isEnabled ? visualThemeId : null }} />
+          <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
       </main>
       <FloatingFriendsButton />
