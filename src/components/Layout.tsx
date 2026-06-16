@@ -41,6 +41,13 @@ export default function Layout() {
       root.classList.add("theme-lol");
     } else {
       root.classList.remove("theme-lol");
+      // Re-apply the sitewide theme class when leaving the LoL section, since
+      // the provider effect skips className mutations while inside it.
+      root.className = root.className.replace(/theme-\S+/g, "").trim();
+      if (visualThemeId && visualThemeId !== "default") {
+        root.classList.add("dark");
+        root.classList.add(`theme-${visualThemeId}`);
+      }
     }
   }, [isLolSection, visualThemeId, themeId]);
 
