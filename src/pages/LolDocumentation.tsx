@@ -153,7 +153,7 @@ export default function LolDocumentation() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#0a0a1a] p-6 md:p-8">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-8">
           <div className="flex items-start gap-4">
             <div className="rounded-xl border border-[#c9a84c]/40 bg-black/40 p-3">
               <FileText className="h-6 w-6" style={{ color: GOLD }} />

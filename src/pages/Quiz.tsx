@@ -433,7 +433,7 @@ export default function Quiz() {
             <Card
               className={
                 hasChampionTheme
-                  ? "relative overflow-hidden border bg-[#0a1428] backdrop-blur-sm"
+                  ? "relative overflow-hidden border bg-[#0a1428]/85 backdrop-blur-sm"
                   : "bg-card/80 backdrop-blur-sm"
               }
               style={

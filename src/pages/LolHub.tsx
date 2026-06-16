@@ -30,7 +30,7 @@ export default function LolHub() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#0a0a1a] p-6 md:p-10">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <img src={lolIcon} alt="" aria-hidden className="absolute -right-10 -top-10 w-80 h-80 object-contain blur-2xl" />
           </div>
@@ -138,7 +138,7 @@ function HubTile({
   return (
     <Link
       to={to}
-      className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
+      className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} backdrop-blur-sm p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
     >
       <div className="flex items-start gap-4">
         <div className="rounded-lg bg-black/40 border border-white/10 p-3">

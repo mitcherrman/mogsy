@@ -135,7 +135,7 @@ export default function LolTierList() {
         </nav>
 
         {/* Hero */}
-        <header className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#0a0a1a] p-6 md:p-10">
+        <header className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <img src={lolIcon} alt="" aria-hidden className="absolute -right-10 -top-10 w-80 h-80 object-contain blur-2xl" />
           </div>
@@ -162,11 +162,11 @@ export default function LolTierList() {
               role="tab"
               aria-selected={role === r}
               onClick={() => setRole(r)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
-                role === r
-                  ? "bg-[#c9a84c] text-black border-[#c9a84c]"
-                  : "bg-card text-foreground border-border hover:border-[#c9a84c]/50"
-              }`}
+                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                  role === r
+                    ? "bg-[#c9a84c]/90 text-black border-[#c9a84c]"
+                    : "bg-card/70 backdrop-blur-sm text-foreground border-border hover:border-[#c9a84c]/50"
+                }`}
             >
               {r}
             </button>
@@ -211,7 +211,7 @@ export default function LolTierList() {
 
         {/* Methodology / SEO body */}
         <section className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 rounded-xl border border-border bg-card p-5">
+          <div className="md:col-span-2 rounded-xl border border-border bg-card/70 backdrop-blur-sm p-5">
             <h2 className="text-lg font-bold text-foreground mb-2">How the Mogsy LoL tier list works</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               This tier list ranks the {totalChampions} most-played League of Legends champions across the
@@ -229,7 +229,7 @@ export default function LolTierList() {
 
           <Link
             to="/combat-lab"
-            className="group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f] to-[#0a1428] p-5 hover:border-primary/50 transition-all"
+            className="group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f]/90 to-[#0a1428]/90 backdrop-blur-sm p-5 hover:border-primary/50 transition-all"
           >
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-black/40 border border-white/10 p-3">
@@ -249,7 +249,7 @@ export default function LolTierList() {
         </section>
 
         {/* FAQ for SEO */}
-        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+        <section className="mt-6 rounded-xl border border-border bg-card/70 backdrop-blur-sm p-5">
           <h2 className="text-lg font-bold text-foreground mb-3">FAQ</h2>
           <div className="space-y-3 text-sm">
             <div>
