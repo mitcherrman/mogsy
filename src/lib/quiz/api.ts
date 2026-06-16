@@ -57,6 +57,12 @@ export type QuizProgress = {
   correct?: number;
 };
 
+export type QuizCategoryStat = {
+  category: string;
+  accuracy: number;
+  attempts: number;
+};
+
 export type QuizLeaderboardEntry = {
   user_id: string;
   display_name?: string;
