@@ -6,6 +6,17 @@
  * intentionally human-curated — append a new entry at the TOP whenever a LoL
  * feature, page, or layout changes so the docs page stays accurate and copy/paste
  * to ChatGPT stays useful.
+ *
+ * AUTO-UPDATE CONVENTION (for the Lovable AI assistant):
+ * Whenever you (the AI) ship ANY change that touches a LoL surface — the /lol hub,
+ * /lol/tier-list, /lol/docs, /combat-lab*, /quiz*, the Hextech theme, the LoL
+ * navbar/back button, or any /lol-only component — you MUST prepend a new
+ * LolChangeEntry to LOL_CHANGELOG below in the SAME turn as the change.
+ * Use the current UTC timestamp, pick an accurate `type` and `scopes`, write a
+ * one-paragraph `summary`, list concrete UI/behavior bullets in `details`, and
+ * list every file you edited in `files` plus every route affected in `routes`.
+ * This file IS the source of truth that powers /lol/docs and the ChatGPT copy
+ * buttons — skipping the entry silently breaks the docs.
  */
 
 export type LolChangeType =
@@ -43,6 +54,95 @@ export interface LolChangeEntry {
 }
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
+  {
+    timestamp: "2026-06-16T15:10:00Z",
+    title: "League Docs auto-update convention + recent LoL changes logged",
+    type: "docs",
+    scopes: ["docs", "quiz", "theme", "hub", "tier-list", "combat-lab"],
+    summary:
+      "Documented the rule that every future LoL-surface change must prepend a LolChangeEntry to src/lib/lol-changelog.ts in the same turn, and backfilled entries for the Hextech ambience overlay, the transparent-backing pass across LoL pages, and the multiple League Quiz visual upgrades (themed category frames, animated champion splashes, XP/streak/achievement rewards).",
+    files: ["src/lib/lol-changelog.ts"],
+    routes: ["/lol/docs"],
+  },
+  {
+    timestamp: "2026-06-16T15:00:00Z",
+    title: "League Quiz visual upgrade — themed category frames & richer rewards",
+    type: "ui",
+    scopes: ["quiz"],
+    summary:
+      "Upgraded /quiz visuals now that the backend ships clean asset paths for items, runes, summoner spells, champion icons, champion splashes and rank icons. Every image is resolved through resolveQuizAssetUrl, and each question category gets a distinct themed frame.",
+    details: [
+      "Champion questions: splash opacity raised to ~0.5, deeper navy-to-black gradient overlay, intensified Ken Burns pan/zoom with saturate(1.15)/contrast(1.08), champion name beneath the icon with a gold-light text shadow.",
+      "Items: gold-bordered square frame with inset shadows, item name shown beneath.",
+      "Runes: circular frame with a purple/blue conic-gradient ring and rune name.",
+      "Summoner spells: cyan-to-blue gradient border with a spell-like glow.",
+      "Answer reveal block: handles `rank` as an object (uses small_icon_path), shows XP gained, current streak (e.g. '🔥 3 streak'), and fires toasts for any `unlocked_achievements` returned by the answer API.",
+      "QuizProfileCard prioritizes the rank `large_icon_path`, enlarges the crest to h-24 w-24, and adds a scaling entrance animation.",
+    ],
+    files: [
+      "src/components/quiz/QuizProfileCard.tsx",
+      "src/lib/quiz/api.ts",
+      "src/pages/Quiz.tsx",
+    ],
+    routes: ["/quiz"],
+  },
+  {
+    timestamp: "2026-06-16T14:30:00Z",
+    title: "Transparent backing on all LoL pages so Hextech theme shows through",
+    type: "theme",
+    scopes: ["theme", "hub", "tier-list", "quiz", "docs"],
+    summary:
+      "Removed opaque `min-h-dvh bg-background` wrappers from LolHub, LolTierList, Quiz and LolDocumentation, and switched headers / hub tiles / methodology & FAQ panels / role tabs / champion question cards to semi-transparent surfaces (bg-card/70, gradient/90 with backdrop-blur-sm) so the HextechAmbience layer is visible behind every LoL page. Combat Lab was intentionally NOT modified.",
+    files: [
+      "src/pages/LolDocumentation.tsx",
+      "src/pages/LolHub.tsx",
+      "src/pages/LolTierList.tsx",
+      "src/pages/Quiz.tsx",
+    ],
+    routes: ["/lol", "/lol/tier-list", "/quiz", "/lol/docs"],
+  },
+  {
+    timestamp: "2026-06-16T14:00:00Z",
+    title: "Hextech ambience overlay across all LoL pages",
+    type: "theme",
+    scopes: ["theme", "hub", "tier-list", "quiz", "combat-lab"],
+    summary:
+      "Added a full-viewport decorative HextechAmbience overlay rendered inside Layout whenever the current route is a LoL section. Provides floating runes, an arctic mist band, and ornate gold corner brackets to make every LoL page feel like a League client surface.",
+    details: [
+      "New component src/components/HextechAmbience.tsx with Rune sub-component supporting hex, gem, cross, bolt and diamond SVG symbols, each drifting via hextech-float keyframes with unique size/delay/duration.",
+      "Arctic mist band uses radial gradients + blur via hextech-mist keyframes.",
+      "Corner brackets are gold-stroked SVGs with gold-light circles.",
+      "All layers use pointer-events-none and z-[5] so they never intercept UI input.",
+      "Honors prefers-reduced-motion: animations disabled via media query in index.css.",
+      "Rendered from Layout.tsx alongside Navbar/ThemeOverlay inside the isLolSection block.",
+    ],
+    files: [
+      "src/components/HextechAmbience.tsx",
+      "src/components/Layout.tsx",
+      "src/index.css",
+    ],
+    routes: ["/lol", "/lol/tier-list", "/lol/docs", "/combat-lab", "/quiz"],
+  },
+  {
+    timestamp: "2026-06-16T13:40:00Z",
+    title: "Champion-question polish: Ken Burns splash, Hextech icon frame, staggered answers",
+    type: "ui",
+    scopes: ["quiz"],
+    summary:
+      "Champion questions in /quiz now feel closer to a premium League experience: slow Ken Burns pan/zoom on the splash background, dark gradient overlay layered above the splash instead of pure opacity, champion name beneath the icon when metadata.champion_name is present, entrance animations (splash fade-in, icon scale/fade-in, staggered upward answer reveal), and a stronger Hextech gold border + inner glow + drop shadow on the icon frame. Item/rune/summoner/rank visuals preserved.",
+    files: ["src/index.css", "src/pages/Quiz.tsx"],
+    routes: ["/quiz"],
+  },
+  {
+    timestamp: "2026-06-16T13:20:00Z",
+    title: "League Quiz champion-question visuals wired to backend metadata",
+    type: "feature",
+    scopes: ["quiz"],
+    summary:
+      "Quiz champion questions now consume metadata.champion_icon_path, champion_splash_path, champion_loading_path and asset_path from the backend (all routed through resolveQuizAssetUrl). champion_splash_path becomes a low-opacity card background with a dark gradient overlay for readability; champion_icon_path is the primary visual, falling back to image_path then asset_path. Card adopts deep-navy + subtle gold Hextech border styling. Item / rune / summoner / rank flows untouched. Combat Lab not modified.",
+    files: ["src/pages/Quiz.tsx"],
+    routes: ["/quiz"],
+  },
   {
     timestamp: "2026-06-16T13:00:00Z",
     title: "League documentation page added to LoL hub",
