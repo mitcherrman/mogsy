@@ -82,6 +82,7 @@ export const Routes = {
   QuizAdmin: lazyWithRetry(() => import("@/pages/QuizAdmin")),
   LolHub: lazyWithRetry(() => import("@/pages/LolHub")),
   LolTierList: lazyWithRetry(() => import("@/pages/LolTierList")),
+  LolDocumentation: lazyWithRetry(() => import("@/pages/LolDocumentation")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
 } as const;
@@ -103,6 +104,7 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/quiz/admin", keys: ["QuizAdmin"] },
   { test: (p) => p === "/lol", keys: ["LolHub", "CombatLab", "Quiz"] },
   { test: (p) => p === "/lol/tier-list", keys: ["LolTierList"] },
+  { test: (p) => p === "/lol/docs", keys: ["LolDocumentation"] },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },
