@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Server,
   Stethoscope,
+  Trophy,
   Wifi,
   WifiOff,
   XCircle,
@@ -28,7 +29,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizStats, type QuizProgress, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizStats, type QuizProgress, type QuizAchievement, type QuizAchievementsResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 
 /* ─────────────── helpers ─────────────── */
 
@@ -276,6 +278,41 @@ export default function QuizDiagnostics() {
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [statsData, setStatsData] = useState<QuizStats | null>(null);
   const [progressData, setProgressData] = useState<QuizProgress | null>(null);
+  const [achievementsRaw, setAchievementsRaw] = useState<QuizAchievementsResponse | null>(null);
+  const [achievementsList, setAchievementsList] = useState<QuizAchievement[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [achievementsError, setAchievementsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAchievementsLoading(true);
+    setAchievementsError(null);
+    quizApi
+      .getAchievements("anonymous")
+      .then((data) => {
+        if (cancelled) return;
+        setAchievementsRaw(data);
+        const list = data.achievements
+          ? data.achievements
+          : [
+              ...(data.unlocked || []).map((a) => ({ ...a, unlocked: true })),
+              ...(data.locked || []).map((a) => ({ ...a, unlocked: false })),
+            ];
+        setAchievementsList(list);
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setAchievementsError(err?.message || "Achievements unavailable.");
+        setAchievementsList([]);
+        setAchievementsRaw(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAchievementsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const runCheck = async (key: string, path: string) => {
     const res = await timedFetchQuiz(path);
