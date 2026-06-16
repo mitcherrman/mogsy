@@ -23,6 +23,11 @@ export type QuizAnswerResult = {
   is_correct: boolean;
   correct_answer: string;
   explanation: string;
+  xp_earned?: number;
+  rank?: string;
+  rank_icon?: string;
+  current_xp?: number;
+  current_streak?: number;
 };
 
 export type QuizStats = {
@@ -33,6 +38,56 @@ export type QuizStats = {
   categories: Array<{ name: string; question_count: number }>;
   sets: Array<{ name: string; question_count: number }>;
 };
+
+export type QuizProgress = {
+  user_id?: string;
+  rank?: string;
+  rank_name?: string;
+  rank_icon?: string;
+  next_rank?: string;
+  next_rank_name?: string;
+  next_rank_icon?: string;
+  xp?: number;
+  xp_to_next?: number;
+  progress_percent?: number;
+  current_streak?: number;
+  best_streak?: number;
+  accuracy?: number;
+  attempts?: number;
+  correct?: number;
+};
+
+export type QuizLeaderboardEntry = {
+  user_id: string;
+  display_name?: string;
+  rank?: string;
+  rank_icon?: string;
+  xp?: number;
+  accuracy?: number;
+  attempts?: number;
+};
+
+export type QuizOverride = {
+  id: number | string;
+  question_id: number | string;
+  question_key?: string;
+  category?: string;
+  new_correct_answer?: string;
+  new_explanation?: string;
+  notes?: string;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** Resolve a backend-provided icon path to an absolute URL. */
+export function resolveQuizAssetUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = API_BASE_URL.replace(/\/+$/, "");
+  const rel = path.replace(/^\/+/, "");
+  return `${base}/${rel}`;
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,6 +110,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export type QuizReport = {
   id: number | string;
   question_id: number | string;
+  question_key?: string;
   category?: string;
   question_text?: string;
   current_correct_answer?: string;
@@ -115,4 +171,21 @@ export const quizApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  /** Progression for a user. Pass `"anonymous"` for guest aggregate. */
+  getProgress: (userId: string) =>
+    request<QuizProgress>(`/api/quiz/progress/${encodeURIComponent(userId)}`),
+  /** Reserved for future leaderboard pages. */
+  getLeaderboard: (params?: { limit?: number; offset?: number }) =>
+    request<{ entries: QuizLeaderboardEntry[]; total?: number }>(
+      `/api/quiz/leaderboard?limit=${params?.limit ?? 50}&offset=${params?.offset ?? 0}`,
+    ),
+  listOverrides: (activeOnly = false) =>
+    request<{ overrides: QuizOverride[] }>(
+      `/api/quiz/admin/overrides${activeOnly ? "?active=true" : ""}`,
+    ),
+  setOverrideActive: (overrideId: number | string, active: boolean) =>
+    request<{ ok?: boolean }>(
+      `/api/quiz/admin/overrides/${encodeURIComponent(String(overrideId))}/${active ? "activate" : "deactivate"}`,
+      { method: "POST" },
+    ),
 };
