@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
+import QuizProfileCard from "@/components/quiz/QuizProfileCard";
+import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
 
@@ -24,6 +26,8 @@ function getChoiceLabel(choice: string | { label: string }): string {
 }
 
 export default function Quiz() {
+  const { user } = useAuth();
+  const userId = user?.id || "anonymous";
   const [phase, setPhase] = useState<QuizPhase>("sets");
   const [sets, setSets] = useState<QuizSet[]>([]);
   const [currentSet, setCurrentSet] = useState<QuizSet | null>(null);
@@ -41,6 +45,28 @@ export default function Quiz() {
   const [reportExpected, setReportExpected] = useState("");
   const [reportReason, setReportReason] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  const [progress, setProgress] = useState<QuizProgress | null>(null);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState<string | null>(null);
+
+  const loadProgress = useCallback(async () => {
+    setProgressError(null);
+    try {
+      const data = await quizApi.getProgress(userId);
+      setProgress(data);
+    } catch (err: any) {
+      setProgressError(err?.message || "Progression unavailable.");
+      setProgress(null);
+    } finally {
+      setProgressLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    setProgressLoading(true);
+    loadProgress();
+  }, [loadProgress]);
 
   // Load quiz sets on mount
   useEffect(() => {
@@ -125,11 +151,14 @@ export default function Quiz() {
     setSelectedAnswer(choice);
     try {
       const result = await quizApi.submitAnswer({
+        user_id: userId,
         question_id: currentQuestion.id,
         selected_answer: choice,
       });
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+      // Refresh progression in the background
+      loadProgress();
     } catch (err: any) {
       // Even if submit fails, let the user continue
       setAnswerResult({
@@ -138,7 +167,7 @@ export default function Quiz() {
         explanation: "Could not verify answer. Please check your connection and try again.",
       });
     }
-  }, [currentQuestion, answerResult]);
+  }, [currentQuestion, answerResult, userId, loadProgress]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
@@ -227,6 +256,15 @@ export default function Quiz() {
               Diagnostics
             </Link>
           </Button>
+        </div>
+
+        {/* Quiz profile card */}
+        <div className="mb-6">
+          <QuizProfileCard
+            progress={progress}
+            loading={progressLoading}
+            error={progressError}
+          />
         </div>
 
         {/* Error state */}
