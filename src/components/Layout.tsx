@@ -1,5 +1,6 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Link } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 import Navbar from "./Navbar";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
@@ -100,6 +101,16 @@ export default function Layout() {
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
       </main>
+      {isLolSection && pathname !== "/lol" && (
+        <Link
+          to="/lol"
+          aria-label="Back to League hub"
+          className="fixed top-16 left-3 md:left-4 z-[55] inline-flex items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] backdrop-blur-md shadow-lg hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          League Hub
+        </Link>
+      )}
       <FloatingFriendsButton />
       {!isLolSection && <FloatingThemeSwitcher />}
       <FloatingScrollButton />
