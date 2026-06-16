@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizStats } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizStats, type QuizProgress, resolveQuizAssetUrl } from "@/lib/quiz/api";
 
 /* ─────────────── helpers ─────────────── */
 
@@ -253,6 +253,11 @@ const ENDPOINTS = [
     label: "Quiz Stats",
     path: "/api/quiz/stats",
   },
+  {
+    key: "progress",
+    label: "Quiz Progress (anonymous)",
+    path: "/api/quiz/progress/anonymous",
+  },
 ] as const;
 
 /* ─────────────── page ─────────────── */
@@ -270,6 +275,7 @@ export default function QuizDiagnostics() {
   const [sets, setSets] = useState<QuizSet[] | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [statsData, setStatsData] = useState<QuizStats | null>(null);
+  const [progressData, setProgressData] = useState<QuizProgress | null>(null);
 
   const runCheck = async (key: string, path: string) => {
     const res = await timedFetchQuiz(path);
@@ -329,6 +335,14 @@ export default function QuizDiagnostics() {
       else setStatsData(d);
     } else if (statsResult && !statsResult.ok) {
       setStatsData(null);
+    }
+
+    const progressResult = results["progress"];
+    if (progressResult?.ok && progressResult.data) {
+      const d = progressResult.data;
+      setProgressData((d?.progress as QuizProgress) || (d as QuizProgress));
+    } else if (progressResult && !progressResult.ok) {
+      setProgressData(null);
     }
   }, [results]);
 
@@ -430,7 +444,7 @@ export default function QuizDiagnostics() {
       statsRes?.durationMs ? `Duration: ${Math.round(statsRes.durationMs)} ms` : null,
       statsData ? `Total questions: ${statsData.total_questions}` : null,
       statsData ? `Total attempts: ${statsData.total_attempts}` : null,
-      statsData ? `Overall accuracy: ${(statsData.overall_accuracy * 100).toFixed(1)}%` : null,
+                statsData ? `Overall accuracy: ${Number(statsData.overall_accuracy ?? 0).toFixed(2)}%` : null,
       statsData ? `Category count: ${statsData.categories.length}` : null,
       statsData ? `Set count: ${statsData.sets.length}` : null,
       statsRes?.error ? `Error: ${statsRes.error}` : null,
@@ -781,7 +795,7 @@ export default function QuizDiagnostics() {
                 </div>
                 <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Overall Accuracy</div>
-                  <div className="text-lg font-semibold">{(statsData.overall_accuracy * 100).toFixed(1)}%</div>
+                  <div className="text-lg font-semibold">{Number(statsData.overall_accuracy ?? 0).toFixed(2)}%</div>
                 </div>
               </div>
 
