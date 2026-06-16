@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -75,6 +75,13 @@ export default function LolHub() {
             description="Meta rankings for every role this patch — Top, Jungle, Mid, ADC and Support."
             Icon={Trophy}
             accent="from-[#3a2d10] to-[#0a0a1a]"
+          />
+          <HubTile
+            to="/lol/docs"
+            title="League Docs"
+            description="Searchable, timestamped log of every change to LoL pages — copy entries for ChatGPT."
+            Icon={FileText}
+            accent="from-[#1a2238] to-[#0a0a1a]"
           />
         </div>
 
