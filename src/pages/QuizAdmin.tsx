@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import SEOHead from "@/components/SEOHead";
-import { quizApi, type QuizReport } from "@/lib/quiz/api";
+import { quizApi, type QuizReport, type QuizOverride } from "@/lib/quiz/api";
 
 type StatusFilter = "open" | "resolved" | "all";
 
@@ -44,6 +44,12 @@ export default function QuizAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  // Active overrides
+  const [overrides, setOverrides] = useState<QuizOverride[]>([]);
+  const [overridesLoading, setOverridesLoading] = useState(true);
+  const [overridesError, setOverridesError] = useState<string | null>(null);
+  const [overrideBusyId, setOverrideBusyId] = useState<string | null>(null);
+
   // Override dialog state
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<QuizReport | null>(null);
@@ -66,9 +72,27 @@ export default function QuizAdmin() {
     }
   }, []);
 
+  const loadOverrides = useCallback(async () => {
+    setOverridesLoading(true);
+    setOverridesError(null);
+    try {
+      const data = await quizApi.listOverrides(false);
+      setOverrides(data.overrides || []);
+    } catch (err: any) {
+      setOverridesError(err?.message || "Failed to load overrides.");
+      setOverrides([]);
+    } finally {
+      setOverridesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     load(filter);
   }, [filter, load]);
+
+  useEffect(() => {
+    loadOverrides();
+  }, [loadOverrides]);
 
   const handleResolve = useCallback(
     async (report: QuizReport, resolution: "resolved" | "invalid") => {
@@ -112,12 +136,55 @@ export default function QuizAdmin() {
       toast.success("Override applied.");
       setOverrideOpen(false);
       await load(filter);
+      await loadOverrides();
     } catch (err: any) {
       toast.error(err?.message || "Failed to apply override.");
     } finally {
       setOverrideSubmitting(false);
     }
-  }, [overrideTarget, overrideAnswer, overrideExplanation, overrideNotes, filter, load]);
+  }, [overrideTarget, overrideAnswer, overrideExplanation, overrideNotes, filter, load, loadOverrides]);
+
+  const applyExpectedAsOverride = useCallback(
+    async (report: QuizReport) => {
+      if (!report.expected_answer) {
+        toast.error("Report has no expected answer to apply.");
+        return;
+      }
+      setBusyId(String(report.id));
+      try {
+        await quizApi.overrideQuestion({
+          question_id: report.question_id,
+          new_correct_answer: report.expected_answer,
+          notes: `Quick-apply from report #${report.id}`,
+          report_id: report.id,
+        });
+        toast.success("Expected answer applied as override.");
+        await load(filter);
+        await loadOverrides();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to apply override.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [filter, load, loadOverrides],
+  );
+
+  const toggleOverrideActive = useCallback(
+    async (o: QuizOverride) => {
+      setOverrideBusyId(String(o.id));
+      try {
+        await quizApi.setOverrideActive(o.id, !(o.active ?? true));
+        toast.success(!(o.active ?? true) ? "Override reactivated." : "Override deactivated.");
+        await loadOverrides();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update override.");
+      } finally {
+        setOverrideBusyId(null);
+      }
+    },
+    [loadOverrides],
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -205,6 +272,11 @@ export default function QuizAdmin() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-[10px]">Report #{r.id}</Badge>
                     <Badge variant="secondary" className="text-[10px]">Q #{r.question_id}</Badge>
+                    {(r as any).question_key && (
+                      <Badge variant="outline" className="text-[10px] font-mono">
+                        {(r as any).question_key}
+                      </Badge>
+                    )}
                     {r.category && (
                       <Badge variant="outline" className="text-[10px]">{r.category}</Badge>
                     )}
@@ -246,9 +318,21 @@ export default function QuizAdmin() {
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2 pt-2">
+                  {r.expected_answer && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => applyExpectedAsOverride(r)}
+                      disabled={busyId === String(r.id)}
+                      className="gap-1"
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                      Apply expected as override
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    variant="default"
+                    variant="secondary"
                     onClick={() => handleResolve(r, "resolved")}
                     disabled={busyId === String(r.id)}
                     className="gap-1"
@@ -268,7 +352,7 @@ export default function QuizAdmin() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => openOverride(r)}
                     className="gap-1"
                   >
@@ -281,6 +365,108 @@ export default function QuizAdmin() {
           ))}
         </div>
       )}
+
+      {/* Active overrides */}
+      <div className="mt-10">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <ListChecks className="h-4 w-4 text-primary" />
+            Active Overrides
+            <Badge variant="secondary" className="text-[10px]">
+              {overrides.length}
+            </Badge>
+          </h2>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={loadOverrides}
+            disabled={overridesLoading}
+            className="gap-1"
+          >
+            {overridesLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Refresh
+          </Button>
+        </div>
+
+        {overridesLoading ? (
+          <Skeleton className="h-24 w-full rounded-lg" />
+        ) : overridesError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {overridesError}
+          </div>
+        ) : overrides.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card/50 p-6 text-center text-sm text-muted-foreground">
+            No overrides yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {overrides.map((o) => {
+              const active = o.active ?? true;
+              return (
+                <Card key={String(o.id)} className="bg-card/80 backdrop-blur-sm">
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">#{o.id}</Badge>
+                      {o.question_key && (
+                        <Badge variant="outline" className="text-[10px] font-mono">
+                          {o.question_key}
+                        </Badge>
+                      )}
+                      {o.category && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {o.category}
+                        </Badge>
+                      )}
+                      <Badge
+                        className={`text-[10px] ${
+                          active
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                        variant="outline"
+                      >
+                        {active ? "Active" : "Inactive"}
+                      </Badge>
+                      <span className="ml-auto text-[11px] text-muted-foreground">
+                        {fmtDate(o.created_at)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <Field label="Overridden answer" value={o.new_correct_answer} />
+                      <Field label="Explanation" value={o.new_explanation} />
+                    </div>
+                    <div className="pt-1">
+                      <Button
+                        size="sm"
+                        variant={active ? "outline" : "default"}
+                        onClick={() => toggleOverrideActive(o)}
+                        disabled={overrideBusyId === String(o.id)}
+                        className="gap-1"
+                      >
+                        {active ? (
+                          <>
+                            <PowerOff className="h-3.5 w-3.5" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Power className="h-3.5 w-3.5" />
+                            Reactivate
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Override dialog */}
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
