@@ -46,7 +46,7 @@ export default function Quiz() {
   const [reportReason, setReportReason] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  const [progress, setProgress] = useState<QuizProgress | null>(null);
+  const [userProgress, setUserProgress] = useState<QuizProgress | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);
   const [progressError, setProgressError] = useState<string | null>(null);
 
@@ -54,10 +54,10 @@ export default function Quiz() {
     setProgressError(null);
     try {
       const data = await quizApi.getProgress(userId);
-      setProgress(data);
+      setUserProgress(data);
     } catch (err: any) {
       setProgressError(err?.message || "Progression unavailable.");
-      setProgress(null);
+      setUserProgress(null);
     } finally {
       setProgressLoading(false);
     }
@@ -261,7 +261,7 @@ export default function Quiz() {
         {/* Quiz profile card */}
         <div className="mb-6">
           <QuizProfileCard
-            progress={progress}
+            progress={userProgress}
             loading={progressLoading}
             error={progressError}
           />
