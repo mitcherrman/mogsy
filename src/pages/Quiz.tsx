@@ -811,14 +811,27 @@ export default function Quiz() {
                           transition={{ delay: 0.1, type: "spring", stiffness: 280, damping: 18 }}
                           className="mt-3 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 p-3"
                         >
-                          {answerResult.rank_icon && (
-                            <img
-                              src={resolveQuizAssetUrl(answerResult.rank_icon)}
-                              alt={answerResult.rank || "Rank"}
-                              className="h-9 w-9 object-contain shrink-0"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                            />
-                          )}
+                          {(() => {
+                            const rankObj = (answerResult.rank && typeof answerResult.rank === "object")
+                              ? (answerResult.rank as any)
+                              : null;
+                            const rankName: string =
+                              rankObj?.rank_name ||
+                              (typeof answerResult.rank === "string" ? answerResult.rank : "") ||
+                              "Rank";
+                            const rankIcon =
+                              resolveQuizAssetUrl(answerResult.rank_icon) ||
+                              resolveQuizAssetUrl(rankObj?.small_icon_path) ||
+                              resolveQuizAssetUrl(rankObj?.icon_path);
+                            return rankIcon ? (
+                              <img
+                                src={rankIcon}
+                                alt={rankName}
+                                className="h-10 w-10 object-contain shrink-0 drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                              />
+                            ) : null;
+                          })()}
                           <div className="flex-1 min-w-0">
                             {answerResult.xp_earned !== undefined && (
                               <div className="flex items-center gap-1.5 text-sm font-bold text-primary">
@@ -828,10 +841,19 @@ export default function Quiz() {
                             )}
                             {(answerResult.rank || answerResult.current_xp !== undefined) && (
                               <div className="text-[11px] text-muted-foreground">
-                                {answerResult.rank && <span className="font-medium text-foreground/80">{answerResult.rank}</span>}
+                                {answerResult.rank && (
+                                  <span className="font-medium text-foreground/80">
+                                    {typeof answerResult.rank === "string"
+                                      ? answerResult.rank
+                                      : ((answerResult.rank as any)?.rank_name || "")}
+                                  </span>
+                                )}
                                 {answerResult.rank && answerResult.current_xp !== undefined && " · "}
                                 {answerResult.current_xp !== undefined && (
                                   <span>{answerResult.current_xp.toLocaleString()} XP total</span>
+                                )}
+                                {typeof answerResult.current_streak === "number" && answerResult.current_streak > 0 && (
+                                  <> · <span>🔥 {answerResult.current_streak} streak</span></>
                                 )}
                               </div>
                             )}
