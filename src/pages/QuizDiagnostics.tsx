@@ -962,6 +962,32 @@ export default function QuizDiagnostics() {
             </Panel>
           </div>
 
+          <div className="mb-6">
+            <Panel
+              title="Achievements (anonymous)"
+              icon={Trophy}
+              right={
+                <span className="text-[11px] text-muted-foreground">
+                  {achievementsLoading
+                    ? "loading…"
+                    : `${achievementsList.filter((a) => a.unlocked).length} / ${achievementsList.length}`}
+                </span>
+              }
+            >
+              <QuizAchievementsCard
+                compact
+                achievements={achievementsList}
+                loading={achievementsLoading}
+                error={achievementsError}
+              />
+              {achievementsRaw !== null && (
+                <div className="mt-3">
+                  <JsonViewer data={achievementsRaw} label="Raw JSON" />
+                </div>
+              )}
+            </Panel>
+          </div>
+
           <Panel title="Debug Summary" icon={Stethoscope}>
             <div
               className={`rounded-md border px-4 py-3 text-sm ${
