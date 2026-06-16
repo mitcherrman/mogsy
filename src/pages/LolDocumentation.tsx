@@ -144,7 +144,7 @@ export default function LolDocumentation() {
   const fullMd = useMemo(() => entriesToMarkdown(LOL_CHANGELOG), []);
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div>
       <SEOHead
         title="Mogsy LoL — League Documentation & Changelog"
         description="A searchable, filterable log of every Lovable change made to Mogsy's League of Legends pages. Copy entries straight into ChatGPT for context."

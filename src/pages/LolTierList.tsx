@@ -117,7 +117,7 @@ export default function LolTierList() {
   };
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div>
       <SEOHead
         title={`League of Legends Tier List ${PATCH_LABEL} — Best Champions by Role | Mogsy`}
         description={`The Mogsy LoL tier list ranks the best League of Legends champions for ${PATCH_LABEL} across Top, Jungle, Mid, ADC and Support. Updated meta picks with notes.`}

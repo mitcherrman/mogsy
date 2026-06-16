@@ -245,7 +245,7 @@ export default function Quiz() {
   }, [sets.length]);
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div>
       <SEOHead
         title="Mogsy League Quiz — Test Your LoL Knowledge"
         description="Challenge yourself with League of Legends trivia and mechanics questions on Mogsy."

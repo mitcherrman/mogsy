@@ -12,7 +12,7 @@ export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div>
       <SEOHead
         title="Mogsy League of Legends — Rankings, News & Combat Lab"
         description="The League of Legends hub on Mogsy. Rank champions, simulate fights in the Combat Lab, and read the latest LoL news and tier lists."
