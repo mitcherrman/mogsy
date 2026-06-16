@@ -12,7 +12,7 @@ export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div>
       <SEOHead
         title="Mogsy League of Legends — Rankings, News & Combat Lab"
         description="The League of Legends hub on Mogsy. Rank champions, simulate fights in the Combat Lab, and read the latest LoL news and tier lists."
@@ -30,7 +30,7 @@ export default function LolHub() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#0a0a1a] p-6 md:p-10">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <img src={lolIcon} alt="" aria-hidden className="absolute -right-10 -top-10 w-80 h-80 object-contain blur-2xl" />
           </div>
@@ -53,35 +53,35 @@ export default function LolHub() {
             title="Combat Lab"
             description="Simulate champion matchups, theorycraft builds and run damage tests."
             Icon={Swords}
-            accent="from-[#1e3a5f] to-[#0a1428]"
+            accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
           />
           <HubTile
             to="/quiz"
             title="League Quiz"
             description="Test your LoL knowledge with champion trivia, mechanics questions, and more."
             Icon={BrainCircuit}
-            accent="from-[#1a3a2a] to-[#0a0a1a]"
+            accent="from-[#1a3a2a]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/swipe"
             title="Swipe LoL Champions"
             description="Tap into the swipe game and rank League of Legends content head-to-head."
             Icon={Flame}
-            accent="from-[#5c2018] to-[#0a0a1a]"
+            accent="from-[#5c2018]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/lol/tier-list"
             title="LoL Tier List"
             description="Meta rankings for every role this patch — Top, Jungle, Mid, ADC and Support."
             Icon={Trophy}
-            accent="from-[#3a2d10] to-[#0a0a1a]"
+            accent="from-[#3a2d10]/90 to-[#0a0a1a]/90"
           />
           <HubTile
             to="/lol/docs"
             title="League Docs"
             description="Searchable, timestamped log of every change to LoL pages — copy entries for ChatGPT."
             Icon={FileText}
-            accent="from-[#1a2238] to-[#0a0a1a]"
+            accent="from-[#1a2238]/90 to-[#0a0a1a]/90"
           />
         </div>
 
@@ -138,7 +138,7 @@ function HubTile({
   return (
     <Link
       to={to}
-      className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
+      className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} backdrop-blur-sm p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
     >
       <div className="flex items-start gap-4">
         <div className="rounded-lg bg-black/40 border border-white/10 p-3">
