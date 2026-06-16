@@ -43,13 +43,14 @@ export default function Leagues() {
   }, []);
 
   const loadLeagues = async () => {
-    const filterType = isCompete ? "user" : "preset";
+    try {
+      const filterType = isCompete ? "user" : "preset";
 
-    const { data: layoutData } = await supabase
+      const { data: layoutData } = await supabase
       .from("play_layout_config")
       .select("config")
       .eq("id", "published")
-      .single();
+      .maybeSingle();
 
     const layoutConfig = layoutData?.config as unknown as PlayLayoutConfig | null;
 
@@ -76,6 +77,7 @@ export default function Leagues() {
     });
 
     const promises = visibleLeagues.map(async (league) => {
+      try {
       let top5: LeagueWithTop5["top5"] = [];
 
       if (league.type === "preset") {
@@ -105,8 +107,8 @@ export default function Leagues() {
 
         if (items) {
           top5 = items.map((item) => {
-            const elo = eloMap.get(item.id) ?? item.elo;
-            return { id: item.id, name: item.name, imageUrl: item.image_url || "", elo, tier: getTierFromElo(elo) };
+            const elo = eloMap.get(item.id) ?? item.elo ?? 1200;
+            return { id: item.id, name: item.name ?? "Unknown", imageUrl: item.image_url || "", elo, tier: getTierFromElo(elo) };
           });
           top5.sort((a, b) => b.elo - a.elo);
           top5 = top5.slice(0, 5);
@@ -159,18 +161,27 @@ export default function Leagues() {
               .filter(([id]) => profileMap.has(id))
               .map(([id, elo]) => {
                 const p = profileMap.get(id)!;
-                return { id: p.id, name: p.display_name || "Unknown", imageUrl: p.avatar_url || "", elo, tier: getTierFromElo(elo) };
+                const safeElo = elo ?? 1200;
+                return { id: p.id, name: p.display_name || "Unknown", imageUrl: p.avatar_url || "", elo: safeElo, tier: getTierFromElo(safeElo) };
               });
           }
         }
       }
 
       return { id: league.id, name: league.name, type: league.type, top5 };
+      } catch (err) {
+        console.error("[Leagues] failed to load league", league?.id, err);
+        return { id: league.id, name: league.name, type: league.type, top5: [] };
+      }
     });
 
     const resolved = await Promise.all(promises);
     setLeagues(resolved);
-    setLoading(false);
+      setLoading(false);
+    } catch (err) {
+      console.error("[Leagues] loadLeagues failed", err);
+      setLoading(false);
+    }
   };
 
   const filteredLeagues = useMemo(() => {
