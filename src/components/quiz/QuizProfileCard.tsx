@@ -45,11 +45,29 @@ export default function QuizProfileCard({
   }
 
   const hasProgress = !!progress && (progress.attempts ?? 0) > 0;
-  const rankName = progress?.rank_name || progress?.rank || (hasProgress ? "Unranked" : "Unranked");
-  const nextRank = progress?.next_rank_name || progress?.next_rank;
-  const iconUrl = resolveQuizAssetUrl(progress?.rank_icon) || resolveQuizAssetUrl("assets/ranks/unranked.png");
-  const xp = progress?.xp ?? 0;
-  const pct = Math.max(0, Math.min(100, Number(progress?.progress_percent ?? 0)));
+  // Backend may return `rank` / `next_rank` as nested objects instead of strings.
+  const rankObj = (progress?.rank && typeof progress.rank === "object" ? progress.rank : null) as any;
+  const nextRankObj = (progress?.next_rank && typeof progress.next_rank === "object" ? progress.next_rank : null) as any;
+  const rankName =
+    progress?.rank_name ||
+    rankObj?.rank_name ||
+    (typeof progress?.rank === "string" ? progress.rank : null) ||
+    "Unranked";
+  const nextRank =
+    progress?.next_rank_name ||
+    rankObj?.next_rank_name ||
+    nextRankObj?.rank_name ||
+    nextRankObj?.next_rank_name ||
+    (typeof progress?.next_rank === "string" ? progress.next_rank : null);
+  const iconUrl =
+    resolveQuizAssetUrl(progress?.rank_icon) ||
+    resolveQuizAssetUrl(rankObj?.icon_path) ||
+    resolveQuizAssetUrl("assets/ranks/unranked.png");
+  const xp = progress?.xp ?? rankObj?.progress_xp ?? 0;
+  const pct = Math.max(
+    0,
+    Math.min(100, Number(progress?.progress_percent ?? rankObj?.progress_percent ?? 0)),
+  );
 
   return (
     <motion.div
