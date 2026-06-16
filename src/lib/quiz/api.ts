@@ -69,6 +69,29 @@ export type QuizCategoryStat = {
   attempts: number;
 };
 
+export type QuizAchievement = {
+  id?: string | number;
+  key?: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  icon_path?: string;
+  unlocked?: boolean;
+  unlocked_at?: string | null;
+  progress?: number;
+  goal?: number;
+  category?: string;
+  tier?: string;
+};
+
+export type QuizAchievementsResponse = {
+  achievements?: QuizAchievement[];
+  unlocked?: QuizAchievement[];
+  locked?: QuizAchievement[];
+  total?: number;
+  unlocked_count?: number;
+};
+
 export type QuizLeaderboardEntry = {
   user_id: string;
   display_name?: string;
@@ -203,4 +226,7 @@ export const quizApi = {
   /** Category breakdown for a user. Pass `"anonymous"` for guest aggregate. */
   getCategories: (userId: string) =>
     request<{ categories: QuizCategoryStat[] }>(`/api/quiz/categories/${encodeURIComponent(userId)}`),
+  /** Achievements for a user (unlocked + locked). Pass `"anonymous"` for guest. */
+  getAchievements: (userId: string) =>
+    request<QuizAchievementsResponse>(`/api/quiz/achievements/${encodeURIComponent(userId)}`),
 };

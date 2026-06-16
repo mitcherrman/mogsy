@@ -13,11 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
+import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
@@ -55,6 +56,10 @@ export default function Quiz() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
+  const [achievements, setAchievements] = useState<QuizAchievement[]>([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [achievementsError, setAchievementsError] = useState<string | null>(null);
+
   const loadProgress = useCallback(async () => {
     setProgressError(null);
     try {
@@ -81,6 +86,22 @@ export default function Quiz() {
     }
   }, [userId]);
 
+  const loadAchievements = useCallback(async () => {
+    setAchievementsError(null);
+    try {
+      const data = await quizApi.getAchievements(userId);
+      const list = data.achievements
+        ? data.achievements
+        : [...(data.unlocked || []).map((a) => ({ ...a, unlocked: true })), ...(data.locked || []).map((a) => ({ ...a, unlocked: false }))];
+      setAchievements(list);
+    } catch (err: any) {
+      setAchievementsError(err?.message || "Achievements unavailable.");
+      setAchievements([]);
+    } finally {
+      setAchievementsLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     setProgressLoading(true);
     loadProgress();
@@ -90,6 +111,11 @@ export default function Quiz() {
     setCategoriesLoading(true);
     loadCategories();
   }, [loadCategories]);
+
+  useEffect(() => {
+    setAchievementsLoading(true);
+    loadAchievements();
+  }, [loadAchievements]);
 
   // Load quiz sets on mount
   useEffect(() => {
@@ -193,6 +219,10 @@ export default function Quiz() {
       }
       // Refresh progression in the background
       loadProgress();
+      // If the answer unlocked achievements, refresh the achievements panel
+      if (Array.isArray(unlocked) && unlocked.length > 0) {
+        loadAchievements();
+      }
     } catch (err: any) {
       // Even if submit fails, let the user continue
       setAnswerResult({
@@ -201,7 +231,7 @@ export default function Quiz() {
         explanation: "Could not verify answer. Please check your connection and try again.",
       });
     }
-  }, [currentQuestion, answerResult, userId, loadProgress]);
+  }, [currentQuestion, answerResult, userId, loadProgress, loadAchievements]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
@@ -307,6 +337,15 @@ export default function Quiz() {
             categories={categoryStats}
             loading={categoriesLoading}
             error={categoriesError}
+          />
+        </div>
+
+        {/* Achievements */}
+        <div className="mb-6">
+          <QuizAchievementsCard
+            achievements={achievements}
+            loading={achievementsLoading}
+            error={achievementsError}
           />
         </div>
 
