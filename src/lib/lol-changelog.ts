@@ -55,6 +55,23 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-17T00:00:00Z",
+    title: "Quiz champion choice visuals (image-bearing answer choices)",
+    type: "ui",
+    scopes: ["quiz"],
+    summary:
+      "Quiz answer choices now support object form { label, image_path, champion_name } and render the image inside each choice button. For champion-comparison prompts like 'Which champion is ranged?' / 'Which is melee?', the single main champion icon is suppressed when choices carry images and the question itself has no image_path, so the answer is no longer revealed by the top icon. Plain string choices and existing item/rune/summoner/single-champion visuals are unchanged.",
+    details: [
+      "Added getChoiceImage() helper and QuizChoiceObject type alongside getChoiceLabel().",
+      "Choices with image_path resolve via resolveQuizAssetUrl and render as a Hextech-gold framed thumbnail above the label inside the answer Button.",
+      "Answer grid switches to a 2-column layout when any choice has an image, otherwise stays single-column.",
+      "When choicesHaveImages && !question.image_path, the main visual block (champion icon / splash framing) is hidden to avoid revealing the correct answer.",
+      "Item / rune / summoner / direct champion question visuals preserved.",
+    ],
+    files: ["src/pages/Quiz.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/quiz"],
+  },
+  {
     timestamp: "2026-06-16T15:30:00Z",
     title: "League Quiz Achievements panel (Quiz + Diagnostics)",
     type: "feature",
