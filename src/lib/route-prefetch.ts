@@ -85,6 +85,11 @@ export const Routes = {
   LolDocumentation: lazyWithRetry(() => import("@/pages/LolDocumentation")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
+  About: lazyWithRetry(() => import("@/pages/legal/About")),
+  Privacy: lazyWithRetry(() => import("@/pages/legal/Privacy")),
+  Terms: lazyWithRetry(() => import("@/pages/legal/Terms")),
+  Security: lazyWithRetry(() => import("@/pages/legal/Security")),
+  Contact: lazyWithRetry(() => import("@/pages/legal/Contact")),
 } as const;
 
 /** Map URL path → list of route keys to warm. Supports basic prefix matching. */

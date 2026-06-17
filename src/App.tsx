@@ -55,6 +55,11 @@ const LolTierList = R.LolTierList.Component;
 const LolDocumentation = R.LolDocumentation.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
+const About = R.About.Component;
+const Privacy = R.Privacy.Component;
+const Terms = R.Terms.Component;
+const Security = R.Security.Component;
+const Contact = R.Contact.Component;
 
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
@@ -135,6 +140,11 @@ const App = () => (
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LolDocumentation /></Suspense>} />
+                  <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
+                  <Route path="/privacy" element={<Suspense fallback={<RouteFallback />}><Privacy /></Suspense>} />
+                  <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />
+                  <Route path="/security" element={<Suspense fallback={<RouteFallback />}><Security /></Suspense>} />
+                  <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
