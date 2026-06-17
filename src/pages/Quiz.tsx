@@ -494,6 +494,10 @@ export default function Quiz() {
               const itemName = typeof meta.item_name === "string" ? meta.item_name : undefined;
               const runeName = typeof meta.rune_name === "string" ? meta.rune_name : undefined;
               const summonerName = typeof meta.summoner_name === "string" ? meta.summoner_name : undefined;
+              const choicesHaveImages = (currentQuestion.choices || []).some(
+                (c) => typeof c === "object" && c !== null && !!(c as QuizChoiceObject).image_path,
+              );
+              const suppressMainVisual = choicesHaveImages && !currentQuestion.image_path;
               return (
             <Card
               className={
@@ -562,7 +566,7 @@ export default function Quiz() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mainVisual && (
+                {mainVisual && !suppressMainVisual && (
                   <div
                     className={
                       championIcon
