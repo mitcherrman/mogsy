@@ -8,6 +8,7 @@ import FloatingScrollButton from "./FloatingScrollButton";
 import FloatingFriendsButton from "./FloatingFriendsButton";
 import HextechAmbience from "./HextechAmbience";
 import TutorialTipPopup from "./TutorialTipPopup";
+import Footer from "./Footer";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -103,6 +104,7 @@ export default function Layout() {
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
       </main>
+      {!isLolSection && <Footer />}
       {isLolSection && pathname !== "/lol" && (
         <Link
           to="/lol"
