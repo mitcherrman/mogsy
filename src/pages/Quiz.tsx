@@ -23,8 +23,16 @@ import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
 
-function getChoiceLabel(choice: string | { label: string }): string {
+type QuizChoiceObject = { label: string; image_path?: string; champion_name?: string };
+type QuizChoice = string | QuizChoiceObject;
+
+function getChoiceLabel(choice: QuizChoice): string {
   return typeof choice === "string" ? choice : choice.label;
+}
+
+function getChoiceImage(choice: QuizChoice): string | undefined {
+  if (typeof choice === "string") return undefined;
+  return choice.image_path || undefined;
 }
 
 export default function Quiz() {
