@@ -5,8 +5,64 @@ import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import lolIcon from "@/assets/lol-icon.png";
+import HexZipperCard, { type HexZipperSide } from "@/components/lol/HexZipperCard";
 
 const LOL_TAG = "League of Legends";
+
+type ZipperFeature = {
+  to: string;
+  title: string;
+  description: string;
+  Icon: React.ElementType;
+  side: HexZipperSide;
+  championName: string;
+  flagship?: boolean;
+};
+
+// Easy to reorder / re-map champions later.
+const ZIPPER_FEATURES: ZipperFeature[] = [
+  {
+    to: "/combat-lab",
+    title: "Combat Lab",
+    description: "Simulate matchups, theorycraft builds, and run damage tests.",
+    Icon: Swords,
+    side: "right",
+    championName: "Jinx",
+    flagship: true,
+  },
+  {
+    to: "/quiz",
+    title: "League Quiz",
+    description: "Champion trivia, mechanics, items — prove your knowledge.",
+    Icon: BrainCircuit,
+    side: "left",
+    championName: "Ryze",
+  },
+  {
+    to: "/lol/tier-list",
+    title: "LoL Tier List",
+    description: "Meta rankings for Top, Jungle, Mid, ADC and Support this patch.",
+    Icon: Trophy,
+    side: "right",
+    championName: "Azir",
+  },
+  {
+    to: "/swipe",
+    title: "Swipe Champions",
+    description: "Tap in and rank League of Legends champions head-to-head.",
+    Icon: Flame,
+    side: "left",
+    championName: "Draven",
+  },
+  {
+    to: "/lol/docs",
+    title: "League Docs",
+    description: "Searchable, timestamped log of every change to LoL pages.",
+    Icon: FileText,
+    side: "right",
+    championName: "Viktor",
+  },
+];
 
 export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
@@ -46,43 +102,38 @@ export default function LolHub() {
           </div>
         </div>
 
-        {/* Action tiles */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <HubTile
-            to="/combat-lab"
-            title="Combat Lab"
-            description="Simulate champion matchups, theorycraft builds and run damage tests."
-            Icon={Swords}
-            accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
-          />
-          <HubTile
-            to="/quiz"
-            title="League Quiz"
-            description="Test your LoL knowledge with champion trivia, mechanics questions, and more."
-            Icon={BrainCircuit}
-            accent="from-[#1a3a2a]/90 to-[#0a0a1a]/90"
-          />
-          <HubTile
-            to="/swipe"
-            title="Swipe LoL Champions"
-            description="Tap into the swipe game and rank League of Legends content head-to-head."
-            Icon={Flame}
-            accent="from-[#5c2018]/90 to-[#0a0a1a]/90"
-          />
-          <HubTile
-            to="/lol/tier-list"
-            title="LoL Tier List"
-            description="Meta rankings for every role this patch — Top, Jungle, Mid, ADC and Support."
-            Icon={Trophy}
-            accent="from-[#3a2d10]/90 to-[#0a0a1a]/90"
-          />
-          <HubTile
-            to="/lol/docs"
-            title="League Docs"
-            description="Searchable, timestamped log of every change to LoL pages — copy entries for ChatGPT."
-            Icon={FileText}
-            accent="from-[#1a2238]/90 to-[#0a0a1a]/90"
-          />
+        {/* Hextech Zipper */}
+        <div className="mt-10 hidden md:grid grid-cols-2 gap-x-10 gap-y-6">
+          {ZIPPER_FEATURES.map((f) => (
+            <div
+              key={f.to}
+              className={f.side === "right" ? "col-start-2" : "col-start-1"}
+            >
+              <HexZipperCard
+                to={f.to}
+                title={f.title}
+                description={f.description}
+                Icon={f.Icon}
+                side={f.side}
+                championName={f.championName}
+                flagship={f.flagship}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile fallback — keep existing simple stacked tiles */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:hidden">
+          {ZIPPER_FEATURES.map((f) => (
+            <HubTile
+              key={f.to}
+              to={f.to}
+              title={f.title}
+              description={f.description}
+              Icon={f.Icon}
+              accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
+            />
+          ))}
         </div>
 
         {/* News / Blog */}

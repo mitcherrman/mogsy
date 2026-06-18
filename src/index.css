@@ -654,3 +654,19 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: 0.9em;
 }
 .blog-editable ul, .blog-editable ol { padding-left: 1.5em; margin: 0.4em 0; }
+
+/* Hextech zipper card traveling border light */
+.hex-border-light {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(10, 200, 255, 0.55) 30deg,
+    transparent 90deg,
+    transparent 360deg
+  );
+  animation: hex-border-spin 3s linear infinite;
+  filter: blur(2px);
+}
+@keyframes hex-border-spin {
+  to { transform: rotate(360deg); }
+}
