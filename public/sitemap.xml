@@ -86,6 +86,31 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://mogsy.app/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/terms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/security</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://mogsy.app/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://mogsy.app/leaderboard/46dc613c-09b6-45bc-a262-0bbd7d8b126c</loc>
     <lastmod>2026-02-23</lastmod>
     <changefreq>daily</changefreq>
