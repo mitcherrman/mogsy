@@ -102,24 +102,27 @@ export default function LolHub() {
           </div>
         </div>
 
-        {/* Hextech Zipper */}
-        <div className="mt-10 hidden md:grid grid-cols-2 gap-x-10 gap-y-6">
-          {ZIPPER_FEATURES.map((f) => (
-            <div
-              key={f.to}
-              className={f.side === "right" ? "col-start-2" : "col-start-1"}
-            >
-              <HexZipperCard
-                to={f.to}
-                title={f.title}
-                description={f.description}
-                Icon={f.Icon}
-                side={f.side}
-                championName={f.championName}
-                flagship={f.flagship}
-              />
-            </div>
-          ))}
+        {/* Hextech Zipper — desktop only */}
+        <div className="mt-12 hidden md:flex flex-col gap-8 relative">
+          {ZIPPER_FEATURES.map((f, i) => {
+            const widthCls = f.flagship ? "w-[78%]" : "w-[72%]";
+            const alignCls = f.side === "right" ? "self-end" : "self-start";
+            // Slight negative margin from card #2 onward for the zipper overlap.
+            const stagger = i === 0 ? "" : "-mt-4";
+            return (
+              <div key={f.to} className={`${widthCls} ${alignCls} ${stagger}`}>
+                <HexZipperCard
+                  to={f.to}
+                  title={f.title}
+                  description={f.description}
+                  Icon={f.Icon}
+                  side={f.side}
+                  championName={f.championName}
+                  flagship={f.flagship}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* Mobile fallback — keep existing simple stacked tiles */}
