@@ -55,6 +55,30 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-18T00:00:00Z",
+    title: "LoL Hub Hextech Zipper layout (desktop-first)",
+    type: "ui",
+    scopes: ["hub"],
+    summary:
+      "Reworked the /lol homepage on desktop into a 'Hextech Zipper' — alternating left/right clipped hex-shape feature cards under the hero banner. Combat Lab is the flagship top-right card, followed by League Quiz (left), LoL Tier List (right), Swipe Champions (left), and League Docs (right). On hover, each card slides toward its edge, a cyan Hextech border light travels around the clipped border, and a champion cutout slides out from behind the card's outer edge. Mobile still falls back to the existing stacked tile list. Routes, icons, and downstream sections (News & Blog) are unchanged.",
+    details: [
+      "New component src/components/lol/HexZipperCard.tsx — clipped-corner card with dark navy body, gold accents, cyan Hextech border layer, inner glow, animated traveling border light, hover slide + scale, and a champion popout image layered behind the card.",
+      "Champion popout uses a new src/hooks/useChampionImage.ts helper that reads the existing champion-images Supabase storage bucket (keyed by champion name) — same asset system Combat Lab already uses. No new image system, no hardcoded external URLs. Image errors hide the popout gracefully.",
+      "Champion mapping (easy to adjust in ZIPPER_FEATURES): Combat Lab → Jinx, League Quiz → Ryze, LoL Tier List → Azir, Swipe Champions → Draven, League Docs → Viktor.",
+      "Hex clip-path applied to both the outer cyan border layer and the inner card body; flagship variant doubles up icon and title sizing for Combat Lab.",
+      "Added .hex-border-light keyframes + conic-gradient animation to src/index.css.",
+      "Desktop (md+) uses the new 2-column zipper grid; mobile keeps the original HubTile stack so this turn does not regress mobile.",
+    ],
+    files: [
+      "src/pages/LolHub.tsx",
+      "src/components/lol/HexZipperCard.tsx",
+      "src/hooks/useChampionImage.ts",
+      "src/index.css",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-17T00:00:00Z",
     title: "Quiz champion choice visuals (image-bearing answer choices)",
     type: "ui",
