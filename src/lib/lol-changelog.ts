@@ -55,6 +55,28 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-18T01:00:00Z",
+    title: "LoL Hub zipper polish — champion popout, stagger, border pulse",
+    type: "ui",
+    scopes: ["hub"],
+    summary:
+      "Second pass on the /lol Hextech Zipper. Champion popout always renders (with a glowing shield silhouette fallback when no champion image is configured), is larger (300px / 420px flagship) and slides further outside the card edge on hover. Cards translate ~24px outward on hover. The animated Hextech border is now a discrete cyan light pulse traveling around the clipped edge instead of a uniform glow. Cards are laid out as a true zipper: single column, alternating self-end / self-start at 72–78% width with a slight negative top margin for zig-zag overlap. Mobile untouched.",
+    details: [
+      "HexZipperCard: champion popout container is always mounted; renders <img> when useChampionImage resolves a URL, otherwise a radial-glow + Shield icon fallback. onError hides only the image, the popout container remains.",
+      "Popout sizes bumped to h-[300px] (h-[420px] flagship) and slides to 45% outside the card edge on hover.",
+      "Card hover translate increased from 8px to 24px; scale from 1.015 to 1.02.",
+      "Border pulse: replaced the soft conic sweep with a narrow bright cyan-to-white spike inside .hex-border-pulse, rotating every 2.4s — reads as a single moving light bead around the hex border instead of a uniform brighten.",
+      "Layout switched from 2-col grid to flex column with alternating self-end/self-start and -mt-4 stagger so the eye follows a zig-zag.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/pages/LolHub.tsx",
+      "src/index.css",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-18T00:00:00Z",
     title: "LoL Hub Hextech Zipper layout (desktop-first)",
     type: "ui",
