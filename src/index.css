@@ -655,17 +655,20 @@ html.high-contrast * { text-shadow: none !important; }
 }
 .blog-editable ul, .blog-editable ol { padding-left: 1.5em; margin: 0.4em 0; }
 
-/* Hextech zipper card traveling border light */
-.hex-border-light {
+/* Hextech zipper card traveling border pulse */
+.hex-border-pulse {
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(10, 200, 255, 0.55) 30deg,
-    transparent 90deg,
-    transparent 360deg
+    transparent 340deg,
+    rgba(10, 200, 255, 0.95) 355deg,
+    #ffffff 360deg,
+    rgba(10, 200, 255, 0.95) 365deg,
+    transparent 380deg,
+    transparent 720deg
   );
-  animation: hex-border-spin 3s linear infinite;
-  filter: blur(2px);
+  animation: hex-border-spin 2.4s linear infinite;
+  filter: blur(1.5px);
 }
 @keyframes hex-border-spin {
   to { transform: rotate(360deg); }
