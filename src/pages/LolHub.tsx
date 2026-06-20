@@ -7,7 +7,7 @@ import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import lolIcon from "@/assets/lol-icon.png";
 import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/components/lol/HexZipperCard";
-import { useChampionAssets, getChampionCutout, getChampionSplash } from "@/hooks/useChampionAssets";
+import { useChampionAssets, getChampionCutout, getChampionSplash, getChampionLoading } from "@/hooks/useChampionAssets";
 import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -150,6 +150,8 @@ export default function LolHub() {
                   cutoutUrl={
                     popoutStyle === "cutout"
                       ? getChampionCutout(championAssets, f.championName)
+                      : popoutStyle === "portrait"
+                      ? getChampionLoading(championAssets, f.championName)
                       : getChampionSplash(championAssets, f.championName)
                   }
                   flagship={f.flagship}

@@ -13,8 +13,8 @@ type Props = {
   side: HexZipperSide;
   /**
    * Resolved champion image URL from the backend manifest. Cutout PNG for the
-   * "cutout" style, splash art for the "splash" style. When omitted/null, the
-   * card falls back to a Hextech shield silhouette.
+   * "cutout" style, splash art for "splash", loading screen art for "portrait".
+   * When omitted/null, the card falls back to a Hextech shield silhouette.
    */
   cutoutUrl?: string | null;
   /** Larger flagship treatment (used for Combat Lab). */

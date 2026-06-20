@@ -72,3 +72,12 @@ export function getChampionSplash(
   const c = manifest.champions?.[championName];
   return resolveAssetUrl(c?.splash || c?.loading);
 }
+
+/** Look up a champion's loading screen art URL (no splash fallback). */
+export function getChampionLoading(
+  manifest: ChampionManifest | null | undefined,
+  championName?: string,
+): string | null {
+  if (!manifest || !championName) return null;
+  return resolveAssetUrl(manifest.champions?.[championName]?.loading);
+}
