@@ -55,6 +55,23 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T05:30:00Z",
+    title: "LoL Hub 'Portrait' popout is now hover-only with outward slide",
+    type: "ui",
+    scopes: ["hub"],
+    summary:
+      "The Portrait popout style on /lol no longer sits permanently outside each HexZipperCard. At rest the portrait is hidden (opacity 0, tucked against the outer card edge); on hover it fades in and slides outward — right cards slide further right, left cards slide further left — over a 700ms ease-out transition. Splash and Cutout behavior unchanged.",
+    details: [
+      "HexZipperCard portrait branch: rest opacity-0 + translate-x-0, group-hover opacity-100 + translate-x-[±50%].",
+      "Slide direction mirrors the card alignment so the portrait always exits the outer edge of the page.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T05:00:00Z",
     title: "LoL Hub popout toggle gains third 'Portrait' option",
     type: "feature",
