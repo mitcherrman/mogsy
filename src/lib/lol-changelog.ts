@@ -55,6 +55,27 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T08:00:00Z",
+    title: "Combat Lab: Versus layout (Attacker vs Defender)",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Reorganized Combat Lab into a three-column versus simulator: Attacker Champion on the left, a Combat panel with a VS divider and action buttons in the center, and a Defender Champion panel on the right. The defender panel introduces a clearer Champion Defender / Custom Target Dummy mode toggle and exposes the new backend target-system fields (defender stats, target shield, damage reduction, applicable target defenses).",
+    details: [
+      "Top layout is now 3 columns on desktop (Attacker / Combat / Defender) and stacks vertically on mobile.",
+      "Combat center shows '{Attacker} VS {Defender}' header plus Basic Attack, target-scope picker, champion actions and Reset button.",
+      "Defender panel supports two modes: Champion Defender (champion / level / items / runes) and Custom Target Dummy (HP / Armor / MR / Shield / DR %).",
+      "Custom Target Dummy drives target_stats { HP, ARMOR, MR } on every action request.",
+      "When a Champion Defender has matching target defenses from /api/meta/target-defenses, the panel lists them with an Apply button that calls /api/combat-lab/active and persists returned state into the sandbox.",
+      "Defender stat window (Target Runtime Summary) renders HP / Armor / MR / Shield / DR / Phys DR / Magic DR from backend target_stats + target_debug.",
+      "Legacy Target Profile dropdown moved into Developer Overrides — target_profile field is still sent for backend compatibility.",
+      "Dev-mode Target Defense Preview retained for before/after inspection.",
+      "ChampionProfile and LiveStatsPanel moved into a secondary row below the versus header.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-20T07:00:00Z",
     title: "Quiz: new category badges + session breakdown + missed-question review",
     type: "feature",

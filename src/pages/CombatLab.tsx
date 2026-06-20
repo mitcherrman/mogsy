@@ -1545,7 +1545,7 @@ function KeyStringEditor({
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
-type TargetMode = "target_profile" | "target_champion";
+type TargetMode = "target_champion" | "target_dummy" | "target_profile";
 
 type TargetSetupState = {
   targetMode: TargetMode;
@@ -1553,14 +1553,24 @@ type TargetSetupState = {
   targetLevel: number;
   targetItemNames: string[];
   targetRuneNames: string[];
+  dummyHP: number;
+  dummyArmor: number;
+  dummyMR: number;
+  dummyShield: number;
+  dummyDR: number;
 };
 
 const DEFAULT_TARGET_SETUP: TargetSetupState = {
-  targetMode: "target_profile",
+  targetMode: "target_dummy",
   targetChampionName: "",
   targetLevel: 18,
   targetItemNames: [],
   targetRuneNames: [],
+  dummyHP: 4000,
+  dummyArmor: 0,
+  dummyMR: 0,
+  dummyShield: 0,
+  dummyDR: 0,
 };
 
 type SandboxProps = {
@@ -1669,6 +1679,7 @@ function InteractiveSandbox({
   const [selectedDefense, setSelectedDefense] = useState<string>("");
   const [defenseRank, setDefenseRank] = useState<number>(1);
   const [defenseBusy, setDefenseBusy] = useState(false);
+  const [defenderApplyBusy, setDefenderApplyBusy] = useState<string | null>(null);
 
   // Load target defenses metadata (dev preview list)
   useEffect(() => {
@@ -1832,9 +1843,9 @@ function InteractiveSandbox({
         toast({ title: "Pick a target profile first", variant: "destructive" });
         return;
       }
-    } else {
+    } else if (targetSetup.targetMode === "target_champion") {
       if (!targetSetup.targetChampionName) {
-        toast({ title: "Pick a target champion first", variant: "destructive" });
+        toast({ title: "Pick a defender champion first", variant: "destructive" });
         return;
       }
     }
@@ -1850,7 +1861,14 @@ function InteractiveSandbox({
         Object.keys(backendStats).length > 0
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
-      const target_stats = { ...DEFAULT_TARGET_STATS };
+      const target_stats: Record<string, number> =
+        targetSetup.targetMode === "target_dummy"
+          ? {
+              HP: targetSetup.dummyHP,
+              ARMOR: targetSetup.dummyArmor,
+              MR: targetSetup.dummyMR,
+            }
+          : { ...DEFAULT_TARGET_STATS };
       const targetEntityFields: Record<string, unknown> =
         targetSetup.targetMode === "target_champion"
           ? {
@@ -1916,6 +1934,57 @@ function InteractiveSandbox({
     if (!lastAction) return;
     if (lastAction.kind === "basic-attack") sendStep("basic-attack");
     else sendStep("active", lastAction.action_id);
+  };
+
+  /** Apply a target defense from the Defender panel into the live sandbox state. */
+  const applyDefense = async (defenseName: string) => {
+    if (targetSetup.targetMode !== "target_champion" || !targetSetup.targetChampionName) {
+      toast({
+        title: "Switch defender to Champion mode",
+        description: "Target defenses require a Defender Champion.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDefenderApplyBusy(defenseName);
+    setError(null);
+    try {
+      const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
+      const attacker_stats: Record<string, number> =
+        Object.keys(backendStats).length > 0 ? backendStats : buildAttackerStats(config);
+      const target_stats: Record<string, number> = (targetRuntime?.target_stats &&
+        Object.keys(targetRuntime.target_stats).length > 0
+          ? (targetRuntime.target_stats as Record<string, number>)
+          : { ...DEFAULT_TARGET_STATS });
+      const payload: CombatLabActiveRequest = {
+        champion_name: targetSetup.targetChampionName,
+        attacker_stats,
+        target_stats,
+        state: state ?? {},
+        active_name: defenseName,
+        target_scope: "PRIMARY",
+        piercing_arrow_charge_bonus_percent: 0,
+        target_champion_name: targetSetup.targetChampionName,
+        target_level: targetSetup.targetLevel,
+        target_item_names: targetSetup.targetItemNames,
+        target_rune_names: targetSetup.targetRuneNames,
+      } as CombatLabActiveRequest;
+      setLastEndpoint("/api/combat-lab/active");
+      setLastRequest(payload);
+      const res = await combatApi.active(payload);
+      setLastResponse(res);
+      applyResponse(res);
+      toast({ title: `Applied ${defenseName}`, description: "Defender state updated." });
+    } catch (e: any) {
+      setError(e?.message || "Apply defense failed");
+      toast({
+        title: "Apply defense failed",
+        description: e?.message || String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setDefenderApplyBusy(null);
+    }
   };
 
   const copyJson = async (data: unknown, label: string) => {
@@ -2032,10 +2101,11 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
-      {/* TOP: Build Configuration + Champion Profile + Live Stats */}
-      <div className="grid gap-6 lg:grid-cols-7">
-        <div className="space-y-6 lg:col-span-2">
-        <SectionCard title="Build Configuration" icon={Swords}>
+      {/* VERSUS HEADER: Attacker | Combat | Defender */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        {/* ATTACKER COLUMN */}
+        <div className="space-y-4 lg:col-span-4">
+        <SectionCard title="Attacker Champion" icon={Swords}>
           <div className="space-y-3">
             <SearchSelect
               label="Champion"
@@ -2068,14 +2138,6 @@ function InteractiveSandbox({
                 }}
               />
             </div>
-            <SearchSelect
-              label="Target profile"
-              placeholder="Select target…"
-              value={config.target_profile}
-              options={targets}
-              onChange={(v) => update("target_profile", v)}
-              loading={metaLoading}
-            />
             <MultiSelect
               label="Items (max 6)"
               placeholder="Select items…"
@@ -2129,6 +2191,21 @@ function InteractiveSandbox({
                 <div className="mt-2 text-[10px] text-muted-foreground">
                   Overrides are merged on top of backend runtime_stats when sending actions.
                 </div>
+                <div className="mt-3 border-t border-primary/20 pt-3">
+                  <Label className="mb-1.5 block text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Legacy target profile (compat)
+                  </Label>
+                  <SearchSelect
+                    placeholder="Select target profile…"
+                    value={config.target_profile}
+                    options={targets}
+                    onChange={(v) => update("target_profile", v)}
+                    loading={metaLoading}
+                  />
+                  <div className="mt-1 text-[10px] text-muted-foreground">
+                    Sent only if defender mode is set to Target Profile. Preserved for backend compatibility.
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-2 text-[10px] text-muted-foreground">
@@ -2156,52 +2233,34 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
-        <TargetSetupPanel
-          setup={targetSetup}
-          update={updateTargetSetup}
-          champions={champions}
-          items={items}
-          runes={runes}
-          metaLoading={metaLoading}
-        />
         </div>
 
-        <div className="lg:col-span-2">
-          <ChampionProfile
-            championId={config.champion}
-            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
-          />
-        </div>
-
-        <div className="lg:col-span-3">
-          <LiveStatsPanel
-            config={config}
-            summonerPicks={summonerPicks}
-            combatState={state}
-            runtimeAttackerStats={attackerStats}
-            runtimeStates={currentStates}
-            changedKeys={changedKeys}
-            onPreviewStats={(b, r) => {
-              setPreviewBuildStats(b);
-              setPreviewRuntimeStats(r);
-            }}
-          />
-        </div>
-      </div>
-
-      {/* BELOW: everything else, full width */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-        <SectionCard
-          title="Actions"
-          icon={Hand}
-          className="h-full"
-          right={
-            <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Combat
-            </Button>
-          }
-        >
+        {/* CENTER COMBAT COLUMN */}
+        <div className="space-y-4 lg:col-span-4 lg:order-none order-last">
+          <SectionCard
+            title="Combat"
+            icon={Swords}
+            right={
+              <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            }
+          >
+            <div className="mb-3 flex items-center justify-center gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
+              <span className="truncate font-semibold text-primary">
+                {config.champion || "Attacker"}
+              </span>
+              <Swords className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">VS</span>
+              <Swords className="h-4 w-4 shrink-0 text-muted-foreground rotate-180" />
+              <span className="truncate font-semibold text-accent">
+                {targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetChampionName || "Defender"
+                  : targetSetup.targetMode === "target_dummy"
+                  ? "Target Dummy"
+                  : config.target_profile || "Target Profile"}
+              </span>
+            </div>
           <div className="space-y-2">
             {config.champion && (
               <div className="text-[11px] text-muted-foreground">
@@ -2302,8 +2361,53 @@ function InteractiveSandbox({
             )}
           </div>
         </SectionCard>
-        <DamageBreakdownPanel events={events} className="h-full" />
         </div>
+
+        {/* DEFENDER COLUMN */}
+        <div className="space-y-4 lg:col-span-4">
+          <DefenderPanel
+            setup={targetSetup}
+            update={updateTargetSetup}
+            champions={champions}
+            items={items}
+            runes={runes}
+            metaLoading={metaLoading}
+            defenses={targetDefenses}
+            onApplyDefense={applyDefense}
+            applyBusy={defenderApplyBusy}
+            offline={offline}
+          />
+          <TargetRuntimeSummary runtime={targetRuntime} />
+        </div>
+      </div>
+
+      {/* SECONDARY ROW: champion profile + live stats */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <ChampionProfile
+            championId={config.champion}
+            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <LiveStatsPanel
+            config={config}
+            summonerPicks={summonerPicks}
+            combatState={state}
+            runtimeAttackerStats={attackerStats}
+            runtimeStates={currentStates}
+            changedKeys={changedKeys}
+            onPreviewStats={(b, r) => {
+              setPreviewBuildStats(b);
+              setPreviewRuntimeStats(r);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* BELOW: timeline + diagnostics */}
+      <div className="space-y-6">
+        <DamageBreakdownPanel events={events} />
         <SandboxTimeline events={events} containerRef={timelineRef} />
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
@@ -2364,8 +2468,6 @@ function InteractiveSandbox({
         )}
 
         <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
-
-        <TargetRuntimeSummary runtime={targetRuntime} />
 
         {devMode && (
           <TargetDefensePreviewPanel
@@ -2451,15 +2553,19 @@ function InteractiveSandbox({
   );
 }
 
-/* ─────────────── Target Setup (Phase 2 UI) ─────────────── */
+/* ─────────────── Defender Panel (Versus UI) ─────────────── */
 
-function TargetSetupPanel({
+function DefenderPanel({
   setup,
   update,
   champions,
   items,
   runes,
   metaLoading,
+  defenses,
+  onApplyDefense,
+  applyBusy,
+  offline,
 }: {
   setup: TargetSetupState;
   update: <K extends keyof TargetSetupState>(key: K, value: TargetSetupState[K]) => void;
@@ -2467,36 +2573,53 @@ function TargetSetupPanel({
   items: Item[];
   runes: Rune[];
   metaLoading: boolean;
+  defenses: TargetDefense[];
+  onApplyDefense: (defenseName: string) => void;
+  applyBusy: string | null;
+  offline: boolean;
 }) {
+  const modes: { id: TargetMode; label: string }[] = [
+    { id: "target_champion", label: "Champion Defender" },
+    { id: "target_dummy", label: "Custom Target Dummy" },
+  ];
+  const matchingDefenses =
+    setup.targetMode === "target_champion" && setup.targetChampionName
+      ? defenses.filter(
+          (d) =>
+            !d.champion ||
+            d.champion.toLowerCase() === setup.targetChampionName.toLowerCase()
+        )
+      : [];
   return (
-    <SectionCard title="Target Setup" icon={TargetIcon}>
+    <SectionCard title="Defender Champion" icon={TargetIcon}>
       <div className="space-y-3">
         <div>
           <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-            Target mode
+            Defender mode
           </Label>
           <div className="flex flex-wrap gap-1.5">
-            {(["target_profile", "target_champion"] as const).map((m) => (
+            {modes.map((m) => (
               <button
-                key={m}
+                key={m.id}
                 type="button"
-                onClick={() => update("targetMode", m)}
+                onClick={() => update("targetMode", m.id)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  setup.targetMode === m
+                  setup.targetMode === m.id
                     ? "border-primary/60 bg-primary/15 text-primary"
                     : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 }`}
               >
-                {m === "target_profile" ? "Target Profile" : "Target Champion"}
+                {m.label}
               </button>
             ))}
           </div>
         </div>
+
         {setup.targetMode === "target_champion" && (
           <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
             <SearchSelect
-              label="Target champion"
-              placeholder="Select target champion…"
+              label="Defender champion"
+              placeholder="Select defender champion…"
               value={setup.targetChampionName}
               options={champions}
               onChange={(v) => update("targetChampionName", v)}
@@ -2505,7 +2628,7 @@ function TargetSetupPanel({
             />
             <div>
               <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-                Target level
+                Defender level
               </Label>
               <Input
                 type="number"
@@ -2521,7 +2644,7 @@ function TargetSetupPanel({
               />
             </div>
             <MultiSelect
-              label="Target items"
+              label="Defender items"
               placeholder="Select items…"
               values={setup.targetItemNames}
               options={items}
@@ -2531,7 +2654,7 @@ function TargetSetupPanel({
               withIcons
             />
             <MultiSelect
-              label="Target runes"
+              label="Defender runes"
               placeholder="Select runes…"
               values={setup.targetRuneNames}
               options={runes}
@@ -2540,9 +2663,103 @@ function TargetSetupPanel({
               loading={metaLoading}
               withIcons
             />
+            {matchingDefenses.length > 0 && (
+              <div className="space-y-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                  Available defenses
+                </div>
+                <div className="space-y-1.5">
+                  {matchingDefenses.map((d) => (
+                    <div
+                      key={d.name}
+                      className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-medium text-foreground">{d.name}</div>
+                        {d.category && (
+                          <div className="text-[10px] text-muted-foreground">{d.category}</div>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 shrink-0 text-[11px]"
+                        disabled={!!applyBusy || offline}
+                        onClick={() => onApplyDefense(d.name)}
+                      >
+                        {applyBusy === d.name ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3 w-3" />
+                        )}
+                        Apply
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Calls /api/combat-lab/active with the defense — state persists into combat.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {setup.targetMode === "target_dummy" && (
+          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">HP</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={setup.dummyHP}
+                  onChange={(e) => update("dummyHP", Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Armor</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyArmor}
+                  onChange={(e) => update("dummyArmor", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">MR</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyMR}
+                  onChange={(e) => update("dummyMR", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Shield</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyShield}
+                  onChange={(e) => update("dummyShield", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">DR %</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={setup.dummyDR}
+                  onChange={(e) =>
+                    update("dummyDR", Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                  }
+                />
+              </div>
+            </div>
             <div className="text-[10px] text-muted-foreground">
-              Sent as target_champion_name / target_level / target_item_names / target_rune_names.
-              target_stats remains as a safe fallback for older backend paths.
+              Sent as target_stats {`{ HP, ARMOR, MR }`}. Shield / DR are advisory; switch to a
+              Champion Defender to apply real defenses into combat state.
             </div>
           </div>
         )}
