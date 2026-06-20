@@ -1799,6 +1799,13 @@ function InteractiveSandbox({
     if (res.state) setState(res.state);
     if (res.remaining_by_scope) setScopes(res.remaining_by_scope);
     if (res.attacker_stats) setAttackerStats(res.attacker_stats);
+    const anyRes = res as any;
+    if (anyRes && (anyRes.target_stats || anyRes.target_debug)) {
+      setTargetRuntime({
+        target_stats: anyRes.target_stats,
+        target_debug: anyRes.target_debug,
+      });
+    }
     if (Array.isArray(res.events) && res.events.length) {
       setEvents((prev) => [...prev, ...res.events!]);
       // scroll to bottom of timeline
@@ -1820,9 +1827,16 @@ function InteractiveSandbox({
       toast({ title: "Pick a champion first", variant: "destructive" });
       return;
     }
-    if (!config.target_profile) {
-      toast({ title: "Pick a target profile first", variant: "destructive" });
-      return;
+    if (targetSetup.targetMode === "target_profile") {
+      if (!config.target_profile) {
+        toast({ title: "Pick a target profile first", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!targetSetup.targetChampionName) {
+        toast({ title: "Pick a target champion first", variant: "destructive" });
+        return;
+      }
     }
     setError(null);
     setBusy(action_id || kind);
@@ -1837,6 +1851,15 @@ function InteractiveSandbox({
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
+      const targetEntityFields: Record<string, unknown> =
+        targetSetup.targetMode === "target_champion"
+          ? {
+              target_champion_name: targetSetup.targetChampionName,
+              target_level: targetSetup.targetLevel,
+              target_item_names: targetSetup.targetItemNames,
+              target_rune_names: targetSetup.targetRuneNames,
+            }
+          : {};
       const safeState = state ?? {};
       let payload: unknown;
       let endpoint: string;
@@ -1851,6 +1874,7 @@ function InteractiveSandbox({
           target_stats,
           state: safeState,
           current_time: 0,
+          ...targetEntityFields,
         } as CombatLabBasicAttackRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -1872,6 +1896,7 @@ function InteractiveSandbox({
           piercing_arrow_charge_bonus_percent: 0,
           ...extra,
           ...sylasExtra,
+          ...targetEntityFields,
         } as CombatLabActiveRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
