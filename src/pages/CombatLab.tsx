@@ -75,6 +75,9 @@ import {
   type CoverageChampion,
   type ChampionConfidenceResponse,
   type ChampionConfidence,
+  type TargetDefense,
+  type TargetDefensePreviewResponse,
+  type TargetDefenseMetadata,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
@@ -1540,6 +1543,25 @@ function KeyStringEditor({
 /* ─────────────── Interactive Sandbox ─────────────── */
 
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
+const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
+
+type TargetMode = "target_profile" | "target_champion";
+
+type TargetSetupState = {
+  targetMode: TargetMode;
+  targetChampionName: string;
+  targetLevel: number;
+  targetItemNames: string[];
+  targetRuneNames: string[];
+};
+
+const DEFAULT_TARGET_SETUP: TargetSetupState = {
+  targetMode: "target_profile",
+  targetChampionName: "",
+  targetLevel: 18,
+  targetItemNames: [],
+  targetRuneNames: [],
+};
 
 type SandboxProps = {
   config: SimulateRequest;
@@ -1616,6 +1638,53 @@ function InteractiveSandbox({
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
   const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
+  const [targetSetup, setTargetSetup] = useState<TargetSetupState>(() => {
+    if (typeof window === "undefined") return DEFAULT_TARGET_SETUP;
+    try {
+      const raw = localStorage.getItem(TARGET_SETUP_STORAGE_KEY);
+      if (raw) return { ...DEFAULT_TARGET_SETUP, ...JSON.parse(raw) };
+    } catch {}
+    return DEFAULT_TARGET_SETUP;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TARGET_SETUP_STORAGE_KEY, JSON.stringify(targetSetup));
+    } catch {}
+  }, [targetSetup]);
+  const updateTargetSetup = <K extends keyof TargetSetupState>(
+    key: K,
+    value: TargetSetupState[K]
+  ) => setTargetSetup((s) => ({ ...s, [key]: value }));
+  const [targetRuntime, setTargetRuntime] = useState<{
+    target_stats?: Record<string, number>;
+    target_debug?: Record<string, unknown>;
+  } | null>(null);
+  const [targetDefenses, setTargetDefenses] = useState<TargetDefense[]>([]);
+  const [defensePreview, setDefensePreview] =
+    useState<TargetDefensePreviewResponse | null>(null);
+  const [defensePreviewBefore, setDefensePreviewBefore] = useState<{
+    ARMOR?: number;
+    MR?: number;
+  } | null>(null);
+  const [selectedDefense, setSelectedDefense] = useState<string>("");
+  const [defenseRank, setDefenseRank] = useState<number>(1);
+  const [defenseBusy, setDefenseBusy] = useState(false);
+
+  // Load target defenses metadata (dev preview list)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await combatApi.targetDefenses();
+        if (!cancelled) setTargetDefenses(list);
+      } catch {
+        if (!cancelled) setTargetDefenses([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -1730,6 +1799,13 @@ function InteractiveSandbox({
     if (res.state) setState(res.state);
     if (res.remaining_by_scope) setScopes(res.remaining_by_scope);
     if (res.attacker_stats) setAttackerStats(res.attacker_stats);
+    const anyRes = res as any;
+    if (anyRes && (anyRes.target_stats || anyRes.target_debug)) {
+      setTargetRuntime({
+        target_stats: anyRes.target_stats,
+        target_debug: anyRes.target_debug,
+      });
+    }
     if (Array.isArray(res.events) && res.events.length) {
       setEvents((prev) => [...prev, ...res.events!]);
       // scroll to bottom of timeline
@@ -1751,9 +1827,16 @@ function InteractiveSandbox({
       toast({ title: "Pick a champion first", variant: "destructive" });
       return;
     }
-    if (!config.target_profile) {
-      toast({ title: "Pick a target profile first", variant: "destructive" });
-      return;
+    if (targetSetup.targetMode === "target_profile") {
+      if (!config.target_profile) {
+        toast({ title: "Pick a target profile first", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!targetSetup.targetChampionName) {
+        toast({ title: "Pick a target champion first", variant: "destructive" });
+        return;
+      }
     }
     setError(null);
     setBusy(action_id || kind);
@@ -1768,6 +1851,15 @@ function InteractiveSandbox({
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
       const target_stats = { ...DEFAULT_TARGET_STATS };
+      const targetEntityFields: Record<string, unknown> =
+        targetSetup.targetMode === "target_champion"
+          ? {
+              target_champion_name: targetSetup.targetChampionName,
+              target_level: targetSetup.targetLevel,
+              target_item_names: targetSetup.targetItemNames,
+              target_rune_names: targetSetup.targetRuneNames,
+            }
+          : {};
       const safeState = state ?? {};
       let payload: unknown;
       let endpoint: string;
@@ -1782,6 +1874,7 @@ function InteractiveSandbox({
           target_stats,
           state: safeState,
           current_time: 0,
+          ...targetEntityFields,
         } as CombatLabBasicAttackRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -1803,6 +1896,7 @@ function InteractiveSandbox({
           piercing_arrow_charge_bonus_percent: 0,
           ...extra,
           ...sylasExtra,
+          ...targetEntityFields,
         } as CombatLabActiveRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -2062,6 +2156,14 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        <TargetSetupPanel
+          setup={targetSetup}
+          update={updateTargetSetup}
+          champions={champions}
+          items={items}
+          runes={runes}
+          metaLoading={metaLoading}
+        />
         </div>
 
         <div className="lg:col-span-2">
@@ -2263,6 +2365,63 @@ function InteractiveSandbox({
 
         <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
 
+        <TargetRuntimeSummary runtime={targetRuntime} />
+
+        {devMode && (
+          <TargetDefensePreviewPanel
+            defenses={targetDefenses}
+            selected={selectedDefense}
+            onSelect={setSelectedDefense}
+            rank={defenseRank}
+            onRankChange={setDefenseRank}
+            busy={defenseBusy}
+            preview={defensePreview}
+            before={defensePreviewBefore}
+            onPreview={async () => {
+              if (!selectedDefense) {
+                toast({ title: "Pick a defense first", variant: "destructive" });
+                return;
+              }
+              const targetChamp =
+                targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetChampionName
+                  : "";
+              if (!targetChamp) {
+                toast({
+                  title: "Set a Target Champion first",
+                  description: "Switch Target mode to 'Target Champion' to preview defenses.",
+                  variant: "destructive",
+                });
+                return;
+              }
+              setDefenseBusy(true);
+              try {
+                const before = {
+                  ARMOR: (targetRuntime?.target_stats?.ARMOR as number) ?? 0,
+                  MR: (targetRuntime?.target_stats?.MR as number) ?? 0,
+                };
+                setDefensePreviewBefore(before);
+                const res = await combatApi.targetDefensePreview({
+                  target_champion: targetChamp,
+                  active_name: selectedDefense,
+                  rank: defenseRank,
+                  target_stats: targetRuntime?.target_stats ?? {},
+                  state: {},
+                });
+                setDefensePreview(res);
+              } catch (e: any) {
+                toast({
+                  title: "Defense preview failed",
+                  description: e?.message || String(e),
+                  variant: "destructive",
+                });
+              } finally {
+                setDefenseBusy(false);
+              }
+            }}
+          />
+        )}
+
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
         <CombatHeader events={events} state={state} />
@@ -2287,6 +2446,284 @@ function InteractiveSandbox({
         {state && (
           <FinalStatePanel state={state as Record<string, unknown>} />
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── Target Setup (Phase 2 UI) ─────────────── */
+
+function TargetSetupPanel({
+  setup,
+  update,
+  champions,
+  items,
+  runes,
+  metaLoading,
+}: {
+  setup: TargetSetupState;
+  update: <K extends keyof TargetSetupState>(key: K, value: TargetSetupState[K]) => void;
+  champions: Champion[];
+  items: Item[];
+  runes: Rune[];
+  metaLoading: boolean;
+}) {
+  return (
+    <SectionCard title="Target Setup" icon={TargetIcon}>
+      <div className="space-y-3">
+        <div>
+          <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+            Target mode
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
+            {(["target_profile", "target_champion"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => update("targetMode", m)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  setup.targetMode === m
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                {m === "target_profile" ? "Target Profile" : "Target Champion"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {setup.targetMode === "target_champion" && (
+          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
+            <SearchSelect
+              label="Target champion"
+              placeholder="Select target champion…"
+              value={setup.targetChampionName}
+              options={champions}
+              onChange={(v) => update("targetChampionName", v)}
+              loading={metaLoading}
+              withIcons
+            />
+            <div>
+              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+                Target level
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={setup.targetLevel}
+                onChange={(e) =>
+                  update(
+                    "targetLevel",
+                    Math.max(1, Math.min(20, Number(e.target.value) || 1))
+                  )
+                }
+              />
+            </div>
+            <MultiSelect
+              label="Target items"
+              placeholder="Select items…"
+              values={setup.targetItemNames}
+              options={items}
+              onChange={(v) => update("targetItemNames", v)}
+              max={6}
+              loading={metaLoading}
+              withIcons
+            />
+            <MultiSelect
+              label="Target runes"
+              placeholder="Select runes…"
+              values={setup.targetRuneNames}
+              options={runes}
+              onChange={(v) => update("targetRuneNames", v)}
+              grouped
+              loading={metaLoading}
+              withIcons
+            />
+            <div className="text-[10px] text-muted-foreground">
+              Sent as target_champion_name / target_level / target_item_names / target_rune_names.
+              target_stats remains as a safe fallback for older backend paths.
+            </div>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+const TARGET_RUNTIME_FIELDS: { key: string; label: string }[] = [
+  { key: "HP", label: "HP" },
+  { key: "ARMOR", label: "Armor" },
+  { key: "MR", label: "MR" },
+  { key: "TARGET_SHIELD", label: "Shield" },
+  { key: "TARGET_DAMAGE_REDUCTION_PERCENT", label: "DR %" },
+  { key: "TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT", label: "Phys DR %" },
+  { key: "TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT", label: "Magic DR %" },
+];
+
+function TargetRuntimeSummary({
+  runtime,
+}: {
+  runtime: {
+    target_stats?: Record<string, number>;
+    target_debug?: Record<string, unknown>;
+  } | null;
+}) {
+  if (!runtime || (!runtime.target_stats && !runtime.target_debug)) return null;
+  const stats = runtime.target_stats || {};
+  const debug = (runtime.target_debug || {}) as any;
+  const mode = debug.mode as string | undefined;
+  const entity = debug.target_entity as { champion_name?: string } | undefined;
+  const fields = TARGET_RUNTIME_FIELDS.filter((f) => typeof stats[f.key] === "number");
+  return (
+    <SectionCard title="Target Runtime Summary" icon={TargetIcon}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {mode && (
+            <Badge variant="outline" className="border-primary/40 text-primary">
+              mode: {mode}
+            </Badge>
+          )}
+          {entity?.champion_name && (
+            <Badge variant="outline" className="border-accent/40 text-accent">
+              entity: {entity.champion_name}
+            </Badge>
+          )}
+        </div>
+        {fields.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {fields.map((f) => (
+              <div
+                key={f.key}
+                className="rounded-md border border-border/50 bg-background/40 px-3 py-2"
+              >
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {f.label}
+                </div>
+                <div className="text-sm font-semibold text-foreground">
+                  {Number(stats[f.key]).toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">No target stats in last response.</div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function TargetDefensePreviewPanel({
+  defenses,
+  selected,
+  onSelect,
+  rank,
+  onRankChange,
+  busy,
+  preview,
+  before,
+  onPreview,
+}: {
+  defenses: TargetDefense[];
+  selected: string;
+  onSelect: (v: string) => void;
+  rank: number;
+  onRankChange: (n: number) => void;
+  busy: boolean;
+  preview: TargetDefensePreviewResponse | null;
+  before: { ARMOR?: number; MR?: number } | null;
+  onPreview: () => void;
+}) {
+  const meta: TargetDefenseMetadata =
+    preview?.result?.metadata || preview?.metadata || {};
+  const afterStats = (preview?.result?.target_stats || {}) as Record<string, number>;
+  const defenseOptions = defenses.map((d) => ({ name: d.name }));
+  return (
+    <SectionCard title="Target Defense Preview (dev)" icon={Wand2}>
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <SearchSelect
+              label="Defense"
+              placeholder="Select target defense…"
+              value={selected}
+              options={defenseOptions}
+              onChange={onSelect}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+              Rank
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              max={5}
+              value={rank}
+              onChange={(e) =>
+                onRankChange(Math.max(1, Math.min(5, Number(e.target.value) || 1)))
+              }
+            />
+          </div>
+        </div>
+        <Button size="sm" onClick={onPreview} disabled={busy}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+          Preview defense
+        </Button>
+        {preview && (
+          <div className="space-y-2 rounded-md border border-border/50 bg-background/30 p-3 text-xs">
+            <div className="flex flex-wrap gap-2">
+              {meta.active_name && (
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  {String(meta.active_name)}
+                </Badge>
+              )}
+              {typeof (meta as any).duration === "number" && (
+                <Badge variant="outline">
+                  duration: {(meta as any).duration}s
+                </Badge>
+              )}
+              {typeof (meta as any).duration_seconds === "number" && (
+                <Badge variant="outline">
+                  duration: {(meta as any).duration_seconds}s
+                </Badge>
+              )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Stat label="ARMOR before" value={before?.ARMOR} />
+              <Stat label="ARMOR after" value={afterStats.ARMOR} />
+              <Stat label="MR before" value={before?.MR} />
+              <Stat label="MR after" value={afterStats.MR} />
+              <Stat label="Shield" value={afterStats.TARGET_SHIELD ?? meta.shield_amount} />
+              <Stat
+                label="DR %"
+                value={
+                  afterStats.TARGET_DAMAGE_REDUCTION_PERCENT ??
+                  meta.damage_reduction_percent
+                }
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function Stat({ label, value }: { label: string; value?: number | string }) {
+  if (value === undefined || value === null || value === "") return null;
+  return (
+    <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-sm font-semibold text-foreground">
+        {typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+          : value}
       </div>
     </div>
   );

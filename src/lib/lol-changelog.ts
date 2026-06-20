@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T06:30:00Z",
+    title: "Combat Lab Target Setup panel + target champion entity support",
+    type: "feature",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab now exposes a non-invasive Target Setup panel in the Interactive Sandbox left column. Users can flip between the existing Target Profile mode (unchanged) and a new Target Champion mode that lets them pick a target champion, level (default 18), items, and runes. When Target Champion mode is active, /api/combat-lab/basic-attack and /api/combat-lab/active payloads include target_champion_name / target_level / target_item_names / target_rune_names; target_stats is still sent as a safe fallback for older backend paths. Responses with target_stats / target_debug now drive a Target Runtime Summary card (mode, target entity champion name, HP / ARMOR / MR / TARGET_SHIELD / TARGET_DAMAGE_REDUCTION_PERCENT / TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT / TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT). Dev Mode adds a compact Target Defense Preview panel wired to /api/combat-lab/target-defense-preview that shows before/after ARMOR / MR, shield, DR%, and duration, without changing live combat execution semantics.",
+    details: [
+      "New Target Setup state (targetMode, targetChampionName, targetLevel, targetItemNames, targetRuneNames) persisted under combat-lab:target-setup.",
+      "Sandbox sendStep skips the 'pick target profile' guard when targetMode === 'target_champion' and instead requires a target champion.",
+      "TargetRuntimeSummary renders only fields actually present on the response.",
+      "Target Defense Preview is dev-mode-only and does not auto-apply defense state into the running sandbox.",
+      "Rotation Simulator, target profile flow, Damage Breakdown, Runtime State, Final State, and Diagnostics page are all unchanged.",
+    ],
+    files: [
+      "src/pages/CombatLab.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-20T05:30:00Z",
     title: "LoL Hub 'Portrait' popout is now hover-only with outward slide",
     type: "ui",
