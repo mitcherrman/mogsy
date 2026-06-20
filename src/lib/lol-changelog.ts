@@ -55,6 +55,29 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T04:00:00Z",
+    title: "Admin toggle: switch LoL Hub champion popout style (Splash ↔ Cutout)",
+    type: "feature",
+    scopes: ["hub"],
+    summary:
+      "Added an admin-only floating pill on /lol that toggles the HexZipperCard champion artwork between the original rectangular splash treatment (now the default) and the transparent cutout popout. The choice is persisted globally in app_settings under the `lol_hub_popout_style` key so every visitor sees the selected style. Default resolves to `splash` when no row exists or the stored value is invalid. The toggle optimistically updates the UI and reverts with an error toast if the write fails. Non-admins never see the control.",
+    details: [
+      "New component: src/components/lol/LolPopoutStyleToggle.tsx — segmented pill fixed bottom-right, gated by has_role(admin|master_admin) RPC.",
+      "HexZipperCard gained a popoutStyle prop ('splash' | 'cutout'). Splash branch renders the manifest's splash (or loading fallback) as an absolutely-positioned object-cover image behind the card content, clipped by the existing hex Link, with a directional mask, low opacity at rest, and a subtle hover zoom + opacity ramp.",
+      "useChampionAssets exports a new getChampionSplash(manifest, name) helper returning splash ?? loading from the Railway manifest.",
+      "LolHub reads app_settings.lol_hub_popout_style on mount (default 'splash'), resolves the correct image per style, and passes popoutStyle into every card.",
+      "Card icon, text, and arrow promoted to z-10 so splash art sits cleanly behind them inside the hex clip.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/components/lol/LolPopoutStyleToggle.tsx",
+      "src/hooks/useChampionAssets.ts",
+      "src/pages/LolHub.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T03:00:00Z",
     title: "LoL Hub champion popouts emerge from the inner card edge",
     type: "ui",

@@ -59,3 +59,16 @@ export function getChampionCutout(
   if (!manifest || !championName) return null;
   return resolveAssetUrl(manifest.champions?.[championName]?.cutout);
 }
+
+/**
+ * Look up a champion's rectangular splash art URL from the manifest, falling
+ * back to the loading screen art when splash is unavailable.
+ */
+export function getChampionSplash(
+  manifest: ChampionManifest | null | undefined,
+  championName?: string,
+): string | null {
+  if (!manifest || !championName) return null;
+  const c = manifest.champions?.[championName];
+  return resolveAssetUrl(c?.splash || c?.loading);
+}
