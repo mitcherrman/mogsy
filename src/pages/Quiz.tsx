@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,121 @@ function getChoiceImage(choice: QuizChoice): string | undefined {
   return choice.image_path || undefined;
 }
 
+/**
+ * Per-category badge styling. The lookup normalizes the backend category string
+ * (snake_case or Title Case) so newly-added categories like "Item Exact Stats",
+ * "Item Components", "Item Builds Into", "Item Build Paths",
+ * "Champion Ability Cooldowns", and "Summoner Spell Cooldowns" all get
+ * distinct, themed badges in the active question header.
+ */
+type CategoryStyle = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+};
+
+const CATEGORY_STYLE_MAP: Record<string, CategoryStyle> = {
+  item_exact_stats: {
+    label: "Item Exact Stats",
+    icon: Package,
+    className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+  },
+  item_components: {
+    label: "Item Components",
+    icon: Layers,
+    className: "border-orange-400/40 bg-orange-400/10 text-orange-200",
+  },
+  item_builds_into: {
+    label: "Item Builds Into",
+    icon: GitBranch,
+    className: "border-yellow-400/40 bg-yellow-400/10 text-yellow-200",
+  },
+  item_build_paths: {
+    label: "Item Build Paths",
+    icon: GitBranch,
+    className: "border-yellow-500/40 bg-yellow-500/10 text-yellow-100",
+  },
+  champion_ability_cooldowns: {
+    label: "Champion Cooldowns",
+    icon: Timer,
+    className: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+  },
+  summoner_spell_cooldowns: {
+    label: "Summoner Cooldowns",
+    icon: Timer,
+    className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+  },
+  champion_abilities: {
+    label: "Champion Abilities",
+    icon: Wand2,
+    className: "border-violet-400/40 bg-violet-400/10 text-violet-200",
+  },
+  summoner_spells: {
+    label: "Summoner Spells",
+    icon: Swords,
+    className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+  },
+};
+
+function normalizeCategoryKey(category: string | undefined | null): string {
+  return (category || "").toString().trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
+function getCategoryStyle(category: string | undefined | null): CategoryStyle {
+  const key = normalizeCategoryKey(category);
+  if (CATEGORY_STYLE_MAP[key]) return CATEGORY_STYLE_MAP[key];
+  // Fallback partial matches for unknown but related categories.
+  if (key.includes("cooldown")) {
+    return {
+      label: category || "Cooldowns",
+      icon: Timer,
+      className: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+    };
+  }
+  if (key.includes("item")) {
+    return {
+      label: category || "Items",
+      icon: Package,
+      className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+    };
+  }
+  if (key.includes("rune")) {
+    return {
+      label: category || "Runes",
+      icon: BookOpen,
+      className: "border-purple-400/40 bg-purple-400/10 text-purple-200",
+    };
+  }
+  if (key.includes("summoner") || key.includes("spell")) {
+    return {
+      label: category || "Summoner Spells",
+      icon: Swords,
+      className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+    };
+  }
+  if (key.includes("ability") || key.includes("champion")) {
+    return {
+      label: category || "Champions",
+      icon: Wand2,
+      className: "border-violet-400/40 bg-violet-400/10 text-violet-200",
+    };
+  }
+  return {
+    label: category || "General",
+    icon: BrainCircuit,
+    className: "border-border bg-background/40 text-foreground/80",
+  };
+}
+
+/** Local per-session record so we can render a category breakdown + review list. */
+type SessionAnswer = {
+  question: QuizQuestion;
+  selected: string;
+  isCorrect: boolean;
+  correctAnswer: string;
+  explanation?: string;
+};
+
 export default function Quiz() {
   const { user } = useAuth();
   const userId = user?.id || "anonymous";
@@ -47,6 +162,7 @@ export default function Quiz() {
   const [fillBlankValue, setFillBlankValue] = useState("");
   const [answerResult, setAnswerResult] = useState<QuizAnswerResult | null>(null);
   const [score, setScore] = useState(0);
+  const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [setsLoading, setSetsLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
