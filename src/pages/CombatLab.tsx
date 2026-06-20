@@ -2468,6 +2468,305 @@ function ActionButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  // (re-declared below — placeholder removed)
+  return null as any;
+}
+
+/* ─────────────── Target Setup (Phase 2 UI) ─────────────── */
+
+function TargetSetupPanel({
+  setup,
+  update,
+  champions,
+  items,
+  runes,
+  metaLoading,
+}: {
+  setup: TargetSetupState;
+  update: <K extends keyof TargetSetupState>(key: K, value: TargetSetupState[K]) => void;
+  champions: Champion[];
+  items: Item[];
+  runes: Rune[];
+  metaLoading: boolean;
+}) {
+  return (
+    <SectionCard title="Target Setup" icon={TargetIcon}>
+      <div className="space-y-3">
+        <div>
+          <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+            Target mode
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
+            {(["target_profile", "target_champion"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => update("targetMode", m)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  setup.targetMode === m
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                {m === "target_profile" ? "Target Profile" : "Target Champion"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {setup.targetMode === "target_champion" && (
+          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
+            <SearchSelect
+              label="Target champion"
+              placeholder="Select target champion…"
+              value={setup.targetChampionName}
+              options={champions}
+              onChange={(v) => update("targetChampionName", v)}
+              loading={metaLoading}
+              withIcons
+            />
+            <div>
+              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+                Target level
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={setup.targetLevel}
+                onChange={(e) =>
+                  update(
+                    "targetLevel",
+                    Math.max(1, Math.min(20, Number(e.target.value) || 1))
+                  )
+                }
+              />
+            </div>
+            <MultiSelect
+              label="Target items"
+              placeholder="Select items…"
+              values={setup.targetItemNames}
+              options={items}
+              onChange={(v) => update("targetItemNames", v)}
+              max={6}
+              loading={metaLoading}
+              withIcons
+            />
+            <MultiSelect
+              label="Target runes"
+              placeholder="Select runes…"
+              values={setup.targetRuneNames}
+              options={runes}
+              onChange={(v) => update("targetRuneNames", v)}
+              grouped
+              loading={metaLoading}
+              withIcons
+            />
+            <div className="text-[10px] text-muted-foreground">
+              Sent as target_champion_name / target_level / target_item_names / target_rune_names.
+              target_stats remains as a safe fallback for older backend paths.
+            </div>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+const TARGET_RUNTIME_FIELDS: { key: string; label: string }[] = [
+  { key: "HP", label: "HP" },
+  { key: "ARMOR", label: "Armor" },
+  { key: "MR", label: "MR" },
+  { key: "TARGET_SHIELD", label: "Shield" },
+  { key: "TARGET_DAMAGE_REDUCTION_PERCENT", label: "DR %" },
+  { key: "TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT", label: "Phys DR %" },
+  { key: "TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT", label: "Magic DR %" },
+];
+
+function TargetRuntimeSummary({
+  runtime,
+}: {
+  runtime: {
+    target_stats?: Record<string, number>;
+    target_debug?: Record<string, unknown>;
+  } | null;
+}) {
+  if (!runtime || (!runtime.target_stats && !runtime.target_debug)) return null;
+  const stats = runtime.target_stats || {};
+  const debug = (runtime.target_debug || {}) as any;
+  const mode = debug.mode as string | undefined;
+  const entity = debug.target_entity as { champion_name?: string } | undefined;
+  const fields = TARGET_RUNTIME_FIELDS.filter((f) => typeof stats[f.key] === "number");
+  return (
+    <SectionCard title="Target Runtime Summary" icon={TargetIcon}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {mode && (
+            <Badge variant="outline" className="border-primary/40 text-primary">
+              mode: {mode}
+            </Badge>
+          )}
+          {entity?.champion_name && (
+            <Badge variant="outline" className="border-accent/40 text-accent">
+              entity: {entity.champion_name}
+            </Badge>
+          )}
+        </div>
+        {fields.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4">
+            {fields.map((f) => (
+              <div
+                key={f.key}
+                className="rounded-md border border-border/50 bg-background/40 px-3 py-2"
+              >
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {f.label}
+                </div>
+                <div className="text-sm font-semibold text-foreground">
+                  {Number(stats[f.key]).toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">No target stats in last response.</div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function TargetDefensePreviewPanel({
+  defenses,
+  selected,
+  onSelect,
+  rank,
+  onRankChange,
+  busy,
+  preview,
+  before,
+  onPreview,
+}: {
+  defenses: TargetDefense[];
+  selected: string;
+  onSelect: (v: string) => void;
+  rank: number;
+  onRankChange: (n: number) => void;
+  busy: boolean;
+  preview: TargetDefensePreviewResponse | null;
+  before: { ARMOR?: number; MR?: number } | null;
+  onPreview: () => void;
+}) {
+  const meta: TargetDefenseMetadata =
+    preview?.result?.metadata || preview?.metadata || {};
+  const afterStats = (preview?.result?.target_stats || {}) as Record<string, number>;
+  const defenseOptions = defenses.map((d) => ({ name: d.name }));
+  return (
+    <SectionCard title="Target Defense Preview (dev)" icon={Wand2}>
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <SearchSelect
+              label="Defense"
+              placeholder="Select target defense…"
+              value={selected}
+              options={defenseOptions}
+              onChange={onSelect}
+            />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+              Rank
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              max={5}
+              value={rank}
+              onChange={(e) =>
+                onRankChange(Math.max(1, Math.min(5, Number(e.target.value) || 1)))
+              }
+            />
+          </div>
+        </div>
+        <Button size="sm" onClick={onPreview} disabled={busy}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+          Preview defense
+        </Button>
+        {preview && (
+          <div className="space-y-2 rounded-md border border-border/50 bg-background/30 p-3 text-xs">
+            <div className="flex flex-wrap gap-2">
+              {meta.active_name && (
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  {String(meta.active_name)}
+                </Badge>
+              )}
+              {typeof (meta as any).duration === "number" && (
+                <Badge variant="outline">
+                  duration: {(meta as any).duration}s
+                </Badge>
+              )}
+              {typeof (meta as any).duration_seconds === "number" && (
+                <Badge variant="outline">
+                  duration: {(meta as any).duration_seconds}s
+                </Badge>
+              )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Stat label="ARMOR before" value={before?.ARMOR} />
+              <Stat label="ARMOR after" value={afterStats.ARMOR} />
+              <Stat label="MR before" value={before?.MR} />
+              <Stat label="MR after" value={afterStats.MR} />
+              <Stat label="Shield" value={afterStats.TARGET_SHIELD ?? meta.shield_amount} />
+              <Stat
+                label="DR %"
+                value={
+                  afterStats.TARGET_DAMAGE_REDUCTION_PERCENT ??
+                  meta.damage_reduction_percent
+                }
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function Stat({ label, value }: { label: string; value?: number | string }) {
+  if (value === undefined || value === null || value === "") return null;
+  return (
+    <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-sm font-semibold text-foreground">
+        {typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+          : value}
+      </div>
+    </div>
+  );
+}
+
+function ActionButtonImpl({
+  label,
+  hint,
+  icon: Icon,
+  tone = "primary",
+  busy,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  hint?: string;
+  icon: React.ElementType;
+  tone?: "primary" | "accent";
+  busy?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
   const toneCls =
     tone === "accent"
       ? "border-accent/40 bg-gradient-to-br from-accent/15 to-accent/0 text-accent hover:border-accent/70"
