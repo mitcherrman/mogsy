@@ -7,6 +7,7 @@
  */
 import { lazy } from "react";
 import type React from "react";
+import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
@@ -19,22 +20,10 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
       }
       return mod;
     } catch (err: any) {
-      const msg = String(err?.message || err);
-      const isChunkError =
-        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|error loading dynamically imported module/i.test(
-          msg,
-        );
-      if (isChunkError && typeof window !== "undefined") {
-        const key = "__lov_chunk_reloaded_at__";
-        const last = Number(sessionStorage.getItem(key) || "0");
-        const now = Date.now();
-        // Allow a reload at most once every 30s to break stale-chunk loops
-        // after a redeploy without trapping the user if reload doesn't help.
-        if (now - last > 30_000) {
-          sessionStorage.setItem(key, String(now));
-          window.location.reload();
-          return new Promise(() => {}) as any;
-        }
+      // A redeploy can leave an open tab pointing at old hashed route chunks.
+      // Recover before React commits an error boundary / blank route shell.
+      if (recoverFromChunkLoadError(err, "lazy-route")) {
+        return new Promise(() => {}) as any;
       }
       throw err;
     }
