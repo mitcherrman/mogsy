@@ -59,12 +59,13 @@ export default function HexZipperCard({
   const popoutSideCls = isRight ? "left-0" : "right-0";
   // Direction the cutout travels on hover (toward page center).
   const centerSign = isRight ? -1 : 1;
-  // Rest: champion mostly tucked behind the card edge.
-  // Hover: 55–75% of the champion visible past the card edge.
-  const restOutPct = 10 + cutoutOffsetPct;
-  const hoverOutPct = 55 + cutoutOffsetPct;
-  const restTx = `translateX(${centerSign * restOutPct}%)`;
-  const hoverTx = `translateX(${centerSign * hoverOutPct}%)`;
+  // Rest: champion tucked BEHIND the card (pushed away from center, toward the card body)
+  // and scaled down + fully transparent. Hover: slides outward toward page center,
+  // lifts upward, scales up, and fades in for a cinematic emerge.
+  const restTuckPct = -centerSign * (15 - cutoutOffsetPct * 0.5);
+  const hoverOutPct = centerSign * (60 + cutoutOffsetPct);
+  const restTx = `translateX(${restTuckPct}%) scale(0.94)`;
+  const hoverTx = `translateX(${hoverOutPct}%) scale(1.03)`;
 
   return (
     <div
@@ -74,21 +75,25 @@ export default function HexZipperCard({
     >
       {/* Champion popout — sits BEHIND the card on its INNER side, slides toward page center on hover */}
       <div
-        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 ${popoutSideCls}`}
+        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 opacity-0 group-hover:opacity-100 ${popoutSideCls}`}
         style={
           {
             transform: restTx,
+            filter: "blur(2px)",
+            transition:
+              "transform 720ms cubic-bezier(0.22, 1, 0.36, 1), opacity 720ms cubic-bezier(0.22, 1, 0.36, 1), filter 600ms ease-out",
             ["--hex-popout-hover" as string]: hoverTx,
           } as React.CSSProperties
         }
       >
-        {/* Subtle glow behind the cutout */}
+        {/* Cyan/blue radial glow — fades and intensifies with the cutout */}
         <div
-          className="absolute inset-[10%] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+          className="absolute inset-[8%] rounded-full opacity-0 group-hover:opacity-100"
           style={{
             background:
-              "radial-gradient(circle, rgba(10,200,255,0.45) 0%, rgba(10,200,255,0.12) 45%, transparent 75%)",
-            filter: "blur(18px)",
+              "radial-gradient(circle, rgba(10,200,255,0.6) 0%, rgba(10,200,255,0.18) 45%, transparent 75%)",
+            filter: "blur(22px)",
+            transition: "opacity 720ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}
           aria-hidden
         />
