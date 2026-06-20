@@ -1275,3 +1275,148 @@ export default function Quiz() {
     </div>
   );
 }
+
+/* ───────────────────── Session breakdown helpers ───────────────────── */
+
+function SessionBreakdown({ answers }: { answers: SessionAnswer[] }) {
+  const rows = useMemo(() => {
+    const map = new Map<string, { category: string; correct: number; total: number }>();
+    for (const a of answers) {
+      const cat = a.question.category || "Uncategorized";
+      const entry = map.get(cat) || { category: cat, correct: 0, total: 0 };
+      entry.total += 1;
+      if (a.isCorrect) entry.correct += 1;
+      map.set(cat, entry);
+    }
+    return Array.from(map.values()).map((r) => ({
+      ...r,
+      accuracy: r.total > 0 ? (r.correct / r.total) * 100 : 0,
+    }));
+  }, [answers]);
+
+  if (rows.length === 0) return null;
+
+  const sorted = [...rows].sort((a, b) => b.accuracy - a.accuracy);
+  const best = sorted[0];
+  const weakest = sorted[sorted.length - 1];
+
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+          <BookOpen className="h-4 w-4" />
+          Session Breakdown
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {rows.length > 1 && best && weakest && best.category !== weakest.category && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-300">
+                <Trophy className="h-3 w-3" />
+                Best category
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-emerald-200">{best.category}</div>
+              <div className="text-[11px] text-emerald-200/80">
+                {best.correct}/{best.total} · {best.accuracy.toFixed(0)}%
+              </div>
+            </div>
+            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-rose-300">
+                <AlertCircle className="h-3 w-3" />
+                Needs work
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-rose-200">{weakest.category}</div>
+              <div className="text-[11px] text-rose-200/80">
+                {weakest.correct}/{weakest.total} · {weakest.accuracy.toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {rows.map((r) => {
+            const style = getCategoryStyle(r.category);
+            const Icon = style.icon;
+            return (
+              <div
+                key={r.category}
+                className="rounded-md border border-border/40 bg-background/40 px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-medium gap-1 ${style.className}`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {style.label}
+                  </Badge>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {r.correct}/{r.total} · {r.accuracy.toFixed(0)}%
+                  </span>
+                </div>
+                <Progress value={r.accuracy} className="mt-2 h-1.5" />
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SessionReviewList({ answers }: { answers: SessionAnswer[] }) {
+  const missed = useMemo(() => answers.filter((a) => !a.isCorrect), [answers]);
+  if (missed.length === 0) return null;
+
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+          <AlertCircle className="h-4 w-4" />
+          Questions to Review
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Missed this session — review and try again.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {missed.map((a, idx) => {
+          const style = getCategoryStyle(a.question.category);
+          const Icon = style.icon;
+          return (
+            <div
+              key={`${a.question.id}-${idx}`}
+              className="rounded-md border border-border/40 bg-background/40 p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className={`text-[10px] gap-1 ${style.className}`}>
+                  <Icon className="h-3 w-3" />
+                  {style.label}
+                </Badge>
+              </div>
+              <p className="text-sm font-medium leading-snug text-left">
+                {a.question.question_text}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-rose-200">
+                  <div className="opacity-70 uppercase tracking-wider text-[10px]">Your answer</div>
+                  <div className="font-medium">{a.selected || "—"}</div>
+                </div>
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-emerald-200">
+                  <div className="opacity-70 uppercase tracking-wider text-[10px]">Correct</div>
+                  <div className="font-medium">{a.correctAnswer || "—"}</div>
+                </div>
+              </div>
+              {a.explanation && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {a.explanation}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
