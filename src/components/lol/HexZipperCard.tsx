@@ -17,6 +17,12 @@ type Props = {
   cutoutUrl?: string | null;
   /** Larger flagship treatment (used for Combat Lab). */
   flagship?: boolean;
+  /**
+   * Optional per-champion horizontal nudge (in %) applied to the popout so
+   * different cutouts (Akali vs Viktor vs Draven) can be visually balanced
+   * without changing the global zipper math.
+   */
+  cutoutOffsetPct?: number;
 };
 
 /**
@@ -31,6 +37,7 @@ export default function HexZipperCard({
   side,
   cutoutUrl,
   flagship = false,
+  cutoutOffsetPct = 0,
 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!cutoutUrl && !imgFailed;
@@ -44,7 +51,14 @@ export default function HexZipperCard({
   const titleCls = flagship ? "text-3xl md:text-4xl" : "text-xl md:text-2xl";
   const iconSize = flagship ? "h-14 w-14" : "h-10 w-10";
   const iconBox = flagship ? "p-5" : "p-3.5";
-  const championHeight = flagship ? "h-[420px]" : "h-[300px]";
+  const championHeight = flagship ? "h-[520px]" : "h-[400px]";
+
+  // Rest vs hover horizontal translation (percent of the popout's own width).
+  // Positive numbers move the cutout OUTWARD from the card edge.
+  const restOutPct = 18 + cutoutOffsetPct; // ~35-50% of cutout visible (rest of it overlaps the card)
+  const hoverOutPct = 32 + cutoutOffsetPct; // ~50-70% visible on hover
+  const restTx = isRight ? `translateX(${restOutPct}%)` : `translateX(${-restOutPct}%)`;
+  const hoverTx = isRight ? `translateX(${hoverOutPct}%)` : `translateX(${-hoverOutPct}%)`;
 
   return (
     <div
@@ -54,11 +68,15 @@ export default function HexZipperCard({
     >
       {/* Champion popout — always rendered, sits BEHIND the card and slides out on hover */}
       <div
-        className={`pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 translate-y-2 group-hover:opacity-100 group-hover:-translate-y-3 ${
-          isRight
-            ? "right-0 group-hover:translate-x-[42%]"
-            : "left-0 group-hover:-translate-x-[42%]"
+        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-70 group-hover:opacity-100 ${
+          isRight ? "right-0" : "left-0"
         }`}
+        style={
+          {
+            transform: restTx,
+            ["--hex-popout-hover" as string]: hoverTx,
+          } as React.CSSProperties
+        }
       >
         {/* Subtle glow behind the cutout */}
         <div
