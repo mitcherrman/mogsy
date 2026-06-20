@@ -55,6 +55,24 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T00:00:00Z",
+    title: "LoL Hub champion popouts use Railway champion asset manifest",
+    type: "fix",
+    scopes: ["hub"],
+    summary:
+      "HexZipperCard hover popouts now render the transparent champion cutout PNGs from the Combat/Railway backend's GET /api/assets/champions manifest instead of rectangular splash/loading art or the old champion-images Supabase bucket. Relative manifest paths (e.g. assets/champions/Akali/cutouts/Akali_Cutout.png) are resolved against VITE_COMBAT_API_URL. Only the `cutout` field is used for the hub — icon/splash/loading are ignored here. Shield silhouette fallback is preserved when a cutout is missing or the image fails to load. Mapping unchanged: Combat Lab → Akali, League Quiz → Ryze, LoL Tier List → Jinx, Swipe Champions → Draven, League Docs → Viktor.",
+    details: [
+      "useChampionAssets now fetches `${VITE_COMBAT_API_URL}/api/assets/champions` directly (default https://web-production-83e53.up.railway.app) instead of invoking the assets-champions edge function.",
+      "Added resolveAssetUrl() helper; getChampionCutout() returns an absolute URL to the transparent cutout PNG.",
+      "HexZipperCard popout keeps object-contain, transparent PNG alpha, and stays layered behind the card (z-0) with the card body above (z-20). Zipper stagger, hover translation, and traveling Hextech border pulse unchanged.",
+    ],
+    files: [
+      "src/hooks/useChampionAssets.ts",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-18T01:00:00Z",
     title: "LoL Hub zipper polish — champion popout, stagger, border pulse",
     type: "ui",
