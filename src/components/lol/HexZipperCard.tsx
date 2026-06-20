@@ -131,9 +131,13 @@ export default function HexZipperCard({
       {/* Portrait popout — full rectangular loading-art portrait jutting out the OUTER edge */}
       {popoutStyle === "portrait" && (
         <div
-          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${
-            isRight ? "right-0 translate-x-[50%]" : "left-0 -translate-x-[50%]"
-          } ${flagship ? "h-[440px]" : "h-[360px]"} aspect-[3/4] z-0 transition-transform duration-500 ease-out group-hover:scale-[1.02]`}
+          className={`pointer-events-none absolute top-1/2 ${
+            isRight ? "right-0" : "left-0"
+          } ${flagship ? "h-[440px]" : "h-[360px]"} aspect-[3/4] z-0 opacity-0 group-hover:opacity-100 transition-all duration-700 ease-out ${
+            isRight
+              ? "-translate-y-1/2 translate-x-0 group-hover:translate-x-[50%]"
+              : "-translate-y-1/2 translate-x-0 group-hover:-translate-x-[50%]"
+          }`}
         >
           {/* Cyan radial glow */}
           <div
