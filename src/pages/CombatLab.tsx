@@ -2365,6 +2365,63 @@ function InteractiveSandbox({
 
         <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
 
+        <TargetRuntimeSummary runtime={targetRuntime} />
+
+        {devMode && (
+          <TargetDefensePreviewPanel
+            defenses={targetDefenses}
+            selected={selectedDefense}
+            onSelect={setSelectedDefense}
+            rank={defenseRank}
+            onRankChange={setDefenseRank}
+            busy={defenseBusy}
+            preview={defensePreview}
+            before={defensePreviewBefore}
+            onPreview={async () => {
+              if (!selectedDefense) {
+                toast({ title: "Pick a defense first", variant: "destructive" });
+                return;
+              }
+              const targetChamp =
+                targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetChampionName
+                  : "";
+              if (!targetChamp) {
+                toast({
+                  title: "Set a Target Champion first",
+                  description: "Switch Target mode to 'Target Champion' to preview defenses.",
+                  variant: "destructive",
+                });
+                return;
+              }
+              setDefenseBusy(true);
+              try {
+                const before = {
+                  ARMOR: (targetRuntime?.target_stats?.ARMOR as number) ?? 0,
+                  MR: (targetRuntime?.target_stats?.MR as number) ?? 0,
+                };
+                setDefensePreviewBefore(before);
+                const res = await combatApi.targetDefensePreview({
+                  target_champion: targetChamp,
+                  active_name: selectedDefense,
+                  rank: defenseRank,
+                  target_stats: targetRuntime?.target_stats ?? {},
+                  state: {},
+                });
+                setDefensePreview(res);
+              } catch (e: any) {
+                toast({
+                  title: "Defense preview failed",
+                  description: e?.message || String(e),
+                  variant: "destructive",
+                });
+              } finally {
+                setDefenseBusy(false);
+              }
+            }}
+          />
+        )}
+
         <RuntimeStatePanel state={state} changedKeys={changedKeys} />
 
         <CombatHeader events={events} state={state} />
