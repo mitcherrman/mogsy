@@ -267,6 +267,7 @@ export default function Quiz() {
     setCurrentSet(set);
     setPhase("loading-questions");
     setScore(0);
+    setSessionAnswers([]);
     setCurrentIndex(0);
     setSelectedAnswer(null);
     setFillBlankValue("");
@@ -330,6 +331,16 @@ export default function Quiz() {
       });
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+      setSessionAnswers((prev) => [
+        ...prev,
+        {
+          question: currentQuestion,
+          selected: choice,
+          isCorrect: !!result.is_correct,
+          correctAnswer: result.correct_answer || "",
+          explanation: result.explanation,
+        },
+      ]);
       // Surface any unlocked achievements
       const unlocked = (result as any).unlocked_achievements;
       if (Array.isArray(unlocked) && unlocked.length > 0) {
