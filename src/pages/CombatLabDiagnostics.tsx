@@ -12,6 +12,7 @@ import {
   PlayCircle,
   RefreshCw,
   Server,
+  Shield,
   Swords,
   Wifi,
   WifiOff,
@@ -38,6 +39,7 @@ import {
   normalizeTargetsResponse,
   normalizeSummonersResponse,
   normalizeActionsResponse,
+  normalizeTargetDefensesResponse,
 } from "@/lib/combat-lab/api";
 
 /* ─────────────── helpers ─────────────── */
@@ -117,6 +119,8 @@ function countOf(data: any, key?: string): number | null {
       return normalizeSummonersResponse(data).length;
     case "actions":
       return normalizeActionsResponse(data).length;
+    case "target-defenses":
+      return normalizeTargetDefensesResponse(data).length;
     case "options":
       return null;
     default:
@@ -279,6 +283,7 @@ const META_ENDPOINTS = [
   { key: "summoners", label: "Summoners", path: "/api/meta/summoners" },
   { key: "options", label: "Options", path: "/api/meta/options" },
   { key: "actions", label: "Combat Lab Actions", path: "/api/meta/combat-lab-actions" },
+  { key: "target-defenses", label: "Target Defenses", path: "/api/meta/target-defenses" },
 ] as const;
 
 type InteractiveTest = {
