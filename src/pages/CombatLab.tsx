@@ -1543,6 +1543,25 @@ function KeyStringEditor({
 /* ─────────────── Interactive Sandbox ─────────────── */
 
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
+const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
+
+type TargetMode = "target_profile" | "target_champion";
+
+type TargetSetupState = {
+  targetMode: TargetMode;
+  targetChampionName: string;
+  targetLevel: number;
+  targetItemNames: string[];
+  targetRuneNames: string[];
+};
+
+const DEFAULT_TARGET_SETUP: TargetSetupState = {
+  targetMode: "target_profile",
+  targetChampionName: "",
+  targetLevel: 18,
+  targetItemNames: [],
+  targetRuneNames: [],
+};
 
 type SandboxProps = {
   config: SimulateRequest;
