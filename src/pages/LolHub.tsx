@@ -18,6 +18,8 @@ type ZipperFeature = {
   side: HexZipperSide;
   championName: string;
   flagship?: boolean;
+  /** Per-champion horizontal nudge (%) for cutout balance. */
+  cutoutOffsetPct?: number;
 };
 
 // Easy to reorder / re-map champions later.
@@ -30,6 +32,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     side: "right",
     championName: "Akali",
     flagship: true,
+    cutoutOffsetPct: -4,
   },
   {
     to: "/quiz",
@@ -38,6 +41,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     Icon: BrainCircuit,
     side: "left",
     championName: "Ryze",
+    cutoutOffsetPct: -2,
   },
   {
     to: "/lol/tier-list",
@@ -46,6 +50,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     Icon: Trophy,
     side: "right",
     championName: "Jinx",
+    cutoutOffsetPct: 0,
   },
   {
     to: "/swipe",
@@ -54,6 +59,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     Icon: Flame,
     side: "left",
     championName: "Draven",
+    cutoutOffsetPct: 2,
   },
   {
     to: "/lol/docs",
@@ -62,6 +68,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     Icon: FileText,
     side: "right",
     championName: "Viktor",
+    cutoutOffsetPct: -2,
   },
 ];
 
@@ -121,6 +128,7 @@ export default function LolHub() {
                   side={f.side}
                   cutoutUrl={getChampionCutout(championAssets, f.championName)}
                   flagship={f.flagship}
+                  cutoutOffsetPct={f.cutoutOffsetPct}
                 />
               </div>
             );
