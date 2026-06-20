@@ -593,9 +593,47 @@ export default function Quiz() {
             className="space-y-4"
           >
             <div className="flex items-center justify-between gap-2">
-              <Badge variant="outline" className="text-[10px] font-medium">
-                {currentQuestion.category}
-              </Badge>
+              {(() => {
+                const style = getCategoryStyle(currentQuestion.category);
+                const Icon = style.icon;
+                const meta = (currentQuestion.metadata || {}) as Record<string, any>;
+                const catKey = normalizeCategoryKey(currentQuestion.category);
+                const isCooldown = catKey.includes("cooldown");
+                const statLabel =
+                  typeof meta.stat_label === "string"
+                    ? meta.stat_label
+                    : typeof meta.stat_name === "string"
+                      ? meta.stat_name
+                      : undefined;
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-medium gap-1 ${style.className}`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {style.label}
+                    </Badge>
+                    {isCooldown && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium gap-1 border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
+                      >
+                        <Timer className="h-3 w-3" />
+                        Cooldown
+                      </Badge>
+                    )}
+                    {catKey.includes("exact_stat") && statLabel && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium border-amber-400/40 bg-amber-400/10 text-amber-200"
+                      >
+                        Stat: {statLabel}
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })()}
               <span className="text-[10px] text-muted-foreground font-medium">
                 {currentIndex + 1} / {questions.length}
               </span>
