@@ -55,6 +55,27 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T01:00:00Z",
+    title: "LoL Hub champion cutout positioning polish",
+    type: "ui",
+    scopes: ["hub"],
+    summary:
+      "Tuned the HexZipperCard champion popouts so cutouts feel attached to their card instead of floating off the page edge. At rest the cutout overlaps the card by ~60-65% (35-50% visible) at 70% opacity; on hover it slides outward to ~50-70% visible and fades to full opacity. Popouts are taller (h-400px / h-520px flagship) and per-champion horizontal offsets balance Akali, Ryze, Jinx, Draven and Viktor individually. Card body stays at z-20 above the cutout (z-0); zipper stagger, hover translation and animated Hextech border pulse unchanged. object-contain preserved — no PNG cropping.",
+    details: [
+      "HexZipperCard: new cutoutOffsetPct prop; rest transform translates 18% outward (plus per-card offset) and hover transform translates 32% outward via a CSS var consumed by .group:hover > .hex-popout in index.css.",
+      "Heights: normal h-[400px], flagship h-[520px] (was 300/420).",
+      "Rest opacity raised from 0 to 0.7 so the character is visible before hover; hover restores full opacity and adds -translateY(12px) lift.",
+      "Per-champion offsets in LolHub ZIPPER_FEATURES: Akali -4, Ryze -2, Jinx 0, Draven +2, Viktor -2.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/pages/LolHub.tsx",
+      "src/index.css",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T00:00:00Z",
     title: "LoL Hub champion popouts use Railway champion asset manifest",
     type: "fix",
