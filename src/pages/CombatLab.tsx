@@ -75,6 +75,9 @@ import {
   type CoverageChampion,
   type ChampionConfidenceResponse,
   type ChampionConfidence,
+  type TargetDefense,
+  type TargetDefensePreviewResponse,
+  type TargetDefenseMetadata,
 } from "@/lib/combat-lab/api";
 
 const STORAGE_KEY = "combat-lab:last-config";
