@@ -1679,6 +1679,7 @@ function InteractiveSandbox({
   const [selectedDefense, setSelectedDefense] = useState<string>("");
   const [defenseRank, setDefenseRank] = useState<number>(1);
   const [defenseBusy, setDefenseBusy] = useState(false);
+  const [defenderApplyBusy, setDefenderApplyBusy] = useState<string | null>(null);
 
   // Load target defenses metadata (dev preview list)
   useEffect(() => {
