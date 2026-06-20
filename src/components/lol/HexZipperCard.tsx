@@ -3,7 +3,7 @@ import { ArrowRight, Shield } from "lucide-react";
 import { useState } from "react";
 
 export type HexZipperSide = "left" | "right";
-export type HexPopoutStyle = "cutout" | "splash";
+export type HexPopoutStyle = "cutout" | "splash" | "portrait";
 
 type Props = {
   to: string;
@@ -128,6 +128,47 @@ export default function HexZipperCard({
         className="absolute inset-0 bg-gradient-to-br from-[#0ac8ff]/40 via-[#c9a84c]/20 to-[#0ac8ff]/40 transition-opacity duration-300 group-hover:from-[#0ac8ff]/80 group-hover:to-[#0ac8ff]/80 z-10"
         style={{ clipPath }}
       />
+      {/* Portrait popout — full rectangular loading-art portrait jutting out the OUTER edge */}
+      {popoutStyle === "portrait" && (
+        <div
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${
+            isRight ? "right-0 translate-x-[50%]" : "left-0 -translate-x-[50%]"
+          } ${flagship ? "h-[440px]" : "h-[360px]"} aspect-[3/4] z-0 transition-transform duration-500 ease-out group-hover:scale-[1.02]`}
+        >
+          {/* Cyan radial glow */}
+          <div
+            className="absolute inset-[-10%] opacity-70"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, rgba(10,200,255,0.35) 0%, rgba(10,200,255,0.1) 45%, transparent 75%)",
+              filter: "blur(20px)",
+            }}
+            aria-hidden
+          />
+          {hasImage ? (
+            <img
+              src={cutoutUrl ?? undefined}
+              alt=""
+              aria-hidden
+              onError={() => setImgFailed(true)}
+              className="relative h-full w-full object-cover drop-shadow-[0_15px_40px_rgba(10,200,255,0.45)] transition-[filter] duration-500 group-hover:brightness-110"
+              style={{
+                objectPosition: "center top",
+                maskImage: isRight
+                  ? "linear-gradient(to right, transparent 0%, black 22%, black 100%)"
+                  : "linear-gradient(to left, transparent 0%, black 22%, black 100%)",
+                WebkitMaskImage: isRight
+                  ? "linear-gradient(to right, transparent 0%, black 22%, black 100%)"
+                  : "linear-gradient(to left, transparent 0%, black 22%, black 100%)",
+              }}
+            />
+          ) : (
+            <div className="relative h-full w-full flex items-center justify-center">
+              <Shield className="h-1/2 w-1/2 text-[#0ac8ff]/70" strokeWidth={1.25} />
+            </div>
+          )}
+        </div>
+      )}
       {/* Animated traveling light pulse around the clipped border */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 overflow-hidden"

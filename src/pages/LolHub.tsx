@@ -90,7 +90,7 @@ export default function LolHub() {
       .then(({ data }) => {
         if (cancelled) return;
         const s = (data?.value as any)?.style;
-        if (s === "cutout" || s === "splash") setPopoutStyle(s);
+        if (s === "cutout" || s === "splash" || s === "portrait") setPopoutStyle(s);
       });
     return () => {
       cancelled = true;

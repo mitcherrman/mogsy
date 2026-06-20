@@ -89,6 +89,7 @@ export default function LolPopoutStyleToggle({ value, onChange }: Props) {
       </span>
       <Btn k="splash" label="Splash" />
       <Btn k="cutout" label="Cutout" />
+      <Btn k="portrait" label="Portrait" />
     </div>
   );
 }
