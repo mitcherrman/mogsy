@@ -194,6 +194,84 @@ export type CoverageResponse = {
   };
 };
 
+/* ─────────────── Target System (defenses, previews, entities) ─────────────── */
+
+export type TargetDefense = {
+  name: string;
+  champion?: string;
+  /** e.g. "physical" | "magic" | "all" | "shield" */
+  category?: string;
+  description?: string;
+  rank_count?: number;
+  [k: string]: unknown;
+};
+
+export type TargetDefenseMetaResponse = {
+  ok?: boolean;
+  defenses?: TargetDefense[];
+  [k: string]: unknown;
+};
+
+export type TargetDefensePreviewRequest = {
+  target_champion: string;
+  active_name: string;
+  rank?: number;
+  target_stats?: Record<string, number>;
+  state?: Record<string, unknown>;
+  [k: string]: unknown;
+};
+
+export type TargetDefenseMetadata = {
+  active_name?: string;
+  target_champion?: string;
+  damage_reduction_percent?: number;
+  physical_damage_reduction_percent?: number;
+  magic_damage_reduction_percent?: number;
+  shield_amount?: number;
+  armor_bonus?: number;
+  mr_bonus?: number;
+  duration?: number;
+  [k: string]: unknown;
+};
+
+export type TargetDefensePreviewResponse = {
+  ok: boolean;
+  result?: {
+    target_champion?: string;
+    active_name?: string;
+    rank?: number;
+    metadata?: TargetDefenseMetadata;
+    target_stats?: Record<string, number>;
+    state?: Record<string, unknown>;
+    [k: string]: unknown;
+  };
+  metadata?: TargetDefenseMetadata;
+  [k: string]: unknown;
+};
+
+export type TargetChampionEntity = {
+  name?: string;
+  stats?: Record<string, number>;
+  state?: Record<string, unknown>;
+  [k: string]: unknown;
+};
+
+export const normalizeTargetDefensesResponse = (data: any): TargetDefense[] =>
+  normalizeList<TargetDefense>(
+    data,
+    ["target_defenses", "defenses"],
+    ["name", "active_name", "defense_name", "id"],
+    (raw, name) =>
+      typeof raw === "string"
+        ? { name }
+        : {
+            ...raw,
+            name,
+            champion: raw.champion ?? raw.champion_name,
+            category: raw.category ?? raw.type ?? raw.damage_type,
+          }
+  );
+
 /** Build Explorer / Live Stats endpoint. */
 export type CombatLabBuildPreviewRequest = {
   champion_name: string;
@@ -449,6 +527,13 @@ export const combatApi = {
     }),
   coverage: () => request<CoverageResponse>("/api/combat-lab/audit/coverage"),
   championConfidence: () => request<ChampionConfidenceResponse>("/api/combat-lab/audit/champion-confidence"),
+  targetDefenses: async (): Promise<TargetDefense[]> =>
+    normalizeTargetDefensesResponse(await request<any>("/api/meta/target-defenses")),
+  targetDefensePreview: (payload: TargetDefensePreviewRequest) =>
+    request<TargetDefensePreviewResponse>("/api/combat-lab/target-defense-preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 /**
