@@ -2101,10 +2101,11 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
-      {/* TOP: Build Configuration + Champion Profile + Live Stats */}
-      <div className="grid gap-6 lg:grid-cols-7">
-        <div className="space-y-6 lg:col-span-2">
-        <SectionCard title="Build Configuration" icon={Swords}>
+      {/* VERSUS HEADER: Attacker | Combat | Defender */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        {/* ATTACKER COLUMN */}
+        <div className="space-y-4 lg:col-span-4">
+        <SectionCard title="Attacker Champion" icon={Swords}>
           <div className="space-y-3">
             <SearchSelect
               label="Champion"
@@ -2137,14 +2138,6 @@ function InteractiveSandbox({
                 }}
               />
             </div>
-            <SearchSelect
-              label="Target profile"
-              placeholder="Select target…"
-              value={config.target_profile}
-              options={targets}
-              onChange={(v) => update("target_profile", v)}
-              loading={metaLoading}
-            />
             <MultiSelect
               label="Items (max 6)"
               placeholder="Select items…"
@@ -2198,6 +2191,21 @@ function InteractiveSandbox({
                 <div className="mt-2 text-[10px] text-muted-foreground">
                   Overrides are merged on top of backend runtime_stats when sending actions.
                 </div>
+                <div className="mt-3 border-t border-primary/20 pt-3">
+                  <Label className="mb-1.5 block text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Legacy target profile (compat)
+                  </Label>
+                  <SearchSelect
+                    placeholder="Select target profile…"
+                    value={config.target_profile}
+                    options={targets}
+                    onChange={(v) => update("target_profile", v)}
+                    loading={metaLoading}
+                  />
+                  <div className="mt-1 text-[10px] text-muted-foreground">
+                    Sent only if defender mode is set to Target Profile. Preserved for backend compatibility.
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-2 text-[10px] text-muted-foreground">
@@ -2225,52 +2233,34 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
-        <TargetSetupPanel
-          setup={targetSetup}
-          update={updateTargetSetup}
-          champions={champions}
-          items={items}
-          runes={runes}
-          metaLoading={metaLoading}
-        />
         </div>
 
-        <div className="lg:col-span-2">
-          <ChampionProfile
-            championId={config.champion}
-            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
-          />
-        </div>
-
-        <div className="lg:col-span-3">
-          <LiveStatsPanel
-            config={config}
-            summonerPicks={summonerPicks}
-            combatState={state}
-            runtimeAttackerStats={attackerStats}
-            runtimeStates={currentStates}
-            changedKeys={changedKeys}
-            onPreviewStats={(b, r) => {
-              setPreviewBuildStats(b);
-              setPreviewRuntimeStats(r);
-            }}
-          />
-        </div>
-      </div>
-
-      {/* BELOW: everything else, full width */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-        <SectionCard
-          title="Actions"
-          icon={Hand}
-          className="h-full"
-          right={
-            <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Combat
-            </Button>
-          }
-        >
+        {/* CENTER COMBAT COLUMN */}
+        <div className="space-y-4 lg:col-span-4 lg:order-none order-last">
+          <SectionCard
+            title="Combat"
+            icon={Swords}
+            right={
+              <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
+            }
+          >
+            <div className="mb-3 flex items-center justify-center gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
+              <span className="truncate font-semibold text-primary">
+                {config.champion || "Attacker"}
+              </span>
+              <Swords className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">VS</span>
+              <Swords className="h-4 w-4 shrink-0 text-muted-foreground rotate-180" />
+              <span className="truncate font-semibold text-accent">
+                {targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetChampionName || "Defender"
+                  : targetSetup.targetMode === "target_dummy"
+                  ? "Target Dummy"
+                  : config.target_profile || "Target Profile"}
+              </span>
+            </div>
           <div className="space-y-2">
             {config.champion && (
               <div className="text-[11px] text-muted-foreground">
@@ -2371,8 +2361,53 @@ function InteractiveSandbox({
             )}
           </div>
         </SectionCard>
-        <DamageBreakdownPanel events={events} className="h-full" />
         </div>
+
+        {/* DEFENDER COLUMN */}
+        <div className="space-y-4 lg:col-span-4">
+          <DefenderPanel
+            setup={targetSetup}
+            update={updateTargetSetup}
+            champions={champions}
+            items={items}
+            runes={runes}
+            metaLoading={metaLoading}
+            defenses={targetDefenses}
+            onApplyDefense={applyDefense}
+            applyBusy={defenderApplyBusy}
+            offline={offline}
+          />
+          <TargetRuntimeSummary runtime={targetRuntime} />
+        </div>
+      </div>
+
+      {/* SECONDARY ROW: champion profile + live stats */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <ChampionProfile
+            championId={config.champion}
+            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <LiveStatsPanel
+            config={config}
+            summonerPicks={summonerPicks}
+            combatState={state}
+            runtimeAttackerStats={attackerStats}
+            runtimeStates={currentStates}
+            changedKeys={changedKeys}
+            onPreviewStats={(b, r) => {
+              setPreviewBuildStats(b);
+              setPreviewRuntimeStats(r);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* BELOW: timeline + diagnostics */}
+      <div className="space-y-6">
+        <DamageBreakdownPanel events={events} />
         <SandboxTimeline events={events} containerRef={timelineRef} />
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
