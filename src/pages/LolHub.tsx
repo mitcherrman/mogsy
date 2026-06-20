@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import lolIcon from "@/assets/lol-icon.png";
-import HexZipperCard, { type HexZipperSide } from "@/components/lol/HexZipperCard";
-import { useChampionAssets, getChampionCutout } from "@/hooks/useChampionAssets";
+import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/components/lol/HexZipperCard";
+import { useChampionAssets, getChampionCutout, getChampionSplash } from "@/hooks/useChampionAssets";
+import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 const LOL_TAG = "League of Legends";
 
@@ -75,6 +78,24 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
 export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
+  const [popoutStyle, setPopoutStyle] = useState<HexPopoutStyle>("splash");
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "lol_hub_popout_style")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const s = (data?.value as any)?.style;
+        if (s === "cutout" || s === "splash") setPopoutStyle(s);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div>
@@ -126,9 +147,14 @@ export default function LolHub() {
                   description={f.description}
                   Icon={f.Icon}
                   side={f.side}
-                  cutoutUrl={getChampionCutout(championAssets, f.championName)}
+                  cutoutUrl={
+                    popoutStyle === "cutout"
+                      ? getChampionCutout(championAssets, f.championName)
+                      : getChampionSplash(championAssets, f.championName)
+                  }
                   flagship={f.flagship}
                   cutoutOffsetPct={f.cutoutOffsetPct}
+                  popoutStyle={popoutStyle}
                 />
               </div>
             );
@@ -182,6 +208,7 @@ export default function LolHub() {
           )}
         </div>
       </div>
+      <LolPopoutStyleToggle value={popoutStyle} onChange={setPopoutStyle} />
     </div>
   );
 }

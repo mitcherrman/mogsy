@@ -1,65 +1,47 @@
-# Admin-Only "About Mogsy" Reference Page
-
-A single, exhaustive internal documentation page that catalogs every feature, page, mechanic, admin tool, and aesthetic decision in Mogsy. Gated behind admin/master_admin role, accessed from the main Admin panel.
-
 ## Goal
 
-Give admins one canonical source-of-truth they can scroll through to understand the entire app — useful for onboarding new admins, briefing moderators, writing marketing copy, and auditing scope.
+Add an admin-only floating toggle on `/lol` that switches the champion popout between two visual styles, with the choice stored globally in `app_settings` so every visitor sees the selected style. **Default is `splash`** when the row is missing or the value is invalid.
 
-## Access
+## Two styles
 
-- **Route:** `/admin/about`, wrapped in `<AdminRoute>` (admin + master_admin; moderators excluded by default since this exposes the full admin surface)
-- **Entry point:** New "About" tab/button in `src/pages/Admin.tsx` tab list, plus a small "About" link in `/admin/play`, `/admin/data`, `/admin/gaming` headers so it's reachable from any admin context
-- **No public link** — not in main navbar, sitemap, or `llms.txt`
+- **`splash` (default, original):** Rectangular splash art rendered behind the card body, clipped to the hex shape. Uses `champions[name].splash` (falls back to `loading`) from the Railway `/api/assets/champions` manifest. `object-cover`, `opacity-30 group-hover:opacity-60`, subtle `scale-105 → scale-110` on hover. Stays inside the card silhouette — no outward slide. Shield fallback if no URL.
+- **`cutout` (current):** Transparent champion PNG sliding from the inner edge toward page center on hover. This is the existing `HexZipperCard` behaviour, unchanged.
 
-## Page Structure
+## Where the setting lives
 
-Single long-scroll page with a sticky table-of-contents sidebar on desktop (collapses to a top dropdown on mobile). All content is static React/JSX — no DB calls, no edits. Search field at the top filters sections by keyword (client-side string match).
+- Row in `app_settings`: `key = 'lol_hub_popout_style'`, `value = { style: 'cutout' | 'splash' }`.
+- Read on `LolHub` via a small dedicated query against `app_settings`.
+- **Default resolution:** if no row exists, value is null, or `style` is not one of `'cutout' | 'splash'`, treat it as `'splash'`.
+- Public read, admin-only write (matches existing `app_settings` RLS).
 
-### Sections (in order)
+## UI
 
-1. **Overview & Core Concept** — what Mogsy is, the head-to-head voting loop
-2. **Terminology** — Aura, Leaderboard, Collections, Compete, Preset vs User leagues, Elo
-3. **User-Facing Pages** — every route (`/`, `/home`, `/auth`, `/play`, `/profile`, `/swipe`, `/swipe-hub`, `/swipe-preset/:id`, `/leagues`, `/leaderboard`, `/shop`, `/elo-check`, `/swipe-leagues`, `/u/:id`, `/referral`, `/settings`, `/multiplayer`, `/multiplayer/game/:id`, `/feedback`, `/blog`, `/blog/:slug`, `/combat-lab`, `/lol`, `/:slug`, `/secret-room`, `/reset-password`)
-4. **Multiplayer Game Modes** — Tag Team, Draft & Duel, Prediction Wars, Siege, Hot Streak, Gauntlet
-5. **Swipe Mechanics** — gesture engine, preloading, ready overlay, direction overlay, timer, card stats footer, comments, ad injection cadence, animations list, tutorial tips, inventory button
-6. **Aura / Elo System** — K=32 formula, dual local+global Elo, snapshots, tier system, EloCheck
-7. **Leaderboards** — global, league, personal, Compete eligibility filters, tier badges
-8. **Shop & Monetization** — Pro ($9.99/mo), Diamond currency, power-ups (Boost / ELO Shield / Reveal / Rewind), gifting, cinematic Pro ad
-9. **Profiles** — own vs public, favorites (auto/manual), photo circles, top comments, Pro cosmetics, public_profiles view, friend actions
-10. **Social** — friends, notifications, comments, reports, moderation
-11. **Onboarding Flow** — Welcome → Profile → Categories → Theme
-12. **Themes** — Light, Dark, Pro; sitewide theme; profile theming; floating theme switcher
-13. **Navigation** — navbar, NavBanner, bottom nav, Bubble Hub, play hub layouts, hub mode toggle, auto-hide
-14. **Admin Pages — Complete Inventory**
-    - `/admin` and every tab (Users, Collections, Bots, Promoted, Comments, Invites, Push, Banners, Reports, Tutorials, Feedback, Mod Config, Directory, Themes*, Ranks*, Onboarding*, Settings*)
-    - `/admin/play` (Play Item Editor, Play League Items, Card Stats Preview, Multiplayer)
-    - `/admin/data` (Stats, Ad Analytics, Preset Items)
-    - `/admin/demo` (Card Preview Editor, Animation Router)
-    - `/admin/gaming` (Swipe Game Config, Swipe Tab Config, First Game Triggers, Aura Check, Multiplayer, League Display, Ads, Animations, Sounds)
-    - `/admin/blog` and `/admin/blog/:id` (BlocksEditor, RichEditor, data blocks)
-    - Each tool gets a 1-3 sentence description
-15. **Moderator Panel** — `/moderator` scope, role comparison table (moderator vs admin vs master_admin)
-16. **Advertising System** — 6 placements (swipe, navbar_banner, home_banner, leaderboard, profile, shop), Custom/AdSense/Hybrid sources, popup/in_swipe modes, AdSense config
-17. **Backend / Edge Functions** — full list (admin-get-emails, admin-user-actions, check-subscription, create-checkout, customer-portal, populate-preset-images, purge-anonymous-users, redeem-gift, snapshot-global-elo, verify-gift)
-18. **Authentication** — email/password, Google OAuth, anonymous accounts, account linking, 2FA, password reset, ProtectedRoute / AdminRoute
-19. **Custom Links / Slug System** — resolution priority, `resolve_custom_link` RPC, visit tracking
-20. **Blog System** — blocks vs rich modes, data blocks (Chart, Leaderboard, ProfileCard, ItemCard), themes, share buttons, HomeBlogStrip
-21. **Aesthetic & Design System** — `#0a0a1a` base, max-w-7xl, fonts, dual-layer blurred backgrounds, framer-motion usage, sound system, Apple-like language, SEO
-22. **Tech Stack** — React 18, Vite, Tailwind v3, shadcn/ui, framer-motion, TanStack Query, Supabase, Stripe, React Router v6, TipTap
-23. **Internal Naming Map** — quick reference between user-facing terms (Aura, Leaderboard, Collections, Compete) and internal code terms (Elo, Rankings, Preset Leagues, User Leagues)
+- New component `LolPopoutStyleToggle` rendered on `LolHub` only when the current user has the `admin` role (reuse existing admin check pattern from `AdminRoute` / `useAuth` + `user_roles`).
+- Small floating segmented pill bottom-right of the hub hero: "Splash" / "Cutout".
+- Click flow:
+  1. Optimistically update local state and pass new style to cards.
+  2. Upsert `app_settings` row.
+  3. **On failure:** revert local state to the previous value and show `toast.error("Couldn't save popout style")` via `sonner`.
+- Non-admins never see the toggle.
 
-## Technical Implementation
+## Component changes
 
-- **New file:** `src/pages/AdminAbout.tsx` — single component, all content inline as semantic JSX (sections with `id` anchors for TOC links). Use existing design tokens; semantic Tailwind classes only.
-- **New route:** add `/admin/about` to `src/App.tsx` wrapped in `<AdminRoute>` and `<Suspense>`, plus `AdminAbout` entry in `src/lib/route-prefetch.ts`
-- **Admin entry point:** add an "About" tab to the `Admin.tsx` tab list (or a header link) routing to `/admin/about`
-- **Components reused:** `Collapsible` for collapsible sections, existing typography/card classes, `lucide-react` icons for section headers
-- **No backend changes**, no migrations, no new dependencies, no edits to existing admin tools
+- `HexZipperCard` gains a `popoutStyle: 'cutout' | 'splash'` prop.
+  - `cutout` branch = current code unchanged.
+  - `splash` branch = absolutely-positioned `<img>` inside the card body's clipped container, `object-cover`, low opacity, subtle hover zoom, z-0 behind icon/text but inside the hex clip. Shield fallback if no splash URL.
+- `useChampionAssets` gets a `getChampionSplash(assets, name)` helper alongside `getChampionCutout`, returning `splash ?? loading ?? null`.
+- `LolHub` reads the setting, defaults to `splash`, renders the toggle for admins only, and passes `popoutStyle` + the appropriate URL into each `HexZipperCard`.
 
-## Out of Scope
+## Scope guardrails
 
-- Editing existing features or admin tools
-- Auto-generating documentation from code (this is a hand-maintained static reference)
-- Public-facing About page (separate request if needed later)
-- Versioning / changelog (could be added later as a second tab)
+- No changes to the Railway edge function, zipper layout, card sizes, border pulse, or mobile fallback.
+- No new tables and no migration — uses existing `app_settings` row, inserted on first admin save via upsert.
+- Changelog entry appended to `src/lib/lol-changelog.ts`.
+
+## Files touched
+
+- `src/components/lol/HexZipperCard.tsx` — add `popoutStyle` prop + splash branch.
+- `src/hooks/useChampionAssets.ts` — add `getChampionSplash` helper.
+- `src/components/lol/LolPopoutStyleToggle.tsx` *(new)* — admin-only segmented toggle with optimistic update, error toast, and revert on failure.
+- `src/pages/LolHub.tsx` — fetch setting (default `splash`), render toggle for admins, pass `popoutStyle` and resolved URL to each card.
+- `src/lib/lol-changelog.ts` — new entry.

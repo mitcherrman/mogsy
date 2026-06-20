@@ -3,6 +3,7 @@ import { ArrowRight, Shield } from "lucide-react";
 import { useState } from "react";
 
 export type HexZipperSide = "left" | "right";
+export type HexPopoutStyle = "cutout" | "splash";
 
 type Props = {
   to: string;
@@ -11,8 +12,9 @@ type Props = {
   Icon: React.ElementType;
   side: HexZipperSide;
   /**
-   * Resolved cutout URL from the backend champion asset manifest.
-   * When omitted/null, the card falls back to a Hextech shield silhouette.
+   * Resolved champion image URL from the backend manifest. Cutout PNG for the
+   * "cutout" style, splash art for the "splash" style. When omitted/null, the
+   * card falls back to a Hextech shield silhouette.
    */
   cutoutUrl?: string | null;
   /** Larger flagship treatment (used for Combat Lab). */
@@ -23,6 +25,11 @@ type Props = {
    * without changing the global zipper math.
    */
   cutoutOffsetPct?: number;
+  /**
+   * Which champion artwork treatment to render. Defaults to "splash" — the
+   * original rectangular art behind the card body.
+   */
+  popoutStyle?: HexPopoutStyle;
 };
 
 /**
@@ -38,6 +45,7 @@ export default function HexZipperCard({
   cutoutUrl,
   flagship = false,
   cutoutOffsetPct = 0,
+  popoutStyle = "splash",
 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!cutoutUrl && !imgFailed;
@@ -72,7 +80,8 @@ export default function HexZipperCard({
         isRight ? "hover:translate-x-6" : "hover:-translate-x-6"
       } hover:scale-[1.02]`}
     >
-      {/* Champion popout — sits BEHIND the card on its INNER side, slides toward page center on hover */}
+      {/* Cutout popout — sits BEHIND the card on its INNER side, slides toward page center on hover */}
+      {popoutStyle === "cutout" && (
       <div
         className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 ${popoutSideCls}`}
         style={
@@ -112,6 +121,7 @@ export default function HexZipperCard({
           </div>
         )}
       </div>
+      )}
 
       {/* Outer Hextech border layer (cyan) */}
       <div
@@ -138,6 +148,33 @@ export default function HexZipperCard({
             "inset 0 0 30px rgba(10,200,255,0.08), inset 0 0 0 1px rgba(201,168,76,0.15)",
         }}
       >
+        {/* Splash artwork behind card content, clipped to the hex silhouette. */}
+        {popoutStyle === "splash" && (
+          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+            {hasImage ? (
+              <img
+                src={cutoutUrl ?? undefined}
+                alt=""
+                onError={() => setImgFailed(true)}
+                className="absolute inset-0 h-full w-full object-cover opacity-30 group-hover:opacity-60 scale-105 group-hover:scale-110 transition-all duration-700 ease-out"
+                style={{
+                  objectPosition: isRight ? "right center" : "left center",
+                  maskImage: isRight
+                    ? "linear-gradient(to left, black 30%, transparent 100%)"
+                    : "linear-gradient(to right, black 30%, transparent 100%)",
+                  WebkitMaskImage: isRight
+                    ? "linear-gradient(to left, black 30%, transparent 100%)"
+                    : "linear-gradient(to right, black 30%, transparent 100%)",
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-end pr-6 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                <Shield className="h-4/5 w-auto text-[#0ac8ff]/70" strokeWidth={1.25} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* subtle inner glow */}
         <div
           className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -149,7 +186,7 @@ export default function HexZipperCard({
 
         {/* icon */}
         <div
-          className={`relative shrink-0 ${iconBox} bg-black/50 border border-[#c9a84c]/40 group-hover:border-[#0ac8ff]/60 transition-colors`}
+          className={`relative z-10 shrink-0 ${iconBox} bg-black/50 border border-[#c9a84c]/40 group-hover:border-[#0ac8ff]/60 transition-colors`}
           style={{
             clipPath:
               "polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)",
@@ -159,7 +196,7 @@ export default function HexZipperCard({
         </div>
 
         {/* text */}
-        <div className="relative flex-1 min-w-0">
+        <div className="relative z-10 flex-1 min-w-0">
           <div className="flex items-center gap-2 text-[#0ac8ff]/80">
             <span className="text-[10px] uppercase tracking-[0.3em] font-bold">
               {flagship ? "Flagship" : "Feature"}
@@ -175,7 +212,7 @@ export default function HexZipperCard({
         </div>
 
         <ArrowRight
-          className={`relative h-5 w-5 text-[#c9a84c] transition-all duration-300 ${
+          className={`relative z-10 h-5 w-5 text-[#c9a84c] transition-all duration-300 ${
             isRight ? "group-hover:translate-x-1" : "group-hover:-translate-x-1"
           }`}
         />
