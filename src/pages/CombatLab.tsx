@@ -2451,27 +2451,6 @@ function InteractiveSandbox({
   );
 }
 
-function ActionButton({
-  label,
-  hint,
-  icon: Icon,
-  tone = "primary",
-  busy,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  hint?: string;
-  icon: React.ElementType;
-  tone?: "primary" | "accent";
-  busy?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  // (re-declared below — placeholder removed)
-  return null as any;
-}
-
 /* ─────────────── Target Setup (Phase 2 UI) ─────────────── */
 
 function TargetSetupPanel({
