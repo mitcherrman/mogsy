@@ -17,6 +17,12 @@ import {
   Wifi,
   WifiOff,
   XCircle,
+  Package,
+  Timer,
+  GitBranch,
+  Layers,
+  Swords,
+  Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -1024,7 +1030,131 @@ export default function QuizDiagnostics() {
             </div>
           </Panel>
         </div>
+        <div className="lg:col-span-2">
+          <RecognizedCategoriesPanel />
+        </div>
       </div>
     </div>
+  );
+}
+
+/* ───────────────── Recognized categories showcase ─────────────────
+ * Confirms the frontend visually recognizes the new backend categories
+ * even when no live questions are returned. Each row is a synthesized
+ * sample metadata payload — rendering only, no API calls.
+ */
+const SAMPLE_CATEGORIES: Array<{
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  metadata: Record<string, unknown>;
+  question: string;
+  className: string;
+}> = [
+  {
+    key: "item_exact_stats",
+    label: "Item Exact Stats",
+    icon: Package,
+    question: "How much Attack Damage does Infinity Edge grant?",
+    metadata: {
+      item_id: 3031,
+      item_name: "Infinity Edge",
+      stat_name: "attack_damage",
+      stat_label: "Attack Damage",
+      value: 70,
+      formatted_value: "+70 AD",
+      asset_path: "assets/items/3031.png",
+    },
+    className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+  },
+  {
+    key: "item_components",
+    label: "Item Components",
+    icon: Layers,
+    question: "Which item is a component of Infinity Edge?",
+    metadata: {
+      parent_item_id: 3031,
+      parent_item_name: "Infinity Edge",
+      component_item_id: 1038,
+      component_item_name: "B. F. Sword",
+      asset_path: "assets/items/1038.png",
+    },
+    className: "border-orange-400/40 bg-orange-400/10 text-orange-200",
+  },
+  {
+    key: "item_builds_into",
+    label: "Item Builds Into",
+    icon: GitBranch,
+    question: "What can Long Sword build into?",
+    metadata: {
+      item_id: 1036,
+      item_name: "Long Sword",
+      asset_path: "assets/items/1036.png",
+    },
+    className: "border-yellow-400/40 bg-yellow-400/10 text-yellow-200",
+  },
+  {
+    key: "champion_ability_cooldowns",
+    label: "Champion Ability Cooldowns",
+    icon: Timer,
+    question: "What is the base cooldown of Warwick's E at rank 1?",
+    metadata: {
+      champion_name: "Warwick",
+      ability_slot: "E",
+      ability_name: "Primal Howl",
+      rank: 1,
+      cooldown: 20,
+      champion_icon_path: "assets/champions/Warwick/icon.png",
+    },
+    className: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+  },
+  {
+    key: "summoner_spell_cooldowns",
+    label: "Summoner Spell Cooldowns",
+    icon: Timer,
+    question: "What is the base cooldown of Flash?",
+    metadata: {
+      summoner_id: "SummonerFlash",
+      summoner_name: "Flash",
+      cooldown: 300,
+      asset_path: "assets/summoners/Flash.png",
+    },
+    className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+  },
+];
+
+export function RecognizedCategoriesPanel() {
+  return (
+    <Panel title="Recognized Categories (frontend)" icon={Stethoscope}>
+      <p className="text-[11px] text-muted-foreground">
+        Synthesized metadata samples — confirms the quiz UI recognizes and visually
+        labels the new backend categories without making any API calls.
+      </p>
+      <div className="space-y-2">
+        {SAMPLE_CATEGORIES.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.key}
+              className="rounded-md border border-border/40 bg-background/40 px-3 py-2.5 space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className={`text-[10px] gap-1 ${s.className}`}>
+                  <Icon className="h-3 w-3" />
+                  {s.label}
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] font-mono">
+                  {s.key}
+                </Badge>
+              </div>
+              <p className="text-sm font-medium leading-snug">{s.question}</p>
+              <pre className="overflow-auto rounded-md border border-border/40 bg-background/60 p-2 font-mono text-[10px] leading-relaxed text-foreground/80">
+                {JSON.stringify(s.metadata, null, 2)}
+              </pre>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
   );
 }

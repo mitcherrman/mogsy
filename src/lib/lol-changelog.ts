@@ -55,6 +55,29 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T07:00:00Z",
+    title: "Quiz: new category badges + session breakdown + missed-question review",
+    type: "feature",
+    scopes: ["quiz"],
+    summary:
+      "Brought the League Quiz frontend in sync with the backend's expanded question library (4,000+ questions). Added distinct themed category badges for Item Exact Stats, Item Components, Item Builds Into, Item Build Paths, Champion Ability Cooldowns, and Summoner Spell Cooldowns. Cooldown questions get an extra 'Cooldown' chip; Exact Stat questions display the stat being tested via the metadata stat_label / stat_name. Item rendering now resolves item_name from item_name, parent_item_name, or component_item_name and asset_path metadata so build-graph questions show the source item icon. Quiz sessions now track per-question answers locally; the results screen shows a per-category accuracy breakdown (best / weakest highlighted) and a 'Questions to Review' list of the session's missed questions with the chosen vs correct answer and explanation. Quiz diagnostics gains a 'Recognized Categories' panel that renders synthesized metadata samples for the new categories to confirm the UI recognizes them without requiring live backend data. Existing XP, rank progression, achievements, image-bearing answers, champion/item/rune/summoner visuals, and admin tooling are unchanged.",
+    details: [
+      "CATEGORY_STYLE_MAP + getCategoryStyle() with snake_case + Title Case normalization and partial-match fallbacks.",
+      "Active question header replaced plain outline badge with iconified themed badge + optional Cooldown / Stat chips.",
+      "Item visual branch detects component_item_* and parent_item_* metadata so build-graph questions still light up the item card.",
+      "SessionAnswer[] state captures per-question outcomes; reset on set selection / play again.",
+      "SessionBreakdown card lists per-category correct/total + accuracy with Best / Needs Work callouts.",
+      "SessionReviewList card lists missed questions with chosen vs correct answer and the backend explanation.",
+      "QuizDiagnostics adds RecognizedCategoriesPanel rendering item_exact_stats, item_components, item_builds_into, champion_ability_cooldowns, and summoner_spell_cooldowns sample metadata.",
+    ],
+    files: [
+      "src/pages/Quiz.tsx",
+      "src/pages/QuizDiagnostics.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/quiz", "/quiz/diagnostics"],
+  },
+  {
     timestamp: "2026-06-20T06:30:00Z",
     title: "Combat Lab Target Setup panel + target champion entity support",
     type: "feature",

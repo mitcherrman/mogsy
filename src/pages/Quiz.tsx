@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,121 @@ function getChoiceImage(choice: QuizChoice): string | undefined {
   return choice.image_path || undefined;
 }
 
+/**
+ * Per-category badge styling. The lookup normalizes the backend category string
+ * (snake_case or Title Case) so newly-added categories like "Item Exact Stats",
+ * "Item Components", "Item Builds Into", "Item Build Paths",
+ * "Champion Ability Cooldowns", and "Summoner Spell Cooldowns" all get
+ * distinct, themed badges in the active question header.
+ */
+type CategoryStyle = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+};
+
+const CATEGORY_STYLE_MAP: Record<string, CategoryStyle> = {
+  item_exact_stats: {
+    label: "Item Exact Stats",
+    icon: Package,
+    className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+  },
+  item_components: {
+    label: "Item Components",
+    icon: Layers,
+    className: "border-orange-400/40 bg-orange-400/10 text-orange-200",
+  },
+  item_builds_into: {
+    label: "Item Builds Into",
+    icon: GitBranch,
+    className: "border-yellow-400/40 bg-yellow-400/10 text-yellow-200",
+  },
+  item_build_paths: {
+    label: "Item Build Paths",
+    icon: GitBranch,
+    className: "border-yellow-500/40 bg-yellow-500/10 text-yellow-100",
+  },
+  champion_ability_cooldowns: {
+    label: "Champion Cooldowns",
+    icon: Timer,
+    className: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+  },
+  summoner_spell_cooldowns: {
+    label: "Summoner Cooldowns",
+    icon: Timer,
+    className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+  },
+  champion_abilities: {
+    label: "Champion Abilities",
+    icon: Wand2,
+    className: "border-violet-400/40 bg-violet-400/10 text-violet-200",
+  },
+  summoner_spells: {
+    label: "Summoner Spells",
+    icon: Swords,
+    className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+  },
+};
+
+function normalizeCategoryKey(category: string | undefined | null): string {
+  return (category || "").toString().trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
+function getCategoryStyle(category: string | undefined | null): CategoryStyle {
+  const key = normalizeCategoryKey(category);
+  if (CATEGORY_STYLE_MAP[key]) return CATEGORY_STYLE_MAP[key];
+  // Fallback partial matches for unknown but related categories.
+  if (key.includes("cooldown")) {
+    return {
+      label: category || "Cooldowns",
+      icon: Timer,
+      className: "border-cyan-400/40 bg-cyan-400/10 text-cyan-200",
+    };
+  }
+  if (key.includes("item")) {
+    return {
+      label: category || "Items",
+      icon: Package,
+      className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+    };
+  }
+  if (key.includes("rune")) {
+    return {
+      label: category || "Runes",
+      icon: BookOpen,
+      className: "border-purple-400/40 bg-purple-400/10 text-purple-200",
+    };
+  }
+  if (key.includes("summoner") || key.includes("spell")) {
+    return {
+      label: category || "Summoner Spells",
+      icon: Swords,
+      className: "border-sky-400/40 bg-sky-400/10 text-sky-200",
+    };
+  }
+  if (key.includes("ability") || key.includes("champion")) {
+    return {
+      label: category || "Champions",
+      icon: Wand2,
+      className: "border-violet-400/40 bg-violet-400/10 text-violet-200",
+    };
+  }
+  return {
+    label: category || "General",
+    icon: BrainCircuit,
+    className: "border-border bg-background/40 text-foreground/80",
+  };
+}
+
+/** Local per-session record so we can render a category breakdown + review list. */
+type SessionAnswer = {
+  question: QuizQuestion;
+  selected: string;
+  isCorrect: boolean;
+  correctAnswer: string;
+  explanation?: string;
+};
+
 export default function Quiz() {
   const { user } = useAuth();
   const userId = user?.id || "anonymous";
@@ -47,6 +162,7 @@ export default function Quiz() {
   const [fillBlankValue, setFillBlankValue] = useState("");
   const [answerResult, setAnswerResult] = useState<QuizAnswerResult | null>(null);
   const [score, setScore] = useState(0);
+  const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [setsLoading, setSetsLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
@@ -151,6 +267,7 @@ export default function Quiz() {
     setCurrentSet(set);
     setPhase("loading-questions");
     setScore(0);
+    setSessionAnswers([]);
     setCurrentIndex(0);
     setSelectedAnswer(null);
     setFillBlankValue("");
@@ -214,6 +331,16 @@ export default function Quiz() {
       });
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+      setSessionAnswers((prev) => [
+        ...prev,
+        {
+          question: currentQuestion,
+          selected: choice,
+          isCorrect: !!result.is_correct,
+          correctAnswer: result.correct_answer || "",
+          explanation: result.explanation,
+        },
+      ]);
       // Surface any unlocked achievements
       const unlocked = (result as any).unlocked_achievements;
       if (Array.isArray(unlocked) && unlocked.length > 0) {
@@ -466,9 +593,47 @@ export default function Quiz() {
             className="space-y-4"
           >
             <div className="flex items-center justify-between gap-2">
-              <Badge variant="outline" className="text-[10px] font-medium">
-                {currentQuestion.category}
-              </Badge>
+              {(() => {
+                const style = getCategoryStyle(currentQuestion.category);
+                const Icon = style.icon;
+                const meta = (currentQuestion.metadata || {}) as Record<string, any>;
+                const catKey = normalizeCategoryKey(currentQuestion.category);
+                const isCooldown = catKey.includes("cooldown");
+                const statLabel =
+                  typeof meta.stat_label === "string"
+                    ? meta.stat_label
+                    : typeof meta.stat_name === "string"
+                      ? meta.stat_name
+                      : undefined;
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-medium gap-1 ${style.className}`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {style.label}
+                    </Badge>
+                    {isCooldown && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium gap-1 border-cyan-400/40 bg-cyan-400/10 text-cyan-200"
+                      >
+                        <Timer className="h-3 w-3" />
+                        Cooldown
+                      </Badge>
+                    )}
+                    {catKey.includes("exact_stat") && statLabel && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium border-amber-400/40 bg-amber-400/10 text-amber-200"
+                      >
+                        Stat: {statLabel}
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })()}
               <span className="text-[10px] text-muted-foreground font-medium">
                 {currentIndex + 1} / {questions.length}
               </span>
@@ -488,10 +653,22 @@ export default function Quiz() {
               const mainVisual = championIcon || rawImage;
               const hasChampionTheme = !!(championIcon || championSplash);
               const cat = (currentQuestion.category || "").toLowerCase();
-              const isItem = !hasChampionTheme && !!rawImage && (cat.includes("item") || !!meta.item_id || !!meta.item_name);
+              const isItem =
+                !hasChampionTheme &&
+                !!rawImage &&
+                (cat.includes("item") ||
+                  !!meta.item_id ||
+                  !!meta.item_name ||
+                  !!meta.component_item_id ||
+                  !!meta.component_item_name ||
+                  !!meta.parent_item_id ||
+                  !!meta.parent_item_name);
               const isRune = !hasChampionTheme && !!rawImage && (cat.includes("rune") || !!meta.rune_id || !!meta.rune_name);
               const isSummoner = !hasChampionTheme && !!rawImage && (cat.includes("summoner") || cat.includes("spell") || !!meta.summoner_id || !!meta.summoner_name);
-              const itemName = typeof meta.item_name === "string" ? meta.item_name : undefined;
+              const itemName =
+                (typeof meta.item_name === "string" ? meta.item_name : undefined) ||
+                (typeof meta.parent_item_name === "string" ? meta.parent_item_name : undefined) ||
+                (typeof meta.component_item_name === "string" ? meta.component_item_name : undefined);
               const runeName = typeof meta.rune_name === "string" ? meta.rune_name : undefined;
               const summonerName = typeof meta.summoner_name === "string" ? meta.summoner_name : undefined;
               const choicesHaveImages = (currentQuestion.choices || []).some(
@@ -986,9 +1163,9 @@ export default function Quiz() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="text-center"
+            className="space-y-4"
           >
-            <Card className="bg-card/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm text-center">
               <CardHeader>
                 <CardTitle className="text-xl md:text-2xl font-bold">Quiz Complete</CardTitle>
                 <CardDescription className="text-sm">
@@ -1031,6 +1208,8 @@ export default function Quiz() {
                 </div>
               </CardContent>
             </Card>
+            <SessionBreakdown answers={sessionAnswers} />
+            <SessionReviewList answers={sessionAnswers} />
           </motion.div>
         )}
       </div>
@@ -1094,5 +1273,150 @@ export default function Quiz() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* ───────────────────── Session breakdown helpers ───────────────────── */
+
+function SessionBreakdown({ answers }: { answers: SessionAnswer[] }) {
+  const rows = useMemo(() => {
+    const map = new Map<string, { category: string; correct: number; total: number }>();
+    for (const a of answers) {
+      const cat = a.question.category || "Uncategorized";
+      const entry = map.get(cat) || { category: cat, correct: 0, total: 0 };
+      entry.total += 1;
+      if (a.isCorrect) entry.correct += 1;
+      map.set(cat, entry);
+    }
+    return Array.from(map.values()).map((r) => ({
+      ...r,
+      accuracy: r.total > 0 ? (r.correct / r.total) * 100 : 0,
+    }));
+  }, [answers]);
+
+  if (rows.length === 0) return null;
+
+  const sorted = [...rows].sort((a, b) => b.accuracy - a.accuracy);
+  const best = sorted[0];
+  const weakest = sorted[sorted.length - 1];
+
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+          <BookOpen className="h-4 w-4" />
+          Session Breakdown
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {rows.length > 1 && best && weakest && best.category !== weakest.category && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-300">
+                <Trophy className="h-3 w-3" />
+                Best category
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-emerald-200">{best.category}</div>
+              <div className="text-[11px] text-emerald-200/80">
+                {best.correct}/{best.total} · {best.accuracy.toFixed(0)}%
+              </div>
+            </div>
+            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-rose-300">
+                <AlertCircle className="h-3 w-3" />
+                Needs work
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-rose-200">{weakest.category}</div>
+              <div className="text-[11px] text-rose-200/80">
+                {weakest.correct}/{weakest.total} · {weakest.accuracy.toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {rows.map((r) => {
+            const style = getCategoryStyle(r.category);
+            const Icon = style.icon;
+            return (
+              <div
+                key={r.category}
+                className="rounded-md border border-border/40 bg-background/40 px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-medium gap-1 ${style.className}`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {style.label}
+                  </Badge>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {r.correct}/{r.total} · {r.accuracy.toFixed(0)}%
+                  </span>
+                </div>
+                <Progress value={r.accuracy} className="mt-2 h-1.5" />
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SessionReviewList({ answers }: { answers: SessionAnswer[] }) {
+  const missed = useMemo(() => answers.filter((a) => !a.isCorrect), [answers]);
+  if (missed.length === 0) return null;
+
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+          <AlertCircle className="h-4 w-4" />
+          Questions to Review
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Missed this session — review and try again.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {missed.map((a, idx) => {
+          const style = getCategoryStyle(a.question.category);
+          const Icon = style.icon;
+          return (
+            <div
+              key={`${a.question.id}-${idx}`}
+              className="rounded-md border border-border/40 bg-background/40 p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className={`text-[10px] gap-1 ${style.className}`}>
+                  <Icon className="h-3 w-3" />
+                  {style.label}
+                </Badge>
+              </div>
+              <p className="text-sm font-medium leading-snug text-left">
+                {a.question.question_text}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-rose-200">
+                  <div className="opacity-70 uppercase tracking-wider text-[10px]">Your answer</div>
+                  <div className="font-medium">{a.selected || "—"}</div>
+                </div>
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-emerald-200">
+                  <div className="opacity-70 uppercase tracking-wider text-[10px]">Correct</div>
+                  <div className="font-medium">{a.correctAnswer || "—"}</div>
+                </div>
+              </div>
+              {a.explanation && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {a.explanation}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
