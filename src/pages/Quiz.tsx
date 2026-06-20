@@ -653,10 +653,22 @@ export default function Quiz() {
               const mainVisual = championIcon || rawImage;
               const hasChampionTheme = !!(championIcon || championSplash);
               const cat = (currentQuestion.category || "").toLowerCase();
-              const isItem = !hasChampionTheme && !!rawImage && (cat.includes("item") || !!meta.item_id || !!meta.item_name);
+              const isItem =
+                !hasChampionTheme &&
+                !!rawImage &&
+                (cat.includes("item") ||
+                  !!meta.item_id ||
+                  !!meta.item_name ||
+                  !!meta.component_item_id ||
+                  !!meta.component_item_name ||
+                  !!meta.parent_item_id ||
+                  !!meta.parent_item_name);
               const isRune = !hasChampionTheme && !!rawImage && (cat.includes("rune") || !!meta.rune_id || !!meta.rune_name);
               const isSummoner = !hasChampionTheme && !!rawImage && (cat.includes("summoner") || cat.includes("spell") || !!meta.summoner_id || !!meta.summoner_name);
-              const itemName = typeof meta.item_name === "string" ? meta.item_name : undefined;
+              const itemName =
+                (typeof meta.item_name === "string" ? meta.item_name : undefined) ||
+                (typeof meta.parent_item_name === "string" ? meta.parent_item_name : undefined) ||
+                (typeof meta.component_item_name === "string" ? meta.component_item_name : undefined);
               const runeName = typeof meta.rune_name === "string" ? meta.rune_name : undefined;
               const summonerName = typeof meta.summoner_name === "string" ? meta.summoner_name : undefined;
               const choicesHaveImages = (currentQuestion.choices || []).some(
