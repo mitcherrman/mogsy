@@ -1936,6 +1936,57 @@ function InteractiveSandbox({
     else sendStep("active", lastAction.action_id);
   };
 
+  /** Apply a target defense from the Defender panel into the live sandbox state. */
+  const applyDefense = async (defenseName: string) => {
+    if (targetSetup.targetMode !== "target_champion" || !targetSetup.targetChampionName) {
+      toast({
+        title: "Switch defender to Champion mode",
+        description: "Target defenses require a Defender Champion.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDefenderApplyBusy(defenseName);
+    setError(null);
+    try {
+      const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
+      const attacker_stats: Record<string, number> =
+        Object.keys(backendStats).length > 0 ? backendStats : buildAttackerStats(config);
+      const target_stats: Record<string, number> = (targetRuntime?.target_stats &&
+        Object.keys(targetRuntime.target_stats).length > 0
+          ? (targetRuntime.target_stats as Record<string, number>)
+          : { ...DEFAULT_TARGET_STATS });
+      const payload: CombatLabActiveRequest = {
+        champion_name: targetSetup.targetChampionName,
+        attacker_stats,
+        target_stats,
+        state: state ?? {},
+        active_name: defenseName,
+        target_scope: "PRIMARY",
+        piercing_arrow_charge_bonus_percent: 0,
+        target_champion_name: targetSetup.targetChampionName,
+        target_level: targetSetup.targetLevel,
+        target_item_names: targetSetup.targetItemNames,
+        target_rune_names: targetSetup.targetRuneNames,
+      } as CombatLabActiveRequest;
+      setLastEndpoint("/api/combat-lab/active");
+      setLastRequest(payload);
+      const res = await combatApi.active(payload);
+      setLastResponse(res);
+      applyResponse(res);
+      toast({ title: `Applied ${defenseName}`, description: "Defender state updated." });
+    } catch (e: any) {
+      setError(e?.message || "Apply defense failed");
+      toast({
+        title: "Apply defense failed",
+        description: e?.message || String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setDefenderApplyBusy(null);
+    }
+  };
+
   const copyJson = async (data: unknown, label: string) => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(data ?? {}, null, 2));
