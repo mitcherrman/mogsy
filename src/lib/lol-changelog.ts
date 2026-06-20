@@ -55,6 +55,28 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T05:00:00Z",
+    title: "LoL Hub popout toggle gains third 'Portrait' option",
+    type: "feature",
+    scopes: ["hub"],
+    summary:
+      "Added a third option to the admin-only LoL Hub popout style toggle. 'Portrait' renders the full champion loading-art portrait jutting past the OUTER edge of each HexZipperCard (matching the original Akali-on-Combat-Lab look), sitting behind the border layer with a soft cyan glow, an inward mask-fade so the rectangle blends into the hex silhouette, and a subtle hover scale + brightness bump. Splash remains the default; Cutout (inner-edge transparent slide) is unchanged. Invalid stored values still fall back to 'splash'.",
+    details: [
+      "HexPopoutStyle extended to 'cutout' | 'splash' | 'portrait'.",
+      "HexZipperCard adds a portrait branch: aspect-[3/4], h-[360px] / h-[440px] flagship, translated ~50% past the outer card edge, object-cover with center-top focus, mask-image fade on the card-facing edge.",
+      "LolPopoutStyleToggle now has three segmented buttons (Splash / Cutout / Portrait); same optimistic update + toast revert on app_settings write failure.",
+      "LolHub validates 'portrait' as an allowed app_settings value and passes the splash/loading URL for both splash and portrait styles.",
+      "Shield fallback retained when the champion manifest has no asset.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/components/lol/LolPopoutStyleToggle.tsx",
+      "src/pages/LolHub.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T04:00:00Z",
     title: "Admin toggle: switch LoL Hub champion popout style (Splash ↔ Cutout)",
     type: "feature",
