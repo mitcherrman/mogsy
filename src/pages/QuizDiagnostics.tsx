@@ -17,6 +17,12 @@ import {
   Wifi,
   WifiOff,
   XCircle,
+  Package,
+  Timer,
+  GitBranch,
+  Layers,
+  Swords,
+  Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
