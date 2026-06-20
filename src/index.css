@@ -673,3 +673,9 @@ html.high-contrast * { text-shadow: none !important; }
 @keyframes hex-border-spin {
   to { transform: rotate(360deg); }
 }
+
+/* Hextech zipper champion popout — hover transform driven by --hex-popout-hover
+   so per-card offsets set inline (rest state) compose cleanly with the hover state. */
+.group:hover > .hex-popout {
+  transform: var(--hex-popout-hover) translateY(-12px);
+}
