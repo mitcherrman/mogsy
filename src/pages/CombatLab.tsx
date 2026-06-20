@@ -1545,7 +1545,7 @@ function KeyStringEditor({
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
-type TargetMode = "target_profile" | "target_champion";
+type TargetMode = "target_champion" | "target_dummy" | "target_profile";
 
 type TargetSetupState = {
   targetMode: TargetMode;
@@ -1553,14 +1553,24 @@ type TargetSetupState = {
   targetLevel: number;
   targetItemNames: string[];
   targetRuneNames: string[];
+  dummyHP: number;
+  dummyArmor: number;
+  dummyMR: number;
+  dummyShield: number;
+  dummyDR: number;
 };
 
 const DEFAULT_TARGET_SETUP: TargetSetupState = {
-  targetMode: "target_profile",
+  targetMode: "target_dummy",
   targetChampionName: "",
   targetLevel: 18,
   targetItemNames: [],
   targetRuneNames: [],
+  dummyHP: 4000,
+  dummyArmor: 0,
+  dummyMR: 0,
+  dummyShield: 0,
+  dummyDR: 0,
 };
 
 type SandboxProps = {
