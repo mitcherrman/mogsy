@@ -55,27 +55,6 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
-    timestamp: "2026-06-20T04:00:00Z",
-    title: "Cinematic hover reveal restored for LoL Hub champion cutouts",
-    type: "ui",
-    scopes: ["hub"],
-    summary:
-      "Restored the slow, cinematic hover reveal on the HexZipperCard champion popouts. At rest the cutout is fully transparent, scaled down to 0.94, slightly blurred and tucked BEHIND the card (translated away from page center). On hover it travels outward toward the central lane, lifts upward, scales to 1.03, unblurs and fades to full opacity over ~720ms with a cubic-bezier(0.22,1,0.36,1) ease so the champion appears to emerge from the Hextech card. The cyan/blue radial glow now intensifies in sync. Railway /api/assets/champions manifest, cutout-only behavior, shield fallback, zipper layout, card hover translation, border pulse and mobile behavior are unchanged.",
-    details: [
-      "Rest transform: translateX away from page center (tucked behind card) + scale(0.94) + blur(2px) + opacity 0.",
-      "Hover transform: translateX ~60% toward page center + translateY(-12px) lift + scale(1.03) + blur(0) + opacity 1.",
-      "Transition: 720ms cubic-bezier(0.22, 1, 0.36, 1) on transform/opacity, 600ms ease-out on filter.",
-      "Glow ring scaled to inset-[8%] and brighter (0.6 inner alpha) so it visibly intensifies with the reveal.",
-      "No splash/loading fallbacks introduced — manifest cutout URLs only; shield fallback preserved.",
-    ],
-    files: [
-      "src/components/lol/HexZipperCard.tsx",
-      "src/index.css",
-      "src/lib/lol-changelog.ts",
-    ],
-    routes: ["/lol"],
-  },
-  {
     timestamp: "2026-06-20T03:00:00Z",
     title: "LoL Hub champion popouts emerge from the inner card edge",
     type: "ui",

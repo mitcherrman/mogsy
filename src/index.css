@@ -678,5 +678,4 @@ html.high-contrast * { text-shadow: none !important; }
    so per-card offsets set inline (rest state) compose cleanly with the hover state. */
 .group:hover > .hex-popout {
   transform: var(--hex-popout-hover) translateY(-12px);
-  filter: blur(0);
 }
