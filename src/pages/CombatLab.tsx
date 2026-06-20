@@ -1842,9 +1842,9 @@ function InteractiveSandbox({
         toast({ title: "Pick a target profile first", variant: "destructive" });
         return;
       }
-    } else {
+    } else if (targetSetup.targetMode === "target_champion") {
       if (!targetSetup.targetChampionName) {
-        toast({ title: "Pick a target champion first", variant: "destructive" });
+        toast({ title: "Pick a defender champion first", variant: "destructive" });
         return;
       }
     }
@@ -1860,7 +1860,14 @@ function InteractiveSandbox({
         Object.keys(backendStats).length > 0
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
-      const target_stats = { ...DEFAULT_TARGET_STATS };
+      const target_stats: Record<string, number> =
+        targetSetup.targetMode === "target_dummy"
+          ? {
+              HP: targetSetup.dummyHP,
+              ARMOR: targetSetup.dummyArmor,
+              MR: targetSetup.dummyMR,
+            }
+          : { ...DEFAULT_TARGET_STATS };
       const targetEntityFields: Record<string, unknown> =
         targetSetup.targetMode === "target_champion"
           ? {
