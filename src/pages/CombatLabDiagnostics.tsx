@@ -300,6 +300,152 @@ type InteractiveTest = {
 
 const BASIC_ATTACK_PATH = "/api/combat-lab/basic-attack";
 const ACTIVE_PATH = "/api/combat-lab/active";
+const TARGET_DEFENSE_PREVIEW_PATH = "/api/combat-lab/target-defense-preview";
+
+/* ─────────────── Target System tests ─────────────── */
+
+type TargetTest = {
+  id: string;
+  label: string;
+  description: string;
+  path: string;
+  method: "GET" | "POST";
+  build?: () => Record<string, unknown>;
+  /** Returns null if pass, or an error message if fail. */
+  verify: (data: any) => string | null;
+};
+
+function findEvent(data: any, name: string): any | null {
+  const inner =
+    data && typeof data === "object" && data.result && typeof data.result === "object"
+      ? data.result
+      : data;
+  const events = Array.isArray(inner?.events) ? inner.events : [];
+  return (
+    events.find((e: any) => {
+      const label = e?.event || e?.name || e?.type;
+      return typeof label === "string" && label.toUpperCase() === name.toUpperCase();
+    }) || null
+  );
+}
+
+const TARGET_TESTS: TargetTest[] = [
+  {
+    id: "target-defense-meta",
+    label: "Target Defense Meta",
+    description: "GET /api/meta/target-defenses",
+    path: "/api/meta/target-defenses",
+    method: "GET",
+    verify: (data) => {
+      const list = normalizeTargetDefensesResponse(data);
+      return list.length > 0 ? null : "No target defenses returned";
+    },
+  },
+  {
+    id: "target-defense-preview-alistar-r",
+    label: "Target Defense Preview (Alistar R)",
+    description: "POST /api/combat-lab/target-defense-preview",
+    path: TARGET_DEFENSE_PREVIEW_PATH,
+    method: "POST",
+    build: () => ({
+      target_champion: "Alistar",
+      active_name: "target_defense_alistar_r",
+      rank: 1,
+      target_stats: DEFAULT_TARGET_STATS,
+      state: {},
+    }),
+    verify: (data) => {
+      const inner =
+        data && typeof data === "object" && data.result && typeof data.result === "object"
+          ? data.result
+          : data;
+      const meta = inner?.metadata ?? inner?.target_defense_metadata ?? data?.metadata;
+      if (!meta || typeof meta !== "object") return "No damage reduction metadata returned";
+      const has =
+        typeof meta.damage_reduction_percent === "number" ||
+        typeof meta.physical_damage_reduction_percent === "number" ||
+        typeof meta.magic_damage_reduction_percent === "number" ||
+        typeof meta.armor_bonus === "number" ||
+        typeof meta.mr_bonus === "number" ||
+        typeof meta.shield_amount === "number";
+      return has ? null : "Metadata missing damage reduction fields";
+    },
+  },
+  {
+    id: "alistar-r-runtime",
+    label: "Alistar R Runtime",
+    description: "POST /api/combat-lab/active · active=target_alistar_r",
+    path: ACTIVE_PATH,
+    method: "POST",
+    build: () => ({
+      champion_name: "Alistar",
+      attacker_stats: DEFAULT_ATTACKER_STATS,
+      target_stats: DEFAULT_TARGET_STATS,
+      state: {},
+      active_name: "target_alistar_r",
+      target_champion: "Alistar",
+      target_scope: "PRIMARY",
+      piercing_arrow_charge_bonus_percent: 0,
+    }),
+    verify: (data) =>
+      findEvent(data, "TARGET_ALISTAR_R_UNBREAKABLE_WILL")
+        ? null
+        : "TARGET_ALISTAR_R_UNBREAKABLE_WILL event missing",
+  },
+  {
+    id: "warwick-e-runtime",
+    label: "Warwick E Runtime",
+    description: "POST /api/combat-lab/active · active=target_warwick_e",
+    path: ACTIVE_PATH,
+    method: "POST",
+    build: () => ({
+      champion_name: "Warwick",
+      attacker_stats: DEFAULT_ATTACKER_STATS,
+      target_stats: DEFAULT_TARGET_STATS,
+      state: {},
+      active_name: "target_warwick_e",
+      target_champion: "Warwick",
+      target_scope: "PRIMARY",
+      piercing_arrow_charge_bonus_percent: 0,
+    }),
+    verify: (data) =>
+      findEvent(data, "TARGET_WARWICK_E_PRIMAL_HOWL")
+        ? null
+        : "TARGET_WARWICK_E_PRIMAL_HOWL event missing",
+  },
+  {
+    id: "target-champion-entity",
+    label: "Target Champion Entity (Trundle R → Ornn)",
+    description: "POST /api/combat-lab/active · target_champion=Ornn",
+    path: ACTIVE_PATH,
+    method: "POST",
+    build: () => ({
+      champion_name: "Trundle",
+      attacker_stats: DEFAULT_ATTACKER_STATS,
+      target_stats: DEFAULT_TARGET_STATS,
+      state: {},
+      active_name: "trundle_r",
+      target_champion: "Ornn",
+      target_scope: "PRIMARY",
+      piercing_arrow_charge_bonus_percent: 0,
+    }),
+    verify: (data) => {
+      const inner =
+        data && typeof data === "object" && data.result && typeof data.result === "object"
+          ? data.result
+          : data;
+      const ts =
+        inner?.target_stats ??
+        inner?.target_champion_entity?.stats ??
+        inner?.target?.stats;
+      if (!ts || typeof ts !== "object") return "target_stats not returned";
+      const keys = Object.keys(ts).map((k) => k.toUpperCase());
+      const need = ["HP", "ARMOR", "MR"];
+      const missing = need.filter((k) => !keys.includes(k));
+      return missing.length ? `target_stats missing: ${missing.join(", ")}` : null;
+    },
+  },
+];
 
 /**
  * Walks a state object and collects numeric leaf values whose key path looks
@@ -485,6 +631,17 @@ export default function CombatLabDiagnostics() {
 
   const [lastCall, setLastCall] = useState<LastCall | null>(null);
 
+  type TargetTestResult = {
+    ok: boolean;
+    error?: string;
+    result: FetchResult;
+  };
+  const [targetResults, setTargetResults] = useState<
+    Record<string, TargetTestResult | undefined>
+  >({});
+  const [targetLoading, setTargetLoading] = useState<string | null>(null);
+  const [targetRunAllLoading, setTargetRunAllLoading] = useState(false);
+
   const recordCall = (call: LastCall) => setLastCall(call);
 
   const runHealth = async () => {
@@ -637,6 +794,51 @@ export default function CombatLabDiagnostics() {
     }
   };
 
+  const runTargetTest = async (t: TargetTest) => {
+    setTargetLoading(t.id);
+    const init: RequestInit | undefined =
+      t.method === "POST"
+        ? { method: "POST", body: JSON.stringify(t.build?.() ?? {}) }
+        : undefined;
+    const res = await timedFetch(t.path, init);
+    let ok = res.ok;
+    let error = res.error;
+    if (ok) {
+      const verifyErr = t.verify(res.data);
+      if (verifyErr) {
+        ok = false;
+        error = verifyErr;
+      }
+    }
+    setTargetResults((s) => ({ ...s, [t.id]: { ok, error, result: res } }));
+    recordCall({
+      url: res.url,
+      method: t.method,
+      payload: t.build?.(),
+      response: res.data,
+      error,
+      status: res.status,
+      durationMs: res.durationMs,
+      at: new Date().toISOString(),
+    });
+    setTargetLoading(null);
+  };
+
+  const runAllTargetTests = async () => {
+    setTargetRunAllLoading(true);
+    try {
+      for (const t of TARGET_TESTS) {
+        await runTargetTest(t);
+      }
+      toast({
+        title: "Target system diagnostics complete",
+        description: `Ran ${TARGET_TESTS.length} target tests.`,
+      });
+    } finally {
+      setTargetRunAllLoading(false);
+    }
+  };
+
   // Auto-run health + meta once on mount
   useEffect(() => {
     runHealth();
@@ -710,6 +912,25 @@ export default function CombatLabDiagnostics() {
                     request: s.payload,
                     response: s.result.data,
                   })),
+                }
+              : null,
+          ];
+        })
+      ),
+      target_system: Object.fromEntries(
+        TARGET_TESTS.map((t) => {
+          const r = targetResults[t.id];
+          return [
+            t.id,
+            r
+              ? {
+                  ok: r.ok,
+                  error: r.error,
+                  status: r.result.status,
+                  duration_ms: Math.round(r.result.durationMs),
+                  url: r.result.url,
+                  request: t.build?.() ?? null,
+                  response: r.result.data,
                 }
               : null,
           ];
