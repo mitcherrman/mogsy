@@ -2729,7 +2729,7 @@ function Stat({ label, value }: { label: string; value?: number | string }) {
   );
 }
 
-function ActionButtonImpl({
+function ActionButton({
   label,
   hint,
   icon: Icon,
