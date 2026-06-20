@@ -1229,6 +1229,71 @@ export default function CombatLabDiagnostics() {
 
         {/* Last call */}
         <div className="lg:col-span-2">
+          <Panel
+            title="Target System Diagnostics"
+            icon={Shield}
+            right={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={runAllTargetTests}
+                disabled={targetRunAllLoading || !!targetLoading}
+              >
+                {targetRunAllLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-3.5 w-3.5" />
+                )}
+                Run All
+              </Button>
+            }
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              {TARGET_TESTS.map((t) => {
+                const r = targetResults[t.id];
+                const loading = targetLoading === t.id;
+                const state: "ok" | "fail" | "pending" | "idle" = loading
+                  ? "pending"
+                  : !r
+                  ? "idle"
+                  : r.ok
+                  ? "ok"
+                  : "fail";
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => runTargetTest(t)}
+                    disabled={loading}
+                    className="group flex flex-col gap-1 rounded-md border border-border/40 bg-background/40 p-3 text-left transition-all hover:border-primary/40 hover:bg-primary/5 disabled:opacity-60"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{t.label}</span>
+                      <StatusPill
+                        state={state}
+                        labels={{ ok: "PASS", fail: "FAIL", pending: "…" }}
+                      />
+                    </div>
+                    <span className="truncate font-mono text-[10px] text-muted-foreground">
+                      {t.description}
+                    </span>
+                    {r?.result.durationMs !== undefined && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {Math.round(r.result.durationMs)}ms
+                        {r.result.status ? ` · HTTP ${r.result.status}` : ""}
+                      </span>
+                    )}
+                    {r?.error && (
+                      <span className="text-[10px] text-rose-300">{r.error}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="lg:col-span-2">
           <Panel title="Last Request / Response" icon={Activity}>
             {!lastCall ? (
               <div className="text-sm text-muted-foreground">
