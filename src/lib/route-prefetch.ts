@@ -9,6 +9,12 @@ import { lazy } from "react";
 import type React from "react";
 import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+};
+
+type PriorityImage = HTMLImageElement & { fetchPriority?: "high" | "low" | "auto" };
+
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   factory: () => Promise<{ default: T }>,
 ) {
@@ -122,7 +128,7 @@ export function prefetchRoute(path: string) {
       Routes[k].prefetch().catch(() => {});
     }
   };
-  const ric = window.requestIdleCallback;
+  const ric = (window as IdleWindow).requestIdleCallback;
   if (ric) ric(run, { timeout: 1500 });
   else setTimeout(run, 200);
 }
@@ -138,13 +144,13 @@ export function prefetchImages(urls: (string | null | undefined)[]) {
   const run = () => {
     for (const url of urls) {
       if (!url) continue;
-      const img = new Image();
+      const img = new Image() as PriorityImage;
       img.decoding = "async";
-      (img as any).fetchPriority = "low";
+      img.fetchPriority = "low";
       img.src = url;
     }
   };
-  const ric = window.requestIdleCallback;
+  const ric = (window as IdleWindow).requestIdleCallback;
   if (ric) ric(run, { timeout: 2000 });
   else setTimeout(run, 300);
 }
