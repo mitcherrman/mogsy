@@ -1163,9 +1163,9 @@ export default function Quiz() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="text-center"
+            className="space-y-4"
           >
-            <Card className="bg-card/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm text-center">
               <CardHeader>
                 <CardTitle className="text-xl md:text-2xl font-bold">Quiz Complete</CardTitle>
                 <CardDescription className="text-sm">
@@ -1208,6 +1208,8 @@ export default function Quiz() {
                 </div>
               </CardContent>
             </Card>
+            <SessionBreakdown answers={sessionAnswers} />
+            <SessionReviewList answers={sessionAnswers} />
           </motion.div>
         )}
       </div>
