@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T03:00:00Z",
+    title: "LoL Hub champion popouts emerge from the inner card edge",
+    type: "ui",
+    scopes: ["hub"],
+    summary:
+      "Repositioned the HexZipperCard champion cutouts so they emerge from the INNER side of each zipper card (toward page center) instead of the far page edges. Right-aligned cards now anchor the popout to their left edge and slide it further left on hover; left-aligned cards mirror that toward the right. Cutouts are taller (h-[460px] normal, h-[580px] flagship) and 55–75% of the champion is visible on hover so the effect reads clearly into the central zig-zag lane. Cyan radial glow, drop-shadow, pointer-events-none, opacity 0→1 hover fade, and the upward lift are preserved. Railway /api/assets/champions manifest, useChampionAssets, cutout-only behavior, shield fallback, zipper stagger, hover translation, border pulse, and mobile fallback are unchanged.",
+    details: [
+      "HexZipperCard: popout anchor flipped to inner edge (left-0 for right cards, right-0 for left cards); translateX now moves toward page center.",
+      "Rest translate ~10% (plus per-card cutoutOffsetPct), hover translate ~55% so 55–75% of the cutout is visible past the card edge.",
+      "Champion is mirrored when sitting on the right side of a left-aligned card so it faces toward the card body.",
+      "Heights bumped: normal h-[460px], flagship h-[580px] (was 400/520). object-contain preserved — no PNG cropping.",
+      "Card body stays at z-20 above the cutout (z-0). Cyan/blue radial glow behind champion retained.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T02:00:00Z",
     title: "LoL Hub champion popouts restored to hover-only",
     type: "fix",
