@@ -9,21 +9,21 @@ import { lazy } from "react";
 import type React from "react";
 import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 
-function lazyWithRetry<T extends React.ComponentType<any>>(
+function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   factory: () => Promise<{ default: T }>,
 ) {
   const wrapped = async () => {
     try {
       const mod = await factory();
       if (typeof window !== "undefined") {
-        try { sessionStorage.removeItem("__lov_chunk_reloaded__"); } catch {}
+        try { sessionStorage.removeItem("__lov_chunk_reloaded__"); } catch { /* ignore unavailable sessionStorage */ }
       }
       return mod;
-    } catch (err: any) {
+    } catch (err) {
       // A redeploy can leave an open tab pointing at old hashed route chunks.
       // Recover before React commits an error boundary / blank route shell.
       if (recoverFromChunkLoadError(err, "lazy-route")) {
-        return new Promise(() => {}) as any;
+        return new Promise<{ default: T }>(() => undefined);
       }
       throw err;
     }
@@ -122,7 +122,7 @@ export function prefetchRoute(path: string) {
       Routes[k].prefetch().catch(() => {});
     }
   };
-  const ric: any = (window as any).requestIdleCallback;
+  const ric = window.requestIdleCallback;
   if (ric) ric(run, { timeout: 1500 });
   else setTimeout(run, 200);
 }
@@ -144,7 +144,7 @@ export function prefetchImages(urls: (string | null | undefined)[]) {
       img.src = url;
     }
   };
-  const ric: any = (window as any).requestIdleCallback;
+  const ric = window.requestIdleCallback;
   if (ric) ric(run, { timeout: 2000 });
   else setTimeout(run, 300);
 }
