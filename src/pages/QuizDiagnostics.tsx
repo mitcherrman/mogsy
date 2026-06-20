@@ -1030,6 +1030,9 @@ export default function QuizDiagnostics() {
             </div>
           </Panel>
         </div>
+        <div className="lg:col-span-2">
+          <RecognizedCategoriesPanel />
+        </div>
       </div>
     </div>
   );
