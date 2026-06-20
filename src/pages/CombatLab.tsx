@@ -2156,6 +2156,14 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        <TargetSetupPanel
+          setup={targetSetup}
+          update={updateTargetSetup}
+          champions={champions}
+          items={items}
+          runes={runes}
+          metaLoading={metaLoading}
+        />
         </div>
 
         <div className="lg:col-span-2">
