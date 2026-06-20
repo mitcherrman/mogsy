@@ -2553,15 +2553,19 @@ function InteractiveSandbox({
   );
 }
 
-/* ─────────────── Target Setup (Phase 2 UI) ─────────────── */
+/* ─────────────── Defender Panel (Versus UI) ─────────────── */
 
-function TargetSetupPanel({
+function DefenderPanel({
   setup,
   update,
   champions,
   items,
   runes,
   metaLoading,
+  defenses,
+  onApplyDefense,
+  applyBusy,
+  offline,
 }: {
   setup: TargetSetupState;
   update: <K extends keyof TargetSetupState>(key: K, value: TargetSetupState[K]) => void;
@@ -2569,36 +2573,53 @@ function TargetSetupPanel({
   items: Item[];
   runes: Rune[];
   metaLoading: boolean;
+  defenses: TargetDefense[];
+  onApplyDefense: (defenseName: string) => void;
+  applyBusy: string | null;
+  offline: boolean;
 }) {
+  const modes: { id: TargetMode; label: string }[] = [
+    { id: "target_champion", label: "Champion Defender" },
+    { id: "target_dummy", label: "Custom Target Dummy" },
+  ];
+  const matchingDefenses =
+    setup.targetMode === "target_champion" && setup.targetChampionName
+      ? defenses.filter(
+          (d) =>
+            !d.champion ||
+            d.champion.toLowerCase() === setup.targetChampionName.toLowerCase()
+        )
+      : [];
   return (
-    <SectionCard title="Target Setup" icon={TargetIcon}>
+    <SectionCard title="Defender Champion" icon={TargetIcon}>
       <div className="space-y-3">
         <div>
           <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-            Target mode
+            Defender mode
           </Label>
           <div className="flex flex-wrap gap-1.5">
-            {(["target_profile", "target_champion"] as const).map((m) => (
+            {modes.map((m) => (
               <button
-                key={m}
+                key={m.id}
                 type="button"
-                onClick={() => update("targetMode", m)}
+                onClick={() => update("targetMode", m.id)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  setup.targetMode === m
+                  setup.targetMode === m.id
                     ? "border-primary/60 bg-primary/15 text-primary"
                     : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 }`}
               >
-                {m === "target_profile" ? "Target Profile" : "Target Champion"}
+                {m.label}
               </button>
             ))}
           </div>
         </div>
+
         {setup.targetMode === "target_champion" && (
           <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
             <SearchSelect
-              label="Target champion"
-              placeholder="Select target champion…"
+              label="Defender champion"
+              placeholder="Select defender champion…"
               value={setup.targetChampionName}
               options={champions}
               onChange={(v) => update("targetChampionName", v)}
@@ -2607,7 +2628,7 @@ function TargetSetupPanel({
             />
             <div>
               <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-                Target level
+                Defender level
               </Label>
               <Input
                 type="number"
@@ -2623,7 +2644,7 @@ function TargetSetupPanel({
               />
             </div>
             <MultiSelect
-              label="Target items"
+              label="Defender items"
               placeholder="Select items…"
               values={setup.targetItemNames}
               options={items}
@@ -2633,7 +2654,7 @@ function TargetSetupPanel({
               withIcons
             />
             <MultiSelect
-              label="Target runes"
+              label="Defender runes"
               placeholder="Select runes…"
               values={setup.targetRuneNames}
               options={runes}
@@ -2642,9 +2663,103 @@ function TargetSetupPanel({
               loading={metaLoading}
               withIcons
             />
+            {matchingDefenses.length > 0 && (
+              <div className="space-y-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                  Available defenses
+                </div>
+                <div className="space-y-1.5">
+                  {matchingDefenses.map((d) => (
+                    <div
+                      key={d.name}
+                      className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-medium text-foreground">{d.name}</div>
+                        {d.category && (
+                          <div className="text-[10px] text-muted-foreground">{d.category}</div>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 shrink-0 text-[11px]"
+                        disabled={!!applyBusy || offline}
+                        onClick={() => onApplyDefense(d.name)}
+                      >
+                        {applyBusy === d.name ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3 w-3" />
+                        )}
+                        Apply
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Calls /api/combat-lab/active with the defense — state persists into combat.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {setup.targetMode === "target_dummy" && (
+          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">HP</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={setup.dummyHP}
+                  onChange={(e) => update("dummyHP", Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Armor</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyArmor}
+                  onChange={(e) => update("dummyArmor", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">MR</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyMR}
+                  onChange={(e) => update("dummyMR", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Shield</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={setup.dummyShield}
+                  onChange={(e) => update("dummyShield", Math.max(0, Number(e.target.value) || 0))}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">DR %</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={setup.dummyDR}
+                  onChange={(e) =>
+                    update("dummyDR", Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                  }
+                />
+              </div>
+            </div>
             <div className="text-[10px] text-muted-foreground">
-              Sent as target_champion_name / target_level / target_item_names / target_rune_names.
-              target_stats remains as a safe fallback for older backend paths.
+              Sent as target_stats {`{ HP, ARMOR, MR }`}. Shield / DR are advisory; switch to a
+              Champion Defender to apply real defenses into combat state.
             </div>
           </div>
         )}
