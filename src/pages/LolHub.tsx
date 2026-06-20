@@ -6,6 +6,7 @@ import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import lolIcon from "@/assets/lol-icon.png";
 import HexZipperCard, { type HexZipperSide } from "@/components/lol/HexZipperCard";
+import { useChampionAssets, getChampionCutout } from "@/hooks/useChampionAssets";
 
 const LOL_TAG = "League of Legends";
 
@@ -27,7 +28,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     description: "Simulate matchups, theorycraft builds, and run damage tests.",
     Icon: Swords,
     side: "right",
-    championName: "Jinx",
+    championName: "Akali",
     flagship: true,
   },
   {
@@ -44,7 +45,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     description: "Meta rankings for Top, Jungle, Mid, ADC and Support this patch.",
     Icon: Trophy,
     side: "right",
-    championName: "Azir",
+    championName: "Jinx",
   },
   {
     to: "/swipe",
@@ -66,6 +67,7 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
 
 export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
+  const { data: championAssets } = useChampionAssets();
 
   return (
     <div>
@@ -117,7 +119,7 @@ export default function LolHub() {
                   description={f.description}
                   Icon={f.Icon}
                   side={f.side}
-                  championName={f.championName}
+                  cutoutUrl={getChampionCutout(championAssets, f.championName)}
                   flagship={f.flagship}
                 />
               </div>

@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield } from "lucide-react";
 import { useState } from "react";
-import { useChampionImage } from "@/hooks/useChampionImage";
 
 export type HexZipperSide = "left" | "right";
 
@@ -11,8 +10,11 @@ type Props = {
   description: string;
   Icon: React.ElementType;
   side: HexZipperSide;
-  /** Champion name used to look up the portrait via existing asset system. */
-  championName?: string;
+  /**
+   * Resolved cutout URL from the backend champion asset manifest.
+   * When omitted/null, the card falls back to a Hextech shield silhouette.
+   */
+  cutoutUrl?: string | null;
   /** Larger flagship treatment (used for Combat Lab). */
   flagship?: boolean;
 };
@@ -27,12 +29,11 @@ export default function HexZipperCard({
   description,
   Icon,
   side,
-  championName,
+  cutoutUrl,
   flagship = false,
 }: Props) {
-  const championImageUrl = useChampionImage(championName);
   const [imgFailed, setImgFailed] = useState(false);
-  const hasImage = !!championImageUrl && !imgFailed;
+  const hasImage = !!cutoutUrl && !imgFailed;
 
   // Octagonal/hex-ish clip — angled top-left & bottom-right corners.
   const clipPath =
@@ -53,33 +54,35 @@ export default function HexZipperCard({
     >
       {/* Champion popout — always rendered, sits BEHIND the card and slides out on hover */}
       <div
-        className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${championHeight} aspect-square z-0 transition-all duration-500 ease-out opacity-0 group-hover:opacity-100 ${
+        className={`pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 translate-y-2 group-hover:opacity-100 group-hover:-translate-y-3 ${
           isRight
-            ? "right-0 translate-x-2 group-hover:translate-x-[45%]"
-            : "left-0 -translate-x-2 group-hover:-translate-x-[45%]"
+            ? "right-0 group-hover:translate-x-[42%]"
+            : "left-0 group-hover:-translate-x-[42%]"
         }`}
       >
+        {/* Subtle glow behind the cutout */}
+        <div
+          className="absolute inset-[10%] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(10,200,255,0.45) 0%, rgba(10,200,255,0.12) 45%, transparent 75%)",
+            filter: "blur(18px)",
+          }}
+          aria-hidden
+        />
         {hasImage ? (
           <img
-            src={championImageUrl}
+            src={cutoutUrl ?? undefined}
             alt=""
             aria-hidden
             onError={() => setImgFailed(true)}
-            className={`h-full w-full object-contain drop-shadow-[0_15px_40px_rgba(10,200,255,0.45)] ${
+            className={`relative h-full w-full object-contain object-bottom drop-shadow-[0_15px_40px_rgba(10,200,255,0.45)] ${
               isRight ? "" : "scale-x-[-1]"
             }`}
           />
         ) : (
           // Fallback silhouette so the popout always shows, per spec.
           <div className="relative h-full w-full flex items-center justify-center">
-            <div
-              className="absolute inset-[15%] rounded-full"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(10,200,255,0.35) 0%, rgba(10,200,255,0.05) 55%, transparent 75%)",
-                filter: "blur(8px)",
-              }}
-            />
             <Shield
               className="relative h-1/2 w-1/2 text-[#0ac8ff]/70"
               strokeWidth={1.25}
