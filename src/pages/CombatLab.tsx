@@ -1638,6 +1638,53 @@ function InteractiveSandbox({
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
   const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
+  const [targetSetup, setTargetSetup] = useState<TargetSetupState>(() => {
+    if (typeof window === "undefined") return DEFAULT_TARGET_SETUP;
+    try {
+      const raw = localStorage.getItem(TARGET_SETUP_STORAGE_KEY);
+      if (raw) return { ...DEFAULT_TARGET_SETUP, ...JSON.parse(raw) };
+    } catch {}
+    return DEFAULT_TARGET_SETUP;
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(TARGET_SETUP_STORAGE_KEY, JSON.stringify(targetSetup));
+    } catch {}
+  }, [targetSetup]);
+  const updateTargetSetup = <K extends keyof TargetSetupState>(
+    key: K,
+    value: TargetSetupState[K]
+  ) => setTargetSetup((s) => ({ ...s, [key]: value }));
+  const [targetRuntime, setTargetRuntime] = useState<{
+    target_stats?: Record<string, number>;
+    target_debug?: Record<string, unknown>;
+  } | null>(null);
+  const [targetDefenses, setTargetDefenses] = useState<TargetDefense[]>([]);
+  const [defensePreview, setDefensePreview] =
+    useState<TargetDefensePreviewResponse | null>(null);
+  const [defensePreviewBefore, setDefensePreviewBefore] = useState<{
+    ARMOR?: number;
+    MR?: number;
+  } | null>(null);
+  const [selectedDefense, setSelectedDefense] = useState<string>("");
+  const [defenseRank, setDefenseRank] = useState<number>(1);
+  const [defenseBusy, setDefenseBusy] = useState(false);
+
+  // Load target defenses metadata (dev preview list)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await combatApi.targetDefenses();
+        if (!cancelled) setTargetDefenses(list);
+      } catch {
+        if (!cancelled) setTargetDefenses([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [summonerPicks, setSummonerPicks] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
