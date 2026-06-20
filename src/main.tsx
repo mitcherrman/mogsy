@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { installChunkLoadRecovery } from "@/lib/chunk-recovery";
+
+installChunkLoadRecovery();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

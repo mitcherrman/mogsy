@@ -7,34 +7,29 @@
  */
 import { lazy } from "react";
 import type React from "react";
+import { recoverFromChunkLoadError } from "@/lib/chunk-recovery";
 
-function lazyWithRetry<T extends React.ComponentType<any>>(
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+};
+
+type PriorityImage = HTMLImageElement & { fetchPriority?: "high" | "low" | "auto" };
+
+function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   factory: () => Promise<{ default: T }>,
 ) {
   const wrapped = async () => {
     try {
       const mod = await factory();
       if (typeof window !== "undefined") {
-        try { sessionStorage.removeItem("__lov_chunk_reloaded__"); } catch {}
+        try { sessionStorage.removeItem("__lov_chunk_reloaded__"); } catch { /* ignore unavailable sessionStorage */ }
       }
       return mod;
-    } catch (err: any) {
-      const msg = String(err?.message || err);
-      const isChunkError =
-        /dynamically imported module|Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|error loading dynamically imported module/i.test(
-          msg,
-        );
-      if (isChunkError && typeof window !== "undefined") {
-        const key = "__lov_chunk_reloaded_at__";
-        const last = Number(sessionStorage.getItem(key) || "0");
-        const now = Date.now();
-        // Allow a reload at most once every 30s to break stale-chunk loops
-        // after a redeploy without trapping the user if reload doesn't help.
-        if (now - last > 30_000) {
-          sessionStorage.setItem(key, String(now));
-          window.location.reload();
-          return new Promise(() => {}) as any;
-        }
+    } catch (err) {
+      // A redeploy can leave an open tab pointing at old hashed route chunks.
+      // Recover before React commits an error boundary / blank route shell.
+      if (recoverFromChunkLoadError(err, "lazy-route")) {
+        return new Promise<{ default: T }>(() => undefined);
       }
       throw err;
     }
@@ -133,7 +128,7 @@ export function prefetchRoute(path: string) {
       Routes[k].prefetch().catch(() => {});
     }
   };
-  const ric: any = (window as any).requestIdleCallback;
+  const ric = (window as IdleWindow).requestIdleCallback;
   if (ric) ric(run, { timeout: 1500 });
   else setTimeout(run, 200);
 }
@@ -149,13 +144,13 @@ export function prefetchImages(urls: (string | null | undefined)[]) {
   const run = () => {
     for (const url of urls) {
       if (!url) continue;
-      const img = new Image();
+      const img = new Image() as PriorityImage;
       img.decoding = "async";
-      (img as any).fetchPriority = "low";
+      img.fetchPriority = "low";
       img.src = url;
     }
   };
-  const ric: any = (window as any).requestIdleCallback;
+  const ric = (window as IdleWindow).requestIdleCallback;
   if (ric) ric(run, { timeout: 2000 });
   else setTimeout(run, 300);
 }
