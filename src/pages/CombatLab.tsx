@@ -2469,8 +2469,6 @@ function InteractiveSandbox({
 
         <TargetsPanel scopes={scopes} state={state} totalDamage={totalSessionDamage} />
 
-        <TargetRuntimeSummary runtime={targetRuntime} />
-
         {devMode && (
           <TargetDefensePreviewPanel
             defenses={targetDefenses}
