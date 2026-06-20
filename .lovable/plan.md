@@ -1,47 +1,34 @@
-## Goal
+## Add third popout style: "portrait"
 
-Add an admin-only floating toggle on `/lol` that switches the champion popout between two visual styles, with the choice stored globally in `app_settings` so every visitor sees the selected style. **Default is `splash`** when the row is missing or the value is invalid.
+Adds a new option alongside `splash` (inside-card background) and `cutout` (transparent hover slide). The `portrait` style renders the champion's full rectangular loading-art portrait sticking out past the **outer** edge of each zipper card — matching the original screenshot where Akali's portrait juts out to the right of the Combat Lab card.
 
-## Two styles
+### Type + storage
+- Extend `HexPopoutStyle` in `HexZipperCard.tsx` to `"cutout" | "splash" | "portrait"`.
+- `app_settings` row `lol_hub_popout_style` now accepts `"portrait"` as a valid value; default remains `"splash"`. Invalid values still fall back to `"splash"`.
 
-- **`splash` (default, original):** Rectangular splash art rendered behind the card body, clipped to the hex shape. Uses `champions[name].splash` (falls back to `loading`) from the Railway `/api/assets/champions` manifest. `object-cover`, `opacity-30 group-hover:opacity-60`, subtle `scale-105 → scale-110` on hover. Stays inside the card silhouette — no outward slide. Shield fallback if no URL.
-- **`cutout` (current):** Transparent champion PNG sliding from the inner edge toward page center on hover. This is the existing `HexZipperCard` behaviour, unchanged.
+### HexZipperCard
+- Add a third render branch (`popoutStyle === "portrait"`) outside the inner card body, behind the border layer (`z-0`), anchored to the **outer** edge (right card → `right-0`, left card → `left-0`) — opposite of the `cutout` branch which anchors inner.
+- Rectangular frame: `aspect-[3/4]`, height `~h-[360px]` (flagship `h-[440px]`), `object-cover` with `object-position` biased to face inward. Translated outward by ~50% so roughly half the portrait sits beyond the card edge.
+- Always visible (not hover-gated), with a subtle hover lift (`group-hover:scale-[1.02]` + brightness bump) and a soft cyan radial glow behind it. No outward slide on hover (it's already out).
+- Clipped with a soft mask-image fade on the card-facing edge so it blends into the hex border instead of a hard rectangle seam.
+- Uses the same `cutoutUrl` prop the card already accepts — `LolHub` will pass the splash/loading URL for this style.
+- Shield fallback preserved when `cutoutUrl` is null.
 
-## Where the setting lives
+### useChampionAssets
+- No changes. `getChampionSplash` already returns splash with loading fallback — reused for `portrait`.
 
-- Row in `app_settings`: `key = 'lol_hub_popout_style'`, `value = { style: 'cutout' | 'splash' }`.
-- Read on `LolHub` via a small dedicated query against `app_settings`.
-- **Default resolution:** if no row exists, value is null, or `style` is not one of `'cutout' | 'splash'`, treat it as `'splash'`.
-- Public read, admin-only write (matches existing `app_settings` RLS).
+### LolHub
+- When `popoutStyle === "portrait"`, pass `getChampionSplash(...)` as `cutoutUrl` (same as `splash` branch).
+- No layout/zipper changes; portrait sits in the existing card's overflow.
 
-## UI
+### LolPopoutStyleToggle
+- Expand the segmented control from 2 to 3 buttons: `Splash`, `Cutout`, `Portrait`.
+- Same optimistic update + `toast.error` revert on `app_settings` write failure.
+- Admin-only gating (`has_role`) unchanged.
 
-- New component `LolPopoutStyleToggle` rendered on `LolHub` only when the current user has the `admin` role (reuse existing admin check pattern from `AdminRoute` / `useAuth` + `user_roles`).
-- Small floating segmented pill bottom-right of the hub hero: "Splash" / "Cutout".
-- Click flow:
-  1. Optimistically update local state and pass new style to cards.
-  2. Upsert `app_settings` row.
-  3. **On failure:** revert local state to the previous value and show `toast.error("Couldn't save popout style")` via `sonner`.
-- Non-admins never see the toggle.
+### Changelog
+- Append entry to `src/lib/lol-changelog.ts` describing the new third option.
 
-## Component changes
-
-- `HexZipperCard` gains a `popoutStyle: 'cutout' | 'splash'` prop.
-  - `cutout` branch = current code unchanged.
-  - `splash` branch = absolutely-positioned `<img>` inside the card body's clipped container, `object-cover`, low opacity, subtle hover zoom, z-0 behind icon/text but inside the hex clip. Shield fallback if no splash URL.
-- `useChampionAssets` gets a `getChampionSplash(assets, name)` helper alongside `getChampionCutout`, returning `splash ?? loading ?? null`.
-- `LolHub` reads the setting, defaults to `splash`, renders the toggle for admins only, and passes `popoutStyle` + the appropriate URL into each `HexZipperCard`.
-
-## Scope guardrails
-
-- No changes to the Railway edge function, zipper layout, card sizes, border pulse, or mobile fallback.
-- No new tables and no migration — uses existing `app_settings` row, inserted on first admin save via upsert.
-- Changelog entry appended to `src/lib/lol-changelog.ts`.
-
-## Files touched
-
-- `src/components/lol/HexZipperCard.tsx` — add `popoutStyle` prop + splash branch.
-- `src/hooks/useChampionAssets.ts` — add `getChampionSplash` helper.
-- `src/components/lol/LolPopoutStyleToggle.tsx` *(new)* — admin-only segmented toggle with optimistic update, error toast, and revert on failure.
-- `src/pages/LolHub.tsx` — fetch setting (default `splash`), render toggle for admins, pass `popoutStyle` and resolved URL to each card.
-- `src/lib/lol-changelog.ts` — new entry.
+### Files
+- Modified: `src/components/lol/HexZipperCard.tsx`, `src/components/lol/LolPopoutStyleToggle.tsx`, `src/pages/LolHub.tsx`, `src/lib/lol-changelog.ts`
+- No DB migration, no edge function changes, no new dependencies.
