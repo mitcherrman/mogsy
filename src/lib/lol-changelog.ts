@@ -55,6 +55,23 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-20T02:00:00Z",
+    title: "LoL Hub champion popouts restored to hover-only",
+    type: "fix",
+    scopes: ["hub"],
+    summary:
+      "Fixed the HexZipperCard champion cutouts so they are hidden at rest and only appear on hover. Rest opacity is now 0 (was 0.7) so the character stays tucked behind the card edge until the user hovers, at which point it slides outward to ~50-70% visible, lifts slightly, and fades to full opacity. All other behavior is preserved: Railway cutout manifest, per-champion offsets, object-contain, z-index layering, shield fallback, zipper layout, card sizes, hover translation, and animated Hextech border pulse.",
+    details: [
+      "HexZipperCard popout rest opacity changed from opacity-70 to opacity-0; group-hover:opacity-100 unchanged.",
+      "Rest and hover transforms (18% / 32% outward plus per-card cutoutOffsetPct) and translateY(-12px) lift on hover remain the same.",
+    ],
+    files: [
+      "src/components/lol/HexZipperCard.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol"],
+  },
+  {
     timestamp: "2026-06-20T01:00:00Z",
     title: "LoL Hub champion cutout positioning polish",
     type: "ui",

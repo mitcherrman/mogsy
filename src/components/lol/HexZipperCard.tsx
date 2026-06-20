@@ -68,7 +68,7 @@ export default function HexZipperCard({
     >
       {/* Champion popout — always rendered, sits BEHIND the card and slides out on hover */}
       <div
-        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-70 group-hover:opacity-100 ${
+        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 ${
           isRight ? "right-0" : "left-0"
         }`}
         style={
