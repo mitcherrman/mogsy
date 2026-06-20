@@ -3,7 +3,7 @@ import { ArrowRight, Shield } from "lucide-react";
 import { useState } from "react";
 
 export type HexZipperSide = "left" | "right";
-export type HexPopoutStyle = "cutout" | "splash";
+export type HexPopoutStyle = "cutout" | "splash" | "portrait";
 
 type Props = {
   to: string;
