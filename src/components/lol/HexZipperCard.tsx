@@ -51,14 +51,20 @@ export default function HexZipperCard({
   const titleCls = flagship ? "text-3xl md:text-4xl" : "text-xl md:text-2xl";
   const iconSize = flagship ? "h-14 w-14" : "h-10 w-10";
   const iconBox = flagship ? "p-5" : "p-3.5";
-  const championHeight = flagship ? "h-[520px]" : "h-[400px]";
+  const championHeight = flagship ? "h-[580px]" : "h-[460px]";
 
-  // Rest vs hover horizontal translation (percent of the popout's own width).
-  // Positive numbers move the cutout OUTWARD from the card edge.
-  const restOutPct = 18 + cutoutOffsetPct; // ~35-50% of cutout visible (rest of it overlaps the card)
-  const hoverOutPct = 32 + cutoutOffsetPct; // ~50-70% visible on hover
-  const restTx = isRight ? `translateX(${restOutPct}%)` : `translateX(${-restOutPct}%)`;
-  const hoverTx = isRight ? `translateX(${hoverOutPct}%)` : `translateX(${-hoverOutPct}%)`;
+  // Champion pops out on the INNER side of the card (toward page center).
+  // Right-aligned card -> popout anchored on its LEFT edge, sliding further left (toward center).
+  // Left-aligned card  -> popout anchored on its RIGHT edge, sliding further right (toward center).
+  const popoutSideCls = isRight ? "left-0" : "right-0";
+  // Direction the cutout travels on hover (toward page center).
+  const centerSign = isRight ? -1 : 1;
+  // Rest: champion mostly tucked behind the card edge.
+  // Hover: 55–75% of the champion visible past the card edge.
+  const restOutPct = 10 + cutoutOffsetPct;
+  const hoverOutPct = 55 + cutoutOffsetPct;
+  const restTx = `translateX(${centerSign * restOutPct}%)`;
+  const hoverTx = `translateX(${centerSign * hoverOutPct}%)`;
 
   return (
     <div
@@ -66,11 +72,9 @@ export default function HexZipperCard({
         isRight ? "hover:translate-x-6" : "hover:-translate-x-6"
       } hover:scale-[1.02]`}
     >
-      {/* Champion popout — always rendered, sits BEHIND the card and slides out on hover */}
+      {/* Champion popout — sits BEHIND the card on its INNER side, slides toward page center on hover */}
       <div
-        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 ${
-          isRight ? "right-0" : "left-0"
-        }`}
+        className={`hex-popout pointer-events-none absolute bottom-0 ${championHeight} aspect-square z-0 transition-all duration-700 ease-out opacity-0 group-hover:opacity-100 ${popoutSideCls}`}
         style={
           {
             transform: restTx,
@@ -95,7 +99,7 @@ export default function HexZipperCard({
             aria-hidden
             onError={() => setImgFailed(true)}
             className={`relative h-full w-full object-contain object-bottom drop-shadow-[0_15px_40px_rgba(10,200,255,0.45)] ${
-              isRight ? "" : "scale-x-[-1]"
+              isRight ? "scale-x-[-1]" : ""
             }`}
           />
         ) : (
