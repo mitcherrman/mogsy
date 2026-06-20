@@ -1,5 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+
+const API_BASE_URL = (
+  (import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
+  "https://web-production-83e53.up.railway.app"
+).replace(/\/+$/, "");
 
 export type ChampionAsset = {
   icon: string;
@@ -9,13 +13,16 @@ export type ChampionAsset = {
 };
 
 export type ChampionManifest = {
-  version: string;
+  ok?: boolean;
+  count?: number;
   champions: Record<string, ChampionAsset>;
 };
 
 /**
- * Fetch the backend-managed champion asset manifest.
- * URLs are owned by the edge function — never hardcode them in components.
+ * Fetch the backend-managed champion asset manifest from the Combat/Railway API
+ * at GET {VITE_COMBAT_API_URL}/api/assets/champions. The manifest paths are
+ * relative (e.g. "assets/champions/Akali/cutouts/Akali_Cutout.png"); resolve
+ * with `resolveAssetUrl` before using in <img src>.
  */
 export function useChampionAssets() {
   return useQuery<ChampionManifest | null>({
@@ -23,20 +30,32 @@ export function useChampionAssets() {
     staleTime: 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("assets-champions", {
-        method: "GET",
-      });
-      if (error || !data) return null;
-      return data as ChampionManifest;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/assets/champions`, {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as ChampionManifest;
+        return data ?? null;
+      } catch {
+        return null;
+      }
     },
   });
 }
 
-/** Look up a champion's cutout URL from the manifest. */
+/** Resolve a possibly-relative manifest path against the Combat API base. */
+export function resolveAssetUrl(path?: string | null): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}/${path.replace(/^\/+/, "")}`;
+}
+
+/** Look up a champion's transparent cutout PNG URL from the manifest. */
 export function getChampionCutout(
   manifest: ChampionManifest | null | undefined,
   championName?: string,
 ): string | null {
   if (!manifest || !championName) return null;
-  return manifest.champions?.[championName]?.cutout ?? null;
+  return resolveAssetUrl(manifest.champions?.[championName]?.cutout);
 }
