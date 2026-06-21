@@ -610,30 +610,12 @@ export default function Quiz() {
                 className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
                 {sets.map((set) => (
-                  <motion.button
+                  <QuizModeCard
                     key={set.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSelectSet(set)}
-                    className="text-left"
-                  >
-                    <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer bg-card/80 backdrop-blur-sm">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <CardTitle className="text-base font-bold">{set.name}</CardTitle>
-                          <Badge variant="secondary" className="text-[10px]">{set.question_count} Qs</Badge>
-                        </div>
-                        <CardDescription className="text-xs leading-relaxed">
-                          {set.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex items-center text-xs text-primary font-semibold gap-1">
-                          Start quiz <ArrowRight className="h-3 w-3" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.button>
+                    set={set}
+                    categoryStats={categoryStats}
+                    onSelect={() => handleSelectSet(set)}
+                  />
                 ))}
               </motion.div>
             )}
