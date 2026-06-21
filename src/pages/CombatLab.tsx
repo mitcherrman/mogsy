@@ -2495,6 +2495,12 @@ function InteractiveSandbox({
                   ? "Legacy target profile active"
                   : "Select a defender champion"
             }
+            skinKey={
+              targetSetup.targetMode === "target_champion" ? defenderSkin : undefined
+            }
+            onSkinChange={
+              targetSetup.targetMode === "target_champion" ? setDefenderSkin : undefined
+            }
           />
         </div>
       </div>
