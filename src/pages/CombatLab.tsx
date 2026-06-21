@@ -2233,6 +2233,19 @@ function InteractiveSandbox({
             </div>
           </div>
         </SectionCard>
+        <ActiveEffectsPanel
+          title="Active Attacker Effects"
+          tone="primary"
+          effects={pickActiveEffects(
+            {
+              ...(attackerStats || {}),
+              ...(((state as any)?.states && typeof (state as any).states === "object"
+                ? ((state as any).states as Record<string, unknown>)
+                : {})),
+            },
+            ATTACKER_EFFECT_PATTERNS
+          )}
+        />
         </div>
 
         {/* CENTER COMBAT COLUMN */}
