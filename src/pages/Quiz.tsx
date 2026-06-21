@@ -1317,6 +1317,100 @@ export default function Quiz() {
 
 /* ───────────────────── Session breakdown helpers ───────────────────── */
 
+function QuizModeCard({
+  set,
+  categoryStats,
+  onSelect,
+}: {
+  set: QuizSet;
+  categoryStats: QuizCategoryStat[];
+  onSelect: () => void;
+}) {
+  const style = getCategoryStyle(set.name);
+  const Icon = style.icon;
+  const qCount = set.question_count || 0;
+  // Difficulty bucket from question count.
+  const difficulty =
+    qCount >= 200 ? { label: "Expert", stars: 4 } :
+    qCount >= 100 ? { label: "Hard", stars: 3 } :
+    qCount >= 40 ? { label: "Medium", stars: 2 } :
+    { label: "Easy", stars: 1 };
+  // Try to match a category stat by fuzzy name overlap to compute mastery %.
+  const match = (() => {
+    const lc = set.name.toLowerCase();
+    return categoryStats.find(
+      (c) =>
+        c.category &&
+        (lc.includes(c.category.toLowerCase()) ||
+          c.category.toLowerCase().includes(lc)),
+    );
+  })();
+  const mastery = match ? Math.max(0, Math.min(100, Math.round(Number(match.accuracy ?? 0)))) : null;
+  const attempts = match?.attempts ?? 0;
+
+  return (
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
+      className="text-left"
+    >
+      <Card className={`h-full cursor-pointer bg-card/80 backdrop-blur-sm transition-colors hover:border-primary/40 ${style.className.includes("border-") ? "" : ""}`}>
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${style.className}`}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-base font-bold truncate">{set.name}</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-[10px] shrink-0">
+              {qCount} Qs
+            </Badge>
+          </div>
+          <CardDescription className="mt-1.5 text-xs leading-relaxed line-clamp-2">
+            {set.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0">
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 font-medium text-muted-foreground">
+              <span aria-hidden>
+                {"★".repeat(difficulty.stars)}
+                <span className="opacity-30">{"★".repeat(4 - difficulty.stars)}</span>
+              </span>
+              {difficulty.label}
+            </span>
+            {attempts > 0 ? (
+              <span className="font-mono text-muted-foreground">
+                {attempts} played
+              </span>
+            ) : (
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-semibold text-emerald-300">
+                New
+              </span>
+            )}
+          </div>
+          {mastery !== null && (
+            <div className="space-y-1">
+              <Progress value={mastery} className="h-1.5" />
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>Mastery</span>
+                <span className="font-mono">{mastery}%</span>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center text-xs font-semibold text-primary">
+            Start quiz <ArrowRight className="ml-1 h-3 w-3" />
+          </div>
+        </CardContent>
+      </Card>
+    </motion.button>
+  );
+}
+
 function SessionBreakdown({ answers }: { answers: SessionAnswer[] }) {
   const rows = useMemo(() => {
     const map = new Map<string, { category: string; correct: number; total: number }>();
