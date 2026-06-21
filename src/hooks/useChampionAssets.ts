@@ -73,10 +73,17 @@ export function getChampionCutout(
 export function getChampionSplash(
   manifest: ChampionManifest | null | undefined,
   championName?: string,
+  skinKey?: string,
 ): string | null {
   if (!manifest || !championName) return null;
   const c = manifest.champions?.[championName];
-  return resolveAssetUrl(c?.splash || c?.loading);
+  if (!c) return null;
+  if (skinKey && c.skins?.[skinKey]) {
+    const s = c.skins[skinKey];
+    const url = resolveAssetUrl(s.splash || s.loading);
+    if (url) return url;
+  }
+  return resolveAssetUrl(c.splash || c.loading);
 }
 
 /** Look up a champion's loading screen art URL (no splash fallback). */
