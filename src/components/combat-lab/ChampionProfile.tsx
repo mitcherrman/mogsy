@@ -3,6 +3,13 @@ import { Upload, ImageOff, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  useChampionAssets,
+  getChampionSplash,
+  getChampionLoading,
+  getChampionIcon,
+  getChampionSkins,
+} from "@/hooks/useChampionAssets";
 
 const BUCKET = "champion-images";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 days
@@ -14,6 +21,10 @@ type Props = {
   level?: number;
   items?: string[];
   emptyMessage?: string;
+  /** Selected skin key for art preview. "default" or undefined = base art. */
+  skinKey?: string;
+  /** When provided, a compact skin selector is rendered (if 2+ skins). */
+  onSkinChange?: (key: string) => void;
 };
 
 export default function ChampionProfile({
@@ -23,12 +34,26 @@ export default function ChampionProfile({
   level,
   items,
   emptyMessage,
+  skinKey,
+  onSkinChange,
 }: Props) {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [bucketImageUrl, setBucketImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: manifest } = useChampionAssets();
+
+  // Manifest-resolved art with priority: skin splash → skin loading → default
+  // splash → default loading → icon. Falls back to bucket image, then placeholder.
+  const manifestSplash = getChampionSplash(manifest, championId, skinKey);
+  const manifestLoading = getChampionLoading(manifest, championId, skinKey);
+  const manifestIcon = getChampionIcon(manifest, championId, skinKey);
+  const manifestUrl = manifestSplash || manifestLoading || manifestIcon || null;
+  const imageUrl = manifestUrl || bucketImageUrl;
+  const isIconArt = !manifestSplash && !manifestLoading && !!manifestIcon;
+  const skins = getChampionSkins(manifest, championId);
 
   // admin check
   useEffect(() => {
@@ -49,10 +74,10 @@ export default function ChampionProfile({
     };
   }, []);
 
-  // load image whenever champion changes
+  // load bucket fallback image whenever champion changes
   useEffect(() => {
     let cancelled = false;
-    setImageUrl(null);
+    setBucketImageUrl(null);
     if (!championId) return;
     setLoading(true);
     (async () => {
@@ -63,7 +88,7 @@ export default function ChampionProfile({
         .maybeSingle();
       if (cancelled) return;
       if (error || !data?.storage_path) {
-        setImageUrl(null);
+        setBucketImageUrl(null);
         setLoading(false);
         return;
       }
@@ -71,7 +96,7 @@ export default function ChampionProfile({
         .from(BUCKET)
         .createSignedUrl(data.storage_path, SIGNED_URL_TTL);
       if (cancelled) return;
-      setImageUrl(signed?.signedUrl ?? null);
+      setBucketImageUrl(signed?.signedUrl ?? null);
       setLoading(false);
     })();
     return () => {
@@ -128,7 +153,7 @@ export default function ChampionProfile({
       const { data: signed } = await supabase.storage
         .from(BUCKET)
         .createSignedUrl(path, SIGNED_URL_TTL);
-      setImageUrl(signed?.signedUrl ?? null);
+      setBucketImageUrl(signed?.signedUrl ?? null);
       toast({ title: "Image uploaded", description: championLabel || championId });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err?.message || "Unknown error", variant: "destructive" });
@@ -149,7 +174,7 @@ export default function ChampionProfile({
     if (existing.storage_path) {
       await supabase.storage.from(BUCKET).remove([existing.storage_path]);
     }
-    setImageUrl(null);
+    setBucketImageUrl(null);
     toast({ title: "Image removed" });
   };
 
@@ -163,7 +188,7 @@ export default function ChampionProfile({
               ? "Defender Profile"
               : "Champion Profile"}
         </div>
-        {isAdmin && imageUrl && (
+        {isAdmin && bucketImageUrl && (
           <Button
             size="sm"
             variant="ghost"
@@ -175,8 +200,8 @@ export default function ChampionProfile({
         )}
       </div>
 
-      <div className="relative flex-1 min-h-[240px] bg-gradient-to-br from-muted/30 to-muted/5">
-        {loading ? (
+      <div className="relative flex-1 min-h-[160px] max-h-[220px] bg-gradient-to-br from-muted/30 to-muted/5">
+        {loading && !imageUrl ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
@@ -184,7 +209,7 @@ export default function ChampionProfile({
           <img
             src={imageUrl}
             alt={championLabel || championId || "Champion"}
-            className="absolute inset-0 h-full w-full object-cover"
+            className={`absolute inset-0 h-full w-full ${isIconArt ? "object-contain p-4" : "object-cover"}`}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground/70">
@@ -220,6 +245,22 @@ export default function ChampionProfile({
             {items.length > 3 ? ` +${items.length - 3}` : ""}
           </div>
         )}
+        {onSkinChange && championId && skins.length > 1 && (
+          <div className="mt-2">
+            <select
+              value={skinKey || "default"}
+              onChange={(e) => onSkinChange(e.target.value)}
+              className="h-7 w-full rounded-md border border-border/60 bg-background/60 px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              aria-label="Skin"
+            >
+              {skins.map((s) => (
+                <option key={s.key} value={s.key}>
+                  Skin · {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {isAdmin && championId && (
           <div className="mt-2">
             <input
@@ -241,7 +282,7 @@ export default function ChampionProfile({
               ) : (
                 <Upload className="h-3.5 w-3.5" />
               )}
-              {imageUrl ? "Replace image" : "Upload image"}
+              {bucketImageUrl ? "Replace image" : "Upload image"}
             </Button>
             <p className="mt-1 text-[10px] text-muted-foreground/70">
               Admin only · max 5MB

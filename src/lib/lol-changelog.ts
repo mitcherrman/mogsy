@@ -55,6 +55,29 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T13:00:00Z",
+    title: "Combat Lab: Champion Asset Manifest Profiles",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab's Attacker and Defender Profile cards now pull champion art from the same Railway champion asset manifest used by the LoL Hub (GET ${VITE_COMBAT_API_URL}/api/assets/champions) instead of relying only on the legacy champion-images Supabase bucket. Each card resolves the image in priority order — selected-skin splash → selected-skin loading → default splash → default loading → champion icon → champion-images bucket fallback → compact placeholder — and the bucket is preserved as a fallback for admin-uploaded overrides. Compact skin selectors were added to both profile cards (visual preview only, never sent to the combat backend).",
+    details: [
+      "useChampionAssets extended with getChampionIcon(manifest, name, skinKey?), getChampionSkins(manifest, name), and skinKey overloads on getChampionSplash / getChampionLoading.",
+      "ChampionAsset type gained an optional skins map keyed by skin id ({ splash?, loading?, icon?, label? }) for forward-compatibility with backend skin manifests.",
+      "ChampionProfile now resolves manifest art first and only loads the champion-images bucket as a fallback; icon-only fallback is rendered with object-contain padding to avoid a stretched look.",
+      "Profile image area is now compact (min-h 160 / max-h 220) so the versus header stays tight; admin upload + remove flow is unchanged.",
+      "Attacker and Defender skin selections persist in localStorage as combat-lab:attacker-skin / combat-lab:defender-skin; auto-reset to 'default' when the new champion doesn't expose the previously-selected skin.",
+      "Defender skin selector is hidden in Custom Target Dummy mode (and the dummy fallback profile is shown instead). Skin choice never reaches /api/combat-lab/* payloads — stats, items, runes and combat results are unaffected.",
+    ],
+    files: [
+      "src/components/combat-lab/ChampionProfile.tsx",
+      "src/hooks/useChampionAssets.ts",
+      "src/pages/CombatLab.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-21T12:00:00Z",
     title: "Combat Lab: Attacker and Defender Champion Profiles",
     type: "ui",

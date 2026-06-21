@@ -10,6 +10,12 @@ export type ChampionAsset = {
   splash: string;
   loading: string;
   cutout: string;
+  /**
+   * Optional per-skin overrides keyed by a stable skin key (e.g. "0_default",
+   * "1_blood_moon"). Backend may or may not include this; when absent the
+   * default splash/loading/icon are used.
+   */
+  skins?: Record<string, { splash?: string; loading?: string; icon?: string; label?: string }>;
 };
 
 export type ChampionManifest = {
@@ -67,17 +73,73 @@ export function getChampionCutout(
 export function getChampionSplash(
   manifest: ChampionManifest | null | undefined,
   championName?: string,
+  skinKey?: string,
 ): string | null {
   if (!manifest || !championName) return null;
   const c = manifest.champions?.[championName];
-  return resolveAssetUrl(c?.splash || c?.loading);
+  if (!c) return null;
+  if (skinKey && c.skins?.[skinKey]) {
+    const s = c.skins[skinKey];
+    const url = resolveAssetUrl(s.splash || s.loading);
+    if (url) return url;
+  }
+  return resolveAssetUrl(c.splash || c.loading);
 }
 
 /** Look up a champion's loading screen art URL (no splash fallback). */
 export function getChampionLoading(
   manifest: ChampionManifest | null | undefined,
   championName?: string,
+  skinKey?: string,
 ): string | null {
   if (!manifest || !championName) return null;
-  return resolveAssetUrl(manifest.champions?.[championName]?.loading);
+  const c = manifest.champions?.[championName];
+  if (!c) return null;
+  if (skinKey && c.skins?.[skinKey]?.loading) {
+    return resolveAssetUrl(c.skins[skinKey].loading);
+  }
+  return resolveAssetUrl(c.loading);
+}
+
+/** Look up a champion's square icon URL from the manifest. */
+export function getChampionIcon(
+  manifest: ChampionManifest | null | undefined,
+  championName?: string,
+  skinKey?: string,
+): string | null {
+  if (!manifest || !championName) return null;
+  const c = manifest.champions?.[championName];
+  if (!c) return null;
+  if (skinKey && c.skins?.[skinKey]?.icon) {
+    return resolveAssetUrl(c.skins[skinKey].icon);
+  }
+  return resolveAssetUrl(c.icon);
+}
+
+/**
+ * Return an ordered list of skin keys for a champion, including a synthetic
+ * "default" entry first. Returns an empty array when the champion is unknown.
+ */
+export function getChampionSkins(
+  manifest: ChampionManifest | null | undefined,
+  championName?: string,
+): { key: string; label: string }[] {
+  if (!manifest || !championName) return [];
+  const c = manifest.champions?.[championName];
+  if (!c) return [];
+  const out: { key: string; label: string }[] = [{ key: "default", label: "Default" }];
+  const extra = c.skins ? Object.entries(c.skins) : [];
+  for (const [key, val] of extra) {
+    if (key === "default") continue;
+    out.push({ key, label: val?.label || prettifySkinKey(key) });
+  }
+  return out;
+}
+
+function prettifySkinKey(key: string): string {
+  return key
+    .replace(/^\d+[_-]?/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim() || key;
 }
