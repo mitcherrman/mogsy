@@ -2412,18 +2412,45 @@ function InteractiveSandbox({
           />
           <MitigationBreakdownPanel events={events} />
           <TargetRuntimeSummary runtime={targetRuntime} />
+          <ChampionProfile
+            role="defender"
+            championId={
+              targetSetup.targetMode === "target_champion"
+                ? targetSetup.targetChampionName
+                : ""
+            }
+            championLabel={
+              targetSetup.targetMode === "target_champion"
+                ? champions.find(
+                    (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
+                  )?.name || targetSetup.targetChampionName
+                : undefined
+            }
+            level={
+              targetSetup.targetMode === "target_champion"
+                ? targetSetup.targetLevel
+                : undefined
+            }
+            items={
+              targetSetup.targetMode === "target_champion"
+                ? targetSetup.targetItemNames
+                : undefined
+            }
+            emptyMessage={
+              targetSetup.targetMode === "target_dummy"
+                ? "Custom Target Dummy active"
+                : targetSetup.targetMode === "target_profile"
+                  ? "Legacy target profile active"
+                  : "Select a defender champion"
+            }
+          />
         </div>
       </div>
 
       {/* SECONDARY ROW: champion profile + live stats */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-2">
-          <ChampionProfile
-            championId={config.champion}
-            championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
-          />
-        </div>
-        <div className="lg:col-span-3">
+      {/* SECONDARY ROW: live stats (champion profiles now live inside each side's column) */}
+      <div className="grid gap-6 lg:grid-cols-1">
+        <div>
           <LiveStatsPanel
             config={config}
             summonerPicks={summonerPicks}
