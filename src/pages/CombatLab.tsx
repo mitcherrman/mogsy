@@ -2552,12 +2552,11 @@ function InteractiveSandbox({
           />
         )}
 
-        <RuntimeStatePanel state={state} changedKeys={changedKeys} />
-
         <CombatHeader events={events} state={state} />
 
         {devMode && (
           <>
+            <RuntimeStatePanel state={state} changedKeys={changedKeys} />
             <DeveloperPanel
               endpoint={lastEndpoint}
               request={lastRequest}
@@ -2573,7 +2572,7 @@ function InteractiveSandbox({
           </>
         )}
 
-        {state && (
+        {devMode && state && (
           <FinalStatePanel state={state as Record<string, unknown>} />
         )}
       </div>
