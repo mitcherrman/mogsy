@@ -2621,8 +2621,18 @@ function InteractiveSandbox({
 
       {/* BELOW: timeline + diagnostics */}
       <div className="space-y-6">
+        <LastActionCard
+          event={lastCombatEvent}
+          attackerName={attackerDisplayName}
+          defenderName={defenderDisplayName}
+          hp={defenderHP}
+        />
         <DamageBreakdownPanel events={events} />
-        <ReadableCombatFeed events={events} />
+        <ReadableCombatFeed
+          events={events}
+          attackerName={attackerDisplayName}
+          defenderName={defenderDisplayName}
+        />
         {devMode && <SandboxTimeline events={events} containerRef={timelineRef} />}
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
