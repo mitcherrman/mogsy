@@ -2953,14 +2953,15 @@ function DefenderPanel({
     { id: "target_champion", label: "Champion Defender" },
     { id: "target_dummy", label: "Custom Target Dummy" },
   ];
-  const matchingDefenses =
-    setup.targetMode === "target_champion" && setup.targetChampionName
-      ? defenses.filter(
-          (d) =>
-            !d.champion ||
-            d.champion.toLowerCase() === setup.targetChampionName.toLowerCase()
-        )
-      : [];
+  const { championDefenses, genericDefenses } = classifyDefenses(
+    defenses,
+    champions,
+    setup.targetMode === "target_champion" ? setup.targetChampionName : "",
+  );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const defenderLabel =
+    champions.find((c) => (c.id ?? c.name) === setup.targetChampionName)?.name ||
+    setup.targetChampionName;
   return (
     <SectionCard title="Defender Champion" icon={TargetIcon}>
       <div className="space-y-3">
@@ -3034,47 +3035,17 @@ function DefenderPanel({
               loading={metaLoading}
               withIcons
             />
-            {matchingDefenses.length > 0 && (
-              <div className="space-y-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                  Available defenses
-                </div>
-                <div className="space-y-1.5">
-                  {matchingDefenses.map((d) => (
-                    <div
-                      key={d.name}
-                      className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-medium text-foreground">
-                          {prettifyDefenseName(d.name, (d as any).label)}
-                        </div>
-                        {d.category && (
-                          <div className="text-[10px] text-muted-foreground">{d.category}</div>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 shrink-0 text-[11px]"
-                        disabled={!!applyBusy || offline}
-                        onClick={() => onApplyDefense(d.name)}
-                      >
-                        {applyBusy === d.name ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Wand2 className="h-3 w-3" />
-                        )}
-                        Apply
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  Calls /api/combat-lab/active with the defense — state persists into combat.
-                </div>
-              </div>
-            )}
+            <DefenderAbilitiesList
+              championDefenses={championDefenses}
+              genericDefenses={genericDefenses}
+              defenderLabel={defenderLabel}
+              applyBusy={applyBusy}
+              offline={offline}
+              onApplyDefense={onApplyDefense}
+              advancedOpen={advancedOpen}
+              setAdvancedOpen={setAdvancedOpen}
+              showChampionSection
+            />
           </div>
         )}
 
@@ -3134,10 +3105,213 @@ function DefenderPanel({
               Sent as target_stats {`{ HP, ARMOR, MR }`}. Shield / DR are advisory; switch to a
               Champion Defender to apply real defenses into combat state.
             </div>
+            <DefenderAbilitiesList
+              championDefenses={[]}
+              genericDefenses={genericDefenses}
+              defenderLabel="Target Dummy"
+              applyBusy={applyBusy}
+              offline={offline}
+              onApplyDefense={onApplyDefense}
+              advancedOpen={advancedOpen}
+              setAdvancedOpen={setAdvancedOpen}
+              showChampionSection={false}
+            />
           </div>
         )}
       </div>
     </SectionCard>
+  );
+}
+
+/* ───────── Defender ability classification + UI ───────── */
+
+function normalizeName(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .replace(/['']/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Try to infer which champion a target defense belongs to. Priority:
+ * 1. backend `champion` / `champions` fields
+ * 2. fuzzy match of the defense `name` (e.g. `target_alistar_r`) against the
+ *    known champion list
+ * 3. fuzzy match of the human label (e.g. "Alistar R - Unbreakable Will")
+ */
+function inferDefenseChampion(
+  d: TargetDefense,
+  champions: Champion[],
+): string | null {
+  if (typeof d.champion === "string" && d.champion.trim()) return d.champion;
+  const champArr = (d as any).champions;
+  if (Array.isArray(champArr) && champArr.length === 1 && typeof champArr[0] === "string") {
+    return champArr[0];
+  }
+  const haystacks: string[] = [];
+  if (d.name) haystacks.push(normalizeName(d.name));
+  if (typeof (d as any).label === "string") haystacks.push(normalizeName((d as any).label));
+  if (typeof (d as any).active_name === "string")
+    haystacks.push(normalizeName((d as any).active_name));
+  if (haystacks.length === 0) return null;
+  // Longest champion names first to avoid "Ahri" matching inside "Aurelion".
+  const candidates = [...champions]
+    .map((c) => ({ raw: c.name || c.id || "", norm: normalizeName(c.name || c.id || "") }))
+    .filter((c) => c.norm.length >= 3)
+    .sort((a, b) => b.norm.length - a.norm.length);
+  for (const c of candidates) {
+    if (haystacks.some((h) => h.includes(c.norm))) return c.raw;
+  }
+  return null;
+}
+
+function classifyDefenses(
+  defenses: TargetDefense[],
+  champions: Champion[],
+  selectedChampion: string,
+): { championDefenses: TargetDefense[]; genericDefenses: TargetDefense[] } {
+  const selectedNorm = normalizeName(selectedChampion);
+  const championDefenses: TargetDefense[] = [];
+  const genericDefenses: TargetDefense[] = [];
+  for (const d of defenses) {
+    const owner = inferDefenseChampion(d, champions);
+    if (owner) {
+      if (selectedNorm && normalizeName(owner) === selectedNorm) {
+        championDefenses.push(d);
+      }
+      // Defenses tied to a *different* champion are intentionally hidden.
+    } else {
+      genericDefenses.push(d);
+    }
+  }
+  return { championDefenses, genericDefenses };
+}
+
+function DefenseRow({
+  d,
+  applyBusy,
+  offline,
+  onApplyDefense,
+}: {
+  d: TargetDefense;
+  applyBusy: string | null;
+  offline: boolean;
+  onApplyDefense: (name: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5">
+      <div className="min-w-0">
+        <div className="truncate text-xs font-medium text-foreground">
+          {prettifyDefenseName(d.name, (d as any).label)}
+        </div>
+        {d.category && (
+          <div className="text-[10px] text-muted-foreground">{d.category}</div>
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 shrink-0 text-[11px]"
+        disabled={!!applyBusy || offline}
+        onClick={() => onApplyDefense(d.name)}
+      >
+        {applyBusy === d.name ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Wand2 className="h-3 w-3" />
+        )}
+        Apply
+      </Button>
+    </div>
+  );
+}
+
+function DefenderAbilitiesList({
+  championDefenses,
+  genericDefenses,
+  defenderLabel,
+  applyBusy,
+  offline,
+  onApplyDefense,
+  advancedOpen,
+  setAdvancedOpen,
+  showChampionSection,
+}: {
+  championDefenses: TargetDefense[];
+  genericDefenses: TargetDefense[];
+  defenderLabel: string;
+  applyBusy: string | null;
+  offline: boolean;
+  onApplyDefense: (name: string) => void;
+  advancedOpen: boolean;
+  setAdvancedOpen: (v: boolean) => void;
+  showChampionSection: boolean;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+        Defender Abilities
+      </div>
+      {showChampionSection && (
+        <>
+          {championDefenses.length > 0 ? (
+            <div className="space-y-1.5">
+              {championDefenses.map((d) => (
+                <DefenseRow
+                  key={d.name}
+                  d={d}
+                  applyBusy={applyBusy}
+                  offline={offline}
+                  onApplyDefense={onApplyDefense}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded border border-dashed border-border/50 bg-background/30 px-2 py-3 text-center text-[11px] text-muted-foreground">
+              No defender abilities implemented for{" "}
+              <span className="font-semibold text-foreground/80">
+                {defenderLabel || "this champion"}
+              </span>{" "}
+              yet.
+            </div>
+          )}
+        </>
+      )}
+      {genericDefenses.length > 0 && (
+        <div className="rounded border border-border/40 bg-background/30">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen(!advancedOpen)}
+            className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          >
+            <span>Advanced Generic Defenses · {genericDefenses.length}</span>
+            <span aria-hidden>{advancedOpen ? "▾" : "▸"}</span>
+          </button>
+          {advancedOpen && (
+            <div className="space-y-1.5 border-t border-border/40 px-2 py-2">
+              {genericDefenses.map((d) => (
+                <DefenseRow
+                  key={d.name}
+                  d={d}
+                  applyBusy={applyBusy}
+                  offline={offline}
+                  onApplyDefense={onApplyDefense}
+                />
+              ))}
+              <div className="text-[10px] text-muted-foreground">
+                Generic modifiers (shields, damage reduction, etc.) — applied through
+                /api/combat-lab/active just like champion defenses.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {showChampionSection && (
+        <div className="text-[10px] text-muted-foreground">
+          Calls /api/combat-lab/active with the defense — state persists into combat.
+        </div>
+      )}
+    </div>
   );
 }
 
