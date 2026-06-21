@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Shield, Flame, Trophy, Target } from "lucide-react";
+import { Shield, Flame, Trophy, Target, ChevronRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,12 @@ export default function QuizProfileCard({
   progress,
   loading,
   error,
+  recentXpGain,
 }: {
   progress: QuizProgress | null;
   loading?: boolean;
   error?: string | null;
+  recentXpGain?: number | null;
 }) {
   if (loading) {
     return <Skeleton className="h-32 w-full rounded-xl" />;
@@ -70,6 +72,19 @@ export default function QuizProfileCard({
     0,
     Math.min(100, Number(progress?.progress_percent ?? rankObj?.progress_percent ?? 0)),
   );
+  const xpToNext =
+    Number(
+      progress?.xp_to_next ??
+        rankObj?.xp_to_next ??
+        nextRankObj?.xp_required ??
+        0,
+    ) || 0;
+  const nextIconUrl =
+    resolveQuizAssetUrl(progress?.next_rank_icon) ||
+    resolveQuizAssetUrl(nextRankObj?.large_icon_path) ||
+    resolveQuizAssetUrl(nextRankObj?.icon_path) ||
+    resolveQuizAssetUrl(nextRankObj?.small_icon_path) ||
+    null;
 
   return (
     <motion.div
@@ -91,14 +106,14 @@ export default function QuizProfileCard({
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-20 w-20 md:h-24 md:w-24 object-contain drop-shadow-[0_0_18px_hsl(var(--primary)/0.45)]"
+                  className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
               ) : (
-                <div className="h-20 w-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Shield className="h-10 w-10 text-primary" />
+                <div className="h-24 w-24 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Shield className="h-12 w-12 text-primary" />
                 </div>
               )}
             </motion.div>
@@ -109,6 +124,16 @@ export default function QuizProfileCard({
                   <Badge variant="secondary" className="text-[10px]">
                     {xp.toLocaleString()} XP
                   </Badge>
+                )}
+                {typeof recentXpGain === "number" && recentXpGain > 0 && (
+                  <motion.span
+                    key={`gain-${recentXpGain}`}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="inline-flex items-center gap-0.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
+                  >
+                    <Sparkles className="h-2.5 w-2.5" />+{recentXpGain} XP
+                  </motion.span>
                 )}
               </div>
               <div className="mt-1">
@@ -121,8 +146,40 @@ export default function QuizProfileCard({
                   </span>
                   <span className="shrink-0 font-mono">{fmtPct(pct)}</span>
                 </div>
+                {nextRank && (xpToNext > 0 || hasProgress) && (
+                  <div className="mt-1 text-[10px] text-muted-foreground/80">
+                    {xpToNext > 0 ? (
+                      <>
+                        <span className="font-semibold text-primary/90">
+                          {xpToNext.toLocaleString()} XP
+                        </span>{" "}
+                        until {nextRank}
+                      </>
+                    ) : (
+                      <>Next: {nextRank}</>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
+            {nextIconUrl && (
+              <div className="hidden shrink-0 flex-col items-center sm:flex">
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+                <img
+                  src={nextIconUrl}
+                  alt={`${nextRank ?? "Next"} rank`}
+                  className="h-14 w-14 object-contain opacity-70 grayscale"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                {nextRank && (
+                  <span className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
+                    {nextRank}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

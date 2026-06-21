@@ -19,6 +19,17 @@ import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
+import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
+import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
+import {
+  getDailyChallenge,
+  recordDailyAnswer,
+  getRankedState,
+  recordRecentXpGain,
+  getRecentXpGain,
+  type DailyChallengeState,
+  type RankedState,
+} from "@/lib/quiz/featured-mock";
 import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
@@ -184,6 +195,12 @@ export default function Quiz() {
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [achievementsError, setAchievementsError] = useState<string | null>(null);
 
+  // Frontend-only progression surfaces (daily challenge + ranked queue).
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
+    getDailyChallenge(),
+  );
+  const [recentXpGain, setRecentXpGain] = useState<number | null>(() => getRecentXpGain());
+
   const loadProgress = useCallback(async () => {
     setProgressError(null);
     try {
@@ -341,6 +358,12 @@ export default function Quiz() {
           explanation: result.explanation,
         },
       ]);
+      // Update Daily Challenge progress + remember last XP gain for the rank card.
+      setDailyChallenge(recordDailyAnswer(!!result.is_correct));
+      if (typeof result.xp_earned === "number" && result.xp_earned > 0) {
+        recordRecentXpGain(result.xp_earned);
+        setRecentXpGain(result.xp_earned);
+      }
       // Surface any unlocked achievements
       const unlocked = (result as any).unlocked_achievements;
       if (Array.isArray(unlocked) && unlocked.length > 0) {
@@ -459,10 +482,29 @@ export default function Quiz() {
 
         {/* Quiz profile card */}
         <div className="mb-6">
+          {/* Featured Daily Challenge + Ranked Queue heroes */}
+          <div className="mb-4 space-y-3">
+            <QuizDailyChallengeCard
+              state={dailyChallenge}
+              disabled={setsLoading || sets.length === 0}
+              onPlay={() => {
+                if (sets.length > 0) handleSelectSet(sets[0]);
+              }}
+            />
+            <QuizRankedQueueCard
+              progress={userProgress}
+              ranked={getRankedState(userProgress?.attempts ?? 0)}
+              disabled={setsLoading || sets.length === 0}
+              onPlay={() => {
+                if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
+              }}
+            />
+          </div>
           <QuizProfileCard
             progress={userProgress}
             loading={progressLoading}
             error={progressError}
+            recentXpGain={recentXpGain}
           />
         </div>
 
@@ -472,6 +514,21 @@ export default function Quiz() {
             categories={categoryStats}
             loading={categoriesLoading}
             error={categoriesError}
+            totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
+            totalQuestionsAvailable={sets.reduce(
+              (sum, s) => sum + (s.question_count || 0),
+              0,
+            )}
+            newCategories={[
+              "Item Exact Stats",
+              "Item Components",
+              "Item Builds Into",
+              "Champion Cooldowns",
+              "Summoner Cooldowns",
+            ]}
+            recommendedCategory={
+              sets[0]?.name || "Champion Ability Cooldowns"
+            }
           />
         </div>
 
@@ -553,30 +610,12 @@ export default function Quiz() {
                 className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               >
                 {sets.map((set) => (
-                  <motion.button
+                  <QuizModeCard
                     key={set.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSelectSet(set)}
-                    className="text-left"
-                  >
-                    <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer bg-card/80 backdrop-blur-sm">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <CardTitle className="text-base font-bold">{set.name}</CardTitle>
-                          <Badge variant="secondary" className="text-[10px]">{set.question_count} Qs</Badge>
-                        </div>
-                        <CardDescription className="text-xs leading-relaxed">
-                          {set.description}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="flex items-center text-xs text-primary font-semibold gap-1">
-                          Start quiz <ArrowRight className="h-3 w-3" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.button>
+                    set={set}
+                    categoryStats={categoryStats}
+                    onSelect={() => handleSelectSet(set)}
+                  />
                 ))}
               </motion.div>
             )}
@@ -1277,6 +1316,100 @@ export default function Quiz() {
 }
 
 /* ───────────────────── Session breakdown helpers ───────────────────── */
+
+function QuizModeCard({
+  set,
+  categoryStats,
+  onSelect,
+}: {
+  set: QuizSet;
+  categoryStats: QuizCategoryStat[];
+  onSelect: () => void;
+}) {
+  const style = getCategoryStyle(set.name);
+  const Icon = style.icon;
+  const qCount = set.question_count || 0;
+  // Difficulty bucket from question count.
+  const difficulty =
+    qCount >= 200 ? { label: "Expert", stars: 4 } :
+    qCount >= 100 ? { label: "Hard", stars: 3 } :
+    qCount >= 40 ? { label: "Medium", stars: 2 } :
+    { label: "Easy", stars: 1 };
+  // Try to match a category stat by fuzzy name overlap to compute mastery %.
+  const match = (() => {
+    const lc = set.name.toLowerCase();
+    return categoryStats.find(
+      (c) =>
+        c.category &&
+        (lc.includes(c.category.toLowerCase()) ||
+          c.category.toLowerCase().includes(lc)),
+    );
+  })();
+  const mastery = match ? Math.max(0, Math.min(100, Math.round(Number(match.accuracy ?? 0)))) : null;
+  const attempts = match?.attempts ?? 0;
+
+  return (
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
+      className="text-left"
+    >
+      <Card className={`h-full cursor-pointer bg-card/80 backdrop-blur-sm transition-colors hover:border-primary/40 ${style.className.includes("border-") ? "" : ""}`}>
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${style.className}`}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-base font-bold truncate">{set.name}</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-[10px] shrink-0">
+              {qCount} Qs
+            </Badge>
+          </div>
+          <CardDescription className="mt-1.5 text-xs leading-relaxed line-clamp-2">
+            {set.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0">
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 font-medium text-muted-foreground">
+              <span aria-hidden>
+                {"★".repeat(difficulty.stars)}
+                <span className="opacity-30">{"★".repeat(4 - difficulty.stars)}</span>
+              </span>
+              {difficulty.label}
+            </span>
+            {attempts > 0 ? (
+              <span className="font-mono text-muted-foreground">
+                {attempts} played
+              </span>
+            ) : (
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-semibold text-emerald-300">
+                New
+              </span>
+            )}
+          </div>
+          {mastery !== null && (
+            <div className="space-y-1">
+              <Progress value={mastery} className="h-1.5" />
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>Mastery</span>
+                <span className="font-mono">{mastery}%</span>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center text-xs font-semibold text-primary">
+            Start quiz <ArrowRight className="ml-1 h-3 w-3" />
+          </div>
+        </CardContent>
+      </Card>
+    </motion.button>
+  );
+}
 
 function SessionBreakdown({ answers }: { answers: SessionAnswer[] }) {
   const rows = useMemo(() => {
