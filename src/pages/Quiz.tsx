@@ -482,10 +482,29 @@ export default function Quiz() {
 
         {/* Quiz profile card */}
         <div className="mb-6">
+          {/* Featured Daily Challenge + Ranked Queue heroes */}
+          <div className="mb-4 space-y-3">
+            <QuizDailyChallengeCard
+              state={dailyChallenge}
+              disabled={setsLoading || sets.length === 0}
+              onPlay={() => {
+                if (sets.length > 0) handleSelectSet(sets[0]);
+              }}
+            />
+            <QuizRankedQueueCard
+              progress={userProgress}
+              ranked={getRankedState(userProgress?.attempts ?? 0)}
+              disabled={setsLoading || sets.length === 0}
+              onPlay={() => {
+                if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
+              }}
+            />
+          </div>
           <QuizProfileCard
             progress={userProgress}
             loading={progressLoading}
             error={progressError}
+            recentXpGain={recentXpGain}
           />
         </div>
 
@@ -495,6 +514,21 @@ export default function Quiz() {
             categories={categoryStats}
             loading={categoriesLoading}
             error={categoriesError}
+            totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
+            totalQuestionsAvailable={sets.reduce(
+              (sum, s) => sum + (s.question_count || 0),
+              0,
+            )}
+            newCategories={[
+              "Item Exact Stats",
+              "Item Components",
+              "Item Builds Into",
+              "Champion Cooldowns",
+              "Summoner Cooldowns",
+            ]}
+            recommendedCategory={
+              sets[0]?.name || "Champion Ability Cooldowns"
+            }
           />
         </div>
 
