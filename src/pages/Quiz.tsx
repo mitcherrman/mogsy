@@ -195,6 +195,12 @@ export default function Quiz() {
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [achievementsError, setAchievementsError] = useState<string | null>(null);
 
+  // Frontend-only progression surfaces (daily challenge + ranked queue).
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
+    getDailyChallenge(),
+  );
+  const [recentXpGain, setRecentXpGain] = useState<number | null>(() => getRecentXpGain());
+
   const loadProgress = useCallback(async () => {
     setProgressError(null);
     try {
