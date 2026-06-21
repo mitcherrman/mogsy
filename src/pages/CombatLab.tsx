@@ -2377,6 +2377,20 @@ function InteractiveSandbox({
             applyBusy={defenderApplyBusy}
             offline={offline}
           />
+          <ActiveEffectsPanel
+            title="Active Defender Effects"
+            tone="accent"
+            effects={pickActiveEffects(
+              {
+                ...(targetRuntime?.target_stats || {}),
+                ...(((state as any)?.states && typeof (state as any).states === "object"
+                  ? ((state as any).states as Record<string, unknown>)
+                  : {})),
+              },
+              DEFENDER_EFFECT_PATTERNS
+            )}
+          />
+          <MitigationBreakdownPanel events={events} />
           <TargetRuntimeSummary runtime={targetRuntime} />
         </div>
       </div>
