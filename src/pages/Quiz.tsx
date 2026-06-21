@@ -19,6 +19,17 @@ import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
+import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
+import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
+import {
+  getDailyChallenge,
+  recordDailyAnswer,
+  getRankedState,
+  recordRecentXpGain,
+  getRecentXpGain,
+  type DailyChallengeState,
+  type RankedState,
+} from "@/lib/quiz/featured-mock";
 import { useAuth } from "@/hooks/useAuth";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
