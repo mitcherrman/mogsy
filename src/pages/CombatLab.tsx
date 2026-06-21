@@ -2555,6 +2555,258 @@ function InteractiveSandbox({
 
 /* ─────────────── Defender Panel (Versus UI) ─────────────── */
 
+/* ─────────────── Phase 3: Runtime Visualization helpers ─────────────── */
+
+const DEFENSE_LABEL_MAP: Record<string, string> = {
+  target_alistar_r: "Alistar R — Unbreakable Will",
+  target_warwick_e: "Warwick E — Primal Howl",
+  target_trundle_r: "Trundle R — Subjugate",
+  target_maokai_w: "Maokai W — Twisted Advance",
+  target_morgana_e: "Morgana E — Black Shield",
+  target_sivir_e: "Sivir E — Spell Shield",
+};
+
+function prettifyDefenseName(raw?: string | null, label?: string | null): string {
+  if (label && String(label).trim()) return String(label);
+  if (!raw) return "";
+  const lower = String(raw).toLowerCase();
+  if (DEFENSE_LABEL_MAP[lower]) return DEFENSE_LABEL_MAP[lower];
+  const m = /^target[_\s-]+([a-z0-9]+)[_\s-]+([qwer]|passive|ult)$/i.exec(lower);
+  if (m) {
+    const champ = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+    return `${champ} ${m[2].toUpperCase()}`;
+  }
+  return String(raw)
+    .replace(/^target[_\s-]+/i, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function prettyEffectLabel(key: string): string {
+  let k = key
+    .replace(/^TARGET_/i, "")
+    .replace(/_(ACTIVE|BUFF|DEBUFF|TIMER|DURATION|PROC|FLAG)$/i, "")
+    .replace(/_STACKS$/i, " Stacks")
+    .replace(/_CHARGES$/i, " Charges")
+    .replace(/_PERCENT$/i, " %")
+    .replace(/_AMOUNT$/i, "");
+  k = k.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return k.replace(/\bDr\b/, "DR").replace(/\bMr\b/, "MR").replace(/\bHp\b/, "HP");
+}
+
+type ActiveEffect = { key: string; label: string; value?: string | number; duration?: number };
+
+const ATTACKER_EFFECT_PATTERNS: RegExp[] = [
+  /_STACKS$/,
+  /_CHARGES$/,
+  /_ACTIVE$/,
+  /_BUFF$/,
+  /_PROC$/,
+  /^CONQUEROR/,
+  /^LETHAL_TEMPO/,
+  /^PRESS_THE_ATTACK/,
+  /^ELECTROCUTE/,
+  /^SILVER_BOLTS/,
+  /^PLASMA/,
+  /^BLIGHT/,
+  /^RAGEBLADE/,
+  /^KRAKEN/,
+  /^TRUNDLE_R/,
+];
+
+const DEFENDER_EFFECT_PATTERNS: RegExp[] = [
+  /^TARGET_SHIELD/,
+  /^TARGET_.*_REDUCTION/,
+  /^TARGET_.*_ACTIVE$/,
+  /^TARGET_.*_DEBUFF$/,
+  /^TARGET_.*_DURATION$/,
+  /^TARGET_.*_TIMER$/,
+];
+
+function pickActiveEffects(
+  source: Record<string, unknown>,
+  patterns: RegExp[]
+): ActiveEffect[] {
+  const map = new Map<string, ActiveEffect>();
+  for (const [k, v] of Object.entries(source || {})) {
+    if (v == null || v === false || v === "" || v === 0) continue;
+    if (!patterns.some((p) => p.test(k))) continue;
+    const dur = /^(.+?)_(DURATION|TIMER)$/i.exec(k);
+    if (dur) {
+      const base = dur[1];
+      const cur = map.get(base) || { key: base, label: prettyEffectLabel(base) };
+      cur.duration = Number(v);
+      map.set(base, cur);
+      continue;
+    }
+    const base = k.replace(/_ACTIVE$/i, "");
+    const cur = map.get(base) || { key: base, label: prettyEffectLabel(k) };
+    if (typeof v === "number" || typeof v === "string") cur.value = v as number | string;
+    map.set(base, cur);
+  }
+  return Array.from(map.values());
+}
+
+function ActiveEffectsPanel({
+  title,
+  effects,
+  tone = "primary",
+}: {
+  title: string;
+  effects: ActiveEffect[];
+  tone?: "primary" | "accent";
+}) {
+  if (!effects.length) return null;
+  const border = tone === "accent" ? "border-accent/40 bg-accent/5 text-accent" : "border-primary/40 bg-primary/5 text-primary";
+  return (
+    <SectionCard title={title} icon={Sparkles}>
+      <div className="flex flex-wrap gap-1.5">
+        {effects.map((e) => (
+          <Badge
+            key={e.key}
+            variant="outline"
+            className={`px-2 py-1 text-[11px] ${border}`}
+          >
+            <span className="font-semibold text-foreground">{e.label}</span>
+            {e.value != null && e.value !== true && e.value !== "" && (
+              <span className="ml-1.5">
+                {typeof e.value === "number"
+                  ? Number(e.value).toLocaleString(undefined, { maximumFractionDigits: 1 })
+                  : String(e.value)}
+              </span>
+            )}
+            {typeof e.duration === "number" && e.duration > 0 && (
+              <span className="ml-1.5 text-muted-foreground">· {e.duration.toFixed(1)}s</span>
+            )}
+          </Badge>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}
+
+function extractMitigation(events: TimelineEvent[]) {
+  let incoming = 0;
+  let shield = 0;
+  let drPrevented = 0;
+  let taken = 0;
+  for (const e of events) {
+    const a = e as any;
+    if (typeof a.incoming_damage === "number") incoming += a.incoming_damage;
+    if (typeof a.pre_mitigation_damage === "number") incoming += a.pre_mitigation_damage;
+    if (typeof a.shield_absorbed === "number") shield += a.shield_absorbed;
+    if (typeof a.shield_amount === "number" && /shield/i.test(getEventLabel(e))) shield += a.shield_amount;
+    if (typeof a.damage_reduction_amount === "number") drPrevented += a.damage_reduction_amount;
+    if (typeof a.damage_prevented === "number") drPrevented += a.damage_prevented;
+    const final =
+      typeof a.final_damage === "number"
+        ? a.final_damage
+        : typeof a.damage === "number"
+        ? a.damage
+        : 0;
+    if (final > 0) taken += final;
+  }
+  const hasData = incoming > 0 || shield > 0 || drPrevented > 0;
+  return { incoming, shield, drPrevented, taken, hasData };
+}
+
+function MitigationBreakdownPanel({ events }: { events: TimelineEvent[] }) {
+  const m = useMemo(() => extractMitigation(events), [events]);
+  if (!m.hasData) return null;
+  const Row = ({ label, value, tone }: { label: string; value: number; tone?: string }) => (
+    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/40 px-3 py-1.5">
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className={`font-mono text-sm font-semibold tabular-nums ${tone ?? "text-foreground"}`}>
+        {Math.round(value).toLocaleString()}
+      </span>
+    </div>
+  );
+  return (
+    <SectionCard title="Damage Mitigation" icon={TargetIcon}>
+      <div className="space-y-1.5">
+        {m.incoming > 0 && <Row label="Incoming" value={m.incoming} />}
+        {m.shield > 0 && <Row label="Shield Absorbed" value={m.shield} tone="text-sky-300" />}
+        {m.drPrevented > 0 && <Row label="DR Prevented" value={m.drPrevented} tone="text-emerald-300" />}
+        <Row label="Final Damage Taken" value={m.taken} tone="text-destructive" />
+      </div>
+    </SectionCard>
+  );
+}
+
+function humanizeEvent(e: TimelineEvent): string {
+  const a = e as any;
+  const name = getEventLabel(e);
+  const dmg = getEventDamage(e);
+  const dt = e.damage_type
+    ? String(e.damage_type).charAt(0).toUpperCase() + String(e.damage_type).slice(1)
+    : "";
+  const lowName = name.toLowerCase();
+  if (typeof a.shield_absorbed === "number" && a.shield_absorbed > 0) {
+    return `Shield absorbs ${Math.round(a.shield_absorbed)} damage`;
+  }
+  if (/shield/i.test(lowName) && typeof a.shield_amount === "number") {
+    return `Shield gains ${Math.round(a.shield_amount)}`;
+  }
+  if (typeof a.damage_reduction_percent === "number" && a.damage_reduction_percent > 0) {
+    return `Damage reduced by ${Math.round(a.damage_reduction_percent)}%`;
+  }
+  if (a.active_name) {
+    const def = prettifyDefenseName(a.active_name, a.label);
+    const who = a.source || a.champion || "Champion";
+    return `${who} activates ${def}`;
+  }
+  if (a.stat_change && a.stat_change.amount != null && a.stat_change.stat) {
+    const verb = a.stat_change.amount < 0 ? "loses" : "gains";
+    return `Target ${verb} ${Math.abs(Number(a.stat_change.amount))} ${String(a.stat_change.stat).toUpperCase()}`;
+  }
+  if (dmg != null && dmg > 0) {
+    return `${name}${dt ? ` deals ${Math.round(dmg)} ${dt} damage` : ` deals ${Math.round(dmg)} damage`}`;
+  }
+  return name;
+}
+
+function ReadableCombatFeed({ events }: { events: TimelineEvent[] }) {
+  const lines = useMemo(() => events.slice(-30), [events]);
+  return (
+    <SectionCard
+      title="Combat Feed"
+      icon={Activity}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {events.length} events
+        </span>
+      }
+    >
+      {lines.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-6 text-center text-xs text-muted-foreground">
+          No combat yet — press Basic Attack or an active to begin.
+        </div>
+      ) : (
+        <ol className="space-y-1 text-sm">
+          {lines.map((e, i) => {
+            const t = getEventTime(e);
+            const dmg = getEventDamage(e);
+            const isDamage = dmg != null && dmg > 0;
+            return (
+              <li
+                key={i}
+                className="flex items-baseline gap-2 rounded-md border border-border/40 bg-background/30 px-3 py-1.5"
+              >
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground w-12 shrink-0">
+                  {Number(t).toFixed(2)}s
+                </span>
+                <span className={`flex-1 ${isDamage ? "text-foreground" : "text-foreground/80"}`}>
+                  {humanizeEvent(e)}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </SectionCard>
+  );
+}
+
 function DefenderPanel({
   setup,
   update,
