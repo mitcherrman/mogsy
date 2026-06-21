@@ -2302,6 +2302,8 @@ function InteractiveSandbox({
           championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
           level={config.stats?.LEVEL ?? 18}
           items={config.items}
+          skinKey={attackerSkin}
+          onSkinChange={setAttackerSkin}
         />
         </div>
 
