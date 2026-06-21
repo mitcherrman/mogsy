@@ -1856,6 +1856,93 @@ function InteractiveSandbox({
     return sum;
   }, [events]);
 
+  /* ───────── Defender HP state (versus-style) ───────── */
+
+  const defenderDisplayName = useMemo(() => {
+    if (targetSetup.targetMode === "target_dummy") return "Target Dummy";
+    const ch = champions.find(
+      (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
+    );
+    return (
+      (targetRuntime?.target_debug as any)?.target_entity?.champion_name ||
+      ch?.name ||
+      targetSetup.targetChampionName ||
+      "Defender"
+    );
+  }, [targetSetup, champions, targetRuntime]);
+
+  const attackerDisplayName = useMemo(() => {
+    const ch = champions.find((c) => (c.id ?? c.name) === config.champion);
+    return ch?.name || config.champion || "Attacker";
+  }, [champions, config.champion]);
+
+  const defenderHP = useMemo(() => {
+    const ts = (targetRuntime?.target_stats || {}) as Record<string, number>;
+    const rootState = (state || {}) as any;
+    const stStates =
+      rootState.states && typeof rootState.states === "object"
+        ? (rootState.states as Record<string, unknown>)
+        : {};
+    const primary = (scopes as any)?.PRIMARY as TargetScopeInfo | undefined;
+
+    let max = 0;
+    if (typeof ts.TARGET_MAX_HP === "number") max = ts.TARGET_MAX_HP;
+    else if (typeof ts.HP === "number") max = ts.HP;
+    else if (primary && typeof primary.max_hp === "number") max = primary.max_hp;
+    else if (targetSetup.targetMode === "target_dummy") max = targetSetup.dummyHP;
+
+    let current = max;
+    let source = "initial (target_stats.HP)";
+    if (primary && typeof primary.current_hp === "number") {
+      current = primary.current_hp;
+      source = "remaining_by_scope.PRIMARY.current_hp";
+    } else if (typeof rootState.remaining_hp === "number") {
+      current = rootState.remaining_hp;
+      source = "state.remaining_hp";
+    } else if (typeof (stStates as any).TARGET_REMAINING_HP === "number") {
+      current = (stStates as any).TARGET_REMAINING_HP as number;
+      source = "state.states.TARGET_REMAINING_HP";
+    } else if (typeof ts.TARGET_REMAINING_HP === "number") {
+      current = ts.TARGET_REMAINING_HP;
+      source = "target_stats.TARGET_REMAINING_HP";
+    }
+
+    const safeMax = Math.max(0, Math.round(max));
+    const safeCurrent = Math.max(
+      0,
+      Math.min(safeMax || Number.MAX_SAFE_INTEGER, Math.round(current)),
+    );
+    const pct = safeMax > 0 ? Math.max(0, Math.min(100, (safeCurrent / safeMax) * 100)) : 0;
+    return { current: safeCurrent, max: safeMax, pct, source };
+  }, [targetRuntime, scopes, state, targetSetup]);
+
+  // Brief flash animation when defender takes damage.
+  const [hpFlash, setHpFlash] = useState<{ delta: number; key: number } | null>(null);
+  const prevHpRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevHpRef.current;
+    if (prev != null && defenderHP.max > 0) {
+      const delta = prev - defenderHP.current;
+      if (delta > 0) {
+        setHpFlash({ delta, key: Date.now() });
+        const t = setTimeout(() => setHpFlash(null), 900);
+        prevHpRef.current = defenderHP.current;
+        return () => clearTimeout(t);
+      }
+    }
+    prevHpRef.current = defenderHP.current;
+  }, [defenderHP.current, defenderHP.max]);
+
+  // Latest damage-bearing combat event for the Last Action card.
+  const lastCombatEvent = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      const d = getEventDamage(e);
+      if (typeof d === "number" && d > 0) return e;
+    }
+    return events[events.length - 1] || null;
+  }, [events]);
+
   const applyResponse = (res: SandboxStepResponse) => {
     if (res.state) setState(res.state);
     if (res.remaining_by_scope) setScopes(res.remaining_by_scope);
