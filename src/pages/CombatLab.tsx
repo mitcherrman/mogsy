@@ -2953,14 +2953,15 @@ function DefenderPanel({
     { id: "target_champion", label: "Champion Defender" },
     { id: "target_dummy", label: "Custom Target Dummy" },
   ];
-  const matchingDefenses =
-    setup.targetMode === "target_champion" && setup.targetChampionName
-      ? defenses.filter(
-          (d) =>
-            !d.champion ||
-            d.champion.toLowerCase() === setup.targetChampionName.toLowerCase()
-        )
-      : [];
+  const { championDefenses, genericDefenses } = classifyDefenses(
+    defenses,
+    champions,
+    setup.targetMode === "target_champion" ? setup.targetChampionName : "",
+  );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const defenderLabel =
+    champions.find((c) => (c.id ?? c.name) === setup.targetChampionName)?.name ||
+    setup.targetChampionName;
   return (
     <SectionCard title="Defender Champion" icon={TargetIcon}>
       <div className="space-y-3">
