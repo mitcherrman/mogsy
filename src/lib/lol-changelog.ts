@@ -55,6 +55,23 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T16:00:00Z",
+    title: "Quiz: Gameplay-first home hierarchy",
+    type: "ui",
+    scopes: ["quiz"],
+    summary:
+      "Reorganized the /quiz home so playable content sits near the top instead of sitting beneath progression panels. The new order is Header → Daily Challenge hero → Quiz Mode Cards → Ranked Queue → compact Progression Dashboard (rank progress) → collapsible Knowledge Breakdown → collapsible Achievements. Daily Challenge stays the primary retention CTA, the actual quiz set cards moved up directly underneath it, and Ranked dropped to a secondary competitive CTA below practice modes. Knowledge Breakdown and Achievements are now collapsed by default so they no longer block new users from seeing the playable modes. No systems removed — all existing daily/ranked mocks, XP/rank progress, knowledge stats, achievements, diagnostics, answer feedback and missed-question review are preserved.",
+    details: [
+      "Pulled the quiz set grid out of its own bottom section and rendered it directly under the Daily Challenge hero (still gated to phase === 'sets').",
+      "Moved QuizRankedQueueCard below the quiz mode grid.",
+      "QuizKnowledgeCard and QuizAchievementsCard wrapped in shadcn Collapsible triggers with a chevron, label, and an unlocked/total badge on the Achievements trigger; both collapsed by default.",
+      "Dashboard sections only render in the 'sets' phase so the active question and result screens stay focused.",
+      "Mobile stacking preserved; desktop quiz modes keep the 2-column grid.",
+    ],
+    files: ["src/pages/Quiz.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/quiz"],
+  },
+  {
     timestamp: "2026-06-21T15:00:00Z",
     title: "Combat Lab: Defender Ability Filtering",
     type: "fix",
