@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Lock, Sparkles } from "lucide-react";
+import { Trophy, Lock, Sparkles, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { resolveQuizAssetUrl, type QuizAchievement } from "@/lib/quiz/api";
 
 function formatDate(iso?: string | null): string | null {
@@ -26,6 +27,15 @@ function AchievementTile({ a }: { a: QuizAchievement }) {
   const title = getTitle(a);
   const iconUrl = resolveQuizAssetUrl(a.icon_path);
   const unlockedAt = formatDate(a.unlocked_at);
+  const xpReward = Number((a as any).xp_reward ?? (a as any).xp ?? 0) || null;
+  const hasProgress =
+    !unlocked &&
+    typeof a.progress === "number" &&
+    typeof a.goal === "number" &&
+    a.goal > 0;
+  const progressPct = hasProgress
+    ? Math.max(0, Math.min(100, Math.round(((a.progress || 0) / (a.goal || 1)) * 100)))
+    : 0;
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -102,12 +112,20 @@ function AchievementTile({ a }: { a: QuizAchievement }) {
             {unlockedAt && (
               <span className="text-[10px] text-muted-foreground">{unlockedAt}</span>
             )}
-            {!unlocked && typeof a.progress === "number" && typeof a.goal === "number" && a.goal > 0 && (
-              <span className="text-[10px] text-muted-foreground">
-                {a.progress}/{a.goal}
+            {hasProgress && (
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {a.progress}/{a.goal} · {progressPct}%
+              </span>
+            )}
+            {xpReward && (
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0 text-[10px] font-semibold text-emerald-300">
+                <Zap className="h-2.5 w-2.5" />+{xpReward} XP
               </span>
             )}
           </div>
+          {hasProgress && (
+            <Progress value={progressPct} className="mt-1.5 h-1" />
+          )}
         </div>
       </div>
     </motion.div>
