@@ -34,6 +34,10 @@ import {
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import ChampionProfile from "@/components/combat-lab/ChampionProfile";
+import {
+  useChampionAssets,
+  getChampionSkins,
+} from "@/hooks/useChampionAssets";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
