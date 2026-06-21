@@ -3035,47 +3035,17 @@ function DefenderPanel({
               loading={metaLoading}
               withIcons
             />
-            {matchingDefenses.length > 0 && (
-              <div className="space-y-2 rounded-md border border-accent/30 bg-accent/5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                  Available defenses
-                </div>
-                <div className="space-y-1.5">
-                  {matchingDefenses.map((d) => (
-                    <div
-                      key={d.name}
-                      className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-medium text-foreground">
-                          {prettifyDefenseName(d.name, (d as any).label)}
-                        </div>
-                        {d.category && (
-                          <div className="text-[10px] text-muted-foreground">{d.category}</div>
-                        )}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 shrink-0 text-[11px]"
-                        disabled={!!applyBusy || offline}
-                        onClick={() => onApplyDefense(d.name)}
-                      >
-                        {applyBusy === d.name ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Wand2 className="h-3 w-3" />
-                        )}
-                        Apply
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  Calls /api/combat-lab/active with the defense — state persists into combat.
-                </div>
-              </div>
-            )}
+            <DefenderAbilitiesList
+              championDefenses={championDefenses}
+              genericDefenses={genericDefenses}
+              defenderLabel={defenderLabel}
+              applyBusy={applyBusy}
+              offline={offline}
+              onApplyDefense={onApplyDefense}
+              advancedOpen={advancedOpen}
+              setAdvancedOpen={setAdvancedOpen}
+              showChampionSection
+            />
           </div>
         )}
 
