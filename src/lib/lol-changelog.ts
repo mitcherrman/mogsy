@@ -55,6 +55,34 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T14:00:00Z",
+    title: "Quiz: Daily Challenge + Ranked hero, richer progression",
+    type: "feature",
+    scopes: ["quiz"],
+    summary:
+      "Reframed the Quiz home around two new progression heroes plus deeper rank, knowledge and achievement context — without redesigning the page or removing any existing system. The Featured Daily Challenge card is now the primary CTA (questions remaining, XP bonus, daily streak, completion status, Play Now). A Featured Ranked Quiz card lives directly below it with the current rank crest, placement-matches remaining, estimated XP gain/loss and a ranked queue button. The rank progress card now shows a larger current crest, the next rank crest, XP remaining to the next rank, percentage and a transient '+N XP' indicator after answers. Knowledge Breakdown's empty state lists total categories / total questions available, highlights new categories and recommends one to start. Achievement tiles now reveal mini progress bars, completion percentage and an XP reward chip on locked entries. Set cards picked up game-mode identity (category icon, question count, difficulty stars, mastery % and a 'New' badge for untouched modes).",
+    details: [
+      "New components: QuizDailyChallengeCard, QuizRankedQueueCard.",
+      "Frontend-only mock layer at src/lib/quiz/featured-mock.ts persists daily challenge progress and recent XP gain in localStorage; resets per UTC day; streak rolls forward when the previous day was completed and breaks on a missed day.",
+      "QuizProfileCard: larger current crest, next-rank crest chevron, xp_to_next label, recent +XP badge tied to the last submitAnswer response.",
+      "QuizKnowledgeCard: empty state shows category/question counts, lists recently added categories (Item Exact Stats, Item Components, Item Builds Into, Champion Cooldowns, Summoner Cooldowns) and a recommended starting category.",
+      "QuizAchievementsCard: locked tiles render a Progress bar, '{progress}/{goal} · %' text and a +XP reward chip when available.",
+      "Quiz mode cards (QuizModeCard): category-themed icon, question count badge, ★ difficulty bucket from question count, mastery % from categoryStats overlap, 'New' chip when untouched.",
+      "All new states are mock/local — no backend changes; replace featured-mock with real endpoints when the API ships.",
+    ],
+    files: [
+      "src/pages/Quiz.tsx",
+      "src/components/quiz/QuizDailyChallengeCard.tsx",
+      "src/components/quiz/QuizRankedQueueCard.tsx",
+      "src/components/quiz/QuizProfileCard.tsx",
+      "src/components/quiz/QuizKnowledgeCard.tsx",
+      "src/components/quiz/QuizAchievementsCard.tsx",
+      "src/lib/quiz/featured-mock.ts",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/quiz"],
+  },
+  {
     timestamp: "2026-06-21T13:00:00Z",
     title: "Combat Lab: Champion Asset Manifest Profiles",
     type: "ui",
