@@ -2675,7 +2675,9 @@ function DefenderPanel({
                       className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1.5"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-xs font-medium text-foreground">{d.name}</div>
+                        <div className="truncate text-xs font-medium text-foreground">
+                          {prettifyDefenseName(d.name, (d as any).label)}
+                        </div>
                         {d.category && (
                           <div className="text-[10px] text-muted-foreground">{d.category}</div>
                         )}
