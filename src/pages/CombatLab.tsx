@@ -1715,6 +1715,52 @@ function InteractiveSandbox({
       localStorage.setItem("combat-lab:summoners", JSON.stringify(summonerPicks));
     } catch {}
   }, [summonerPicks]);
+
+  // Visual-only skin selections for attacker / defender profile cards.
+  // Persisted in localStorage; never sent to the combat backend.
+  const [attackerSkin, setAttackerSkin] = useState<string>(() => {
+    if (typeof window === "undefined") return "default";
+    try {
+      return localStorage.getItem("combat-lab:attacker-skin") || "default";
+    } catch {
+      return "default";
+    }
+  });
+  const [defenderSkin, setDefenderSkin] = useState<string>(() => {
+    if (typeof window === "undefined") return "default";
+    try {
+      return localStorage.getItem("combat-lab:defender-skin") || "default";
+    } catch {
+      return "default";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:attacker-skin", attackerSkin);
+    } catch {}
+  }, [attackerSkin]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:defender-skin", defenderSkin);
+    } catch {}
+  }, [defenderSkin]);
+  const { data: championManifest } = useChampionAssets();
+  // Reset skin when the selected champion has no matching skin entry.
+  useEffect(() => {
+    if (!config.champion) return;
+    const skins = getChampionSkins(championManifest, config.champion);
+    if (skins.length > 0 && !skins.some((s) => s.key === attackerSkin)) {
+      setAttackerSkin("default");
+    }
+  }, [config.champion, championManifest, attackerSkin]);
+  useEffect(() => {
+    const name = targetSetup.targetChampionName;
+    if (!name) return;
+    const skins = getChampionSkins(championManifest, name);
+    if (skins.length > 0 && !skins.some((s) => s.key === defenderSkin)) {
+      setDefenderSkin("default");
+    }
+  }, [targetSetup.targetChampionName, championManifest, defenderSkin]);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
