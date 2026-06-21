@@ -55,6 +55,24 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T08:00:00Z",
+    title: "Combat Lab: Runtime State Visualization (Phase 3)",
+    type: "feature",
+    scopes: ["combat-lab"],
+    summary:
+      "Surface the backend's target modifier engine, timed effects and combat state persistence inside the Versus layout. The attacker and defender columns now show 'Active Effects' chip rails (Shield, DR %, Phys/Magic DR, Alistar R / Warwick E / Trundle R, Conqueror, Lethal Tempo, Silver Bolts, Plasma, Blight, Rageblade, etc.) sourced from state.states + runtime stats, with optional durations. A new Damage Mitigation card on the defender breaks incoming → shield absorbed → DR prevented → final damage taken. The Combat Timeline is replaced with a human-readable Combat Feed (e.g. 'Alistar activates Unbreakable Will', 'Shield absorbs 200 damage', 'Damage reduced by 75%', 'Basic Attack deals 320 Physical damage'); the raw timeline, runtime state JSON, final state and developer panels are now Dev Mode only. Target defense IDs (target_alistar_r, target_warwick_e, …) are rendered as 'Champion Ability — Name' labels in the defender Apply list and feed.",
+    details: [
+      "ActiveEffectsPanel: pattern-matched extraction from attacker_stats + state.states; renders nothing when no effects exist.",
+      "MitigationBreakdownPanel: aggregates incoming_damage / shield_absorbed / damage_reduction_amount / final_damage from events; hidden when no mitigation data.",
+      "ReadableCombatFeed: last 30 events humanized via humanizeEvent(); shield, DR, active casts, stat changes and damage all have dedicated phrasings.",
+      "prettifyDefenseName(): backend label preferred, then DEFENSE_LABEL_MAP overrides, then 'Champion Ability' fallback.",
+      "Dev Mode now gates SandboxTimeline, RuntimeStatePanel, FinalStatePanel, DeveloperPanel, Engine Coverage and Champion Confidence; normal users only see the readable summaries.",
+      "Preserved: target champion mode, custom dummy mode, apply defense actions, target defense preview, runtime state persistence, basic attack flow, champion actions, diagnostics page.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-20T08:00:00Z",
     title: "Combat Lab: Versus layout (Attacker vs Defender)",
     type: "ui",
