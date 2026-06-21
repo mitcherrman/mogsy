@@ -10,9 +10,20 @@ const SIGNED_URL_TTL = 60 * 60 * 24 * 7; // 7 days
 type Props = {
   championId: string;
   championLabel?: string;
+  role?: "attacker" | "defender";
+  level?: number;
+  items?: string[];
+  emptyMessage?: string;
 };
 
-export default function ChampionProfile({ championId, championLabel }: Props) {
+export default function ChampionProfile({
+  championId,
+  championLabel,
+  role,
+  level,
+  items,
+  emptyMessage,
+}: Props) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -146,7 +157,11 @@ export default function ChampionProfile({ championId, championLabel }: Props) {
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
       <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Champion Profile
+          {role === "attacker"
+            ? "Attacker Profile"
+            : role === "defender"
+              ? "Defender Profile"
+              : "Champion Profile"}
         </div>
         {isAdmin && imageUrl && (
           <Button
@@ -175,16 +190,36 @@ export default function ChampionProfile({ championId, championLabel }: Props) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground/70">
             <ImageOff className="h-8 w-8" />
             <span className="text-xs">
-              {championId ? "No image uploaded" : "Select a champion"}
+              {championId
+                ? "No image uploaded"
+                : emptyMessage ||
+                  (role === "attacker"
+                    ? "Select an attacker"
+                    : role === "defender"
+                      ? "Select a defender"
+                      : "Select a champion")}
             </span>
           </div>
         )}
       </div>
 
       <div className="border-t border-border/40 px-4 py-3">
-        <div className="text-sm font-medium">
-          {championLabel || championId || "—"}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-medium truncate">
+            {championLabel || championId || "—"}
+          </div>
+          {typeof level === "number" && championId && (
+            <span className="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Lv {level}
+            </span>
+          )}
         </div>
+        {items && items.length > 0 && championId && (
+          <div className="mt-1.5 text-[11px] text-muted-foreground truncate" title={items.join(", ")}>
+            {items.slice(0, 3).join(", ")}
+            {items.length > 3 ? ` +${items.length - 3}` : ""}
+          </div>
+        )}
         {isAdmin && championId && (
           <div className="mt-2">
             <input

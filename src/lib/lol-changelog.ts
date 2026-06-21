@@ -55,6 +55,28 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T12:00:00Z",
+    title: "Combat Lab: Attacker and Defender Champion Profiles",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Split the single Champion Profile card into two side-specific profiles: an Attacker Profile inside the Attacker column and a Defender Profile inside the Defender column. Both render the champion's stored image (via the existing champion-images storage system) along with the champion name, selected level and a short item summary, so each side of the versus layout has its own visual identity.",
+    details: [
+      "Reused the existing ChampionProfile component with new optional props (role, level, items, emptyMessage) instead of duplicating logic.",
+      "Attacker Profile uses the attacker's champion / LEVEL / items.",
+      "Defender Profile uses the defender's champion / target level / target items only when Defender Mode = Champion Defender.",
+      "Defender Profile shows a 'Custom Target Dummy active' fallback when the dummy mode is selected, and 'Legacy target profile active' for the compat path.",
+      "Removed the duplicated secondary-row Champion Profile; Live Stats now spans the full width below the versus grid.",
+      "Champion image source unchanged (champion-images bucket via signed URLs) — no new backend requirements.",
+    ],
+    files: [
+      "src/pages/CombatLab.tsx",
+      "src/components/combat-lab/ChampionProfile.tsx",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-21T08:00:00Z",
     title: "Combat Lab: Runtime State Visualization (Phase 3)",
     type: "feature",
