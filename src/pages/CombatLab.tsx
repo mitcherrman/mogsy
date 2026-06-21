@@ -1856,6 +1856,93 @@ function InteractiveSandbox({
     return sum;
   }, [events]);
 
+  /* ───────── Defender HP state (versus-style) ───────── */
+
+  const defenderDisplayName = useMemo(() => {
+    if (targetSetup.targetMode === "target_dummy") return "Target Dummy";
+    const ch = champions.find(
+      (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
+    );
+    return (
+      (targetRuntime?.target_debug as any)?.target_entity?.champion_name ||
+      ch?.name ||
+      targetSetup.targetChampionName ||
+      "Defender"
+    );
+  }, [targetSetup, champions, targetRuntime]);
+
+  const attackerDisplayName = useMemo(() => {
+    const ch = champions.find((c) => (c.id ?? c.name) === config.champion);
+    return ch?.name || config.champion || "Attacker";
+  }, [champions, config.champion]);
+
+  const defenderHP = useMemo(() => {
+    const ts = (targetRuntime?.target_stats || {}) as Record<string, number>;
+    const rootState = (state || {}) as any;
+    const stStates =
+      rootState.states && typeof rootState.states === "object"
+        ? (rootState.states as Record<string, unknown>)
+        : {};
+    const primary = (scopes as any)?.PRIMARY as TargetScopeInfo | undefined;
+
+    let max = 0;
+    if (typeof ts.TARGET_MAX_HP === "number") max = ts.TARGET_MAX_HP;
+    else if (typeof ts.HP === "number") max = ts.HP;
+    else if (primary && typeof primary.max_hp === "number") max = primary.max_hp;
+    else if (targetSetup.targetMode === "target_dummy") max = targetSetup.dummyHP;
+
+    let current = max;
+    let source = "initial (target_stats.HP)";
+    if (primary && typeof primary.current_hp === "number") {
+      current = primary.current_hp;
+      source = "remaining_by_scope.PRIMARY.current_hp";
+    } else if (typeof rootState.remaining_hp === "number") {
+      current = rootState.remaining_hp;
+      source = "state.remaining_hp";
+    } else if (typeof (stStates as any).TARGET_REMAINING_HP === "number") {
+      current = (stStates as any).TARGET_REMAINING_HP as number;
+      source = "state.states.TARGET_REMAINING_HP";
+    } else if (typeof ts.TARGET_REMAINING_HP === "number") {
+      current = ts.TARGET_REMAINING_HP;
+      source = "target_stats.TARGET_REMAINING_HP";
+    }
+
+    const safeMax = Math.max(0, Math.round(max));
+    const safeCurrent = Math.max(
+      0,
+      Math.min(safeMax || Number.MAX_SAFE_INTEGER, Math.round(current)),
+    );
+    const pct = safeMax > 0 ? Math.max(0, Math.min(100, (safeCurrent / safeMax) * 100)) : 0;
+    return { current: safeCurrent, max: safeMax, pct, source };
+  }, [targetRuntime, scopes, state, targetSetup]);
+
+  // Brief flash animation when defender takes damage.
+  const [hpFlash, setHpFlash] = useState<{ delta: number; key: number } | null>(null);
+  const prevHpRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevHpRef.current;
+    if (prev != null && defenderHP.max > 0) {
+      const delta = prev - defenderHP.current;
+      if (delta > 0) {
+        setHpFlash({ delta, key: Date.now() });
+        const t = setTimeout(() => setHpFlash(null), 900);
+        prevHpRef.current = defenderHP.current;
+        return () => clearTimeout(t);
+      }
+    }
+    prevHpRef.current = defenderHP.current;
+  }, [defenderHP.current, defenderHP.max]);
+
+  // Latest damage-bearing combat event for the Last Action card.
+  const lastCombatEvent = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      const d = getEventDamage(e);
+      if (typeof d === "number" && d > 0) return e;
+    }
+    return events[events.length - 1] || null;
+  }, [events]);
+
   const applyResponse = (res: SandboxStepResponse) => {
     if (res.state) setState(res.state);
     if (res.remaining_by_scope) setScopes(res.remaining_by_scope);
@@ -2437,6 +2524,14 @@ function InteractiveSandbox({
 
         {/* DEFENDER COLUMN */}
         <div className="space-y-4 lg:col-span-4">
+          <DefenderHPCard
+            defenderName={defenderDisplayName}
+            hp={defenderHP}
+            mode={targetSetup.targetMode}
+            runtime={targetRuntime}
+            flash={hpFlash}
+            devMode={devMode}
+          />
           <DefenderPanel
             setup={targetSetup}
             update={updateTargetSetup}
@@ -2526,8 +2621,18 @@ function InteractiveSandbox({
 
       {/* BELOW: timeline + diagnostics */}
       <div className="space-y-6">
+        <LastActionCard
+          event={lastCombatEvent}
+          attackerName={attackerDisplayName}
+          defenderName={defenderDisplayName}
+          hp={defenderHP}
+        />
         <DamageBreakdownPanel events={events} />
-        <ReadableCombatFeed events={events} />
+        <ReadableCombatFeed
+          events={events}
+          attackerName={attackerDisplayName}
+          defenderName={defenderDisplayName}
+        />
         {devMode && <SandboxTimeline events={events} containerRef={timelineRef} />}
         {offline && (
           <Card className="border-destructive/40 bg-destructive/10">
@@ -2852,7 +2957,11 @@ function MitigationBreakdownPanel({ events }: { events: TimelineEvent[] }) {
   );
 }
 
-function humanizeEvent(e: TimelineEvent): string {
+function humanizeEvent(
+  e: TimelineEvent,
+  attackerName?: string,
+  defenderName?: string,
+): string {
   const a = e as any;
   const name = getEventLabel(e);
   const dmg = getEventDamage(e);
@@ -2860,31 +2969,53 @@ function humanizeEvent(e: TimelineEvent): string {
     ? String(e.damage_type).charAt(0).toUpperCase() + String(e.damage_type).slice(1)
     : "";
   const lowName = name.toLowerCase();
+  const atk = attackerName || a.source || a.attacker || "Attacker";
+  const def = defenderName || a.target || "Defender";
   if (typeof a.shield_absorbed === "number" && a.shield_absorbed > 0) {
-    return `Shield absorbs ${Math.round(a.shield_absorbed)} damage`;
+    return `${def}'s shield absorbs ${Math.round(a.shield_absorbed)} damage.`;
   }
   if (/shield/i.test(lowName) && typeof a.shield_amount === "number") {
-    return `Shield gains ${Math.round(a.shield_amount)}`;
+    return `${def} gains a ${Math.round(a.shield_amount)} shield.`;
   }
   if (typeof a.damage_reduction_percent === "number" && a.damage_reduction_percent > 0) {
-    return `Damage reduced by ${Math.round(a.damage_reduction_percent)}%`;
+    const def_name = a.active_name
+      ? prettifyDefenseName(a.active_name, a.label)
+      : "Damage reduction";
+    return `${def}'s ${def_name} reduces incoming damage by ${Math.round(
+      a.damage_reduction_percent,
+    )}%.`;
   }
   if (a.active_name) {
-    const def = prettifyDefenseName(a.active_name, a.label);
-    const who = a.source || a.champion || "Champion";
-    return `${who} activates ${def}`;
+    const ability = prettifyDefenseName(a.active_name, a.label);
+    const who = a.source || a.champion || atk;
+    return `${who} activates ${ability}.`;
   }
   if (a.stat_change && a.stat_change.amount != null && a.stat_change.stat) {
     const verb = a.stat_change.amount < 0 ? "loses" : "gains";
-    return `Target ${verb} ${Math.abs(Number(a.stat_change.amount))} ${String(a.stat_change.stat).toUpperCase()}`;
+    return `${def} ${verb} ${Math.abs(Number(a.stat_change.amount))} ${String(a.stat_change.stat).toUpperCase()}.`;
   }
   if (dmg != null && dmg > 0) {
-    return `${name}${dt ? ` deals ${Math.round(dmg)} ${dt} damage` : ` deals ${Math.round(dmg)} damage`}`;
+    const dmgTxt = dt
+      ? `${Math.round(dmg)} ${dt} damage`
+      : `${Math.round(dmg)} damage`;
+    const lower = name.toLowerCase();
+    if (lower.includes("basic")) {
+      return `${atk} basic attacks ${def} for ${dmgTxt}.`;
+    }
+    return `${atk}'s ${name} hits ${def} for ${dmgTxt}.`;
   }
   return name;
 }
 
-function ReadableCombatFeed({ events }: { events: TimelineEvent[] }) {
+function ReadableCombatFeed({
+  events,
+  attackerName,
+  defenderName,
+}: {
+  events: TimelineEvent[];
+  attackerName?: string;
+  defenderName?: string;
+}) {
   const lines = useMemo(() => events.slice(-30), [events]);
   return (
     <SectionCard
@@ -2915,13 +3046,159 @@ function ReadableCombatFeed({ events }: { events: TimelineEvent[] }) {
                   {Number(t).toFixed(2)}s
                 </span>
                 <span className={`flex-1 ${isDamage ? "text-foreground" : "text-foreground/80"}`}>
-                  {humanizeEvent(e)}
+                  {humanizeEvent(e, attackerName, defenderName)}
                 </span>
               </li>
             );
           })}
         </ol>
       )}
+    </SectionCard>
+  );
+}
+
+/* ───────── Defender HP card + Last Action card ───────── */
+
+function DefenderHPCard({
+  defenderName,
+  hp,
+  mode,
+  runtime,
+  flash,
+  devMode,
+}: {
+  defenderName: string;
+  hp: { current: number; max: number; pct: number; source: string };
+  mode: TargetMode;
+  runtime: { target_stats?: Record<string, number>; target_debug?: Record<string, unknown> } | null;
+  flash: { delta: number; key: number } | null;
+  devMode: boolean;
+}) {
+  const ts = (runtime?.target_stats || {}) as Record<string, number>;
+  const armor = typeof ts.ARMOR === "number" ? ts.ARMOR : undefined;
+  const mr = typeof ts.MR === "number" ? ts.MR : undefined;
+  const shield = typeof ts.TARGET_SHIELD === "number" ? ts.TARGET_SHIELD : undefined;
+  const dr = typeof ts.TARGET_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_DAMAGE_REDUCTION_PERCENT : undefined;
+  const physDr = typeof ts.TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT : undefined;
+  const magicDr = typeof ts.TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT : undefined;
+  const low = hp.max > 0 && hp.pct < 25;
+  const med = hp.max > 0 && hp.pct < 55 && !low;
+  const fillTone = low
+    ? "from-red-600 to-red-400"
+    : med
+      ? "from-amber-500 to-yellow-400"
+      : "from-emerald-500 to-emerald-400";
+  const Stat = ({ label, value, suffix }: { label: string; value?: number; suffix?: string }) =>
+    value == null ? null : (
+      <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1">
+        <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="text-xs font-semibold tabular-nums text-foreground">
+          {Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+          {suffix || ""}
+        </div>
+      </div>
+    );
+  return (
+    <SectionCard title={`${defenderName} — HP`} icon={TargetIcon}>
+      <div className="space-y-3">
+        <div className="relative">
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="text-2xl font-bold tabular-nums text-foreground">
+              {hp.max > 0 ? hp.current.toLocaleString() : "—"}
+              <span className="text-base font-normal text-muted-foreground">
+                {" "}
+                / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
+              </span>
+            </div>
+            {hp.max > 0 && (
+              <div className="text-xs font-semibold tabular-nums text-muted-foreground">
+                {hp.pct.toFixed(0)}%
+              </div>
+            )}
+          </div>
+          <div className="relative mt-2 h-4 w-full overflow-hidden rounded-full border border-border/60 bg-background/60">
+            <div
+              className={`h-full bg-gradient-to-r ${fillTone} transition-[width] duration-500 ease-out`}
+              style={{ width: `${hp.pct}%` }}
+            />
+          </div>
+          {flash && (
+            <div
+              key={flash.key}
+              className="pointer-events-none absolute -top-1 right-0 animate-in fade-in slide-in-from-bottom-1 rounded-md bg-red-600/90 px-2 py-0.5 text-xs font-bold text-white shadow-lg"
+            >
+              -{Math.round(flash.delta).toLocaleString()}
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <Stat label="Armor" value={armor} />
+          <Stat label="MR" value={mr} />
+          <Stat label="Shield" value={shield} />
+          <Stat label="DR" value={dr} suffix="%" />
+          <Stat label="Phys DR" value={physDr} suffix="%" />
+          <Stat label="Magic DR" value={magicDr} suffix="%" />
+        </div>
+        {devMode && (
+          <div className="rounded border border-dashed border-border/40 bg-background/30 px-2 py-1 text-[10px] font-mono text-muted-foreground">
+            HP source: {hp.source} · mode: {mode}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+function LastActionCard({
+  event,
+  attackerName,
+  defenderName,
+  hp,
+}: {
+  event: TimelineEvent | null;
+  attackerName: string;
+  defenderName: string;
+  hp: { current: number; max: number; pct: number };
+}) {
+  if (!event) return null;
+  const dmg = getEventDamage(event);
+  const dt = event.damage_type
+    ? String(event.damage_type).charAt(0).toUpperCase() + String(event.damage_type).slice(1)
+    : "";
+  const label = getEventLabel(event);
+  return (
+    <SectionCard title="Last Action" icon={Activity}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {attackerName}
+          </div>
+          <div className="text-sm font-semibold text-foreground">{label}</div>
+          {typeof dmg === "number" && dmg > 0 && (
+            <div className="text-2xl font-bold tabular-nums text-destructive">
+              {Math.round(dmg).toLocaleString()}
+              <span className="ml-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {dt || "damage"}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="space-y-1 sm:text-right">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {defenderName}
+          </div>
+          <div className="text-2xl font-bold tabular-nums text-foreground">
+            {hp.max > 0 ? hp.current.toLocaleString() : "—"}
+            <span className="text-sm font-normal text-muted-foreground">
+              {" "}
+              / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
+            </span>
+          </div>
+          {hp.max > 0 && (
+            <div className="text-[11px] text-muted-foreground">{hp.pct.toFixed(0)}% remaining</div>
+          )}
+        </div>
+      </div>
     </SectionCard>
   );
 }

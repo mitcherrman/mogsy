@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T17:00:00Z",
+    title: "Combat Lab: Visible Defender HP State",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab now visibly behaves like a versus simulator instead of a calculator. A dedicated Defender HP card sits at the top of the defender column with a large Current / Max HP readout, a color-coded HP bar (green → amber → red as HP drops), and a brief -damage flash whenever the defender takes a hit. HP is derived from the latest backend response in priority order (remaining_by_scope.PRIMARY → state.remaining_hp → state.states.TARGET_REMAINING_HP → target_stats.TARGET_REMAINING_HP) with Max HP from target_stats.TARGET_MAX_HP / HP and the dummy HP for Custom Target Dummy mode. A Last Action summary card above Damage Breakdown shows the most recent attack: who attacked, the ability, damage dealt, damage type, and the defender's current / max HP. Combat Feed entries are now humanized with attacker and defender names ('Ashe basic attacks Alistar for 53 physical damage', 'Alistar's Unbreakable Will reduces incoming damage by 75%').",
+    details: [
+      "New DefenderHPCard component rendered at the top of the Defender column for both Champion Defender and Custom Target Dummy modes, showing Current / Max HP, an animated HP bar, percentage remaining, and the defender's Armor / MR / Shield / DR / Phys DR / Magic DR.",
+      "New LastActionCard component rendered above Damage Breakdown with attacker name, ability/event label, damage dealt + damage type, and the defender's resulting HP.",
+      "humanizeEvent() now takes attacker/defender names and produces player-readable lines for basic attacks, abilities, shields, damage reduction, stat changes and active casts.",
+      "HP updates animate via a CSS width transition, and HP decreases briefly flash a red '-N' indicator over the bar.",
+      "Reset, champion changes and target-mode changes already clear scopes/state/events; defender HP is purely derived so it resets along with them — old defender HP never carries into a new defender or mode.",
+      "PRIMARY scope is the single source of truth for the Defender HP card; auxiliary scopes (Runaan, etc.) remain visible in the existing Targets panel below.",
+      "Dev mode shows a one-line 'HP source: …' diagnostic on the HP card so future combat integrations can be validated.",
+      "Existing Damage Breakdown, Damage Mitigation, Active Defender Effects, Target Runtime Summary, Combat Feed, Targets panel, diagnostics and backend payloads are untouched.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-21T16:00:00Z",
     title: "Quiz: Gameplay-first home hierarchy",
     type: "ui",
