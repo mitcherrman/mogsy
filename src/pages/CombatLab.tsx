@@ -2668,7 +2668,7 @@ function ActiveEffectsPanel({
             className={`px-2 py-1 text-[11px] ${border}`}
           >
             <span className="font-semibold text-foreground">{e.label}</span>
-            {e.value != null && e.value !== true && e.value !== "" && (
+            {e.value != null && e.value !== "" && (
               <span className="ml-1.5">
                 {typeof e.value === "number"
                   ? Number(e.value).toLocaleString(undefined, { maximumFractionDigits: 1 })
