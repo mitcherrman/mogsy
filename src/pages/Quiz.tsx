@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -480,66 +482,151 @@ export default function Quiz() {
           </Button>
         </div>
 
-        {/* Quiz profile card */}
-        <div className="mb-6">
-          {/* Featured Daily Challenge + Ranked Queue heroes */}
-          <div className="mb-4 space-y-3">
-            <QuizDailyChallengeCard
-              state={dailyChallenge}
-              disabled={setsLoading || sets.length === 0}
-              onPlay={() => {
-                if (sets.length > 0) handleSelectSet(sets[0]);
-              }}
-            />
-            <QuizRankedQueueCard
-              progress={userProgress}
-              ranked={getRankedState(userProgress?.attempts ?? 0)}
-              disabled={setsLoading || sets.length === 0}
-              onPlay={() => {
-                if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
-              }}
-            />
-          </div>
-          <QuizProfileCard
-            progress={userProgress}
-            loading={progressLoading}
-            error={progressError}
-            recentXpGain={recentXpGain}
-          />
-        </div>
+        {/* Gameplay-first home: Daily Challenge → Quiz Modes → Ranked → Progression → expandable details. */}
+        {phase === "sets" && (
+          <>
+            {/* 1. Daily Challenge hero (primary retention CTA). */}
+            <div className="mb-4">
+              <QuizDailyChallengeCard
+                state={dailyChallenge}
+                disabled={setsLoading || sets.length === 0}
+                onPlay={() => {
+                  if (sets.length > 0) handleSelectSet(sets[0]);
+                }}
+              />
+            </div>
 
-        {/* Knowledge breakdown */}
-        <div className="mb-6">
-          <QuizKnowledgeCard
-            categories={categoryStats}
-            loading={categoriesLoading}
-            error={categoriesError}
-            totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
-            totalQuestionsAvailable={sets.reduce(
-              (sum, s) => sum + (s.question_count || 0),
-              0,
-            )}
-            newCategories={[
-              "Item Exact Stats",
-              "Item Components",
-              "Item Builds Into",
-              "Champion Cooldowns",
-              "Summoner Cooldowns",
-            ]}
-            recommendedCategory={
-              sets[0]?.name || "Champion Ability Cooldowns"
-            }
-          />
-        </div>
+            {/* 2. Quiz Mode Cards — playable content right under the hero. */}
+            <div className="mb-4">
+              <AnimatePresence mode="wait">
+                {setsLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  >
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                    ))}
+                  </motion.div>
+                ) : sets.length === 0 ? (
+                  <motion.div
+                    key="empty"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center"
+                  >
+                    <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">No quiz sets available right now.</p>
+                    <Button onClick={handleRetry} variant="ghost" className="mt-3">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sets"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  >
+                    {sets.map((set) => (
+                      <QuizModeCard
+                        key={set.id}
+                        set={set}
+                        categoryStats={categoryStats}
+                        onSelect={() => handleSelectSet(set)}
+                      />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-        {/* Achievements */}
-        <div className="mb-6">
-          <QuizAchievementsCard
-            achievements={achievements}
-            loading={achievementsLoading}
-            error={achievementsError}
-          />
-        </div>
+            {/* 3. Ranked queue — secondary competitive CTA, below practice modes. */}
+            <div className="mb-4">
+              <QuizRankedQueueCard
+                progress={userProgress}
+                ranked={getRankedState(userProgress?.attempts ?? 0)}
+                disabled={setsLoading || sets.length === 0}
+                onPlay={() => {
+                  if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
+                }}
+              />
+            </div>
+
+            {/* 4. Compact Progression Dashboard. */}
+            <div className="mb-4">
+              <QuizProfileCard
+                progress={userProgress}
+                loading={progressLoading}
+                error={progressError}
+                recentXpGain={recentXpGain}
+              />
+            </div>
+
+            {/* 5. Collapsible Knowledge Breakdown. */}
+            <Collapsible className="mb-4">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary/80" />
+                  <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                    Knowledge Breakdown
+                  </span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <QuizKnowledgeCard
+                  categories={categoryStats}
+                  loading={categoriesLoading}
+                  error={categoriesError}
+                  totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
+                  totalQuestionsAvailable={sets.reduce(
+                    (sum, s) => sum + (s.question_count || 0),
+                    0,
+                  )}
+                  newCategories={[
+                    "Item Exact Stats",
+                    "Item Components",
+                    "Item Builds Into",
+                    "Champion Cooldowns",
+                    "Summoner Cooldowns",
+                  ]}
+                  recommendedCategory={
+                    sets[0]?.name || "Champion Ability Cooldowns"
+                  }
+                />
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* 6. Collapsible Achievements grid. */}
+            <Collapsible className="mb-6">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-primary/80" />
+                  <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                    Achievements
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {achievements.filter((a) => a.unlocked).length}/{achievements.length}
+                  </Badge>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <QuizAchievementsCard
+                  achievements={achievements}
+                  loading={achievementsLoading}
+                  error={achievementsError}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
 
         {/* Error state */}
         {phase === "error" && (
@@ -570,56 +657,6 @@ export default function Quiz() {
               <Skeleton className="h-14 w-full" />
             </div>
           </div>
-        )}
-
-        {/* Quiz sets */}
-        {phase === "sets" && (
-          <AnimatePresence mode="wait">
-            {setsLoading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              >
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-28 w-full rounded-lg" />
-                ))}
-              </motion.div>
-            ) : sets.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center"
-              >
-                <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">No quiz sets available right now.</p>
-                <Button onClick={handleRetry} variant="ghost" className="mt-3">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="sets"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-              >
-                {sets.map((set) => (
-                  <QuizModeCard
-                    key={set.id}
-                    set={set}
-                    categoryStats={categoryStats}
-                    onSelect={() => handleSelectSet(set)}
-                  />
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
         )}
 
         {/* Active question */}
