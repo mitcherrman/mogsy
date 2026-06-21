@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { BookOpen, TrendingUp, TrendingDown } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, Layers, HelpCircle, Sparkles, Compass } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,10 +35,18 @@ export default function QuizKnowledgeCard({
   categories,
   loading,
   error,
+  totalCategoriesAvailable,
+  totalQuestionsAvailable,
+  newCategories,
+  recommendedCategory,
 }: {
   categories: QuizCategoryStat[];
   loading?: boolean;
   error?: string | null;
+  totalCategoriesAvailable?: number;
+  totalQuestionsAvailable?: number;
+  newCategories?: string[];
+  recommendedCategory?: string;
 }) {
   if (loading) {
     return <Skeleton className="h-48 w-full rounded-xl" />;
@@ -74,8 +82,59 @@ export default function QuizKnowledgeCard({
           )}
 
           {!hasData && !error && (
-            <div className="rounded-md border border-dashed border-border bg-background/30 p-4 text-center text-sm text-muted-foreground">
-              Play some questions to see your category breakdown.
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <EmptyStat
+                  icon={Layers}
+                  label="Categories"
+                  value={
+                    typeof totalCategoriesAvailable === "number"
+                      ? totalCategoriesAvailable.toLocaleString()
+                      : "—"
+                  }
+                />
+                <EmptyStat
+                  icon={HelpCircle}
+                  label="Questions"
+                  value={
+                    typeof totalQuestionsAvailable === "number"
+                      ? totalQuestionsAvailable.toLocaleString()
+                      : "—"
+                  }
+                />
+              </div>
+              {newCategories && newCategories.length > 0 && (
+                <div className="rounded-md border border-[#c9a84c]/30 bg-[#c9a84c]/5 p-3">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#c9a84c]/90">
+                    <Sparkles className="h-3 w-3" />
+                    New Categories
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {newCategories.slice(0, 6).map((c) => (
+                      <span
+                        key={c}
+                        className="rounded-full border border-[#c9a84c]/30 bg-background/40 px-2 py-0.5 text-[10px] font-medium text-[#f5e9c8]"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recommendedCategory && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                  <Compass className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Recommended Start
+                    </div>
+                    <div className="truncate text-sm font-semibold">{recommendedCategory}</div>
+                  </div>
+                </div>
+              )}
+              <p className="text-center text-[11px] text-muted-foreground/80">
+                Play a few questions to unlock your personal category breakdown.
+              </p>
             </div>
           )}
 
