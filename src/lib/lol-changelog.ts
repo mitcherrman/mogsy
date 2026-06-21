@@ -55,6 +55,23 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-21T15:00:00Z",
+    title: "Combat Lab: Defender Ability Filtering",
+    type: "fix",
+    scopes: ["combat-lab"],
+    summary:
+      "The Defender panel previously listed every target defense from /api/meta/target-defenses regardless of which champion was selected — picking Aatrox would still surface Alistar R, Warwick E, Barrier, Sterak's, etc. Defenses are now classified per-champion using the backend `champion` / `champions` fields when present and otherwise inferred from the defense `name` / `label` / `active_name` (e.g. `target_alistar_r`, `target_defense_warwick_e`, 'Alistar R — Unbreakable Will'). Champion-specific abilities are only shown for the currently selected defender; generic defenses (Barrier, Sterak's, Shieldbow, generic shield / DR / resist modifiers, anything that can't be tied to a champion) now live inside a collapsed 'Advanced Generic Defenses' section.",
+    details: [
+      "New helpers: normalizeName(), inferDefenseChampion(), classifyDefenses() — case/punctuation-insensitive matching, longest champion names tried first to avoid 'Ahri' colliding with 'Aurelion'.",
+      "Champion section is hidden in Custom Target Dummy mode; the Advanced Generic Defenses section is still available there (collapsed by default).",
+      "Empty state when a selected defender has no implemented abilities: 'No defender abilities implemented for {Champion} yet.'",
+      "Renamed 'Applicable Target Defenses' / 'Available defenses' to 'Defender Abilities'.",
+      "Apply behaviour is unchanged — still calls /api/combat-lab/active, persists returned state, updates Active Defender Effects and feeds forward into subsequent attacks. Combat payloads, diagnostics and backend untouched.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-21T14:00:00Z",
     title: "Quiz: Daily Challenge + Ranked hero, richer progression",
     type: "feature",
