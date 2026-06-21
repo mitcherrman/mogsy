@@ -2246,6 +2246,13 @@ function InteractiveSandbox({
             ATTACKER_EFFECT_PATTERNS
           )}
         />
+        <ChampionProfile
+          role="attacker"
+          championId={config.champion}
+          championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+          level={config.stats?.LEVEL ?? 18}
+          items={config.items}
+        />
         </div>
 
         {/* CENTER COMBAT COLUMN */}
