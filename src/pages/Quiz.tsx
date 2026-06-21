@@ -358,6 +358,12 @@ export default function Quiz() {
           explanation: result.explanation,
         },
       ]);
+      // Update Daily Challenge progress + remember last XP gain for the rank card.
+      setDailyChallenge(recordDailyAnswer(!!result.is_correct));
+      if (typeof result.xp_earned === "number" && result.xp_earned > 0) {
+        recordRecentXpGain(result.xp_earned);
+        setRecentXpGain(result.xp_earned);
+      }
       // Surface any unlocked achievements
       const unlocked = (result as any).unlocked_achievements;
       if (Array.isArray(unlocked) && unlocked.length > 0) {
