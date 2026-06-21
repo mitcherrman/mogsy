@@ -2524,6 +2524,14 @@ function InteractiveSandbox({
 
         {/* DEFENDER COLUMN */}
         <div className="space-y-4 lg:col-span-4">
+          <DefenderHPCard
+            defenderName={defenderDisplayName}
+            hp={defenderHP}
+            mode={targetSetup.targetMode}
+            runtime={targetRuntime}
+            flash={hpFlash}
+            devMode={devMode}
+          />
           <DefenderPanel
             setup={targetSetup}
             update={updateTargetSetup}
