@@ -138,6 +138,8 @@ export interface QuizAchievementsCardProps {
   error?: string | null;
   /** Diagnostics variant: more compact, no header chrome. */
   compact?: boolean;
+  /** When true, hide the in-card header (title shown elsewhere, e.g. collapsible trigger). */
+  hideHeader?: boolean;
 }
 
 export default function QuizAchievementsCard({
@@ -145,6 +147,7 @@ export default function QuizAchievementsCard({
   loading,
   error,
   compact,
+  hideHeader,
 }: QuizAchievementsCardProps) {
   const { unlocked, locked } = useMemo(() => {
     const u: QuizAchievement[] = [];
@@ -209,6 +212,14 @@ export default function QuizAchievementsCard({
   );
 
   if (compact) return <div>{body}</div>;
+
+  if (hideHeader) {
+    return (
+      <Card className="border-[#c9a84c]/25 bg-[#0a1428]/70 backdrop-blur-sm">
+        <CardContent className="pt-4">{body}</CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-[#c9a84c]/25 bg-[#0a1428]/70 backdrop-blur-sm">
