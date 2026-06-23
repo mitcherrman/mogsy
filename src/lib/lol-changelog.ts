@@ -55,6 +55,24 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-23T12:00:00Z",
+    title: "Combat Lab: Defender HP Polish",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Tightened the feedback loop between combat actions and visible target damage. The Last Action summary moved directly under the Combat Actions card so the result of every Basic Attack or active appears immediately beside the button that triggered it. The Defender HP card now leads with a much larger Current / Max HP readout and a bolder HP percentage, the HP bar briefly pulses red and outlines when the defender takes a hit, and the floating '-N' damage indicator is larger and animates into view above the bar. Stat tiles (Armor / MR / Shield / DR) are de-emphasized so HP stays the visual anchor; the HP source diagnostic remains gated to Dev Mode. The Combat Feed now defaults to the latest 8 humanized events with a 'Show full log' toggle that expands to the recent history and a 'Collapse log' control to restore the compact view. No layout, payload, or backend changes — Damage Breakdown, Damage Mitigation, Active Defender Effects, Target Runtime Summary, Targets panel, and diagnostics are untouched.",
+    details: [
+      "LastActionCard moved into the attacker column directly below the Combat Actions card (Combat Actions → Last Action → Damage Breakdown), so each Basic Attack / active immediately shows attacker, ability, damage dealt, and resulting defender HP without scrolling.",
+      "DefenderHPCard: Current HP rendered at text-4xl extrabold, percentage promoted to text-lg bold, HP bar grown to h-5 with a 700ms width transition and a red ring + pulse overlay while a flash is active.",
+      "Floating damage indicator enlarged (text-base extrabold, slide-in-from-bottom + fade-in) and repositioned above the bar so the -N number is impossible to miss.",
+      "Defender stat tiles (Armor, MR, Shield, DR, Phys DR, Magic DR) rendered at reduced opacity to keep HP as the primary source of truth; Dev Mode HP-source line preserved.",
+      "ReadableCombatFeed defaults to the latest 8 events and exposes a 'Show full log (+N)' / 'Collapse log' toggle in the header; full event count and humanized lines are unchanged.",
+      "HP derivation, flash effect trigger, scopes/state reset on champion/mode change, and combat payloads remain identical.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-21T17:00:00Z",
     title: "Combat Lab: Visible Defender HP State",
     type: "ui",
