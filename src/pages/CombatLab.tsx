@@ -3016,15 +3016,32 @@ function ReadableCombatFeed({
   attackerName?: string;
   defenderName?: string;
 }) {
-  const lines = useMemo(() => events.slice(-30), [events]);
+  const [showFull, setShowFull] = useState(false);
+  const DEFAULT_COUNT = 8;
+  const lines = useMemo(
+    () => (showFull ? events.slice(-50) : events.slice(-DEFAULT_COUNT)),
+    [events, showFull],
+  );
+  const hiddenCount = Math.max(0, events.length - DEFAULT_COUNT);
   return (
     <SectionCard
       title="Combat Feed"
       icon={Activity}
       right={
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {events.length} events
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {events.length} events
+          </span>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowFull((v) => !v)}
+              className="rounded-md border border-border/60 bg-background/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              {showFull ? "Collapse log" : `Show full log (+${hiddenCount})`}
+            </button>
+          )}
+        </div>
       }
     >
       {lines.length === 0 ? (
