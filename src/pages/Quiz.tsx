@@ -167,6 +167,7 @@ export default function Quiz() {
   const { user } = useAuth();
   const userId = user?.id || "anonymous";
   const [phase, setPhase] = useState<QuizPhase>("sets");
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sets, setSets] = useState<QuizSet[]>([]);
   const [currentSet, setCurrentSet] = useState<QuizSet | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
