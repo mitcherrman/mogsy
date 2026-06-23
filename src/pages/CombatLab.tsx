@@ -3120,35 +3120,45 @@ function DefenderHPCard({
       <div className="space-y-3">
         <div className="relative">
           <div className="flex items-baseline justify-between gap-2">
-            <div className="text-2xl font-bold tabular-nums text-foreground">
+            <div className="text-4xl font-extrabold tabular-nums text-foreground leading-none transition-colors duration-300">
               {hp.max > 0 ? hp.current.toLocaleString() : "—"}
-              <span className="text-base font-normal text-muted-foreground">
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
                 {" "}
                 / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
               </span>
             </div>
             {hp.max > 0 && (
-              <div className="text-xs font-semibold tabular-nums text-muted-foreground">
+              <div className="text-lg font-bold tabular-nums text-foreground/80">
                 {hp.pct.toFixed(0)}%
               </div>
             )}
           </div>
-          <div className="relative mt-2 h-4 w-full overflow-hidden rounded-full border border-border/60 bg-background/60">
+          <div
+            className={`relative mt-2 h-5 w-full overflow-hidden rounded-full border bg-background/60 transition-colors duration-300 ${
+              flash ? "border-red-500/80 ring-2 ring-red-500/40" : "border-border/60"
+            }`}
+          >
             <div
-              className={`h-full bg-gradient-to-r ${fillTone} transition-[width] duration-500 ease-out`}
+              className={`h-full bg-gradient-to-r ${fillTone} transition-[width] duration-700 ease-out`}
               style={{ width: `${hp.pct}%` }}
             />
+            {flash && (
+              <div
+                key={`pulse-${flash.key}`}
+                className="pointer-events-none absolute inset-0 animate-pulse bg-red-500/30"
+              />
+            )}
           </div>
           {flash && (
             <div
               key={flash.key}
-              className="pointer-events-none absolute -top-1 right-0 animate-in fade-in slide-in-from-bottom-1 rounded-md bg-red-600/90 px-2 py-0.5 text-xs font-bold text-white shadow-lg"
+              className="pointer-events-none absolute -top-6 right-0 animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-md bg-red-600/95 px-2.5 py-1 text-base font-extrabold tabular-nums text-white shadow-xl ring-1 ring-red-300/40"
             >
               -{Math.round(flash.delta).toLocaleString()}
             </div>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-1 opacity-80">
           <Stat label="Armor" value={armor} />
           <Stat label="MR" value={mr} />
           <Stat label="Shield" value={shield} />
