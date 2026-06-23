@@ -487,7 +487,7 @@ export default function Quiz() {
         {phase === "sets" && (
           <>
             {/* 1. Daily Challenge hero (primary retention CTA). */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizDailyChallengeCard
                 state={dailyChallenge}
                 disabled={setsLoading || sets.length === 0}
@@ -498,7 +498,7 @@ export default function Quiz() {
             </div>
 
             {/* 2. Quiz Mode Cards — playable content right under the hero. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <AnimatePresence mode="wait">
                 {setsLoading ? (
                   <motion.div
@@ -506,7 +506,7 @@ export default function Quiz() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {Array.from({ length: 4 }).map((_, i) => (
                       <Skeleton key={i} className="h-28 w-full rounded-lg" />
@@ -532,7 +532,7 @@ export default function Quiz() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {sets.map((set) => (
                       <QuizModeCard
@@ -548,7 +548,7 @@ export default function Quiz() {
             </div>
 
             {/* 3. Ranked queue — secondary competitive CTA, below practice modes. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizRankedQueueCard
                 progress={userProgress}
                 ranked={getRankedState(userProgress?.attempts ?? 0)}
@@ -560,17 +560,19 @@ export default function Quiz() {
             </div>
 
             {/* 4. Compact Progression Dashboard. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizProfileCard
                 progress={userProgress}
                 loading={progressLoading}
                 error={progressError}
                 recentXpGain={recentXpGain}
+                achievements={achievements}
+                onViewAchievements={() => setAchievementsOpen(true)}
               />
             </div>
 
             {/* 5. Collapsible Knowledge Breakdown. */}
-            <Collapsible className="mb-4">
+            <Collapsible className="mb-3">
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary/80" />
@@ -580,11 +582,12 @@ export default function Quiz() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
+              <CollapsibleContent className="pt-2">
                 <QuizKnowledgeCard
                   categories={categoryStats}
                   loading={categoriesLoading}
                   error={categoriesError}
+                  hideHeader
                   totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
                   totalQuestionsAvailable={sets.reduce(
                     (sum, s) => sum + (s.question_count || 0),
@@ -605,7 +608,11 @@ export default function Quiz() {
             </Collapsible>
 
             {/* 6. Collapsible Achievements grid. */}
-            <Collapsible className="mb-6">
+            <Collapsible
+              open={achievementsOpen}
+              onOpenChange={setAchievementsOpen}
+              className="mb-6"
+            >
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary/80" />
@@ -618,11 +625,12 @@ export default function Quiz() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
+              <CollapsibleContent className="pt-2">
                 <QuizAchievementsCard
                   achievements={achievements}
                   loading={achievementsLoading}
                   error={achievementsError}
+                  hideHeader
                 />
               </CollapsibleContent>
             </Collapsible>
