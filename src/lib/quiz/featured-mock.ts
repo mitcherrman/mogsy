@@ -16,9 +16,32 @@ export const DAILY_CHALLENGE_XP_BONUS = 250;
 export const RANKED_PLACEMENT_MATCHES = 5;
 export const RANKED_QUEUE_XP_EST = { gain: 24, loss: 12 };
 
+/**
+ * Rotating daily themes. The active theme is derived from the UTC day so it
+ * stays stable for the entire day and varies day-to-day.
+ */
+const DAILY_THEMES: { title: string; blurb: string }[] = [
+  { title: "Champion Cooldowns", blurb: "Memorize the timing windows that win trades." },
+  { title: "Item Knowledge", blurb: "Recognize core builds and component paths." },
+  { title: "Champion Basics", blurb: "Identify champions, roles, and signature kits." },
+  { title: "Rune Recognition", blurb: "Spot keystones, secondaries, and shards on sight." },
+  { title: "Summoner Spells", blurb: "Track summoner cooldowns to control objectives." },
+  { title: "Item Components", blurb: "Trace finished items back to their components." },
+  { title: "Ability Identification", blurb: "Name the spell from the icon alone." },
+];
+
 function todayUtcKey(): string {
   const d = new Date();
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+function getTodaysTheme(): { title: string; blurb: string } {
+  // Stable day-of-year index so the theme is consistent for the entire UTC day.
+  const now = new Date();
+  const start = Date.UTC(now.getUTCFullYear(), 0, 0);
+  const diff = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - start;
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return DAILY_THEMES[dayOfYear % DAILY_THEMES.length];
 }
 
 function yesterdayUtcKey(): string {
@@ -37,6 +60,8 @@ export type DailyChallengeState = {
   lastCompletedDate: string | null;
   completed: boolean;
   remaining: number;
+  themeTitle: string;
+  themeBlurb: string;
 };
 
 function readJSON<T>(key: string): T | null {
@@ -77,6 +102,7 @@ export function getDailyChallenge(): DailyChallengeState {
 
   const target = DAILY_CHALLENGE_TARGET;
   const completed = answered >= target;
+  const theme = getTodaysTheme();
   return {
     date: today,
     answered,
@@ -87,6 +113,8 @@ export function getDailyChallenge(): DailyChallengeState {
     lastCompletedDate,
     completed,
     remaining: Math.max(0, target - answered),
+    themeTitle: theme.title,
+    themeBlurb: theme.blurb,
   };
 }
 

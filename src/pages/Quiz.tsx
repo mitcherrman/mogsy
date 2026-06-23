@@ -167,6 +167,7 @@ export default function Quiz() {
   const { user } = useAuth();
   const userId = user?.id || "anonymous";
   const [phase, setPhase] = useState<QuizPhase>("sets");
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sets, setSets] = useState<QuizSet[]>([]);
   const [currentSet, setCurrentSet] = useState<QuizSet | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -486,7 +487,7 @@ export default function Quiz() {
         {phase === "sets" && (
           <>
             {/* 1. Daily Challenge hero (primary retention CTA). */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizDailyChallengeCard
                 state={dailyChallenge}
                 disabled={setsLoading || sets.length === 0}
@@ -497,7 +498,7 @@ export default function Quiz() {
             </div>
 
             {/* 2. Quiz Mode Cards — playable content right under the hero. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <AnimatePresence mode="wait">
                 {setsLoading ? (
                   <motion.div
@@ -505,7 +506,7 @@ export default function Quiz() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {Array.from({ length: 4 }).map((_, i) => (
                       <Skeleton key={i} className="h-28 w-full rounded-lg" />
@@ -531,7 +532,7 @@ export default function Quiz() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {sets.map((set) => (
                       <QuizModeCard
@@ -547,7 +548,7 @@ export default function Quiz() {
             </div>
 
             {/* 3. Ranked queue — secondary competitive CTA, below practice modes. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizRankedQueueCard
                 progress={userProgress}
                 ranked={getRankedState(userProgress?.attempts ?? 0)}
@@ -559,17 +560,19 @@ export default function Quiz() {
             </div>
 
             {/* 4. Compact Progression Dashboard. */}
-            <div className="mb-4">
+            <div className="mb-3">
               <QuizProfileCard
                 progress={userProgress}
                 loading={progressLoading}
                 error={progressError}
                 recentXpGain={recentXpGain}
+                achievements={achievements}
+                onViewAchievements={() => setAchievementsOpen(true)}
               />
             </div>
 
             {/* 5. Collapsible Knowledge Breakdown. */}
-            <Collapsible className="mb-4">
+            <Collapsible className="mb-3">
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary/80" />
@@ -579,11 +582,12 @@ export default function Quiz() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
+              <CollapsibleContent className="pt-2">
                 <QuizKnowledgeCard
                   categories={categoryStats}
                   loading={categoriesLoading}
                   error={categoriesError}
+                  hideHeader
                   totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
                   totalQuestionsAvailable={sets.reduce(
                     (sum, s) => sum + (s.question_count || 0),
@@ -604,7 +608,11 @@ export default function Quiz() {
             </Collapsible>
 
             {/* 6. Collapsible Achievements grid. */}
-            <Collapsible className="mb-6">
+            <Collapsible
+              open={achievementsOpen}
+              onOpenChange={setAchievementsOpen}
+              className="mb-6"
+            >
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary/80" />
@@ -617,11 +625,12 @@ export default function Quiz() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
+              <CollapsibleContent className="pt-2">
                 <QuizAchievementsCard
                   achievements={achievements}
                   loading={achievementsLoading}
                   error={achievementsError}
+                  hideHeader
                 />
               </CollapsibleContent>
             </Collapsible>
@@ -1385,6 +1394,13 @@ function QuizModeCard({
   const mastery = match ? Math.max(0, Math.min(100, Math.round(Number(match.accuracy ?? 0)))) : null;
   const attempts = match?.attempts ?? 0;
 
+  // Derive an accent border tint from the per-category style className so each
+  // mode card feels visually distinct without bumping the card height.
+  const accentBorder = (() => {
+    const m = style.className.match(/border-([a-z]+-\d+)\/\d+/);
+    return m ? `border-${m[1]}/40` : "border-border";
+  })();
+
   return (
     <motion.button
       whileHover={{ scale: 1.02 }}
@@ -1392,54 +1408,76 @@ function QuizModeCard({
       onClick={onSelect}
       className="text-left"
     >
-      <Card className={`h-full cursor-pointer bg-card/80 backdrop-blur-sm transition-colors hover:border-primary/40 ${style.className.includes("border-") ? "" : ""}`}>
-        <CardHeader className="pb-2">
+      <Card
+        className={`relative h-full cursor-pointer overflow-hidden border ${accentBorder} bg-card/80 backdrop-blur-sm transition-colors hover:border-primary/60`}
+      >
+        {/* Category accent stripe */}
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 ${style.className
+            .replace(/text-[^\s]+/g, "")
+            .replace(/border-[^\s]+/g, "")
+            .replace(/bg-([a-z]+-\d+)\/\d+/, "bg-$1/70")}`}
+        />
+        <CardHeader className="pb-2 pt-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${style.className}`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${style.className} shadow-[inset_0_0_8px_rgba(255,255,255,0.05)]`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
               </div>
-              <CardTitle className="text-base font-bold truncate">{set.name}</CardTitle>
+              <div className="min-w-0">
+                <CardTitle className="text-base font-bold leading-tight truncate">
+                  {set.name}
+                </CardTitle>
+                <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <span className="font-bold text-foreground/90 tabular-nums">{qCount}</span>
+                  <span>questions</span>
+                  <span aria-hidden className="opacity-40">·</span>
+                  <span
+                    aria-label={`Difficulty ${difficulty.label}`}
+                    className="font-semibold uppercase tracking-wider"
+                  >
+                    {"★".repeat(difficulty.stars)}
+                    <span className="opacity-30">{"★".repeat(4 - difficulty.stars)}</span>
+                    <span className="ml-1 opacity-80">{difficulty.label}</span>
+                  </span>
+                </div>
+              </div>
             </div>
-            <Badge variant="secondary" className="text-[10px] shrink-0">
-              {qCount} Qs
-            </Badge>
+            {attempts === 0 ? (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-emerald-400/40 bg-emerald-400/10 text-[10px] font-bold uppercase tracking-wider text-emerald-300"
+              >
+                New
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="shrink-0 text-[10px] tabular-nums">
+                {attempts} played
+              </Badge>
+            )}
           </div>
-          <CardDescription className="mt-1.5 text-xs leading-relaxed line-clamp-2">
+          <CardDescription className="mt-1 text-xs leading-snug line-clamp-2">
             {set.description}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 pt-0">
-          <div className="flex items-center justify-between gap-2 text-[10px]">
-            <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 font-medium text-muted-foreground">
-              <span aria-hidden>
-                {"★".repeat(difficulty.stars)}
-                <span className="opacity-30">{"★".repeat(4 - difficulty.stars)}</span>
-              </span>
-              {difficulty.label}
-            </span>
-            {attempts > 0 ? (
-              <span className="font-mono text-muted-foreground">
-                {attempts} played
-              </span>
-            ) : (
-              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 font-semibold text-emerald-300">
-                New
-              </span>
-            )}
-          </div>
-          {mastery !== null && (
-            <div className="space-y-1">
-              <Progress value={mastery} className="h-1.5" />
+        <CardContent className="space-y-1.5 pt-0 pb-3">
+          {mastery !== null ? (
+            <div className="space-y-0.5">
               <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>Mastery</span>
-                <span className="font-mono">{mastery}%</span>
+                <span className="uppercase tracking-wider">Mastery</span>
+                <span className="font-mono font-semibold text-foreground/80">{mastery}%</span>
               </div>
+              <Progress value={mastery} className="h-1.5" />
+            </div>
+          ) : (
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              No mastery yet
             </div>
           )}
-          <div className="flex items-center text-xs font-semibold text-primary">
+          <div className="flex items-center justify-end text-xs font-semibold text-primary">
             Start quiz <ArrowRight className="ml-1 h-3 w-3" />
           </div>
         </CardContent>

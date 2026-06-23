@@ -59,6 +59,7 @@ export default function QuizKnowledgeCard({
   totalQuestionsAvailable,
   newCategories,
   recommendedCategory,
+  hideHeader,
 }: {
   categories: QuizCategoryStat[];
   loading?: boolean;
@@ -67,6 +68,7 @@ export default function QuizKnowledgeCard({
   totalQuestionsAvailable?: number;
   newCategories?: string[];
   recommendedCategory?: string;
+  hideHeader?: boolean;
 }) {
   if (loading) {
     return <Skeleton className="h-48 w-full rounded-xl" />;
@@ -90,13 +92,15 @@ export default function QuizKnowledgeCard({
       transition={{ duration: 0.25, delay: 0.05 }}
     >
       <Card className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-sm border-primary/20">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-            <BookOpen className="h-4 w-4" />
-            Knowledge Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5 pt-0">
+        {!hideHeader && (
+          <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+              <BookOpen className="h-4 w-4" />
+              Knowledge Breakdown
+            </CardTitle>
+          </CardHeader>
+        )}
+        <CardContent className={hideHeader ? "space-y-4 pt-4" : "space-y-5 pt-0"}>
           {error && (
             <p className="text-[11px] text-muted-foreground/70 italic">{error}</p>
           )}

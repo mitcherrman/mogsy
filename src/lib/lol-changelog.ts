@@ -55,6 +55,32 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-23T14:00:00Z",
+    title: "League Quiz: Home Polish Pass",
+    type: "ui",
+    scopes: ["quiz"],
+    summary:
+      "Refined the new gameplay-first Quiz home: collapsibles no longer duplicate their section titles, the Progression Dashboard now summarizes achievements and next-closest goal, quiz mode cards have stronger per-category identity, and the Daily Challenge surfaces a rotating daily theme with stronger XP/streak emphasis. The Ranked card was given a darker, more competitive treatment.",
+    details: [
+      "Knowledge Breakdown and Achievements: in-card headers hidden inside collapsibles so the title appears only once (in the trigger).",
+      "Progression Dashboard: added achievements unlocked/total + completion %, next closest achievement preview, and a compact View Achievements action that opens the achievements collapsible.",
+      "Daily Challenge: added Today's Theme card (rotates daily via UTC day-of-year), promoted XP reward to a bolder readout, stronger streak chip with 'Keep it alive' / 'Start a streak' helper.",
+      "Ranked card: darker background treatment, larger rank crest with stronger cyan halo, clearer Placement Series badge with progress counter, win/loss XP shown as side-by-side tiles instead of small chips.",
+      "Quiz mode cards: stronger icon presence (11×11 tile), category accent stripe on top edge, difficulty/question count inlined with the title, mastery placement promoted to the bottom.",
+      "Visual density pass: reduced top-level mb-4 → mb-3 between sections, tightened card paddings on Daily Challenge and Ranked, smaller gap on stat grids.",
+    ],
+    files: [
+      "src/pages/Quiz.tsx",
+      "src/components/quiz/QuizDailyChallengeCard.tsx",
+      "src/components/quiz/QuizRankedQueueCard.tsx",
+      "src/components/quiz/QuizProfileCard.tsx",
+      "src/components/quiz/QuizKnowledgeCard.tsx",
+      "src/components/quiz/QuizAchievementsCard.tsx",
+      "src/lib/quiz/featured-mock.ts",
+    ],
+    routes: ["/quiz"],
+  },
+  {
     timestamp: "2026-06-23T12:00:00Z",
     title: "Combat Lab: Defender HP Polish",
     type: "ui",
