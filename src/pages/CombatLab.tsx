@@ -2520,6 +2520,12 @@ function InteractiveSandbox({
             )}
           </div>
         </SectionCard>
+        <LastActionCard
+          event={lastCombatEvent}
+          attackerName={attackerDisplayName}
+          defenderName={defenderDisplayName}
+          hp={defenderHP}
+        />
         </div>
 
         {/* DEFENDER COLUMN */}
