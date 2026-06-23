@@ -40,31 +40,45 @@ export default function QuizRankedQueueCard({
       transition={{ duration: 0.3, delay: 0.05 }}
     >
       <Card
-        className="relative overflow-hidden border-cyan-400/30 bg-gradient-to-br from-[#06121f]/90 via-[#0a1428]/90 to-[#0a0a1a]/90 backdrop-blur-sm"
+        className="relative overflow-hidden border-cyan-400/40 bg-gradient-to-br from-[#02080f]/95 via-[#050d1a]/95 to-[#000]/95 backdrop-blur-sm"
         style={{
           boxShadow:
-            "0 0 0 1px rgba(80,170,220,0.18) inset, 0 0 28px rgba(80,170,220,0.20), 0 8px 28px rgba(0,0,0,0.55)",
+            "0 0 0 1px rgba(80,170,220,0.22) inset, 0 0 32px rgba(80,170,220,0.22), 0 10px 30px rgba(0,0,0,0.7)",
         }}
       >
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent opacity-70"
         />
-        <CardContent className="relative p-5">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(80% 60% at 0% 100%, rgba(80,170,220,0.12) 0%, transparent 60%)",
+          }}
+        />
+        <CardContent className="relative p-4">
           <div className="flex items-start gap-4">
-            <div className="relative shrink-0">
+            <div
+              className="relative shrink-0 rounded-full"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(80,170,220,0.30) 0%, transparent 70%)",
+              }}
+            >
               {iconUrl ? (
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-16 w-16 object-contain drop-shadow-[0_0_14px_rgba(80,170,220,0.45)]"
+                  className="h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(80,170,220,0.6)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/30 bg-cyan-400/10">
-                  <Shield className="h-8 w-8 text-cyan-200" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10">
+                  <Shield className="h-10 w-10 text-cyan-200" />
                 </div>
               )}
             </div>
@@ -78,13 +92,23 @@ export default function QuizRankedQueueCard({
                     {ranked.isPlaced ? rankName : "Placement Series"}
                   </h3>
                 </div>
-                <Badge
-                  variant="outline"
-                  className="shrink-0 border-cyan-400/40 bg-cyan-400/10 text-[10px] font-semibold text-cyan-200"
-                >
-                  <Swords className="mr-1 h-3 w-3" />
-                  {ranked.isPlaced ? "Ranked Queue" : "Placement"}
-                </Badge>
+                {ranked.isPlaced ? (
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 border-cyan-400/50 bg-cyan-400/10 text-[10px] font-semibold uppercase tracking-wider text-cyan-200"
+                  >
+                    <Swords className="mr-1 h-3 w-3" />
+                    Ranked Queue
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 border-amber-400/60 bg-amber-400/15 text-[10px] font-bold uppercase tracking-wider text-amber-200 shadow-[0_0_10px_-2px_rgba(251,191,36,0.45)]"
+                  >
+                    <Swords className="mr-1 h-3 w-3" />
+                    Placement {RANKED_PLACEMENT_FORMAT(ranked)}
+                  </Badge>
+                )}
               </div>
 
               {!ranked.isPlaced ? (
@@ -99,23 +123,37 @@ export default function QuizRankedQueueCard({
                 </p>
               )}
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                  <TrendingUp className="h-3 w-3" />+{ranked.estimatedGain} XP / win
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-md border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
-                  <TrendingDown className="h-3 w-3" />−{ranked.estimatedLoss} XP / loss
-                </span>
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                <div className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-300/90">
+                    <TrendingUp className="h-2.5 w-2.5" />
+                    Win
+                  </div>
+                  <div className="text-sm font-extrabold tabular-nums text-emerald-200">
+                    +{ranked.estimatedGain}
+                    <span className="ml-0.5 text-[10px] font-medium opacity-70">XP</span>
+                  </div>
+                </div>
+                <div className="rounded-md border border-rose-400/40 bg-rose-500/10 px-2 py-1">
+                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-rose-300/90">
+                    <TrendingDown className="h-2.5 w-2.5" />
+                    Loss
+                  </div>
+                  <div className="text-sm font-extrabold tabular-nums text-rose-200">
+                    −{ranked.estimatedLoss}
+                    <span className="ml-0.5 text-[10px] font-medium opacity-70">XP</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-end">
+          <div className="mt-3 flex items-center justify-end">
             <Button
               size="sm"
               onClick={onPlay}
               disabled={disabled}
-              className="bg-gradient-to-r from-cyan-500 to-sky-600 text-foreground hover:from-cyan-400 hover:to-sky-500"
+              className="bg-gradient-to-r from-cyan-500 to-sky-700 font-semibold text-foreground shadow-[0_0_18px_-4px_rgba(56,189,248,0.6)] hover:from-cyan-400 hover:to-sky-600"
             >
               {ranked.isPlaced ? "Queue Ranked" : "Play Placement"}
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -125,4 +163,10 @@ export default function QuizRankedQueueCard({
       </Card>
     </motion.div>
   );
+}
+
+function RANKED_PLACEMENT_FORMAT(ranked: RankedState): string {
+  const total = 5;
+  const done = Math.max(0, total - ranked.placementMatchesRemaining);
+  return `${done}/${total}`;
 }
