@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { Shield, Flame, Trophy, Target, ChevronRight, Sparkles } from "lucide-react";
+import { Shield, Flame, Trophy, Target, ChevronRight, Sparkles, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
+import { resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -36,11 +37,15 @@ export default function QuizProfileCard({
   loading,
   error,
   recentXpGain,
+  achievements,
+  onViewAchievements,
 }: {
   progress: QuizProgress | null;
   loading?: boolean;
   error?: string | null;
   recentXpGain?: number | null;
+  achievements?: QuizAchievement[];
+  onViewAchievements?: () => void;
 }) {
   if (loading) {
     return <Skeleton className="h-32 w-full rounded-xl" />;
@@ -85,6 +90,26 @@ export default function QuizProfileCard({
     resolveQuizAssetUrl(nextRankObj?.icon_path) ||
     resolveQuizAssetUrl(nextRankObj?.small_icon_path) ||
     null;
+
+  // Achievement summary derived from the (optionally provided) achievements list.
+  const totalAch = achievements?.length ?? 0;
+  const unlockedAch = (achievements || []).filter((a) => a?.unlocked).length;
+  const achPct = totalAch > 0 ? Math.round((unlockedAch / totalAch) * 100) : 0;
+  const nextClosestAchievement = (() => {
+    const locked = (achievements || []).filter((a) => !a?.unlocked);
+    if (locked.length === 0) return null;
+    const withProgress = locked
+      .map((a) => {
+        const goal = Number(a.goal ?? 0);
+        const prog = Number(a.progress ?? 0);
+        const pct = goal > 0 ? Math.min(100, (prog / goal) * 100) : 0;
+        return { a, pct, goal, prog };
+      })
+      .filter((r) => r.goal > 0 && r.pct > 0)
+      .sort((a, b) => b.pct - a.pct);
+    if (withProgress.length === 0) return { a: locked[0], pct: 0, goal: 0, prog: 0 };
+    return withProgress[0];
+  })();
 
   return (
     <motion.div
@@ -182,12 +207,57 @@ export default function QuizProfileCard({
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <Stat icon={Flame} label="Streak" value={progress?.current_streak ?? 0} />
             <Stat icon={Trophy} label="Best" value={progress?.best_streak ?? 0} />
             <Stat icon={Target} label="Accuracy" value={fmtPct(progress?.accuracy)} />
             <Stat icon={Shield} label="Answered" value={progress?.attempts ?? 0} />
           </div>
+
+          {totalAch > 0 && (
+            <div className="rounded-md border border-[#c9a84c]/25 bg-[#c9a84c]/5 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#c9a84c]/90">
+                  <Trophy className="h-3 w-3" />
+                  Achievements
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold tabular-nums text-[#f5e9c8]">
+                    {unlockedAch}/{totalAch}
+                    <span className="ml-1 font-mono text-muted-foreground">{achPct}%</span>
+                  </span>
+                  {onViewAchievements && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={onViewAchievements}
+                      className="h-6 px-2 text-[10px] uppercase tracking-wider text-primary/90 hover:text-primary"
+                    >
+                      View
+                      <ChevronRight className="ml-0.5 h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Progress value={achPct} className="mt-1 h-1" />
+              {nextClosestAchievement?.a && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <Lock className="h-2.5 w-2.5 shrink-0" />
+                  <span className="truncate">
+                    Next:&nbsp;
+                    <span className="font-semibold text-foreground/90">
+                      {nextClosestAchievement.a.title || nextClosestAchievement.a.name || "Achievement"}
+                    </span>
+                    {nextClosestAchievement.goal > 0 && (
+                      <span className="ml-1 font-mono opacity-80">
+                        {nextClosestAchievement.prog}/{nextClosestAchievement.goal}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="text-[10px] text-muted-foreground/70 italic">{error}</p>
