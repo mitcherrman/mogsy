@@ -4718,6 +4718,7 @@ function CombatTimelinePanel({
 }
 
 /* ─────────────── Sandbox Timeline (engine events, dev-only) ─────────────── */
+/* placeholder */
 
 function getEventScope(e: TimelineEvent): string | null {
   const s = (e as any).target_scope || (e as any).scope || (e as any).target;
