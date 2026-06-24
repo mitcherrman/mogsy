@@ -4371,6 +4371,342 @@ function StateCard({ entry, changed }: { entry: RuntimeEntry; changed?: boolean 
 
 /* ─────────────── Sandbox Timeline ─────────────── */
 
+/* ─────────────── Ability Rank Bar (League-style) ─────────────── */
+
+const ABILITY_KEY_META: Record<
+  "Q" | "W" | "E" | "R",
+  { icon: typeof Swords; tone: string; ring: string; chip: string }
+> = {
+  Q: { icon: Swords, tone: "text-amber-300", ring: "ring-amber-400/50", chip: "bg-amber-400" },
+  W: { icon: Zap, tone: "text-sky-300", ring: "ring-sky-400/50", chip: "bg-sky-400" },
+  E: { icon: Flame, tone: "text-emerald-300", ring: "ring-emerald-400/50", chip: "bg-emerald-400" },
+  R: { icon: Wand2, tone: "text-fuchsia-300", ring: "ring-fuchsia-400/50", chip: "bg-fuchsia-400" },
+};
+
+function AbilityRankBar({
+  ranks,
+  onChange,
+  champion,
+  devMode,
+}: {
+  ranks: { Q: number; W: number; E: number; R: number };
+  onChange: (k: "Q" | "W" | "E" | "R", r: number) => void;
+  champion?: string;
+  devMode: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+      <div className="mb-2 flex items-center justify-between">
+        <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+          Ability ranks
+        </Label>
+        <span className="text-[10px] text-muted-foreground">
+          {champion ? `${champion} ` : ""}Q{ranks.Q} W{ranks.W} E{ranks.E} R{ranks.R}
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {(["Q", "W", "E", "R"] as const).map((k) => {
+          const max = k === "R" ? 3 : 5;
+          const meta = ABILITY_KEY_META[k];
+          const Icon = meta.icon;
+          const current = ranks[k];
+          return (
+            <div key={k} className="flex flex-col items-center gap-1.5">
+              <div
+                className={`relative flex h-12 w-12 items-center justify-center rounded-md border border-border/60 bg-gradient-to-br from-background/80 to-background/40 shadow-inner ring-1 ${meta.ring}`}
+              >
+                <Icon className={`h-5 w-5 ${meta.tone}`} />
+                <span className="absolute bottom-0.5 right-0.5 rounded bg-background/80 px-1 text-[9px] font-bold leading-none text-foreground/90">
+                  {k}
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
+                  const filled = r <= current;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => onChange(k, r)}
+                      aria-label={`${k} rank ${r}`}
+                      className={`h-2.5 w-3 rounded-sm border transition-colors ${
+                        filled
+                          ? `${meta.chip} border-transparent`
+                          : "border-border bg-muted/30 hover:bg-muted/60"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-[10px] font-semibold text-muted-foreground">
+                Rank {current}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {devMode && (
+        <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+{`q_rank: ${ranks.Q}
+w_rank: ${ranks.W}
+e_rank: ${ranks.E}
+r_rank: ${ranks.R}
+attacker_stats.Q_RANK / P_Q: ${ranks.Q}
+attacker_stats.W_RANK / P_W: ${ranks.W}
+attacker_stats.E_RANK / P_E: ${ranks.E}
+attacker_stats.R_RANK / P_R: ${ranks.R}`}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────── Combat Timeline (primary history view) ─────────────── */
+
+type CombatTimelineEntryT = {
+  id: number;
+  index: number;
+  kind: "basic-attack" | "active";
+  action_id?: string;
+  label: string;
+  abilityKey?: "Q" | "W" | "E" | "R";
+  abilityRank?: number;
+  attacker: string;
+  defender: string;
+  hp_before: number;
+  hp_after: number;
+  hp_max: number;
+  raw_damage: number;
+  final_damage: number;
+  damage_type: string | null;
+  shield_absorbed: number;
+  damage_reduction_percent: number | null;
+  events: TimelineEvent[];
+  state_snapshot: Record<string, unknown> | null;
+  endpoint: string;
+  request: unknown;
+  response: unknown;
+  timestamp: number;
+};
+
+function CombatTimelinePanel({
+  entries,
+  selectedId,
+  onSelect,
+}: {
+  entries: CombatTimelineEntryT[];
+  selectedId: number | null;
+  onSelect: (id: number | null) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggle = (id: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  return (
+    <SectionCard
+      title="Combat Timeline"
+      icon={Timer}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {entries.length} {entries.length === 1 ? "action" : "actions"}
+        </span>
+      }
+    >
+      {entries.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-8 text-center text-xs text-muted-foreground">
+          No actions yet — press Basic Attack or an active to begin building the timeline.
+        </div>
+      ) : (
+        <ol className="space-y-2">
+          {entries.map((e) => {
+            const isExpanded = expanded.has(e.id);
+            const isSelected = selectedId === e.id;
+            const hasDamage = e.final_damage > 0;
+            const rankSuffix =
+              e.abilityKey && typeof e.abilityRank === "number"
+                ? ` ${e.abilityKey} Rank ${e.abilityRank}`
+                : "";
+            const title = `${e.attacker}${rankSuffix} · ${e.label}`;
+            return (
+              <li
+                key={e.id}
+                className={`rounded-md border ${
+                  isSelected ? "border-primary/60 bg-primary/5" : "border-border/60 bg-background/40"
+                }`}
+              >
+                <div className="flex items-start gap-2 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggle(e.id)}
+                    className="mt-0.5 flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    aria-label={isExpanded ? "Collapse entry" : "Expand entry"}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(isSelected ? null : e.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        #{e.index}
+                      </span>
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {title}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {hasDamage ? (
+                        <span className="font-mono font-semibold text-destructive">
+                          −{Math.round(e.final_damage).toLocaleString()} dmg
+                          {e.damage_type ? ` (${e.damage_type})` : ""}
+                        </span>
+                      ) : (
+                        <span>no damage</span>
+                      )}
+                      {e.hp_max > 0 && (
+                        <span className="font-mono tabular-nums">
+                          {Math.round(e.hp_before).toLocaleString()} →{" "}
+                          {Math.round(e.hp_after).toLocaleString()} HP
+                        </span>
+                      )}
+                      {typeof e.damage_reduction_percent === "number" &&
+                        e.damage_reduction_percent > 0 && (
+                          <span className="text-cyan-300">
+                            {(e.damage_reduction_percent * (e.damage_reduction_percent <= 1 ? 100 : 1)).toFixed(0)}% DR
+                          </span>
+                        )}
+                      {e.shield_absorbed > 0 && (
+                        <span className="text-amber-300">
+                          shield {Math.round(e.shield_absorbed).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className="border-t border-border/40 px-3 py-2 text-[11px]">
+                    <div className="grid gap-1 sm:grid-cols-2">
+                      <div>
+                        <span className="text-muted-foreground">Raw damage:</span>{" "}
+                        <span className="font-mono">{e.raw_damage.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Final damage:</span>{" "}
+                        <span className="font-mono">{e.final_damage.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Damage type:</span>{" "}
+                        <span>{e.damage_type || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Shield absorbed:</span>{" "}
+                        <span className="font-mono">{e.shield_absorbed.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">DR%:</span>{" "}
+                        <span className="font-mono">
+                          {typeof e.damage_reduction_percent === "number"
+                            ? e.damage_reduction_percent.toString()
+                            : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Target HP:</span>{" "}
+                        <span className="font-mono">
+                          {Math.round(e.hp_before)} → {Math.round(e.hp_after)} / {Math.round(e.hp_max)}
+                        </span>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-muted-foreground">Endpoint:</span>{" "}
+                        <span className="font-mono">{e.endpoint || "—"}</span>
+                      </div>
+                    </div>
+                    {e.events.length > 0 && (
+                      <div className="mt-2">
+                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Events ({e.events.length})
+                        </div>
+                        <ul className="space-y-1">
+                          {e.events.map((ev, i) => {
+                            const meta = extractEventMetadata(ev);
+                            return (
+                              <li
+                                key={i}
+                                className="rounded border border-border/40 bg-background/40 px-2 py-1"
+                              >
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                  <span className="font-semibold text-foreground/90">
+                                    {getEventLabel(ev)}
+                                  </span>
+                                  {typeof getEventDamage(ev) === "number" && (
+                                    <span className="font-mono text-destructive">
+                                      raw {(ev.damage ?? 0).toString()} →{" "}
+                                      final {(ev.final_damage ?? ev.damage ?? 0).toString()}
+                                    </span>
+                                  )}
+                                  {ev.damage_type && (
+                                    <span className="text-muted-foreground">
+                                      ({ev.damage_type})
+                                    </span>
+                                  )}
+                                  {ev.source && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      · {ev.source}
+                                    </span>
+                                  )}
+                                </div>
+                                {meta.length > 0 && (
+                                  <div className="mt-0.5 flex flex-wrap gap-1">
+                                    {meta.map((m) => (
+                                      <span
+                                        key={m.key}
+                                        className="rounded border border-border/40 bg-background/30 px-1 py-px text-[10px] text-muted-foreground"
+                                      >
+                                        <span className="text-foreground/70">{m.key}:</span>{" "}
+                                        <span className="font-mono">{m.value}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    {e.state_snapshot && Object.keys(e.state_snapshot).length > 0 && (
+                      <div className="mt-2">
+                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Active states snapshot
+                        </div>
+                        <pre className="max-h-32 overflow-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+                          {JSON.stringify(e.state_snapshot, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ─────────────── Sandbox Timeline (engine events, dev-only) ─────────────── */
+
 function getEventScope(e: TimelineEvent): string | null {
   const s = (e as any).target_scope || (e as any).scope || (e as any).target;
   return typeof s === "string" ? s : null;
