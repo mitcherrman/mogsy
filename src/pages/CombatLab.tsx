@@ -2799,6 +2799,10 @@ function InteractiveSandbox({
           selectedId={selectedTimelineId}
           onSelect={setSelectedTimelineId}
         />
+        <ComboSummaryPanel
+          entries={combatTimeline as CombatTimelineEntryT[]}
+          devMode={devMode}
+        />
         <DamageBreakdownPanel events={events} />
         <ReadableCombatFeed
           events={events}
