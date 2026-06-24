@@ -2688,9 +2688,22 @@ function InteractiveSandbox({
             title="Combat"
             icon={Swords}
             right={
-              <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
-                <RotateCcw className="h-3.5 w-3.5" /> Reset
-              </Button>
+              <div className="flex items-center gap-2">
+                <label
+                  className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
+                  title="When ON, changing attacker/defender configuration automatically clears combat state."
+                >
+                  <Switch
+                    checked={autoResetEnabled}
+                    onCheckedChange={setAutoResetEnabled}
+                    className="scale-75"
+                  />
+                  Auto Reset
+                </label>
+                <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
+                  <RotateCcw className="h-3.5 w-3.5" /> Reset
+                </Button>
+              </div>
             }
           >
             <div className="mb-3 flex items-center justify-center gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
