@@ -1649,6 +1649,36 @@ function InteractiveSandbox({
     | { kind: "active"; action_id: string; abilityKey?: "Q" | "W" | "E" | "R"; rank?: number }
     | null
   >(null);
+  // Combat Timeline: one entry per user-initiated action (basic attack or active).
+  // This is the primary combat history shown to the user and the source for the
+  // timeline-based Dev Mode JSON inspector.
+  type CombatTimelineEntry = {
+    id: number;
+    index: number; // 1-based action number (#1, #2, ...)
+    kind: "basic-attack" | "active";
+    action_id?: string;
+    label: string;
+    abilityKey?: "Q" | "W" | "E" | "R";
+    abilityRank?: number;
+    attacker: string;
+    defender: string;
+    hp_before: number;
+    hp_after: number;
+    hp_max: number;
+    raw_damage: number;
+    final_damage: number;
+    damage_type: string | null;
+    shield_absorbed: number;
+    damage_reduction_percent: number | null;
+    events: TimelineEvent[];
+    state_snapshot: Record<string, unknown> | null;
+    endpoint: string;
+    request: unknown;
+    response: unknown;
+    timestamp: number;
+  };
+  const [combatTimeline, setCombatTimeline] = useState<CombatTimelineEntry[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
   // Frontend ability rank controls (Q/W/E/R). Defaults: Q=5, W=5, E=5, R=3.
   // Sent as top-level fields AND mirrored into attacker_stats on every interactive request.
   const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>({
