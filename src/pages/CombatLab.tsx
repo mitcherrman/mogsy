@@ -2468,6 +2468,55 @@ function InteractiveSandbox({
                 <span className="font-medium text-foreground/80">{config.champion}</span>
               </div>
             )}
+            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+              <div className="mb-1 flex items-center justify-between">
+                <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Ability ranks
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {config.champion ? `${config.champion} ` : ""}Q{abilityRanks.Q} W{abilityRanks.W} E{abilityRanks.E} R{abilityRanks.R}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["Q", "W", "E", "R"] as const).map((k) => {
+                  const max = k === "R" ? 3 : 5;
+                  return (
+                    <div key={k} className="flex flex-col items-center">
+                      <div className="text-[10px] font-semibold text-muted-foreground">{k}</div>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: max }, (_, i) => i + 1).map((r) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setAbilityRanks((s) => ({ ...s, [k]: r }))}
+                            className={`h-5 w-5 rounded text-[10px] font-bold transition-colors ${
+                              abilityRanks[k] === r
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                            }`}
+                            aria-label={`${k} rank ${r}`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {devMode && (
+                <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+{`q_rank: ${abilityRanks.Q}
+w_rank: ${abilityRanks.W}
+e_rank: ${abilityRanks.E}
+r_rank: ${abilityRanks.R}
+attacker_stats.Q_RANK / P_Q: ${abilityRanks.Q}
+attacker_stats.W_RANK / P_W: ${abilityRanks.W}
+attacker_stats.E_RANK / P_E: ${abilityRanks.E}
+attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
+                </pre>
+              )}
+            </div>
             <ActionButton
               label="Basic Attack"
               hint="Auto-attack the primary target"
