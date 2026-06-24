@@ -1,0 +1,1 @@
+REVOKE SELECT (stripe_session_id, stripe_price_id, amount_cents) ON public.gifts FROM anon, authenticated;
