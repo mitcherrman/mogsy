@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-25T00:00:00Z",
+    title: "Combat Lab: Reset Button Hard Clear + Auto Reset Toggle",
+    type: "fix",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab's Reset button now performs a true hard clear of every cached combat value so the next request starts from a clean slate. It wipes currentState, scopes, combatTimeline, selectedTimelineEntry, combat feed/events, combo summary, damage breakdown, last action, last request, last response, target runtime summary, active defender effects, defense preview, cached remaining HP, cached derived stats, cached developer state, and the previous error — and removes the persisted sandbox cache from localStorage. After Reset the Defender HP readout immediately reflects the current setup's resolved maximum HP (e.g. K'Sante → 2665 / 2665, K'Sante + Jak'Sho → 3015 / 3015, Custom Target Dummy 4000 → 4000 / 4000), and the next backend request never reuses the previous TARGET_REMAINING_HP. A new Auto Reset toggle sits next to the Reset button, persisted to localStorage and defaulting ON. When ON, changing any combat-defining configuration (attacker champion / level / items / runes / developer stat overrides, defender champion / level / items / runes / mode, or target dummy HP / armor / MR / shield / damage reduction) automatically triggers the same hard reset. When OFF, only the Reset button clears combat state — letting advanced users intentionally swap builds mid-combat. Manual Reset never modifies attacker champion, attacker level, attacker items, attacker runes, defender champion, defender level, defender items, defender runes, target mode, custom dummy values, Sandbox / Real Match rank mode, ability ranks, or Dev Mode — only the combat simulation resets.",
+    details: [
+      "Reset Combat now fully clears: currentState, scopes, combatTimeline, selectedTimelineEntry, combat feed/events, combo summary, damage breakdown, last action, last request, last response, last endpoint, target runtime summary, active defender effects, defense preview (and before-snapshot), cached remaining HP, cached derived stats, cached developer attacker_stats, and previous error state — plus removes the persisted combat-lab sandbox cache from localStorage.",
+      "Defender HP resets to the current setup's resolved maximum HP — K'Sante 2665/2665, K'Sante + Jak'Sho 3015/3015, Custom Target Dummy (4000) 4000/4000 — and the next /api/combat-lab/basic-attack or /active request never reuses the previous TARGET_REMAINING_HP.",
+      "New Auto Reset toggle next to the Reset button, persisted to localStorage (combat-lab:auto-reset). Default ON.",
+      "Auto Reset ON: changing attacker champion, attacker level, attacker items, attacker runes, attacker developer stat overrides, defender champion, defender level, defender items, defender runes, defender mode, target dummy HP, target dummy armor, target dummy MR, target dummy shield, or target dummy damage reduction automatically triggers the same hard reset.",
+      "Auto Reset OFF: none of those changes auto-reset — only the Reset button performs a hard clear, supporting advanced sandbox testing where users intentionally change builds mid-combat.",
+      "Manual Reset preserves attacker champion, attacker level, attacker items, attacker runes, defender champion, defender level, defender items, defender runes, target mode, custom dummy values, Sandbox / Real Match rank mode, ability ranks, and Dev Mode — only the combat simulation resets.",
+      "Dev Mode adds a 'Reset Diagnostics' card showing autoResetEnabled, lastResetReason (e.g. manual reset, attacker items changed, defender items changed, attacker champion changed, defender champion changed, target stats changed, developer overrides changed), resetCounter, and lastResetAt.",
+      "No backend changes. Combat calculation, ability cards, rank pips, rank mode (Sandbox / Real Match), target defenses, diagnostics, layout, and the LoL hub / tier-list / quiz are unchanged.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-24T18:00:00Z",
     title: "Combat Lab: Unified Ability Cards + Legal Rank Mode",
     type: "feature",
