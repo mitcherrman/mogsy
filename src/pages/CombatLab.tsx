@@ -1687,6 +1687,45 @@ function InteractiveSandbox({
     E: 5,
     R: 3,
   });
+  // Rank mode: "sandbox" (no level restriction) or "real_match" (clamped by champion level).
+  const [rankMode, setRankMode] = useState<"sandbox" | "real_match">(() => {
+    if (typeof window === "undefined") return "sandbox";
+    try {
+      const v = localStorage.getItem("combat-lab:rank-mode");
+      return v === "real_match" ? "real_match" : "sandbox";
+    } catch {
+      return "sandbox";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:rank-mode", rankMode);
+    } catch {}
+  }, [rankMode]);
+  const championLevel = Math.max(
+    1,
+    Math.min(20, Number(config.stats?.LEVEL ?? 18) || 18)
+  );
+  const legalRankCaps = useMemo(() => {
+    if (rankMode === "sandbox") return { Q: 5, W: 5, E: 5, R: 3 };
+    const l = championLevel;
+    const qwe = l >= 9 ? 5 : l >= 7 ? 4 : l >= 5 ? 3 : l >= 4 ? 2 : 1;
+    const r = l >= 16 ? 3 : l >= 11 ? 2 : l >= 6 ? 1 : 0;
+    return { Q: qwe, W: qwe, E: qwe, R: r };
+  }, [rankMode, championLevel]);
+  // Clamp ranks whenever caps tighten (mode switch or level drop).
+  useEffect(() => {
+    setAbilityRanks((s) => {
+      const next = {
+        Q: Math.min(s.Q, legalRankCaps.Q),
+        W: Math.min(s.W, legalRankCaps.W),
+        E: Math.min(s.E, legalRankCaps.E),
+        R: Math.min(s.R, legalRankCaps.R),
+      };
+      if (next.Q === s.Q && next.W === s.W && next.E === s.E && next.R === s.R) return s;
+      return next;
+    });
+  }, [legalRankCaps]);
   const rankPayload = {
     q_rank: abilityRanks.Q,
     w_rank: abilityRanks.W,
