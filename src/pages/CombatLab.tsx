@@ -2615,6 +2615,8 @@ attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
           attackerName={attackerDisplayName}
           defenderName={defenderDisplayName}
           hp={defenderHP}
+          abilityKey={lastAction && lastAction.kind === "active" ? lastAction.abilityKey : undefined}
+          abilityRank={lastAction && lastAction.kind === "active" ? lastAction.rank : undefined}
         />
         </div>
 
