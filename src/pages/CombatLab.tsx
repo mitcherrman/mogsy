@@ -3065,6 +3065,23 @@ function InteractiveSandbox({
         {devMode && (
           <>
             <RuntimeStatePanel state={state} changedKeys={changedKeys} />
+            <Card className="border-border/40 bg-muted/20">
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Reset Diagnostics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 px-3 pb-3 text-[11px] font-mono">
+                <div className="text-muted-foreground">autoResetEnabled</div>
+                <div className="text-right">{String(autoResetEnabled)}</div>
+                <div className="text-muted-foreground">lastResetReason</div>
+                <div className="text-right truncate" title={lastResetReason}>{lastResetReason}</div>
+                <div className="text-muted-foreground">resetCounter</div>
+                <div className="text-right">{resetCounter}</div>
+                <div className="text-muted-foreground">lastResetAt</div>
+                <div className="text-right truncate" title={lastResetAt}>{lastResetAt}</div>
+              </CardContent>
+            </Card>
             <DeveloperPanel
               endpoint={lastEndpoint}
               request={lastRequest}
