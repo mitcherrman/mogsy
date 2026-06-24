@@ -1646,9 +1646,38 @@ function InteractiveSandbox({
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
   const [lastAction, setLastAction] = useState<
     | { kind: "basic-attack" }
-    | { kind: "active"; action_id: string }
+    | { kind: "active"; action_id: string; abilityKey?: "Q" | "W" | "E" | "R"; rank?: number }
     | null
   >(null);
+  // Frontend ability rank controls (Q/W/E/R). Defaults: Q=5, W=5, E=5, R=3.
+  // Sent as top-level fields AND mirrored into attacker_stats on every interactive request.
+  const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>({
+    Q: 5,
+    W: 5,
+    E: 5,
+    R: 3,
+  });
+  const rankPayload = {
+    q_rank: abilityRanks.Q,
+    w_rank: abilityRanks.W,
+    e_rank: abilityRanks.E,
+    r_rank: abilityRanks.R,
+  };
+  const rankAttackerStatAliases: Record<string, number> = {
+    Q_RANK: abilityRanks.Q,
+    W_RANK: abilityRanks.W,
+    E_RANK: abilityRanks.E,
+    R_RANK: abilityRanks.R,
+    P_Q: abilityRanks.Q,
+    P_W: abilityRanks.W,
+    P_E: abilityRanks.E,
+    P_R: abilityRanks.R,
+  };
+  const detectAbilityKey = (s: string | undefined): "Q" | "W" | "E" | "R" | undefined => {
+    if (!s) return undefined;
+    const m = String(s).toUpperCase().match(/(?:^|[^A-Z])([QWER])(?:$|[^A-Z])/);
+    return (m?.[1] as "Q" | "W" | "E" | "R" | undefined) || undefined;
+  };
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
   const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
