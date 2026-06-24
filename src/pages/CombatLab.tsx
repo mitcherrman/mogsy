@@ -2323,8 +2323,23 @@ function InteractiveSandbox({
         i: config.items,
         r: config.runes,
         s: summonerPicks,
+        tm: targetSetup.targetMode,
+        tc: targetSetup.targetChampionName,
+        td: [targetSetup.dummyHP, targetSetup.dummyArmor, targetSetup.dummyMR],
       }),
-    [config.champion, config.stats?.LEVEL, config.target_profile, config.items, config.runes, summonerPicks]
+    [
+      config.champion,
+      config.stats?.LEVEL,
+      config.target_profile,
+      config.items,
+      config.runes,
+      summonerPicks,
+      targetSetup.targetMode,
+      targetSetup.targetChampionName,
+      targetSetup.dummyHP,
+      targetSetup.dummyArmor,
+      targetSetup.dummyMR,
+    ]
   );
   const firstResetRef = useRef(true);
   useEffect(() => {
