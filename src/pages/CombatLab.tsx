@@ -2627,7 +2627,19 @@ function InteractiveSandbox({
             )}
             <AbilityRankBar
               ranks={abilityRanks}
-              onChange={(k, r) => setAbilityRanks((s) => ({ ...s, [k]: r }))}
+              caps={legalRankCaps}
+              mode={rankMode}
+              onModeChange={setRankMode}
+              level={championLevel}
+              onChange={(k, r) =>
+                setAbilityRanks((s) => ({
+                  ...s,
+                  [k]: Math.max(0, Math.min(r, legalRankCaps[k])),
+                }))
+              }
+              onCast={(k) => sendStep("active", k)}
+              busyKey={busy}
+              disabled={!!busy || offline || !config.champion}
               champion={config.champion}
               devMode={devMode}
             />
@@ -2703,25 +2715,6 @@ function InteractiveSandbox({
                 onClick={() => sendStep("active", a.id, a.extra)}
               />
             ))}
-            {fallbackAbilityActions.length > 0 && (
-              <>
-                <div className="pt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Ability formulas
-                </div>
-                {fallbackAbilityActions.map((a) => (
-                  <ActionButton
-                    key={a.id}
-                    label={a.label}
-                    hint={a.hint}
-                    icon={Zap}
-                    tone="accent"
-                    busy={busy === a.id}
-                    disabled={!!busy || offline}
-                    onClick={() => sendStep("active", a.id)}
-                  />
-                ))}
-              </>
-            )}
           </div>
         </SectionCard>
         <LastActionCard
