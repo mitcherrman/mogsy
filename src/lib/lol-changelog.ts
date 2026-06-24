@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-24T14:00:00Z",
+    title: "Combat Lab: Ability Icon Rank Controls + Combat Timeline",
+    type: "feature",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab now uses League-style ability rank cards instead of dropdowns and ships a first-class Combat Timeline as the primary combat history view. Each ability (Q/W/E/R) is shown as an ability tile with a colored icon, key letter, and a row of rank pips — click any pip to set that ability's rank (Q/W/E max 5, R max 3, defaults Q=5 W=5 E=5 R=3). Every Basic Attack and active you fire now appends a numbered timeline entry showing attacker · ability rank, damage, before → after HP, damage type, and any damage reduction/shield absorbed, and each entry is expandable for raw damage, final damage, shield absorbed, DR%, target HP before/after, event metadata, and an active states snapshot. Dev Mode no longer leads with raw Last Request / Last Response — the new Developer Mode panel lists the Combat Timeline, Current State, and the full JSON payload of the currently selected timeline entry, with raw request/response tucked behind a collapsible. Reset Combat now clears the combat timeline, combat feed, and combat state, and changing attacker / defender / defender mode / target dummy also clears the timeline so entries always reflect the current matchup. Combat calculations and the backend are unchanged.",
+    details: [
+      "Replaced ability rank dropdowns with League-style ability tiles: colored ability icon (Q amber / W sky / E emerald / R fuchsia), big key letter, and rank pips below (5 pips for Q/W/E, 3 for R).",
+      "Clicking a pip sets that ability's rank instantly; the selection is sent unchanged via the existing q_rank/w_rank/e_rank/r_rank payload fields and mirrored into attacker_stats Q_RANK / P_Q etc.",
+      "New Combat Timeline panel rendered above Damage Breakdown / Combat Feed: numbered entries (#1, #2, ...) with attacker name, ability rank suffix, damage dealt, HP before → after, damage type, and optional DR%/shield badges.",
+      "Each timeline entry is expandable to show raw damage, final damage, damage type, shield absorbed, damage reduction, per-event metadata, and the active states snapshot returned by the engine.",
+      "Dev Mode overhaul: Developer Mode panel now shows Combat Timeline + Current State + the full JSON of the selected Combat Timeline entry. Selecting an entry instantly swaps the JSON view.",
+      "Last Request / Last Response remain available behind a collapsible section so existing diagnostics workflows still work.",
+      "Reset Combat now also clears the Combat Timeline and selected entry. Changing attacker, defender champion, defender mode, or target dummy stats triggers the existing auto-reset and clears the timeline.",
+      "No backend changes, no changes to combat calculations, Defender HP, Last Action, Damage Breakdown, Combat Feed, Targets, target defenses, active defender effects, mitigation, engine timeline (still available in Dev Mode), coverage, or champion confidence panels.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-24T12:00:00Z",
     title: "Combat Lab: Ability Rank Controls",
     type: "feature",
