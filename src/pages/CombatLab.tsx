@@ -2049,6 +2049,9 @@ function InteractiveSandbox({
     setBusy(action_id || kind);
     const abilityKey = kind === "active" ? detectAbilityKey(action_id) : undefined;
     const abilityRank = abilityKey ? abilityRanks[abilityKey] : undefined;
+    const hpBefore = defenderHP.current;
+    const hpMax = defenderHP.max;
+    const eventsBeforeLen = events.length;
     setLastAction(
       kind === "basic-attack"
         ? { kind }
@@ -2128,6 +2131,72 @@ function InteractiveSandbox({
       }
       setLastResponse(res);
       applyResponse(res);
+      // Build a Combat Timeline entry from the new events appended by this action.
+      const newEvents = Array.isArray(res.events) ? res.events : [];
+      let rawSum = 0;
+      let finalSum = 0;
+      let shieldSum = 0;
+      let drPct: number | null = null;
+      let damageType: string | null = null;
+      for (const ev of newEvents) {
+        const raw = typeof ev.damage === "number" ? ev.damage : 0;
+        const fin = typeof ev.final_damage === "number" ? ev.final_damage : raw;
+        rawSum += Math.max(0, raw);
+        finalSum += Math.max(0, fin);
+        const sh = (ev as any).shield_absorbed ?? (ev as any).shield ?? 0;
+        if (typeof sh === "number") shieldSum += sh;
+        const dr =
+          (ev as any).damage_reduction_percent ??
+          (ev as any).damage_reduction ??
+          null;
+        if (typeof dr === "number" && drPct == null) drPct = dr;
+        if (!damageType && ev.damage_type) damageType = String(ev.damage_type);
+      }
+      const hpAfter = hpMax > 0 ? Math.max(0, Math.round(hpBefore - finalSum)) : hpBefore;
+      const label =
+        kind === "basic-attack"
+          ? "Basic Attack"
+          : (() => {
+              const a = (typeof action_id === "string" && action_id) || "Active";
+              const found = actions.find((x) => x.id === a);
+              return found?.label || found?.name || a;
+            })();
+      const entry: CombatTimelineEntry = {
+        id: Date.now() + Math.random(),
+        index: 0, // assigned in setter
+        kind,
+        action_id: kind === "active" ? action_id : undefined,
+        label,
+        abilityKey,
+        abilityRank,
+        attacker: config.champion || "Attacker",
+        defender:
+          targetSetup.targetMode === "target_champion"
+            ? targetSetup.targetChampionName || "Defender"
+            : targetSetup.targetMode === "target_dummy"
+            ? "Target Dummy"
+            : config.target_profile || "Target",
+        hp_before: hpBefore,
+        hp_after: hpAfter,
+        hp_max: hpMax,
+        raw_damage: rawSum,
+        final_damage: finalSum,
+        damage_type: damageType,
+        shield_absorbed: shieldSum,
+        damage_reduction_percent: drPct,
+        events: newEvents,
+        state_snapshot: (res.state as Record<string, unknown> | undefined) ?? null,
+        endpoint,
+        request: payload,
+        response: res,
+        timestamp: Date.now(),
+      };
+      setCombatTimeline((prev) => {
+        const next = [...prev, { ...entry, index: prev.length + 1 }];
+        return next;
+      });
+      setSelectedTimelineId(entry.id);
+      void eventsBeforeLen;
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);
       setLastResponse({ error: e?.message || String(e) });
