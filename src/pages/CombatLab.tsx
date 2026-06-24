@@ -1649,6 +1649,36 @@ function InteractiveSandbox({
     | { kind: "active"; action_id: string; abilityKey?: "Q" | "W" | "E" | "R"; rank?: number }
     | null
   >(null);
+  // Combat Timeline: one entry per user-initiated action (basic attack or active).
+  // This is the primary combat history shown to the user and the source for the
+  // timeline-based Dev Mode JSON inspector.
+  type CombatTimelineEntry = {
+    id: number;
+    index: number; // 1-based action number (#1, #2, ...)
+    kind: "basic-attack" | "active";
+    action_id?: string;
+    label: string;
+    abilityKey?: "Q" | "W" | "E" | "R";
+    abilityRank?: number;
+    attacker: string;
+    defender: string;
+    hp_before: number;
+    hp_after: number;
+    hp_max: number;
+    raw_damage: number;
+    final_damage: number;
+    damage_type: string | null;
+    shield_absorbed: number;
+    damage_reduction_percent: number | null;
+    events: TimelineEvent[];
+    state_snapshot: Record<string, unknown> | null;
+    endpoint: string;
+    request: unknown;
+    response: unknown;
+    timestamp: number;
+  };
+  const [combatTimeline, setCombatTimeline] = useState<CombatTimelineEntry[]>([]);
+  const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
   // Frontend ability rank controls (Q/W/E/R). Defaults: Q=5, W=5, E=5, R=3.
   // Sent as top-level fields AND mirrored into attacker_stats on every interactive request.
   const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>({
@@ -2019,6 +2049,9 @@ function InteractiveSandbox({
     setBusy(action_id || kind);
     const abilityKey = kind === "active" ? detectAbilityKey(action_id) : undefined;
     const abilityRank = abilityKey ? abilityRanks[abilityKey] : undefined;
+    const hpBefore = defenderHP.current;
+    const hpMax = defenderHP.max;
+    const eventsBeforeLen = events.length;
     setLastAction(
       kind === "basic-attack"
         ? { kind }
@@ -2098,6 +2131,72 @@ function InteractiveSandbox({
       }
       setLastResponse(res);
       applyResponse(res);
+      // Build a Combat Timeline entry from the new events appended by this action.
+      const newEvents = Array.isArray(res.events) ? res.events : [];
+      let rawSum = 0;
+      let finalSum = 0;
+      let shieldSum = 0;
+      let drPct: number | null = null;
+      let damageType: string | null = null;
+      for (const ev of newEvents) {
+        const raw = typeof ev.damage === "number" ? ev.damage : 0;
+        const fin = typeof ev.final_damage === "number" ? ev.final_damage : raw;
+        rawSum += Math.max(0, raw);
+        finalSum += Math.max(0, fin);
+        const sh = (ev as any).shield_absorbed ?? (ev as any).shield ?? 0;
+        if (typeof sh === "number") shieldSum += sh;
+        const dr =
+          (ev as any).damage_reduction_percent ??
+          (ev as any).damage_reduction ??
+          null;
+        if (typeof dr === "number" && drPct == null) drPct = dr;
+        if (!damageType && ev.damage_type) damageType = String(ev.damage_type);
+      }
+      const hpAfter = hpMax > 0 ? Math.max(0, Math.round(hpBefore - finalSum)) : hpBefore;
+      const label =
+        kind === "basic-attack"
+          ? "Basic Attack"
+          : (() => {
+              const a = (typeof action_id === "string" && action_id) || "Active";
+              const found = actions.find((x) => x.id === a);
+              return found?.label || found?.name || a;
+            })();
+      const entry: CombatTimelineEntry = {
+        id: Date.now() + Math.random(),
+        index: 0, // assigned in setter
+        kind,
+        action_id: kind === "active" ? action_id : undefined,
+        label,
+        abilityKey,
+        abilityRank,
+        attacker: config.champion || "Attacker",
+        defender:
+          targetSetup.targetMode === "target_champion"
+            ? targetSetup.targetChampionName || "Defender"
+            : targetSetup.targetMode === "target_dummy"
+            ? "Target Dummy"
+            : config.target_profile || "Target",
+        hp_before: hpBefore,
+        hp_after: hpAfter,
+        hp_max: hpMax,
+        raw_damage: rawSum,
+        final_damage: finalSum,
+        damage_type: damageType,
+        shield_absorbed: shieldSum,
+        damage_reduction_percent: drPct,
+        events: newEvents,
+        state_snapshot: (res.state as Record<string, unknown> | undefined) ?? null,
+        endpoint,
+        request: payload,
+        response: res,
+        timestamp: Date.now(),
+      };
+      setCombatTimeline((prev) => {
+        const next = [...prev, { ...entry, index: prev.length + 1 }];
+        return next;
+      });
+      setSelectedTimelineId(entry.id);
+      void eventsBeforeLen;
     } catch (e: any) {
       setError(e?.message || `${kind} failed`);
       setLastResponse({ error: e?.message || String(e) });
@@ -2205,6 +2304,8 @@ function InteractiveSandbox({
     setLastEndpoint("");
     setLastAction(null);
     setActiveTargetScope("PRIMARY");
+    setCombatTimeline([]);
+    setSelectedTimelineId(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
@@ -2222,8 +2323,23 @@ function InteractiveSandbox({
         i: config.items,
         r: config.runes,
         s: summonerPicks,
+        tm: targetSetup.targetMode,
+        tc: targetSetup.targetChampionName,
+        td: [targetSetup.dummyHP, targetSetup.dummyArmor, targetSetup.dummyMR],
       }),
-    [config.champion, config.stats?.LEVEL, config.target_profile, config.items, config.runes, summonerPicks]
+    [
+      config.champion,
+      config.stats?.LEVEL,
+      config.target_profile,
+      config.items,
+      config.runes,
+      summonerPicks,
+      targetSetup.targetMode,
+      targetSetup.targetChampionName,
+      targetSetup.dummyHP,
+      targetSetup.dummyArmor,
+      targetSetup.dummyMR,
+    ]
   );
   const firstResetRef = useRef(true);
   useEffect(() => {
@@ -2241,6 +2357,8 @@ function InteractiveSandbox({
     setLastEndpoint("");
     setLastAction(null);
     setActiveTargetScope("PRIMARY");
+    setCombatTimeline([]);
+    setSelectedTimelineId(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
@@ -2468,55 +2586,12 @@ function InteractiveSandbox({
                 <span className="font-medium text-foreground/80">{config.champion}</span>
               </div>
             )}
-            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
-              <div className="mb-1 flex items-center justify-between">
-                <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Ability ranks
-                </Label>
-                <span className="text-[10px] text-muted-foreground">
-                  {config.champion ? `${config.champion} ` : ""}Q{abilityRanks.Q} W{abilityRanks.W} E{abilityRanks.E} R{abilityRanks.R}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(["Q", "W", "E", "R"] as const).map((k) => {
-                  const max = k === "R" ? 3 : 5;
-                  return (
-                    <div key={k} className="flex flex-col items-center">
-                      <div className="text-[10px] font-semibold text-muted-foreground">{k}</div>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: max }, (_, i) => i + 1).map((r) => (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => setAbilityRanks((s) => ({ ...s, [k]: r }))}
-                            className={`h-5 w-5 rounded text-[10px] font-bold transition-colors ${
-                              abilityRanks[k] === r
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
-                            }`}
-                            aria-label={`${k} rank ${r}`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {devMode && (
-                <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
-{`q_rank: ${abilityRanks.Q}
-w_rank: ${abilityRanks.W}
-e_rank: ${abilityRanks.E}
-r_rank: ${abilityRanks.R}
-attacker_stats.Q_RANK / P_Q: ${abilityRanks.Q}
-attacker_stats.W_RANK / P_W: ${abilityRanks.W}
-attacker_stats.E_RANK / P_E: ${abilityRanks.E}
-attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
-                </pre>
-              )}
-            </div>
+            <AbilityRankBar
+              ranks={abilityRanks}
+              onChange={(k, r) => setAbilityRanks((s) => ({ ...s, [k]: r }))}
+              champion={config.champion}
+              devMode={devMode}
+            />
             <ActionButton
               label="Basic Attack"
               hint="Auto-attack the primary target"
@@ -2719,6 +2794,11 @@ attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
 
       {/* BELOW: timeline + diagnostics */}
       <div className="space-y-6">
+        <CombatTimelinePanel
+          entries={combatTimeline as CombatTimelineEntryT[]}
+          selectedId={selectedTimelineId}
+          onSelect={setSelectedTimelineId}
+        />
         <DamageBreakdownPanel events={events} />
         <ReadableCombatFeed
           events={events}
@@ -2851,6 +2931,9 @@ attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
               request={lastRequest}
               response={lastResponse}
               state={state}
+              timeline={combatTimeline as CombatTimelineEntryT[]}
+              selectedTimelineId={selectedTimelineId}
+              onSelectTimeline={setSelectedTimelineId}
               onCopyRequest={() => copyJson(lastRequest, "Last request")}
               onCopyResponse={() => copyJson(lastResponse, "Last response")}
               onCopyState={() => copyJson(state, "Current state")}
@@ -4296,6 +4379,342 @@ function StateCard({ entry, changed }: { entry: RuntimeEntry; changed?: boolean 
 
 /* ─────────────── Sandbox Timeline ─────────────── */
 
+/* ─────────────── Ability Rank Bar (League-style) ─────────────── */
+
+const ABILITY_KEY_META: Record<
+  "Q" | "W" | "E" | "R",
+  { icon: typeof Swords; tone: string; ring: string; chip: string }
+> = {
+  Q: { icon: Swords, tone: "text-amber-300", ring: "ring-amber-400/50", chip: "bg-amber-400" },
+  W: { icon: Zap, tone: "text-sky-300", ring: "ring-sky-400/50", chip: "bg-sky-400" },
+  E: { icon: Flame, tone: "text-emerald-300", ring: "ring-emerald-400/50", chip: "bg-emerald-400" },
+  R: { icon: Wand2, tone: "text-fuchsia-300", ring: "ring-fuchsia-400/50", chip: "bg-fuchsia-400" },
+};
+
+function AbilityRankBar({
+  ranks,
+  onChange,
+  champion,
+  devMode,
+}: {
+  ranks: { Q: number; W: number; E: number; R: number };
+  onChange: (k: "Q" | "W" | "E" | "R", r: number) => void;
+  champion?: string;
+  devMode: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+      <div className="mb-2 flex items-center justify-between">
+        <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+          Ability ranks
+        </Label>
+        <span className="text-[10px] text-muted-foreground">
+          {champion ? `${champion} ` : ""}Q{ranks.Q} W{ranks.W} E{ranks.E} R{ranks.R}
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {(["Q", "W", "E", "R"] as const).map((k) => {
+          const max = k === "R" ? 3 : 5;
+          const meta = ABILITY_KEY_META[k];
+          const Icon = meta.icon;
+          const current = ranks[k];
+          return (
+            <div key={k} className="flex flex-col items-center gap-1.5">
+              <div
+                className={`relative flex h-12 w-12 items-center justify-center rounded-md border border-border/60 bg-gradient-to-br from-background/80 to-background/40 shadow-inner ring-1 ${meta.ring}`}
+              >
+                <Icon className={`h-5 w-5 ${meta.tone}`} />
+                <span className="absolute bottom-0.5 right-0.5 rounded bg-background/80 px-1 text-[9px] font-bold leading-none text-foreground/90">
+                  {k}
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
+                  const filled = r <= current;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => onChange(k, r)}
+                      aria-label={`${k} rank ${r}`}
+                      className={`h-2.5 w-3 rounded-sm border transition-colors ${
+                        filled
+                          ? `${meta.chip} border-transparent`
+                          : "border-border bg-muted/30 hover:bg-muted/60"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-[10px] font-semibold text-muted-foreground">
+                Rank {current}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {devMode && (
+        <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+{`q_rank: ${ranks.Q}
+w_rank: ${ranks.W}
+e_rank: ${ranks.E}
+r_rank: ${ranks.R}
+attacker_stats.Q_RANK / P_Q: ${ranks.Q}
+attacker_stats.W_RANK / P_W: ${ranks.W}
+attacker_stats.E_RANK / P_E: ${ranks.E}
+attacker_stats.R_RANK / P_R: ${ranks.R}`}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────── Combat Timeline (primary history view) ─────────────── */
+
+type CombatTimelineEntryT = {
+  id: number;
+  index: number;
+  kind: "basic-attack" | "active";
+  action_id?: string;
+  label: string;
+  abilityKey?: "Q" | "W" | "E" | "R";
+  abilityRank?: number;
+  attacker: string;
+  defender: string;
+  hp_before: number;
+  hp_after: number;
+  hp_max: number;
+  raw_damage: number;
+  final_damage: number;
+  damage_type: string | null;
+  shield_absorbed: number;
+  damage_reduction_percent: number | null;
+  events: TimelineEvent[];
+  state_snapshot: Record<string, unknown> | null;
+  endpoint: string;
+  request: unknown;
+  response: unknown;
+  timestamp: number;
+};
+
+function CombatTimelinePanel({
+  entries,
+  selectedId,
+  onSelect,
+}: {
+  entries: CombatTimelineEntryT[];
+  selectedId: number | null;
+  onSelect: (id: number | null) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggle = (id: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  return (
+    <SectionCard
+      title="Combat Timeline"
+      icon={Timer}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {entries.length} {entries.length === 1 ? "action" : "actions"}
+        </span>
+      }
+    >
+      {entries.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-8 text-center text-xs text-muted-foreground">
+          No actions yet — press Basic Attack or an active to begin building the timeline.
+        </div>
+      ) : (
+        <ol className="space-y-2">
+          {entries.map((e) => {
+            const isExpanded = expanded.has(e.id);
+            const isSelected = selectedId === e.id;
+            const hasDamage = e.final_damage > 0;
+            const rankSuffix =
+              e.abilityKey && typeof e.abilityRank === "number"
+                ? ` ${e.abilityKey} Rank ${e.abilityRank}`
+                : "";
+            const title = `${e.attacker}${rankSuffix} · ${e.label}`;
+            return (
+              <li
+                key={e.id}
+                className={`rounded-md border ${
+                  isSelected ? "border-primary/60 bg-primary/5" : "border-border/60 bg-background/40"
+                }`}
+              >
+                <div className="flex items-start gap-2 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggle(e.id)}
+                    className="mt-0.5 flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    aria-label={isExpanded ? "Collapse entry" : "Expand entry"}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(isSelected ? null : e.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        #{e.index}
+                      </span>
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {title}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                      {hasDamage ? (
+                        <span className="font-mono font-semibold text-destructive">
+                          −{Math.round(e.final_damage).toLocaleString()} dmg
+                          {e.damage_type ? ` (${e.damage_type})` : ""}
+                        </span>
+                      ) : (
+                        <span>no damage</span>
+                      )}
+                      {e.hp_max > 0 && (
+                        <span className="font-mono tabular-nums">
+                          {Math.round(e.hp_before).toLocaleString()} →{" "}
+                          {Math.round(e.hp_after).toLocaleString()} HP
+                        </span>
+                      )}
+                      {typeof e.damage_reduction_percent === "number" &&
+                        e.damage_reduction_percent > 0 && (
+                          <span className="text-cyan-300">
+                            {(e.damage_reduction_percent * (e.damage_reduction_percent <= 1 ? 100 : 1)).toFixed(0)}% DR
+                          </span>
+                        )}
+                      {e.shield_absorbed > 0 && (
+                        <span className="text-amber-300">
+                          shield {Math.round(e.shield_absorbed).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className="border-t border-border/40 px-3 py-2 text-[11px]">
+                    <div className="grid gap-1 sm:grid-cols-2">
+                      <div>
+                        <span className="text-muted-foreground">Raw damage:</span>{" "}
+                        <span className="font-mono">{e.raw_damage.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Final damage:</span>{" "}
+                        <span className="font-mono">{e.final_damage.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Damage type:</span>{" "}
+                        <span>{e.damage_type || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Shield absorbed:</span>{" "}
+                        <span className="font-mono">{e.shield_absorbed.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">DR%:</span>{" "}
+                        <span className="font-mono">
+                          {typeof e.damage_reduction_percent === "number"
+                            ? e.damage_reduction_percent.toString()
+                            : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Target HP:</span>{" "}
+                        <span className="font-mono">
+                          {Math.round(e.hp_before)} → {Math.round(e.hp_after)} / {Math.round(e.hp_max)}
+                        </span>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-muted-foreground">Endpoint:</span>{" "}
+                        <span className="font-mono">{e.endpoint || "—"}</span>
+                      </div>
+                    </div>
+                    {e.events.length > 0 && (
+                      <div className="mt-2">
+                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Events ({e.events.length})
+                        </div>
+                        <ul className="space-y-1">
+                          {e.events.map((ev, i) => {
+                            const meta = extractEventMetadata(ev);
+                            return (
+                              <li
+                                key={i}
+                                className="rounded border border-border/40 bg-background/40 px-2 py-1"
+                              >
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                  <span className="font-semibold text-foreground/90">
+                                    {getEventLabel(ev)}
+                                  </span>
+                                  {typeof getEventDamage(ev) === "number" && (
+                                    <span className="font-mono text-destructive">
+                                      raw {(ev.damage ?? 0).toString()} →{" "}
+                                      final {(ev.final_damage ?? ev.damage ?? 0).toString()}
+                                    </span>
+                                  )}
+                                  {ev.damage_type && (
+                                    <span className="text-muted-foreground">
+                                      ({ev.damage_type})
+                                    </span>
+                                  )}
+                                  {ev.source && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      · {ev.source}
+                                    </span>
+                                  )}
+                                </div>
+                                {meta.length > 0 && (
+                                  <div className="mt-0.5 flex flex-wrap gap-1">
+                                    {meta.map((m) => (
+                                      <span
+                                        key={m.key}
+                                        className="rounded border border-border/40 bg-background/30 px-1 py-px text-[10px] text-muted-foreground"
+                                      >
+                                        <span className="text-foreground/70">{m.key}:</span>{" "}
+                                        <span className="font-mono">{m.value}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    {e.state_snapshot && Object.keys(e.state_snapshot).length > 0 && (
+                      <div className="mt-2">
+                        <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Active states snapshot
+                        </div>
+                        <pre className="max-h-32 overflow-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+                          {JSON.stringify(e.state_snapshot, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ─────────────── Sandbox Timeline (engine events, dev-only) ─────────────── */
+
 function getEventScope(e: TimelineEvent): string | null {
   const s = (e as any).target_scope || (e as any).scope || (e as any).target;
   return typeof s === "string" ? s : null;
@@ -4536,6 +4955,9 @@ function DeveloperPanel({
   request,
   response,
   state,
+  timeline,
+  selectedTimelineId,
+  onSelectTimeline,
   onCopyRequest,
   onCopyResponse,
   onCopyState,
@@ -4545,11 +4967,16 @@ function DeveloperPanel({
   request: unknown;
   response: unknown;
   state: Record<string, unknown> | null;
+  timeline: CombatTimelineEntryT[];
+  selectedTimelineId: number | null;
+  onSelectTimeline: (id: number | null) => void;
   onCopyRequest: () => void;
   onCopyResponse: () => void;
   onCopyState: () => void;
   onCopyReport: () => void;
 }) {
+  const selected = timeline.find((e) => e.id === selectedTimelineId) || null;
+  const [showRaw, setShowRaw] = useState(false);
   return (
     <SectionCard
       title="Developer Mode"
@@ -4568,9 +4995,78 @@ function DeveloperPanel({
             Last endpoint: <span className="font-mono text-foreground/90">{endpoint}</span>
           </div>
         )}
-        <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
-        <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+        <div className="rounded-md border border-border/60 bg-background/50 p-2.5">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Combat Timeline ({timeline.length})
+          </div>
+          {timeline.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground">
+              No actions yet. Run a Basic Attack or active to populate the timeline.
+            </div>
+          ) : (
+            <ul className="max-h-40 space-y-1 overflow-auto">
+              {timeline.map((e) => {
+                const isSel = e.id === selectedTimelineId;
+                const rankSuffix =
+                  e.abilityKey && typeof e.abilityRank === "number"
+                    ? ` ${e.abilityKey} R${e.abilityRank}`
+                    : "";
+                return (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectTimeline(isSel ? null : e.id)}
+                      className={`flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-[11px] transition-colors ${
+                        isSel
+                          ? "bg-primary/15 text-primary"
+                          : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <span className="truncate">
+                        <span className="font-mono">#{e.index}</span>{" "}
+                        <span className="font-semibold">{e.attacker}{rankSuffix}</span>{" "}
+                        <span className="text-muted-foreground">{e.label}</span>
+                      </span>
+                      <span className="shrink-0 font-mono text-destructive">
+                        −{Math.round(e.final_damage)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
         <DevJsonBlock label="Current State" data={state} onCopy={onCopyState} />
+        <DevJsonBlock
+          label={
+            selected
+              ? `Selected Timeline Entry · #${selected.index} ${selected.attacker} ${selected.label}`
+              : "Selected Timeline Entry"
+          }
+          data={selected}
+          onCopy={() => {
+            try {
+              navigator.clipboard.writeText(JSON.stringify(selected ?? {}, null, 2));
+            } catch {}
+          }}
+        />
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          >
+            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            Raw last request / response
+          </button>
+          {showRaw && (
+            <div className="mt-2 space-y-3">
+              <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
+              <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+            </div>
+          )}
+        </div>
       </div>
     </SectionCard>
   );
