@@ -4955,6 +4955,9 @@ function DeveloperPanel({
   request,
   response,
   state,
+  timeline,
+  selectedTimelineId,
+  onSelectTimeline,
   onCopyRequest,
   onCopyResponse,
   onCopyState,
@@ -4964,11 +4967,16 @@ function DeveloperPanel({
   request: unknown;
   response: unknown;
   state: Record<string, unknown> | null;
+  timeline: CombatTimelineEntryT[];
+  selectedTimelineId: number | null;
+  onSelectTimeline: (id: number | null) => void;
   onCopyRequest: () => void;
   onCopyResponse: () => void;
   onCopyState: () => void;
   onCopyReport: () => void;
 }) {
+  const selected = timeline.find((e) => e.id === selectedTimelineId) || null;
+  const [showRaw, setShowRaw] = useState(false);
   return (
     <SectionCard
       title="Developer Mode"
@@ -4987,9 +4995,78 @@ function DeveloperPanel({
             Last endpoint: <span className="font-mono text-foreground/90">{endpoint}</span>
           </div>
         )}
-        <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
-        <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+        <div className="rounded-md border border-border/60 bg-background/50 p-2.5">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Combat Timeline ({timeline.length})
+          </div>
+          {timeline.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground">
+              No actions yet. Run a Basic Attack or active to populate the timeline.
+            </div>
+          ) : (
+            <ul className="max-h-40 space-y-1 overflow-auto">
+              {timeline.map((e) => {
+                const isSel = e.id === selectedTimelineId;
+                const rankSuffix =
+                  e.abilityKey && typeof e.abilityRank === "number"
+                    ? ` ${e.abilityKey} R${e.abilityRank}`
+                    : "";
+                return (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectTimeline(isSel ? null : e.id)}
+                      className={`flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-[11px] transition-colors ${
+                        isSel
+                          ? "bg-primary/15 text-primary"
+                          : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <span className="truncate">
+                        <span className="font-mono">#{e.index}</span>{" "}
+                        <span className="font-semibold">{e.attacker}{rankSuffix}</span>{" "}
+                        <span className="text-muted-foreground">{e.label}</span>
+                      </span>
+                      <span className="shrink-0 font-mono text-destructive">
+                        −{Math.round(e.final_damage)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
         <DevJsonBlock label="Current State" data={state} onCopy={onCopyState} />
+        <DevJsonBlock
+          label={
+            selected
+              ? `Selected Timeline Entry · #${selected.index} ${selected.attacker} ${selected.label}`
+              : "Selected Timeline Entry"
+          }
+          data={selected}
+          onCopy={() => {
+            try {
+              navigator.clipboard.writeText(JSON.stringify(selected ?? {}, null, 2));
+            } catch {}
+          }}
+        />
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          >
+            {showRaw ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            Raw last request / response
+          </button>
+          {showRaw && (
+            <div className="mt-2 space-y-3">
+              <DevJsonBlock label="Last Request" data={request} onCopy={onCopyRequest} />
+              <DevJsonBlock label="Last Response" data={response} onCopy={onCopyResponse} />
+            </div>
+          )}
+        </div>
       </div>
     </SectionCard>
   );
