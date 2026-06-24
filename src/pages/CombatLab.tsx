@@ -2017,7 +2017,13 @@ function InteractiveSandbox({
     }
     setError(null);
     setBusy(action_id || kind);
-    setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
+    const abilityKey = kind === "active" ? detectAbilityKey(action_id) : undefined;
+    const abilityRank = abilityKey ? abilityRanks[abilityKey] : undefined;
+    setLastAction(
+      kind === "basic-attack"
+        ? { kind }
+        : { kind, action_id: action_id || "", abilityKey, rank: abilityRank }
+    );
     try {
       // Source of truth: backend runtime_stats from build-preview.
       // Developer mode allows manual overrides via config.ad / config.attack_speed / config.stats.
@@ -2027,6 +2033,8 @@ function InteractiveSandbox({
         Object.keys(backendStats).length > 0
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
+      // Mirror ability ranks into attacker_stats for backend compatibility.
+      Object.assign(attacker_stats, rankAttackerStatAliases);
       const target_stats: Record<string, number> =
         targetSetup.targetMode === "target_dummy"
           ? {
@@ -2059,6 +2067,7 @@ function InteractiveSandbox({
           state: safeState,
           current_time: 0,
           ...targetEntityFields,
+          ...rankPayload,
         } as CombatLabBasicAttackRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -2081,6 +2090,7 @@ function InteractiveSandbox({
           ...extra,
           ...sylasExtra,
           ...targetEntityFields,
+          ...rankPayload,
         } as CombatLabActiveRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
