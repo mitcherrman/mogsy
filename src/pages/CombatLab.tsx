@@ -2333,7 +2333,6 @@ function InteractiveSandbox({
     copyJson(report, "Debug report");
   };
 
-  const resetCombat = () => {
   // Auto Reset toggle — when ON (default), changing any combat-defining
   // configuration automatically performs the same hard reset as the button.
   const [autoResetEnabled, setAutoResetEnabled] = useState<boolean>(() => {
