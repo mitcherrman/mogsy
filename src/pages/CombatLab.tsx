@@ -1646,9 +1646,38 @@ function InteractiveSandbox({
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
   const [lastAction, setLastAction] = useState<
     | { kind: "basic-attack" }
-    | { kind: "active"; action_id: string }
+    | { kind: "active"; action_id: string; abilityKey?: "Q" | "W" | "E" | "R"; rank?: number }
     | null
   >(null);
+  // Frontend ability rank controls (Q/W/E/R). Defaults: Q=5, W=5, E=5, R=3.
+  // Sent as top-level fields AND mirrored into attacker_stats on every interactive request.
+  const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>({
+    Q: 5,
+    W: 5,
+    E: 5,
+    R: 3,
+  });
+  const rankPayload = {
+    q_rank: abilityRanks.Q,
+    w_rank: abilityRanks.W,
+    e_rank: abilityRanks.E,
+    r_rank: abilityRanks.R,
+  };
+  const rankAttackerStatAliases: Record<string, number> = {
+    Q_RANK: abilityRanks.Q,
+    W_RANK: abilityRanks.W,
+    E_RANK: abilityRanks.E,
+    R_RANK: abilityRanks.R,
+    P_Q: abilityRanks.Q,
+    P_W: abilityRanks.W,
+    P_E: abilityRanks.E,
+    P_R: abilityRanks.R,
+  };
+  const detectAbilityKey = (s: string | undefined): "Q" | "W" | "E" | "R" | undefined => {
+    if (!s) return undefined;
+    const m = String(s).toUpperCase().match(/(?:^|[^A-Z])([QWER])(?:$|[^A-Z])/);
+    return (m?.[1] as "Q" | "W" | "E" | "R" | undefined) || undefined;
+  };
   const [activeTargetScope, setActiveTargetScope] = useState<string>("PRIMARY");
   const [previewBuildStats, setPreviewBuildStats] = useState<Record<string, number>>({});
   const [previewRuntimeStats, setPreviewRuntimeStats] = useState<Record<string, number>>({});
@@ -1988,7 +2017,13 @@ function InteractiveSandbox({
     }
     setError(null);
     setBusy(action_id || kind);
-    setLastAction(kind === "basic-attack" ? { kind } : { kind, action_id: action_id || "" });
+    const abilityKey = kind === "active" ? detectAbilityKey(action_id) : undefined;
+    const abilityRank = abilityKey ? abilityRanks[abilityKey] : undefined;
+    setLastAction(
+      kind === "basic-attack"
+        ? { kind }
+        : { kind, action_id: action_id || "", abilityKey, rank: abilityRank }
+    );
     try {
       // Source of truth: backend runtime_stats from build-preview.
       // Developer mode allows manual overrides via config.ad / config.attack_speed / config.stats.
@@ -1998,6 +2033,8 @@ function InteractiveSandbox({
         Object.keys(backendStats).length > 0
           ? { ...backendStats, ...overrides }
           : buildAttackerStats(config);
+      // Mirror ability ranks into attacker_stats for backend compatibility.
+      Object.assign(attacker_stats, rankAttackerStatAliases);
       const target_stats: Record<string, number> =
         targetSetup.targetMode === "target_dummy"
           ? {
@@ -2030,6 +2067,7 @@ function InteractiveSandbox({
           state: safeState,
           current_time: 0,
           ...targetEntityFields,
+          ...rankPayload,
         } as CombatLabBasicAttackRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -2052,6 +2090,7 @@ function InteractiveSandbox({
           ...extra,
           ...sylasExtra,
           ...targetEntityFields,
+          ...rankPayload,
         } as CombatLabActiveRequest;
         setLastEndpoint(endpoint);
         setLastRequest(payload);
@@ -2089,6 +2128,7 @@ function InteractiveSandbox({
       const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
       const attacker_stats: Record<string, number> =
         Object.keys(backendStats).length > 0 ? backendStats : buildAttackerStats(config);
+      Object.assign(attacker_stats, rankAttackerStatAliases);
       const target_stats: Record<string, number> = (targetRuntime?.target_stats &&
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
@@ -2105,6 +2145,7 @@ function InteractiveSandbox({
         target_level: targetSetup.targetLevel,
         target_item_names: targetSetup.targetItemNames,
         target_rune_names: targetSetup.targetRuneNames,
+        ...rankPayload,
       } as CombatLabActiveRequest;
       setLastEndpoint("/api/combat-lab/active");
       setLastRequest(payload);
@@ -2427,6 +2468,55 @@ function InteractiveSandbox({
                 <span className="font-medium text-foreground/80">{config.champion}</span>
               </div>
             )}
+            <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
+              <div className="mb-1 flex items-center justify-between">
+                <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Ability ranks
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {config.champion ? `${config.champion} ` : ""}Q{abilityRanks.Q} W{abilityRanks.W} E{abilityRanks.E} R{abilityRanks.R}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["Q", "W", "E", "R"] as const).map((k) => {
+                  const max = k === "R" ? 3 : 5;
+                  return (
+                    <div key={k} className="flex flex-col items-center">
+                      <div className="text-[10px] font-semibold text-muted-foreground">{k}</div>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: max }, (_, i) => i + 1).map((r) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setAbilityRanks((s) => ({ ...s, [k]: r }))}
+                            className={`h-5 w-5 rounded text-[10px] font-bold transition-colors ${
+                              abilityRanks[k] === r
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                            }`}
+                            aria-label={`${k} rank ${r}`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {devMode && (
+                <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+{`q_rank: ${abilityRanks.Q}
+w_rank: ${abilityRanks.W}
+e_rank: ${abilityRanks.E}
+r_rank: ${abilityRanks.R}
+attacker_stats.Q_RANK / P_Q: ${abilityRanks.Q}
+attacker_stats.W_RANK / P_W: ${abilityRanks.W}
+attacker_stats.E_RANK / P_E: ${abilityRanks.E}
+attacker_stats.R_RANK / P_R: ${abilityRanks.R}`}
+                </pre>
+              )}
+            </div>
             <ActionButton
               label="Basic Attack"
               hint="Auto-attack the primary target"
@@ -2525,6 +2615,8 @@ function InteractiveSandbox({
           attackerName={attackerDisplayName}
           defenderName={defenderDisplayName}
           hp={defenderHP}
+          abilityKey={lastAction && lastAction.kind === "active" ? lastAction.abilityKey : undefined}
+          abilityRank={lastAction && lastAction.kind === "active" ? lastAction.rank : undefined}
         />
         </div>
 
@@ -3181,11 +3273,15 @@ function LastActionCard({
   attackerName,
   defenderName,
   hp,
+  abilityKey,
+  abilityRank,
 }: {
   event: TimelineEvent | null;
   attackerName: string;
   defenderName: string;
   hp: { current: number; max: number; pct: number };
+  abilityKey?: "Q" | "W" | "E" | "R";
+  abilityRank?: number;
 }) {
   if (!event) return null;
   const dmg = getEventDamage(event);
@@ -3193,12 +3289,14 @@ function LastActionCard({
     ? String(event.damage_type).charAt(0).toUpperCase() + String(event.damage_type).slice(1)
     : "";
   const label = getEventLabel(event);
+  const rankSuffix =
+    abilityKey && typeof abilityRank === "number" ? ` ${abilityKey} Rank ${abilityRank}` : "";
   return (
     <SectionCard title="Last Action" icon={Activity}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {attackerName}
+            {attackerName}{rankSuffix}
           </div>
           <div className="text-sm font-semibold text-foreground">{label}</div>
           {typeof dmg === "number" && dmg > 0 && (

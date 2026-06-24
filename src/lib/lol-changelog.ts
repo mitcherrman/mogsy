@@ -55,6 +55,25 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-24T12:00:00Z",
+    title: "Combat Lab: Ability Rank Controls",
+    type: "feature",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab now lets you pick the attacker's Q/W/E/R ranks directly in the Combat Actions card and sends those ranks with every Basic Attack and active request. Defaults match the current behavior (Q=5, W=5, E=5, R=3) so existing setups simulate identically until ranks are changed. The selected ranks are sent as top-level q_rank / w_rank / e_rank / r_rank fields AND mirrored into attacker_stats (Q_RANK / W_RANK / E_RANK / R_RANK plus P_Q / P_W / P_E / P_R aliases) so the backend can consume whichever shape it expects without any API change. The Last Action card now appends e.g. 'Sett Q Rank 1' when an ability is cast, and Dev Mode renders the exact rank payload (q_rank / w_rank / e_rank / r_rank and the mirrored attacker_stat aliases) directly under the rank controls. Defender HP, Last Action, Damage Breakdown, Combat Feed, Targets, target defenses, active defender effects, damage mitigation, and diagnostics are all untouched.",
+    details: [
+      "New compact Ability ranks selector inside the Combat Actions card: Q (1–5), W (1–5), E (1–5), R (1–3), defaulting to Q=5, W=5, E=5, R=3.",
+      "Selected ranks are appended as top-level fields on every /api/combat-lab/basic-attack and /api/combat-lab/active request: q_rank, w_rank, e_rank, r_rank.",
+      "Same ranks are mirrored into attacker_stats with both the *_RANK keys (Q_RANK / W_RANK / E_RANK / R_RANK) and the P_* aliases (P_Q / P_W / P_E / P_R) so legacy stat readers also see the chosen rank.",
+      "Last Action card now shows the ability rank when an active is detected from the action id (e.g. 'Sett Q Rank 1', 'Urgot R Rank 3').",
+      "Dev Mode renders the exact rank payload sent to the backend (q_rank / w_rank / e_rank / r_rank and the mirrored attacker_stat aliases) inline under the rank selector.",
+      "Ranks are also included on the defender-applied active call (applyDefense) so attacker-side rank context stays consistent across all sandbox requests.",
+      "No backend changes, no layout redesign, and no changes to Defender HP, Combat Feed, Targets, target defenses, active defender effects, damage mitigation, or diagnostics.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-23T14:00:00Z",
     title: "League Quiz: Home Polish Pass",
     type: "ui",
