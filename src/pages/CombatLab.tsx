@@ -2931,6 +2931,9 @@ function InteractiveSandbox({
               request={lastRequest}
               response={lastResponse}
               state={state}
+              timeline={combatTimeline as CombatTimelineEntryT[]}
+              selectedTimelineId={selectedTimelineId}
+              onSelectTimeline={setSelectedTimelineId}
               onCopyRequest={() => copyJson(lastRequest, "Last request")}
               onCopyResponse={() => copyJson(lastResponse, "Last response")}
               onCopyState={() => copyJson(state, "Current state")}
