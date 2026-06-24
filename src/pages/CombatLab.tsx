@@ -3273,11 +3273,15 @@ function LastActionCard({
   attackerName,
   defenderName,
   hp,
+  abilityKey,
+  abilityRank,
 }: {
   event: TimelineEvent | null;
   attackerName: string;
   defenderName: string;
   hp: { current: number; max: number; pct: number };
+  abilityKey?: "Q" | "W" | "E" | "R";
+  abilityRank?: number;
 }) {
   if (!event) return null;
   const dmg = getEventDamage(event);
@@ -3285,12 +3289,14 @@ function LastActionCard({
     ? String(event.damage_type).charAt(0).toUpperCase() + String(event.damage_type).slice(1)
     : "";
   const label = getEventLabel(event);
+  const rankSuffix =
+    abilityKey && typeof abilityRank === "number" ? ` ${abilityKey} Rank ${abilityRank}` : "";
   return (
     <SectionCard title="Last Action" icon={Activity}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {attackerName}
+            {attackerName}{rankSuffix}
           </div>
           <div className="text-sm font-semibold text-foreground">{label}</div>
           {typeof dmg === "number" && dmg > 0 && (
