@@ -2799,6 +2799,10 @@ function InteractiveSandbox({
           selectedId={selectedTimelineId}
           onSelect={setSelectedTimelineId}
         />
+        <ComboSummaryPanel
+          entries={combatTimeline as CombatTimelineEntryT[]}
+          devMode={devMode}
+        />
         <DamageBreakdownPanel events={events} />
         <ReadableCombatFeed
           events={events}
@@ -4714,6 +4718,263 @@ function CombatTimelinePanel({
 }
 
 /* ─────────────── Sandbox Timeline (engine events, dev-only) ─────────────── */
+
+/* ─────────────── Combo Summary Panel ─────────────── */
+
+function eventPostMit(ev: TimelineEvent): number {
+  const tdad = (ev as any).target_damage_after_defenses;
+  if (typeof tdad === "number" && tdad >= 0) return tdad;
+  if (typeof ev.final_damage === "number") return ev.final_damage;
+  if (typeof ev.damage === "number") return ev.damage;
+  return 0;
+}
+
+function entryPostMit(e: CombatTimelineEntryT): { post: number; raw: number; usedPost: boolean } {
+  let post = 0;
+  let raw = 0;
+  let sawAny = false;
+  for (const ev of e.events || []) {
+    const tdad = (ev as any).target_damage_after_defenses;
+    if (typeof tdad === "number" && tdad >= 0) { post += tdad; sawAny = true; }
+    else if (typeof ev.final_damage === "number") { post += ev.final_damage; sawAny = true; }
+    else if (typeof ev.damage === "number") { post += ev.damage; }
+    if (typeof ev.damage === "number") raw += ev.damage;
+  }
+  if (!sawAny) {
+    // fallback to entry-level aggregate (already final_damage→damage)
+    return { post: e.final_damage, raw: e.raw_damage, usedPost: false };
+  }
+  return { post, raw, usedPost: true };
+}
+
+function ComboSummaryPanel({
+  entries,
+  devMode,
+}: {
+  entries: CombatTimelineEntryT[];
+  devMode: boolean;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const summary = useMemo(() => {
+    const byType: Record<string, number> = { physical: 0, magic: 0, true: 0, other: 0 };
+    const perAction: Array<{ id: number; label: string; post: number; raw: number; type: string | null }> = [];
+    let totalPost = 0;
+    let totalRaw = 0;
+    let shieldTotal = 0;
+    let drPreventedTotal = 0;
+    let largest: { label: string; post: number; type: string | null } | null = null;
+
+    for (const e of entries) {
+      const { post, raw } = entryPostMit(e);
+      totalPost += post;
+      totalRaw += raw;
+      shieldTotal += e.shield_absorbed || 0;
+      if (typeof e.damage_reduction_percent === "number" && raw > 0) {
+        drPreventedTotal += raw * (e.damage_reduction_percent / 100);
+      } else if (raw > post) {
+        drPreventedTotal += raw - post;
+      }
+
+      const rankSuffix =
+        e.abilityKey && typeof e.abilityRank === "number"
+          ? ` ${e.abilityKey} Rank ${e.abilityRank}`
+          : "";
+      const label = `${e.attacker}${rankSuffix || ` ${e.label}`}`;
+      perAction.push({ id: e.id, label, post, raw, type: e.damage_type });
+
+      if (!largest || post > largest.post) {
+        largest = { label, post, type: e.damage_type };
+      }
+
+      // per-event type breakdown (post-mitigation)
+      for (const ev of e.events || []) {
+        const pm = eventPostMit(ev);
+        if (pm <= 0) continue;
+        const t = (ev.damage_type || "").toString().toLowerCase();
+        if (t === "physical" || t === "magic" || t === "true") byType[t] += pm;
+        else byType.other += pm;
+      }
+    }
+
+    const first = entries[0];
+    const last = entries[entries.length - 1];
+    const hpMax = first?.hp_max || 0;
+    const hpStart = first?.hp_before ?? 0;
+    const hpEnd = last?.hp_after ?? hpStart;
+    const hpRemoved = Math.max(0, hpStart - hpEnd);
+    const hpRemovedPct = hpMax > 0 ? Math.min(100, (hpRemoved / hpMax) * 100) : 0;
+
+    return {
+      totalPost,
+      totalRaw,
+      byType,
+      shieldTotal,
+      drPreventedTotal,
+      largest,
+      perAction,
+      hpMax,
+      hpStart,
+      hpEnd,
+      hpRemoved,
+      hpRemovedPct,
+      actions: entries.length,
+    };
+  }, [entries]);
+
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+
+  return (
+    <SectionCard
+      title="Combo Summary"
+      icon={Layers}
+      right={
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {entries.length > 0
+            ? `${summary.actions} action${summary.actions === 1 ? "" : "s"} · ${fmt(summary.totalPost)} dmg`
+            : "empty"}
+        </span>
+      }
+    >
+      {entries.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/50 bg-background/30 px-3 py-5 text-center text-xs text-muted-foreground">
+          No combo yet — use Basic Attack or an active ability.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Compact horizontal summary */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Total</div>
+              <div className="font-mono text-sm font-bold text-foreground">{fmt(summary.totalPost)}</div>
+            </div>
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-amber-300">
+              <div className="text-[9px] uppercase tracking-wider opacity-80">Physical</div>
+              <div className="font-mono text-sm font-semibold">{fmt(summary.byType.physical)}</div>
+            </div>
+            <div className="rounded-md border border-violet-500/40 bg-violet-500/10 px-2.5 py-1.5 text-violet-300">
+              <div className="text-[9px] uppercase tracking-wider opacity-80">Magic</div>
+              <div className="font-mono text-sm font-semibold">{fmt(summary.byType.magic)}</div>
+            </div>
+            <div className="rounded-md border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-rose-300">
+              <div className="text-[9px] uppercase tracking-wider opacity-80">True</div>
+              <div className="font-mono text-sm font-semibold">{fmt(summary.byType.true)}</div>
+            </div>
+            {summary.byType.other > 0 && (
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-muted-foreground">
+                <div className="text-[9px] uppercase tracking-wider">Other</div>
+                <div className="font-mono text-sm font-semibold">{fmt(summary.byType.other)}</div>
+              </div>
+            )}
+            <div className="rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Actions</div>
+              <div className="font-mono text-sm font-semibold text-foreground">{summary.actions}</div>
+            </div>
+            <div className="rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground">HP Removed</div>
+              <div className="font-mono text-sm font-semibold text-foreground">
+                {summary.hpRemovedPct.toFixed(1)}%
+              </div>
+            </div>
+            {summary.shieldTotal > 0 && (
+              <div className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-1.5 text-sky-300">
+                <div className="text-[9px] uppercase tracking-wider opacity-80">Shield Abs.</div>
+                <div className="font-mono text-sm font-semibold">{fmt(summary.shieldTotal)}</div>
+              </div>
+            )}
+            {summary.drPreventedTotal > 0 && (
+              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-emerald-300">
+                <div className="text-[9px] uppercase tracking-wider opacity-80">DR Prevented</div>
+                <div className="font-mono text-sm font-semibold">{fmt(summary.drPreventedTotal)}</div>
+              </div>
+            )}
+          </div>
+
+          {summary.largest && (
+            <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs">
+              <Flame className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Largest hit</span>
+              <span className="truncate font-semibold text-foreground">
+                {summary.largest.label} — {fmt(summary.largest.post)}
+                {summary.largest.type ? ` ${summary.largest.type}` : ""}
+              </span>
+            </div>
+          )}
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowDetails((v) => !v)}
+              className="inline-flex items-center gap-1 rounded border border-border/60 bg-background/40 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              Details
+            </button>
+            {showDetails && (
+              <div className="mt-2 space-y-3 rounded-md border border-border/50 bg-background/30 p-3 text-xs">
+                <div>
+                  <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Damage by action
+                  </div>
+                  <ul className="space-y-1">
+                    {summary.perAction.map((a, i) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-border/40 bg-background/40 px-2 py-1">
+                        <span className="truncate">
+                          <span className="text-muted-foreground">#{i + 1}</span>{" "}
+                          <span className="font-semibold text-foreground">{a.label}</span>
+                          {a.type && <span className="ml-1 text-muted-foreground">({a.type})</span>}
+                        </span>
+                        <span className="font-mono text-foreground">{fmt(a.post)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded border border-border/40 bg-background/40 px-2 py-1">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Raw total</div>
+                    <div className="font-mono">{fmt(summary.totalRaw)}</div>
+                  </div>
+                  <div className="rounded border border-border/40 bg-background/40 px-2 py-1">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Final total</div>
+                    <div className="font-mono">{fmt(summary.totalPost)}</div>
+                  </div>
+                  <div className="rounded border border-border/40 bg-background/40 px-2 py-1">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Shield abs.</div>
+                    <div className="font-mono">{fmt(summary.shieldTotal)}</div>
+                  </div>
+                  <div className="rounded border border-border/40 bg-background/40 px-2 py-1">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">DR prevented</div>
+                    <div className="font-mono">{fmt(summary.drPreventedTotal)}</div>
+                  </div>
+                </div>
+                <div className="rounded border border-border/40 bg-background/40 px-2 py-1">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground">HP</span>{" "}
+                  <span className="font-mono">
+                    {fmt(summary.hpStart)} → {fmt(summary.hpEnd)}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    (max {fmt(summary.hpMax)}, −{summary.hpRemovedPct.toFixed(1)}%)
+                  </span>
+                </div>
+                {devMode && (
+                  <div>
+                    <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Raw aggregation (dev mode)
+                    </div>
+                    <pre className="max-h-48 overflow-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
+                      {JSON.stringify(summary, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 
 function getEventScope(e: TimelineEvent): string | null {
   const s = (e as any).target_scope || (e as any).scope || (e as any).target;

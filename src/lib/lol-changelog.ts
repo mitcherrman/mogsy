@@ -55,6 +55,28 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-24T16:00:00Z",
+    title: "Combat Lab: Compact Combo Summary Panel",
+    type: "ui",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab now shows a compact Combo Summary panel directly below the Combat Timeline and above Damage Breakdown. The panel aggregates every action in the current timeline into a single horizontal readout: total final damage, physical / magic / true totals, action count, largest hit (e.g. 'Garen R Rank 3 — 861 true'), Defender HP removed %, shield absorbed total, and DR prevented total when available. Totals prefer post-mitigation damage (target_damage_after_defenses → final_damage → damage) so the numbers reflect what actually landed on the defender. An expandable Details toggle reveals damage by action, raw vs final totals, shield absorbed, DR prevented, and starting HP → current HP. In Dev Mode the raw aggregation object is shown for inspection. No backend, layout, or calculation changes.",
+    details: [
+      "New ComboSummaryPanel inserted between Combat Timeline and Damage Breakdown — does not move, redesign, or replace any existing panel.",
+      "Totals aggregate live from the Combat Timeline entries; resetting combat or changing the matchup clears it via the existing timeline reset.",
+      "Physical / Magic / True damage totals computed per-event from event.damage_type using post-mitigation damage (target_damage_after_defenses → final_damage → damage fallback).",
+      "Largest hit highlighted with attacker, ability key + rank when applicable, post-mit damage, and damage type — e.g. 'Garen R Rank 3 — 861 true'.",
+      "Defender HP removed % computed from first entry hp_before/hp_max → last entry hp_after, capped at 100%.",
+      "Shield absorbed and DR prevented chips render only when nonzero so the compact row stays clean.",
+      "Empty state copy: 'No combo yet — use Basic Attack or an active ability.'",
+      "Details toggle expands to damage-by-action list, raw vs final totals, shield absorbed, DR prevented, and starting HP → current HP (max + % readout).",
+      "Dev Mode appends the raw aggregation JSON inside the Details panel for diagnostics — hidden when Dev Mode is off.",
+      "No backend changes, no changes to Defender HP, Last Action, Damage Breakdown, Combat Feed, Combat Timeline, Targets, target defenses, Dev Mode, or diagnostics.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-24T14:00:00Z",
     title: "Combat Lab: Ability Icon Rank Controls + Combat Timeline",
     type: "feature",
