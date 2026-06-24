@@ -2334,6 +2334,34 @@ function InteractiveSandbox({
   };
 
   const resetCombat = () => {
+  // Auto Reset toggle — when ON (default), changing any combat-defining
+  // configuration automatically performs the same hard reset as the button.
+  const [autoResetEnabled, setAutoResetEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const v = localStorage.getItem("combat-lab:auto-reset");
+      return v === null ? true : v === "true";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("combat-lab:auto-reset", String(autoResetEnabled));
+    } catch {}
+  }, [autoResetEnabled]);
+  const [lastResetReason, setLastResetReason] = useState<string>("initial");
+  const [resetCounter, setResetCounter] = useState<number>(0);
+  const [lastResetAt, setLastResetAt] = useState<string>(() =>
+    new Date().toISOString()
+  );
+
+  // Hard reset: completely clears every cached piece of combat state so the
+  // next request never reuses TARGET_REMAINING_HP, scopes, timeline, feed,
+  // damage breakdown, last action, runtime summary, defender effects, etc.
+  // Does NOT touch attacker/defender configuration (champion, level, items,
+  // runes, ranks, target mode, dummy values, rank mode, dev mode).
+  const hardReset = (reason: string) => {
     setState(null);
     setEvents([]);
     setScopes({});
@@ -2346,63 +2374,124 @@ function InteractiveSandbox({
     setActiveTargetScope("PRIMARY");
     setCombatTimeline([]);
     setSelectedTimelineId(null);
+    setDefensePreview(null);
+    setDefensePreviewBefore(null);
+    setLastResetReason(reason);
+    setLastResetAt(new Date().toISOString());
+    setResetCounter((n) => n + 1);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
+  };
+
+  const resetCombat = () => {
+    hardReset("manual reset");
     toast({ title: "Combat reset", description: "Sandbox state cleared." });
   };
 
-  // Auto-reset session when champion/level/target/items/runes/summoners change.
-  // This prevents state keys (e.g. SYLAS_*, APHELIOS_*) from leaking across champions.
-  const resetKey = useMemo(
-    () =>
-      JSON.stringify({
-        c: config.champion,
-        l: config.stats?.LEVEL ?? null,
-        t: config.target_profile,
-        i: config.items,
-        r: config.runes,
-        s: summonerPicks,
-        tm: targetSetup.targetMode,
-        tc: targetSetup.targetChampionName,
-        td: [targetSetup.dummyHP, targetSetup.dummyArmor, targetSetup.dummyMR],
-      }),
+  // Auto-reset on combat-defining configuration change (when enabled).
+  // Tracks the previous snapshot so we can also report WHAT changed.
+  type ResetSnapshot = {
+    attackerChampion: string | undefined;
+    attackerLevel: number | null;
+    attackerItems: string[] | undefined;
+    attackerRunes: string[] | undefined;
+    attackerStats: Record<string, unknown> | null;
+    summoners: unknown;
+    targetProfile: string | undefined;
+    targetMode: string;
+    defenderChampion: string;
+    defenderLevel: number;
+    defenderItems: string[];
+    defenderRunes: string[];
+    dummyHP: number;
+    dummyArmor: number;
+    dummyMR: number;
+    dummyShield: number;
+    dummyDR: number;
+  };
+  const snapshot: ResetSnapshot = useMemo(
+    () => ({
+      attackerChampion: config.champion,
+      attackerLevel: (config.stats?.LEVEL as number | undefined) ?? null,
+      attackerItems: config.items,
+      attackerRunes: config.runes,
+      attackerStats: (config.stats as Record<string, unknown>) ?? null,
+      summoners: summonerPicks,
+      targetProfile: config.target_profile,
+      targetMode: targetSetup.targetMode,
+      defenderChampion: targetSetup.targetChampionName,
+      defenderLevel: targetSetup.targetLevel,
+      defenderItems: targetSetup.targetItemNames,
+      defenderRunes: targetSetup.targetRuneNames,
+      dummyHP: targetSetup.dummyHP,
+      dummyArmor: targetSetup.dummyArmor,
+      dummyMR: targetSetup.dummyMR,
+      dummyShield: targetSetup.dummyShield,
+      dummyDR: targetSetup.dummyDR,
+    }),
     [
       config.champion,
-      config.stats?.LEVEL,
-      config.target_profile,
+      config.stats,
       config.items,
       config.runes,
+      config.target_profile,
       summonerPicks,
-      targetSetup.targetMode,
-      targetSetup.targetChampionName,
-      targetSetup.dummyHP,
-      targetSetup.dummyArmor,
-      targetSetup.dummyMR,
+      targetSetup,
     ]
   );
+  const prevSnapshotRef = useRef<ResetSnapshot | null>(null);
   const firstResetRef = useRef(true);
   useEffect(() => {
     if (firstResetRef.current) {
       firstResetRef.current = false;
+      prevSnapshotRef.current = snapshot;
       return;
     }
-    setState(null);
-    setEvents([]);
-    setScopes({});
-    setAttackerStats({});
-    setError(null);
-    setLastRequest(null);
-    setLastResponse(null);
-    setLastEndpoint("");
-    setLastAction(null);
-    setActiveTargetScope("PRIMARY");
-    setCombatTimeline([]);
-    setSelectedTimelineId(null);
-    try {
-      localStorage.removeItem(SANDBOX_STORAGE_KEY);
-    } catch {}
-  }, [resetKey]);
+    const prev = prevSnapshotRef.current;
+    prevSnapshotRef.current = snapshot;
+    if (!autoResetEnabled) return;
+    // Determine reason by diffing the previous snapshot.
+    let reason = "configuration changed";
+    if (prev) {
+      const eq = (a: unknown, b: unknown) =>
+        JSON.stringify(a) === JSON.stringify(b);
+      if (prev.attackerChampion !== snapshot.attackerChampion)
+        reason = "attacker champion changed";
+      else if (prev.defenderChampion !== snapshot.defenderChampion)
+        reason = "defender champion changed";
+      else if (!eq(prev.attackerItems, snapshot.attackerItems))
+        reason = "attacker items changed";
+      else if (!eq(prev.defenderItems, snapshot.defenderItems))
+        reason = "defender items changed";
+      else if (!eq(prev.attackerRunes, snapshot.attackerRunes))
+        reason = "attacker runes changed";
+      else if (!eq(prev.defenderRunes, snapshot.defenderRunes))
+        reason = "defender runes changed";
+      else if (prev.attackerLevel !== snapshot.attackerLevel)
+        reason = "attacker level changed";
+      else if (prev.defenderLevel !== snapshot.defenderLevel)
+        reason = "defender level changed";
+      else if (prev.targetMode !== snapshot.targetMode)
+        reason = "defender mode changed";
+      else if (
+        prev.dummyHP !== snapshot.dummyHP ||
+        prev.dummyArmor !== snapshot.dummyArmor ||
+        prev.dummyMR !== snapshot.dummyMR ||
+        prev.dummyShield !== snapshot.dummyShield ||
+        prev.dummyDR !== snapshot.dummyDR
+      )
+        reason = "target stats changed";
+      else if (!eq(prev.attackerStats, snapshot.attackerStats))
+        reason = "developer overrides changed";
+      else if (!eq(prev.summoners, snapshot.summoners))
+        reason = "summoner spells changed";
+      else if (prev.targetProfile !== snapshot.targetProfile)
+        reason = "target profile changed";
+    }
+    hardReset(reason);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot, autoResetEnabled]);
 
   const offline = apiStatus === "offline";
 
