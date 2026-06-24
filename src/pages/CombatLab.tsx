@@ -2304,6 +2304,8 @@ function InteractiveSandbox({
     setLastEndpoint("");
     setLastAction(null);
     setActiveTargetScope("PRIMARY");
+    setCombatTimeline([]);
+    setSelectedTimelineId(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
@@ -2340,6 +2342,8 @@ function InteractiveSandbox({
     setLastEndpoint("");
     setLastAction(null);
     setActiveTargetScope("PRIMARY");
+    setCombatTimeline([]);
+    setSelectedTimelineId(null);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
     } catch {}
