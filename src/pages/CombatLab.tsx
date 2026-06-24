@@ -2794,6 +2794,11 @@ function InteractiveSandbox({
 
       {/* BELOW: timeline + diagnostics */}
       <div className="space-y-6">
+        <CombatTimelinePanel
+          entries={combatTimeline as CombatTimelineEntryT[]}
+          selectedId={selectedTimelineId}
+          onSelect={setSelectedTimelineId}
+        />
         <DamageBreakdownPanel events={events} />
         <ReadableCombatFeed
           events={events}
