@@ -4430,11 +4430,25 @@ const ABILITY_KEY_META: Record<
 function AbilityRankBar({
   ranks,
   onChange,
+  caps,
+  mode,
+  onModeChange,
+  level,
+  onCast,
+  busyKey,
+  disabled,
   champion,
   devMode,
 }: {
   ranks: { Q: number; W: number; E: number; R: number };
   onChange: (k: "Q" | "W" | "E" | "R", r: number) => void;
+  caps: { Q: number; W: number; E: number; R: number };
+  mode: "sandbox" | "real_match";
+  onModeChange: (m: "sandbox" | "real_match") => void;
+  level: number;
+  onCast: (k: "Q" | "W" | "E" | "R") => void;
+  busyKey: string | null;
+  disabled: boolean;
   champion?: string;
   devMode: boolean;
 }) {
@@ -4442,65 +4456,143 @@ function AbilityRankBar({
     <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
       <div className="mb-2 flex items-center justify-between">
         <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-          Ability ranks
+          Abilities · click card to cast
         </Label>
-        <span className="text-[10px] text-muted-foreground">
-          {champion ? `${champion} ` : ""}Q{ranks.Q} W{ranks.W} E{ranks.E} R{ranks.R}
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full border border-border/60 bg-background/60 p-0.5 text-[10px]">
+            {(["sandbox", "real_match"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onModeChange(m)}
+                className={`rounded-full px-2 py-0.5 font-medium transition-colors ${
+                  mode === m
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={m === "sandbox" ? "No level restriction" : `Clamp by level ${level}`}
+              >
+                {m === "sandbox" ? "Sandbox" : "Real Match"}
+              </button>
+            ))}
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            {champion ? `${champion} ` : ""}L{level}
+          </span>
+        </div>
       </div>
       <div className="grid grid-cols-4 gap-2">
         {(["Q", "W", "E", "R"] as const).map((k) => {
-          const max = k === "R" ? 3 : 5;
+          const hardMax = k === "R" ? 3 : 5;
+          const cap = caps[k];
           const meta = ABILITY_KEY_META[k];
           const Icon = meta.icon;
           const current = ranks[k];
+          const unlearned = current <= 0;
+          const busyThis = busyKey === k;
           return (
             <div key={k} className="flex flex-col items-center gap-1.5">
-              <div
-                className={`relative flex h-12 w-12 items-center justify-center rounded-md border border-border/60 bg-gradient-to-br from-background/80 to-background/40 shadow-inner ring-1 ${meta.ring}`}
+              <button
+                type="button"
+                onClick={() => !unlearned && !disabled && onCast(k)}
+                disabled={disabled || unlearned || busyThis}
+                title={
+                  unlearned
+                    ? "Ability not learned at this level."
+                    : `Cast ${k} (rank ${current})`
+                }
+                aria-label={`Cast ${k} rank ${current}`}
+                className={`group relative flex h-12 w-12 items-center justify-center rounded-md border bg-gradient-to-br from-background/80 to-background/40 shadow-inner ring-1 transition-all ${
+                  unlearned
+                    ? "cursor-not-allowed border-border/40 opacity-40 ring-border/30"
+                    : `cursor-pointer border-border/60 ${meta.ring} hover:scale-[1.06] hover:border-primary/60 hover:shadow-[0_0_12px_-2px_currentColor] active:scale-95`
+                } ${busyThis ? "animate-pulse" : ""}`}
               >
                 <Icon className={`h-5 w-5 ${meta.tone}`} />
                 <span className="absolute bottom-0.5 right-0.5 rounded bg-background/80 px-1 text-[9px] font-bold leading-none text-foreground/90">
                   {k}
                 </span>
-              </div>
+              </button>
               <div className="flex items-center gap-0.5">
-                {Array.from({ length: max }, (_, i) => i + 1).map((r) => {
+                {Array.from({ length: hardMax }, (_, i) => i + 1).map((r) => {
                   const filled = r <= current;
+                  const locked = r > cap;
                   return (
                     <button
                       key={r}
                       type="button"
-                      onClick={() => onChange(k, r)}
-                      aria-label={`${k} rank ${r}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (locked) return;
+                        // Click filled top pip → unlearn (rank 0).
+                        if (filled && r === current) onChange(k, r - 1);
+                        else onChange(k, r);
+                      }}
+                      disabled={locked}
+                      aria-label={`${k} rank ${r}${locked ? " (locked by level)" : ""}`}
+                      title={locked ? "Locked by level" : `Set ${k} to rank ${r}`}
                       className={`h-2.5 w-3 rounded-sm border transition-colors ${
-                        filled
-                          ? `${meta.chip} border-transparent`
-                          : "border-border bg-muted/30 hover:bg-muted/60"
+                        locked
+                          ? "cursor-not-allowed border-dashed border-border/40 bg-transparent"
+                          : filled
+                          ? `${meta.chip} border-transparent cursor-pointer`
+                          : "border-border bg-muted/30 hover:bg-muted/60 cursor-pointer"
                       }`}
                     />
                   );
                 })}
               </div>
-              <div className="text-[10px] font-semibold text-muted-foreground">
-                Rank {current}
+              <div
+                className={`text-[10px] font-semibold ${
+                  unlearned ? "text-muted-foreground/60" : "text-muted-foreground"
+                }`}
+              >
+                {unlearned ? "Unlearned" : `Rank ${current}`}
               </div>
             </div>
           );
         })}
       </div>
+      {mode === "real_match" &&
+        (["Q", "W", "E", "R"] as const).some((k) => ranks[k] <= 0) && (
+          <div className="mt-2 text-[10px] text-amber-400/80">
+            Ability not learned at this level.
+          </div>
+        )}
       {devMode && (
         <pre className="mt-2 overflow-x-auto rounded bg-background/60 p-1.5 text-[10px] leading-tight text-muted-foreground">
-{`q_rank: ${ranks.Q}
-w_rank: ${ranks.W}
-e_rank: ${ranks.E}
-r_rank: ${ranks.R}
+{`rankMode: ${mode}
+championLevel: ${level}
+legalRankCaps: { Q: ${caps.Q}, W: ${caps.W}, E: ${caps.E}, R: ${caps.R} }
+sentRankPayload: { q_rank: ${ranks.Q}, w_rank: ${ranks.W}, e_rank: ${ranks.E}, r_rank: ${ranks.R} }
 attacker_stats.Q_RANK / P_Q: ${ranks.Q}
 attacker_stats.W_RANK / P_W: ${ranks.W}
 attacker_stats.E_RANK / P_E: ${ranks.E}
 attacker_stats.R_RANK / P_R: ${ranks.R}`}
         </pre>
       )}
+    </div>
+  );
+}
+
+// (legacy AbilityRankBar replaced)
+function _AbilityRankBarLegacyStub() {
+  return (
+    <div>
+      <div>
+        {[1].map((r) => {
+          const filled = false;
+          return (
+            <button key={r} type="button"
+              className={`h-2.5 w-3 rounded-sm border transition-colors ${
+                        filled
+                          ? `bg-amber-400 border-transparent`
+                          : "border-border bg-muted/30 hover:bg-muted/60"
+                      }`}
+                    />
+                  );
+                })}
+      </div>
     </div>
   );
 }
