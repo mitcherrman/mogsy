@@ -4575,28 +4575,6 @@ attacker_stats.R_RANK / P_R: ${ranks.R}`}
   );
 }
 
-// (legacy AbilityRankBar replaced)
-function _AbilityRankBarLegacyStub() {
-  return (
-    <div>
-      <div>
-        {[1].map((r) => {
-          const filled = false;
-          return (
-            <button key={r} type="button"
-              className={`h-2.5 w-3 rounded-sm border transition-colors ${
-                        filled
-                          ? `bg-amber-400 border-transparent`
-                          : "border-border bg-muted/30 hover:bg-muted/60"
-                      }`}
-                    />
-                  );
-                })}
-      </div>
-    </div>
-  );
-}
-
 /* ─────────────── Combat Timeline (primary history view) ─────────────── */
 
 type CombatTimelineEntryT = {
