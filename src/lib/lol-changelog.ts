@@ -55,6 +55,29 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-24T18:00:00Z",
+    title: "Combat Lab: Unified Ability Cards + Legal Rank Mode",
+    type: "feature",
+    scopes: ["combat-lab"],
+    summary:
+      "Combat Lab's ability tiles are now the primary cast surface. Clicking a Q/W/E/R card fires that ability directly against the current target, while the rank pips below each card still control rank without triggering a cast. The separate Ability Formulas Q/W/E/R button block has been removed — the panel is shorter and the ability cards do both jobs. A new Sandbox / Real Match rank-mode toggle sits next to the cards: Sandbox keeps full Q/W/E max 5 and R max 3 with no level restrictions (default), while Real Match clamps every ability rank by the attacker's champion level (Q/W/E max 1 at L1–3, 2 at L4, 3 at L5–6, 4 at L7–8, 5 at L9+; R max 0 at L1–5, 1 at L6–10, 2 at L11–15, 3 at L16+). Switching modes auto-clamps illegal ranks, locked pips render dashed, unlearned abilities (rank 0) dim their card and refuse to cast with an inline 'Ability not learned at this level.' message. Basic Attack remains usable independent of rank. Dev Mode now exposes rankMode, championLevel, legalRankCaps, and the exact sentRankPayload alongside the existing attacker_stats aliases. No backend, combat calculation, timeline, combo summary, damage breakdown, combat feed, target, defender HP, or diagnostics behavior changes.",
+    details: [
+      "Ability cards now execute abilities directly — clicking a Q/W/E/R tile calls /api/combat-lab/active with active_name = Q/W/E/R and the current ranks payload.",
+      "Removed the separate 'Ability formulas' Q/W/E/R button block from the Combat Actions card; ability tiles are now the only cast surface for those four abilities.",
+      "Rank pips still control rank only — pip clicks stopPropagation so they never cast. Clicking the top filled pip again sets that ability to rank 0 (unlearn).",
+      "Hover affordances on castable cards: subtle scale, primary border highlight, and a soft glow. Disabled / unlearned cards show reduced opacity and a not-allowed cursor.",
+      "New Sandbox / Real Match toggle next to the ability ranks header — persisted to localStorage (combat-lab:rank-mode). Sandbox is the default and matches previous behavior exactly.",
+      "Real Match clamps ranks by attacker level: Q/W/E max = level ≥9 → 5, ≥7 → 4, ≥5 → 3, ≥4 → 2, ≥1 → 1. R max = level ≥16 → 3, ≥11 → 2, ≥6 → 1, ≤5 → 0.",
+      "Pips above the legal cap render dashed and disabled. Switching Sandbox → Real Match (or lowering champion level) auto-clamps the stored ranks and updates the visible pips, the rank payload, and the attacker_stat aliases in the same render.",
+      "Unlearned abilities (rank 0) dim the entire ability card, block clicks, surface the tooltip 'Ability not learned at this level.', and show the inline warning row below the grid.",
+      "Basic Attack button is unaffected and remains usable regardless of ability ranks or rank mode.",
+      "Dev Mode payload diagnostics expanded: rankMode, championLevel, legalRankCaps (per ability), sentRankPayload (q_rank / w_rank / e_rank / r_rank), and the mirrored attacker_stats Q_RANK / W_RANK / E_RANK / R_RANK + P_Q / P_W / P_E / P_R aliases.",
+      "No backend changes. Combat Timeline, Combo Summary, Damage Breakdown, Combat Feed, Last Action, Targets, target defenses, Defender HP, Dev Mode JSON panels, and diagnostics are unchanged.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-24T16:00:00Z",
     title: "Combat Lab: Compact Combo Summary Panel",
     type: "ui",
