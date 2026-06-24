@@ -2128,6 +2128,7 @@ function InteractiveSandbox({
       const backendStats = { ...previewBuildStats, ...previewRuntimeStats };
       const attacker_stats: Record<string, number> =
         Object.keys(backendStats).length > 0 ? backendStats : buildAttackerStats(config);
+      Object.assign(attacker_stats, rankAttackerStatAliases);
       const target_stats: Record<string, number> = (targetRuntime?.target_stats &&
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
@@ -2144,6 +2145,7 @@ function InteractiveSandbox({
         target_level: targetSetup.targetLevel,
         target_item_names: targetSetup.targetItemNames,
         target_rune_names: targetSetup.targetRuneNames,
+        ...rankPayload,
       } as CombatLabActiveRequest;
       setLastEndpoint("/api/combat-lab/active");
       setLastRequest(payload);
