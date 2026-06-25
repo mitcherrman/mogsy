@@ -1039,8 +1039,10 @@ export default function DeveloperTools(props: Props) {
     <Tabs defaultValue="diag" className="w-full">
       <TabsList className="flex h-auto flex-wrap">
         <TabsTrigger value="diag"><Activity className="mr-1.5 h-3.5 w-3.5" />Diagnostics</TabsTrigger>
+        <TabsTrigger value="inv"><Layers className="mr-1.5 h-3.5 w-3.5" />Inventory</TabsTrigger>
         <TabsTrigger value="api"><Bug className="mr-1.5 h-3.5 w-3.5" />API Inspector</TabsTrigger>
         <TabsTrigger value="db"><Database className="mr-1.5 h-3.5 w-3.5" />DB Inspector</TabsTrigger>
+        <TabsTrigger value="filters"><Filter className="mr-1.5 h-3.5 w-3.5" />Filters</TabsTrigger>
         <TabsTrigger value="events"><History className="mr-1.5 h-3.5 w-3.5" />Event Log</TabsTrigger>
         <TabsTrigger value="changelog"><FileText className="mr-1.5 h-3.5 w-3.5" />Changelog</TabsTrigger>
         <TabsTrigger value="docs"><BookOpen className="mr-1.5 h-3.5 w-3.5" />Documentation</TabsTrigger>
@@ -1049,8 +1051,10 @@ export default function DeveloperTools(props: Props) {
         <TabsTrigger value="obs"><Tv2 className="mr-1.5 h-3.5 w-3.5" />OBS Help</TabsTrigger>
       </TabsList>
       <TabsContent value="diag" className="pt-3"><DiagnosticsPanel {...props} /></TabsContent>
+      <TabsContent value="inv" className="pt-3"><InventorySummaryPanel {...props} /></TabsContent>
       <TabsContent value="api" className="pt-3"><ApiInspectorPanel {...props} /></TabsContent>
       <TabsContent value="db" className="pt-3"><DatabaseInspectorPanel {...props} /></TabsContent>
+      <TabsContent value="filters" className="pt-3"><FilterInspectorPanel {...props} /></TabsContent>
       <TabsContent value="events" className="pt-3"><EventLogPanel /></TabsContent>
       <TabsContent value="changelog" className="pt-3"><ChangelogPanel /></TabsContent>
       <TabsContent value="docs" className="pt-3"><DocsPanel /></TabsContent>
