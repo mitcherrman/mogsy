@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { BroadcastEngine } from "./engine";
+import { useEffect, useState } from "react";
 import type { EngineSnapshot } from "./types";
 import { createPublisher, createSubscriber, type SubscriberDiagnostics } from "./channel";
+import { getBroadcastEngine } from "./engineSingleton";
 
 /**
  * Studio hook — owns one BroadcastEngine instance and republishes its
  * snapshots over BroadcastChannel so any open Broadcast Window stays in sync.
  */
 export function useBroadcastEngine() {
-  const engine = useMemo(() => new BroadcastEngine(), []);
+  // Singleton — survives React component remounts (auth re-checks, layout
+  // re-renders, route remounts). The hook only attaches; it never destroys.
+  const engine = getBroadcastEngine();
   const [snapshot, setSnapshot] = useState<EngineSnapshot>(() => engine.snapshot());
 
   useEffect(() => {
@@ -22,7 +24,9 @@ export function useBroadcastEngine() {
       unsub();
       unsubReq();
       publisher.close();
-      engine.destroy();
+      // NOTE: do NOT call engine.destroy() here. The engine is a process-
+      // wide singleton; destroying it on unmount is what caused playback
+      // state to vanish on remount.
     };
   }, [engine]);
 
