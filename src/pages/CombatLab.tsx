@@ -1560,6 +1560,34 @@ const makeEmptyCombatState = () => ({
   timed_effects: [] as unknown[],
   permanent_stacks: {} as Record<string, unknown>,
 });
+/**
+ * Strict request-state builder. The ONLY source allowed for payload.state is
+ * the live `currentState` React variable. We extract just the three canonical
+ * keys so stray top-level fields (TARGET_DAMAGE_REDUCTION_PERCENT,
+ * *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.) from a previous response, runtime
+ * snapshot, defense preview, localStorage hydration, or derived HP source
+ * cannot leak into the next backend call. Anything missing or non-object is
+ * normalized to an empty canonical shape.
+ */
+const buildRequestState = (currentState: unknown) => {
+  const empty = makeEmptyCombatState();
+  if (!currentState || typeof currentState !== "object") return empty;
+  const s = currentState as Record<string, unknown>;
+  const states =
+    s.states && typeof s.states === "object" && !Array.isArray(s.states)
+      ? (s.states as Record<string, unknown>)
+      : empty.states;
+  const timed_effects = Array.isArray(s.timed_effects)
+    ? (s.timed_effects as unknown[])
+    : empty.timed_effects;
+  const permanent_stacks =
+    s.permanent_stacks &&
+    typeof s.permanent_stacks === "object" &&
+    !Array.isArray(s.permanent_stacks)
+      ? (s.permanent_stacks as Record<string, unknown>)
+      : empty.permanent_stacks;
+  return { states, timed_effects, permanent_stacks };
+};
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
 type TargetMode = "target_champion" | "target_dummy" | "target_profile";
