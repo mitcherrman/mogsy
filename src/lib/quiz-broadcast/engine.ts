@@ -3,9 +3,16 @@ import { quizApi } from "@/lib/quiz/api";
 import {
   type BroadcastConfig,
   type BroadcastPhase,
+  type BroadcastTiming,
+  type BroadcastVisuals,
   type EngineSnapshot,
   DEFAULT_CONFIG,
 } from "./types";
+
+type ConfigPatch = Partial<Omit<BroadcastConfig, "timing" | "visuals">> & {
+  timing?: Partial<BroadcastTiming>;
+  visuals?: Partial<BroadcastVisuals>;
+};
 
 type Listener = (s: EngineSnapshot) => void;
 
@@ -76,7 +83,7 @@ export class BroadcastEngine {
     this.emit();
   }
 
-  setConfig(next: Partial<BroadcastConfig>) {
+  setConfig(next: ConfigPatch) {
     this.config = {
       ...this.config,
       ...next,
