@@ -1560,6 +1560,34 @@ const makeEmptyCombatState = () => ({
   timed_effects: [] as unknown[],
   permanent_stacks: {} as Record<string, unknown>,
 });
+/**
+ * Strict request-state builder. The ONLY source allowed for payload.state is
+ * the live `currentState` React variable. We extract just the three canonical
+ * keys so stray top-level fields (TARGET_DAMAGE_REDUCTION_PERCENT,
+ * *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.) from a previous response, runtime
+ * snapshot, defense preview, localStorage hydration, or derived HP source
+ * cannot leak into the next backend call. Anything missing or non-object is
+ * normalized to an empty canonical shape.
+ */
+const buildRequestState = (currentState: unknown) => {
+  const empty = makeEmptyCombatState();
+  if (!currentState || typeof currentState !== "object") return empty;
+  const s = currentState as Record<string, unknown>;
+  const states =
+    s.states && typeof s.states === "object" && !Array.isArray(s.states)
+      ? (s.states as Record<string, unknown>)
+      : empty.states;
+  const timed_effects = Array.isArray(s.timed_effects)
+    ? (s.timed_effects as unknown[])
+    : empty.timed_effects;
+  const permanent_stacks =
+    s.permanent_stacks &&
+    typeof s.permanent_stacks === "object" &&
+    !Array.isArray(s.permanent_stacks)
+      ? (s.permanent_stacks as Record<string, unknown>)
+      : empty.permanent_stacks;
+  return { states, timed_effects, permanent_stacks };
+};
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
 type TargetMode = "target_champion" | "target_dummy" | "target_profile";
@@ -2137,17 +2165,12 @@ function InteractiveSandbox({
               target_rune_names: targetSetup.targetRuneNames,
             }
           : {};
-      // Defensive: if combat state has no `states` payload (i.e. just after
-      // reset), send a freshly constructed empty state object. Never reuse
-      // an old reference that could carry stale defensive modifiers.
-      const stateStates =
-        state && typeof state === "object"
-          ? ((state as any).states as Record<string, unknown> | undefined)
-          : undefined;
-      const safeState =
-        state && stateStates && Object.keys(stateStates).length > 0
-          ? state
-          : makeEmptyCombatState();
+      // STRICT: payload.state comes ONLY from the live `state` variable,
+      // funneled through buildRequestState. We never merge from targetRuntime,
+      // lastResponse, defensePreview, activeDefenderEffects, cached target
+      // stats, localStorage, or derived HP source. After Reset this yields
+      // { states: {}, timed_effects: [], permanent_stacks: {} } guaranteed.
+      const safeState = buildRequestState(state);
       let payload: unknown;
       let endpoint: string;
       let res: SandboxStepResponse;
@@ -2294,14 +2317,11 @@ function InteractiveSandbox({
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
           : { ...DEFAULT_TARGET_STATS });
-      const applyStateStates =
-        state && typeof state === "object"
-          ? ((state as any).states as Record<string, unknown> | undefined)
-          : undefined;
-      const applyState =
-        state && applyStateStates && Object.keys(applyStateStates).length > 0
-          ? state
-          : makeEmptyCombatState();
+      // STRICT: same rule as sendStep — payload.state derives ONLY from the
+      // live `state` variable via buildRequestState (no targetRuntime,
+      // lastResponse, defensePreview, cached target stats, localStorage, or
+      // derived HP merging).
+      const applyState = buildRequestState(state);
       const payload: CombatLabActiveRequest = {
         champion_name: targetSetup.targetChampionName,
         attacker_stats,
@@ -3133,6 +3153,30 @@ function InteractiveSandbox({
                     const ss =
                       state && typeof state === "object"
                         ? ((state as any).states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
+                  })()}
+                </div>
+                <div className="text-muted-foreground">actualLastRequestStateKeys</div>
+                <div
+                  className="text-right truncate"
+                  title={(() => {
+                    const req = lastRequest as any;
+                    const ss =
+                      req && req.state && typeof req.state === "object"
+                        ? (req.state.states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return JSON.stringify(keys);
+                  })()}
+                >
+                  {(() => {
+                    const req = lastRequest as any;
+                    if (!req || !req.state) return "(none)";
+                    const ss =
+                      req.state && typeof req.state === "object"
+                        ? (req.state.states as Record<string, unknown> | undefined)
                         : undefined;
                     const keys = ss ? Object.keys(ss) : [];
                     return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
