@@ -55,6 +55,25 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-25T03:00:00Z",
+    title: "Combat Lab: Full Session Debug Report Export",
+    type: "fix",
+    scopes: ["combat-lab"],
+    summary:
+      "Copy Debug Report now exports the entire combat session instead of only the most recent request/response. The new report leads with a readable_summary (attacker + defender configuration, ability ranks, rank mode, auto-reset state, action_sequence like '#1 Basic Attack → #2 Q5 → #3 W5 → #4 E5 → #5 R3', starting/ending HP, total raw and final damage, damage split by physical/magic/true, and which TARGET_* defensive modifiers are currently active), a full_combat_timeline that mirrors every combatTimeline entry (per-step request, response, state_snapshot, events, HP before/after, damage, ability key + rank, endpoint, timestamp), a selected_timeline_entry convenience field, and stat_source_diagnostics that pulls AD / BASE_AD / BONUS_AD / AP / ARMOR / MR / ATTACK_SPEED / FINAL_ATTACK_SPEED / Q_RANK / W_RANK / E_RANK / R_RANK from each step's request.attacker_stats so AD / AP / BONUS_AD drift across the session is visible. raw_last_request and raw_last_response are kept as secondary fields for backwards compatibility.",
+    details: [
+      "Debug Report now exports the full combatTimeline, not only the last action — Q → W → E → R history is preserved end-to-end.",
+      "Report includes a human-readable action_sequence such as '#1 Basic Attack → #2 Q5 → #3 W5 → #4 E5 → #5 R3'.",
+      "Report includes per-step request, response, state_snapshot, and events for every timeline entry.",
+      "Stat source diagnostics extract AD / BASE_AD / BONUS_AD / AP / ARMOR / MR / ATTACK_SPEED / FINAL_ATTACK_SPEED and Q/W/E/R_RANK from each step's request.attacker_stats so AD/AP/BONUS_AD changes are traceable, with a devMode flag noting that Dev Mode overrides may be active.",
+      "Active defender effects (TARGET_DAMAGE_REDUCTION_PERCENT, TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT, TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT, TARGET_SHIELD) are surfaced as booleans in the readable summary.",
+      "raw_last_request and raw_last_response are retained as secondary fields. No UI changes — Combat Timeline and Selected Timeline Entry panels are untouched.",
+      "No backend changes, no combat calculation changes, no redesign.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-25T02:00:00Z",
     title: "Combat Lab: Reset must send clean state",
     type: "fix",
