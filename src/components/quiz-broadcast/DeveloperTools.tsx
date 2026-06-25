@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import {
   Activity, Database, Bug, FileText, BookOpen, History, Share2, Tv2,
   RefreshCw, Copy, Download, Trash2, Plus, Save, Radio, Filter, Layers, PlayCircle,
+  Package,
 } from "lucide-react";
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,11 +50,18 @@ type Props = {
 // Helpers
 // ============================================================================
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
+const DIAGNOSTICS_VERSION = "2";
+const EXPORT_VERSION = "2";
 
 function fmtTs(t?: number | null) {
   if (!t) return "—";
   return new Date(t).toLocaleString();
+}
+
+function isoStamp(d = new Date()) {
+  // Filesystem-safe ISO stamp, e.g. 2025-01-31T14-05-09
+  return d.toISOString().replace(/\..+$/, "").replace(/:/g, "-");
 }
 
 function tally<T extends string | number | undefined>(items: T[]) {
