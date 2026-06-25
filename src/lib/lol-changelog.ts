@@ -55,6 +55,26 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-25T01:00:00Z",
+    title: "Combat Lab: Clean State Reset Hotfix",
+    type: "fix",
+    scopes: ["combat-lab"],
+    summary:
+      "Hotfix for Combat Lab reset hygiene. Both manual Reset and Auto Reset now replace combat state with a freshly constructed empty state object ({ states: {}, timed_effects: [], permanent_stacks: {} }) instead of trying to mutate or filter the previous state. Stale defensive modifiers — TARGET_DAMAGE_REDUCTION_PERCENT, TARGET_DAMAGE_REDUCTION_PERCENT_EXPIRES_AT, TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT, TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT, TARGET_SHIELD, TARGET_REMAINING_HP, ITEM_JAKSHO_STACKS, and every *_EXPIRES_AT key — no longer survive a reset. The next /api/combat-lab/basic-attack or /active request after reset sends a clean state payload with empty states / timed_effects / permanent_stacks. Selected setup is preserved: champions, levels, items, runes, target mode, custom dummy inputs, ability ranks, Sandbox / Real Match rank mode, Auto Reset toggle, and Dev Mode are untouched. Defender HP visibly resets to the current setup's max HP, and Dev Mode's Reset Diagnostics card now also shows nextRequestStateKeys (empty [] right after reset).",
+    details: [
+      "Reset now replaces combat state with a fresh empty object: { states: {}, timed_effects: [], permanent_stacks: {} } — never mutated or filtered from the previous state reference.",
+      "Stale defensive modifiers no longer survive reset: TARGET_REMAINING_HP, TARGET_DAMAGE_REDUCTION_PERCENT, TARGET_DAMAGE_REDUCTION_PERCENT_EXPIRES_AT, TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT, TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT, TARGET_SHIELD, ITEM_JAKSHO_STACKS, and any *_EXPIRES_AT keys are all gone.",
+      "Next request after reset sends clean state — basic-attack and active payloads include state with empty states / timed_effects / permanent_stacks. Verified with K'Sante W and Alistar R: applying the defense then pressing Reset then Basic Attack produces an outgoing request whose state.states is {}.",
+      "targetRuntime snapshot is cleared on reset so applyDefense and Defender HP also recompute from the current setup instead of replaying the previous combat's target_stats.",
+      "Selected setup is preserved: attacker champion / level / items / runes, defender champion / level / items / runes, target mode, custom dummy HP / armor / MR / shield / DR, ability ranks, Sandbox / Real Match rank mode, Auto Reset toggle, and Dev Mode are not touched.",
+      "Defender HP visibly resets to the current setup's max HP via the existing HP memo (target_stats.HP → PRIMARY scope max_hp → dummy HP fallback).",
+      "Dev Mode Reset Diagnostics now also surfaces nextRequestStateKeys — the keys present in state.states that will be sent on the next request. After reset it reads []. resetCounter and lastResetReason continue to update on every reset.",
+      "No backend changes. No layout, design, or routing changes outside the Combat Lab page.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-25T00:00:00Z",
     title: "Combat Lab: Reset Button Hard Clear + Auto Reset Toggle",
     type: "fix",

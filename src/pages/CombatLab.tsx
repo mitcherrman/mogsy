@@ -1548,6 +1548,18 @@ function KeyStringEditor({
 /* ─────────────── Interactive Sandbox ─────────────── */
 
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
+
+/**
+ * Canonical empty combat state shape. Reset replaces the live state object
+ * with a FRESH copy of this so no stale `states.*` keys (TARGET_REMAINING_HP,
+ * TARGET_DAMAGE_REDUCTION_PERCENT, *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.)
+ * can survive into the next backend request.
+ */
+const makeEmptyCombatState = () => ({
+  states: {} as Record<string, unknown>,
+  timed_effects: [] as unknown[],
+  permanent_stacks: {} as Record<string, unknown>,
+});
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
 type TargetMode = "target_champion" | "target_dummy" | "target_profile";
@@ -2125,7 +2137,17 @@ function InteractiveSandbox({
               target_rune_names: targetSetup.targetRuneNames,
             }
           : {};
-      const safeState = state ?? {};
+      // Defensive: if combat state has no `states` payload (i.e. just after
+      // reset), send a freshly constructed empty state object. Never reuse
+      // an old reference that could carry stale defensive modifiers.
+      const stateStates =
+        state && typeof state === "object"
+          ? ((state as any).states as Record<string, unknown> | undefined)
+          : undefined;
+      const safeState =
+        state && stateStates && Object.keys(stateStates).length > 0
+          ? state
+          : makeEmptyCombatState();
       let payload: unknown;
       let endpoint: string;
       let res: SandboxStepResponse;
@@ -2272,11 +2294,19 @@ function InteractiveSandbox({
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
           : { ...DEFAULT_TARGET_STATS });
+      const applyStateStates =
+        state && typeof state === "object"
+          ? ((state as any).states as Record<string, unknown> | undefined)
+          : undefined;
+      const applyState =
+        state && applyStateStates && Object.keys(applyStateStates).length > 0
+          ? state
+          : makeEmptyCombatState();
       const payload: CombatLabActiveRequest = {
         champion_name: targetSetup.targetChampionName,
         attacker_stats,
         target_stats,
-        state: state ?? {},
+        state: applyState,
         active_name: defenseName,
         target_scope: "PRIMARY",
         piercing_arrow_charge_bonus_percent: 0,
@@ -2361,10 +2391,18 @@ function InteractiveSandbox({
   // Does NOT touch attacker/defender configuration (champion, level, items,
   // runes, ranks, target mode, dummy values, rank mode, dev mode).
   const hardReset = (reason: string) => {
-    setState(null);
+    // Replace combat state with a FRESH empty object — never mutate or
+    // filter the previous state. Guarantees no stale defensive modifiers
+    // (TARGET_DAMAGE_REDUCTION_PERCENT, *_EXPIRES_AT, ITEM_JAKSHO_STACKS,
+    // TARGET_SHIELD, TARGET_REMAINING_HP, etc.) survive into the next
+    // backend request.
+    setState(makeEmptyCombatState());
     setEvents([]);
     setScopes({});
     setAttackerStats({});
+    // Clear runtime target snapshot so Defender HP recomputes from the
+    // current setup's max HP and applyDefense rebuilds from defaults.
+    setTargetRuntime(null);
     setError(null);
     setLastRequest(null);
     setLastResponse(null);
@@ -3079,6 +3117,27 @@ function InteractiveSandbox({
                 <div className="text-right">{resetCounter}</div>
                 <div className="text-muted-foreground">lastResetAt</div>
                 <div className="text-right truncate" title={lastResetAt}>{lastResetAt}</div>
+                <div className="text-muted-foreground">nextRequestStateKeys</div>
+                <div
+                  className="text-right truncate"
+                  title={(() => {
+                    const ss =
+                      state && typeof state === "object"
+                        ? ((state as any).states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return JSON.stringify(keys);
+                  })()}
+                >
+                  {(() => {
+                    const ss =
+                      state && typeof state === "object"
+                        ? ((state as any).states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
+                  })()}
+                </div>
               </CardContent>
             </Card>
             <DeveloperPanel
