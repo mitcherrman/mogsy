@@ -1,3 +1,8 @@
+## Quiz Broadcast Studio (admin)
+New three-layer system: BroadcastEngine (state machine, in `src/lib/quiz-broadcast/engine.ts`), Broadcast Studio at `/admin/quiz-broadcast` (admin-only), and a clean Broadcast Window at `/admin/quiz-broadcast/view` for OBS capture. Studio and Window share `BroadcastRenderer` and stay synced via BroadcastChannel. Falls back to `MOCK_BROADCAST_QUESTIONS` when the quiz API is unreachable. Playlists + config persist in localStorage.
+
+---
+
 ### Problem
 The `portrait` popout style currently renders champion **splash** art (via `getChampionSplash`), which falls back to loading art only when splash is missing. The user wants `portrait` to always use the dedicated **loading** art asset instead.
 
