@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +34,7 @@ import SEOHead from "@/components/SEOHead";
  */
 export default function AdminQuizBroadcast() {
   const { engine, snapshot } = useBroadcastEngine();
+  const queryClient = useQueryClient();
   const [items, setItems] = useState<QuizQuestion[]>([]);
   const [playlists, setPlaylists] = useState<BroadcastPlaylist[]>(() => loadPlaylists());
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
@@ -240,8 +241,7 @@ export default function AdminQuizBroadcast() {
                 apiRecordCount={questions?.length ?? 0}
                 onRefetch={() => {
                   devToolsRepository.appendEvent({ level: "info", source: "api", message: "Manual refetch requested" });
-                  // refresh via React Query — use window reload of the query
-                  window.dispatchEvent(new Event("focus"));
+                  void queryClient.invalidateQueries({ queryKey: ["quiz-broadcast-pool"] });
                 }}
                 bcConnected={bcConnected}
                 lastSyncAt={lastSyncAt}
