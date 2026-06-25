@@ -63,12 +63,17 @@ export interface DevToolsRepository {
   listPresets(): BroadcastPreset[];
   upsertPreset(p: BroadcastPreset): BroadcastPreset[];
   deletePreset(id: string): BroadcastPreset[];
+
+  // Metadata
+  getLastExportAt(): number | null;
+  setLastExportAt(ts: number): void;
 }
 
 const KEY_EVENTS = "mogsy.quizBroadcast.devtools.events.v1";
 const KEY_CHANGELOG = "mogsy.quizBroadcast.devtools.changelog.v1";
 const KEY_DOCS = "mogsy.quizBroadcast.devtools.docs.v1";
 const KEY_PRESETS = "mogsy.quizBroadcast.devtools.presets.v1";
+const KEY_LAST_EXPORT = "mogsy.quizBroadcast.devtools.lastExportAt.v1";
 const MAX_EVENTS = 500;
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -250,6 +255,13 @@ class LocalDevToolsRepository implements DevToolsRepository {
     const list = this.listPresets().filter((x) => x.id !== id);
     writeJSON(KEY_PRESETS, list);
     return list;
+  }
+
+  getLastExportAt(): number | null {
+    return readJSON<number | null>(KEY_LAST_EXPORT, null);
+  }
+  setLastExportAt(ts: number): void {
+    writeJSON(KEY_LAST_EXPORT, ts);
   }
 }
 
