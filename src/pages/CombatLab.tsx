@@ -2317,14 +2317,11 @@ function InteractiveSandbox({
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
           : { ...DEFAULT_TARGET_STATS });
-      const applyStateStates =
-        state && typeof state === "object"
-          ? ((state as any).states as Record<string, unknown> | undefined)
-          : undefined;
-      const applyState =
-        state && applyStateStates && Object.keys(applyStateStates).length > 0
-          ? state
-          : makeEmptyCombatState();
+      // STRICT: same rule as sendStep — payload.state derives ONLY from the
+      // live `state` variable via buildRequestState (no targetRuntime,
+      // lastResponse, defensePreview, cached target stats, localStorage, or
+      // derived HP merging).
+      const applyState = buildRequestState(state);
       const payload: CombatLabActiveRequest = {
         champion_name: targetSetup.targetChampionName,
         attacker_stats,
