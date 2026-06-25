@@ -2373,10 +2373,18 @@ function InteractiveSandbox({
   // Does NOT touch attacker/defender configuration (champion, level, items,
   // runes, ranks, target mode, dummy values, rank mode, dev mode).
   const hardReset = (reason: string) => {
-    setState(null);
+    // Replace combat state with a FRESH empty object — never mutate or
+    // filter the previous state. Guarantees no stale defensive modifiers
+    // (TARGET_DAMAGE_REDUCTION_PERCENT, *_EXPIRES_AT, ITEM_JAKSHO_STACKS,
+    // TARGET_SHIELD, TARGET_REMAINING_HP, etc.) survive into the next
+    // backend request.
+    setState(makeEmptyCombatState());
     setEvents([]);
     setScopes({});
     setAttackerStats({});
+    // Clear runtime target snapshot so Defender HP recomputes from the
+    // current setup's max HP and applyDefense rebuilds from defaults.
+    setTargetRuntime(null);
     setError(null);
     setLastRequest(null);
     setLastResponse(null);
