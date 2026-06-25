@@ -55,6 +55,8 @@ const LolTierList = R.LolTierList.Component;
 const LolDocumentation = R.LolDocumentation.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
+const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
+const QuizBroadcastView = R.QuizBroadcastView.Component;
 const About = R.About.Component;
 const Privacy = R.Privacy.Component;
 const Terms = R.Terms.Component;
@@ -132,6 +134,7 @@ const App = () => (
                   <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
+                  <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
@@ -147,6 +150,7 @@ const App = () => (
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
+                <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
