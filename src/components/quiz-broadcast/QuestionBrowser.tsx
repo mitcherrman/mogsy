@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,16 @@ type Props = {
   onAdd: (q: QuizQuestion) => void;
   loading?: boolean;
   usingFallback?: boolean;
+  onFiltersChange?: (state: {
+    search: string;
+    category: string;
+    difficulty: string;
+    totalBeforeFilters: number;
+    totalAfterFilters: number;
+  }) => void;
 };
 
-export default function QuestionBrowser({ questions, onAdd, loading, usingFallback }: Props) {
+export default function QuestionBrowser({ questions, onAdd, loading, usingFallback, onFiltersChange }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
@@ -48,6 +55,16 @@ export default function QuestionBrowser({ questions, onAdd, loading, usingFallba
       return hay.includes(s);
     });
   }, [questions, search, category, difficulty]);
+
+  useEffect(() => {
+    onFiltersChange?.({
+      search,
+      category,
+      difficulty,
+      totalBeforeFilters: questions.length,
+      totalAfterFilters: filtered.length,
+    });
+  }, [search, category, difficulty, questions.length, filtered.length, onFiltersChange]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
