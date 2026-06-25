@@ -2294,11 +2294,19 @@ function InteractiveSandbox({
         Object.keys(targetRuntime.target_stats).length > 0
           ? (targetRuntime.target_stats as Record<string, number>)
           : { ...DEFAULT_TARGET_STATS });
+      const applyStateStates =
+        state && typeof state === "object"
+          ? ((state as any).states as Record<string, unknown> | undefined)
+          : undefined;
+      const applyState =
+        state && applyStateStates && Object.keys(applyStateStates).length > 0
+          ? state
+          : makeEmptyCombatState();
       const payload: CombatLabActiveRequest = {
         champion_name: targetSetup.targetChampionName,
         attacker_stats,
         target_stats,
-        state: state ?? {},
+        state: applyState,
         active_name: defenseName,
         target_scope: "PRIMARY",
         piercing_arrow_charge_bonus_percent: 0,
