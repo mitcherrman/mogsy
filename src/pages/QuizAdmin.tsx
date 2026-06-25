@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -211,6 +211,12 @@ export default function QuizAdmin() {
             <Link to="/quiz/diagnostics">
               <ArrowLeft className="h-4 w-4" />
               Diagnostics
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-1 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10">
+            <Link to="/admin/quiz-broadcast">
+              <Radio className="h-4 w-4" />
+              Broadcast Studio
             </Link>
           </Button>
           <Button
