@@ -1,4 +1,5 @@
 import type { EngineSnapshot } from "./types";
+import { loadActiveSession } from "./session";
 
 /**
  * Studio <-> Broadcast Window bridge. The Studio owns the engine and
@@ -36,6 +37,36 @@ export function readPersistedSnapshot(): { ts: number; snapshot: EngineSnapshot 
   } catch {
     return null;
   }
+}
+
+/**
+ * Build a minimal EngineSnapshot from the durable ActiveBroadcastSession.
+ * Used by the Broadcast Window as a last-resort fallback when no live
+ * snapshot cache is present (cold popup). READ-ONLY: this never mutates or
+ * persists session/engine state — the Window stays passive.
+ */
+export function synthesizeSnapshotFromSession(): EngineSnapshot | null {
+  const s = loadActiveSession();
+  if (!s) return null;
+  const current = s.questions[s.currentIndex] ?? null;
+  return {
+    phase: s.phase,
+    playing: s.playing,
+    currentIndex: s.currentIndex,
+    currentQuestion: current,
+    playlist: s.questions,
+    correctAnswer: null,
+    explanation: null,
+    phaseStartedAt: s.phaseStartedAt,
+    phaseDurationMs: s.phaseDurationMs,
+    playlistLength: s.questions.length,
+    questionsPlayed: s.questionsPlayed,
+    startedAt: s.startedAt,
+    config: s.config,
+    playlistId: s.playlistId,
+    playlistName: s.playlistName,
+    sessionId: s.sessionId,
+  };
 }
 
 export function createPublisher() {
@@ -99,6 +130,17 @@ export function createSubscriber(cb: SubscribeCallbacks | ((s: EngineSnapshot) =
     callbacks.onSnapshot(cached.snapshot);
     callbacks.onLog?.("info", `Restored snapshot from cache (${new Date(cached.ts).toLocaleTimeString()})`);
     emitDiag();
+  } else {
+    // No live cache — fall back to the durable ActiveBroadcastSession so a
+    // cold popup still paints the current question. Read-only.
+    const synth = synthesizeSnapshotFromSession();
+    if (synth) {
+      diag.restoreFromCache = true;
+      diag.lastRestoreAt = Date.now();
+      callbacks.onSnapshot(synth);
+      callbacks.onLog?.("info", "Restored snapshot from ActiveBroadcastSession");
+      emitDiag();
+    }
   }
 
   if (typeof BroadcastChannel === "undefined") {
