@@ -482,10 +482,13 @@ function InventorySummaryPanel(props: Props) {
         <StatRow k="Database total" v="Not provided by API" tone="warn" />
         <StatRow k="API returned (raw, all sets)" v={fetchReport.raw_total_across_sets} />
         <StatRow k="API returned (unique after dedup)" v={fetchReport.unique_total} />
+        <StatRow k="Duplicate questions removed" v={fetchReport.duplicates_removed} />
         <StatRow k="Loaded into frontend" v={pool.length} tone={usingFallback ? "warn" : "ok"} />
         <StatRow k="After active filters (Question Browser)" v={filterState.totalAfterFilters} />
         <StatRow k="Added to playlist" v={playlistItems.length} />
         <StatRow k="Mock fallback dataset size" v={mockFallbackCount} />
+        <StatRow k="Mock fallback active" v={usingFallback ? "YES" : "no"} tone={usingFallback ? "warn" : "ok"} />
+        <StatRow k="Data source" v={fetchReport.data_source} />
       </Card>
 
       {truncatedSets.length > 0 && (
