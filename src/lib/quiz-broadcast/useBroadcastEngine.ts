@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BroadcastEngine } from "./engine";
 import type { EngineSnapshot } from "./types";
-import { createPublisher, createSubscriber } from "./channel";
+import { createPublisher, createSubscriber, type SubscriberDiagnostics } from "./channel";
 
 /**
  * Studio hook — owns one BroadcastEngine instance and republishes its
@@ -35,8 +35,22 @@ export function useBroadcastEngine() {
  */
 export function useBroadcastSubscriber() {
   const [snapshot, setSnapshot] = useState<EngineSnapshot | null>(null);
+  const [diagnostics, setDiagnostics] = useState<SubscriberDiagnostics>({
+    lastMessageAt: null,
+    lastVisibilityChangeAt: null,
+    lastRestoreAt: null,
+    reconnectCount: 0,
+    restoreFromCache: false,
+  });
   useEffect(() => {
-    return createSubscriber(setSnapshot);
+    return createSubscriber({
+      onSnapshot: setSnapshot,
+      onDiagnostics: setDiagnostics,
+      onLog: (level, msg) => {
+        // eslint-disable-next-line no-console
+        console[level === "warn" ? "warn" : "log"](`[broadcast-window] ${msg}`);
+      },
+    });
   }, []);
-  return snapshot;
+  return { snapshot, diagnostics };
 }
