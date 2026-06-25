@@ -5,6 +5,66 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { quizApi } from "@/lib/quiz/api";
 import type { QuizQuestion } from "@/lib/quiz/api";
+const DEFAULT_PER_SET_LIMIT = 200;
+
+export type SetFetchEntry = {
+  set_name: string;
+  request_url: string;
+  params: Record<string, string | number>;
+  status: "ok" | "error";
+  error?: string;
+  returned: number;
+  first_id?: string | number | null;
+  last_id?: string | number | null;
+  duration_ms: number;
+};
+
+export type FetchReport = {
+  base_url: string;
+  sets_endpoint: string;
+  questions_endpoint_template: string;
+  per_set_limit: number;
+  sets_count: number | null;
+  sets_request_url: string;
+  sets_status: "ok" | "error" | "loading";
+  sets_error?: string;
+  per_set: SetFetchEntry[];
+  raw_total_across_sets: number;
+  duplicates_removed: number;
+  unique_total: number;
+  started_at: number | null;
+  finished_at: number | null;
+  duration_ms: number;
+  pagination_metadata_available: boolean;
+  pagination_note: string;
+};
+
+const EMPTY_FETCH_REPORT: FetchReport = {
+  base_url: quizApi.baseUrl,
+  sets_endpoint: "/api/quiz/sets",
+  questions_endpoint_template: `/api/quiz/questions?set={set}&limit=${DEFAULT_PER_SET_LIMIT}`,
+  per_set_limit: DEFAULT_PER_SET_LIMIT,
+  sets_count: null,
+  sets_request_url: `${quizApi.baseUrl}/api/quiz/sets`,
+  sets_status: "loading",
+  per_set: [],
+  raw_total_across_sets: 0,
+  duplicates_removed: 0,
+  unique_total: 0,
+  started_at: null,
+  finished_at: null,
+  duration_ms: 0,
+  pagination_metadata_available: false,
+  pagination_note: "Quiz API /api/quiz/questions does not expose total count or cursor metadata. Pagination support is unknown without a probe.",
+};
+
+export type BrowserFilterState = {
+  search: string;
+  category: string;
+  difficulty: string;
+  totalBeforeFilters: number;
+  totalAfterFilters: number;
+};
 import { useBroadcastEngine } from "@/lib/quiz-broadcast/useBroadcastEngine";
 import { MOCK_BROADCAST_QUESTIONS } from "@/lib/quiz-broadcast/mock-questions";
 import {
@@ -41,6 +101,10 @@ export default function AdminQuizBroadcast() {
   const lastPhaseRef = useRef<string>(snapshot.phase);
   const lastPlayingRef = useRef<boolean>(snapshot.playing);
   const bcConnected = typeof BroadcastChannel !== "undefined";
+  const [fetchReport, setFetchReport] = useState<FetchReport>(EMPTY_FETCH_REPORT);
+  const [filterState, setFilterState] = useState<BrowserFilterState>({
+    search: "", category: "all", difficulty: "all", totalBeforeFilters: 0, totalAfterFilters: 0,
+  });
 
   // Load saved config on mount.
   useEffect(() => {
@@ -82,19 +146,67 @@ export default function AdminQuizBroadcast() {
   const { data: questions, isLoading, isError } = useQuery({
     queryKey: ["quiz-broadcast-pool"],
     queryFn: async () => {
-      const sets = await quizApi.sets();
-      const buckets = await Promise.all(
-        sets.sets.map((s) => quizApi.questions(String(s.name), 200).catch(() => ({ questions: [] as QuizQuestion[] }))),
+      const startedAt = Date.now();
+      const report: FetchReport = { ...EMPTY_FETCH_REPORT, started_at: startedAt, sets_status: "loading", per_set: [] };
+      setFetchReport(report);
+      let setsList: { name: string }[] = [];
+      try {
+        const sets = await quizApi.sets();
+        setsList = sets.sets.map((s) => ({ name: String(s.name) }));
+        report.sets_status = "ok";
+        report.sets_count = setsList.length;
+      } catch (err: any) {
+        report.sets_status = "error";
+        report.sets_error = err?.message || String(err);
+      }
+      const entries: SetFetchEntry[] = [];
+      const buckets: { name: string; items: QuizQuestion[] }[] = [];
+      await Promise.all(
+        setsList.map(async (s) => {
+          const params = { set: s.name, limit: DEFAULT_PER_SET_LIMIT };
+          const url = `${quizApi.baseUrl}/api/quiz/questions?set=${encodeURIComponent(s.name)}&limit=${DEFAULT_PER_SET_LIMIT}`;
+          const t0 = Date.now();
+          try {
+            const res = await quizApi.questions(s.name, DEFAULT_PER_SET_LIMIT);
+            const items = res.questions ?? [];
+            entries.push({
+              set_name: s.name, request_url: url, params, status: "ok",
+              returned: items.length,
+              first_id: items[0]?.id ?? null,
+              last_id: items[items.length - 1]?.id ?? null,
+              duration_ms: Date.now() - t0,
+            });
+            buckets.push({ name: s.name, items });
+          } catch (err: any) {
+            entries.push({
+              set_name: s.name, request_url: url, params, status: "error",
+              error: err?.message || String(err), returned: 0, duration_ms: Date.now() - t0,
+            });
+            buckets.push({ name: s.name, items: [] });
+          }
+        }),
       );
       const seen = new Set<string | number>();
       const all: QuizQuestion[] = [];
+      let raw = 0;
       for (const b of buckets) {
-        for (const q of b.questions) {
+        for (const q of b.items) {
+          raw++;
           if (seen.has(q.id)) continue;
           seen.add(q.id);
           all.push(q);
         }
       }
+      const finishedAt = Date.now();
+      setFetchReport({
+        ...report,
+        per_set: entries,
+        raw_total_across_sets: raw,
+        duplicates_removed: raw - all.length,
+        unique_total: all.length,
+        finished_at: finishedAt,
+        duration_ms: finishedAt - startedAt,
+      });
       return all;
     },
     staleTime: 5 * 60_000,
@@ -211,6 +323,7 @@ export default function AdminQuizBroadcast() {
                 loading={isLoading}
                 usingFallback={usingFallback}
                 onAdd={(q) => setItems((prev) => [...prev, q])}
+                onFiltersChange={setFilterState}
               />
             </TabsContent>
             <TabsContent value="library" className="pt-3">
@@ -245,6 +358,9 @@ export default function AdminQuizBroadcast() {
                 }}
                 bcConnected={bcConnected}
                 lastSyncAt={lastSyncAt}
+                fetchReport={fetchReport}
+                filterState={filterState}
+                mockFallbackCount={MOCK_BROADCAST_QUESTIONS.length}
               />
             </TabsContent>
           </Tabs>
