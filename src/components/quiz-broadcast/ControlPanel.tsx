@@ -1,8 +1,20 @@
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Square, ExternalLink, Radio } from "lucide-react";
+import { useState } from "react";
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Square, ExternalLink, Radio, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { BroadcastEngine } from "@/lib/quiz-broadcast/engine";
 import type { EngineSnapshot, PlaybackMode } from "@/lib/quiz-broadcast/types";
 
@@ -26,6 +38,7 @@ const PLAYBACK_MODES: { value: PlaybackMode; label: string }[] = [
 
 export default function ControlPanel({ engine, snapshot, onOpenWindow }: Props) {
   const ready = snapshot.playlistLength > 0;
+  const [confirmClear, setConfirmClear] = useState(false);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -43,7 +56,11 @@ export default function ControlPanel({ engine, snapshot, onOpenWindow }: Props) 
             <Play className="mr-2 h-4 w-4" /> Resume
           </Button>
         )}
-        <Button onClick={() => engine.stop()} variant="outline">
+        <Button
+          onClick={() => engine.stop()}
+          variant="outline"
+          title="Stop playback. Keeps the active playlist and config."
+        >
           <Square className="mr-2 h-4 w-4" /> Stop
         </Button>
         <Button onClick={() => engine.previous()} variant="ghost" size="icon">
@@ -55,6 +72,36 @@ export default function ControlPanel({ engine, snapshot, onOpenWindow }: Props) 
         <Button onClick={() => engine.skip()} variant="ghost" size="icon">
           <SkipForward className="h-4 w-4" />
         </Button>
+        <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              className="border border-red-500/60"
+              title="Wipe the active playlist and reset the broadcast session"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Clear Session
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear active broadcast session?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently drops the active playlist ({snapshot.playlistLength} questions)
+                and resets the broadcast session. Saved playlists are not affected. This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 text-white hover:bg-red-500"
+                onClick={() => engine.clearSession()}
+              >
+                Clear Session
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button onClick={onOpenWindow} variant="default" className="ml-auto bg-cyan-500 text-black hover:bg-cyan-400">
           <ExternalLink className="mr-2 h-4 w-4" /> Open Broadcast Window
         </Button>

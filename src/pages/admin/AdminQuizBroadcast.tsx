@@ -80,6 +80,7 @@ import {
   upsertPlaylist,
   deletePlaylist as removePlaylist,
 } from "@/lib/quiz-broadcast/storage";
+import { loadActiveSession } from "@/lib/quiz-broadcast/session";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 import BroadcastRenderer from "@/components/quiz-broadcast/BroadcastRenderer";
 import QuestionBrowser from "@/components/quiz-broadcast/QuestionBrowser";
@@ -101,7 +102,14 @@ import SEOHead from "@/components/SEOHead";
 export default function AdminQuizBroadcast() {
   const { engine, snapshot } = useBroadcastEngine();
   const queryClient = useQueryClient();
-  const [items, setItems] = useState<QuizQuestion[]>([]);
+  // Playlist is owned by the engine (durable, survives remount). The Studio
+  // derives `items` from the engine snapshot and routes mutations back
+  // through `engine.setPlaylist(...)` so persistence happens in one place.
+  const items = snapshot.playlist;
+  const setItems = (next: QuizQuestion[] | ((prev: QuizQuestion[]) => QuizQuestion[])) => {
+    const value = typeof next === "function" ? (next as (p: QuizQuestion[]) => QuizQuestion[])(items) : next;
+    engine.setPlaylist(value, { id: snapshot.playlistId ?? undefined, name: snapshot.playlistName ?? undefined });
+  };
   const [playlists, setPlaylists] = useState<BroadcastPlaylist[]>(() => loadPlaylists());
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const lastPhaseRef = useRef<string>(snapshot.phase);
@@ -111,19 +119,16 @@ export default function AdminQuizBroadcast() {
     search: "", category: "all", difficulty: "all", totalBeforeFilters: 0, totalAfterFilters: 0,
   });
 
-  // Load saved config on mount.
+  // Load saved standalone config on mount — but only when there's no durable
+  // session driving the engine (a hydrated session brings its own config).
   useEffect(() => {
-    engine.setConfig(loadConfig());
+    if (!loadActiveSession()) {
+      engine.setConfig(loadConfig());
+    }
   }, [engine]);
   useEffect(() => {
     saveConfig(snapshot.config);
   }, [snapshot.config]);
-
-  // Sync local items into engine playlist on change.
-  useEffect(() => {
-    engine.setPlaylist(items, { id: snapshot.playlistId ?? undefined, name: snapshot.playlistName ?? undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
 
   // Mirror engine snapshots into the dev-tools event log for traceability.
   useEffect(() => {
@@ -275,7 +280,6 @@ export default function AdminQuizBroadcast() {
     devToolsRepository.appendEvent({ level: "success", source: "playlist", message: `Saved playlist "${name}" (${items.length})` });
   };
   const onLoadPlaylist = (p: BroadcastPlaylist) => {
-    setItems(p.questions);
     engine.setPlaylist(p.questions, { id: p.id, name: p.name });
     toast.success(`Loaded “${p.name}”`);
     devToolsRepository.appendEvent({ level: "info", source: "playlist", message: `Loaded playlist "${p.name}" (${p.questions.length})` });
