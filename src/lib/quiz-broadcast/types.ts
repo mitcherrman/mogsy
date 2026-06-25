@@ -67,6 +67,8 @@ export type EngineSnapshot = {
   playing: boolean;
   currentIndex: number;
   currentQuestion: QuizQuestion | null;
+  /** Full active playlist. Engine is the authority — Studio derives from this. */
+  playlist: QuizQuestion[];
   correctAnswer: string | null;
   explanation: string | null;
   phaseStartedAt: number;
@@ -77,6 +79,8 @@ export type EngineSnapshot = {
   config: BroadcastConfig;
   playlistId: string | null;
   playlistName: string | null;
+  /** Stable id for the active broadcast session. */
+  sessionId: string;
 };
 
 export const DEFAULT_TIMING: BroadcastTiming = {
