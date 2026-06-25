@@ -2137,7 +2137,17 @@ function InteractiveSandbox({
               target_rune_names: targetSetup.targetRuneNames,
             }
           : {};
-      const safeState = state ?? {};
+      // Defensive: if combat state has no `states` payload (i.e. just after
+      // reset), send a freshly constructed empty state object. Never reuse
+      // an old reference that could carry stale defensive modifiers.
+      const stateStates =
+        state && typeof state === "object"
+          ? ((state as any).states as Record<string, unknown> | undefined)
+          : undefined;
+      const safeState =
+        state && stateStates && Object.keys(stateStates).length > 0
+          ? state
+          : makeEmptyCombatState();
       let payload: unknown;
       let endpoint: string;
       let res: SandboxStepResponse;
