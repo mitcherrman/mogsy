@@ -212,6 +212,8 @@ function DiagnosticsPanel(props: Props) {
           <StatRow k="API endpoint" v={<code className="text-xs">{quizApi.baseUrl}</code>} />
           <StatRow k="Mock fallback" v={usingFallback ? "ACTIVE" : "inactive"} tone={usingFallback ? "warn" : "ok"} />
           <StatRow k="API returned (unique)" v={fetchReport.unique_total} />
+          <StatRow k="Data source" v={fetchReport.data_source} tone={fetchReport.data_source === "network" ? "ok" : fetchReport.data_source === "cache" ? "warn" : undefined} />
+          <StatRow k="Served from React Query cache" v={fetchReport.from_cache ? "yes" : "no"} />
           <StatRow k="Loaded into frontend" v={pool.length} />
           <StatRow k="After active filters" v={filterState.totalAfterFilters} />
           <StatRow k="Playlist size" v={playlistItems.length} />
@@ -223,7 +225,12 @@ function DiagnosticsPanel(props: Props) {
           <StatRow k="Phase duration" v={`${(snapshot.phaseDurationMs / 1000).toFixed(1)}s`} />
           <StatRow k="Phase remaining" v={`${(remainingMs / 1000).toFixed(1)}s`} />
           <StatRow k="BroadcastChannel" v={bcConnected ? "connected" : "unavailable"} tone={bcConnected ? "ok" : "err"} />
-          <StatRow k="Last sync" v={fmtTs(lastSyncAt)} />
+          <StatRow k="Last snapshot post" v={fmtTs(lastSyncAt)} />
+          <StatRow
+            k="Window sync"
+            v={lastSyncAt && Date.now() - lastSyncAt < 5000 ? "live" : lastSyncAt ? "idle" : "—"}
+            tone={lastSyncAt && Date.now() - lastSyncAt < 5000 ? "ok" : "warn"}
+          />
         </Card>
       </div>
     </div>
