@@ -108,7 +108,7 @@ function starterPresets(): BroadcastPreset[] {
   });
   return [
     mk("starter-beginner", "Beginner Quiz", "Slower timing, easy filter.",
-      { playback: "sequential", timing: { questionMs: 16000, explanationMs: 8000 } as any },
+      { playback: "sequential", timing: { questionMs: 16000, explanationMs: 8000 } },
       { difficulty: "1" }),
     mk("starter-champ", "Champion Abilities", "Champion-focused, hextech theme.",
       { playback: "random_no_repeat", visuals: { theme: "hextech" } },
@@ -118,10 +118,10 @@ function starterPresets(): BroadcastPreset[] {
     mk("starter-patch", "Patch History", "Patch knowledge run.",
       { playback: "sequential" }, { search: "patch" }),
     mk("starter-tiktok", "TikTok Vertical", "9:16 layout, quick pacing.",
-      { playback: "random", timing: { questionMs: 8000, revealMs: 3000, explanationMs: 4000 } as any,
+      { playback: "random", timing: { questionMs: 8000, revealMs: 3000, explanationMs: 4000 },
         visuals: { aspect: "9:16", fontScale: 1.1, showQrCode: true } }),
     mk("starter-youtube", "YouTube Horizontal", "16:9 layout, calm pacing.",
-      { playback: "loop_playlist", timing: { questionMs: 14000, explanationMs: 7000 } as any,
+      { playback: "loop_playlist", timing: { questionMs: 14000, explanationMs: 7000 },
         visuals: { aspect: "16:9", theme: "midnight" } }),
   ];
 }
