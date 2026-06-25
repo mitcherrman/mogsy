@@ -3117,6 +3117,27 @@ function InteractiveSandbox({
                 <div className="text-right">{resetCounter}</div>
                 <div className="text-muted-foreground">lastResetAt</div>
                 <div className="text-right truncate" title={lastResetAt}>{lastResetAt}</div>
+                <div className="text-muted-foreground">nextRequestStateKeys</div>
+                <div
+                  className="text-right truncate"
+                  title={(() => {
+                    const ss =
+                      state && typeof state === "object"
+                        ? ((state as any).states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return JSON.stringify(keys);
+                  })()}
+                >
+                  {(() => {
+                    const ss =
+                      state && typeof state === "object"
+                        ? ((state as any).states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
+                  })()}
+                </div>
               </CardContent>
             </Card>
             <DeveloperPanel
