@@ -84,17 +84,24 @@ async function copy(text: string, label = "Copied") {
 function starterPresets(): BroadcastPreset[] {
   const now = Date.now();
   const base = DEFAULT_CONFIG;
+  type PresetPatch = {
+    playback?: BroadcastConfig["playback"];
+    repeatCount?: number;
+    visuals?: Partial<BroadcastConfig["visuals"]>;
+    timing?: Partial<BroadcastConfig["timing"]>;
+  };
   const mk = (
     id: string,
     name: string,
     description: string,
-    patch: Partial<BroadcastConfig> & { visuals?: Partial<BroadcastConfig["visuals"]>; timing?: Partial<BroadcastConfig["timing"]> },
+    patch: PresetPatch,
     filters?: BroadcastPreset["filters"],
   ): BroadcastPreset => ({
     id, name, description, createdAt: now, updatedAt: now, filters,
     config: {
       ...base,
-      ...patch,
+      playback: patch.playback ?? base.playback,
+      repeatCount: patch.repeatCount ?? base.repeatCount,
       timing: { ...base.timing, ...(patch.timing ?? {}) },
       visuals: { ...base.visuals, ...(patch.visuals ?? {}) },
     },
