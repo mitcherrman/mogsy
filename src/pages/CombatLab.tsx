@@ -3158,6 +3158,30 @@ function InteractiveSandbox({
                     return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
                   })()}
                 </div>
+                <div className="text-muted-foreground">actualLastRequestStateKeys</div>
+                <div
+                  className="text-right truncate"
+                  title={(() => {
+                    const req = lastRequest as any;
+                    const ss =
+                      req && req.state && typeof req.state === "object"
+                        ? (req.state.states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return JSON.stringify(keys);
+                  })()}
+                >
+                  {(() => {
+                    const req = lastRequest as any;
+                    if (!req || !req.state) return "(none)";
+                    const ss =
+                      req.state && typeof req.state === "object"
+                        ? (req.state.states as Record<string, unknown> | undefined)
+                        : undefined;
+                    const keys = ss ? Object.keys(ss) : [];
+                    return keys.length === 0 ? "[]" : `[${keys.length}] ${keys.join(", ")}`;
+                  })()}
+                </div>
               </CardContent>
             </Card>
             <DeveloperPanel
