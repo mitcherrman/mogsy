@@ -1548,6 +1548,18 @@ function KeyStringEditor({
 /* ─────────────── Interactive Sandbox ─────────────── */
 
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
+
+/**
+ * Canonical empty combat state shape. Reset replaces the live state object
+ * with a FRESH copy of this so no stale `states.*` keys (TARGET_REMAINING_HP,
+ * TARGET_DAMAGE_REDUCTION_PERCENT, *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.)
+ * can survive into the next backend request.
+ */
+const makeEmptyCombatState = () => ({
+  states: {} as Record<string, unknown>,
+  timed_effects: [] as unknown[],
+  permanent_stacks: {} as Record<string, unknown>,
+});
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
 type TargetMode = "target_champion" | "target_dummy" | "target_profile";
