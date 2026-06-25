@@ -1148,33 +1148,171 @@ function ObsHelpPanel() {
 // Root
 // ============================================================================
 
+function ExportCenter(props: Props) {
+  const [busy, setBusy] = useState(false);
+  const [lastExportAt, setLastExportAt] = useState<number | null>(() => devToolsRepository.getLastExportAt());
+
+  const exportAll = async () => {
+    setBusy(true);
+    const stamp = isoStamp();
+    const r = buildReports(props);
+    const files: Array<{ name: string; body: string; mime: string }> = [
+      { name: `broadcast-diagnostics-${stamp}.json`, body: r.diagnosticsJson, mime: "application/json" },
+      { name: `broadcast-events-${stamp}.log`, body: r.eventsLog || "(no events recorded)", mime: "text/plain" },
+      { name: `broadcast-project-context-${stamp}.md`, body: r.projectContextMd, mime: "text/markdown" },
+      { name: `broadcast-lovable-prompt-${stamp}.txt`, body: r.lovablePrompt, mime: "text/plain" },
+      { name: `broadcast-chatgpt-context-${stamp}.txt`, body: r.chatgptContext, mime: "text/plain" },
+    ];
+    // Try individual downloads. If the browser only allows one (or any throw),
+    // fall back to a single ZIP archive containing every report.
+    let multiBlocked = false;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const blob = new Blob([f.body], { type: f.mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = f.name; a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        // Some browsers silently drop subsequent downloads; small spacing helps,
+        // and we still ZIP-fallback if anyone reports the bundle missing.
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    } catch {
+      multiBlocked = true;
+    }
+    if (multiBlocked) {
+      try {
+        const zip = new JSZip();
+        for (const f of files) zip.file(f.name, f.body);
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `broadcast-reports-${stamp}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Exported 5 reports as a single ZIP");
+      } catch (e: any) {
+        toast.error(`Export failed: ${e?.message ?? e}`);
+        setBusy(false);
+        return;
+      }
+    } else {
+      toast.success("Exported 5 reports");
+    }
+    const ts = Date.now();
+    devToolsRepository.setLastExportAt(ts);
+    setLastExportAt(ts);
+    devToolsRepository.appendEvent({ level: "success", source: "devtools", message: `Exported all reports (${files.length} files, stamp ${stamp})` });
+    setBusy(false);
+  };
+
+  const exportAsZip = async () => {
+    setBusy(true);
+    try {
+      const stamp = isoStamp();
+      const r = buildReports(props);
+      const zip = new JSZip();
+      zip.file(`broadcast-diagnostics-${stamp}.json`, r.diagnosticsJson);
+      zip.file(`broadcast-events-${stamp}.log`, r.eventsLog || "(no events recorded)");
+      zip.file(`broadcast-project-context-${stamp}.md`, r.projectContextMd);
+      zip.file(`broadcast-lovable-prompt-${stamp}.txt`, r.lovablePrompt);
+      zip.file(`broadcast-chatgpt-context-${stamp}.txt`, r.chatgptContext);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `broadcast-reports-${stamp}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const ts = Date.now();
+      devToolsRepository.setLastExportAt(ts);
+      setLastExportAt(ts);
+      toast.success("Exported reports as ZIP");
+    } catch (e: any) {
+      toast.error(`ZIP export failed: ${e?.message ?? e}`);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <Card className="border-cyan-500/20 bg-cyan-500/[0.03] p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-cyan-300" />
+          <div>
+            <div className="text-sm font-semibold">Export Center</div>
+            <div className="text-[11px] text-muted-foreground">
+              One-click snapshot of the entire Broadcast Studio — share with ChatGPT or Lovable for debugging or continued development.
+            </div>
+          </div>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            Last export: {lastExportAt ? fmtTs(lastExportAt) : "never"}
+          </span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={exportAsZip}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />Download ZIP
+          </Button>
+          <Button size="sm" disabled={busy} onClick={exportAll}>
+            <Package className="mr-1.5 h-3.5 w-3.5" />Export All Reports
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function VersionFooter() {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+      <span>Project v{APP_VERSION}</span>
+      <span>· Diagnostics v{DIAGNOSTICS_VERSION}</span>
+      <span>· Export v{EXPORT_VERSION}</span>
+    </div>
+  );
+}
+
 export default function DeveloperTools(props: Props) {
   return (
-    <Tabs defaultValue="diag" className="w-full">
-      <TabsList className="flex h-auto flex-wrap">
-        <TabsTrigger value="diag"><Activity className="mr-1.5 h-3.5 w-3.5" />Diagnostics</TabsTrigger>
-        <TabsTrigger value="inv"><Layers className="mr-1.5 h-3.5 w-3.5" />Inventory</TabsTrigger>
-        <TabsTrigger value="api"><Bug className="mr-1.5 h-3.5 w-3.5" />API Inspector</TabsTrigger>
-        <TabsTrigger value="db"><Database className="mr-1.5 h-3.5 w-3.5" />DB Inspector</TabsTrigger>
-        <TabsTrigger value="filters"><Filter className="mr-1.5 h-3.5 w-3.5" />Filters</TabsTrigger>
-        <TabsTrigger value="events"><History className="mr-1.5 h-3.5 w-3.5" />Event Log</TabsTrigger>
-        <TabsTrigger value="changelog"><FileText className="mr-1.5 h-3.5 w-3.5" />Changelog</TabsTrigger>
-        <TabsTrigger value="docs"><BookOpen className="mr-1.5 h-3.5 w-3.5" />Documentation</TabsTrigger>
-        <TabsTrigger value="export"><Share2 className="mr-1.5 h-3.5 w-3.5" />Export Context</TabsTrigger>
-        <TabsTrigger value="presets"><Save className="mr-1.5 h-3.5 w-3.5" />Presets</TabsTrigger>
-        <TabsTrigger value="obs"><Tv2 className="mr-1.5 h-3.5 w-3.5" />OBS Help</TabsTrigger>
-      </TabsList>
-      <TabsContent value="diag" className="pt-3"><DiagnosticsPanel {...props} /></TabsContent>
-      <TabsContent value="inv" className="pt-3"><InventorySummaryPanel {...props} /></TabsContent>
-      <TabsContent value="api" className="pt-3"><ApiInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="db" className="pt-3"><DatabaseInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="filters" className="pt-3"><FilterInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="events" className="pt-3"><EventLogPanel /></TabsContent>
-      <TabsContent value="changelog" className="pt-3"><ChangelogPanel /></TabsContent>
-      <TabsContent value="docs" className="pt-3"><DocsPanel /></TabsContent>
-      <TabsContent value="export" className="pt-3"><ExportContextPanel {...props} /></TabsContent>
-      <TabsContent value="presets" className="pt-3"><PresetsPanel {...props} /></TabsContent>
-      <TabsContent value="obs" className="pt-3"><ObsHelpPanel /></TabsContent>
-    </Tabs>
+    <div className="space-y-3">
+      <ExportCenter {...props} />
+      <Tabs defaultValue="diag" className="w-full">
+        <TabsList className="flex h-auto flex-wrap gap-1">
+          {/* Diagnostics group */}
+          <TabsTrigger value="diag"><Activity className="mr-1.5 h-3.5 w-3.5" />Diagnostics</TabsTrigger>
+          <TabsTrigger value="inv"><Layers className="mr-1.5 h-3.5 w-3.5" />Inventory</TabsTrigger>
+          <TabsTrigger value="api"><Bug className="mr-1.5 h-3.5 w-3.5" />API Inspector</TabsTrigger>
+          <TabsTrigger value="db"><Database className="mr-1.5 h-3.5 w-3.5" />DB Inspector</TabsTrigger>
+          <TabsTrigger value="filters"><Filter className="mr-1.5 h-3.5 w-3.5" />Filters</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Logs group */}
+          <TabsTrigger value="events"><History className="mr-1.5 h-3.5 w-3.5" />Event Log</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Docs group */}
+          <TabsTrigger value="changelog"><FileText className="mr-1.5 h-3.5 w-3.5" />Changelog</TabsTrigger>
+          <TabsTrigger value="docs"><BookOpen className="mr-1.5 h-3.5 w-3.5" />Documentation</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Exports group */}
+          <TabsTrigger value="export"><Share2 className="mr-1.5 h-3.5 w-3.5" />Export Context</TabsTrigger>
+          <TabsTrigger value="presets"><Save className="mr-1.5 h-3.5 w-3.5" />Presets</TabsTrigger>
+          <TabsTrigger value="obs"><Tv2 className="mr-1.5 h-3.5 w-3.5" />OBS Help</TabsTrigger>
+        </TabsList>
+        <TabsContent value="diag" className="pt-3"><DiagnosticsPanel {...props} /></TabsContent>
+        <TabsContent value="inv" className="pt-3"><InventorySummaryPanel {...props} /></TabsContent>
+        <TabsContent value="api" className="pt-3"><ApiInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="db" className="pt-3"><DatabaseInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="filters" className="pt-3"><FilterInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="events" className="pt-3"><EventLogPanel /></TabsContent>
+        <TabsContent value="changelog" className="pt-3"><ChangelogPanel /></TabsContent>
+        <TabsContent value="docs" className="pt-3"><DocsPanel /></TabsContent>
+        <TabsContent value="export" className="pt-3"><ExportContextPanel {...props} /></TabsContent>
+        <TabsContent value="presets" className="pt-3"><PresetsPanel {...props} /></TabsContent>
+        <TabsContent value="obs" className="pt-3"><ObsHelpPanel /></TabsContent>
+      </Tabs>
+      <VersionFooter />
+    </div>
   );
 }
