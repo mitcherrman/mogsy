@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import {
   Activity, Database, Bug, FileText, BookOpen, History, Share2, Tv2,
   RefreshCw, Copy, Download, Trash2, Plus, Save, Radio, Filter, Layers, PlayCircle,
+  Package,
 } from "lucide-react";
+import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,11 +50,18 @@ type Props = {
 // Helpers
 // ============================================================================
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
+const DIAGNOSTICS_VERSION = "2";
+const EXPORT_VERSION = "2";
 
 function fmtTs(t?: number | null) {
   if (!t) return "—";
   return new Date(t).toLocaleString();
+}
+
+function isoStamp(d = new Date()) {
+  // Filesystem-safe ISO stamp, e.g. 2025-01-31T14-05-09
+  return d.toISOString().replace(/\..+$/, "").replace(/:/g, "-");
 }
 
 function tally<T extends string | number | undefined>(items: T[]) {
@@ -203,6 +212,8 @@ function DiagnosticsPanel(props: Props) {
           <StatRow k="API endpoint" v={<code className="text-xs">{quizApi.baseUrl}</code>} />
           <StatRow k="Mock fallback" v={usingFallback ? "ACTIVE" : "inactive"} tone={usingFallback ? "warn" : "ok"} />
           <StatRow k="API returned (unique)" v={fetchReport.unique_total} />
+          <StatRow k="Data source" v={fetchReport.data_source} tone={fetchReport.data_source === "network" ? "ok" : fetchReport.data_source === "cache" ? "warn" : undefined} />
+          <StatRow k="Served from React Query cache" v={fetchReport.from_cache ? "yes" : "no"} />
           <StatRow k="Loaded into frontend" v={pool.length} />
           <StatRow k="After active filters" v={filterState.totalAfterFilters} />
           <StatRow k="Playlist size" v={playlistItems.length} />
@@ -214,7 +225,12 @@ function DiagnosticsPanel(props: Props) {
           <StatRow k="Phase duration" v={`${(snapshot.phaseDurationMs / 1000).toFixed(1)}s`} />
           <StatRow k="Phase remaining" v={`${(remainingMs / 1000).toFixed(1)}s`} />
           <StatRow k="BroadcastChannel" v={bcConnected ? "connected" : "unavailable"} tone={bcConnected ? "ok" : "err"} />
-          <StatRow k="Last sync" v={fmtTs(lastSyncAt)} />
+          <StatRow k="Last snapshot post" v={fmtTs(lastSyncAt)} />
+          <StatRow
+            k="Window sync"
+            v={lastSyncAt && Date.now() - lastSyncAt < 5000 ? "live" : lastSyncAt ? "idle" : "—"}
+            tone={lastSyncAt && Date.now() - lastSyncAt < 5000 ? "ok" : "warn"}
+          />
         </Card>
       </div>
     </div>
@@ -466,10 +482,13 @@ function InventorySummaryPanel(props: Props) {
         <StatRow k="Database total" v="Not provided by API" tone="warn" />
         <StatRow k="API returned (raw, all sets)" v={fetchReport.raw_total_across_sets} />
         <StatRow k="API returned (unique after dedup)" v={fetchReport.unique_total} />
+        <StatRow k="Duplicate questions removed" v={fetchReport.duplicates_removed} />
         <StatRow k="Loaded into frontend" v={pool.length} tone={usingFallback ? "warn" : "ok"} />
         <StatRow k="After active filters (Question Browser)" v={filterState.totalAfterFilters} />
         <StatRow k="Added to playlist" v={playlistItems.length} />
         <StatRow k="Mock fallback dataset size" v={mockFallbackCount} />
+        <StatRow k="Mock fallback active" v={usingFallback ? "YES" : "no"} tone={usingFallback ? "warn" : "ok"} />
+        <StatRow k="Data source" v={fetchReport.data_source} />
       </Card>
 
       {truncatedSets.length > 0 && (
@@ -757,33 +776,39 @@ function DocsPanel() {
   );
 }
 
-function ExportContextPanel(props: Props) {
-  const { snapshot, pool, playlistItems, apiStatus, usingFallback, apiRecordCount, bcConnected, lastSyncAt, fetchReport, filterState, mockFallbackCount } = props;
+// ---------------------------------------------------------------------------
+// buildReports — single source of truth for every exported artifact.
+// ---------------------------------------------------------------------------
+
+type ReportBundle = {
+  diagnosticsJson: string;
+  eventsLog: string;
+  projectContextMd: string;
+  lovablePrompt: string;
+  chatgptContext: string;
+};
+
+function buildReports(props: Props): ReportBundle {
+  const { snapshot, pool, playlistItems, apiStatus, apiError, usingFallback, apiRecordCount, bcConnected, lastSyncAt, fetchReport, filterState, mockFallbackCount } = props;
   const changelog = devToolsRepository.listChangelog();
   const docs = devToolsRepository.listDocs();
+  const events = devToolsRepository.listEvents();
 
-  const stats = {
-    api_status: apiStatus,
-    api_endpoint: quizApi.baseUrl,
-    using_fallback: usingFallback,
-    questions_loaded: apiRecordCount,
-    pool_after_filters: pool.length,
-    playlist_size: playlistItems.length,
-    current_phase: snapshot.phase,
-    playback: snapshot.config.playback,
-    broadcast_channel: bcConnected,
-    last_sync: lastSyncAt ? new Date(lastSyncAt).toISOString() : null,
-  };
+  const NOT_PROVIDED = "Not provided by API";
 
   const inventory = {
-    database_total: "Not provided by API",
+    database_total: NOT_PROVIDED,
     api_returned_raw: fetchReport.raw_total_across_sets,
     api_returned_unique: fetchReport.unique_total,
+    duplicate_questions_removed: fetchReport.duplicates_removed,
     loaded_into_frontend: pool.length,
     after_active_filters: filterState.totalAfterFilters,
     added_to_playlist: playlistItems.length,
     mock_fallback_count: mockFallbackCount,
-    using_fallback: usingFallback,
+    mock_fallback_active: usingFallback,
+    data_source: fetchReport.data_source,
+    served_from_cache: fetchReport.from_cache,
+    cached_at: fetchReport.cached_at ? new Date(fetchReport.cached_at).toISOString() : null,
   };
 
   const apiDetails = {
@@ -792,15 +817,64 @@ function ExportContextPanel(props: Props) {
     questions_template: fetchReport.questions_endpoint_template,
     per_set_limit: fetchReport.per_set_limit,
     sets_discovered: fetchReport.sets_count,
+    sets_status: fetchReport.sets_status,
+    sets_error: fetchReport.sets_error ?? null,
     pagination_metadata_available: fetchReport.pagination_metadata_available,
     pagination_note: fetchReport.pagination_note,
     duration_ms: fetchReport.duration_ms,
-    duplicates_removed: fetchReport.duplicates_removed,
+    started_at: fetchReport.started_at ? new Date(fetchReport.started_at).toISOString() : null,
+    finished_at: fetchReport.finished_at ? new Date(fetchReport.finished_at).toISOString() : null,
     per_set: fetchReport.per_set.map((e) => ({
       set: e.set_name, status: e.status, limit: e.params.limit,
       returned: e.returned, truncated: e.returned === e.params.limit,
-      duration_ms: e.duration_ms, error: e.error,
+      duration_ms: e.duration_ms, error: e.error, request_url: e.request_url,
     })),
+  };
+
+  const pagination = {
+    metadata_available: fetchReport.pagination_metadata_available,
+    note: fetchReport.pagination_note,
+    current_page: NOT_PROVIDED,
+    total_pages: NOT_PROVIDED,
+    page_size: NOT_PROVIDED,
+    total_available_records: NOT_PROVIDED,
+    next_page_available: NOT_PROVIDED,
+    previous_page_available: NOT_PROVIDED,
+  };
+
+  const activeFilters = {
+    search: filterState.search,
+    category: filterState.category,
+    difficulty: filterState.difficulty,
+    total_before_filters: filterState.totalBeforeFilters,
+    total_after_filters: filterState.totalAfterFilters,
+    dropped_by_filters: Math.max(0, (filterState.totalBeforeFilters || pool.length) - filterState.totalAfterFilters),
+  };
+
+  const playbackConfig = {
+    playback: snapshot.config.playback,
+    repeatCount: snapshot.config.repeatCount,
+    visuals: snapshot.config.visuals,
+  };
+
+  const broadcastStatus = {
+    phase: snapshot.phase,
+    playing: snapshot.playing,
+    current_index: snapshot.currentIndex,
+    current_question_id: snapshot.currentQuestion?.id ?? null,
+    playlist_id: snapshot.playlistId ?? null,
+    broadcast_channel_connected: bcConnected,
+    last_snapshot_post: lastSyncAt ? new Date(lastSyncAt).toISOString() : null,
+  };
+
+  const timingConfig = snapshot.config.timing;
+
+  const rendererState = {
+    phase: snapshot.phase,
+    phaseStartedAt: snapshot.phaseStartedAt ? new Date(snapshot.phaseStartedAt).toISOString() : null,
+    phaseDurationMs: snapshot.phaseDurationMs,
+    revealed_correct: (snapshot as any).revealedCorrect ?? (snapshot as any).reveal?.correct ?? null,
+    last_explanation_present: Boolean((snapshot.currentQuestion as any)?.explanation),
   };
 
   const detectedLimitations = [
@@ -811,7 +885,28 @@ function ExportContextPanel(props: Props) {
       ? "API exposes no total-count or pagination metadata."
       : null,
     usingFallback ? "Mock fallback active — real database not contacted." : null,
+    apiError ? `API error: ${apiError}` : null,
   ].filter(Boolean);
+
+  const diagnostics = {
+    versions: { app: APP_VERSION, diagnostics: DIAGNOSTICS_VERSION, export: EXPORT_VERSION },
+    generated_at: new Date().toISOString(),
+    inventory,
+    api_details: apiDetails,
+    pagination,
+    active_filters: activeFilters,
+    playback_config: playbackConfig,
+    broadcast_status: broadcastStatus,
+    timing_config: timingConfig,
+    renderer_state: rendererState,
+    detected_limitations: detectedLimitations,
+  };
+
+  const diagnosticsJson = JSON.stringify(diagnostics, null, 2);
+
+  const eventsLog = events.map((e) =>
+    `[${new Date(e.ts).toISOString()}] ${e.level.toUpperCase().padEnd(7)} ${e.source} — ${e.message}`,
+  ).join("\n");
 
   const filesInvolved = [
     "src/pages/admin/AdminQuizBroadcast.tsx",
@@ -824,18 +919,12 @@ function ExportContextPanel(props: Props) {
     "src/lib/quiz-broadcast/types.ts",
     "src/lib/quiz-broadcast/dev-tools/repository.ts",
     "src/components/quiz-broadcast/BroadcastRenderer.tsx",
-    "src/components/quiz-broadcast/ControlPanel.tsx",
-    "src/components/quiz-broadcast/PlaylistBuilder.tsx",
-    "src/components/quiz-broadcast/PlaylistLibrary.tsx",
-    "src/components/quiz-broadcast/QuestionBrowser.tsx",
-    "src/components/quiz-broadcast/TimingSettings.tsx",
-    "src/components/quiz-broadcast/VisualSettings.tsx",
-    "src/components/quiz-broadcast/BroadcastStats.tsx",
     "src/components/quiz-broadcast/DeveloperTools.tsx",
   ];
 
-  const projectContext = [
+  const projectContextMd = [
     `# Mogsy Quiz Broadcast Studio — Project Context (v${APP_VERSION})`,
+    `_Diagnostics v${DIAGNOSTICS_VERSION} · Export v${EXPORT_VERSION} · Generated ${new Date().toISOString()}_`,
     "",
     "## Purpose",
     "Admin-only 24/7 livestream studio for the Mogsy League quiz. Runs in a browser, outputs a clean renderer window for OBS capture.",
@@ -843,22 +932,23 @@ function ExportContextPanel(props: Props) {
     "## Architecture",
     "- Engine (pure state machine) → Studio (control room) → Renderer (presentation).",
     "- Studio publishes EngineSnapshot over BroadcastChannel; the popup at /admin/quiz-broadcast/view is a passive subscriber.",
-    "- Dev Tools data goes through DevToolsRepository (localStorage today, swappable to backend).",
+    "- Latest snapshot mirrored to localStorage so the popup restores state after tab discard / visibility change.",
+    "- Dev Tools data flows through DevToolsRepository (localStorage today, swappable to backend).",
     "",
-    "## Features",
+    "## Current Features",
     "- Playlist builder + saved playlists.",
     "- Playback modes: sequential, random, weighted random, random no-repeat, loop playlist, loop single, repeat N, forever.",
-    "- Visual config: aspect (16:9 / 9:16), theme, countdown style, badge toggles, QR code, logo, etc.",
-    "- Timing config per phase.",
+    "- Visual config: aspect (16:9 / 9:16), theme, countdown style, badge toggles, QR code, logo.",
     "- Mock question fallback when /api/quiz is unreachable.",
-    "- Developer Tools: diagnostics, API inspector, DB inspector, event log, changelog, docs, export, presets, OBS help.",
+    "- Developer Tools: diagnostics, API inspector, DB inspector, event log, changelog, docs, presets, OBS help.",
+    "- Export Center: one-click bundle of diagnostics, events, project context, Lovable prompt, ChatGPT brief.",
     "",
-    "## Current Statistics",
+    "## Current Configuration",
     "```json",
-    JSON.stringify(stats, null, 2),
+    JSON.stringify({ playback: playbackConfig, timing: timingConfig, broadcast: broadcastStatus }, null, 2),
     "```",
     "",
-    "## Question Inventory Summary",
+    "## Question Inventory",
     "```json",
     JSON.stringify(inventory, null, 2),
     "```",
@@ -868,82 +958,106 @@ function ExportContextPanel(props: Props) {
     JSON.stringify(apiDetails, null, 2),
     "```",
     "",
-    "## Detected Limitations",
+    "## Pagination Diagnostics",
+    "```json",
+    JSON.stringify(pagination, null, 2),
+    "```",
+    "",
+    "## Renderer State",
+    "```json",
+    JSON.stringify(rendererState, null, 2),
+    "```",
+    "",
+    "## Known Limitations",
     detectedLimitations.length === 0 ? "- None detected." : detectedLimitations.map((l) => `- ${l}`).join("\n"),
     "",
     "## Files Involved",
     filesInvolved.map((f) => `- ${f}`).join("\n"),
     "",
-    "## Known Issues / TODO",
-    "- Question pool capped at 200 per quiz set; needs pagination for very large databases.",
-    "- Dev Tools data is per-browser (localStorage); migrate to backend for team workflows.",
-    "- BroadcastChannel is same-origin only.",
+    "## TODOs / Roadmap",
+    "- Add server-side total-count endpoint so Inventory can report true DB size.",
+    "- Migrate DevToolsRepository to backend for shared team data.",
+    "- Paginated question loading + server-side filters.",
     "",
-    "## Recent Changelog",
-    changelog.slice(0, 5).map((c) => `### v${c.version} — ${c.title}\n${c.notes.map((n) => `- ${n}`).join("\n")}`).join("\n\n"),
+    "## Changelog (recent)",
+    changelog.slice(0, 8).map((c) => `### v${c.version} — ${c.title}\n${c.notes.map((n) => `- ${n}`).join("\n")}`).join("\n\n"),
     "",
     "## Documentation",
     docs.map((d) => `### ${d.title}\n${d.body}`).join("\n\n"),
+    "",
+    "## Implementation Notes",
+    "- Studio's React Query returns `{ questions, report }` so the API Inspector traces the same request the Question Browser consumes.",
+    "- Subscriber (Broadcast Window) auto-recovers from cached snapshot on mount/visibility, never restarts the engine on tab focus.",
   ].join("\n");
 
-  const continuationPrompt = [
+  const lovablePrompt = [
     `Continue work on the Mogsy Quiz Broadcast Studio (v${APP_VERSION}).`,
     "",
-    "Architecture: Engine (src/lib/quiz-broadcast/engine.ts) → Studio (src/pages/admin/AdminQuizBroadcast.tsx) → Renderer (src/components/quiz-broadcast/BroadcastRenderer.tsx). Studio and Broadcast Window (/admin/quiz-broadcast/view) sync over BroadcastChannel('mogsy-quiz-broadcast'). Dev Tools data flows through DevToolsRepository (src/lib/quiz-broadcast/dev-tools/repository.ts) — localStorage implementation today.",
+    "Architecture: Engine (src/lib/quiz-broadcast/engine.ts) → Studio (src/pages/admin/AdminQuizBroadcast.tsx) → Renderer (src/components/quiz-broadcast/BroadcastRenderer.tsx). Studio and Broadcast Window (/admin/quiz-broadcast/view) sync over BroadcastChannel('mogsy-quiz-broadcast'). Dev Tools data flows through DevToolsRepository.",
     "",
     "Current state:",
-    `- Questions loaded: ${apiRecordCount} (fallback: ${usingFallback}).`,
+    `- Questions loaded: ${apiRecordCount} (fallback: ${usingFallback}, source: ${fetchReport.data_source}).`,
     `- Playlist size: ${playlistItems.length}. Phase: ${snapshot.phase}. Playback: ${snapshot.config.playback}.`,
     `- API: ${quizApi.baseUrl} (${apiStatus}).`,
+    `- Inventory: api_unique=${fetchReport.unique_total}, after_filters=${filterState.totalAfterFilters}, dup_removed=${fetchReport.duplicates_removed}.`,
+    `- Limitations: ${detectedLimitations.length ? detectedLimitations.join(" | ") : "none detected"}.`,
     "",
     "Keep changes admin-gated under /admin/quiz-broadcast and respect the Engine/Studio/Renderer split. Persist any new dev-tools data through DevToolsRepository, never directly via localStorage in components.",
   ].join("\n");
 
   const chatgptContext = [
     `Mogsy Quiz Broadcast Studio — technical brief (v${APP_VERSION}).`,
-    "Stack: React 18 + Vite + TypeScript + Tailwind + shadcn/ui + React Query. Backend: Supabase (Lovable Cloud) + external quiz API at " + quizApi.baseUrl + ".",
+    "Stack: React 18 + Vite + TypeScript + Tailwind + shadcn/ui + React Query. External quiz API at " + quizApi.baseUrl + ".",
     "",
     "Layering:",
     "- BroadcastEngine: state machine (phase, playlist, timers).",
-    "- AdminQuizBroadcast page: instantiates the engine, owns config and playlists, publishes snapshots over BroadcastChannel.",
-    "- QuizBroadcastView page: passive subscriber, renders BroadcastRenderer with the incoming snapshot.",
-    "- DevToolsRepository: abstraction layer for docs/changelog/events/presets; LocalDevToolsRepository persists to localStorage.",
+    "- AdminQuizBroadcast: instantiates the engine, owns config and playlists, publishes snapshots over BroadcastChannel.",
+    "- QuizBroadcastView: passive subscriber, renders BroadcastRenderer.",
+    "- DevToolsRepository: abstraction layer for docs/changelog/events/presets.",
     "",
     "Phases: question → reveal → explanation → transition → (next question).",
     "Reveal: tries question.metadata.correct_answer first, falls back to POST /api/quiz/attempts.",
     "",
-    `Snapshot: ${JSON.stringify(stats)}`,
-  ].join("\n");
+    `Inventory: ${JSON.stringify(inventory)}`,
+    `Broadcast: ${JSON.stringify(broadcastStatus)}`,
+    detectedLimitations.length ? `Known issues: ${detectedLimitations.join("; ")}` : "",
+  ].filter(Boolean).join("\n");
 
+  return { diagnosticsJson, eventsLog, projectContextMd, lovablePrompt, chatgptContext };
+}
+
+function ExportContextPanel(props: Props) {
+  const r = buildReports(props);
   return (
     <div className="grid gap-3 md:grid-cols-3">
       <Card className="p-3">
         <h4 className="text-sm font-semibold">Copy Project Context</h4>
         <p className="mt-1 text-xs text-muted-foreground">Comprehensive markdown brief — paste into ChatGPT or docs.</p>
         <div className="mt-2 flex gap-2">
-          <Button size="sm" onClick={() => copy(projectContext, "Project context copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
-          <Button size="sm" variant="outline" onClick={() => downloadText("broadcast-project-context.md", projectContext, "text/markdown")}><Download className="mr-1 h-3 w-3" />Export</Button>
+          <Button size="sm" onClick={() => copy(r.projectContextMd, "Project context copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
+          <Button size="sm" variant="outline" onClick={() => downloadText(`broadcast-project-context-${isoStamp()}.md`, r.projectContextMd, "text/markdown")}><Download className="mr-1 h-3 w-3" />Export</Button>
         </div>
       </Card>
       <Card className="p-3">
         <h4 className="text-sm font-semibold">Lovable Continuation Prompt</h4>
         <p className="mt-1 text-xs text-muted-foreground">Drop into a new Lovable chat to keep building with full context.</p>
         <div className="mt-2 flex gap-2">
-          <Button size="sm" onClick={() => copy(continuationPrompt, "Lovable prompt copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
-          <Button size="sm" variant="outline" onClick={() => downloadText("broadcast-lovable-prompt.txt", continuationPrompt)}><Download className="mr-1 h-3 w-3" />Export</Button>
+          <Button size="sm" onClick={() => copy(r.lovablePrompt, "Lovable prompt copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
+          <Button size="sm" variant="outline" onClick={() => downloadText(`broadcast-lovable-prompt-${isoStamp()}.txt`, r.lovablePrompt)}><Download className="mr-1 h-3 w-3" />Export</Button>
         </div>
       </Card>
       <Card className="p-3">
         <h4 className="text-sm font-semibold">ChatGPT Context</h4>
         <p className="mt-1 text-xs text-muted-foreground">Compact technical brief for architecture / debugging questions.</p>
         <div className="mt-2 flex gap-2">
-          <Button size="sm" onClick={() => copy(chatgptContext, "ChatGPT context copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
-          <Button size="sm" variant="outline" onClick={() => downloadText("broadcast-chatgpt-context.txt", chatgptContext)}><Download className="mr-1 h-3 w-3" />Export</Button>
+          <Button size="sm" onClick={() => copy(r.chatgptContext, "ChatGPT context copied")}><Copy className="mr-1 h-3 w-3" />Copy</Button>
+          <Button size="sm" variant="outline" onClick={() => downloadText(`broadcast-chatgpt-context-${isoStamp()}.txt`, r.chatgptContext)}><Download className="mr-1 h-3 w-3" />Export</Button>
         </div>
       </Card>
     </div>
   );
 }
+
 
 function PresetsPanel({ engine, snapshot }: Props) {
   const [list, setList] = useState<BroadcastPreset[]>(() => {
@@ -1034,33 +1148,171 @@ function ObsHelpPanel() {
 // Root
 // ============================================================================
 
+function ExportCenter(props: Props) {
+  const [busy, setBusy] = useState(false);
+  const [lastExportAt, setLastExportAt] = useState<number | null>(() => devToolsRepository.getLastExportAt());
+
+  const exportAll = async () => {
+    setBusy(true);
+    const stamp = isoStamp();
+    const r = buildReports(props);
+    const files: Array<{ name: string; body: string; mime: string }> = [
+      { name: `broadcast-diagnostics-${stamp}.json`, body: r.diagnosticsJson, mime: "application/json" },
+      { name: `broadcast-events-${stamp}.log`, body: r.eventsLog || "(no events recorded)", mime: "text/plain" },
+      { name: `broadcast-project-context-${stamp}.md`, body: r.projectContextMd, mime: "text/markdown" },
+      { name: `broadcast-lovable-prompt-${stamp}.txt`, body: r.lovablePrompt, mime: "text/plain" },
+      { name: `broadcast-chatgpt-context-${stamp}.txt`, body: r.chatgptContext, mime: "text/plain" },
+    ];
+    // Try individual downloads. If the browser only allows one (or any throw),
+    // fall back to a single ZIP archive containing every report.
+    let multiBlocked = false;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const blob = new Blob([f.body], { type: f.mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = f.name; a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        // Some browsers silently drop subsequent downloads; small spacing helps,
+        // and we still ZIP-fallback if anyone reports the bundle missing.
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    } catch {
+      multiBlocked = true;
+    }
+    if (multiBlocked) {
+      try {
+        const zip = new JSZip();
+        for (const f of files) zip.file(f.name, f.body);
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `broadcast-reports-${stamp}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Exported 5 reports as a single ZIP");
+      } catch (e: any) {
+        toast.error(`Export failed: ${e?.message ?? e}`);
+        setBusy(false);
+        return;
+      }
+    } else {
+      toast.success("Exported 5 reports");
+    }
+    const ts = Date.now();
+    devToolsRepository.setLastExportAt(ts);
+    setLastExportAt(ts);
+    devToolsRepository.appendEvent({ level: "success", source: "devtools", message: `Exported all reports (${files.length} files, stamp ${stamp})` });
+    setBusy(false);
+  };
+
+  const exportAsZip = async () => {
+    setBusy(true);
+    try {
+      const stamp = isoStamp();
+      const r = buildReports(props);
+      const zip = new JSZip();
+      zip.file(`broadcast-diagnostics-${stamp}.json`, r.diagnosticsJson);
+      zip.file(`broadcast-events-${stamp}.log`, r.eventsLog || "(no events recorded)");
+      zip.file(`broadcast-project-context-${stamp}.md`, r.projectContextMd);
+      zip.file(`broadcast-lovable-prompt-${stamp}.txt`, r.lovablePrompt);
+      zip.file(`broadcast-chatgpt-context-${stamp}.txt`, r.chatgptContext);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `broadcast-reports-${stamp}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const ts = Date.now();
+      devToolsRepository.setLastExportAt(ts);
+      setLastExportAt(ts);
+      toast.success("Exported reports as ZIP");
+    } catch (e: any) {
+      toast.error(`ZIP export failed: ${e?.message ?? e}`);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <Card className="border-cyan-500/20 bg-cyan-500/[0.03] p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-cyan-300" />
+          <div>
+            <div className="text-sm font-semibold">Export Center</div>
+            <div className="text-[11px] text-muted-foreground">
+              One-click snapshot of the entire Broadcast Studio — share with ChatGPT or Lovable for debugging or continued development.
+            </div>
+          </div>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            Last export: {lastExportAt ? fmtTs(lastExportAt) : "never"}
+          </span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={exportAsZip}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />Download ZIP
+          </Button>
+          <Button size="sm" disabled={busy} onClick={exportAll}>
+            <Package className="mr-1.5 h-3.5 w-3.5" />Export All Reports
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function VersionFooter() {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+      <span>Project v{APP_VERSION}</span>
+      <span>· Diagnostics v{DIAGNOSTICS_VERSION}</span>
+      <span>· Export v{EXPORT_VERSION}</span>
+    </div>
+  );
+}
+
 export default function DeveloperTools(props: Props) {
   return (
-    <Tabs defaultValue="diag" className="w-full">
-      <TabsList className="flex h-auto flex-wrap">
-        <TabsTrigger value="diag"><Activity className="mr-1.5 h-3.5 w-3.5" />Diagnostics</TabsTrigger>
-        <TabsTrigger value="inv"><Layers className="mr-1.5 h-3.5 w-3.5" />Inventory</TabsTrigger>
-        <TabsTrigger value="api"><Bug className="mr-1.5 h-3.5 w-3.5" />API Inspector</TabsTrigger>
-        <TabsTrigger value="db"><Database className="mr-1.5 h-3.5 w-3.5" />DB Inspector</TabsTrigger>
-        <TabsTrigger value="filters"><Filter className="mr-1.5 h-3.5 w-3.5" />Filters</TabsTrigger>
-        <TabsTrigger value="events"><History className="mr-1.5 h-3.5 w-3.5" />Event Log</TabsTrigger>
-        <TabsTrigger value="changelog"><FileText className="mr-1.5 h-3.5 w-3.5" />Changelog</TabsTrigger>
-        <TabsTrigger value="docs"><BookOpen className="mr-1.5 h-3.5 w-3.5" />Documentation</TabsTrigger>
-        <TabsTrigger value="export"><Share2 className="mr-1.5 h-3.5 w-3.5" />Export Context</TabsTrigger>
-        <TabsTrigger value="presets"><Save className="mr-1.5 h-3.5 w-3.5" />Presets</TabsTrigger>
-        <TabsTrigger value="obs"><Tv2 className="mr-1.5 h-3.5 w-3.5" />OBS Help</TabsTrigger>
-      </TabsList>
-      <TabsContent value="diag" className="pt-3"><DiagnosticsPanel {...props} /></TabsContent>
-      <TabsContent value="inv" className="pt-3"><InventorySummaryPanel {...props} /></TabsContent>
-      <TabsContent value="api" className="pt-3"><ApiInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="db" className="pt-3"><DatabaseInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="filters" className="pt-3"><FilterInspectorPanel {...props} /></TabsContent>
-      <TabsContent value="events" className="pt-3"><EventLogPanel /></TabsContent>
-      <TabsContent value="changelog" className="pt-3"><ChangelogPanel /></TabsContent>
-      <TabsContent value="docs" className="pt-3"><DocsPanel /></TabsContent>
-      <TabsContent value="export" className="pt-3"><ExportContextPanel {...props} /></TabsContent>
-      <TabsContent value="presets" className="pt-3"><PresetsPanel {...props} /></TabsContent>
-      <TabsContent value="obs" className="pt-3"><ObsHelpPanel /></TabsContent>
-    </Tabs>
+    <div className="space-y-3">
+      <ExportCenter {...props} />
+      <Tabs defaultValue="diag" className="w-full">
+        <TabsList className="flex h-auto flex-wrap gap-1">
+          {/* Diagnostics group */}
+          <TabsTrigger value="diag"><Activity className="mr-1.5 h-3.5 w-3.5" />Diagnostics</TabsTrigger>
+          <TabsTrigger value="inv"><Layers className="mr-1.5 h-3.5 w-3.5" />Inventory</TabsTrigger>
+          <TabsTrigger value="api"><Bug className="mr-1.5 h-3.5 w-3.5" />API Inspector</TabsTrigger>
+          <TabsTrigger value="db"><Database className="mr-1.5 h-3.5 w-3.5" />DB Inspector</TabsTrigger>
+          <TabsTrigger value="filters"><Filter className="mr-1.5 h-3.5 w-3.5" />Filters</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Logs group */}
+          <TabsTrigger value="events"><History className="mr-1.5 h-3.5 w-3.5" />Event Log</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Docs group */}
+          <TabsTrigger value="changelog"><FileText className="mr-1.5 h-3.5 w-3.5" />Changelog</TabsTrigger>
+          <TabsTrigger value="docs"><BookOpen className="mr-1.5 h-3.5 w-3.5" />Documentation</TabsTrigger>
+          <span className="mx-1 hidden h-5 w-px self-center bg-white/10 sm:inline-block" aria-hidden />
+          {/* Exports group */}
+          <TabsTrigger value="export"><Share2 className="mr-1.5 h-3.5 w-3.5" />Export Context</TabsTrigger>
+          <TabsTrigger value="presets"><Save className="mr-1.5 h-3.5 w-3.5" />Presets</TabsTrigger>
+          <TabsTrigger value="obs"><Tv2 className="mr-1.5 h-3.5 w-3.5" />OBS Help</TabsTrigger>
+        </TabsList>
+        <TabsContent value="diag" className="pt-3"><DiagnosticsPanel {...props} /></TabsContent>
+        <TabsContent value="inv" className="pt-3"><InventorySummaryPanel {...props} /></TabsContent>
+        <TabsContent value="api" className="pt-3"><ApiInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="db" className="pt-3"><DatabaseInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="filters" className="pt-3"><FilterInspectorPanel {...props} /></TabsContent>
+        <TabsContent value="events" className="pt-3"><EventLogPanel /></TabsContent>
+        <TabsContent value="changelog" className="pt-3"><ChangelogPanel /></TabsContent>
+        <TabsContent value="docs" className="pt-3"><DocsPanel /></TabsContent>
+        <TabsContent value="export" className="pt-3"><ExportContextPanel {...props} /></TabsContent>
+        <TabsContent value="presets" className="pt-3"><PresetsPanel {...props} /></TabsContent>
+        <TabsContent value="obs" className="pt-3"><ObsHelpPanel /></TabsContent>
+      </Tabs>
+      <VersionFooter />
+    </div>
   );
 }
