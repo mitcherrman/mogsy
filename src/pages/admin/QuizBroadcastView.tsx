@@ -8,7 +8,7 @@ import { useBroadcastSubscriber } from "@/lib/quiz-broadcast/useBroadcastEngine"
  * BroadcastChannel and renders them via the shared BroadcastRenderer.
  */
 export default function QuizBroadcastView() {
-  const snapshot = useBroadcastSubscriber();
+  const { snapshot } = useBroadcastSubscriber();
   useEffect(() => {
     document.title = "Mogsy Quiz Broadcast";
     // Hide scrollbars so OBS gets a pristine frame.
