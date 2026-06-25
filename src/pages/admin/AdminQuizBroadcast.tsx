@@ -37,6 +37,9 @@ export type FetchReport = {
   duration_ms: number;
   pagination_metadata_available: boolean;
   pagination_note: string;
+  data_source: "network" | "cache" | "fallback" | "unknown";
+  from_cache: boolean;
+  cached_at: number | null;
 };
 
 const EMPTY_FETCH_REPORT: FetchReport = {
@@ -56,6 +59,9 @@ const EMPTY_FETCH_REPORT: FetchReport = {
   duration_ms: 0,
   pagination_metadata_available: false,
   pagination_note: "Quiz API /api/quiz/questions does not expose total count or cursor metadata. Pagination support is unknown without a probe.",
+  data_source: "unknown",
+  from_cache: false,
+  cached_at: null,
 };
 
 export type BrowserFilterState = {
@@ -101,7 +107,6 @@ export default function AdminQuizBroadcast() {
   const lastPhaseRef = useRef<string>(snapshot.phase);
   const lastPlayingRef = useRef<boolean>(snapshot.playing);
   const bcConnected = typeof BroadcastChannel !== "undefined";
-  const [fetchReport, setFetchReport] = useState<FetchReport>(EMPTY_FETCH_REPORT);
   const [filterState, setFilterState] = useState<BrowserFilterState>({
     search: "", category: "all", difficulty: "all", totalBeforeFilters: 0, totalAfterFilters: 0,
   });
@@ -143,12 +148,11 @@ export default function AdminQuizBroadcast() {
 
   // Fetch full question pool. Fall back to local mock data if the API is
   // unreachable or returns nothing so the studio remains usable offline.
-  const { data: questions, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ["quiz-broadcast-pool"],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ questions: QuizQuestion[]; report: FetchReport }> => {
       const startedAt = Date.now();
       const report: FetchReport = { ...EMPTY_FETCH_REPORT, started_at: startedAt, sets_status: "loading", per_set: [] };
-      setFetchReport(report);
       let setsList: { name: string }[] = [];
       try {
         const sets = await quizApi.sets();
@@ -198,7 +202,7 @@ export default function AdminQuizBroadcast() {
         }
       }
       const finishedAt = Date.now();
-      setFetchReport({
+      const fullReport: FetchReport = {
         ...report,
         per_set: entries,
         raw_total_across_sets: raw,
@@ -206,12 +210,28 @@ export default function AdminQuizBroadcast() {
         unique_total: all.length,
         finished_at: finishedAt,
         duration_ms: finishedAt - startedAt,
-      });
-      return all;
+        data_source: "network",
+        from_cache: false,
+        cached_at: finishedAt,
+      };
+      return { questions: all, report: fullReport };
     },
     staleTime: 5 * 60_000,
     retry: 1,
   });
+
+  const questions = data?.questions;
+  // When React Query serves from cache (no refetch in flight), surface that
+  // distinction so the API Inspector stays internally consistent.
+  const fetchReport: FetchReport = useMemo(() => {
+    if (!data) return EMPTY_FETCH_REPORT;
+    const servedFromCache = !isFetching && dataUpdatedAt !== data.report.cached_at;
+    return {
+      ...data.report,
+      from_cache: servedFromCache || data.report.from_cache,
+      data_source: servedFromCache ? "cache" : data.report.data_source,
+    };
+  }, [data, isFetching, dataUpdatedAt]);
 
   const pool = useMemo<QuizQuestion[]>(() => {
     if (questions && questions.length > 0) return questions;
