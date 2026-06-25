@@ -146,7 +146,7 @@ function StatRow({ k, v, tone }: { k: string; v: React.ReactNode; tone?: "ok" | 
 }
 
 function DiagnosticsPanel(props: Props) {
-  const { snapshot, pool, playlistItems, apiStatus, usingFallback, apiRecordCount, onRefetch, bcConnected, lastSyncAt } = props;
+  const { snapshot, pool, playlistItems, apiStatus, usingFallback, apiRecordCount, onRefetch, bcConnected, lastSyncAt, fetchReport, filterState, mockFallbackCount } = props;
   const t = snapshot.config.timing;
   const cur = snapshot.currentQuestion;
   const remainingMs = Math.max(0, snapshot.phaseDurationMs - (Date.now() - snapshot.phaseStartedAt));
@@ -155,10 +155,27 @@ function DiagnosticsPanel(props: Props) {
     quiz_api_status: apiStatus,
     api_endpoint: quizApi.baseUrl,
     mock_fallback_active: usingFallback,
-    questions_in_database_estimate: apiRecordCount || pool.length,
-    questions_loaded_from_api: apiRecordCount,
-    questions_after_filters: pool.length,
-    playlist_size: playlistItems.length,
+    mock_fallback_count: mockFallbackCount,
+    inventory: {
+      database_total: "Not provided by API",
+      api_returned_raw: fetchReport.raw_total_across_sets,
+      api_returned_unique: fetchReport.unique_total,
+      loaded_into_frontend: pool.length,
+      after_active_filters: filterState.totalAfterFilters,
+      added_to_playlist: playlistItems.length,
+    },
+    api_request_details: {
+      per_set_limit: fetchReport.per_set_limit,
+      sets_discovered: fetchReport.sets_count,
+      pagination_metadata: "Not provided by API",
+      per_set_summary: fetchReport.per_set.map((e) => ({
+        set: e.set_name, returned: e.returned, limit: e.params.limit,
+        truncated: e.returned === e.params.limit, status: e.status,
+      })),
+    },
+    active_filters: {
+      search: filterState.search, category: filterState.category, difficulty: filterState.difficulty,
+    },
     playback_mode: snapshot.config.playback,
     broadcast_phase: snapshot.phase,
     current_question_id: cur?.id ?? null,
@@ -166,7 +183,7 @@ function DiagnosticsPanel(props: Props) {
     phase_remaining_ms: remainingMs,
     broadcast_channel_connected: bcConnected,
     last_sync: lastSyncAt,
-  }), [apiStatus, usingFallback, apiRecordCount, pool.length, playlistItems.length, snapshot, cur, t, remainingMs, bcConnected, lastSyncAt]);
+  }), [apiStatus, usingFallback, mockFallbackCount, apiRecordCount, pool.length, playlistItems.length, snapshot, cur, t, remainingMs, bcConnected, lastSyncAt, fetchReport, filterState]);
 
   const text = JSON.stringify(summary, null, 2);
 
@@ -185,8 +202,9 @@ function DiagnosticsPanel(props: Props) {
           <StatRow k="Quiz API status" v={apiStatus} tone={apiStatus === "ok" ? "ok" : apiStatus === "error" ? "err" : "warn"} />
           <StatRow k="API endpoint" v={<code className="text-xs">{quizApi.baseUrl}</code>} />
           <StatRow k="Mock fallback" v={usingFallback ? "ACTIVE" : "inactive"} tone={usingFallback ? "warn" : "ok"} />
-          <StatRow k="Questions in DB (loaded)" v={apiRecordCount} />
-          <StatRow k="Questions after filters" v={pool.length} />
+          <StatRow k="API returned (unique)" v={fetchReport.unique_total} />
+          <StatRow k="Loaded into frontend" v={pool.length} />
+          <StatRow k="After active filters" v={filterState.totalAfterFilters} />
           <StatRow k="Playlist size" v={playlistItems.length} />
         </Card>
         <Card className="overflow-hidden">
