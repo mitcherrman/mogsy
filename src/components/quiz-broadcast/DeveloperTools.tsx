@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Activity, Database, Bug, FileText, BookOpen, History, Share2, Tv2,
-  RefreshCw, Copy, Download, Trash2, Plus, Save, Radio,
+  RefreshCw, Copy, Download, Trash2, Plus, Save, Radio, Filter, Layers, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
   type DocsSection,
   type EventLogEntry,
 } from "@/lib/quiz-broadcast/dev-tools/repository";
+import type { FetchReport, BrowserFilterState } from "@/pages/admin/AdminQuizBroadcast";
 
 type Props = {
   engine: BroadcastEngine;
@@ -38,6 +39,9 @@ type Props = {
   onRefetch: () => void;
   bcConnected: boolean;
   lastSyncAt: number | null;
+  fetchReport: FetchReport;
+  filterState: BrowserFilterState;
+  mockFallbackCount: number;
 };
 
 // ============================================================================
