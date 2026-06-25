@@ -873,8 +873,8 @@ function buildReports(props: Props): ReportBundle {
     phase: snapshot.phase,
     phaseStartedAt: snapshot.phaseStartedAt ? new Date(snapshot.phaseStartedAt).toISOString() : null,
     phaseDurationMs: snapshot.phaseDurationMs,
-    revealed_correct: snapshot.revealedCorrect ?? null,
-    last_explanation_present: Boolean(snapshot.currentQuestion?.explanation),
+    revealed_correct: (snapshot as any).revealedCorrect ?? (snapshot as any).reveal?.correct ?? null,
+    last_explanation_present: Boolean((snapshot.currentQuestion as any)?.explanation),
   };
 
   const detectedLimitations = [
