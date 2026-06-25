@@ -2364,14 +2364,151 @@ function InteractiveSandbox({
   };
 
   const copyDebugReport = () => {
+    const STAT_KEYS = [
+      "AD",
+      "BASE_AD",
+      "BONUS_AD",
+      "AP",
+      "ARMOR",
+      "MR",
+      "ATTACK_SPEED",
+      "FINAL_ATTACK_SPEED",
+      "Q_RANK",
+      "W_RANK",
+      "E_RANK",
+      "R_RANK",
+    ] as const;
+    const pickStats = (raw: unknown): Record<string, unknown> => {
+      const out: Record<string, unknown> = {};
+      const src =
+        (raw && typeof raw === "object"
+          ? ((raw as Record<string, unknown>).attacker_stats as
+              | Record<string, unknown>
+              | undefined)
+          : undefined) ?? {};
+      for (const k of STAT_KEYS) {
+        if (k in src) out[k] = (src as Record<string, unknown>)[k];
+      }
+      return out;
+    };
+
+    const stateStates =
+      (state && typeof state === "object"
+        ? ((state as Record<string, unknown>).states as
+            | Record<string, unknown>
+            | undefined)
+        : undefined) ?? {};
+    const activeDefenderFlags = {
+      TARGET_DAMAGE_REDUCTION_PERCENT:
+        "TARGET_DAMAGE_REDUCTION_PERCENT" in stateStates,
+      TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT:
+        "TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT" in stateStates,
+      TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT:
+        "TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT" in stateStates,
+      TARGET_SHIELD: "TARGET_SHIELD" in stateStates,
+    };
+
+    const totals = combatTimeline.reduce(
+      (acc, e) => {
+        acc.raw += Number(e.raw_damage) || 0;
+        acc.final += Number(e.final_damage) || 0;
+        const t = (e.damage_type || "").toLowerCase();
+        if (t.includes("phys")) acc.physical += Number(e.final_damage) || 0;
+        else if (t.includes("mag")) acc.magic += Number(e.final_damage) || 0;
+        else if (t.includes("true")) acc.true += Number(e.final_damage) || 0;
+        return acc;
+      },
+      { raw: 0, final: 0, physical: 0, magic: 0, true: 0 }
+    );
+
+    const first = combatTimeline[0];
+    const last = combatTimeline[combatTimeline.length - 1];
+    const action_sequence = combatTimeline
+      .map((e) => {
+        const tag = e.abilityKey
+          ? `${e.abilityKey}${e.abilityRank ?? ""}`
+          : e.label || e.kind;
+        return `#${e.index} ${tag}`;
+      })
+      .join(" → ");
+
+    const selected =
+      combatTimeline.find((e) => e.id === selectedTimelineId) ?? null;
+
     const report = {
-      champion: config.champion,
-      items: config.items,
-      runes: config.runes,
-      target_profile: config.target_profile,
+      readable_summary: {
+        attacker: {
+          champion: config.champion,
+          level: config.stats?.LEVEL,
+          items: config.items,
+          runes: config.runes,
+        },
+        defender: {
+          mode: targetSetup.targetMode,
+          champion: targetSetup.targetChampionName,
+          level: targetSetup.targetLevel,
+          items: targetSetup.targetItemNames,
+          runes: targetSetup.targetRuneNames,
+        },
+        ability_ranks: abilityRanks,
+        rank_mode: rankMode,
+        autoResetEnabled,
+        lastResetReason,
+        resetCounter,
+        action_sequence,
+        starting_hp: first ? first.hp_before : null,
+        ending_hp: last ? last.hp_after : null,
+        hp_max: last ? last.hp_max : first ? first.hp_max : null,
+        total_raw_damage: totals.raw,
+        total_final_damage: totals.final,
+        damage_by_type: {
+          physical: totals.physical,
+          magic: totals.magic,
+          true: totals.true,
+        },
+        active_defender_effects: activeDefenderFlags,
+        action_count: combatTimeline.length,
+      },
+      full_combat_timeline: combatTimeline.map((e) => ({
+        index: e.index,
+        kind: e.kind,
+        action_id: e.action_id,
+        label: e.label,
+        abilityKey: e.abilityKey,
+        abilityRank: e.abilityRank,
+        attacker: e.attacker,
+        defender: e.defender,
+        hp_before: e.hp_before,
+        hp_after: e.hp_after,
+        hp_max: e.hp_max,
+        raw_damage: e.raw_damage,
+        final_damage: e.final_damage,
+        damage_type: e.damage_type,
+        shield_absorbed: e.shield_absorbed,
+        damage_reduction_percent: e.damage_reduction_percent,
+        endpoint: e.endpoint,
+        request: e.request,
+        response: e.response,
+        state_snapshot: e.state_snapshot,
+        events: e.events,
+        timestamp: e.timestamp,
+      })),
+      selected_timeline_entry: selected,
+      stat_source_diagnostics: {
+        devMode,
+        note:
+          "Dev Mode may inject buildAttackerStats overrides into request.attacker_stats; compare per-step values to detect mid-session changes.",
+        per_step: combatTimeline.map((e) => ({
+          index: e.index,
+          label: e.label,
+          abilityKey: e.abilityKey,
+          abilityRank: e.abilityRank,
+          stats: pickStats(e.request),
+        })),
+      },
+      raw_last_request: lastRequest,
+      raw_last_response: lastResponse,
       endpoint: lastEndpoint,
-      last_request: lastRequest,
-      last_response: lastResponse,
       current_state: state,
       events_collected: events.length,
       scopes,
