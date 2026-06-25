@@ -55,6 +55,24 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-06-25T02:00:00Z",
+    title: "Combat Lab: Reset must send clean state",
+    type: "fix",
+    scopes: ["combat-lab"],
+    summary:
+      "Hardened the /api/combat-lab/basic-attack and /api/combat-lab/active request builders so payload.state is derived strictly from the live currentState variable, funneled through a new buildRequestState() helper that emits only the three canonical keys ({ states, timed_effects, permanent_stacks }). Nothing else is merged in — not targetRuntime, not lastResponse, not defensePreview, not activeDefenderEffects, not cached target_stats, not localStorage, not the derived Defender HP source. Reproduces the report: apply K'Sante W → Reset → cast Sett Q now sends state.states = {} on the wire, so Sett Q damage is no longer reduced by 75%. Dev Mode's Reset Diagnostics card adds actualLastRequestStateKeys, sourced directly from lastRequest.state.states, so the on-wire payload can be verified independently of the in-memory React state.",
+    details: [
+      "New buildRequestState(currentState) helper picks only states / timed_effects / permanent_stacks and normalizes missing or malformed values to canonical empties — guarantees no stray top-level TARGET_DAMAGE_REDUCTION_PERCENT or *_EXPIRES_AT can ride along.",
+      "sendStep (basic-attack + active) and applyDefense now both build payload.state via buildRequestState(state) — no fallback paths read from targetRuntime, lastResponse, defensePreview, activeDefenderEffects, cached target stats, localStorage, or the derived HP source.",
+      "After Reset the next request always sends { states: {}, timed_effects: [], permanent_stacks: {} } unless the user applies a new defense or casts an action.",
+      "Dev Mode Reset Diagnostics adds actualLastRequestStateKeys (reads lastRequest.state.states) alongside the existing nextRequestStateKeys (reads in-memory state.states), so leaks are visible on the wire.",
+      "Repro check: K'Sante W → Reset → Sett Q sends state.states = {}; final_damage no longer carries a 75% TARGET_DAMAGE_REDUCTION_PERCENT mitigation.",
+      "No backend changes. No layout, design, or routing changes outside the Combat Lab page.",
+    ],
+    files: ["src/pages/CombatLab.tsx", "src/lib/lol-changelog.ts"],
+    routes: ["/combat-lab"],
+  },
+  {
     timestamp: "2026-06-25T01:00:00Z",
     title: "Combat Lab: Clean State Reset Hotfix",
     type: "fix",
