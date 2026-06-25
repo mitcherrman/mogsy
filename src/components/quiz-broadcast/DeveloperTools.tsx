@@ -740,7 +740,7 @@ function DocsPanel() {
 }
 
 function ExportContextPanel(props: Props) {
-  const { snapshot, pool, playlistItems, apiStatus, usingFallback, apiRecordCount, bcConnected, lastSyncAt } = props;
+  const { snapshot, pool, playlistItems, apiStatus, usingFallback, apiRecordCount, bcConnected, lastSyncAt, fetchReport, filterState, mockFallbackCount } = props;
   const changelog = devToolsRepository.listChangelog();
   const docs = devToolsRepository.listDocs();
 
@@ -756,6 +756,44 @@ function ExportContextPanel(props: Props) {
     broadcast_channel: bcConnected,
     last_sync: lastSyncAt ? new Date(lastSyncAt).toISOString() : null,
   };
+
+  const inventory = {
+    database_total: "Not provided by API",
+    api_returned_raw: fetchReport.raw_total_across_sets,
+    api_returned_unique: fetchReport.unique_total,
+    loaded_into_frontend: pool.length,
+    after_active_filters: filterState.totalAfterFilters,
+    added_to_playlist: playlistItems.length,
+    mock_fallback_count: mockFallbackCount,
+    using_fallback: usingFallback,
+  };
+
+  const apiDetails = {
+    base_url: fetchReport.base_url,
+    sets_request: fetchReport.sets_request_url,
+    questions_template: fetchReport.questions_endpoint_template,
+    per_set_limit: fetchReport.per_set_limit,
+    sets_discovered: fetchReport.sets_count,
+    pagination_metadata_available: fetchReport.pagination_metadata_available,
+    pagination_note: fetchReport.pagination_note,
+    duration_ms: fetchReport.duration_ms,
+    duplicates_removed: fetchReport.duplicates_removed,
+    per_set: fetchReport.per_set.map((e) => ({
+      set: e.set_name, status: e.status, limit: e.params.limit,
+      returned: e.returned, truncated: e.returned === e.params.limit,
+      duration_ms: e.duration_ms, error: e.error,
+    })),
+  };
+
+  const detectedLimitations = [
+    fetchReport.per_set.filter((e) => e.returned === e.params.limit).length > 0
+      ? `${fetchReport.per_set.filter((e) => e.returned === e.params.limit).length} set(s) hit the per-set limit (${fetchReport.per_set_limit}) — likely truncated.`
+      : null,
+    !fetchReport.pagination_metadata_available
+      ? "API exposes no total-count or pagination metadata."
+      : null,
+    usingFallback ? "Mock fallback active — real database not contacted." : null,
+  ].filter(Boolean);
 
   const filesInvolved = [
     "src/pages/admin/AdminQuizBroadcast.tsx",
@@ -801,6 +839,19 @@ function ExportContextPanel(props: Props) {
     "```json",
     JSON.stringify(stats, null, 2),
     "```",
+    "",
+    "## Question Inventory Summary",
+    "```json",
+    JSON.stringify(inventory, null, 2),
+    "```",
+    "",
+    "## API Request Details",
+    "```json",
+    JSON.stringify(apiDetails, null, 2),
+    "```",
+    "",
+    "## Detected Limitations",
+    detectedLimitations.length === 0 ? "- None detected." : detectedLimitations.map((l) => `- ${l}`).join("\n"),
     "",
     "## Files Involved",
     filesInvolved.map((f) => `- ${f}`).join("\n"),
