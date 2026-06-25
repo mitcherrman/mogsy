@@ -106,7 +106,7 @@ export default function AdminQuizBroadcast() {
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-4 p-4">
-      <SEOHead title="Quiz Broadcast Studio · Admin" description="Configure and run the 24/7 Mogsy quiz broadcast." canonical="/admin/quiz-broadcast" noindex />
+      <SEOHead title="Quiz Broadcast Studio · Admin" description="Configure and run the 24/7 Mogsy quiz broadcast." path="/admin/quiz-broadcast" />
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div>
