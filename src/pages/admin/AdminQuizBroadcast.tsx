@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,8 @@ import TimingSettings from "@/components/quiz-broadcast/TimingSettings";
 import VisualSettings from "@/components/quiz-broadcast/VisualSettings";
 import BroadcastStats from "@/components/quiz-broadcast/BroadcastStats";
 import PlaylistLibrary from "@/components/quiz-broadcast/PlaylistLibrary";
+import DeveloperTools from "@/components/quiz-broadcast/DeveloperTools";
+import { devToolsRepository } from "@/lib/quiz-broadcast/dev-tools/repository";
 import SEOHead from "@/components/SEOHead";
 
 /**
@@ -32,8 +34,13 @@ import SEOHead from "@/components/SEOHead";
  */
 export default function AdminQuizBroadcast() {
   const { engine, snapshot } = useBroadcastEngine();
+  const queryClient = useQueryClient();
   const [items, setItems] = useState<QuizQuestion[]>([]);
   const [playlists, setPlaylists] = useState<BroadcastPlaylist[]>(() => loadPlaylists());
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const lastPhaseRef = useRef<string>(snapshot.phase);
+  const lastPlayingRef = useRef<boolean>(snapshot.playing);
+  const bcConnected = typeof BroadcastChannel !== "undefined";
 
   // Load saved config on mount.
   useEffect(() => {
@@ -48,6 +55,27 @@ export default function AdminQuizBroadcast() {
     engine.setPlaylist(items, { id: snapshot.playlistId ?? undefined, name: snapshot.playlistName ?? undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
+
+  // Mirror engine snapshots into the dev-tools event log for traceability.
+  useEffect(() => {
+    setLastSyncAt(Date.now());
+    if (snapshot.phase !== lastPhaseRef.current) {
+      devToolsRepository.appendEvent({
+        level: "info", source: "engine",
+        message: `Phase ${lastPhaseRef.current} → ${snapshot.phase}`,
+        data: { question_id: snapshot.currentQuestion?.id ?? null },
+      });
+      lastPhaseRef.current = snapshot.phase;
+    }
+    if (snapshot.playing !== lastPlayingRef.current) {
+      devToolsRepository.appendEvent({
+        level: snapshot.playing ? "success" : "warn",
+        source: "engine",
+        message: snapshot.playing ? "Broadcast started/resumed" : "Broadcast paused/stopped",
+      });
+      lastPlayingRef.current = snapshot.playing;
+    }
+  }, [snapshot]);
 
   // Fetch full question pool. Fall back to local mock data if the API is
   // unreachable or returns nothing so the studio remains usable offline.
@@ -80,12 +108,30 @@ export default function AdminQuizBroadcast() {
   const usingFallback = !questions || questions.length === 0;
 
   useEffect(() => {
-    if (isError) toast.message("Quiz API unavailable — using fallback questions");
+    if (isError) {
+      toast.message("Quiz API unavailable — using fallback questions");
+      devToolsRepository.appendEvent({ level: "error", source: "api", message: "Quiz API unreachable — fallback active" });
+    }
   }, [isError]);
+
+  useEffect(() => {
+    if (questions) {
+      devToolsRepository.appendEvent({
+        level: "success", source: "api",
+        message: `Loaded ${questions.length} questions from quiz API`,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions?.length]);
 
   const openWindow = () => {
     const w = window.open("/admin/quiz-broadcast/view", "mogsy-broadcast", "popup=1,width=1280,height=720");
-    if (!w) toast.error("Popup blocked. Allow popups for this site.");
+    if (!w) {
+      toast.error("Popup blocked. Allow popups for this site.");
+      devToolsRepository.appendEvent({ level: "error", source: "studio", message: "Broadcast Window popup blocked" });
+    } else {
+      devToolsRepository.appendEvent({ level: "info", source: "studio", message: "Opened Broadcast Window" });
+    }
   };
 
   const onSavePlaylist = (name: string) => {
@@ -94,14 +140,17 @@ export default function AdminQuizBroadcast() {
     setPlaylists(upsertPlaylist(p));
     engine.setPlaylist(items, { id, name });
     toast.success(`Saved “${name}”`);
+    devToolsRepository.appendEvent({ level: "success", source: "playlist", message: `Saved playlist "${name}" (${items.length})` });
   };
   const onLoadPlaylist = (p: BroadcastPlaylist) => {
     setItems(p.questions);
     engine.setPlaylist(p.questions, { id: p.id, name: p.name });
     toast.success(`Loaded “${p.name}”`);
+    devToolsRepository.appendEvent({ level: "info", source: "playlist", message: `Loaded playlist "${p.name}" (${p.questions.length})` });
   };
   const onDeletePlaylist = (id: string) => {
     setPlaylists(removePlaylist(id));
+    devToolsRepository.appendEvent({ level: "warn", source: "playlist", message: `Deleted playlist ${id}` });
   };
 
   return (
@@ -154,6 +203,7 @@ export default function AdminQuizBroadcast() {
               <TabsTrigger value="library">Saved Playlists</TabsTrigger>
               <TabsTrigger value="timing">Timing</TabsTrigger>
               <TabsTrigger value="visuals">Visuals</TabsTrigger>
+              <TabsTrigger value="dev">Developer Tools</TabsTrigger>
             </TabsList>
             <TabsContent value="browse" className="h-[460px] pt-3">
               <QuestionBrowser
@@ -178,6 +228,24 @@ export default function AdminQuizBroadcast() {
             </TabsContent>
             <TabsContent value="visuals" className="pt-3">
               <VisualSettings engine={engine} snapshot={snapshot} />
+            </TabsContent>
+            <TabsContent value="dev" className="pt-3">
+              <DeveloperTools
+                engine={engine}
+                snapshot={snapshot}
+                pool={pool}
+                playlistItems={items}
+                apiStatus={isLoading ? "loading" : isError ? "error" : "ok"}
+                apiError={isError ? "Quiz API request failed" : null}
+                usingFallback={usingFallback}
+                apiRecordCount={questions?.length ?? 0}
+                onRefetch={() => {
+                  devToolsRepository.appendEvent({ level: "info", source: "api", message: "Manual refetch requested" });
+                  void queryClient.invalidateQueries({ queryKey: ["quiz-broadcast-pool"] });
+                }}
+                bcConnected={bcConnected}
+                lastSyncAt={lastSyncAt}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
