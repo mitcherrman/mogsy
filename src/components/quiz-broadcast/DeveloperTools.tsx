@@ -203,71 +203,379 @@ function DiagnosticsPanel(props: Props) {
   );
 }
 
+// --- Pagination probe -------------------------------------------------------
+
+type PaginationProbe = {
+  running: boolean;
+  finishedAt: number | null;
+  per_set: Array<{
+    set_name: string;
+    pages: Array<{ url: string; limit: number; offset: number; returned: number; status: "ok" | "error"; error?: string }>;
+    raw_total: number;
+    duplicates_removed: number;
+    unique_ids: number;
+    offset_supported: boolean | "unknown";
+    note: string;
+  }>;
+  raw_total: number;
+  duplicates_removed: number;
+  unique_total: number;
+  duration_ms: number;
+  note: string;
+};
+
+const EMPTY_PROBE: PaginationProbe = {
+  running: false, finishedAt: null, per_set: [],
+  raw_total: 0, duplicates_removed: 0, unique_total: 0, duration_ms: 0,
+  note: "Not run yet.",
+};
+
+async function fetchPage(setName: string, limit: number, offset: number): Promise<{ url: string; items: QuizQuestion[]; error?: string }> {
+  const url = `${quizApi.baseUrl}/api/quiz/questions?set=${encodeURIComponent(setName)}&limit=${limit}&offset=${offset}`;
+  try {
+    const res = await fetch(url, { headers: { "Content-Type": "application/json" } });
+    if (!res.ok) return { url, items: [], error: `${res.status} ${res.statusText}` };
+    const json = (await res.json()) as { questions?: QuizQuestion[] };
+    return { url, items: json.questions ?? [] };
+  } catch (e: any) {
+    return { url, items: [], error: e?.message || String(e) };
+  }
+}
+
 function ApiInspectorPanel(props: Props) {
-  const { pool, apiStatus, apiError, apiRecordCount, usingFallback } = props;
-  const sample = pool.slice(0, 3);
+  const { fetchReport, apiStatus, apiError, usingFallback, onRefetch } = props;
+  const [probe, setProbe] = useState<PaginationProbe>(EMPTY_PROBE);
+
+  const runProbe = async () => {
+    setProbe({ ...EMPTY_PROBE, running: true, note: "Probing…" });
+    const start = Date.now();
+    const PAGE = 500;
+    const MAX_PAGES_PER_SET = 20; // hard cap
+    const seen = new Set<string | number>();
+    const perSet: PaginationProbe["per_set"] = [];
+    let rawTotal = 0;
+    for (const entry of fetchReport.per_set) {
+      const pages: PaginationProbe["per_set"][number]["pages"] = [];
+      const setSeen = new Set<string | number>();
+      let offset = 0;
+      let raw = 0;
+      let offsetSupported: boolean | "unknown" = "unknown";
+      let firstPageIds: Array<string | number> | null = null;
+      let note = "";
+      for (let i = 0; i < MAX_PAGES_PER_SET; i++) {
+        const r = await fetchPage(entry.set_name, PAGE, offset);
+        const ids = r.items.map((q) => q.id);
+        pages.push({ url: r.url, limit: PAGE, offset, returned: r.items.length, status: r.error ? "error" : "ok", error: r.error });
+        if (r.error) { note = `Stopped on error: ${r.error}`; break; }
+        if (r.items.length === 0) { note = note || "Empty page → end reached."; break; }
+        // Detect whether offset is honored: page 2 must contain different IDs
+        if (i === 0) {
+          firstPageIds = ids;
+        } else if (i === 1 && firstPageIds) {
+          const overlap = ids.filter((id) => firstPageIds!.includes(id)).length;
+          if (overlap === ids.length) {
+            offsetSupported = false;
+            note = "Offset appears to be ignored (page 2 returned identical IDs). Pagination not supported.";
+            // count only this page once
+          } else {
+            offsetSupported = true;
+          }
+        }
+        let added = 0;
+        for (const q of r.items) {
+          raw++; rawTotal++;
+          if (!setSeen.has(q.id)) { setSeen.add(q.id); added++; }
+          seen.add(q.id);
+        }
+        if (offsetSupported === false) break;
+        if (r.items.length < PAGE) { note = note || "Short page → end reached."; break; }
+        if (added === 0) { note = note || "No new IDs → end reached."; break; }
+        offset += PAGE;
+      }
+      perSet.push({
+        set_name: entry.set_name, pages, raw_total: raw,
+        duplicates_removed: raw - setSeen.size, unique_ids: setSeen.size,
+        offset_supported: offsetSupported,
+        note: note || "Completed.",
+      });
+    }
+    const uniqueTotal = seen.size;
+    setProbe({
+      running: false, finishedAt: Date.now(), per_set: perSet,
+      raw_total: rawTotal, duplicates_removed: rawTotal - uniqueTotal, unique_total: uniqueTotal,
+      duration_ms: Date.now() - start,
+      note: perSet.length === 0
+        ? "No sets to probe."
+        : perSet.every((s) => s.offset_supported === false)
+          ? "Backend ignored offset on every probed set — pagination is NOT supported. Raise per-set limit or add a backend pagination/total endpoint."
+          : perSet.some((s) => s.offset_supported === true)
+            ? "Offset paging is honored by at least one set."
+            : "Pagination behavior unclear — only one page returned per set.",
+    });
+    toast.success("Pagination probe complete");
+  };
+
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={onRefetch}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refetch</Button>
+        <Button size="sm" onClick={runProbe} disabled={probe.running || fetchReport.per_set.length === 0}>
+          <PlayCircle className="mr-1.5 h-3.5 w-3.5" />{probe.running ? "Probing…" : "Fetch All Pages (Pagination Test)"}
+        </Button>
+      </div>
+
       <Card className="overflow-hidden">
-        <StatRow k="Base URL" v={<code className="text-xs">{quizApi.baseUrl}</code>} />
-        <StatRow k="Sets endpoint" v={<code className="text-xs">GET /api/quiz/sets</code>} />
-        <StatRow k="Questions endpoint" v={<code className="text-xs">GET /api/quiz/questions?set=NAME&limit=200</code>} />
-        <StatRow k="Status" v={apiStatus} tone={apiStatus === "ok" ? "ok" : apiStatus === "error" ? "err" : "warn"} />
-        <StatRow k="Records returned" v={apiRecordCount} />
-        <StatRow k="Pagination" v="single-page (no cursor)" tone="warn" />
-        <StatRow k="Using fallback" v={usingFallback ? "YES" : "no"} tone={usingFallback ? "warn" : "ok"} />
-        <StatRow k="Last error" v={apiError || "—"} tone={apiError ? "err" : undefined} />
+        <StatRow k="Base URL" v={<code className="text-xs">{fetchReport.base_url}</code>} />
+        <StatRow k="Sets endpoint" v={<code className="text-xs">GET {fetchReport.sets_request_url}</code>} />
+        <StatRow k="Questions endpoint template" v={<code className="text-xs">GET {fetchReport.questions_endpoint_template}</code>} />
+        <StatRow k="Per-set limit (frontend)" v={fetchReport.per_set_limit} />
+        <StatRow k="Sets request status" v={fetchReport.sets_status} tone={fetchReport.sets_status === "ok" ? "ok" : "err"} />
+        <StatRow k="Sets discovered" v={fetchReport.sets_count ?? "—"} />
+        <StatRow k="Overall API status" v={apiStatus} tone={apiStatus === "ok" ? "ok" : apiStatus === "error" ? "err" : "warn"} />
+        <StatRow k="Using mock fallback" v={usingFallback ? "YES" : "no"} tone={usingFallback ? "warn" : "ok"} />
+        <StatRow k="Last error" v={apiError || fetchReport.sets_error || "—"} tone={apiError || fetchReport.sets_error ? "err" : undefined} />
+        <StatRow k="Pagination metadata" v="Not provided by API" tone="warn" />
+        <StatRow k="Total count metadata" v="Not provided by API" tone="warn" />
+        <StatRow k="Strategy" v={`${fetchReport.per_set.length} parallel requests (one per quiz set)`} />
+        <StatRow k="Fetch duration" v={`${fetchReport.duration_ms} ms`} />
       </Card>
+
+      <Card className="overflow-hidden">
+        <div className="border-b border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
+          Per-set requests <span className="float-right opacity-60">{fetchReport.per_set.length}</span>
+        </div>
+        <ScrollArea className="max-h-80">
+          <table className="w-full text-xs">
+            <thead className="text-left text-muted-foreground">
+              <tr className="border-b border-white/5">
+                <th className="px-3 py-1.5">Set</th>
+                <th className="px-3 py-1.5">Status</th>
+                <th className="px-3 py-1.5">Limit</th>
+                <th className="px-3 py-1.5">Returned</th>
+                <th className="px-3 py-1.5">ms</th>
+                <th className="px-3 py-1.5">URL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fetchReport.per_set.map((e) => (
+                <tr key={e.set_name} className="border-b border-white/5">
+                  <td className="px-3 py-1.5 font-medium">{e.set_name}</td>
+                  <td className={`px-3 py-1.5 ${e.status === "ok" ? "text-emerald-300" : "text-rose-300"}`}>{e.status}{e.error ? ` — ${e.error}` : ""}</td>
+                  <td className="px-3 py-1.5 font-mono">{e.params.limit}</td>
+                  <td className={`px-3 py-1.5 font-mono ${e.returned === Number(e.params.limit) ? "text-amber-300" : ""}`} title={e.returned === Number(e.params.limit) ? "Returned exactly limit — likely truncated" : undefined}>
+                    {e.returned}{e.returned === Number(e.params.limit) ? " ⚠" : ""}
+                  </td>
+                  <td className="px-3 py-1.5 font-mono opacity-60">{e.duration_ms}</td>
+                  <td className="px-3 py-1.5 font-mono opacity-60"><code className="break-all">{e.request_url}</code></td>
+                </tr>
+              ))}
+              {fetchReport.per_set.length === 0 && (
+                <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No fetch report yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </ScrollArea>
+        <div className="border-t border-white/10 px-3 py-2 text-xs text-muted-foreground">
+          Raw across sets: <span className="font-mono">{fetchReport.raw_total_across_sets}</span> · Duplicates removed: <span className="font-mono">{fetchReport.duplicates_removed}</span> · Unique loaded: <span className="font-mono text-foreground">{fetchReport.unique_total}</span>
+        </div>
+      </Card>
+
+      {/* Pagination probe results */}
+      <Card className="overflow-hidden">
+        <div className="border-b border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
+          Pagination Probe {probe.running && <span className="ml-2 text-amber-300">running…</span>}
+        </div>
+        <div className="px-3 py-2 text-xs">
+          <p className={probe.note.includes("NOT supported") ? "text-rose-300" : probe.note.includes("honored") ? "text-emerald-300" : "text-muted-foreground"}>{probe.note}</p>
+          {probe.finishedAt && (
+            <div className="mt-1 text-muted-foreground">
+              Pages fetched: <span className="font-mono">{probe.per_set.reduce((a, s) => a + s.pages.length, 0)}</span> ·
+              Raw: <span className="font-mono">{probe.raw_total}</span> ·
+              Dupes removed: <span className="font-mono">{probe.duplicates_removed}</span> ·
+              Final unique: <span className="font-mono text-foreground">{probe.unique_total}</span> ·
+              Duration: <span className="font-mono">{probe.duration_ms} ms</span>
+            </div>
+          )}
+        </div>
+        {probe.per_set.length > 0 && (
+          <ScrollArea className="max-h-80 border-t border-white/10">
+            <div className="divide-y divide-white/5 text-xs">
+              {probe.per_set.map((s) => (
+                <div key={s.set_name} className="px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{s.set_name}</span>
+                    <span className={
+                      s.offset_supported === true ? "text-emerald-300" :
+                      s.offset_supported === false ? "text-rose-300" : "text-amber-300"
+                    }>
+                      offset: {String(s.offset_supported)}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground">{s.note} · pages {s.pages.length} · unique {s.unique_ids} · dupes {s.duplicates_removed}</div>
+                  <div className="mt-1 space-y-0.5 font-mono text-[10px] opacity-70">
+                    {s.pages.map((p, i) => (
+                      <div key={i}>#{i + 1} offset={p.offset} → {p.status === "ok" ? `${p.returned} items` : `ERR ${p.error}`}</div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </Card>
+
       <div>
-        <Label className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground">Raw response preview (first 3)</Label>
+        <Label className="mb-1 block text-xs uppercase tracking-wide text-muted-foreground">Raw response preview (first 3 questions)</Label>
         <pre className="max-h-72 overflow-auto rounded-md border border-white/10 bg-black/40 p-3 text-[11px] leading-snug">
-{JSON.stringify(sample, null, 2)}
+{JSON.stringify(props.pool.slice(0, 3), null, 2)}
         </pre>
       </div>
-      {apiRecordCount > 0 && apiRecordCount < 300 && (
-        <p className="text-xs text-amber-300">
-          Heads-up: only {apiRecordCount} questions loaded. The studio fetches up to 200 per quiz set — if your database has more, raise the per-set limit in <code>AdminQuizBroadcast.tsx</code> or implement pagination.
-        </p>
-      )}
     </div>
   );
 }
 
-function DatabaseInspectorPanel({ pool, apiRecordCount }: Props) {
-  const groups = useMemo(() => {
-    const meta = (q: QuizQuestion) => (q.metadata ?? {}) as Record<string, any>;
-    return {
-      category: tally(pool.map((q) => q.category as any)),
-      difficulty: tally(pool.map((q) => (q.difficulty ?? "—") as any)),
-      format: tally(pool.map((q) => q.format as any)),
-      champion: tally(pool.map((q) => meta(q).champion)),
-      item: tally(pool.map((q) => meta(q).item)),
-      rune: tally(pool.map((q) => meta(q).rune)),
-      summoner: tally(pool.map((q) => meta(q).summoner)),
-      patch: tally(pool.map((q) => meta(q).patch)),
-    };
-  }, [pool]);
+// ---------------------------------------------------------------------------
+// Inventory Summary — explicit counts at every stage of the pipeline.
+// ---------------------------------------------------------------------------
 
-  const hidden = pool.filter((q) => (q.metadata as any)?.hidden).length;
-  const disabled = pool.filter((q) => (q.metadata as any)?.disabled).length;
+function InventorySummaryPanel(props: Props) {
+  const { fetchReport, pool, playlistItems, filterState, usingFallback, mockFallbackCount } = props;
+  const truncatedSets = fetchReport.per_set.filter((e) => e.returned === e.params.limit);
 
   return (
     <div className="space-y-3">
       <Card className="overflow-hidden">
-        <StatRow k="Total in database (loaded)" v={apiRecordCount} />
-        <StatRow k="Loaded questions" v={pool.length} />
-        <StatRow k="Hidden" v={hidden} tone={hidden ? "warn" : undefined} />
-        <StatRow k="Disabled" v={disabled} tone={disabled ? "warn" : undefined} />
+        <StatRow k="Database total" v="Not provided by API" tone="warn" />
+        <StatRow k="API returned (raw, all sets)" v={fetchReport.raw_total_across_sets} />
+        <StatRow k="API returned (unique after dedup)" v={fetchReport.unique_total} />
+        <StatRow k="Loaded into frontend" v={pool.length} tone={usingFallback ? "warn" : "ok"} />
+        <StatRow k="After active filters (Question Browser)" v={filterState.totalAfterFilters} />
+        <StatRow k="Added to playlist" v={playlistItems.length} />
+        <StatRow k="Mock fallback dataset size" v={mockFallbackCount} />
       </Card>
+
+      {truncatedSets.length > 0 && (
+        <Card className="border-amber-400/30 bg-amber-500/5 p-3 text-xs">
+          <p className="font-semibold text-amber-300">⚠ {truncatedSets.length} set(s) returned exactly the per-set limit ({fetchReport.per_set_limit}).</p>
+          <p className="mt-1 text-muted-foreground">
+            This strongly suggests truncation. The current frontend issues one request per set with <code>limit={fetchReport.per_set_limit}</code> and the API exposes no total-count or pagination metadata. Run the pagination probe on the API Inspector tab to determine whether the backend honors <code>offset</code>.
+          </p>
+          <ul className="mt-2 list-disc pl-5">
+            {truncatedSets.map((s) => <li key={s.set_name}><code>{s.set_name}</code> → {s.returned}</li>)}
+          </ul>
+        </Card>
+      )}
+
+      <Card className="p-3 text-xs text-muted-foreground">
+        <p className="font-semibold text-foreground">How to interpret these numbers</p>
+        <ul className="mt-1 list-disc space-y-1 pl-5">
+          <li><strong>Database total = "Not provided by API"</strong> means the backend has no endpoint reporting the true row count — we cannot know the database total from the frontend.</li>
+          <li>If <strong>API returned (unique)</strong> equals <strong>Loaded into frontend</strong>, no frontend-side filter is dropping questions before the Question Browser.</li>
+          <li>If a set's returned count equals the limit, you are probably seeing a backend truncation, not the real total.</li>
+          <li>If <strong>Loaded into frontend</strong> is much smaller than expected and no set hit the limit, the database really only has that many published questions in the queried sets.</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Frontend Filter Inspector
+// ---------------------------------------------------------------------------
+
+function FilterInspectorPanel({ filterState, pool }: Props) {
+  const implicit: string[] = [
+    "Question Browser dedupes by question.id (case-insensitive).",
+    "Playlist set/get uses identity equality on id — no dedup at playlist layer.",
+    `Per-set fetch limit is hard-coded on the Studio (currently the value shown in API Inspector).`,
+    "No published/hidden filter is applied client-side — backend decides what is returned.",
+  ];
+  return (
+    <div className="space-y-3">
+      <Card className="overflow-hidden">
+        <StatRow k="Active search query" v={filterState.search ? <code>{filterState.search}</code> : "(none)"} />
+        <StatRow k="Active category filter" v={filterState.category === "all" ? "all" : <code>{filterState.category}</code>} />
+        <StatRow k="Active difficulty filter" v={filterState.difficulty === "all" ? "any" : <code>D{filterState.difficulty}</code>} />
+        <StatRow k="Count before filters" v={filterState.totalBeforeFilters || pool.length} />
+        <StatRow k="Count after filters" v={filterState.totalAfterFilters} />
+        <StatRow k="Dropped by filters" v={Math.max(0, (filterState.totalBeforeFilters || pool.length) - filterState.totalAfterFilters)} />
+      </Card>
+      <Card className="p-3 text-xs">
+        <p className="mb-1 font-semibold">Implicit filters / behaviors</p>
+        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          {implicit.map((s, i) => <li key={i}>{s}</li>)}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function DatabaseInspectorPanel({ pool, apiRecordCount, fetchReport }: Props) {
+  const meta = (q: QuizQuestion) => (q.metadata ?? {}) as Record<string, any>;
+
+  const setOf = (q: QuizQuestion) => meta(q).set ?? meta(q).quiz_set ?? null;
+  const fieldPresence = useMemo(() => {
+    const fields = ["champion", "item", "rune", "summoner", "patch", "set", "quiz_set", "published", "hidden", "disabled"];
+    const map: Record<string, number> = {};
+    for (const f of fields) map[f] = 0;
+    for (const q of pool) {
+      const m = meta(q);
+      for (const f of fields) if (m[f] != null && m[f] !== "") map[f]++;
+    }
+    return map;
+  }, [pool]);
+
+  const groups = useMemo(() => ({
+    category: tally(pool.map((q) => q.category as any)),
+    difficulty: tally(pool.map((q) => (q.difficulty ?? "—") as any)),
+    format: tally(pool.map((q) => q.format as any)),
+    quiz_set_meta: tally(pool.map((q) => setOf(q))),
+    fetch_set_origin: fetchReport.per_set.map((e) => [e.set_name, e.returned] as [string, number]),
+    champion: tally(pool.map((q) => meta(q).champion)),
+    item: tally(pool.map((q) => meta(q).item)),
+    rune: tally(pool.map((q) => meta(q).rune)),
+    summoner: tally(pool.map((q) => meta(q).summoner)),
+    patch: tally(pool.map((q) => meta(q).patch)),
+  }), [pool, fetchReport.per_set]);
+
+  const hidden = pool.filter((q) => meta(q).hidden).length;
+  const disabled = pool.filter((q) => meta(q).disabled).length;
+  const published = pool.filter((q) => meta(q).published === true).length;
+
+  const NPA = <span className="italic text-amber-300">Not provided by API</span>;
+
+  return (
+    <div className="space-y-3">
+      <Card className="overflow-hidden">
+        <StatRow k="API records (unique)" v={apiRecordCount} />
+        <StatRow k="Loaded questions" v={pool.length} />
+        <StatRow k="Has 'published' field" v={fieldPresence.published > 0 ? `${fieldPresence.published} / ${pool.length}` : NPA} tone={fieldPresence.published > 0 ? undefined : "warn"} />
+        <StatRow k="Marked published=true" v={fieldPresence.published > 0 ? published : NPA} />
+        <StatRow k="Marked hidden" v={fieldPresence.hidden > 0 ? hidden : NPA} tone={hidden ? "warn" : undefined} />
+        <StatRow k="Marked disabled" v={fieldPresence.disabled > 0 ? disabled : NPA} tone={disabled ? "warn" : undefined} />
+      </Card>
+
+      <Card className="overflow-hidden">
+        <div className="border-b border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">Metadata field coverage</div>
+        <div className="grid grid-cols-2 gap-x-3 p-3 text-xs sm:grid-cols-3 md:grid-cols-5">
+          {Object.entries(fieldPresence).map(([f, n]) => (
+            <div key={f} className="flex justify-between border-b border-white/5 py-1">
+              <code>{f}</code>
+              <span className={n === 0 ? "text-amber-300" : "text-muted-foreground"}>{n === 0 ? "n/a" : `${n}/${pool.length}`}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {Object.entries(groups).map(([k, rows]) => (
           <Card key={k} className="overflow-hidden">
             <div className="border-b border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
-              By {k} <span className="float-right opacity-60">{rows.length}</span>
+              By {k.replace(/_/g, " ")} <span className="float-right opacity-60">{rows.length}</span>
             </div>
             <ScrollArea className="h-44">
               <div className="divide-y divide-white/5">
-                {rows.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">No data</div>}
+                {rows.length === 0 && <div className="px-3 py-2 text-xs text-amber-300">Not provided by API</div>}
                 {rows.map(([label, n]) => (
                   <div key={label} className="flex items-center justify-between px-3 py-1.5 text-xs">
                     <span className="truncate">{label}</span>
