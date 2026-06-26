@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import type { EngineSnapshot } from "@/lib/quiz-broadcast/types";
+import type { EngineSnapshot, BroadcastVisuals } from "@/lib/quiz-broadcast/types";
+import type { QuizQuestion } from "@/lib/quiz/api";
+import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { useChampionImage } from "@/hooks/useChampionImage";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -9,29 +12,24 @@ type Props = {
   fitContainer?: boolean;
 };
 
-function getChoiceLabel(c: unknown): string {
-  if (typeof c === "string") return c;
-  if (c && typeof c === "object" && "label" in c) return String((c as { label: string }).label);
-  return String(c ?? "");
-}
-
 /**
- * BroadcastRenderer
+ * BroadcastRenderer V2 — production polish pass.
  * --------------------------------------------------------------------------
- * Pure presentational component. Renders an EngineSnapshot. Reused by both
- * the Studio Preview and the Broadcast Window so there is exactly one
- * rendering implementation to maintain.
+ * Stable outer Stage that mounts once per session and never keys by question
+ * or phase. Inner regions own their own AnimatePresence:
+ *   - QuestionBlock + AnswerGrid are keyed only by `question.id` so phase
+ *     changes (question → reveal → explanation → transition) do NOT remount
+ *     the visible content. Reveal styling is applied in place.
+ *   - The countdown ticker runs on requestAnimationFrame inside its own
+ *     component, so it never re-renders siblings.
+ *   - The explanation overlay fades in over the answers during reveal and
+ *     does not introduce a separate scene.
+ * The redundant "unanswered same-question" frame between reveal and the next
+ * question is eliminated because the renderer only ever pairs a question id
+ * with one revealed/unrevealed state, and crossfades directly to the next
+ * question id when the engine advances.
  */
 export default function BroadcastRenderer({ snapshot, fitContainer = false }: Props) {
-  // Live countdown ticker derived from snapshot — not stored in engine
-  // (rendering concern only).
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!snapshot?.playing) return;
-    const id = setInterval(() => setNow(Date.now()), 100);
-    return () => clearInterval(id);
-  }, [snapshot?.playing, snapshot?.phaseStartedAt]);
-
   if (!snapshot) {
     return (
       <ShellFrame fit={fitContainer} aspect="16:9">
@@ -41,190 +39,504 @@ export default function BroadcastRenderer({ snapshot, fitContainer = false }: Pr
       </ShellFrame>
     );
   }
+  return <Stage snapshot={snapshot} fitContainer={fitContainer} />;
+}
 
+// ===========================================================================
+// Stage — stable outer shell. Mounts once per session, never keyed by phase.
+// ===========================================================================
+
+function Stage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; fitContainer: boolean }) {
   const v = snapshot.config.visuals;
-  const t = snapshot.config.timing;
   const q = snapshot.currentQuestion;
   const phase = snapshot.phase;
-  const elapsed = Math.max(0, now - snapshot.phaseStartedAt);
-  const remaining = Math.max(0, snapshot.phaseDurationMs - elapsed);
-  const phaseProgress = snapshot.phaseDurationMs > 0 ? Math.min(1, elapsed / snapshot.phaseDurationMs) : 0;
-
-  const choices = (q?.choices ?? []).map(getChoiceLabel);
-  const correct = snapshot.correctAnswer;
-
-  const meta = (q?.metadata ?? {}) as Record<string, unknown>;
-  const champion = (meta.champion as string | undefined) ?? "";
-  const patch = (meta.patch as string | undefined) ?? "";
+  // Reveal is "active" any time we're past the question-asking phase and the
+  // engine has produced a correct answer. This is the only signal that
+  // toggles answer styling — keeps the answer grid mounted across phases.
+  const revealActive = phase !== "question" && phase !== "idle" && !!snapshot.correctAnswer;
 
   const themeClass =
     v.theme === "midnight"
       ? "from-[#05060f] via-[#0a0b1f] to-[#15103a]"
       : v.theme === "classic"
       ? "from-[#0b0f1a] via-[#0e1626] to-[#0a1322]"
-      : "from-[#06091a] via-[#0a1530] to-[#1a0f3a]"; // hextech default
+      : "from-[#06091a] via-[#0a1530] to-[#1a0f3a]";
 
   return (
     <ShellFrame fit={fitContainer} aspect={v.aspect}>
+      {/* Background layer — stable, never remounts */}
       <div className={`absolute inset-0 bg-gradient-to-br ${themeClass}`} />
       {v.backgroundAnimation === "pulse" && (
-        <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(circle_at_30%_20%,rgba(120,150,255,0.25),transparent_45%),radial-gradient(circle_at_75%_80%,rgba(255,120,200,0.18),transparent_50%)] animate-pulse" />
+        <div className="pointer-events-none absolute inset-0 opacity-25 [background:radial-gradient(circle_at_25%_15%,rgba(120,150,255,0.22),transparent_45%),radial-gradient(circle_at_80%_85%,rgba(255,120,200,0.16),transparent_50%)]" />
       )}
       {v.backgroundAnimation === "particles" && (
-        <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div className="pointer-events-none absolute inset-0 opacity-15 [background-image:radial-gradient(rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:24px_24px]" />
       )}
+      {/* Subtle vignette so question text reads cleanly on any theme */}
+      <div className="pointer-events-none absolute inset-0 [background:radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)]" />
 
-      {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-[2.2%] text-white/90">
-        <div className="flex items-center gap-[1.2%]">
-          {v.showLogo && (
-            <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 backdrop-blur">
-              <Sparkles className="h-4 w-4 text-cyan-300" />
-              <span className="text-[1.2vmin] font-bold uppercase tracking-[0.2em]">Mogsy</span>
-            </div>
-          )}
-          {v.showCategoryBadge && q && (
-            <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[1.1vmin] uppercase tracking-widest text-white/80 backdrop-blur">
-              {String(q.category).replace(/_/g, " ")}
-            </span>
-          )}
-          {v.showDifficultyBadge && q?.difficulty != null && (
-            <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1.5 text-[1.1vmin] uppercase tracking-widest text-amber-200 backdrop-blur">
-              Difficulty {q.difficulty}
-            </span>
-          )}
-          {v.showPatchLabel && patch && (
-            <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[1.1vmin] uppercase tracking-widest text-white/70 backdrop-blur">
-              Patch {patch}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-[1.2%]">
-          {v.showQuestionNumber && (
-            <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[1.1vmin] font-semibold uppercase tracking-widest text-white/80 backdrop-blur">
-              {Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)} / {snapshot.playlistLength}
-            </span>
-          )}
-          {v.showWebsite && (
-            <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[1.1vmin] font-semibold uppercase tracking-[0.25em] text-cyan-100 backdrop-blur">
-              {v.websiteUrl}
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Top chrome — de-emphasized */}
+      <TopChrome snapshot={snapshot} />
 
-      {/* Main content */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center px-[4%]">
-        <AnimatePresence mode="wait">
-          {phase === "idle" && (
-            <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="text-center text-white/80">
-              <div className="mb-4 text-[2.4vmin] uppercase tracking-[0.4em] text-cyan-200">Mogsy Quiz Broadcast</div>
-              <div className="text-[6vmin] font-extrabold">Standing by…</div>
-              <div className="mt-4 text-[1.6vmin] text-white/50">The host will be back shortly.</div>
-            </motion.div>
-          )}
-          {phase !== "idle" && q && (
+      {/* Main stage — single AnimatePresence keyed on question id */}
+      <div className="absolute inset-x-0 top-[8%] bottom-[10%] z-0 flex items-stretch px-[3%]">
+        {phase === "idle" || !q ? (
+          <IdleStanding />
+        ) : (
+          <AnimatePresence mode="popLayout" initial={false}>
             <motion.div
-              key={`q-${snapshot.currentIndex}-${phase}`}
-              initial={transitionInitial(v.transitionStyle)}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={transitionExit(v.transitionStyle)}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              style={{ width: `${v.questionWidth}%`, fontSize: `${v.fontScale}em` }}
-              className="flex flex-col items-center gap-[2.4%] text-white"
+              key={String(q.id)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className="flex h-full w-full"
             >
-              <div className="text-center text-[3.6vmin] font-extrabold leading-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)] sm:text-[4vmin]">
-                {q.question_text}
-              </div>
-
-              {/* Choices */}
-              <div
-                className={
-                  v.answerStyle === "rows"
-                    ? "flex w-full flex-col gap-[1.2%]"
-                    : v.answerStyle === "grid"
-                    ? "grid w-full grid-cols-2 gap-[1.4%]"
-                    : "grid w-full grid-cols-2 gap-[1.4%]"
-                }
-              >
-                {choices.map((label, i) => {
-                  const isCorrect = phase !== "question" && correct && label === correct;
-                  const isWrong = phase !== "question" && correct && label !== correct;
-                  return (
-                    <motion.div
-                      key={`${label}-${i}`}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 * i, duration: 0.35 }}
-                      className={[
-                        "relative overflow-hidden rounded-2xl border px-[2%] py-[1.4%] text-[2.2vmin] font-semibold backdrop-blur",
-                        isCorrect
-                          ? "border-emerald-400/80 bg-emerald-400/20 text-emerald-50 shadow-[0_0_40px_rgba(16,185,129,0.45)]"
-                          : isWrong
-                          ? "border-white/10 bg-white/5 text-white/40"
-                          : "border-white/15 bg-white/5 text-white",
-                      ].join(" ")}
-                    >
-                      <span className="mr-[1%] inline-block text-[1.6vmin] font-black uppercase tracking-widest text-cyan-200">
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                      {label}
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              {/* Explanation */}
-              {phase === "explanation" && snapshot.explanation && v.showTips && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-[1%] w-full rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-[1.8%] text-[1.9vmin] leading-relaxed text-cyan-50 backdrop-blur"
-                >
-                  <div className="mb-2 text-[1.3vmin] font-bold uppercase tracking-widest text-cyan-200">
-                    {champion ? `${champion} · Insight` : "Insight"}
-                  </div>
-                  {snapshot.explanation}
-                </motion.div>
-              )}
+              <QuestionScene
+                question={q}
+                visuals={v}
+                revealActive={revealActive}
+                correctAnswer={snapshot.correctAnswer}
+                explanation={snapshot.explanation}
+              />
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Countdown */}
-      {phase === "question" && (
-        <CountdownView
-          style={v.countdownStyle}
-          progress={phaseProgress}
-          remainingMs={remaining}
-          totalMs={t.questionMs}
-        />
-      )}
-
-      {/* Bottom bar */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between p-[2.2%] text-white/80">
-        <div className="text-[1.2vmin] uppercase tracking-[0.3em] text-white/50">
-          {phaseLabel(phase)}
-        </div>
-        {v.showQrCode && (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-black/30 p-[0.9%] backdrop-blur">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${v.websiteUrl}`)}`}
-              alt="QR code"
-              className="h-[7vmin] w-[7vmin] rounded-md"
-            />
-            <div className="pr-3 text-[1.1vmin] uppercase tracking-[0.25em] text-white/70">
-              Play along
-              <div className="text-[1.4vmin] font-bold text-white">{v.websiteUrl}</div>
-            </div>
-          </div>
+          </AnimatePresence>
         )}
       </div>
+
+      {/* Countdown — only during the asking phase. Lives outside the
+          question AnimatePresence so its mount/unmount never disturbs
+          the question block. */}
+      <CountdownLayer
+        active={phase === "question"}
+        style={v.countdownStyle}
+        phaseStartedAt={snapshot.phaseStartedAt}
+        phaseDurationMs={snapshot.phaseDurationMs}
+      />
+
+      {/* Bottom chrome — QR + website, low priority */}
+      <BottomChrome visuals={v} />
     </ShellFrame>
   );
 }
+
+// ===========================================================================
+// QuestionScene — question + answers + (optional) art + reveal overlay.
+// Stays mounted across question → reveal → explanation → transition. Only
+// changes when the question id changes.
+// ===========================================================================
+
+function QuestionScene({
+  question,
+  visuals,
+  revealActive,
+  correctAnswer,
+  explanation,
+}: {
+  question: QuizQuestion;
+  visuals: BroadcastVisuals;
+  revealActive: boolean;
+  correctAnswer: string | null;
+  explanation: string | null;
+}) {
+  const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const champion = (meta.champion as string | undefined) ?? "";
+  const isVertical = visuals.aspect === "9:16";
+
+  const artUrl = useSubjectArt(question);
+  const hasArt = !!artUrl;
+
+  return (
+    <div
+      className={[
+        "relative flex h-full w-full gap-[2.2%]",
+        isVertical ? "flex-col" : "flex-row",
+      ].join(" ")}
+      style={{ fontSize: `${visuals.fontScale}em` }}
+    >
+      {hasArt && (
+        <div
+          className={[
+            "relative flex shrink-0 items-center justify-center",
+            isVertical ? "h-[30%] w-full" : "h-full w-[28%]",
+          ].join(" ")}
+        >
+          <SubjectArt url={artUrl} label={champion} vertical={isVertical} />
+        </div>
+      )}
+
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-[2.4%]">
+        <QuestionText text={question.question_text ?? ""} />
+
+        <AnswerGrid
+          choices={choices}
+          style={visuals.answerStyle}
+          revealActive={revealActive}
+          correctAnswer={correctAnswer}
+        />
+
+        {/* Reserved vertical space for the reveal overlay so the layout
+            never jumps when it appears. */}
+        <div className="relative min-h-[14%]">
+          <AnimatePresence>
+            {revealActive && explanation && visuals.showTips && (
+              <motion.div
+                key="reveal-overlay"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.32, ease: "easeOut" }}
+                className="absolute inset-x-0 top-0 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-[1.6%] text-[1.9vmin] leading-relaxed text-cyan-50 backdrop-blur-md"
+              >
+                <div className="mb-1 text-[1.15vmin] font-bold uppercase tracking-[0.25em] text-cyan-200/90">
+                  {champion ? `${champion} · Insight` : "Insight"}
+                </div>
+                {explanation}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// QuestionText
+// ===========================================================================
+
+const QuestionText = memo(function QuestionText({ text }: { text: string }) {
+  return (
+    <motion.h1
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.38, ease: "easeOut" }}
+      className="text-[4.2vmin] font-extrabold leading-[1.18] tracking-tight text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.55)] sm:text-[4.8vmin]"
+    >
+      {text}
+    </motion.h1>
+  );
+});
+
+// ===========================================================================
+// AnswerGrid — stable across phases. Reveal styling applied in place via
+// CSS transitions on existing nodes; no remount when correctAnswer flips.
+// ===========================================================================
+
+const AnswerGrid = memo(function AnswerGrid({
+  choices,
+  style,
+  revealActive,
+  correctAnswer,
+}: {
+  choices: string[];
+  style: "cards" | "rows" | "grid";
+  revealActive: boolean;
+  correctAnswer: string | null;
+}) {
+  const containerClass =
+    style === "rows"
+      ? "flex w-full flex-col gap-[1.4%]"
+      : "grid w-full grid-cols-2 gap-[1.6%]";
+
+  return (
+    <div className={containerClass}>
+      {choices.map((label, i) => {
+        const isCorrect = revealActive && correctAnswer != null && label === correctAnswer;
+        const isWrong = revealActive && correctAnswer != null && label !== correctAnswer;
+        return (
+          <motion.div
+            key={`${i}-${label}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06 * i + 0.08, duration: 0.32, ease: "easeOut" }}
+            className={[
+              "relative flex min-h-[7.5vmin] items-center gap-[1.2%] overflow-hidden rounded-2xl border px-[2.2%] py-[1.6%] text-[2.4vmin] font-semibold backdrop-blur-md",
+              "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] duration-[280ms] ease-out",
+              isCorrect
+                ? "border-emerald-400/80 bg-emerald-400/20 text-emerald-50 shadow-[0_0_42px_rgba(16,185,129,0.4)] scale-[1.015]"
+                : isWrong
+                ? "border-white/8 bg-white/[0.03] text-white/40 opacity-60 [filter:grayscale(0.4)]"
+                : "border-white/15 bg-white/[0.06] text-white",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "inline-flex h-[3.4vmin] w-[3.4vmin] shrink-0 items-center justify-center rounded-lg text-[1.7vmin] font-black tabular-nums uppercase tracking-widest",
+                isCorrect
+                  ? "bg-emerald-400/30 text-emerald-50"
+                  : "bg-white/10 text-cyan-200",
+              ].join(" ")}
+            >
+              {String.fromCharCode(65 + i)}
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">{label}</span>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+});
+
+// ===========================================================================
+// SubjectArt — content-aware artwork. Champion via useChampionImage;
+// item/rune/spell/ability via metadata icon path; otherwise nothing.
+// Loads are best-effort, never block the rest of the stage.
+// ===========================================================================
+
+function useSubjectArt(question: QuizQuestion): string | undefined {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const champ = typeof meta.champion === "string" ? meta.champion : undefined;
+  const championUrl = useChampionImage(champ);
+
+  // Direct image fields (any of these can resolve immediately).
+  const candidates: Array<string | undefined> = [
+    typeof meta.ability_icon === "string" ? meta.ability_icon : undefined,
+    typeof meta.item_icon === "string" ? meta.item_icon : undefined,
+    typeof meta.rune_icon === "string" ? meta.rune_icon : undefined,
+    typeof meta.spell_icon === "string" ? meta.spell_icon : undefined,
+    typeof meta.summoner_icon === "string" ? meta.summoner_icon : undefined,
+    typeof meta.objective_image === "string" ? meta.objective_image : undefined,
+    typeof meta.image_path === "string" ? meta.image_path : undefined,
+    question.image_path,
+  ];
+  const direct = candidates.find(Boolean);
+  if (direct) return resolveQuizAssetUrl(direct);
+  return championUrl;
+}
+
+function SubjectArt({ url, label, vertical }: { url: string; label?: string; vertical: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+  if (errored) return null;
+  return (
+    <div
+      className={[
+        "relative h-full w-full overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]",
+        vertical ? "max-h-full" : "",
+      ].join(" ")}
+    >
+      <img
+        src={url}
+        alt={label || "Subject"}
+        loading="eager"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => setErrored(true)}
+        className={[
+          "h-full w-full object-cover transition-opacity duration-500",
+          loaded ? "opacity-100" : "opacity-0",
+        ].join(" ")}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+      {label && (
+        <div className="absolute bottom-[4%] left-[5%] right-[5%] text-[1.5vmin] font-bold uppercase tracking-[0.25em] text-white/90 drop-shadow">
+          {label}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// TopChrome / BottomChrome / IdleStanding
+// ===========================================================================
+
+function TopChrome({ snapshot }: { snapshot: EngineSnapshot }) {
+  const v = snapshot.config.visuals;
+  const q = snapshot.currentQuestion;
+  const meta = (q?.metadata ?? {}) as Record<string, unknown>;
+  const patch = (meta.patch as string | undefined) ?? "";
+  return (
+    <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-[1.6%] text-white/80">
+      <div className="flex items-center gap-[0.8%]">
+        {v.showLogo && (
+          <div className="flex items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-white/75">
+            <Sparkles className="h-3 w-3 text-cyan-300/80" />
+            <span className="text-[1vmin] font-semibold uppercase tracking-[0.22em]">Mogsy</span>
+          </div>
+        )}
+        {v.showCategoryBadge && q && (
+          <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[0.95vmin] uppercase tracking-[0.22em] text-white/55">
+            {String(q.category).replace(/_/g, " ")}
+          </span>
+        )}
+        {v.showDifficultyBadge && q?.difficulty != null && (
+          <span className="rounded-full bg-amber-300/8 px-2.5 py-1 text-[0.95vmin] uppercase tracking-[0.22em] text-amber-200/80">
+            Diff {q.difficulty}
+          </span>
+        )}
+        {v.showPatchLabel && patch && (
+          <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[0.95vmin] uppercase tracking-[0.22em] text-white/55">
+            Patch {patch}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-[0.8%]">
+        {v.showQuestionNumber && (
+          <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[0.95vmin] font-semibold uppercase tracking-[0.22em] text-white/65 tabular-nums">
+            {Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)} / {snapshot.playlistLength}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BottomChrome({ visuals: v }: { visuals: BroadcastVisuals }) {
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-end p-[1.6%] text-white/70">
+      {v.showQrCode ? (
+        <div className="flex items-center gap-2 rounded-xl bg-black/30 p-[0.7%] backdrop-blur">
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${v.websiteUrl}`)}`}
+            alt=""
+            className="h-[5.5vmin] w-[5.5vmin] rounded-md opacity-90"
+          />
+          <div className="pr-2 text-[0.9vmin] uppercase tracking-[0.22em] text-white/55">
+            Play along
+            <div className="text-[1.1vmin] font-bold tracking-[0.18em] text-white/90">{v.websiteUrl}</div>
+          </div>
+        </div>
+      ) : v.showWebsite ? (
+        <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[1vmin] font-semibold uppercase tracking-[0.22em] text-white/55">
+          {v.websiteUrl}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function IdleStanding() {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center text-center text-white/80">
+      <div className="mb-3 text-[1.8vmin] uppercase tracking-[0.4em] text-cyan-200/80">Mogsy Quiz Broadcast</div>
+      <div className="text-[6vmin] font-extrabold">Standing by…</div>
+      <div className="mt-3 text-[1.4vmin] text-white/45">The host will be back shortly.</div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// CountdownLayer — rAF-driven. Owns its own ticking so the rest of the
+// renderer doesn't re-render at 60fps.
+// ===========================================================================
+
+function CountdownLayer({
+  active,
+  style,
+  phaseStartedAt,
+  phaseDurationMs,
+}: {
+  active: boolean;
+  style: "bar" | "ring" | "digits";
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+}) {
+  if (!active || phaseDurationMs <= 0) return null;
+  return (
+    <CountdownView
+      style={style}
+      phaseStartedAt={phaseStartedAt}
+      phaseDurationMs={phaseDurationMs}
+    />
+  );
+}
+
+function CountdownView({
+  style,
+  phaseStartedAt,
+  phaseDurationMs,
+}: {
+  style: "bar" | "ring" | "digits";
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+}) {
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const digitsRef = useRef<HTMLDivElement | null>(null);
+  const ringRef = useRef<SVGCircleElement | null>(null);
+  const ringDigitsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const elapsed = Math.max(0, Date.now() - phaseStartedAt);
+      const progress = Math.min(1, elapsed / phaseDurationMs);
+      const remainingSec = Math.max(0, Math.ceil((phaseDurationMs - elapsed) / 1000));
+      if (barRef.current) barRef.current.style.width = `${(1 - progress) * 100}%`;
+      if (digitsRef.current) digitsRef.current.textContent = String(remainingSec);
+      if (ringDigitsRef.current) ringDigitsRef.current.textContent = String(remainingSec);
+      if (ringRef.current) {
+        const C = 2 * Math.PI * 40;
+        ringRef.current.style.strokeDashoffset = String(C * progress);
+      }
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phaseStartedAt, phaseDurationMs]);
+
+  if (style === "bar") {
+    return (
+      <div className="absolute inset-x-[6%] bottom-[8.5%] z-10">
+        <div className="h-[1vmin] w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            ref={barRef}
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-rose-400 will-change-[width]"
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+    );
+  }
+  if (style === "digits") {
+    return (
+      <div
+        ref={digitsRef}
+        className="absolute right-[4%] top-[10%] z-10 rounded-2xl border border-white/15 bg-black/40 px-[1.6%] py-[1%] text-[5vmin] font-black tabular-nums text-white backdrop-blur"
+      >
+        --
+      </div>
+    );
+  }
+  const C = 2 * Math.PI * 40;
+  return (
+    <div className="absolute right-[4%] top-[12%] z-10 h-[10vmin] w-[10vmin]">
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+        <circle cx="50" cy="50" r={40} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
+        <circle
+          ref={ringRef}
+          cx="50"
+          cy="50"
+          r={40}
+          fill="none"
+          stroke="url(#bcastRing)"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={0}
+        />
+        <defs>
+          <linearGradient id="bcastRing">
+            <stop offset="0%" stopColor="#22d3ee" />
+            <stop offset="100%" stopColor="#e879f9" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div
+        ref={ringDigitsRef}
+        className="absolute inset-0 flex items-center justify-center text-[2.6vmin] font-black tabular-nums text-white"
+      >
+        --
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// ShellFrame + helpers
+// ===========================================================================
 
 function ShellFrame({
   children,
@@ -246,95 +558,8 @@ function ShellFrame({
   );
 }
 
-function phaseLabel(p: string) {
-  switch (p) {
-    case "question":
-      return "Question";
-    case "reveal":
-      return "Answer reveal";
-    case "explanation":
-      return "Insight";
-    case "transition":
-      return "Next up";
-    default:
-      return "Standing by";
-  }
-}
-
-function transitionInitial(style: "fade" | "slide" | "zoom") {
-  if (style === "slide") return { opacity: 0, x: 40 };
-  if (style === "zoom") return { opacity: 0, scale: 0.92 };
-  return { opacity: 0 };
-}
-function transitionExit(style: "fade" | "slide" | "zoom") {
-  if (style === "slide") return { opacity: 0, x: -40 };
-  if (style === "zoom") return { opacity: 0, scale: 1.06 };
-  return { opacity: 0 };
-}
-
-function CountdownView({
-  style,
-  progress,
-  remainingMs,
-  totalMs,
-}: {
-  style: "bar" | "ring" | "digits";
-  progress: number;
-  remainingMs: number;
-  totalMs: number;
-}) {
-  const secs = Math.ceil(remainingMs / 1000);
-  if (style === "bar") {
-    return (
-      <div className="absolute inset-x-[10%] bottom-[14%] z-10">
-        <div className="mb-1 flex items-center justify-between text-[1.1vmin] uppercase tracking-widest text-white/60">
-          <span>Time</span>
-          <span>{secs}s</span>
-        </div>
-        <div className="h-[1.2vmin] w-full overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-rose-400 transition-[width] duration-100"
-            style={{ width: `${(1 - progress) * 100}%` }}
-          />
-        </div>
-      </div>
-    );
-  }
-  if (style === "digits") {
-    return (
-      <div className="absolute right-[4%] top-[12%] z-10 rounded-2xl border border-white/15 bg-black/40 px-[1.6%] py-[1%] text-[5vmin] font-black tabular-nums text-white backdrop-blur">
-        {secs}
-      </div>
-    );
-  }
-  // ring
-  const R = 40;
-  const C = 2 * Math.PI * R;
-  return (
-    <div className="absolute right-[4%] top-[14%] z-10 h-[10vmin] w-[10vmin]">
-      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
-        <circle
-          cx="50"
-          cy="50"
-          r={R}
-          fill="none"
-          stroke="url(#g)"
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={C}
-          strokeDashoffset={C * progress}
-        />
-        <defs>
-          <linearGradient id="g">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#e879f9" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-[2.6vmin] font-black tabular-nums text-white">
-        {secs}
-      </div>
-    </div>
-  );
+function choiceLabel(c: unknown): string {
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object" && "label" in c) return String((c as { label: string }).label);
+  return String(c ?? "");
 }
