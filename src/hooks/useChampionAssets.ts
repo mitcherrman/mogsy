@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 const API_BASE_URL = (
-  (import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
-  "https://web-production-83e53.up.railway.app"
+  (import.meta.env.VITE_COMBAT_API_URL as string | undefined) || "https://web-production-83e53.up.railway.app"
 ).replace(/\/+$/, "");
 
 export type ChampionAsset = {
@@ -54,14 +53,11 @@ export function useChampionAssets() {
 export function resolveAssetUrl(path?: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${API_BASE_URL}/${path.replace(/^\/+/, "")}`;
+  return `${API_BASE_URL}/${path.replace(/\\/g, "/").replace(/^\/+/, "")}`;
 }
 
 /** Look up a champion's transparent cutout PNG URL from the manifest. */
-export function getChampionCutout(
-  manifest: ChampionManifest | null | undefined,
-  championName?: string,
-): string | null {
+export function getChampionCutout(manifest: ChampionManifest | null | undefined, championName?: string): string | null {
   if (!manifest || !championName) return null;
   return resolveAssetUrl(manifest.champions?.[championName]?.cutout);
 }
@@ -137,9 +133,11 @@ export function getChampionSkins(
 }
 
 function prettifySkinKey(key: string): string {
-  return key
-    .replace(/^\d+[_-]?/, "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim() || key;
+  return (
+    key
+      .replace(/^\d+[_-]?/, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim() || key
+  );
 }
