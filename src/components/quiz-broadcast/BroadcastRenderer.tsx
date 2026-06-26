@@ -53,7 +53,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <TopChrome snapshot={snapshot} />
 
       {/* Main scene — slide transitions, never remounts the stage */}
-      <div className="absolute inset-x-0 top-[7.5%] bottom-[9%] z-10 flex px-[2.5%]">
+      <div className="absolute inset-x-0 top-[7.5%] bottom-[9%] z-20 flex px-[2.5%]">
         {phase === "idle" || !q ? (
           <IdleStanding />
         ) : (
@@ -99,8 +99,8 @@ function StageBackdrop({
     theme === "midnight"
       ? "from-[#03040d] via-[#070a1c] to-[#0f0a28]"
       : theme === "classic"
-      ? "from-[#070a14] via-[#0a1322] to-[#08111d]"
-      : "from-[#03061a] via-[#07112d] to-[#150834]";
+        ? "from-[#070a14] via-[#0a1322] to-[#08111d]"
+        : "from-[#03061a] via-[#07112d] to-[#150834]";
   return (
     <>
       <div className={`absolute inset-0 bg-gradient-to-br ${themeClass}`} />
@@ -151,9 +151,7 @@ function TopChrome({ snapshot }: { snapshot: EngineSnapshot }) {
             <span className="text-[0.95vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]">Mogsy</span>
           </div>
         )}
-        {v.showCategoryBadge && q && (
-          <ChromeBadge tone="cyan">{String(q.category).replace(/_/g, " ")}</ChromeBadge>
-        )}
+        {v.showCategoryBadge && q && <ChromeBadge tone="cyan">{String(q.category).replace(/_/g, " ")}</ChromeBadge>}
         {v.showDifficultyBadge && q?.difficulty != null && (
           <ChromeBadge tone="amber">Difficulty {q.difficulty}</ChromeBadge>
         )}
@@ -175,14 +173,12 @@ function ChromeBadge({ children, tone }: { children: React.ReactNode; tone: "cya
     tone === "cyan"
       ? "border-cyan-300/30 text-cyan-100/85 bg-cyan-400/[0.05]"
       : tone === "amber"
-      ? "border-amber-300/30 text-amber-100/85 bg-amber-300/[0.05]"
-      : tone === "gold"
-      ? "border-[#d4b35a]/45 text-[#f3dca0] bg-[#d4b35a]/[0.08]"
-      : "border-white/15 text-white/60 bg-white/[0.04]";
+        ? "border-amber-300/30 text-amber-100/85 bg-amber-300/[0.05]"
+        : tone === "gold"
+          ? "border-[#d4b35a]/45 text-[#f3dca0] bg-[#d4b35a]/[0.08]"
+          : "border-white/15 text-white/60 bg-white/[0.04]";
   return (
-    <span
-      className={`rounded-md border px-2 py-1 text-[0.9vmin] font-semibold uppercase tracking-[0.28em] ${cls}`}
-    >
+    <span className={`rounded-md border px-2 py-1 text-[0.9vmin] font-semibold uppercase tracking-[0.28em] ${cls}`}>
       {children}
     </span>
   );
@@ -237,25 +233,18 @@ function SceneRow({
   const isVertical = visuals.aspect === "9:16";
   return (
     <div
-      className={[
-        "relative flex h-full w-full gap-[1.6%]",
-        isVertical ? "flex-col" : "flex-row",
-      ].join(" ")}
+      className={["relative flex h-full w-full gap-[1.6%]", isVertical ? "flex-col" : "flex-row"].join(" ")}
       style={{ fontSize: `${visuals.fontScale}em` }}
     >
       <div
-        className={[
-          "flex shrink-0 items-center justify-center",
-          isVertical ? "h-[32%] w-full" : "h-full w-[28%]",
-        ].join(" ")}
+        className={["flex shrink-0 items-center justify-center", isVertical ? "h-[32%] w-full" : "h-full w-[28%]"].join(
+          " ",
+        )}
       >
         <SubjectPanel question={question} />
       </div>
 
-      <div className={[
-        "flex min-w-0 flex-1 flex-col justify-center gap-[2%]",
-        isVertical ? "" : "",
-      ].join(" ")}>
+      <div className={["flex min-w-0 flex-1 flex-col justify-center gap-[2%]", isVertical ? "" : ""].join(" ")}>
         <QuestionPanel
           question={question}
           visuals={visuals}
@@ -269,10 +258,9 @@ function SceneRow({
       </div>
 
       <div
-        className={[
-          "flex shrink-0 items-center justify-center",
-          isVertical ? "h-[14%] w-full" : "h-full w-[20%]",
-        ].join(" ")}
+        className={["flex shrink-0 items-center justify-center", isVertical ? "h-[14%] w-full" : "h-full w-[20%]"].join(
+          " ",
+        )}
       >
         <PlayAlongPanel visuals={visuals} />
       </div>
@@ -291,7 +279,9 @@ function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: s
   const champion = typeof meta.champion === "string" ? meta.champion : undefined;
   const itemIcon =
     (typeof meta.item_icon === "string" && meta.item_icon) ||
-    (typeof meta.image_path === "string" && question.category?.toLowerCase().includes("item") ? (meta.image_path as string) : undefined);
+    (typeof meta.image_path === "string" && question.category?.toLowerCase().includes("item")
+      ? (meta.image_path as string)
+      : undefined);
   const runeIcon = typeof meta.rune_icon === "string" ? meta.rune_icon : undefined;
   const spellIcon =
     (typeof meta.spell_icon === "string" && meta.spell_icon) ||
@@ -299,10 +289,22 @@ function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: s
     (typeof meta.ability_icon === "string" ? (meta.ability_icon as string) : undefined);
   const objective = typeof meta.objective_image === "string" ? meta.objective_image : undefined;
 
-  if (itemIcon) return { kind: "item", label: (meta.item_name as string) || "Item", iconUrl: resolveQuizAssetUrl(itemIcon) };
-  if (runeIcon) return { kind: "rune", label: (meta.rune_name as string) || "Rune", iconUrl: resolveQuizAssetUrl(runeIcon) };
-  if (spellIcon) return { kind: "spell", label: (meta.spell_name as string) || (meta.ability_name as string) || "Ability", iconUrl: resolveQuizAssetUrl(spellIcon) };
-  if (objective) return { kind: "objective", label: (meta.objective_name as string) || "Objective", iconUrl: resolveQuizAssetUrl(objective) };
+  if (itemIcon)
+    return { kind: "item", label: (meta.item_name as string) || "Item", iconUrl: resolveQuizAssetUrl(itemIcon) };
+  if (runeIcon)
+    return { kind: "rune", label: (meta.rune_name as string) || "Rune", iconUrl: resolveQuizAssetUrl(runeIcon) };
+  if (spellIcon)
+    return {
+      kind: "spell",
+      label: (meta.spell_name as string) || (meta.ability_name as string) || "Ability",
+      iconUrl: resolveQuizAssetUrl(spellIcon),
+    };
+  if (objective)
+    return {
+      kind: "objective",
+      label: (meta.objective_name as string) || "Objective",
+      iconUrl: resolveQuizAssetUrl(objective),
+    };
   if (champion) return { kind: "champion", label: champion };
   // last-resort generic image
   if (question.image_path) return { kind: "item", label: "", iconUrl: resolveQuizAssetUrl(question.image_path) };
@@ -381,17 +383,17 @@ function ChampionSplashCard({ champion }: { champion: string }) {
   );
 }
 
-function CollectibleCard({
-  iconUrl,
-  label,
-  kind,
-}: {
-  iconUrl: string;
-  label?: string;
-  kind: SubjectKind;
-}) {
+function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; label?: string; kind: SubjectKind }) {
   const kindLabel =
-    kind === "item" ? "Item" : kind === "rune" ? "Rune" : kind === "spell" ? "Ability" : kind === "objective" ? "Objective" : "Subject";
+    kind === "item"
+      ? "Item"
+      : kind === "rune"
+        ? "Rune"
+        : kind === "spell"
+          ? "Ability"
+          : kind === "objective"
+            ? "Objective"
+            : "Subject";
   const [errored, setErrored] = useState(false);
   return (
     <motion.div
@@ -409,9 +411,7 @@ function CollectibleCard({
       />
       {/* gold inner trim */}
       <div className="pointer-events-none absolute inset-[6%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/35" />
-      <div className="mt-[8%] text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">
-        {kindLabel}
-      </div>
+      <div className="mt-[8%] text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{kindLabel}</div>
       <div className="relative mt-[4%] flex items-center justify-center">
         <div className="absolute inset-0 rounded-2xl bg-[#d4b35a]/15 blur-2xl" />
         {!errored ? (
@@ -537,10 +537,7 @@ const AnswerGrid = memo(function AnswerGrid({
   revealActive: boolean;
   correctAnswer: string | null;
 }) {
-  const containerClass =
-    style === "rows"
-      ? "flex w-full flex-col gap-[1.2%]"
-      : "grid w-full grid-cols-2 gap-[1.3%]";
+  const containerClass = style === "rows" ? "flex w-full flex-col gap-[1.2%]" : "grid w-full grid-cols-2 gap-[1.3%]";
 
   return (
     <div className={containerClass}>
@@ -559,8 +556,8 @@ const AnswerGrid = memo(function AnswerGrid({
               isCorrect
                 ? "border-emerald-300/85 bg-gradient-to-br from-emerald-400/25 via-emerald-400/15 to-cyan-400/15 text-emerald-50 shadow-[0_0_50px_rgba(16,185,129,0.5)] scale-[1.02]"
                 : isWrong
-                ? "border-white/8 bg-white/[0.03] text-white/35 opacity-55 [filter:grayscale(0.55)]"
-                : "border-[#d4b35a]/25 bg-gradient-to-br from-white/[0.07] to-white/[0.02] text-white hover:border-[#d4b35a]/45",
+                  ? "border-white/8 bg-white/[0.03] text-white/35 opacity-55 [filter:grayscale(0.55)]"
+                  : "border-[#d4b35a]/25 bg-gradient-to-br from-white/[0.07] to-white/[0.02] text-white hover:border-[#d4b35a]/45",
             ].join(" ")}
           >
             {/* subtle inner gold ring */}
@@ -612,13 +609,7 @@ function CountdownInline({
   phaseDurationMs: number;
 }) {
   if (!active || phaseDurationMs <= 0) return <div className="h-[2.4vmin]" />;
-  return (
-    <CountdownView
-      style={style}
-      phaseStartedAt={phaseStartedAt}
-      phaseDurationMs={phaseDurationMs}
-    />
-  );
+  return <CountdownView style={style} phaseStartedAt={phaseStartedAt} phaseDurationMs={phaseDurationMs} />;
 }
 
 function CountdownView({
@@ -719,9 +710,7 @@ function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
       <div className="pointer-events-none absolute inset-[4%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/25" />
       <div className="relative text-center">
         <div className="text-[0.95vmin] font-bold uppercase tracking-[0.4em] text-[#e8c97a]">Play along</div>
-        <div className="mt-1 text-[1.4vmin] font-extrabold uppercase tracking-[0.18em] text-white">
-          Scan to join
-        </div>
+        <div className="mt-1 text-[1.4vmin] font-extrabold uppercase tracking-[0.18em] text-white">Scan to join</div>
       </div>
       {visuals.showQrCode && (
         <div className="relative rounded-lg border border-[#d4b35a]/35 bg-white/95 p-[6%] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
@@ -734,9 +723,7 @@ function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
       )}
       <div className="relative text-center">
         <div className="text-[1.05vmin] uppercase tracking-[0.35em] text-white/55">Web</div>
-        <div className="mt-0.5 text-[1.5vmin] font-extrabold tracking-wider text-[#f3dca0]">
-          {visuals.websiteUrl}
-        </div>
+        <div className="mt-0.5 text-[1.5vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
       </div>
     </motion.div>
   );
@@ -855,28 +842,20 @@ function IdleStanding() {
       <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[6.5vmin] font-black uppercase text-transparent">
         Standing by
       </div>
-      <div className="mt-3 text-[1.3vmin] uppercase tracking-[0.3em] text-white/40">
-        The host returns shortly
-      </div>
+      <div className="mt-3 text-[1.3vmin] uppercase tracking-[0.3em] text-white/40">The host returns shortly</div>
     </div>
   );
 }
 
-function ShellFrame({
-  children,
-  fit,
-  aspect,
-}: {
-  children: React.ReactNode;
-  fit: boolean;
-  aspect: "16:9" | "9:16";
-}) {
+function ShellFrame({ children, fit, aspect }: { children: React.ReactNode; fit: boolean; aspect: "16:9" | "9:16" }) {
   if (!fit) {
     return <div className="relative h-screen w-screen overflow-hidden bg-black text-white">{children}</div>;
   }
   const ratio = aspect === "16:9" ? "aspect-video" : "aspect-[9/16]";
   return (
-    <div className={`relative w-full overflow-hidden rounded-xl border border-[#d4b35a]/25 bg-black text-white ${ratio}`}>
+    <div
+      className={`relative w-full overflow-hidden rounded-xl border border-[#d4b35a]/25 bg-black text-white ${ratio}`}
+    >
       {children}
     </div>
   );
