@@ -13,6 +13,17 @@ type Props = {
 };
 
 /**
+ * BroadcastRenderer V3 — Cinematic Broadcast Identity.
+ * --------------------------------------------------------------------------
+ * Presentation-only rewrite. Targets the look of an official esports
+ * broadcast: stable outer stage, three-column composition (28/52/20),
+ * champion splash on the left, premium framed artwork for item/rune/spell
+ * questions, slide-based question transitions, gold trim, vignette, and
+ * tasteful reveal FX. No engine, session, channel, studio, or backend
+ * changes — all motion and layout happens here.
+ */
+
+/**
  * BroadcastRenderer V2 — production polish pass.
  * --------------------------------------------------------------------------
  * Stable outer Stage that mounts once per session and never keys by question
