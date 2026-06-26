@@ -757,7 +757,7 @@ function BottomTimeline({ current, total }: { current: number; total: number }) 
 
 function FXLayer({ revealActive }: { revealActive: boolean }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-[15] overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <AnimatePresence>
         {revealActive && (
           <motion.div
