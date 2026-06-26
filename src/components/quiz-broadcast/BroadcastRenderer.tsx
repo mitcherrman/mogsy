@@ -528,14 +528,13 @@ function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; categor
 }
 
 function ChampionSplashCard({ champion }: { champion: string }) {
-  // Primary: backend-served default splash. Fallback: signed champion-images URL.
-  const splashUrl = useMemo(
-    () => resolveQuizAssetUrl(`/lol_champion_assets/${champion}/splash/0_default.jpg`),
-    [champion],
-  );
-  const fallbackUrl = useChampionImage(champion);
+  const { data: championManifest } = useChampionAssets();
   const [primaryFailed, setPrimaryFailed] = useState(false);
-  const url = !primaryFailed ? splashUrl : fallbackUrl;
+
+  const url = useMemo(() => {
+    if (primaryFailed) return null;
+    return getChampionSplash(championManifest, champion);
+  }, [championManifest, champion, primaryFailed]);
 
   return (
     <div className="relative h-[94%] w-[94%] overflow-hidden rounded-2xl border border-[#d4b35a]/30 bg-black/40 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)]">
