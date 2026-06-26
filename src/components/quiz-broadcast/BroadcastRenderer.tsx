@@ -291,7 +291,15 @@ function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: s
     (typeof meta.ability_icon === "string" ? (meta.ability_icon as string) : undefined);
   const objective = typeof meta.objective_image === "string" ? meta.objective_image : undefined;
 
-  if (itemIcon)
+  const category = String(question.category ?? "").toLowerCase();
+  const text = questionText(question);
+  const isChampionQuestion = category.includes("champion") || /\bchampion\b/.test(text);
+
+  if (champion && isChampionQuestion) {
+    return { kind: "champion", label: champion };
+  }
+
+  if (itemIcon && !isChampionQuestion)
     return { kind: "item", label: (meta.item_name as string) || "Item", iconUrl: resolveQuizAssetUrl(itemIcon) };
   if (runeIcon)
     return { kind: "rune", label: (meta.rune_name as string) || "Rune", iconUrl: resolveQuizAssetUrl(runeIcon) };
@@ -308,8 +316,15 @@ function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: s
       iconUrl: resolveQuizAssetUrl(objective),
     };
   if (champion) return { kind: "champion", label: champion };
-  // last-resort generic image
-  if (question.image_path) return { kind: "item", label: "", iconUrl: resolveQuizAssetUrl(question.image_path) };
+  // last-resort generic image. Never label champion-category images as item art.
+  if (question.image_path) {
+    return {
+      kind: isChampionQuestion ? "champion" : "item",
+      label: isChampionQuestion ? champion || "" : "",
+      iconUrl: isChampionQuestion ? resolveQuizAssetUrl(question.image_path) : resolveQuizAssetUrl(question.image_path),
+    };
+  }
+
   return { kind: "none" };
 }
 
@@ -347,6 +362,16 @@ function SubjectPanel({
     }
     if (subject.kind === "champion" && subject.label) {
       return <ChampionSplashCard key={`champ-${subject.label}`} champion={subject.label} />;
+    }
+    if (subject.kind === "champion" && subject.iconUrl) {
+      return (
+        <CollectibleCard
+          key={`champion-icon-${subject.iconUrl}`}
+          iconUrl={subject.iconUrl}
+          label={subject.label || "Champion"}
+          kind="champion"
+        />
+      );
     }
     if (subject.iconUrl) {
       return (
@@ -588,15 +613,17 @@ function ChampionSplashCard({ champion }: { champion: string }) {
 
 function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; label?: string; kind: SubjectKind }) {
   const kindLabel =
-    kind === "item"
-      ? "Item"
-      : kind === "rune"
-        ? "Rune"
-        : kind === "spell"
-          ? "Ability"
-          : kind === "objective"
-            ? "Objective"
-            : "Subject";
+    kind === "champion"
+      ? "Champion"
+      : kind === "item"
+        ? "Item"
+        : kind === "rune"
+          ? "Rune"
+          : kind === "spell"
+            ? "Ability"
+            : kind === "objective"
+              ? "Objective"
+              : "Subject";
   const [errored, setErrored] = useState(false);
   return (
     <motion.div
