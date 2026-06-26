@@ -79,7 +79,9 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       />
 
       {/* Decorative FX layer */}
-      <FXLayer revealActive={revealActive} />
+      <div className="pointer-events-none absolute inset-0 z-[5]">
+        <FXLayer revealActive={revealActive} />
+      </div>
     </ShellFrame>
   );
 }
