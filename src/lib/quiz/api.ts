@@ -120,7 +120,7 @@ export function resolveQuizAssetUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path)) return path;
   const base = API_BASE_URL.replace(/\/+$/, "");
-  const rel = path.replace(/^\/+/, "");
+  const rel = path.replace(/\\/g, "/").replace(/^\/+/, "");
   return `${base}/${rel}`;
 }
 
@@ -207,17 +207,14 @@ export const quizApi = {
       body: JSON.stringify(payload),
     }),
   /** Progression for a user. Pass `"anonymous"` for guest aggregate. */
-  getProgress: (userId: string) =>
-    request<QuizProgress>(`/api/quiz/progress/${encodeURIComponent(userId)}`),
+  getProgress: (userId: string) => request<QuizProgress>(`/api/quiz/progress/${encodeURIComponent(userId)}`),
   /** Reserved for future leaderboard pages. */
   getLeaderboard: (params?: { limit?: number; offset?: number }) =>
     request<{ entries: QuizLeaderboardEntry[]; total?: number }>(
       `/api/quiz/leaderboard?limit=${params?.limit ?? 50}&offset=${params?.offset ?? 0}`,
     ),
   listOverrides: (activeOnly = false) =>
-    request<{ overrides: QuizOverride[] }>(
-      `/api/quiz/admin/overrides${activeOnly ? "?active=true" : ""}`,
-    ),
+    request<{ overrides: QuizOverride[] }>(`/api/quiz/admin/overrides${activeOnly ? "?active=true" : ""}`),
   setOverrideActive: (overrideId: number | string, active: boolean) =>
     request<{ ok?: boolean }>(
       `/api/quiz/admin/overrides/${encodeURIComponent(String(overrideId))}/${active ? "activate" : "deactivate"}`,
