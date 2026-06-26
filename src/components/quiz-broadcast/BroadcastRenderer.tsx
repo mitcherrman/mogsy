@@ -243,7 +243,7 @@ function SceneRow({
           " ",
         )}
       >
-        <SubjectPanel question={question} />
+        <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
       </div>
 
       <div className={["flex min-w-0 flex-1 flex-col justify-center gap-[2%]", isVertical ? "" : ""].join(" ")}>
@@ -313,16 +313,222 @@ function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: s
   return { kind: "none" };
 }
 
-function SubjectPanel({ question }: { question: QuizQuestion }) {
-  const subject = useMemo(() => classifySubject(question), [question]);
+function SubjectPanel({
+  question,
+  revealActive,
+  correctAnswer,
+}: {
+  question: QuizQuestion;
+  revealActive: boolean;
+  correctAnswer: string | null;
+}) {
+  const baseSubject = useMemo(() => classifySubject(question), [question]);
+  const revealSubject = useMemo(
+    () => deriveRevealSubject(question, baseSubject, correctAnswer),
+    [question, baseSubject, correctAnswer],
+  );
+  const spoiler = useMemo(
+    () => isSpoilerSubject(question, baseSubject, correctAnswer),
+    [question, baseSubject, correctAnswer],
+  );
 
-  if (subject.kind === "champion" && subject.label) {
-    return <ChampionSplashCard champion={subject.label} />;
+  const subject = revealActive ? revealSubject : baseSubject;
+  const shouldHide = spoiler && !revealActive;
+
+  const node = (() => {
+    if (shouldHide) {
+      return (
+        <SubjectPlaceholderCard
+          key="placeholder"
+          kind={baseSubject.kind === "none" ? inferKindFromQuestion(question) : baseSubject.kind}
+          category={String(question.category ?? "")}
+        />
+      );
+    }
+    if (subject.kind === "champion" && subject.label) {
+      return <ChampionSplashCard key={`champ-${subject.label}`} champion={subject.label} />;
+    }
+    if (subject.iconUrl) {
+      return (
+        <CollectibleCard
+          key={`icon-${subject.iconUrl}`}
+          iconUrl={subject.iconUrl}
+          label={subject.label}
+          kind={subject.kind}
+        />
+      );
+    }
+    return <SubjectPlaceholder key="empty" />;
+  })();
+
+  return (
+    <div className="relative flex h-full w-full items-center justify-center">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={node.key ?? "subject"}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="flex h-full w-full items-center justify-center"
+        >
+          {node}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Spoiler heuristics ─────────────────────────────────────────────── */
+
+function normalizeLabel(s: unknown): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+function questionChoices(question: QuizQuestion): string[] {
+  return (question.choices ?? []).map((c) =>
+    typeof c === "string" ? c : typeof c === "object" && c && "label" in c ? String((c as any).label) : "",
+  );
+}
+
+function questionText(question: QuizQuestion): string {
+  return String(question.question_text ?? question.question_key ?? "").toLowerCase();
+}
+
+function inferKindFromQuestion(question: QuizQuestion): SubjectKind {
+  const t = questionText(question);
+  const cat = String(question.category ?? "").toLowerCase();
+  if (/\bchampion\b/.test(t) || cat.includes("champion")) return "champion";
+  if (/\bitem\b/.test(t) || cat.includes("item")) return "item";
+  if (/\brune\b/.test(t) || cat.includes("rune")) return "rune";
+  if (/\b(ability|spell|passive|ultimate|summoner)\b/.test(t) || cat.includes("spell") || cat.includes("ability"))
+    return "spell";
+  if (/\bobjective\b/.test(t) || cat.includes("objective")) return "objective";
+  return "none";
+}
+
+function isSpoilerSubject(
+  question: QuizQuestion,
+  subject: { kind: SubjectKind; label?: string },
+  correctAnswer: string | null,
+): boolean {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+
+  // Explicit overrides.
+  if (meta.spoiler === true || meta.subject_is_answer === true) return true;
+  if (meta.spoiler === false || meta.subject_is_context === true) return false;
+
+  const text = questionText(question);
+
+  // Context cues — subject describes the question, not the answer.
+  const statCue =
+    /\b(cost|price|gold|stat|range|cooldown|mana|health|hp|ad|ap|armor|mr|magic resist|attack speed|move(?:ment)? speed|damage|recipe|builds? from|builds? into)\b/.test(
+      text,
+    );
+  if (statCue) return false;
+
+  // Identification: "identify this ability / name this spell" → icon is the clue.
+  if (
+    subject.kind === "spell" &&
+    /\b(identify|name|guess)\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)
+  ) {
+    return false;
   }
-  if (subject.iconUrl) {
-    return <CollectibleCard iconUrl={subject.iconUrl} label={subject.label} kind={subject.kind} />;
+
+  const choices = questionChoices(question).map(normalizeLabel).filter(Boolean);
+  const subjectLc = normalizeLabel(subject.label);
+  const answerLc = normalizeLabel(correctAnswer);
+
+  // Direct: subject label equals an answer choice or the correct answer.
+  if (subject.label && subject.kind !== "none") {
+    if (answerLc && subjectLc === answerLc) return true;
+    if (subjectLc && choices.includes(subjectLc)) return true;
   }
-  return <SubjectPlaceholder />;
+
+  // Cross-kind: "which champion has this ability?" → ability icon spoils champion answer.
+  if (
+    subject.kind === "spell" &&
+    /\b(which|what)\s+champion\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)
+  ) {
+    return true;
+  }
+  if (/\bhas this (ability|spell|passive|ultimate|rune|item)\b/.test(text)) {
+    return true;
+  }
+
+  // Identification intent matching subject noun.
+  const idIntent = /\b(which|what|name the|identify|guess)\b/.test(text);
+  if (idIntent) {
+    if (subject.kind === "champion" && /\bchampion\b/.test(text)) return true;
+    if (subject.kind === "item" && /\bitem\b/.test(text)) return true;
+    if (subject.kind === "rune" && /\brune\b/.test(text)) return true;
+    if (subject.kind === "objective" && /\bobjective\b/.test(text)) return true;
+  }
+
+  return false;
+}
+
+function deriveRevealSubject(
+  question: QuizQuestion,
+  base: { kind: SubjectKind; label?: string; iconUrl?: string },
+  correctAnswer: string | null,
+): { kind: SubjectKind; label?: string; iconUrl?: string } {
+  if (!correctAnswer) return base;
+  // If we have nothing to show but the question looks like a champion-id and the answer is a champion name,
+  // upgrade to a champion subject so the splash appears on reveal.
+  const looksChamp =
+    inferKindFromQuestion(question) === "champion" ||
+    /\bchampion\b/.test(questionText(question)) ||
+    String(question.category ?? "").toLowerCase().includes("champion");
+  if (base.kind === "none" && looksChamp) {
+    return { kind: "champion", label: correctAnswer };
+  }
+  return base;
+}
+
+/* ── Neutral placeholder card (shown when subject would spoil the answer) ── */
+
+function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; category: string }) {
+  const accent =
+    kind === "champion"
+      ? { ring: "ring-sky-300/30", glow: "bg-sky-400/15", label: "Champion" }
+      : kind === "item"
+        ? { ring: "ring-[#d4b35a]/35", glow: "bg-[#d4b35a]/15", label: "Item" }
+        : kind === "rune"
+          ? { ring: "ring-violet-300/30", glow: "bg-violet-400/15", label: "Rune" }
+          : kind === "spell"
+            ? { ring: "ring-cyan-300/30", glow: "bg-cyan-400/15", label: "Ability" }
+            : kind === "objective"
+              ? { ring: "ring-rose-300/30", glow: "bg-rose-400/15", label: "Objective" }
+              : { ring: "ring-white/15", glow: "bg-white/10", label: "Mystery" };
+
+  return (
+    <motion.div
+      className={`relative flex h-[78%] w-[80%] flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#d4b35a]/30 bg-gradient-to-b from-black/55 via-black/40 to-black/60 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.8)]`}
+      animate={{ y: [0, -4, 0] }}
+      transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <div className={`pointer-events-none absolute inset-[6%] rounded-xl ring-1 ring-inset ${accent.ring}`} />
+      <div className={`pointer-events-none absolute inset-0 rounded-2xl ${accent.glow} blur-3xl opacity-50`} />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex select-none items-center justify-center text-[28vmin] font-black leading-none text-white/[0.04]"
+      >
+        ?
+      </div>
+      <div className="relative z-10 flex flex-col items-center gap-[3%] px-[8%] text-center">
+        <div className="text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{accent.label}</div>
+        <div className="text-[1.4vmin] font-semibold uppercase tracking-[0.32em] text-white/55">
+          {category.replace(/_/g, " ")}
+        </div>
+        <div className="mt-[2%] h-[2px] w-[44%] bg-gradient-to-r from-transparent via-[#d4b35a]/60 to-transparent" />
+        <div className="mt-[3%] text-[1.15vmin] uppercase tracking-[0.28em] text-white/40">Reveal incoming…</div>
+      </div>
+    </motion.div>
+  );
 }
 
 function ChampionSplashCard({ champion }: { champion: string }) {
