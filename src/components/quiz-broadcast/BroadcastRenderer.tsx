@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import type { EngineSnapshot, BroadcastVisuals } from "@/lib/quiz-broadcast/types";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
-import { useChampionImage } from "@/hooks/useChampionImage";
+import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -431,10 +431,7 @@ function isSpoilerSubject(
   if (statCue) return false;
 
   // Identification: "identify this ability / name this spell" → icon is the clue.
-  if (
-    subject.kind === "spell" &&
-    /\b(identify|name|guess)\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)
-  ) {
+  if (subject.kind === "spell" && /\b(identify|name|guess)\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)) {
     return false;
   }
 
@@ -449,10 +446,7 @@ function isSpoilerSubject(
   }
 
   // Cross-kind: "which champion has this ability?" → ability icon spoils champion answer.
-  if (
-    subject.kind === "spell" &&
-    /\b(which|what)\s+champion\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)
-  ) {
+  if (subject.kind === "spell" && /\b(which|what)\s+champion\b[^.?!]*\b(ability|spell|passive|ultimate)\b/.test(text)) {
     return true;
   }
   if (/\bhas this (ability|spell|passive|ultimate|rune|item)\b/.test(text)) {
@@ -482,7 +476,9 @@ function deriveRevealSubject(
   const looksChamp =
     inferKindFromQuestion(question) === "champion" ||
     /\bchampion\b/.test(questionText(question)) ||
-    String(question.category ?? "").toLowerCase().includes("champion");
+    String(question.category ?? "")
+      .toLowerCase()
+      .includes("champion");
   if (base.kind === "none" && looksChamp) {
     return { kind: "champion", label: correctAnswer };
   }
