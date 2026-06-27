@@ -293,7 +293,8 @@ function classifySubject(question: QuizQuestion): {
       case "champion":
         return {
           kind: "champion",
-          label: subject.name,
+          label: subject.name ?? subject.id,
+          iconUrl: resolveQuizAssetUrl(subject.icon),
         };
 
       case "item":
@@ -865,7 +866,8 @@ const AnswerGrid = memo(function AnswerGrid({
       {choices.map((label, i) => {
         const isCorrect =
           revealActive && correctAnswer != null && normalizeLabel(label) === normalizeLabel(correctAnswer);
-        const isWrong = revealActive && correctAnswer != null && label !== correctAnswer;
+        const isWrong =
+          revealActive && correctAnswer != null && normalizeLabel(label) !== normalizeLabel(correctAnswer);
         return (
           <motion.div
             key={`${i}-${label}`}
