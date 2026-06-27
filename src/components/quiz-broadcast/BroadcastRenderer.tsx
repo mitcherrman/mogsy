@@ -276,52 +276,122 @@ function SceneRow({
 
 type SubjectKind = "champion" | "item" | "rune" | "spell" | "objective" | "none";
 
-function classifySubject(question: QuizQuestion): { kind: SubjectKind; label?: string; iconUrl?: string } {
-  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+function classifySubject(question: QuizQuestion): {
+  kind: SubjectKind;
+  label?: string;
+  iconUrl?: string;
+} {
+  const meta = (question.metadata ?? {}) as Record<string, any>;
+
+  //
+  // NEW KOS PATH
+  //
+  const subject = meta.assets?.subject;
+
+  if (subject) {
+    switch (subject.type) {
+      case "champion":
+        return {
+          kind: "champion",
+          label: subject.name,
+        };
+
+      case "item":
+        return {
+          kind: "item",
+          label: subject.name,
+          iconUrl: resolveQuizAssetUrl(subject.icon),
+        };
+
+      case "rune":
+        return {
+          kind: "rune",
+          label: subject.name,
+          iconUrl: resolveQuizAssetUrl(subject.icon),
+        };
+
+      case "spell":
+      case "ability":
+        return {
+          kind: "spell",
+          label: subject.name ?? subject.slot,
+          iconUrl: resolveQuizAssetUrl(subject.icon),
+        };
+
+      case "objective":
+        return {
+          kind: "objective",
+          label: subject.name,
+          iconUrl: resolveQuizAssetUrl(subject.icon),
+        };
+    }
+  }
+
+  //
+  // ---------- Legacy fallback ----------
+  //
+
   const champion = typeof meta.champion === "string" ? meta.champion : undefined;
+
   const itemIcon =
     (typeof meta.item_icon === "string" && meta.item_icon) ||
     (typeof meta.image_path === "string" && question.category?.toLowerCase().includes("item")
-      ? (meta.image_path as string)
+      ? meta.image_path
       : undefined);
+
   const runeIcon = typeof meta.rune_icon === "string" ? meta.rune_icon : undefined;
+
   const spellIcon =
     (typeof meta.spell_icon === "string" && meta.spell_icon) ||
-    (typeof meta.summoner_icon === "string" ? (meta.summoner_icon as string) : undefined) ||
-    (typeof meta.ability_icon === "string" ? (meta.ability_icon as string) : undefined);
+    (typeof meta.summoner_icon === "string" ? meta.summoner_icon : undefined) ||
+    (typeof meta.ability_icon === "string" ? meta.ability_icon : undefined);
+
   const objective = typeof meta.objective_image === "string" ? meta.objective_image : undefined;
 
   const category = String(question.category ?? "").toLowerCase();
   const text = questionText(question);
   const isChampionQuestion = category.includes("champion") || /\bchampion\b/.test(text);
 
-  if (champion && isChampionQuestion) {
-    return { kind: "champion", label: champion };
-  }
+  if (champion && isChampionQuestion) return { kind: "champion", label: champion };
 
   if (itemIcon && !isChampionQuestion)
-    return { kind: "item", label: (meta.item_name as string) || "Item", iconUrl: resolveQuizAssetUrl(itemIcon) };
+    return {
+      kind: "item",
+      label: meta.item_name || "Item",
+      iconUrl: resolveQuizAssetUrl(itemIcon),
+    };
+
   if (runeIcon)
-    return { kind: "rune", label: (meta.rune_name as string) || "Rune", iconUrl: resolveQuizAssetUrl(runeIcon) };
+    return {
+      kind: "rune",
+      label: meta.rune_name || "Rune",
+      iconUrl: resolveQuizAssetUrl(runeIcon),
+    };
+
   if (spellIcon)
     return {
       kind: "spell",
-      label: (meta.spell_name as string) || (meta.ability_name as string) || "Ability",
+      label: meta.spell_name || meta.ability_name || "Ability",
       iconUrl: resolveQuizAssetUrl(spellIcon),
     };
+
   if (objective)
     return {
       kind: "objective",
-      label: (meta.objective_name as string) || "Objective",
+      label: meta.objective_name || "Objective",
       iconUrl: resolveQuizAssetUrl(objective),
     };
-  if (champion) return { kind: "champion", label: champion };
-  // last-resort generic image. Never label champion-category images as item art.
+
+  if (champion)
+    return {
+      kind: "champion",
+      label: champion,
+    };
+
   if (question.image_path) {
     return {
       kind: isChampionQuestion ? "champion" : "item",
-      label: isChampionQuestion ? champion || "" : "",
-      iconUrl: isChampionQuestion ? resolveQuizAssetUrl(question.image_path) : resolveQuizAssetUrl(question.image_path),
+      iconUrl: resolveQuizAssetUrl(question.image_path),
     };
   }
 
