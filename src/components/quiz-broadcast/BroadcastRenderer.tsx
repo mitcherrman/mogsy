@@ -42,7 +42,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
   const v = snapshot.config.visuals;
   const phase = snapshot.phase;
   const q = snapshot.currentQuestion;
-  const revealActive = phase !== "question" && phase !== "idle" && !!snapshot.correctAnswer;
+  const revealActive = phase === "reveal" || phase === "explanation" || phase === "transition";
 
   return (
     <ShellFrame fit={fitContainer} aspect={v.aspect}>
