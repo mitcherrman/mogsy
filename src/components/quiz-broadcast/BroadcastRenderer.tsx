@@ -588,17 +588,36 @@ function deriveRevealSubject(
   correctAnswer: string | null,
 ): { kind: SubjectKind; label?: string; iconUrl?: string } {
   if (!correctAnswer) return base;
-  // If we have nothing to show but the question looks like a champion-id and the answer is a champion name,
-  // upgrade to a champion subject so the splash appears on reveal.
+
+  const meta = (question.metadata ?? {}) as Record<string, any>;
+  const presentation = meta.presentation;
+  const subject = meta.assets?.subject;
+
   const looksChamp =
     inferKindFromQuestion(question) === "champion" ||
     /\bchampion\b/.test(questionText(question)) ||
     String(question.category ?? "")
       .toLowerCase()
       .includes("champion");
+
+  // KOS answer-reveal champion questions should reveal the answer name explicitly.
+  if (
+    looksChamp &&
+    (presentation?.role === "answer" || presentation?.timing === "reveal" || base.kind === "champion")
+  ) {
+    return {
+      kind: "champion",
+      label: subject?.name ?? meta.champion_name ?? correctAnswer,
+      iconUrl: subject?.icon ? resolveQuizAssetUrl(subject.icon) : base.iconUrl,
+    };
+  }
+
+  // If we have nothing to show but the question looks like a champion-id and the answer is a champion name,
+  // upgrade to a champion subject so the splash appears on reveal.
   if (base.kind === "none" && looksChamp) {
     return { kind: "champion", label: correctAnswer };
   }
+
   return base;
 }
 
