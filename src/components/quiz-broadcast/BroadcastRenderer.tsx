@@ -510,9 +510,31 @@ function isSpoilerSubject(
   subject: { kind: SubjectKind; label?: string },
   correctAnswer: string | null,
 ): boolean {
-  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const meta = (question.metadata ?? {}) as Record<string, any>;
 
-  // Explicit overrides.
+  // KOS v1 presentation contract.
+  // If metadata.presentation exists, it is the source of truth.
+  const presentation = meta.presentation;
+  if (presentation && typeof presentation === "object") {
+    if (typeof presentation.spoiler === "boolean") {
+      return presentation.spoiler;
+    }
+
+    if (presentation.timing === "reveal" || presentation.role === "answer") {
+      return true;
+    }
+
+    if (
+      presentation.timing === "question" ||
+      presentation.role === "context" ||
+      presentation.role === "clue" ||
+      presentation.role === "decorative"
+    ) {
+      return false;
+    }
+  }
+
+  // Legacy explicit overrides.
   if (meta.spoiler === true || meta.subject_is_answer === true) return true;
   if (meta.spoiler === false || meta.subject_is_context === true) return false;
 
@@ -559,7 +581,6 @@ function isSpoilerSubject(
 
   return false;
 }
-
 function deriveRevealSubject(
   question: QuizQuestion,
   base: { kind: SubjectKind; label?: string; iconUrl?: string },
