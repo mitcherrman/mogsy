@@ -733,7 +733,10 @@ function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; label?: st
       />
       {/* gold inner trim */}
       <div className="pointer-events-none absolute inset-[6%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/35" />
-      <div className="mt-[8%] text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{kindLabel}</div>
+      <div className="mt-[8%] text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">
+        {" "}
+        {kindLabel}{" "}
+      </div>
       <div className="relative mt-[4%] flex items-center justify-center">
         <div className="absolute inset-0 rounded-2xl bg-[#d4b35a]/15 blur-2xl" />
         {!errored ? (
