@@ -750,8 +750,11 @@ function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; label?: st
         )}
       </div>
       {label && (
-        <div className="mt-[6%] max-w-[80%] text-center text-[1.6vmin] font-extrabold uppercase tracking-wide text-white">
-          {label}
+        <div className="mt-[6%] max-w-[86%] text-center">
+          <div className="text-[0.9vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]/80">{kindLabel}</div>
+          <div className="mt-1 text-[2.05vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
+            {label}
+          </div>
         </div>
       )}
       <div className="mt-3 h-[2px] w-[36%] bg-gradient-to-r from-transparent via-[#d4b35a]/70 to-transparent" />
