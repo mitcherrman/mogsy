@@ -863,7 +863,8 @@ const AnswerGrid = memo(function AnswerGrid({
   return (
     <div className={containerClass}>
       {choices.map((label, i) => {
-        const isCorrect = revealActive && correctAnswer != null && label === correctAnswer;
+        const isCorrect =
+          revealActive && correctAnswer != null && normalizeLabel(label) === normalizeLabel(correctAnswer);
         const isWrong = revealActive && correctAnswer != null && label !== correctAnswer;
         return (
           <motion.div
