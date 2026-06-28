@@ -396,7 +396,7 @@ function SceneRow({
             isVertical ? "h-[32%] w-full" : "h-full w-[28%]",
           ].join(" ")}
         >
-          <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
+          <ChampionSplashCard champion={String(revealName)} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-[2%]">
@@ -1608,10 +1608,10 @@ function FinalCountdownOverlay({
             {n === 1 && (
               <motion.div
                 aria-hidden
-                className="absolute inset-0 bg-white"
+                className="absolute inset-0 bg-[#f3dca0]"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.18, 0] }}
-                transition={{ duration: 0.35, delay: 0.42 }}
+                animate={{ opacity: [0, 0.06, 0] }}
+                transition={{ duration: 0.28, delay: 0.42 }}
               />
             )}
           </motion.div>
