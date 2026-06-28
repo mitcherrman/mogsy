@@ -872,10 +872,17 @@ function QuestionPanel({
               transition={{ duration: 0.34, ease: "easeOut" }}
               className="absolute inset-x-0 top-0 rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/12 via-emerald-300/8 to-cyan-300/8 p-[1.4%] text-[1.75vmin] leading-relaxed text-emerald-50 backdrop-blur-md"
             >
-              <div className="mb-1 text-[1.05vmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
-                Insight
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <div className="text-[1.05vmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
+                  Correct Answer
+                </div>
+                {correctAnswer && (
+                  <div className="text-[1.7vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                    {correctAnswer}
+                  </div>
+                )}
               </div>
-              {explanation}
+              <div className="text-emerald-50/95">{explanation}</div>
             </motion.div>
           )}
         </AnimatePresence>
