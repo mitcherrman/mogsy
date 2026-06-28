@@ -19,6 +19,15 @@ type Props = {
  * Champion questions use cinematic splash (lol_champion_assets/{C}/splash/0_default.jpg).
  * Item/rune/spell/objective questions use a small premium framed collectible card.
  * Question transitions slide horizontally; outer stage never remounts.
+ *
+ * V4 (Production Package):
+ *  - Dramatic 3·2·1 final countdown overlay (rAF-driven, no stage remount).
+ *  - Stronger reveal moment: scaled correct answer + emerald burst, dimmer wrong answers,
+ *    explanation card relabelled as the "Correct Answer / Insight" broadcast bug.
+ *  - Dedicated 9:16 Shorts layout (purpose-built, not a squeezed 16:9).
+ *  - 16:9 livestream layout unchanged in structure; only polish applied.
+ *  Intentionally NOT changed: BroadcastEngine, session persistence, channel sync,
+ *  Developer Tools, API/backend, classifySubject/isSpoilerSubject contracts.
  */
 export default function BroadcastRenderer({ snapshot, fitContainer = false }: Props) {
   if (!snapshot) {
@@ -43,6 +52,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
   const phase = snapshot.phase;
   const q = snapshot.currentQuestion;
   const revealActive = phase === "reveal" || phase === "explanation" || phase === "transition";
+  const isShorts = v.aspect === "9:16";
 
   return (
     <ShellFrame fit={fitContainer} aspect={v.aspect}>
@@ -53,21 +63,34 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <TopChrome snapshot={snapshot} />
 
       {/* Main scene — slide transitions, never remounts the stage */}
-      <div className="absolute inset-x-0 top-[7.5%] bottom-[9%] z-20 flex px-[2.5%]">
+      <div className={`absolute inset-x-0 z-20 flex ${isShorts ? "top-[6%] bottom-[6%] px-[3%]" : "top-[7.5%] bottom-[9%] px-[2.5%]"}`}>
         {phase === "idle" || !q ? (
           <IdleStanding />
         ) : (
           <SceneSlider questionId={String(q.id)}>
-            <SceneRow
-              question={q}
-              visuals={v}
-              revealActive={revealActive}
-              correctAnswer={snapshot.correctAnswer}
-              explanation={snapshot.explanation}
-              phaseStartedAt={snapshot.phaseStartedAt}
-              phaseDurationMs={snapshot.phaseDurationMs}
-              phaseIsQuestion={phase === "question"}
-            />
+            {isShorts ? (
+              <ShortsSceneRow
+                question={q}
+                visuals={v}
+                revealActive={revealActive}
+                correctAnswer={snapshot.correctAnswer}
+                explanation={snapshot.explanation}
+                phaseStartedAt={snapshot.phaseStartedAt}
+                phaseDurationMs={snapshot.phaseDurationMs}
+                phaseIsQuestion={phase === "question"}
+              />
+            ) : (
+              <SceneRow
+                question={q}
+                visuals={v}
+                revealActive={revealActive}
+                correctAnswer={snapshot.correctAnswer}
+                explanation={snapshot.explanation}
+                phaseStartedAt={snapshot.phaseStartedAt}
+                phaseDurationMs={snapshot.phaseDurationMs}
+                phaseIsQuestion={phase === "question"}
+              />
+            )}
           </SceneSlider>
         )}
       </div>
@@ -82,6 +105,13 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <div className="pointer-events-none absolute inset-0 z-[5]">
         <FXLayer revealActive={revealActive} />
       </div>
+
+      {/* Dramatic final 3·2·1 countdown — rAF-driven overlay, mounted once */}
+      <FinalCountdownOverlay
+        active={phase === "question"}
+        phaseStartedAt={snapshot.phaseStartedAt}
+        phaseDurationMs={snapshot.phaseDurationMs}
+      />
     </ShellFrame>
   );
 }
