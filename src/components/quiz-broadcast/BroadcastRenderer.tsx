@@ -63,7 +63,9 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <TopChrome snapshot={snapshot} />
 
       {/* Main scene — slide transitions, never remounts the stage */}
-      <div className={`absolute inset-x-0 z-20 flex ${isShorts ? "top-[6%] bottom-[6%] px-[3%]" : "top-[7.5%] bottom-[9%] px-[2.5%]"}`}>
+      <div
+        className={`absolute inset-x-0 z-20 flex ${isShorts ? "top-[6%] bottom-[6%] px-[3%]" : "top-[7.5%] bottom-[9%] px-[2.5%]"}`}
+      >
         {phase === "idle" || !q ? (
           <IdleStanding />
         ) : (
@@ -1291,57 +1293,176 @@ function FinalCountdownOverlay({
       setN(0);
       return;
     }
+
     let raf = 0;
     let last: 0 | 1 | 2 | 3 = 0;
+
     const tick = () => {
       const elapsed = Date.now() - phaseStartedAt;
       const remainingMs = phaseDurationMs - elapsed;
+
       let next: 0 | 1 | 2 | 3 = 0;
+
       if (remainingMs > 0 && remainingMs <= 3000) {
-        // Show 3 in (2000,3000], 2 in (1000,2000], 1 in (0,1000].
         if (remainingMs > 2000) next = 3;
         else if (remainingMs > 1000) next = 2;
         else next = 1;
       }
+
       if (next !== last) {
         last = next;
         setN(next);
       }
-      if (remainingMs > -200) raf = requestAnimationFrame(tick);
+
+      if (remainingMs > -150) raf = requestAnimationFrame(tick);
     };
+
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [active, phaseStartedAt, phaseDurationMs]);
 
+  const intensity = n === 3 ? 0.35 : n === 2 ? 0.5 : n === 1 ? 0.68 : 0;
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-[40] flex items-center justify-center">
-      <AnimatePresence mode="wait">
+    <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
+      <AnimatePresence>
         {n > 0 && (
           <motion.div
-            key={`fc-${n}`}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: [0.5, 1.18, 1], opacity: [0, 1, 0.95] }}
-            exit={{ scale: 1.35, opacity: 0 }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="relative flex items-center justify-center"
+            key={`director-${n}`}
+            className="absolute inset-0 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
           >
-            {/* radial pulse */}
+            {/* scene darken / tension */}
             <motion.div
               aria-hidden
-              className="absolute inset-0 -m-[18vmin] rounded-full bg-[radial-gradient(circle,rgba(243,220,160,0.28),transparent_65%)]"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: [0.55, 0], scale: [0.6, 1.4] }}
-              transition={{ duration: 0.95, ease: "easeOut" }}
+              className="absolute inset-0 bg-black"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: intensity }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22 }}
             />
-            <span
-              className="select-none bg-gradient-to-b from-white via-[#f9e9b3] to-[#c98d2a] bg-clip-text text-[22vmin] font-black leading-none tracking-tight text-transparent drop-shadow-[0_8px_40px_rgba(243,220,160,0.45)]"
-              style={{ WebkitTextStroke: "1px rgba(255,255,255,0.18)" }}
+
+            {/* gold edge pressure */}
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 [box-shadow:inset_0_0_0_2px_rgba(212,179,90,0.24),inset_0_0_120px_rgba(212,179,90,0.24)]"
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: [0, 0.9, 0.45], scale: [1.05, 1, 1.015] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: "easeOut" }}
+            />
+
+            {/* cinematic bars */}
+            <motion.div
+              aria-hidden
+              className="absolute inset-x-0 top-0 h-[9%] bg-gradient-to-b from-black/90 to-transparent"
+              initial={{ y: "-100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "-100%" }}
+              transition={{ duration: 0.22 }}
+            />
+            <motion.div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-[9%] bg-gradient-to-t from-black/90 to-transparent"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.22 }}
+            />
+
+            {/* shockwave */}
+            <motion.div
+              aria-hidden
+              className="absolute h-[44vmin] w-[44vmin] rounded-full border border-[#f3dca0]/60"
+              initial={{ opacity: 0.9, scale: 0.15 }}
+              animate={{ opacity: 0, scale: 2.4 }}
+              transition={{ duration: 0.85, ease: "easeOut" }}
+            />
+
+            {/* burst particles */}
+            <CountdownBurstParticles seed={n} />
+
+            {/* numeral */}
+            <motion.div
+              className="relative flex items-center justify-center"
+              initial={{ y: "-18vmin", scale: 0.55, opacity: 0, rotate: -3 }}
+              animate={{
+                y: 0,
+                scale: [0.55, n === 1 ? 1.38 : 1.24, 1.05],
+                opacity: [0, 1, 1],
+                rotate: [n === 1 ? 4 : -3, 0],
+              }}
+              exit={{ scale: 1.65, opacity: 0, rotate: 3 }}
+              transition={{ duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
             >
-              {n}
-            </span>
+              <div className="absolute -inset-[12vmin] rounded-full bg-[radial-gradient(circle,rgba(243,220,160,0.34),rgba(212,179,90,0.16)_38%,transparent_70%)] blur-xl" />
+              <div className="absolute -inset-[6vmin] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.12),transparent_68%)]" />
+
+              <span
+                className="relative select-none bg-gradient-to-b from-white via-[#fff0b8] to-[#b7791f] bg-clip-text text-[26vmin] font-black leading-none tracking-[-0.08em] text-transparent drop-shadow-[0_0_42px_rgba(243,220,160,0.85)]"
+                style={{
+                  WebkitTextStroke: "2px rgba(255,255,255,0.22)",
+                  textShadow: "0 0 32px rgba(243,220,160,0.75), 0 10px 48px rgba(0,0,0,0.85)",
+                }}
+              >
+                {n}
+              </span>
+            </motion.div>
+
+            {/* final-second flash */}
+            {n === 1 && (
+              <motion.div
+                aria-hidden
+                className="absolute inset-0 bg-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.18, 0] }}
+                transition={{ duration: 0.35, delay: 0.42 }}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function CountdownBurstParticles({ seed }: { seed: number }) {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: seed === 1 ? 34 : 24 }, (_, i) => {
+        const angle = (Math.PI * 2 * i) / (seed === 1 ? 34 : 24);
+        const dist = 24 + Math.random() * 34 + (seed === 1 ? 18 : 0);
+        return {
+          id: i,
+          x: Math.cos(angle) * dist,
+          y: Math.sin(angle) * dist,
+          size: 3 + Math.random() * 6,
+          delay: Math.random() * 0.08,
+        };
+      }),
+    [seed],
+  );
+
+  return (
+    <div className="absolute left-1/2 top-1/2">
+      {particles.map((p) => (
+        <motion.div
+          key={`${seed}-${p.id}`}
+          className="absolute rounded-full bg-gradient-to-br from-white via-[#f3dca0] to-[#b8893a] shadow-[0_0_14px_rgba(243,220,160,0.9)]"
+          style={{ width: p.size, height: p.size }}
+          initial={{ x: 0, y: 0, opacity: 0, scale: 0.2 }}
+          animate={{
+            x: `${p.x}vmin`,
+            y: `${p.y}vmin`,
+            opacity: [0, 1, 0],
+            scale: [0.2, 1.1, 0.2],
+          }}
+          transition={{ duration: 0.85, delay: p.delay, ease: "easeOut" }}
+        />
+      ))}
     </div>
   );
 }
@@ -1373,10 +1494,7 @@ function ShortsSceneRow({
 }) {
   const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
   return (
-    <div
-      className="relative flex h-full w-full flex-col gap-[1.5%]"
-      style={{ fontSize: `${visuals.fontScale}em` }}
-    >
+    <div className="relative flex h-full w-full flex-col gap-[1.5%]" style={{ fontSize: `${visuals.fontScale}em` }}>
       {/* Subject art — large hero region, ~34% of vertical canvas */}
       <div className="relative flex h-[34%] w-full shrink-0 items-center justify-center">
         <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
@@ -1408,12 +1526,7 @@ function ShortsSceneRow({
 
       {/* Answers — big mobile-friendly rows */}
       <div className="flex min-h-0 flex-1 flex-col justify-center px-[3%]">
-        <AnswerGrid
-          choices={choices}
-          style="rows"
-          revealActive={revealActive}
-          correctAnswer={correctAnswer}
-        />
+        <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
       </div>
 
       {/* Explanation card — bottom, only when revealed */}
@@ -1459,9 +1572,7 @@ function ShortsSceneRow({
           {visuals.showWebsite && (
             <div className="flex flex-col text-left">
               <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">
-                {visuals.websiteUrl}
-              </div>
+              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
             </div>
           )}
         </div>
