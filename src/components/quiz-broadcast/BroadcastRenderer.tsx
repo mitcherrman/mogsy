@@ -352,9 +352,13 @@ function SceneRow({
     /\bname the champion\b/.test(text) ||
     /\bidentify the champion\b/.test(text);
 
+  const revealName =
+    correctAnswer || (typeof meta.champion_name === "string" ? meta.champion_name : undefined) || subject.label;
+
   const isChampionReveal =
     revealActive &&
-    !!correctAnswer &&
+    subject.kind === "champion" &&
+    !!revealName &&
     (presentation?.role === "answer" || presentation?.timing === "reveal" || isChampionAnswerPrompt);
 
   return (
@@ -456,7 +460,7 @@ function SceneRow({
               <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
             </motion.div>
 
-            {correctAnswer && (
+            {revealName && (
               <motion.div
                 className="absolute bottom-[6%] left-1/2 z-40 w-[68%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2.2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
                 initial={{ opacity: 0, y: 34, scale: 0.92 }}
@@ -1837,7 +1841,7 @@ function ShortsSceneRow({
               />
               <div className="mb-1 flex items-baseline justify-between gap-3">
                 <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
-                {correctAnswer && (
+                {revealName && (
                   <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
                     {correctAnswer}
                   </div>
