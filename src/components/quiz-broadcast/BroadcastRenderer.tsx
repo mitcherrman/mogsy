@@ -472,7 +472,7 @@ function SceneRow({
                   Correct Answer
                 </div>
                 <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6.8vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
-                  {correctAnswer}
+                  {revealName}
                 </div>
                 <div className="mx-auto mt-3 h-[2px] w-[52%] bg-gradient-to-r from-transparent via-[#d4b35a] to-transparent" />
               </motion.div>
