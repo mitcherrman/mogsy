@@ -342,6 +342,7 @@ function SceneRow({
   });
 
   const subject = useMemo(() => classifySubject(question), [question]);
+  const isChampionScene = subject.kind === "champion";
   const meta = (question.metadata ?? {}) as Record<string, any>;
   const presentation = meta.presentation;
   const text = questionText(question);
@@ -403,7 +404,7 @@ function SceneRow({
             question={question}
             visuals={visuals}
             revealActive={revealActive}
-            correctAnswer={revealName}
+            correctAnswer={correctAnswer}
             explanation={explanation}
             phaseStartedAt={phaseStartedAt}
             phaseDurationMs={phaseDurationMs}
@@ -1848,7 +1849,7 @@ function ShortsSceneRow({
                 <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
                 {revealName && (
                   <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
-                    {correctAnswer}
+                    {revealName}
                   </div>
                 )}
               </div>
