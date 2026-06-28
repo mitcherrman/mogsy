@@ -342,7 +342,6 @@ function SceneRow({
   });
 
   const subject = useMemo(() => classifySubject(question), [question]);
-  const isChampionScene = subject.kind === "champion";
   const meta = (question.metadata ?? {}) as Record<string, any>;
   const presentation = meta.presentation;
   const text = questionText(question);
@@ -367,39 +366,65 @@ function SceneRow({
       className="relative h-full w-full overflow-hidden will-change-transform"
       style={{ fontSize: `${visuals.fontScale}em` }}
       animate={{
-        scale: revealActive ? 1.02 : camera.scene.scale,
+        scale: revealActive ? 1.015 : camera.scene.scale,
       }}
-      transition={{
-        type: "spring",
-        stiffness: revealActive ? 70 : 95,
-        damping: revealActive ? 18 : 22,
-        mass: 0.9,
-      }}
+      transition={{ type: "spring", stiffness: 82, damping: 22, mass: 0.9 }}
     >
-      {/* Base quiz layout */}
       <motion.div
         className={["relative flex h-full w-full gap-[1.6%]", isVertical ? "flex-col" : "flex-row"].join(" ")}
         animate={{
-          x: isChampionReveal ? "42vw" : 0,
-          opacity: isChampionReveal ? 0 : 1,
-          scale: isChampionReveal ? 0.94 : 1,
-          filter: isChampionReveal ? "blur(5px)" : "blur(0px)",
+          x: isChampionReveal ? "7vw" : 0,
+          scale: isChampionReveal ? 1.08 : 1,
         }}
         transition={{
-          duration: isChampionReveal ? 0.55 : 0.35,
-          ease: [0.22, 1, 0.36, 1],
+          duration: isChampionReveal ? 0.85 : 0.35,
+          ease: [0.16, 1, 0.3, 1],
         }}
       >
-        <div
+        <motion.div
           className={[
-            "flex shrink-0 items-center justify-center",
+            "relative flex shrink-0 items-center justify-center overflow-hidden",
             isVertical ? "h-[32%] w-full" : "h-full w-[28%]",
           ].join(" ")}
+          animate={{
+            width: !isVertical && isChampionReveal ? "82%" : !isVertical ? "28%" : "100%",
+            height: isVertical ? (isChampionReveal ? "62%" : "32%") : "100%",
+            scale: isChampionReveal ? 1.02 : 1,
+          }}
+          transition={{ duration: isChampionReveal ? 0.9 : 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <ChampionSplashCard champion={String(revealName)} />
-        </div>
+          <SubjectPanel question={question} revealActive={revealActive} correctAnswer={revealName ?? correctAnswer} />
 
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-[2%]">
+          <AnimatePresence>
+            {isChampionReveal && revealName && (
+              <motion.div
+                key="persistent-champion-nameplate"
+                className="pointer-events-none absolute bottom-[5%] left-1/2 z-30 w-[72%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
+                initial={{ opacity: 0, y: 34, scale: 0.92 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                transition={{ delay: 0.45, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="text-[1.15vmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
+                  Correct Answer
+                </div>
+                <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
+                  {revealName}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        <motion.div
+          className="flex min-w-0 flex-1 flex-col justify-center gap-[2%]"
+          animate={{
+            x: isChampionReveal ? "38vw" : 0,
+            opacity: isChampionReveal ? 0 : 1,
+            filter: isChampionReveal ? "blur(6px)" : "blur(0px)",
+          }}
+          transition={{ duration: isChampionReveal ? 0.55 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+        >
           <QuestionPanel
             question={question}
             visuals={visuals}
@@ -410,85 +435,26 @@ function SceneRow({
             phaseDurationMs={phaseDurationMs}
             phaseIsQuestion={phaseIsQuestion}
           />
-        </div>
+        </motion.div>
 
         <motion.div
           className={[
             "flex shrink-0 items-center justify-center",
             isVertical ? "h-[14%] w-full" : "h-full w-[20%]",
           ].join(" ")}
-          animate={camera.qr}
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          animate={{
+            x: isChampionReveal ? "30vw" : 0,
+            opacity: isChampionReveal ? 0 : camera.qr.opacity,
+            scale: isChampionReveal ? 0.92 : camera.qr.scale,
+          }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
         >
           <PlayAlongPanel visuals={visuals} />
         </motion.div>
       </motion.div>
-
-      {/* Champion reveal takeover: splash fills screen, question/answers/QR slide off right */}
-      <AnimatePresence>
-        {isChampionReveal && (
-          <motion.div
-            key="champion-reveal-takeover"
-            className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-          >
-            <motion.div
-              aria-hidden
-              className="absolute inset-0 bg-black/55"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-
-            <motion.div
-              className="relative h-[94%] w-[86%]"
-              initial={{ x: "-24vw", scale: 1.35, opacity: 0 }}
-              animate={{
-                x: 0,
-                scale: [1.35, 1.08, 1],
-                opacity: 1,
-              }}
-              exit={{ x: "-10vw", scale: 1.04, opacity: 0 }}
-              transition={{
-                duration: 0.9,
-                ease: [0.16, 1, 0.3, 1],
-                times: [0, 0.62, 1],
-              }}
-            >
-              <SubjectPanel
-                question={question}
-                revealActive={revealActive}
-                correctAnswer={revealName ?? correctAnswer}
-              />
-            </motion.div>
-
-            {revealName && (
-              <motion.div
-                className="absolute bottom-[6%] left-1/2 z-40 w-[68%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2.2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
-                initial={{ opacity: 0, y: 34, scale: 0.92 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                transition={{ delay: 0.42, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="text-[1.25vmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
-                  Correct Answer
-                </div>
-                <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6.8vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
-                  {revealName}
-                </div>
-                <div className="mx-auto mt-3 h-[2px] w-[52%] bg-gradient-to-r from-transparent via-[#d4b35a] to-transparent" />
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
-
 /* ────────────────────────────────────────────────────────────────────────
    SubjectPanel — champion splash OR premium framed collectible
    ──────────────────────────────────────────────────────────────────────── */
