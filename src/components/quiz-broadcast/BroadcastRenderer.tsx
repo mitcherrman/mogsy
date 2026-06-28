@@ -457,7 +457,11 @@ function SceneRow({
                 times: [0, 0.62, 1],
               }}
             >
-              <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
+              <SubjectPanel
+                question={question}
+                revealActive={revealActive}
+                correctAnswer={revealName ?? correctAnswer}
+              />
             </motion.div>
 
             {revealName && (
