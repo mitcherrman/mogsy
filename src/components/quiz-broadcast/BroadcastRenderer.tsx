@@ -1270,3 +1270,202 @@ function choiceLabel(c: unknown): string {
   if (c && typeof c === "object" && "label" in c) return String((c as { label: string }).label);
   return String(c ?? "");
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   FinalCountdownOverlay — rAF-driven dramatic 3·2·1
+   ──────────────────────────────────────────────────────────────────────── */
+
+function FinalCountdownOverlay({
+  active,
+  phaseStartedAt,
+  phaseDurationMs,
+}: {
+  active: boolean;
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+}) {
+  const [n, setN] = useState<0 | 1 | 2 | 3>(0);
+
+  useEffect(() => {
+    if (!active || phaseDurationMs <= 0) {
+      setN(0);
+      return;
+    }
+    let raf = 0;
+    let last: 0 | 1 | 2 | 3 = 0;
+    const tick = () => {
+      const elapsed = Date.now() - phaseStartedAt;
+      const remainingMs = phaseDurationMs - elapsed;
+      let next: 0 | 1 | 2 | 3 = 0;
+      if (remainingMs > 0 && remainingMs <= 3000) {
+        // Show 3 in (2000,3000], 2 in (1000,2000], 1 in (0,1000].
+        if (remainingMs > 2000) next = 3;
+        else if (remainingMs > 1000) next = 2;
+        else next = 1;
+      }
+      if (next !== last) {
+        last = next;
+        setN(next);
+      }
+      if (remainingMs > -200) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, phaseStartedAt, phaseDurationMs]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[40] flex items-center justify-center">
+      <AnimatePresence mode="wait">
+        {n > 0 && (
+          <motion.div
+            key={`fc-${n}`}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: [0.5, 1.18, 1], opacity: [0, 1, 0.95] }}
+            exit={{ scale: 1.35, opacity: 0 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="relative flex items-center justify-center"
+          >
+            {/* radial pulse */}
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 -m-[18vmin] rounded-full bg-[radial-gradient(circle,rgba(243,220,160,0.28),transparent_65%)]"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: [0.55, 0], scale: [0.6, 1.4] }}
+              transition={{ duration: 0.95, ease: "easeOut" }}
+            />
+            <span
+              className="select-none bg-gradient-to-b from-white via-[#f9e9b3] to-[#c98d2a] bg-clip-text text-[22vmin] font-black leading-none tracking-tight text-transparent drop-shadow-[0_8px_40px_rgba(243,220,160,0.45)]"
+              style={{ WebkitTextStroke: "1px rgba(255,255,255,0.18)" }}
+            >
+              {n}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   ShortsSceneRow — purpose-built 9:16 layout for TikTok/Reels/Shorts
+   Subject art dominates top, question + answers stack vertically below,
+   QR/CTA collapsed to a slim footer chip.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function ShortsSceneRow({
+  question,
+  visuals,
+  revealActive,
+  correctAnswer,
+  explanation,
+  phaseStartedAt,
+  phaseDurationMs,
+  phaseIsQuestion,
+}: {
+  question: QuizQuestion;
+  visuals: BroadcastVisuals;
+  revealActive: boolean;
+  correctAnswer: string | null;
+  explanation: string | null;
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+  phaseIsQuestion: boolean;
+}) {
+  const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
+  return (
+    <div
+      className="relative flex h-full w-full flex-col gap-[1.5%]"
+      style={{ fontSize: `${visuals.fontScale}em` }}
+    >
+      {/* Subject art — large hero region, ~34% of vertical canvas */}
+      <div className="relative flex h-[34%] w-full shrink-0 items-center justify-center">
+        <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
+      </div>
+
+      {/* Question text — large, centered */}
+      <div className="px-[3%]">
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="text-center text-[3.6vmin] font-black leading-[1.18] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+        >
+          <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
+            {question.question_text}
+          </span>
+        </motion.h1>
+      </div>
+
+      {/* Countdown bar — slim, full width */}
+      <div className="px-[5%]">
+        <CountdownInline
+          active={phaseIsQuestion}
+          style="bar"
+          phaseStartedAt={phaseStartedAt}
+          phaseDurationMs={phaseDurationMs}
+        />
+      </div>
+
+      {/* Answers — big mobile-friendly rows */}
+      <div className="flex min-h-0 flex-1 flex-col justify-center px-[3%]">
+        <AnswerGrid
+          choices={choices}
+          style="rows"
+          revealActive={revealActive}
+          correctAnswer={correctAnswer}
+        />
+      </div>
+
+      {/* Explanation card — bottom, only when revealed */}
+      <div className="relative min-h-[10%] px-[3%]">
+        <AnimatePresence>
+          {revealActive && explanation && visuals.showTips && (
+            <motion.div
+              key="reveal-shorts"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.34, ease: "easeOut" }}
+              className="rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/15 via-emerald-300/10 to-cyan-300/10 p-[2.5%] text-[2vmin] leading-snug text-emerald-50 backdrop-blur-md"
+            >
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <div className="text-[1.2vmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
+                  Correct Answer
+                </div>
+                {correctAnswer && (
+                  <div className="text-[2.1vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                    {correctAnswer}
+                  </div>
+                )}
+              </div>
+              <div className="text-emerald-50/95">{explanation}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* CTA footer chip — small, non-dominant */}
+      {(visuals.showQrCode || visuals.showWebsite) && (
+        <div className="flex shrink-0 items-center justify-center gap-3 pb-[1%]">
+          {visuals.showQrCode && (
+            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+                alt=""
+                className="h-[5vmin] w-[5vmin]"
+              />
+            </div>
+          )}
+          {visuals.showWebsite && (
+            <div className="flex flex-col text-left">
+              <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
+              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">
+                {visuals.websiteUrl}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
