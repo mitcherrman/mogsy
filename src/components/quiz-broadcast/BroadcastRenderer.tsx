@@ -1754,7 +1754,7 @@ function ShortsSceneRow({
 
         {/* Nameplate over hero area on reveal for clippability */}
         <AnimatePresence>
-          {revealActive && correctAnswer && (
+          {revealActive && revealName && (
             <motion.div
               key="shorts-hero-nameplate"
               className="pointer-events-none absolute bottom-[5%] left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-xl border border-[#d4b35a]/45 bg-black/55 px-[4%] py-[1.8%] text-center shadow-[0_14px_36px_rgba(0,0,0,0.65)] backdrop-blur-md"
@@ -1767,7 +1767,7 @@ function ShortsSceneRow({
                 Correct Answer
               </div>
               <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
-                {correctAnswer}
+                {revealName}
               </div>
             </motion.div>
           )}
