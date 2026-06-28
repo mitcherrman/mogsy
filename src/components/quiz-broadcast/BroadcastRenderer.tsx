@@ -241,6 +241,75 @@ function SceneSlider({ questionId, children }: { questionId: string; children: R
   );
 }
 
+function useBroadcastCamera({
+  revealActive,
+  phaseIsQuestion,
+  phaseStartedAt,
+  phaseDurationMs,
+  isShorts,
+}: {
+  revealActive: boolean;
+  phaseIsQuestion: boolean;
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+  isShorts: boolean;
+}) {
+  const [finalCountdownActive, setFinalCountdownActive] = useState(false);
+
+  useEffect(() => {
+    if (!phaseIsQuestion || phaseDurationMs <= 0) {
+      setFinalCountdownActive(false);
+      return;
+    }
+
+    let raf = 0;
+
+    const tick = () => {
+      const remainingMs = phaseDurationMs - (Date.now() - phaseStartedAt);
+      const active = remainingMs > 0 && remainingMs <= 3000;
+      setFinalCountdownActive((prev) => (prev === active ? prev : active));
+
+      if (remainingMs > 0) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phaseIsQuestion, phaseStartedAt, phaseDurationMs]);
+
+  if (isShorts) {
+    return {
+      finalCountdownActive,
+      scene: {
+        x: 0,
+        y: revealActive ? "-2.5%" : 0,
+        scale: revealActive ? 1.045 : finalCountdownActive ? 1.018 : 1,
+        opacity: 1,
+      },
+      qr: {
+        opacity: revealActive || finalCountdownActive ? 0 : 1,
+        scale: revealActive || finalCountdownActive ? 0.92 : 1,
+        pointerEvents: revealActive || finalCountdownActive ? "none" : "auto",
+      } as const,
+    };
+  }
+
+  return {
+    finalCountdownActive,
+    scene: {
+      // Positive x moves the full scene right, visually panning camera toward the left champion panel.
+      x: revealActive ? "5.2vw" : 0,
+      y: 0,
+      scale: revealActive ? 1.065 : finalCountdownActive ? 1.018 : 1,
+      opacity: 1,
+    },
+    qr: {
+      opacity: revealActive || finalCountdownActive ? 0 : 1,
+      scale: revealActive || finalCountdownActive ? 0.9 : 1,
+      pointerEvents: revealActive || finalCountdownActive ? "none" : "auto",
+    } as const,
+  };
+}
+
 /* ────────────────────────────────────────────────────────────────────────
    SceneRow — three-column composition
    ──────────────────────────────────────────────────────────────────────── */
@@ -265,10 +334,28 @@ function SceneRow({
   phaseIsQuestion: boolean;
 }) {
   const isVertical = visuals.aspect === "9:16";
+  const camera = useBroadcastCamera({
+    revealActive,
+    phaseIsQuestion,
+    phaseStartedAt,
+    phaseDurationMs,
+    isShorts: false,
+  });
+
   return (
-    <div
-      className={["relative flex h-full w-full gap-[1.6%]", isVertical ? "flex-col" : "flex-row"].join(" ")}
-      style={{ fontSize: `${visuals.fontScale}em` }}
+    <motion.div
+      className={[
+        "relative flex h-full w-full gap-[1.6%] will-change-transform",
+        isVertical ? "flex-col" : "flex-row",
+      ].join(" ")}
+      style={{ fontSize: `${visuals.fontScale}em`, transformOrigin: "30% 50%" }}
+      animate={camera.scene}
+      transition={{
+        type: "spring",
+        stiffness: revealActive ? 72 : 95,
+        damping: revealActive ? 18 : 22,
+        mass: 0.9,
+      }}
     >
       <div
         className={["flex shrink-0 items-center justify-center", isVertical ? "h-[32%] w-full" : "h-full w-[28%]"].join(
@@ -291,14 +378,16 @@ function SceneRow({
         />
       </div>
 
-      <div
+      <motion.div
         className={["flex shrink-0 items-center justify-center", isVertical ? "h-[14%] w-full" : "h-full w-[20%]"].join(
           " ",
         )}
+        animate={camera.qr}
+        transition={{ duration: 0.22, ease: "easeOut" }}
       >
         <PlayAlongPanel visuals={visuals} />
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -1493,60 +1582,169 @@ function ShortsSceneRow({
   phaseIsQuestion: boolean;
 }) {
   const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
-  return (
-    <div className="relative flex h-full w-full flex-col gap-[1.5%]" style={{ fontSize: `${visuals.fontScale}em` }}>
-      {/* Subject art — large hero region, ~34% of vertical canvas */}
-      <div className="relative flex h-[34%] w-full shrink-0 items-center justify-center">
-        <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
-      </div>
+  const camera = useBroadcastCamera({
+    revealActive,
+    phaseIsQuestion,
+    phaseStartedAt,
+    phaseDurationMs,
+    isShorts: true,
+  });
 
-      {/* Question text — large, centered */}
-      <div className="px-[3%]">
+  const subject = useMemo(() => classifySubject(question), [question]);
+  const isChampionScene = subject.kind === "champion";
+
+  return (
+    <motion.div
+      className="relative flex h-full w-full flex-col overflow-hidden will-change-transform"
+      style={{
+        fontSize: `${visuals.fontScale}em`,
+        transformOrigin: revealActive && isChampionScene ? "50% 18%" : "50% 28%",
+      }}
+      animate={{
+        ...camera.scene,
+        y: revealActive && isChampionScene ? "-3.2%" : camera.scene.y,
+        scale: revealActive && isChampionScene ? 1.065 : camera.scene.scale,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: revealActive ? 74 : 92,
+        damping: revealActive ? 18 : 21,
+        mass: 0.9,
+      }}
+    >
+      {/* Ambient directed background for vertical clips */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_14%,rgba(212,179,90,0.18),transparent_38%),radial-gradient(circle_at_50%_78%,rgba(34,211,238,0.08),transparent_42%)]"
+        animate={{
+          opacity: revealActive ? 0.7 : phaseIsQuestion ? 0.38 : 0.45,
+          scale: revealActive ? 1.08 : 1,
+        }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
+      />
+
+      {/* Reveal spotlight */}
+      <AnimatePresence>
+        {revealActive && (
+          <motion.div
+            key="shorts-reveal-spotlight"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_18%,rgba(243,220,160,0.20),transparent_34%),radial-gradient(circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.38)_100%)]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Subject art — hero region. Expands during champion reveals for a camera-like push-in. */}
+      <motion.div
+        className="relative z-10 flex w-full shrink-0 items-center justify-center px-[3%] pt-[2.2%]"
+        animate={{
+          height: revealActive && isChampionScene ? "43%" : "34%",
+          scale: revealActive && isChampionScene ? 1.035 : 1,
+        }}
+        transition={{ type: "spring", stiffness: 78, damping: 18, mass: 0.85 }}
+      >
+        <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
+
+        {/* Nameplate over hero area on reveal for clippability */}
+        <AnimatePresence>
+          {revealActive && correctAnswer && (
+            <motion.div
+              key="shorts-hero-nameplate"
+              className="pointer-events-none absolute bottom-[5%] left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-xl border border-[#d4b35a]/45 bg-black/55 px-[4%] py-[1.8%] text-center shadow-[0_14px_36px_rgba(0,0,0,0.65)] backdrop-blur-md"
+              initial={{ opacity: 0, y: 16, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="text-[1.15vmin] font-bold uppercase tracking-[0.38em] text-[#e8c97a]/90">
+                Correct Answer
+              </div>
+              <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
+                {correctAnswer}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Question text — compresses slightly on reveal so the hero answer can own the frame */}
+      <motion.div
+        className="relative z-10 px-[4%]"
+        animate={{
+          opacity: revealActive ? 0.82 : 1,
+          y: revealActive ? -4 : 0,
+          scale: revealActive ? 0.96 : 1,
+        }}
+        transition={{ duration: 0.28, ease: "easeOut" }}
+      >
         <motion.h1
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="text-center text-[3.6vmin] font-black leading-[1.18] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+          transition={{ duration: 0.42, ease: "easeOut" }}
+          className="text-center text-[3.75vmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
         >
           <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
             {question.question_text}
           </span>
         </motion.h1>
-      </div>
+      </motion.div>
 
-      {/* Countdown bar — slim, full width */}
-      <div className="px-[5%]">
+      {/* Countdown bar — hidden once reveal owns the scene */}
+      <motion.div
+        className="relative z-10 px-[6%] py-[1.2%]"
+        animate={{
+          opacity: revealActive ? 0 : 1,
+          y: revealActive ? -6 : 0,
+        }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
         <CountdownInline
           active={phaseIsQuestion}
           style="bar"
           phaseStartedAt={phaseStartedAt}
           phaseDurationMs={phaseDurationMs}
         />
-      </div>
+      </motion.div>
 
-      {/* Answers — big mobile-friendly rows */}
-      <div className="flex min-h-0 flex-1 flex-col justify-center px-[3%]">
+      {/* Answers — mobile-friendly rows with stronger reveal priority */}
+      <motion.div
+        className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-[3.5%]"
+        animate={{
+          y: revealActive ? -8 : 0,
+          scale: revealActive ? 0.985 : 1,
+        }}
+        transition={{ duration: 0.32, ease: "easeOut" }}
+      >
         <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
-      </div>
+      </motion.div>
 
-      {/* Explanation card — bottom, only when revealed */}
-      <div className="relative min-h-[10%] px-[3%]">
+      {/* Explanation card — compact lower-third style for shorts clips */}
+      <div className="relative z-10 min-h-[11%] px-[3.5%]">
         <AnimatePresence>
           {revealActive && explanation && visuals.showTips && (
             <motion.div
               key="reveal-shorts"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.34, ease: "easeOut" }}
-              className="rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/15 via-emerald-300/10 to-cyan-300/10 p-[2.5%] text-[2vmin] leading-snug text-emerald-50 backdrop-blur-md"
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+              className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95vmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
             >
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+                initial={{ x: "-20%", opacity: 0 }}
+                animate={{ x: "260%", opacity: [0, 0.7, 0] }}
+                transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
+              />
               <div className="mb-1 flex items-baseline justify-between gap-3">
-                <div className="text-[1.2vmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
-                  Correct Answer
-                </div>
+                <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
                 {correctAnswer && (
-                  <div className="text-[2.1vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                  <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
                     {correctAnswer}
                   </div>
                 )}
@@ -1557,26 +1755,35 @@ function ShortsSceneRow({
         </AnimatePresence>
       </div>
 
-      {/* CTA footer chip — small, non-dominant */}
-      {(visuals.showQrCode || visuals.showWebsite) && (
-        <div className="flex shrink-0 items-center justify-center gap-3 pb-[1%]">
-          {visuals.showQrCode && (
-            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
-                alt=""
-                className="h-[5vmin] w-[5vmin]"
-              />
-            </div>
-          )}
-          {visuals.showWebsite && (
-            <div className="flex flex-col text-left">
-              <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      {/* CTA footer chip — disappears during final countdown/reveal so shorts are cleaner */}
+      <AnimatePresence>
+        {(visuals.showQrCode || visuals.showWebsite) && (
+          <motion.div
+            key="shorts-cta"
+            className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
+            animate={camera.qr}
+            initial={{ opacity: 0, y: 8 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {visuals.showQrCode && (
+              <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+                  alt=""
+                  className="h-[5vmin] w-[5vmin]"
+                />
+              </div>
+            )}
+            {visuals.showWebsite && (
+              <div className="flex flex-col text-left">
+                <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
+                <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
