@@ -940,12 +940,30 @@ const AnswerGrid = memo(function AnswerGrid({
               "relative flex min-h-[7vmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.3vmin] font-bold backdrop-blur-md",
               "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] duration-[320ms] ease-out",
               isCorrect
-                ? "border-emerald-300/85 bg-gradient-to-br from-emerald-400/25 via-emerald-400/15 to-cyan-400/15 text-emerald-50 shadow-[0_0_50px_rgba(16,185,129,0.5)] scale-[1.02]"
+                ? "border-emerald-300/90 bg-gradient-to-br from-emerald-400/35 via-emerald-400/22 to-cyan-400/22 text-white shadow-[0_0_90px_rgba(16,185,129,0.7)] scale-[1.06] -translate-y-[0.4vmin] z-[2]"
                 : isWrong
-                  ? "border-white/8 bg-white/[0.03] text-white/35 opacity-55 [filter:grayscale(0.55)]"
+                  ? "border-white/8 bg-white/[0.02] text-white/25 opacity-35 [filter:grayscale(0.85)_blur(0.5px)]"
                   : "border-[#d4b35a]/25 bg-gradient-to-br from-white/[0.07] to-white/[0.02] text-white hover:border-[#d4b35a]/45",
             ].join(" ")}
           >
+            {isCorrect && (
+              <>
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-2 rounded-2xl bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.55),transparent_70%)]"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: [0, 0.9, 0.5], scale: [0.6, 1.15, 1] }}
+                  transition={{ duration: 0.9, ease: "easeOut" }}
+                />
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-1 rounded-xl bg-[radial-gradient(circle_at_center,rgba(243,220,160,0.45),transparent_70%)]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.7, 0.3] }}
+                  transition={{ duration: 1.1, ease: "easeOut" }}
+                />
+              </>
+            )}
             {/* subtle inner gold ring */}
             <div
               className={`pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ${
@@ -968,8 +986,8 @@ const AnswerGrid = memo(function AnswerGrid({
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-xl"
                 initial={{ boxShadow: "0 0 0 0 rgba(16,185,129,0.5)" }}
-                animate={{ boxShadow: "0 0 0 14px rgba(16,185,129,0)" }}
-                transition={{ duration: 1.1, ease: "easeOut" }}
+                animate={{ boxShadow: "0 0 0 22px rgba(16,185,129,0)" }}
+                transition={{ duration: 1.4, ease: "easeOut" }}
               />
             )}
           </motion.div>
