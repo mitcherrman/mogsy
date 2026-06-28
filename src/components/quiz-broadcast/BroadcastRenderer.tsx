@@ -403,7 +403,7 @@ function SceneRow({
             question={question}
             visuals={visuals}
             revealActive={revealActive}
-            correctAnswer={correctAnswer}
+            correctAnswer={revealName}
             explanation={explanation}
             phaseStartedAt={phaseStartedAt}
             phaseDurationMs={phaseDurationMs}
@@ -1692,8 +1692,9 @@ function ShortsSceneRow({
     isShorts: true,
   });
 
-  const subject = useMemo(() => classifySubject(question), [question]);
-  const isChampionScene = subject.kind === "champion";
+  const meta = (question.metadata ?? {}) as Record<string, any>;
+  const revealName =
+    correctAnswer || (typeof meta.champion_name === "string" ? meta.champion_name : undefined) || subject.label;
 
   return (
     <motion.div
