@@ -344,10 +344,18 @@ function SceneRow({
   const subject = useMemo(() => classifySubject(question), [question]);
   const meta = (question.metadata ?? {}) as Record<string, any>;
   const presentation = meta.presentation;
+  const text = questionText(question);
+
+  const isChampionAnswerPrompt =
+    /\bwhich champion\b/.test(text) ||
+    /\bwhat champion\b/.test(text) ||
+    /\bname the champion\b/.test(text) ||
+    /\bidentify the champion\b/.test(text);
+
   const isChampionReveal =
     revealActive &&
-    subject.kind === "champion" &&
-    (presentation?.role === "answer" || presentation?.timing === "reveal");
+    !!correctAnswer &&
+    (presentation?.role === "answer" || presentation?.timing === "reveal" || isChampionAnswerPrompt);
 
   return (
     <motion.div
@@ -534,7 +542,12 @@ function classifySubject(question: QuizQuestion): {
   // ---------- Legacy fallback ----------
   //
 
-  const champion = typeof meta.champion === "string" ? meta.champion : undefined;
+  const champion =
+    typeof meta.champion === "string"
+      ? meta.champion
+      : typeof meta.champion_name === "string"
+        ? meta.champion_name
+        : undefined;
 
   const itemIcon =
     (typeof meta.item_icon === "string" && meta.item_icon) ||
