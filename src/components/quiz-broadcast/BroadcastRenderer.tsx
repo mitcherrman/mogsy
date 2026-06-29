@@ -1,10 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useTransform } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import type { EngineSnapshot, BroadcastVisuals } from "@/lib/quiz-broadcast/types";
+import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
+import { useRevealTimeline } from "./useRevealTimeline";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -12,22 +14,25 @@ type Props = {
 };
 
 /**
- * BroadcastRenderer V3 — Cinematic Broadcast Identity.
+ * BroadcastRenderer V5 — Broadcast Camera Timeline.
  * Presentation-only. No engine/session/channel/studio changes.
  *
  * Layout: 28% subject | 52% question | 20% play-along CTA.
- * Champion questions use cinematic splash (lol_champion_assets/{C}/splash/0_default.jpg).
- * Item/rune/spell/objective questions use a small premium framed collectible card.
+ * Champion questions use cinematic splash art.
+ * Item/rune/spell/objective questions use a premium framed collectible card.
  * Question transitions slide horizontally; outer stage never remounts.
  *
- * V4 (Production Package):
- *  - Dramatic 3·2·1 final countdown overlay (rAF-driven, no stage remount).
- *  - Stronger reveal moment: scaled correct answer + emerald burst, dimmer wrong answers,
- *    explanation card relabelled as the "Correct Answer / Insight" broadcast bug.
- *  - Dedicated 9:16 Shorts layout (purpose-built, not a squeezed 16:9).
- *  - 16:9 livestream layout unchanged in structure; only polish applied.
+ * V5 (Broadcast Camera System):
+ *  - useRevealTimeline: single RAF loop drives all animation via MotionValues.
+ *    No React re-renders during reveal sequence → no flicker, no UI-state feel.
+ *  - Reveal sequence: Launch → Impact → Settle → Name Reveal → Hold.
+ *  - Pre-launch tension: sceneScale and darkness build during final 3 s of countdown.
+ *  - Subject panel expands via animated width MotionValue (not layout swap).
+ *  - Name card is always in DOM; opacity driven by timeline (no AnimatePresence mount).
+ *  - 9:16 Shorts: content exits downward, subject expands upward — same timeline.
+ *  - FinalCountdownOverlay: unchanged structure, softened final-second flash.
  *  Intentionally NOT changed: BroadcastEngine, session persistence, channel sync,
- *  Developer Tools, API/backend, classifySubject/isSpoilerSubject contracts.
+ *  DeveloperTools, API/backend, classifySubject/isSpoilerSubject contracts.
  */
 export default function BroadcastRenderer({ snapshot, fitContainer = false }: Props) {
   if (!snapshot) {
@@ -74,6 +79,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
               <ShortsSceneRow
                 question={q}
                 visuals={v}
+                phase={phase}
                 revealActive={revealActive}
                 correctAnswer={snapshot.correctAnswer}
                 explanation={snapshot.explanation}
@@ -85,6 +91,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
               <SceneRow
                 question={q}
                 visuals={v}
+                phase={phase}
                 revealActive={revealActive}
                 correctAnswer={snapshot.correctAnswer}
                 explanation={snapshot.explanation}
@@ -241,81 +248,15 @@ function SceneSlider({ questionId, children }: { questionId: string; children: R
   );
 }
 
-function useBroadcastCamera({
-  revealActive,
-  phaseIsQuestion,
-  phaseStartedAt,
-  phaseDurationMs,
-  isShorts,
-}: {
-  revealActive: boolean;
-  phaseIsQuestion: boolean;
-  phaseStartedAt: number;
-  phaseDurationMs: number;
-  isShorts: boolean;
-}) {
-  const [finalCountdownActive, setFinalCountdownActive] = useState(false);
-
-  useEffect(() => {
-    if (!phaseIsQuestion || phaseDurationMs <= 0) {
-      setFinalCountdownActive(false);
-      return;
-    }
-
-    let raf = 0;
-
-    const tick = () => {
-      const remainingMs = phaseDurationMs - (Date.now() - phaseStartedAt);
-      const active = remainingMs > 0 && remainingMs <= 3000;
-      setFinalCountdownActive((prev) => (prev === active ? prev : active));
-
-      if (remainingMs > 0) raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [phaseIsQuestion, phaseStartedAt, phaseDurationMs]);
-
-  if (isShorts) {
-    return {
-      finalCountdownActive,
-      scene: {
-        x: 0,
-        y: revealActive ? "-2.5%" : 0,
-        scale: revealActive ? 1.045 : finalCountdownActive ? 1.018 : 1,
-        opacity: 1,
-      },
-      qr: {
-        opacity: revealActive || finalCountdownActive ? 0 : 1,
-        scale: revealActive || finalCountdownActive ? 0.92 : 1,
-        pointerEvents: revealActive || finalCountdownActive ? "none" : "auto",
-      } as const,
-    };
-  }
-
-  return {
-    finalCountdownActive,
-    scene: {
-      // Positive x moves the full scene right, visually panning camera toward the left champion panel.
-      x: revealActive ? "5.2vw" : 0,
-      y: 0,
-      scale: revealActive ? 1.065 : finalCountdownActive ? 1.018 : 1,
-      opacity: 1,
-    },
-    qr: {
-      opacity: revealActive || finalCountdownActive ? 0 : 1,
-      scale: revealActive || finalCountdownActive ? 0.9 : 1,
-      pointerEvents: revealActive || finalCountdownActive ? "none" : "auto",
-    } as const,
-  };
-}
-
 /* ────────────────────────────────────────────────────────────────────────
-   SceneRow — three-column composition
+   SceneRow — three-column composition (16:9 only)
+   Animation driven entirely by useRevealTimeline MotionValues.
    ──────────────────────────────────────────────────────────────────────── */
+
 function SceneRow({
   question,
   visuals,
+  phase,
   revealActive,
   correctAnswer,
   explanation,
@@ -325,6 +266,7 @@ function SceneRow({
 }: {
   question: QuizQuestion;
   visuals: BroadcastVisuals;
+  phase: BroadcastPhase;
   revealActive: boolean;
   correctAnswer: string | null;
   explanation: string | null;
@@ -332,98 +274,77 @@ function SceneRow({
   phaseDurationMs: number;
   phaseIsQuestion: boolean;
 }) {
-  const isVertical = visuals.aspect === "9:16";
-  const camera = useBroadcastCamera({
-    revealActive,
-    phaseIsQuestion,
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = useMemo(() => classifySubject(question), [question]);
+  const isSpoiler = useMemo(
+    () => isSpoilerSubject(question, subject, correctAnswer),
+    [question, subject, correctAnswer],
+  );
+
+  const revealName =
+    correctAnswer ||
+    (typeof meta.champion_name === "string" ? meta.champion_name : undefined) ||
+    subject.label;
+
+  const tl = useRevealTimeline({
+    phase,
     phaseStartedAt,
     phaseDurationMs,
+    isSpoiler,
     isShorts: false,
   });
 
-  const subject = useMemo(() => classifySubject(question), [question]);
-  const meta = (question.metadata ?? {}) as Record<string, any>;
-  const presentation = meta.presentation;
-  const text = questionText(question);
-
-  const isChampionAnswerPrompt =
-    /\bwhich champion\b/.test(text) ||
-    /\bwhat champion\b/.test(text) ||
-    /\bname the champion\b/.test(text) ||
-    /\bidentify the champion\b/.test(text);
-
-  const revealName =
-    correctAnswer || (typeof meta.champion_name === "string" ? meta.champion_name : undefined) || subject.label;
-
-  const isChampionReveal =
-    revealActive &&
-    subject.kind === "champion" &&
-    !!revealName &&
-    (presentation?.role === "answer" || presentation?.timing === "reveal" || isChampionAnswerPrompt);
+  // Convert numeric MotionValues to CSS unit strings for framer-motion style prop
+  const subjectWidthStr = useTransform(tl.subjectWidthPct, (v) => `${v}%`);
+  const contentXStr     = useTransform(tl.contentX,        (v) => `${v}vw`);
+  const qrXStr          = useTransform(tl.qrX,             (v) => `${v}vw`);
+  const sceneXStr       = useTransform(tl.sceneX,          (v) => `${v}vw`);
 
   return (
     <motion.div
       className="relative h-full w-full overflow-hidden will-change-transform"
-      style={{ fontSize: `${visuals.fontScale}em` }}
-      animate={{
-        scale: revealActive ? 1.015 : camera.scene.scale,
-      }}
-      transition={{ type: "spring", stiffness: 82, damping: 22, mass: 0.9 }}
+      style={{ fontSize: `${visuals.fontScale}em`, scale: tl.sceneScale, x: sceneXStr }}
     >
+      {/* Cinematic darkness overlay — driven by timeline */}
       <motion.div
-        className={["relative flex h-full w-full gap-[1.6%]", isVertical ? "flex-col" : "flex-row"].join(" ")}
-        animate={{
-          x: isChampionReveal ? "7vw" : 0,
-          scale: isChampionReveal ? 1.08 : 1,
-        }}
-        transition={{
-          duration: isChampionReveal ? 0.85 : 0.35,
-          ease: [0.16, 1, 0.3, 1],
-        }}
-      >
-        <motion.div
-          className={[
-            "relative flex shrink-0 items-center justify-center overflow-hidden",
-            isVertical ? "h-[32%] w-full" : "h-full w-[28%]",
-          ].join(" ")}
-          animate={{
-            width: !isVertical && isChampionReveal ? "82%" : !isVertical ? "28%" : "100%",
-            height: isVertical ? (isChampionReveal ? "62%" : "32%") : "100%",
-            scale: isChampionReveal ? 1.02 : 1,
-          }}
-          transition={{ duration: isChampionReveal ? 0.9 : 0.35, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <SubjectPanel question={question} revealActive={revealActive} correctAnswer={revealName ?? correctAnswer} />
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[35] bg-black"
+        style={{ opacity: tl.darkness }}
+      />
 
-          <AnimatePresence>
-            {isChampionReveal && revealName && (
-              <motion.div
-                key="persistent-champion-nameplate"
-                className="pointer-events-none absolute bottom-[5%] left-1/2 z-30 w-[72%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
-                initial={{ opacity: 0, y: 34, scale: 0.92 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                transition={{ delay: 0.45, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="text-[1.15vmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
-                  Correct Answer
-                </div>
-                <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
-                  {revealName}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className="relative flex h-full w-full gap-[1.6%]">
+        {/* Subject column — width expands from 28% → 82% during spoiler reveal */}
+        <motion.div
+          className="relative flex shrink-0 items-center justify-center overflow-hidden h-full"
+          style={{ width: subjectWidthStr, scale: tl.subjectScale }}
+        >
+          <SubjectPanel
+            question={question}
+            revealActive={revealActive}
+            correctAnswer={revealName ?? correctAnswer}
+          />
+
+          {/* Name card — always in DOM when revealName is known, opacity from timeline.
+              This prevents the mount/unmount flicker that made reveals feel like UI changes. */}
+          {revealName && (
+            <motion.div
+              className="pointer-events-none absolute bottom-[5%] left-1/2 z-30 w-[72%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
+              style={{ opacity: tl.nameOpacity }}
+            >
+              <div className="text-[1.15vmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
+                Correct Answer
+              </div>
+              <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
+                {revealName}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
+        {/* Content column — slides off-screen during spoiler reveal */}
         <motion.div
           className="flex min-w-0 flex-1 flex-col justify-center gap-[2%]"
-          animate={{
-            x: isChampionReveal ? "38vw" : 0,
-            opacity: isChampionReveal ? 0 : 1,
-            filter: isChampionReveal ? "blur(6px)" : "blur(0px)",
-          }}
-          transition={{ duration: isChampionReveal ? 0.55 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+          style={{ x: contentXStr, opacity: tl.contentOpacity }}
         >
           <QuestionPanel
             question={question}
@@ -437,24 +358,18 @@ function SceneRow({
           />
         </motion.div>
 
+        {/* QR / CTA column — exits with content */}
         <motion.div
-          className={[
-            "flex shrink-0 items-center justify-center",
-            isVertical ? "h-[14%] w-full" : "h-full w-[20%]",
-          ].join(" ")}
-          animate={{
-            x: isChampionReveal ? "30vw" : 0,
-            opacity: isChampionReveal ? 0 : camera.qr.opacity,
-            scale: isChampionReveal ? 0.92 : camera.qr.scale,
-          }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="flex h-full w-[20%] shrink-0 items-center justify-center"
+          style={{ x: qrXStr, opacity: tl.qrOpacity }}
         >
           <PlayAlongPanel visuals={visuals} />
         </motion.div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
+
 /* ────────────────────────────────────────────────────────────────────────
    SubjectPanel — champion splash OR premium framed collectible
    ──────────────────────────────────────────────────────────────────────── */
@@ -466,49 +381,49 @@ function classifySubject(question: QuizQuestion): {
   label?: string;
   iconUrl?: string;
 } {
-  const meta = (question.metadata ?? {}) as Record<string, any>;
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
 
   //
   // NEW KOS PATH
   //
-  const subject = meta.assets?.subject;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as Record<string, unknown> | undefined;
 
   if (subject) {
     switch (subject.type) {
       case "champion":
         return {
           kind: "champion",
-          label: subject.name ?? subject.id,
-          iconUrl: resolveQuizAssetUrl(subject.icon),
+          label: (subject.name as string | undefined) ?? (subject.id as string | undefined),
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
       case "item":
         return {
           kind: "item",
-          label: subject.name,
-          iconUrl: resolveQuizAssetUrl(subject.icon),
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
       case "rune":
         return {
           kind: "rune",
-          label: subject.name,
-          iconUrl: resolveQuizAssetUrl(subject.icon),
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
       case "spell":
       case "ability":
         return {
           kind: "spell",
-          label: subject.name ?? subject.slot,
-          iconUrl: resolveQuizAssetUrl(subject.icon),
+          label: (subject.name as string | undefined) ?? (subject.slot as string | undefined),
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
       case "objective":
         return {
           kind: "objective",
-          label: subject.name,
-          iconUrl: resolveQuizAssetUrl(subject.icon),
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
     }
   }
@@ -548,28 +463,28 @@ function classifySubject(question: QuizQuestion): {
   if (itemIcon && !isChampionQuestion)
     return {
       kind: "item",
-      label: meta.item_name || "Item",
-      iconUrl: resolveQuizAssetUrl(itemIcon),
+      label: (meta.item_name as string | undefined) || "Item",
+      iconUrl: resolveQuizAssetUrl(itemIcon as string),
     };
 
   if (runeIcon)
     return {
       kind: "rune",
-      label: meta.rune_name || "Rune",
+      label: (meta.rune_name as string | undefined) || "Rune",
       iconUrl: resolveQuizAssetUrl(runeIcon),
     };
 
   if (spellIcon)
     return {
       kind: "spell",
-      label: meta.spell_name || meta.ability_name || "Ability",
+      label: (meta.spell_name as string | undefined) || (meta.ability_name as string | undefined) || "Ability",
       iconUrl: resolveQuizAssetUrl(spellIcon),
     };
 
   if (objective)
     return {
       kind: "objective",
-      label: meta.objective_name || "Objective",
+      label: (meta.objective_name as string | undefined) || "Objective",
       iconUrl: resolveQuizAssetUrl(objective),
     };
 
@@ -676,7 +591,7 @@ function normalizeLabel(s: unknown): string {
 
 function questionChoices(question: QuizQuestion): string[] {
   return (question.choices ?? []).map((c) =>
-    typeof c === "string" ? c : typeof c === "object" && c && "label" in c ? String((c as any).label) : "",
+    typeof c === "string" ? c : typeof c === "object" && c && "label" in c ? String((c as { label: unknown }).label) : "",
   );
 }
 
@@ -701,11 +616,11 @@ function isSpoilerSubject(
   subject: { kind: SubjectKind; label?: string },
   correctAnswer: string | null,
 ): boolean {
-  const meta = (question.metadata ?? {}) as Record<string, any>;
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
 
   // KOS v1 presentation contract.
   // If metadata.presentation exists, it is the source of truth.
-  const presentation = meta.presentation;
+  const presentation = meta.presentation as Record<string, unknown> | undefined;
   if (presentation && typeof presentation === "object") {
     if (typeof presentation.spoiler === "boolean") {
       return presentation.spoiler;
@@ -772,6 +687,7 @@ function isSpoilerSubject(
 
   return false;
 }
+
 function deriveRevealSubject(
   question: QuizQuestion,
   base: { kind: SubjectKind; label?: string; iconUrl?: string },
@@ -779,9 +695,9 @@ function deriveRevealSubject(
 ): { kind: SubjectKind; label?: string; iconUrl?: string } {
   if (!correctAnswer) return base;
 
-  const meta = (question.metadata ?? {}) as Record<string, any>;
-  const presentation = meta.presentation;
-  const subject = meta.assets?.subject;
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const presentation = meta.presentation as Record<string, unknown> | undefined;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as Record<string, unknown> | undefined;
 
   const looksChamp =
     inferKindFromQuestion(question) === "champion" ||
@@ -797,8 +713,8 @@ function deriveRevealSubject(
   ) {
     return {
       kind: "champion",
-      label: subject?.name ?? meta.champion_name ?? correctAnswer,
-      iconUrl: subject?.icon ? resolveQuizAssetUrl(subject.icon) : base.iconUrl,
+      label: (subject?.name as string | undefined) ?? (meta.champion_name as string | undefined) ?? correctAnswer,
+      iconUrl: subject?.icon ? resolveQuizAssetUrl(subject.icon as string) : base.iconUrl,
     };
   }
 
@@ -1570,14 +1486,14 @@ function FinalCountdownOverlay({
               </span>
             </motion.div>
 
-            {/* final-second flash */}
+            {/* final-second atmospheric pulse — warm gold, no harsh white flash */}
             {n === 1 && (
               <motion.div
                 aria-hidden
-                className="absolute inset-0 bg-[#f3dca0]"
+                className="absolute inset-0 bg-[#c8952a]"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.06, 0] }}
-                transition={{ duration: 0.28, delay: 0.42 }}
+                animate={{ opacity: [0, 0.03, 0] }}
+                transition={{ duration: 0.35, delay: 0.42 }}
               />
             )}
           </motion.div>
@@ -1627,13 +1543,14 @@ function CountdownBurstParticles({ seed }: { seed: number }) {
 
 /* ────────────────────────────────────────────────────────────────────────
    ShortsSceneRow — purpose-built 9:16 layout for TikTok/Reels/Shorts
-   Subject art dominates top, question + answers stack vertically below,
-   QR/CTA collapsed to a slim footer chip.
+   Subject art dominates top, question + answers stack below.
+   Animation driven by useRevealTimeline (same hook, isShorts=true).
    ──────────────────────────────────────────────────────────────────────── */
 
 function ShortsSceneRow({
   question,
   visuals,
+  phase,
   revealActive,
   correctAnswer,
   explanation,
@@ -1643,6 +1560,7 @@ function ShortsSceneRow({
 }: {
   question: QuizQuestion;
   visuals: BroadcastVisuals;
+  phase: BroadcastPhase;
   revealActive: boolean;
   correctAnswer: string | null;
   explanation: string | null;
@@ -1651,209 +1569,165 @@ function ShortsSceneRow({
   phaseIsQuestion: boolean;
 }) {
   const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
-  const camera = useBroadcastCamera({
-    revealActive,
-    phaseIsQuestion,
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+
+  const subject = useMemo(() => classifySubject(question), [question]);
+  const isSpoiler = useMemo(
+    () => isSpoilerSubject(question, subject, correctAnswer),
+    [question, subject, correctAnswer],
+  );
+
+  const revealName =
+    correctAnswer ||
+    (typeof meta.champion_name === "string" ? meta.champion_name : undefined) ||
+    subject.label;
+
+  const tl = useRevealTimeline({
+    phase,
     phaseStartedAt,
     phaseDurationMs,
+    isSpoiler,
     isShorts: true,
   });
 
-  const meta = (question.metadata ?? {}) as Record<string, any>;
-  const revealName =
-    correctAnswer || (typeof meta.champion_name === "string" ? meta.champion_name : undefined) || subject.label;
+  const subjectHeightStr = useTransform(tl.subjectHeightPct, (v) => `${v}%`);
+  const contentYStr      = useTransform(tl.contentY,         (v) => `${v}%`);
+  const qrYStr           = useTransform(tl.qrY,              (v) => `${v}%`);
 
   return (
     <motion.div
       className="relative flex h-full w-full flex-col overflow-hidden will-change-transform"
-      style={{
-        fontSize: `${visuals.fontScale}em`,
-        transformOrigin: revealActive && isChampionScene ? "50% 18%" : "50% 28%",
-      }}
-      animate={{
-        ...camera.scene,
-        y: revealActive && isChampionScene ? "-3.2%" : camera.scene.y,
-        scale: revealActive && isChampionScene ? 1.065 : camera.scene.scale,
-      }}
-      transition={{
-        type: "spring",
-        stiffness: revealActive ? 74 : 92,
-        damping: revealActive ? 18 : 21,
-        mass: 0.9,
-      }}
+      style={{ fontSize: `${visuals.fontScale}em`, scale: tl.sceneScale }}
     >
-      {/* Ambient directed background for vertical clips */}
+      {/* Cinematic darkness overlay */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[35] bg-black"
+        style={{ opacity: tl.darkness }}
+      />
+
+      {/* Ambient directed background */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_14%,rgba(212,179,90,0.18),transparent_38%),radial-gradient(circle_at_50%_78%,rgba(34,211,238,0.08),transparent_42%)]"
-        animate={{
-          opacity: revealActive ? 0.7 : phaseIsQuestion ? 0.38 : 0.45,
-          scale: revealActive ? 1.08 : 1,
-        }}
+        animate={{ opacity: revealActive ? 0.7 : phaseIsQuestion ? 0.38 : 0.45 }}
         transition={{ duration: 0.55, ease: "easeOut" }}
       />
 
-      {/* Reveal spotlight */}
-      <AnimatePresence>
-        {revealActive && (
-          <motion.div
-            key="shorts-reveal-spotlight"
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_18%,rgba(243,220,160,0.20),transparent_34%),radial-gradient(circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.38)_100%)]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Subject art — hero region. Expands during champion reveals for a camera-like push-in. */}
+      {/* Subject art hero — height expands on reveal */}
       <motion.div
         className="relative z-10 flex w-full shrink-0 items-center justify-center px-[3%] pt-[2.2%]"
-        animate={{
-          height: revealActive && isChampionScene ? "43%" : "34%",
-          scale: revealActive && isChampionScene ? 1.035 : 1,
-        }}
-        transition={{ type: "spring", stiffness: 78, damping: 18, mass: 0.85 }}
+        style={{ height: subjectHeightStr, scale: tl.subjectScale }}
       >
         <SubjectPanel question={question} revealActive={revealActive} correctAnswer={correctAnswer} />
 
-        {/* Nameplate over hero area on reveal for clippability */}
-        <AnimatePresence>
-          {revealActive && revealName && (
-            <motion.div
-              key="shorts-hero-nameplate"
-              className="pointer-events-none absolute bottom-[5%] left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-xl border border-[#d4b35a]/45 bg-black/55 px-[4%] py-[1.8%] text-center shadow-[0_14px_36px_rgba(0,0,0,0.65)] backdrop-blur-md"
-              initial={{ opacity: 0, y: 16, scale: 0.94 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.97 }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="text-[1.15vmin] font-bold uppercase tracking-[0.38em] text-[#e8c97a]/90">
-                Correct Answer
-              </div>
-              <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
-                {revealName}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Question text — compresses slightly on reveal so the hero answer can own the frame */}
-      <motion.div
-        className="relative z-10 px-[4%]"
-        animate={{
-          opacity: revealActive ? 0.82 : 1,
-          y: revealActive ? -4 : 0,
-          scale: revealActive ? 0.96 : 1,
-        }}
-        transition={{ duration: 0.28, ease: "easeOut" }}
-      >
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.42, ease: "easeOut" }}
-          className="text-center text-[3.75vmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
-        >
-          <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
-            {question.question_text}
-          </span>
-        </motion.h1>
-      </motion.div>
-
-      {/* Countdown bar — hidden once reveal owns the scene */}
-      <motion.div
-        className="relative z-10 px-[6%] py-[1.2%]"
-        animate={{
-          opacity: revealActive ? 0 : 1,
-          y: revealActive ? -6 : 0,
-        }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-      >
-        <CountdownInline
-          active={phaseIsQuestion}
-          style="bar"
-          phaseStartedAt={phaseStartedAt}
-          phaseDurationMs={phaseDurationMs}
-        />
-      </motion.div>
-
-      {/* Answers — mobile-friendly rows with stronger reveal priority */}
-      <motion.div
-        className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-[3.5%]"
-        animate={{
-          y: revealActive ? -8 : 0,
-          scale: revealActive ? 0.985 : 1,
-        }}
-        transition={{ duration: 0.32, ease: "easeOut" }}
-      >
-        <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
-      </motion.div>
-
-      {/* Explanation card — compact lower-third style for shorts clips */}
-      <div className="relative z-10 min-h-[11%] px-[3.5%]">
-        <AnimatePresence>
-          {revealActive && explanation && visuals.showTips && (
-            <motion.div
-              key="reveal-shorts"
-              initial={{ opacity: 0, y: 18, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.98 }}
-              transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-              className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95vmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
-            >
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
-                initial={{ x: "-20%", opacity: 0 }}
-                animate={{ x: "260%", opacity: [0, 0.7, 0] }}
-                transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
-              />
-              <div className="mb-1 flex items-baseline justify-between gap-3">
-                <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
-                {revealName && (
-                  <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
-                    {revealName}
-                  </div>
-                )}
-              </div>
-              <div className="text-emerald-50/95">{explanation}</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* CTA footer chip — disappears during final countdown/reveal so shorts are cleaner */}
-      <AnimatePresence>
-        {(visuals.showQrCode || visuals.showWebsite) && (
+        {/* Name card — always in DOM, opacity from timeline */}
+        {revealName && (
           <motion.div
-            key="shorts-cta"
-            className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
-            animate={camera.qr}
-            initial={{ opacity: 0, y: 8 }}
-            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="pointer-events-none absolute bottom-[5%] left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-xl border border-[#d4b35a]/45 bg-black/55 px-[4%] py-[1.8%] text-center shadow-[0_14px_36px_rgba(0,0,0,0.65)] backdrop-blur-md"
+            style={{ opacity: tl.nameOpacity }}
           >
-            {visuals.showQrCode && (
-              <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
-                  alt=""
-                  className="h-[5vmin] w-[5vmin]"
-                />
-              </div>
-            )}
-            {visuals.showWebsite && (
-              <div className="flex flex-col text-left">
-                <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-                <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
-              </div>
-            )}
+            <div className="text-[1.15vmin] font-bold uppercase tracking-[0.38em] text-[#e8c97a]/90">
+              Correct Answer
+            </div>
+            <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
+              {revealName}
+            </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </motion.div>
+
+      {/* Stacked content — exits downward on reveal */}
+      <motion.div
+        className="relative z-10 flex min-h-0 flex-1 flex-col"
+        style={{ y: contentYStr, opacity: tl.contentOpacity }}
+      >
+        {/* Question text */}
+        <div className="px-[4%]">
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42, ease: "easeOut" }}
+            className="text-center text-[3.75vmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+          >
+            <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
+              {question.question_text}
+            </span>
+          </motion.h1>
+        </div>
+
+        {/* Countdown bar */}
+        <div className="px-[6%] py-[1.2%]">
+          <CountdownInline
+            active={phaseIsQuestion}
+            style="bar"
+            phaseStartedAt={phaseStartedAt}
+            phaseDurationMs={phaseDurationMs}
+          />
+        </div>
+
+        {/* Answers */}
+        <div className="flex flex-1 flex-col justify-center px-[3.5%]">
+          <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
+        </div>
+
+        {/* Explanation card */}
+        <div className="min-h-[11%] px-[3.5%]">
+          <AnimatePresence>
+            {revealActive && explanation && visuals.showTips && (
+              <motion.div
+                key="reveal-shorts"
+                initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+                className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95vmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
+              >
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+                  initial={{ x: "-20%", opacity: 0 }}
+                  animate={{ x: "260%", opacity: [0, 0.7, 0] }}
+                  transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
+                />
+                <div className="mb-1 flex items-baseline justify-between gap-3">
+                  <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
+                  {revealName && (
+                    <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
+                      {revealName}
+                    </div>
+                  )}
+                </div>
+                <div className="text-emerald-50/95">{explanation}</div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      {/* CTA footer — exits with content */}
+      {(visuals.showQrCode || visuals.showWebsite) && (
+        <motion.div
+          className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
+          style={{ y: qrYStr, opacity: tl.qrOpacity }}
+        >
+          {visuals.showQrCode && (
+            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+                alt=""
+                className="h-[5vmin] w-[5vmin]"
+              />
+            </div>
+          )}
+          {visuals.showWebsite && (
+            <div className="flex flex-col text-left">
+              <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
+              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   );
 }
