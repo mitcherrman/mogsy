@@ -1479,7 +1479,7 @@ function FinalCountdownOverlay({
     return () => cancelAnimationFrame(raf);
   }, [active, phaseStartedAt, phaseDurationMs]);
 
-  const intensity = n === 3 ? 0.35 : n === 2 ? 0.5 : n === 1 ? 0.68 : 0;
+  const intensity = n === 3 ? 0.18 : n === 2 ? 0.28 : n === 1 ? 0.38 : 0;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
