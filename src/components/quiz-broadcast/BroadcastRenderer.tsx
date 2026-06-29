@@ -901,7 +901,7 @@ function ChampionSplashCard({ champion }: { champion: string }) {
       {/* gold inner border */}
       <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#d4b35a]/20" />
 
-      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[6%]">
+      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[6%] opacity-0">
         <div className="text-[1.05vmin] font-bold uppercase tracking-[0.35em] text-[#e8c97a]/90">Champion</div>
         <div className="mt-1 text-[2.6vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
           {champion}
