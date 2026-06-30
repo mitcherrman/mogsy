@@ -82,6 +82,7 @@ export const Routes = {
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
   QuizBroadcastView: lazyWithRetry(() => import("@/pages/admin/QuizBroadcastView")),
+  AdminQuizReview: lazyWithRetry(() => import("@/pages/admin/AdminQuizReview")),
   About: lazyWithRetry(() => import("@/pages/legal/About")),
   Privacy: lazyWithRetry(() => import("@/pages/legal/Privacy")),
   Terms: lazyWithRetry(() => import("@/pages/legal/Terms")),

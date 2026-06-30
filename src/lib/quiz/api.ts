@@ -201,6 +201,79 @@ export type QuizReport = {
   created_at?: string;
 };
 
+// ---------------------------------------------------------------------------
+// Quiz Review Console types
+// ---------------------------------------------------------------------------
+
+export type ReviewQuestion = {
+  id: number;
+  question_key?: string | null;
+  question_text?: string | null;
+  category: string;
+  source_type?: string | null;
+  difficulty?: number;
+  answer_certainty?: string;
+  format: string;
+  choices: Array<string | { label: string; raw_stats?: string[] }>;
+  correct_answer?: { type?: string; value?: string; case_sensitive?: boolean };
+  explanation?: string | null;
+  image_path?: string | null;
+  is_active: boolean;
+  review_status: string;
+  review_note?: string | null;
+  favorite_for_shorts: boolean;
+  missing_asset: boolean;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  created_at?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type ReviewListResponse = {
+  ok: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+  questions: ReviewQuestion[];
+};
+
+export type ReviewFilterOptions = {
+  ok: boolean;
+  categories: string[];
+  source_types: string[];
+  formats: string[];
+  review_statuses: string[];
+};
+
+export type ReviewFilters = {
+  search?: string;
+  category?: string;
+  source_type?: string;
+  difficulty_min?: number;
+  difficulty_max?: number;
+  answer_certainty?: string;
+  format?: string;
+  review_status?: string;
+  is_active?: number;
+  favorite_for_shorts?: number;
+  missing_asset?: number;
+  has_image?: number;
+  page?: number;
+  page_size?: number;
+};
+
+export type ReviewPatchPayload = {
+  review_status?: string;
+  review_note?: string;
+  favorite_for_shorts?: boolean;
+  missing_asset?: boolean;
+  difficulty?: number;
+  answer_certainty?: string;
+  is_active?: boolean;
+  reviewed_by?: string;
+};
+
 export type PlaylistFilters = {
   difficulty_min?: number;
   difficulty_max?: number;
@@ -309,4 +382,36 @@ export const quizApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // ---------------------------------------------------------------------------
+  // Quiz Review Console
+  // ---------------------------------------------------------------------------
+  getReviewQuestions: (filters: ReviewFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.source_type) params.set("source_type", filters.source_type);
+    if (filters.difficulty_min !== undefined) params.set("difficulty_min", String(filters.difficulty_min));
+    if (filters.difficulty_max !== undefined) params.set("difficulty_max", String(filters.difficulty_max));
+    if (filters.answer_certainty) params.set("answer_certainty", filters.answer_certainty);
+    if (filters.format) params.set("format", filters.format);
+    if (filters.review_status) params.set("review_status", filters.review_status);
+    if (filters.is_active !== undefined) params.set("is_active", String(filters.is_active));
+    if (filters.favorite_for_shorts !== undefined) params.set("favorite_for_shorts", String(filters.favorite_for_shorts));
+    if (filters.missing_asset !== undefined) params.set("missing_asset", String(filters.missing_asset));
+    if (filters.has_image !== undefined) params.set("has_image", String(filters.has_image));
+    if (filters.page !== undefined) params.set("page", String(filters.page));
+    if (filters.page_size !== undefined) params.set("page_size", String(filters.page_size));
+    const qs = params.toString();
+    return request<ReviewListResponse>(`/api/quiz/admin/review/questions${qs ? `?${qs}` : ""}`);
+  },
+  getReviewQuestion: (id: number) =>
+    request<{ ok: boolean; question: ReviewQuestion }>(`/api/quiz/admin/review/questions/${id}`),
+  patchReviewQuestion: (id: number, payload: ReviewPatchPayload) =>
+    request<{ ok: boolean; question_id: number; updated: string[] }>(
+      `/api/quiz/admin/review/questions/${id}`,
+      { method: "PATCH", body: JSON.stringify(payload) },
+    ),
+  getReviewFilterOptions: () =>
+    request<ReviewFilterOptions>("/api/quiz/admin/review/filter-options"),
 };

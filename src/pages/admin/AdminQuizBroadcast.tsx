@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { ClipboardList } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -314,6 +316,13 @@ export default function AdminQuizBroadcast() {
             <CardTitle>Quiz Broadcast Studio</CardTitle>
             <CardDescription>Configure, preview and control the 24/7 quiz livestream. Open the dedicated Broadcast Window for OBS capture.</CardDescription>
           </div>
+          <Link
+            to="/admin/quiz-review"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            Review Questions
+          </Link>
         </CardHeader>
         <CardContent className="space-y-4">
           <ControlPanel engine={engine} snapshot={snapshot} onOpenWindow={openWindow} />
