@@ -292,6 +292,7 @@ function SceneRow({
     phaseDurationMs,
     isSpoiler,
     isShorts: false,
+    questionId: String(question.id),
   });
 
   // Convert numeric MotionValues to CSS unit strings for framer-motion style prop
@@ -1588,6 +1589,7 @@ function ShortsSceneRow({
     phaseDurationMs,
     isSpoiler,
     isShorts: true,
+    questionId: String(question.id),
   });
 
   const subjectHeightStr = useTransform(tl.subjectHeightPct, (v) => `${v}%`);

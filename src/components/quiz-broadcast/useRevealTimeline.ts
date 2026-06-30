@@ -12,10 +12,13 @@
  *   Name    ~58%    name card fades in
  *   Hold    58–100% scene breathes
  *
- * Also handles:
- *   question phase — idle breathing + pre-launch tension (final 3 s)
- *   explanation / transition phases — hold at fully-revealed state
- *   idle — reset to resting values
+ * Phase ownership:
+ *   question    — idle breathing + pre-launch tension (final 3 s)
+ *   reveal      — run cinematic sequence for current question
+ *   explanation — hold at fully-revealed state, subject breathes
+ *   transition  — reset to neutral; SceneSlider owns this transition
+ *   idle        — reset to neutral
+ *   questionId Δ — hard reset before new phase RAF starts
  */
 
 import { useEffect } from "react";
@@ -69,6 +72,7 @@ export function useRevealTimeline({
   phaseDurationMs,
   isSpoiler,
   isShorts,
+  questionId,
 }: {
   phase: BroadcastPhase;
   phaseStartedAt: number;
@@ -76,6 +80,9 @@ export function useRevealTimeline({
   /** True when the subject is a spoiler that should be hidden until reveal. */
   isSpoiler: boolean;
   isShorts: boolean;
+  /** Scopes the timeline to a single question. When questionId changes, all
+   *  MotionValues are immediately reset to neutral before the new phase starts. */
+  questionId: string;
 }): RevealTimeline {
   const sceneScale       = useMotionValue(1);
   const sceneX           = useMotionValue(0);
@@ -92,8 +99,10 @@ export function useRevealTimeline({
   const nameOpacity      = useMotionValue(0);
   const idleBreath       = useMotionValue(0);
 
-  // MotionValues are stable refs and intentionally excluded from deps —
-  // only phase/timing changes need to restart the RAF loop.
+  // MotionValues are stable refs and intentionally excluded from deps.
+  // questionId is included so a question change immediately resets all values
+  // before the new phase RAF starts — prevents stale reveal state from one
+  // question bleeding into the next question's first frame.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let raf = 0;
@@ -115,13 +124,16 @@ export function useRevealTimeline({
       idleBreath.set(0);
     };
 
-    // ── REVEAL / EXPLANATION / TRANSITION ────────────────────────────────
-    if (phase === "reveal" || phase === "explanation" || phase === "transition") {
+    // ── REVEAL / EXPLANATION ──────────────────────────────────────────────
+    // transition is intentionally excluded: SceneSlider owns question-to-question
+    // movement; the timeline must be neutral so old reveal state does not bleed
+    // into the new question's first frame.
+    if (phase === "reveal" || phase === "explanation") {
       const tick = () => {
         const now = Date.now();
         const elapsed = Math.max(0, now - phaseStartedAt);
 
-        // During explanation/transition hold the reveal at its fully-settled state.
+        // During explanation hold the reveal at its fully-settled state (t=1).
         const t =
           phase === "reveal" && phaseDurationMs > 0
             ? Math.min(1, elapsed / phaseDurationMs)
@@ -222,9 +234,9 @@ export function useRevealTimeline({
           nameOpacity.set(0);
         }
 
-        // Keep ticking during explanation/transition for breathing
+        // reveal: tick until t=1; explanation: keep ticking for subject breathing
         if (phase === "reveal" && t < 1) raf = requestAnimationFrame(tick);
-        else if (phase !== "reveal") raf = requestAnimationFrame(tick);
+        else if (phase === "explanation") raf = requestAnimationFrame(tick);
       };
 
       raf = requestAnimationFrame(tick);
@@ -259,13 +271,15 @@ export function useRevealTimeline({
 
       raf = requestAnimationFrame(tick);
 
-    // ── IDLE / OTHER ─────────────────────────────────────────────────────
+    // ── TRANSITION / IDLE / OTHER ────────────────────────────────────────
+    // transition: SceneSlider owns this; reset to neutral so old reveal state
+    // does not appear on the incoming question's first frame.
     } else {
       reset();
     }
 
     return () => cancelAnimationFrame(raf);
-  }, [phase, phaseStartedAt, phaseDurationMs, isSpoiler, isShorts]);
+  }, [phase, phaseStartedAt, phaseDurationMs, isSpoiler, isShorts, questionId]);
 
   return {
     sceneScale, sceneX,
