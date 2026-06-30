@@ -91,6 +91,7 @@ import VisualSettings from "@/components/quiz-broadcast/VisualSettings";
 import BroadcastStats from "@/components/quiz-broadcast/BroadcastStats";
 import PlaylistLibrary from "@/components/quiz-broadcast/PlaylistLibrary";
 import DeveloperTools from "@/components/quiz-broadcast/DeveloperTools";
+import ShortsPanel from "@/components/quiz-broadcast/ShortsPanel";
 import { devToolsRepository } from "@/lib/quiz-broadcast/dev-tools/repository";
 import SEOHead from "@/components/SEOHead";
 
@@ -289,6 +290,23 @@ export default function AdminQuizBroadcast() {
     devToolsRepository.appendEvent({ level: "warn", source: "playlist", message: `Deleted playlist ${id}` });
   };
 
+  const onShortsGenerate = (questions: QuizQuestion[]) => {
+    engine.setPlaylist(questions, { name: "3-Question Short" });
+    devToolsRepository.appendEvent({
+      level: "success",
+      source: "shorts",
+      message: `Shorts generated — ${questions.length} questions loaded`,
+    });
+  };
+
+  const onSwitchToShorts = () => {
+    engine.setConfig({
+      ...snapshot.config,
+      visuals: { ...snapshot.config.visuals, aspect: "9:16" },
+    });
+    devToolsRepository.appendEvent({ level: "info", source: "shorts", message: "Switched aspect ratio to 9:16 for Shorts" });
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-4 p-4">
       <SEOHead title="Quiz Broadcast Studio · Admin" description="Configure and run the 24/7 Mogsy quiz broadcast." path="/admin/quiz-broadcast" />
@@ -330,6 +348,12 @@ export default function AdminQuizBroadcast() {
           </CardContent>
         </Card>
       </div>
+
+      <ShortsPanel
+        onGenerate={onShortsGenerate}
+        currentAspect={snapshot.config.visuals.aspect}
+        onSwitchToShorts={onSwitchToShorts}
+      />
 
       <Card>
         <CardContent className="p-4">

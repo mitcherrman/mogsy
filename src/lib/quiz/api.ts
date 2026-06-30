@@ -201,9 +201,38 @@ export type QuizReport = {
   created_at?: string;
 };
 
+export type PlaylistFilters = {
+  difficulty_min?: number;
+  difficulty_max?: number;
+  source_type?: string;
+  category?: string;
+  /** Omit to default to quiz-eligible (objective + derived). */
+  answer_certainty?: string;
+  limit?: number;
+};
+
+export type PlaylistResponse = {
+  ok: boolean;
+  count: number;
+  filters: Record<string, unknown>;
+  questions: QuizQuestion[];
+};
+
 export const quizApi = {
   baseUrl: API_BASE_URL,
   sets: () => request<{ sets: QuizSet[] }>("/api/quiz/sets"),
+  /** Fetch a filtered, randomized question set. Powers Shorts, playlists, practice modes. */
+  getPlaylist: (filters: PlaylistFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.difficulty_min !== undefined) params.set("difficulty_min", String(filters.difficulty_min));
+    if (filters.difficulty_max !== undefined) params.set("difficulty_max", String(filters.difficulty_max));
+    if (filters.source_type) params.set("source_type", filters.source_type);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.answer_certainty) params.set("answer_certainty", filters.answer_certainty);
+    if (filters.limit !== undefined) params.set("limit", String(filters.limit));
+    const qs = params.toString();
+    return request<PlaylistResponse>(`/api/quiz/playlist${qs ? `?${qs}` : ""}`);
+  },
   questions: (quizSet: string, limit = 10) =>
     request<{ questions: QuizQuestion[] }>(`/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`),
   stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
