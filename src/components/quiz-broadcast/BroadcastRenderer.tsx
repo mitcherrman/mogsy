@@ -7,6 +7,7 @@ import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useRevealTimeline } from "./useRevealTimeline";
+import { BroadcastKnowledgeCore } from "./BroadcastKnowledgeCore";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -86,6 +87,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
                 phaseStartedAt={snapshot.phaseStartedAt}
                 phaseDurationMs={snapshot.phaseDurationMs}
                 phaseIsQuestion={phase === "question"}
+                questionIndex={snapshot.currentIndex + 1}
               />
             ) : (
               <SceneRow
@@ -98,6 +100,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
                 phaseStartedAt={snapshot.phaseStartedAt}
                 phaseDurationMs={snapshot.phaseDurationMs}
                 phaseIsQuestion={phase === "question"}
+                questionIndex={snapshot.currentIndex + 1}
               />
             )}
           </SceneSlider>
@@ -263,6 +266,7 @@ function SceneRow({
   phaseStartedAt,
   phaseDurationMs,
   phaseIsQuestion,
+  questionIndex,
 }: {
   question: QuizQuestion;
   visuals: BroadcastVisuals;
@@ -273,6 +277,7 @@ function SceneRow({
   phaseStartedAt: number;
   phaseDurationMs: number;
   phaseIsQuestion: boolean;
+  questionIndex: number;
 }) {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = useMemo(() => classifySubject(question), [question]);
@@ -364,7 +369,13 @@ function SceneRow({
           className="flex h-full w-[20%] shrink-0 items-center justify-center"
           style={{ x: qrXStr, opacity: tl.qrOpacity }}
         >
-          <PlayAlongPanel visuals={visuals} />
+          <RightPanel
+            visuals={visuals}
+            phase={phase}
+            questionIndex={questionIndex}
+            phaseStartedAt={phaseStartedAt}
+            phaseDurationMs={phaseDurationMs}
+          />
         </motion.div>
       </div>
     </motion.div>
@@ -1176,6 +1187,38 @@ function CountdownView({
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+   RightPanel — decides between QR/website CTA and Hextech Knowledge Core.
+   When both showQrCode and showWebsite are OFF, the Knowledge Core occupies
+   the right-hand panel. The column wrapper and motion bindings are unchanged.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function RightPanel({
+  visuals,
+  phase,
+  questionIndex,
+  phaseStartedAt,
+  phaseDurationMs,
+}: {
+  visuals: BroadcastVisuals;
+  phase: BroadcastPhase;
+  questionIndex: number;
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+}) {
+  if (visuals.showQrCode || visuals.showWebsite) {
+    return <PlayAlongPanel visuals={visuals} />;
+  }
+  return (
+    <BroadcastKnowledgeCore
+      phase={phase}
+      questionIndex={questionIndex}
+      phaseStartedAt={phaseStartedAt}
+      phaseDurationMs={phaseDurationMs}
+    />
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
    PlayAlongPanel — premium CTA card with QR
    ──────────────────────────────────────────────────────────────────────── */
 
@@ -1558,6 +1601,7 @@ function ShortsSceneRow({
   phaseStartedAt,
   phaseDurationMs,
   phaseIsQuestion,
+  questionIndex,
 }: {
   question: QuizQuestion;
   visuals: BroadcastVisuals;
@@ -1568,6 +1612,7 @@ function ShortsSceneRow({
   phaseStartedAt: number;
   phaseDurationMs: number;
   phaseIsQuestion: boolean;
+  questionIndex: number;
 }) {
   const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
@@ -1708,28 +1753,38 @@ function ShortsSceneRow({
       </motion.div>
 
       {/* CTA footer — exits with content */}
-      {(visuals.showQrCode || visuals.showWebsite) && (
-        <motion.div
-          className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
-          style={{ y: qrYStr, opacity: tl.qrOpacity }}
-        >
-          {visuals.showQrCode && (
-            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
-                alt=""
-                className="h-[5vmin] w-[5vmin]"
-              />
-            </div>
-          )}
-          {visuals.showWebsite && (
-            <div className="flex flex-col text-left">
-              <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-              <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
-            </div>
-          )}
-        </motion.div>
-      )}
+      <motion.div
+        className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
+        style={{ y: qrYStr, opacity: tl.qrOpacity }}
+      >
+        {visuals.showQrCode || visuals.showWebsite ? (
+          <>
+            {visuals.showQrCode && (
+              <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+                  alt=""
+                  className="h-[5vmin] w-[5vmin]"
+                />
+              </div>
+            )}
+            {visuals.showWebsite && (
+              <div className="flex flex-col text-left">
+                <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
+                <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
+              </div>
+            )}
+          </>
+        ) : (
+          <BroadcastKnowledgeCore
+            phase={phase}
+            questionIndex={questionIndex}
+            phaseStartedAt={phaseStartedAt}
+            phaseDurationMs={phaseDurationMs}
+            compact
+          />
+        )}
+      </motion.div>
     </motion.div>
   );
 }
