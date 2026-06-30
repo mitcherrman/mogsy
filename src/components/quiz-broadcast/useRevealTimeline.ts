@@ -16,12 +16,13 @@
  *   question    — idle breathing + pre-launch tension (final 3 s)
  *   reveal      — run cinematic sequence for current question
  *   explanation — hold at fully-revealed state, subject breathes
- *   transition  — reset to neutral; SceneSlider owns this transition
+ *   transition  — same question: hold revealed state while SceneSlider exits
+ *               new questionId: hard reset before new question enters
  *   idle        — reset to neutral
  *   questionId Δ — hard reset before new phase RAF starts
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
@@ -99,10 +100,14 @@ export function useRevealTimeline({
   const nameOpacity      = useMotionValue(0);
   const idleBreath       = useMotionValue(0);
 
+  // Tracks the questionId from the previous effect run so we can distinguish
+  // "same question changing phase" from "new question mounted".
+  const prevQuestionIdRef = useRef(questionId);
+
   // MotionValues are stable refs and intentionally excluded from deps.
-  // questionId is included so a question change immediately resets all values
-  // before the new phase RAF starts — prevents stale reveal state from one
-  // question bleeding into the next question's first frame.
+  // questionId is included so that when the question changes the effect re-runs,
+  // the ref mismatch is detected, and all MotionValues hard-reset to neutral
+  // before the new question's phase RAF starts.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let raf = 0;
@@ -124,11 +129,19 @@ export function useRevealTimeline({
       idleBreath.set(0);
     };
 
-    // ── REVEAL / EXPLANATION ──────────────────────────────────────────────
-    // transition is intentionally excluded: SceneSlider owns question-to-question
-    // movement; the timeline must be neutral so old reveal state does not bleed
-    // into the new question's first frame.
-    if (phase === "reveal" || phase === "explanation") {
+    // Hard reset when the question changes. This fires before any phase RAF
+    // starts, ensuring the new question always enters with neutral MotionValues.
+    const questionChanged = questionId !== prevQuestionIdRef.current;
+    prevQuestionIdRef.current = questionId;
+    if (questionChanged) reset();
+
+    // ── REVEAL / EXPLANATION / TRANSITION (same question) ─────────────────
+    // transition with the same questionId = old question is still on screen
+    // inside SceneSlider's exit animation; keep it in revealed/settled state
+    // so it doesn't snap back to question layout mid-exit.
+    // A new questionId already hard-reset above; the new question then enters
+    // whichever phase the engine is in (typically "question" → idle breathing).
+    if (phase === "reveal" || phase === "explanation" || phase === "transition") {
       const tick = () => {
         const now = Date.now();
         const elapsed = Math.max(0, now - phaseStartedAt);
@@ -234,9 +247,9 @@ export function useRevealTimeline({
           nameOpacity.set(0);
         }
 
-        // reveal: tick until t=1; explanation: keep ticking for subject breathing
+        // reveal: tick until t=1; explanation/transition: keep ticking for subject breathing
         if (phase === "reveal" && t < 1) raf = requestAnimationFrame(tick);
-        else if (phase === "explanation") raf = requestAnimationFrame(tick);
+        else if (phase === "explanation" || phase === "transition") raf = requestAnimationFrame(tick);
       };
 
       raf = requestAnimationFrame(tick);
@@ -271,9 +284,7 @@ export function useRevealTimeline({
 
       raf = requestAnimationFrame(tick);
 
-    // ── TRANSITION / IDLE / OTHER ────────────────────────────────────────
-    // transition: SceneSlider owns this; reset to neutral so old reveal state
-    // does not appear on the incoming question's first frame.
+    // ── IDLE / OTHER ────────────────────────────────────────────────────
     } else {
       reset();
     }
