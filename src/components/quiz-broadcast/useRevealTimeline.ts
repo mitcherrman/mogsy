@@ -30,7 +30,7 @@ import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
 const B_LAUNCH = 0.15;
 const B_IMPACT = 0.28;
 const B_SETTLE = 0.55;
-const B_NAME   = 0.58;
+const B_NAME   = 0.66;
 
 function easeIn3(t: number)    { return t * t * t; }
 function easeOut3(t: number)   { return 1 - (1 - t) ** 3; }
@@ -166,16 +166,16 @@ export function useRevealTimeline({
             contentX.set(cExit * 52);
             contentOpacity.set(Math.max(0, 1 - cExit * 1.25));
             qrX.set(cExit * 36);
-            qrOpacity.set(Math.max(0, 1 - launchT * 2));
+            qrOpacity.set(Math.max(0, 1 - launchT * 2.8));
           } else {
             contentY.set(cExit * 85);
             contentOpacity.set(Math.max(0, 1 - cExit * 1.25));
             qrY.set(cExit * 70);
-            qrOpacity.set(Math.max(0, 1 - launchT * 2));
+            qrOpacity.set(Math.max(0, 1 - launchT * 2.8));
           }
 
           // Scene push-in: build through launch, peak at impact, settle back
-          const maxScale = 1.08;
+          const maxScale = 1.14;
           let scale: number;
           if (t < B_LAUNCH) {
             scale = 1 + easeIn3(launchT) * (maxScale - 1) * 0.55;
@@ -202,18 +202,18 @@ export function useRevealTimeline({
           // Subject panel size: expand to fill as camera pushes in
           const sizeT = easeOut3(Math.min(1, t / B_SETTLE));
           if (!isShorts) {
-            subjectWidthPct.set(28 + sizeT * 54); // 28 → 82%
+            subjectWidthPct.set(28 + sizeT * 60); // 28 → 88%
           } else {
-            subjectHeightPct.set(34 + sizeT * 28); // 34 → 62%
+            subjectHeightPct.set(34 + sizeT * 34); // 34 → 68%
           }
 
           // Subject card breathing after settle
-          const breathAmp = t >= B_SETTLE ? 0.016 : 0;
+          const breathAmp = t >= B_SETTLE ? 0.022 : 0;
           const breathScale = 1 + Math.sin((now / 4200) * Math.PI * 2) * breathAmp;
           subjectScale.set(breathScale);
 
           // Darkness: build, peak at impact, soften at settle, hold ambient
-          const darkPeak = 0.52;
+          const darkPeak = 0.42;
           let dark: number;
           if (t < B_LAUNCH) {
             dark = easeIn3(launchT) * darkPeak;
