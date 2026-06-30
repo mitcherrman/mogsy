@@ -133,10 +133,10 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       {/* Category */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Category</label>
-        <Select value={filters.category ?? ""} onValueChange={(v) => v ? set("category", v) : clear("category")}>
+        <Select value={filters.category ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("category") : set("category", v)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             {filterOptions?.categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -145,10 +145,10 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       {/* Source type */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Source Type</label>
-        <Select value={filters.source_type ?? ""} onValueChange={(v) => v ? set("source_type", v) : clear("source_type")}>
+        <Select value={filters.source_type ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("source_type") : set("source_type", v)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             {filterOptions?.source_types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -176,10 +176,10 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       {/* Answer certainty */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Answer Certainty</label>
-        <Select value={filters.answer_certainty ?? ""} onValueChange={(v) => v ? set("answer_certainty", v) : clear("answer_certainty")}>
+        <Select value={filters.answer_certainty ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("answer_certainty") : set("answer_certainty", v)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             <SelectItem value="objective">Objective</SelectItem>
             <SelectItem value="derived">Derived</SelectItem>
             <SelectItem value="subjective">Subjective</SelectItem>
@@ -191,10 +191,10 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       {/* Format */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Format</label>
-        <Select value={filters.format ?? ""} onValueChange={(v) => v ? set("format", v) : clear("format")}>
+        <Select value={filters.format ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("format") : set("format", v)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             {filterOptions?.formats.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -203,10 +203,10 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       {/* Review status */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Review Status</label>
-        <Select value={filters.review_status ?? ""} onValueChange={(v) => v ? set("review_status", v) : clear("review_status")}>
+        <Select value={filters.review_status ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("review_status") : set("review_status", v)}>
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             {REVIEW_STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -216,12 +216,12 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Active</label>
         <Select
-          value={filters.is_active !== undefined ? String(filters.is_active) : ""}
-          onValueChange={(v) => v !== "" ? set("is_active", Number(v)) : clear("is_active")}
+          value={filters.is_active !== undefined ? String(filters.is_active) : "__all__"}
+          onValueChange={(v) => v === "__all__" ? clear("is_active") : set("is_active", Number(v))}
         >
           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="__all__">All</SelectItem>
             <SelectItem value="1">Active only</SelectItem>
             <SelectItem value="0">Inactive only</SelectItem>
           </SelectContent>
