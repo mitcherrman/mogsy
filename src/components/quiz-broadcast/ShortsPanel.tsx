@@ -11,10 +11,10 @@ type Status = "idle" | "loading" | "success" | "fallback" | "error";
 type Props = {
   onGenerate: (questions: QuizQuestion[]) => void;
   currentAspect: AspectRatio;
-  onSwitchToShorts: () => void;
+  onToggleAspect: () => void;
 };
 
-export default function ShortsPanel({ onGenerate, currentAspect, onSwitchToShorts }: Props) {
+export default function ShortsPanel({ onGenerate, currentAspect, onToggleAspect }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isShorts = currentAspect === "9:16";
@@ -100,24 +100,21 @@ export default function ShortsPanel({ onGenerate, currentAspect, onSwitchToShort
 
         {/* Right: actions */}
         <div className="flex shrink-0 items-center gap-2 sm:mt-0">
-          {/* 9:16 shortcut */}
-          {isShorts ? (
-            <Badge variant="outline" className="border-cyan-400/40 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-300">
-              <Monitor className="mr-1 h-3 w-3" />
-              9:16 active
-            </Badge>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 border-cyan-400/30 bg-cyan-400/5 text-xs text-cyan-300 hover:border-cyan-400/60 hover:bg-cyan-400/10"
-              onClick={onSwitchToShorts}
-              title="Switch Visual Settings to 9:16 for Shorts"
-            >
-              <Monitor className="mr-1.5 h-3.5 w-3.5" />
-              Switch to 9:16
-            </Button>
-          )}
+          {/* 9:16 toggle */}
+          <Button
+            size="sm"
+            variant="outline"
+            className={`h-8 text-xs ${
+              isShorts
+                ? "border-cyan-400/60 bg-cyan-400/15 text-cyan-200 hover:bg-cyan-400/25"
+                : "border-cyan-400/30 bg-cyan-400/5 text-cyan-300 hover:border-cyan-400/60 hover:bg-cyan-400/10"
+            }`}
+            onClick={onToggleAspect}
+            title={isShorts ? "Switch back to 16:9" : "Switch to 9:16 for Shorts"}
+          >
+            <Monitor className="mr-1.5 h-3.5 w-3.5" />
+            {isShorts ? "9:16 active — switch back" : "Switch to 9:16"}
+          </Button>
 
           <Button
             size="sm"

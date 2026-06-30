@@ -299,12 +299,10 @@ export default function AdminQuizBroadcast() {
     });
   };
 
-  const onSwitchToShorts = () => {
-    engine.setConfig({
-      ...snapshot.config,
-      visuals: { ...snapshot.config.visuals, aspect: "9:16" },
-    });
-    devToolsRepository.appendEvent({ level: "info", source: "shorts", message: "Switched aspect ratio to 9:16 for Shorts" });
+  const onToggleAspect = () => {
+    const next = snapshot.config.visuals.aspect === "9:16" ? "16:9" : "9:16";
+    engine.setConfig({ ...snapshot.config, visuals: { ...snapshot.config.visuals, aspect: next } });
+    devToolsRepository.appendEvent({ level: "info", source: "shorts", message: `Switched aspect ratio to ${next}` });
   };
 
   return (
@@ -352,7 +350,7 @@ export default function AdminQuizBroadcast() {
       <ShortsPanel
         onGenerate={onShortsGenerate}
         currentAspect={snapshot.config.visuals.aspect}
-        onSwitchToShorts={onSwitchToShorts}
+        onToggleAspect={onToggleAspect}
       />
 
       <Card>
