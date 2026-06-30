@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -334,10 +334,10 @@ function DetailPanel({
 
   const q = data?.question;
 
-  // Sync note textarea with loaded question
-  useState(() => {
-    if (q?.review_note) setNote(q.review_note);
-  });
+  // Sync note textarea when question loads or changes
+  useEffect(() => {
+    setNote(q?.review_note ?? "");
+  }, [questionId, q?.review_note]);
 
   const { mutate: patch, isPending } = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: ReviewPatchPayload }) =>
