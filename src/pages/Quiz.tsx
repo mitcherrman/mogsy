@@ -223,6 +223,8 @@ export default function Quiz() {
 
   // True while the user is playing the daily challenge (vs a normal quiz set).
   const isDailyChallenge = useRef(false);
+  // Bonus XP earned on daily challenge completion — captured from the last submit response.
+  const dailyBonusXpEarned = useRef(0);
   // The theme blurb map mirrors the backend theme names.
   const THEME_BLURBS: Record<string, string> = {
     "Champion Cooldowns": "Memorize the timing windows that win trades.",
@@ -497,7 +499,7 @@ export default function Quiz() {
           }));
         }
         if (dcResult.daily_bonus_xp_earned && dcResult.daily_bonus_xp_earned > 0) {
-          toast.success(`Daily challenge complete! +${dcResult.daily_bonus_xp_earned} bonus XP`, { icon: "🏆" });
+          dailyBonusXpEarned.current = dcResult.daily_bonus_xp_earned;
         }
       } else {
         result = await quizApi.submitAnswer({
@@ -1429,7 +1431,22 @@ export default function Quiz() {
         )}
 
         {/* Final results */}
-        {phase === "result" && (
+        {phase === "result" && isDailyChallenge.current && (
+          <DailyChallengeResult
+            score={dailyChallenge.correct}
+            total={dailyChallenge.target}
+            dailyChallenge={dailyChallenge}
+            bonusXp={dailyBonusXpEarned.current}
+            answers={sessionAnswers}
+            onDone={() => {
+              isDailyChallenge.current = false;
+              dailyBonusXpEarned.current = 0;
+              setPhase("sets");
+            }}
+          />
+        )}
+
+        {phase === "result" && !isDailyChallenge.current && (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1544,6 +1561,119 @@ export default function Quiz() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/* ───────────────────── Daily challenge result ───────────────────── */
+
+function DailyChallengeResult({
+  score,
+  total,
+  dailyChallenge,
+  bonusXp,
+  answers,
+  onDone,
+}: {
+  score: number;
+  total: number;
+  dailyChallenge: DailyChallengeState;
+  bonusXp: number;
+  answers: SessionAnswer[];
+  onDone: () => void;
+}) {
+  const accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
+  const isCompleted = dailyChallenge.completed;
+  const streak = dailyChallenge.dailyStreak;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.35 }}
+      className="space-y-4"
+    >
+      <Card
+        className="relative overflow-hidden border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/90 via-[#0a1428]/90 to-[#0a0a1a]/90 backdrop-blur-sm text-center"
+        style={{
+          boxShadow: "0 0 0 1px rgba(201,168,76,0.18) inset, 0 0 28px rgba(80,170,220,0.15), 0 8px 28px rgba(0,0,0,0.55)",
+        }}
+      >
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent opacity-80" />
+        <CardHeader className="pb-2">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c9a84c]/80 mb-1">
+            Daily Challenge · Complete
+          </div>
+          <CardTitle className="text-xl md:text-2xl font-bold text-[#f5e9c8]">
+            {isCompleted ? "Challenge Complete!" : "Session Over"}
+          </CardTitle>
+          <CardDescription className="text-sm text-[#c9a84c]/70">
+            {dailyChallenge.themeTitle}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5 pb-6">
+          {/* Score */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="text-5xl font-extrabold text-[#f0d78c]">
+              {score}
+              <span className="text-xl font-medium text-[#c9a84c]/60"> / {total}</span>
+            </div>
+            <Badge
+              variant="outline"
+              className={`text-xs border-[#c9a84c]/40 ${
+                accuracy === 100
+                  ? "bg-emerald-500/20 text-emerald-300"
+                  : accuracy >= 60
+                  ? "bg-[#c9a84c]/15 text-[#f0d78c]"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {accuracy === 100 ? "Perfect" : accuracy >= 60 ? "Good effort" : "Keep practicing"}
+            </Badge>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex justify-center gap-6">
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-2xl font-bold text-orange-300 inline-flex items-center gap-1">
+                <Flame className="h-5 w-5" />{streak}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">day streak</span>
+            </div>
+            {bonusXp > 0 && (
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-2xl font-bold text-[#f0d78c] inline-flex items-center gap-1">
+                  <Sparkles className="h-5 w-5" />+{bonusXp}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">bonus XP</span>
+              </div>
+            )}
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-2xl font-bold text-[#f5e9c8]">{accuracy}%</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">accuracy</span>
+            </div>
+          </div>
+
+          {/* Streak message */}
+          {isCompleted && (
+            <p className="text-sm text-muted-foreground">
+              {streak > 1
+                ? `${streak}-day streak — come back tomorrow to keep it alive.`
+                : "Come back tomorrow to start a streak!"}
+            </p>
+          )}
+
+          <Button
+            onClick={onDone}
+            className="w-full bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
+          >
+            Back to Quiz
+          </Button>
+        </CardContent>
+      </Card>
+
+      <SessionBreakdown answers={answers} />
+      <SessionReviewList answers={answers} />
+    </motion.div>
   );
 }
 
