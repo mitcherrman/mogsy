@@ -14,7 +14,9 @@ import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
 export default function Auth() {
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [searchParamsInit] = useState(() => new URLSearchParams(window.location.search));
+  const initialMode = searchParamsInit.get("mode") === "signup" ? "signup" : "signin";
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,6 +28,10 @@ export default function Auth() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite");
+  const returnTo = searchParams.get("returnTo") || "/home";
+
+  // Only allow relative paths to prevent open-redirect attacks.
+  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/home";
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
@@ -113,7 +119,7 @@ export default function Auth() {
       } else {
         toast({ title: "Account created!", description: "Your progress has been saved." });
         if (user) await redeemInvite(user.id);
-        navigate("/home");
+        navigate(safeReturnTo);
       }
       setLoading(false);
       return;
@@ -143,7 +149,7 @@ export default function Auth() {
           toast({ title: "Login failed", description: error.message, variant: "destructive" });
         }
       } else {
-        navigate("/home");
+        navigate(safeReturnTo);
       }
     } else if (mode === "signup") {
       if (password !== confirmPassword) {

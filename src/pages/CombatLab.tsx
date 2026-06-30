@@ -84,6 +84,8 @@ import {
   type TargetDefensePreviewResponse,
   type TargetDefenseMetadata,
 } from "@/lib/combat-lab/api";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const STORAGE_KEY = "combat-lab:last-config";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
@@ -517,6 +519,15 @@ function MultiSelect<T extends { name: string; tree?: string; type?: string }>({
 /* ─────────────── page ─────────────── */
 
 export default function CombatLab() {
+  const { user } = useAuth();
+
+  // Ensure anonymous session so combat lab usage is tracked under a stable user_id.
+  useEffect(() => {
+    if (!user) {
+      supabase.auth.signInAnonymously();
+    }
+  }, [user]);
+
   const [champions, setChampions] = useState<Champion[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [runes, setRunes] = useState<Rune[]>([]);

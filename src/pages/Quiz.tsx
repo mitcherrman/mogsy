@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,6 +32,17 @@ import {
   type RankedState,
 } from "@/lib/quiz/featured-mock";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  incrementAnonymousActions,
+  getAnonymousActionCount,
+  hasVisitedHub,
+  hasSoftNudgeBeenSeen,
+  markSoftNudgeSeen,
+} from "@/lib/quiz/onboarding-gate";
+import type { QuizOnboardingConfig } from "@/pages/QuizAdmin";
+import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
+import QuizSignUpNudge from "@/components/quiz/QuizSignUpNudge";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
 
@@ -164,7 +175,9 @@ type SessionAnswer = {
 
 export default function Quiz() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const userId = user?.id || "anonymous";
+  const isAnonymous = !user || user.is_anonymous === true;
   const [phase, setPhase] = useState<QuizPhase>("sets");
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sets, setSets] = useState<QuizSet[]>([]);
@@ -202,6 +215,12 @@ export default function Quiz() {
     getDailyChallenge(),
   );
   const [recentXpGain, setRecentXpGain] = useState<number | null>(() => getRecentXpGain());
+  // Gate / nudge state
+  const [gateConfig, setGateConfig] = useState<QuizOnboardingConfig | null>(null);
+  const [showGate, setShowGate] = useState(false);
+  const [showNudge, setShowNudge] = useState(false);
+  const [anonActionCount, setAnonActionCount] = useState(() => getAnonymousActionCount());
+
   // True while the user is playing the daily challenge (vs a normal quiz set).
   const isDailyChallenge = useRef(false);
   // The theme blurb map mirrors the backend theme names.
@@ -337,6 +356,42 @@ export default function Quiz() {
     loadDailyChallenge();
   }, [loadDailyChallenge]);
 
+  // Ensure anonymous session and load gate config on mount.
+  useEffect(() => {
+    if (!user) {
+      supabase.auth.signInAnonymously();
+    }
+
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "quiz_onboarding_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        const defaults: QuizOnboardingConfig = {
+          hard_gate_enabled: true,
+          hard_gate_threshold: 5,
+          soft_nudge_enabled: true,
+          soft_nudge_threshold: 3,
+          redirect_to_hub: true,
+        };
+        if (data?.value && typeof data.value === "object") {
+          setGateConfig({ ...defaults, ...(data.value as Partial<QuizOnboardingConfig>) });
+        } else {
+          setGateConfig(defaults);
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Hub redirect: if enabled and user hasn't come from /lol this session, send them there.
+  useEffect(() => {
+    if (!gateConfig) return;
+    if (gateConfig.redirect_to_hub && !hasVisitedHub()) {
+      navigate("/lol", { replace: true });
+    }
+  }, [gateConfig, navigate]);
+
   // Load quiz sets on mount
   useEffect(() => {
     let cancelled = false;
@@ -453,6 +508,23 @@ export default function Quiz() {
       }
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+
+      // Gate / nudge tracking for anonymous users.
+      if (isAnonymous && gateConfig) {
+        const newCount = incrementAnonymousActions();
+        setAnonActionCount(newCount);
+        if (gateConfig.hard_gate_enabled && newCount >= gateConfig.hard_gate_threshold) {
+          setShowGate(true);
+        } else if (
+          gateConfig.soft_nudge_enabled &&
+          newCount >= gateConfig.soft_nudge_threshold &&
+          !hasSoftNudgeBeenSeen()
+        ) {
+          markSoftNudgeSeen();
+          setShowNudge(true);
+        }
+      }
+
       setSessionAnswers((prev) => [
         ...prev,
         {
@@ -550,6 +622,20 @@ export default function Quiz() {
 
   return (
     <div>
+      {/* Hard gate overlay — no dismiss, shown after answer resolves */}
+      {showGate && (
+        <QuizSignUpGate
+          progress={userProgress}
+          actionCount={anonActionCount}
+          returnTo="/quiz"
+        />
+      )}
+
+      {/* Soft nudge banner — dismissible */}
+      {showNudge && !showGate && (
+        <QuizSignUpNudge returnTo="/quiz" />
+      )}
+
       <SEOHead
         title="Mogsy League Quiz — Test Your LoL Knowledge"
         description="Challenge yourself with League of Legends trivia and mechanics questions on Mogsy."

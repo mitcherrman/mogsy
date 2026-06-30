@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText, X } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -10,6 +10,8 @@ import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/compon
 import { useChampionAssets, getChampionCutout, getChampionSplash, getChampionLoading } from "@/hooks/useChampionAssets";
 import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 
 const LOL_TAG = "League of Legends";
 
@@ -76,9 +78,22 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
 ];
 
 export default function LolHub() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
   const [popoutStyle, setPopoutStyle] = useState<HexPopoutStyle>("splash");
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  const isAnonymous = !user || user.is_anonymous === true;
+
+  // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
+  useEffect(() => {
+    markHubVisited();
+    if (!user) {
+      supabase.auth.signInAnonymously();
+    }
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +130,28 @@ export default function LolHub() {
       />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Anonymous sign-up nudge banner */}
+        {isAnonymous && !nudgeDismissed && (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 px-4 py-2.5 text-sm">
+            <span className="flex-1 text-[#f5e9c8]/90">
+              Sign up to save your XP, streaks, and progress across Mogsy League.
+            </span>
+            <button
+              onClick={() => navigate("/auth?mode=signup&returnTo=/lol")}
+              className="shrink-0 rounded-md bg-[#c9a84c]/20 px-3 py-1 text-xs font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
+            >
+              Sign up free
+            </button>
+            <button
+              onClick={() => setNudgeDismissed(true)}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Hero */}
         <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
           <div className="absolute inset-0 opacity-20 pointer-events-none">

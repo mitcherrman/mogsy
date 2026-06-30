@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks, Radio } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks, Radio, Settings2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,23 @@ import {
 } from "@/components/ui/dialog";
 import SEOHead from "@/components/SEOHead";
 import { quizApi, type QuizReport, type QuizOverride } from "@/lib/quiz/api";
+import { supabase } from "@/integrations/supabase/client";
+
+export type QuizOnboardingConfig = {
+  hard_gate_enabled: boolean;
+  hard_gate_threshold: number;
+  soft_nudge_enabled: boolean;
+  soft_nudge_threshold: number;
+  redirect_to_hub: boolean;
+};
+
+const DEFAULT_ONBOARDING_CONFIG: QuizOnboardingConfig = {
+  hard_gate_enabled: true,
+  hard_gate_threshold: 5,
+  soft_nudge_enabled: true,
+  soft_nudge_threshold: 3,
+  redirect_to_hub: true,
+};
 
 type StatusFilter = "open" | "resolved" | "all";
 
@@ -38,6 +56,38 @@ function fmtDate(s?: string) {
 }
 
 export default function QuizAdmin() {
+  // Onboarding config
+  const [onboardingConfig, setOnboardingConfig] = useState<QuizOnboardingConfig>(DEFAULT_ONBOARDING_CONFIG);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  const [onboardingSaving, setOnboardingSaving] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "quiz_onboarding_config")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === "object") {
+          setOnboardingConfig({ ...DEFAULT_ONBOARDING_CONFIG, ...(data.value as Partial<QuizOnboardingConfig>) });
+        }
+        setOnboardingLoading(false);
+      });
+  }, []);
+
+  const saveOnboardingConfig = async () => {
+    setOnboardingSaving(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ key: "quiz_onboarding_config", value: onboardingConfig as any }, { onConflict: "key" });
+    setOnboardingSaving(false);
+    if (error) {
+      toast.error("Failed to save: " + error.message);
+    } else {
+      toast.success("Onboarding settings saved.");
+    }
+  };
+
   const [filter, setFilter] = useState<StatusFilter>("open");
   const [reports, setReports] = useState<QuizReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -230,6 +280,112 @@ export default function QuizAdmin() {
             Refresh
           </Button>
         </div>
+      </div>
+
+      {/* Onboarding & Gate Settings */}
+      <div className="mb-8">
+        <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+          <Settings2 className="h-4 w-4 text-primary" />
+          Onboarding &amp; Gate Settings
+        </h2>
+        {onboardingLoading ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : (
+          <Card className="bg-card/80 backdrop-blur-sm">
+            <CardContent className="pt-5 space-y-5">
+              {/* Hub redirect */}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Redirect /quiz to hub</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Users who land on /quiz directly are instantly sent to /lol first.
+                  </p>
+                </div>
+                <Switch
+                  checked={onboardingConfig.redirect_to_hub}
+                  onCheckedChange={(v) => setOnboardingConfig((c) => ({ ...c, redirect_to_hub: v }))}
+                />
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Soft nudge */}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Soft nudge banner</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Show a dismissible "sign up to save progress" banner after N answers.
+                  </p>
+                </div>
+                <Switch
+                  checked={onboardingConfig.soft_nudge_enabled}
+                  onCheckedChange={(v) => setOnboardingConfig((c) => ({ ...c, soft_nudge_enabled: v }))}
+                />
+              </div>
+              {onboardingConfig.soft_nudge_enabled && (
+                <div className="flex items-center gap-3 pl-1">
+                  <Label className="text-xs text-muted-foreground w-36 shrink-0">Soft nudge after</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    className="w-24"
+                    value={onboardingConfig.soft_nudge_threshold}
+                    onChange={(e) =>
+                      setOnboardingConfig((c) => ({
+                        ...c,
+                        soft_nudge_threshold: Math.max(1, parseInt(e.target.value) || 1),
+                      }))
+                    }
+                  />
+                  <span className="text-xs text-muted-foreground">answers</span>
+                </div>
+              )}
+
+              <div className="border-t border-border" />
+
+              {/* Hard gate */}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Hard sign-up gate</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Block anonymous users from continuing after N answers.
+                  </p>
+                </div>
+                <Switch
+                  checked={onboardingConfig.hard_gate_enabled}
+                  onCheckedChange={(v) => setOnboardingConfig((c) => ({ ...c, hard_gate_enabled: v }))}
+                />
+              </div>
+              {onboardingConfig.hard_gate_enabled && (
+                <div className="flex items-center gap-3 pl-1">
+                  <Label className="text-xs text-muted-foreground w-36 shrink-0">Hard gate after</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    className="w-24"
+                    value={onboardingConfig.hard_gate_threshold}
+                    onChange={(e) =>
+                      setOnboardingConfig((c) => ({
+                        ...c,
+                        hard_gate_threshold: Math.max(1, parseInt(e.target.value) || 1),
+                      }))
+                    }
+                  />
+                  <span className="text-xs text-muted-foreground">answers</span>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <Button onClick={saveOnboardingConfig} disabled={onboardingSaving} className="gap-1.5">
+                  {onboardingSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Save settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Warning banner */}
