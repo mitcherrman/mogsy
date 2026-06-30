@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle } from "lucide-react";
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, resolveQuizAssetUrl, type DailyChallengeQuestion } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
@@ -25,7 +25,6 @@ import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import {
   getDailyChallenge,
-  recordDailyAnswer,
   getRankedState,
   recordRecentXpGain,
   getRecentXpGain,
@@ -198,11 +197,23 @@ export default function Quiz() {
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [achievementsError, setAchievementsError] = useState<string | null>(null);
 
-  // Frontend-only progression surfaces (daily challenge + ranked queue).
+  // Daily challenge — initialised from localStorage for instant render, then synced from backend.
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
     getDailyChallenge(),
   );
   const [recentXpGain, setRecentXpGain] = useState<number | null>(() => getRecentXpGain());
+  // True while the user is playing the daily challenge (vs a normal quiz set).
+  const isDailyChallenge = useRef(false);
+  // The theme blurb map mirrors the backend theme names.
+  const THEME_BLURBS: Record<string, string> = {
+    "Champion Cooldowns": "Memorize the timing windows that win trades.",
+    "Item Knowledge": "Recognize core builds and component paths.",
+    "Champion Basics": "Identify champions, roles, and signature kits.",
+    "Rune Recognition": "Spot keystones, secondaries, and shards on sight.",
+    "Summoner Spells": "Track summoner cooldowns to control objectives.",
+    "Item Components": "Trace finished items back to their components.",
+    "Ability Identification": "Name the spell from the icon alone.",
+  };
 
   const loadProgress = useCallback(async () => {
     setProgressError(null);
@@ -246,6 +257,66 @@ export default function Quiz() {
     }
   }, [userId]);
 
+  const applyDailyChallengeResponse = useCallback(
+    (data: Awaited<ReturnType<typeof quizApi.getDailyChallenge>>) => {
+      if (!data.ok || !data.challenge) return;
+      const theme = data.challenge.theme;
+      setDailyChallenge({
+        date: data.challenge.challenge_date,
+        answered: data.progress?.answered_count ?? data.answered_count ?? 0,
+        correct: data.progress?.correct_count ?? 0,
+        target: data.challenge.question_count,
+        xpBonus: data.challenge.xp_bonus,
+        dailyStreak: data.progress?.daily_streak ?? data.daily_streak ?? 0,
+        lastCompletedDate: data.progress?.completed ? data.challenge.challenge_date : null,
+        completed: data.progress?.completed ?? data.completed ?? false,
+        remaining: data.questions_remaining ?? Math.max(0, data.challenge.question_count - (data.progress?.answered_count ?? 0)),
+        themeTitle: theme,
+        themeBlurb: THEME_BLURBS[theme] ?? "Sharpen your League of Legends knowledge.",
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const loadDailyChallenge = useCallback(async () => {
+    try {
+      const data = await quizApi.getDailyChallenge(userId);
+      applyDailyChallengeResponse(data);
+    } catch {
+      // Keep localStorage state on network failure.
+    }
+  }, [userId, applyDailyChallengeResponse]);
+
+  const handlePlayDailyChallenge = useCallback(async () => {
+    isDailyChallenge.current = true;
+    setCurrentSet(null);
+    setPhase("loading-questions");
+    setScore(0);
+    setSessionAnswers([]);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setFillBlankValue("");
+    setAnswerResult(null);
+    setErrorMsg("");
+    try {
+      const data = await quizApi.getDailyChallenge(userId);
+      applyDailyChallengeResponse(data);
+      if (!data.ok || !data.questions) throw new Error(data.error || "Could not load daily challenge.");
+      // Only show unanswered questions.
+      const remaining = (data.questions as DailyChallengeQuestion[]).filter((q) => !q.answered);
+      if (remaining.length === 0) {
+        setPhase("sets");
+        return;
+      }
+      setQuestions(remaining as QuizQuestion[]);
+      setPhase("active");
+    } catch (err: any) {
+      setPhase("error");
+      setErrorMsg(err?.message || "Failed to load daily challenge.");
+    }
+  }, [userId, applyDailyChallengeResponse]);
+
   useEffect(() => {
     setProgressLoading(true);
     loadProgress();
@@ -260,6 +331,11 @@ export default function Quiz() {
     setAchievementsLoading(true);
     loadAchievements();
   }, [loadAchievements]);
+
+  // Sync daily challenge state from backend on mount.
+  useEffect(() => {
+    loadDailyChallenge();
+  }, [loadDailyChallenge]);
 
   // Load quiz sets on mount
   useEffect(() => {
@@ -284,6 +360,7 @@ export default function Quiz() {
   }, []);
 
   const handleSelectSet = useCallback(async (set: QuizSet) => {
+    isDailyChallenge.current = false;
     setCurrentSet(set);
     setPhase("loading-questions");
     setScore(0);
@@ -344,11 +421,36 @@ export default function Quiz() {
     if (!currentQuestion || answerResult) return;
     setSelectedAnswer(choice);
     try {
-      const result = await quizApi.submitAnswer({
-        user_id: userId,
-        question_id: currentQuestion.id,
-        selected_answer: choice,
-      });
+      let result: QuizAnswerResult;
+      if (isDailyChallenge.current) {
+        const dcResult = await quizApi.submitDailyChallengeAnswer({
+          user_id: userId,
+          question_id: currentQuestion.id,
+          selected_answer: choice,
+        });
+        result = dcResult;
+        // Update daily challenge state from the backend response.
+        if (dcResult.daily_progress) {
+          setDailyChallenge((prev) => ({
+            ...prev,
+            answered: dcResult.daily_progress!.answered_count,
+            correct: dcResult.daily_progress!.correct_count,
+            completed: dcResult.daily_progress!.completed,
+            dailyStreak: dcResult.daily_progress!.daily_streak,
+            remaining: Math.max(0, prev.target - dcResult.daily_progress!.answered_count),
+            lastCompletedDate: dcResult.daily_progress!.completed ? prev.date : prev.lastCompletedDate,
+          }));
+        }
+        if (dcResult.daily_bonus_xp_earned && dcResult.daily_bonus_xp_earned > 0) {
+          toast.success(`Daily challenge complete! +${dcResult.daily_bonus_xp_earned} bonus XP`, { icon: "🏆" });
+        }
+      } else {
+        result = await quizApi.submitAnswer({
+          user_id: userId,
+          question_id: currentQuestion.id,
+          selected_answer: choice,
+        });
+      }
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
       setSessionAnswers((prev) => [
@@ -361,8 +463,6 @@ export default function Quiz() {
           explanation: result.explanation,
         },
       ]);
-      // Update Daily Challenge progress + remember last XP gain for the rank card.
-      setDailyChallenge(recordDailyAnswer(!!result.is_correct));
       if (typeof result.xp_earned === "number" && result.xp_earned > 0) {
         recordRecentXpGain(result.xp_earned);
         setRecentXpGain(result.xp_earned);
@@ -409,6 +509,7 @@ export default function Quiz() {
     if (currentSet) {
       handleSelectSet(currentSet);
     } else {
+      isDailyChallenge.current = false;
       setPhase("sets");
       setCurrentSet(null);
       setQuestions([]);
@@ -421,6 +522,7 @@ export default function Quiz() {
   }, [currentSet, handleSelectSet]);
 
   const handleRetry = useCallback(() => {
+    isDailyChallenge.current = false;
     setPhase("sets");
     setErrorMsg("");
     setCurrentSet(null);
@@ -490,10 +592,8 @@ export default function Quiz() {
             <div className="mb-3">
               <QuizDailyChallengeCard
                 state={dailyChallenge}
-                disabled={setsLoading || sets.length === 0}
-                onPlay={() => {
-                  if (sets.length > 0) handleSelectSet(sets[0]);
-                }}
+                disabled={setsLoading}
+                onPlay={handlePlayDailyChallenge}
               />
             </div>
 

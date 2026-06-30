@@ -102,6 +102,49 @@ export type QuizLeaderboardEntry = {
   attempts?: number;
 };
 
+export type DailyChallengeQuestion = QuizQuestion & {
+  position?: number;
+  answered?: boolean;
+};
+
+export type DailyChallengeUserProgress = {
+  answered_count: number;
+  correct_count: number;
+  completed: boolean;
+  bonus_awarded: boolean;
+  daily_streak: number;
+};
+
+export type DailyChallengeGetResponse = {
+  ok: boolean;
+  challenge?: {
+    challenge_date: string;
+    theme: string;
+    xp_bonus: number;
+    question_count: number;
+  };
+  questions?: DailyChallengeQuestion[];
+  progress?: DailyChallengeUserProgress;
+  answered_count?: number;
+  questions_remaining?: number;
+  completed?: boolean;
+  daily_streak?: number;
+  error?: string;
+};
+
+export type DailyChallengeSubmitPayload = {
+  user_id?: string;
+  question_id: number | string;
+  selected_answer: string;
+  challenge_date?: string;
+  time_taken_ms?: number;
+};
+
+export type DailyChallengeSubmitResult = QuizAnswerResult & {
+  daily_progress?: DailyChallengeUserProgress;
+  daily_bonus_xp_earned?: number;
+};
+
 export type QuizOverride = {
   id: number | string;
   question_id: number | string;
@@ -226,4 +269,15 @@ export const quizApi = {
   /** Achievements for a user (unlocked + locked). Pass `"anonymous"` for guest. */
   getAchievements: (userId: string) =>
     request<QuizAchievementsResponse>(`/api/quiz/achievements/${encodeURIComponent(userId)}`),
+  /** Fetch today's daily challenge state + questions for a user. */
+  getDailyChallenge: (userId: string, challengeDate?: string) =>
+    request<DailyChallengeGetResponse>(
+      `/api/quiz/daily-challenge?user_id=${encodeURIComponent(userId)}${challengeDate ? `&challenge_date=${encodeURIComponent(challengeDate)}` : ""}`,
+    ),
+  /** Submit an answer for a daily challenge question. */
+  submitDailyChallengeAnswer: (payload: DailyChallengeSubmitPayload) =>
+    request<DailyChallengeSubmitResult>("/api/quiz/daily-challenge/submit", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
