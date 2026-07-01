@@ -259,6 +259,8 @@ export type ReviewFilters = {
   favorite_for_shorts?: number;
   missing_asset?: number;
   has_image?: number;
+  ability_slot?: string;
+  subject_type?: string;
   page?: number;
   page_size?: number;
 };
@@ -400,6 +402,8 @@ export const quizApi = {
     if (filters.favorite_for_shorts !== undefined) params.set("favorite_for_shorts", String(filters.favorite_for_shorts));
     if (filters.missing_asset !== undefined) params.set("missing_asset", String(filters.missing_asset));
     if (filters.has_image !== undefined) params.set("has_image", String(filters.has_image));
+    if (filters.ability_slot) params.set("ability_slot", filters.ability_slot);
+    if (filters.subject_type) params.set("subject_type", filters.subject_type);
     if (filters.page !== undefined) params.set("page", String(filters.page));
     if (filters.page_size !== undefined) params.set("page_size", String(filters.page_size));
     const qs = params.toString();

@@ -131,6 +131,7 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
     filters.category, filters.source_type, filters.answer_certainty, filters.format,
     filters.review_status, filters.is_active, filters.favorite_for_shorts,
     filters.missing_asset, filters.has_image, filters.difficulty_min, filters.difficulty_max,
+    filters.ability_slot, filters.subject_type,
   ].filter((v) => v !== undefined && v !== "").length;
 
   return (
@@ -240,6 +241,43 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
             <SelectItem value="__all__">All</SelectItem>
             <SelectItem value="1">Active only</SelectItem>
             <SelectItem value="0">Inactive only</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] font-medium text-muted-foreground">Ability Slot</label>
+        <Select
+          value={filters.ability_slot ?? "__all__"}
+          onValueChange={(v) => v === "__all__" ? clear("ability_slot") : set("ability_slot", v)}
+        >
+          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All</SelectItem>
+            <SelectItem value="passive">Passive</SelectItem>
+            <SelectItem value="q">Q</SelectItem>
+            <SelectItem value="w">W</SelectItem>
+            <SelectItem value="e">E</SelectItem>
+            <SelectItem value="r">R (Ultimate)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] font-medium text-muted-foreground">Subject Type</label>
+        <Select
+          value={filters.subject_type ?? "__all__"}
+          onValueChange={(v) => v === "__all__" ? clear("subject_type") : set("subject_type", v)}
+        >
+          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All</SelectItem>
+            <SelectItem value="champion">Champion</SelectItem>
+            <SelectItem value="ability">Ability</SelectItem>
+            <SelectItem value="item">Item</SelectItem>
+            <SelectItem value="rune">Rune</SelectItem>
+            <SelectItem value="summoner_spell">Summoner Spell</SelectItem>
+            <SelectItem value="objective">Objective</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -848,7 +886,7 @@ export default function AdminQuizReview() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applySearch()}
-                placeholder="Search question text, key, ID…"
+                placeholder="Malphite, ultimate, slot:r, item name…"
                 className="h-7 pl-7 text-xs"
               />
               {search && (
