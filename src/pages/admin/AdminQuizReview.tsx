@@ -4,12 +4,11 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
-  ArrowLeft, Loader2, Wrench,
+  ArrowLeft, Loader2, Wrench, ListChecks, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SEOHead from "@/components/SEOHead";
@@ -19,7 +18,16 @@ import {
   type ReviewQuestion,
   type ReviewFilters,
   type ReviewPatchPayload,
+  type QuizQuestion,
 } from "@/lib/quiz/api";
+import {
+  useChampionAssets,
+  getChampionIcon,
+  getChampionSplash,
+  getChampionLoading,
+} from "@/hooks/useChampionAssets";
+import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
+import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -28,14 +36,16 @@ import {
 const REVIEW_STATUSES = ["unreviewed", "approved", "rejected", "needs_fix", "missing_asset"] as const;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  unreviewed:    { label: "Unreviewed",    color: "border-muted-foreground/30 text-muted-foreground",       icon: SlidersHorizontal },
+  unreviewed:    { label: "Unreviewed",    color: "border-muted-foreground/30 text-muted-foreground",         icon: SlidersHorizontal },
   approved:      { label: "Approved",      color: "border-emerald-400/50 text-emerald-300 bg-emerald-400/10", icon: CheckCircle2 },
-  rejected:      { label: "Rejected",      color: "border-red-400/50 text-red-300 bg-red-400/10",            icon: XCircle },
-  needs_fix:     { label: "Needs Fix",     color: "border-amber-400/50 text-amber-300 bg-amber-400/10",      icon: Wrench },
-  missing_asset: { label: "Missing Asset", color: "border-orange-400/50 text-orange-300 bg-orange-400/10",   icon: ImageOff },
+  rejected:      { label: "Rejected",      color: "border-red-400/50 text-red-300 bg-red-400/10",             icon: XCircle },
+  needs_fix:     { label: "Needs Fix",     color: "border-amber-400/50 text-amber-300 bg-amber-400/10",       icon: Wrench },
+  missing_asset: { label: "Missing Asset", color: "border-orange-400/50 text-orange-300 bg-orange-400/10",    icon: ImageOff },
 };
 
-const DIFFICULTY_LABELS: Record<number, string> = { 1: "Recognition", 2: "Recall", 3: "Comparison", 4: "Reasoning", 5: "Simulation" };
+const DIFFICULTY_LABELS: Record<number, string> = {
+  1: "Recognition", 2: "Recall", 3: "Comparison", 4: "Reasoning", 5: "Simulation",
+};
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -54,7 +64,10 @@ function StatusBadge({ status }: { status: string }) {
 
 function DiffBadge({ difficulty }: { difficulty?: number }) {
   if (!difficulty) return null;
-  const colors = ["", "bg-emerald-400/15 text-emerald-300", "bg-sky-400/15 text-sky-300", "bg-amber-400/15 text-amber-300", "bg-orange-400/15 text-orange-300", "bg-red-400/15 text-red-300"];
+  const colors = [
+    "", "bg-emerald-400/15 text-emerald-300", "bg-sky-400/15 text-sky-300",
+    "bg-amber-400/15 text-amber-300", "bg-orange-400/15 text-orange-300", "bg-red-400/15 text-red-300",
+  ];
   return (
     <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${colors[difficulty] ?? ""}`}>
       D{difficulty}
@@ -62,8 +75,10 @@ function DiffBadge({ difficulty }: { difficulty?: number }) {
   );
 }
 
+/** Renders a single asset image with load/error state. Accepts relative paths or full URLs. */
 function AssetImage({ src, label }: { src?: string | null; label: string }) {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  // resolveQuizAssetUrl passes through absolute https:// URLs unchanged
   const url = resolveQuizAssetUrl(src);
   if (!url) return null;
   return (
@@ -76,7 +91,9 @@ function AssetImage({ src, label }: { src?: string | null; label: string }) {
         <img
           src={url}
           alt={label}
-          className={`h-16 w-auto max-w-[96px] rounded object-contain ${state === "loading" ? "opacity-0" : "opacity-100"}`}
+          className={`h-16 w-auto max-w-[96px] rounded object-contain transition-opacity ${
+            state === "loading" ? "opacity-0" : "opacity-100"
+          }`}
           onLoad={() => setState("ok")}
           onError={() => setState("error")}
         />
@@ -130,7 +147,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         )}
       </div>
 
-      {/* Category */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Category</label>
         <Select value={filters.category ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("category") : set("category", v)}>
@@ -142,7 +158,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Source type */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Source Type</label>
         <Select value={filters.source_type ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("source_type") : set("source_type", v)}>
@@ -154,7 +169,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Difficulty */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Difficulty</label>
         <div className="flex gap-1">
@@ -163,8 +177,14 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
             return (
               <button
                 key={d}
-                onClick={() => active ? (onFilters({ ...filters, page: 1, difficulty_min: undefined, difficulty_max: undefined })) : onFilters({ ...filters, page: 1, difficulty_min: d, difficulty_max: d })}
-                className={`h-6 w-6 rounded text-[10px] font-bold transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                onClick={() =>
+                  active
+                    ? onFilters({ ...filters, page: 1, difficulty_min: undefined, difficulty_max: undefined })
+                    : onFilters({ ...filters, page: 1, difficulty_min: d, difficulty_max: d })
+                }
+                className={`h-6 w-6 rounded text-[10px] font-bold transition-colors ${
+                  active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
               >
                 {d}
               </button>
@@ -173,7 +193,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </div>
       </div>
 
-      {/* Answer certainty */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Answer Certainty</label>
         <Select value={filters.answer_certainty ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("answer_certainty") : set("answer_certainty", v)}>
@@ -188,7 +207,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Format */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Format</label>
         <Select value={filters.format ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("format") : set("format", v)}>
@@ -200,7 +218,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Review status */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Review Status</label>
         <Select value={filters.review_status ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("review_status") : set("review_status", v)}>
@@ -212,7 +229,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Active/inactive */}
       <div className="space-y-1">
         <label className="text-[10px] font-medium text-muted-foreground">Active</label>
         <Select
@@ -228,7 +244,6 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
         </Select>
       </div>
 
-      {/* Quick toggles */}
       <div className="space-y-1.5">
         <label className="text-[10px] font-medium text-muted-foreground">Quick Filters</label>
         {[
@@ -241,7 +256,7 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
           return (
             <button
               key={`${key}-${val}`}
-              onClick={() => active ? clear(key) : set(key, val)}
+              onClick={() => (active ? clear(key) : set(key, val))}
               className={`w-full rounded border px-2 py-1 text-left text-[10px] transition-colors ${
                 active
                   ? "border-primary/50 bg-primary/10 text-primary"
@@ -258,50 +273,69 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
 }
 
 // ---------------------------------------------------------------------------
-// Question list row
+// Question list row (with checkbox)
 // ---------------------------------------------------------------------------
 
 function QuestionRow({
   q,
   selected,
+  checked,
   onClick,
+  onCheck,
 }: {
   q: ReviewQuestion;
   selected: boolean;
+  checked: boolean;
   onClick: () => void;
+  onCheck: (q: ReviewQuestion) => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
+    <div
+      className={`flex items-start gap-2 rounded-lg border px-2 py-2.5 transition-colors ${
         selected
           ? "border-primary/50 bg-primary/10"
           : "border-transparent hover:border-border hover:bg-muted/40"
       } ${!q.is_active ? "opacity-50" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-xs text-foreground">{q.question_text}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
-            <span className="text-[10px] text-muted-foreground">#{q.id}</span>
-            <span className="text-[10px] text-muted-foreground">·</span>
-            <span className="text-[10px] text-muted-foreground">{q.category}</span>
-            {q.source_type && (
-              <>
-                <span className="text-[10px] text-muted-foreground">·</span>
-                <span className="text-[10px] text-muted-foreground">{q.source_type}</span>
-              </>
-            )}
-            {q.difficulty && <DiffBadge difficulty={q.difficulty} />}
+      {/* Checkbox */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onCheck(q); }}
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+          checked
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-muted-foreground/40 hover:border-primary/60"
+        }`}
+        title={checked ? "Deselect" : "Select for playlist"}
+      >
+        {checked && <CheckCircle2 className="h-3 w-3" />}
+      </button>
+
+      {/* Row body — clicking opens detail */}
+      <button onClick={onClick} className="min-w-0 flex-1 text-left">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-2 text-xs text-foreground">{q.question_text}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <span className="text-[10px] text-muted-foreground">#{q.id}</span>
+              <span className="text-[10px] text-muted-foreground">·</span>
+              <span className="text-[10px] text-muted-foreground">{q.category}</span>
+              {q.source_type && (
+                <>
+                  <span className="text-[10px] text-muted-foreground">·</span>
+                  <span className="text-[10px] text-muted-foreground">{q.source_type}</span>
+                </>
+              )}
+              {q.difficulty && <DiffBadge difficulty={q.difficulty} />}
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <StatusBadge status={q.review_status} />
+            {q.favorite_for_shorts && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+            {q.missing_asset && <ImageOff className="h-3 w-3 text-orange-400" />}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <StatusBadge status={q.review_status} />
-          {q.favorite_for_shorts && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
-          {q.missing_asset && <ImageOff className="h-3 w-3 text-orange-400" />}
-        </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -332,9 +366,12 @@ function DetailPanel({
     staleTime: 30_000,
   });
 
+  // Champion asset manifest (globally cached, ~free after first load)
+  const { data: champManifest } = useChampionAssets();
+
   const q = data?.question;
 
-  // Sync note textarea when question loads or changes
+  // Sync note textarea when question loads or navigates
   useEffect(() => {
     setNote(q?.review_note ?? "");
   }, [questionId, q?.review_note]);
@@ -345,8 +382,7 @@ function DetailPanel({
     onSuccess: (_, { payload }) => {
       void queryClient.invalidateQueries({ queryKey: ["review-question", questionId] });
       void queryClient.invalidateQueries({ queryKey: ["review-questions"] });
-      const keys = Object.keys(payload).join(", ");
-      toast.success(`Updated: ${keys}`);
+      toast.success(`Updated: ${Object.keys(payload).join(", ")}`);
     },
     onError: () => toast.error("Failed to update question"),
   });
@@ -368,22 +404,42 @@ function DetailPanel({
   const correctValue = q.correct_answer?.value ?? "";
   const assetBase = q.metadata as Record<string, unknown>;
   const assets = (assetBase?.assets as Record<string, unknown>) ?? {};
-  const subjectAssets = (assets?.subject as Record<string, unknown>) ?? {};
+  const subject = (assets?.subject as Record<string, unknown>) ?? {};
+  const subjectType = subject.type as string | undefined;
 
-  const assetPaths = [
-    { key: "icon",           label: "Icon" },
-    { key: "splash",         label: "Splash" },
-    { key: "loading",        label: "Loading" },
-    { key: "item_icon",      label: "Item Icon" },
-    { key: "ability_icon",   label: "Ability Icon" },
-    { key: "rune_icon",      label: "Rune Icon" },
-    { key: "summoner_icon",  label: "Summoner Icon" },
-  ].filter(({ key }) => subjectAssets[key]);
+  // Metadata-stored asset paths (works for all question types)
+  const metadataAssets = [
+    { key: "icon",          label: "Icon" },
+    { key: "splash",        label: "Splash" },
+    { key: "loading",       label: "Loading" },
+    { key: "item_icon",     label: "Item Icon" },
+    { key: "ability_icon",  label: "Ability Icon" },
+    { key: "rune_icon",     label: "Rune Icon" },
+    { key: "summoner_icon", label: "Summoner Icon" },
+  ].filter(({ key }) => subject[key]);
+
+  // For ability questions, supplement with full champion art from the manifest
+  const championName = (
+    subjectType === "ability"
+      ? (subject.champion as string | undefined)
+      : undefined
+  ) ?? (assetBase?.champion_name as string | undefined);
+
+  const championManifestAssets: { url: string | null; label: string }[] =
+    championName
+      ? [
+          { url: getChampionIcon(champManifest, championName),    label: `${championName} Icon` },
+          { url: getChampionSplash(champManifest, championName),  label: `${championName} Splash` },
+          { url: getChampionLoading(champManifest, championName), label: `${championName} Loading` },
+        ].filter(({ url }) => url !== null)
+      : [];
+
+  const showChampionExpansion = championManifestAssets.length > 0;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5">
         <div className="flex items-center gap-1.5">
           <button onClick={() => onNavigate("prev")} disabled={!canPrev} className="rounded p-0.5 hover:bg-muted disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" />
@@ -398,10 +454,18 @@ function DetailPanel({
         </button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+      {/* V1 capability notice */}
+      <div className="shrink-0 border-b bg-muted/20 px-4 py-1.5">
+        <p className="text-[10px] text-muted-foreground">
+          <span className="font-semibold text-foreground/70">Review Console V1</span>
+          {" — "}approve, reject, adjust difficulty, flags, notes, and active status. Full question editing and playlist building coming next.
+        </p>
+      </div>
 
-        {/* Review action buttons */}
+      {/* Scrollable body */}
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
+
+        {/* Review status buttons */}
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Review Status</p>
           <div className="flex flex-wrap gap-1.5">
@@ -426,7 +490,7 @@ function DetailPanel({
           </div>
         </div>
 
-        {/* Quick toggles row */}
+        {/* Quick toggles */}
         <div className="flex flex-wrap gap-2">
           <button
             disabled={isPending}
@@ -468,7 +532,7 @@ function DetailPanel({
           </button>
         </div>
 
-        {/* Difficulty adjuster */}
+        {/* Difficulty */}
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Difficulty</p>
           <div className="flex gap-1.5">
@@ -479,9 +543,7 @@ function DetailPanel({
                 onClick={() => apply({ difficulty: d })}
                 title={DIFFICULTY_LABELS[d]}
                 className={`flex h-7 w-7 items-center justify-center rounded text-xs font-bold transition-colors ${
-                  q.difficulty === d
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/60"
+                  q.difficulty === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
                 }`}
               >
                 {d}
@@ -501,9 +563,7 @@ function DetailPanel({
                 disabled={isPending}
                 onClick={() => apply({ answer_certainty: c })}
                 className={`rounded px-2 py-0.5 text-[10px] capitalize transition-colors ${
-                  q.answer_certainty === c
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/60"
+                  q.answer_certainty === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
                 }`}
               >
                 {c}
@@ -512,21 +572,21 @@ function DetailPanel({
           </div>
         </div>
 
-        {/* Metadata row */}
+        {/* Metadata grid */}
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[10px]">
           {[
-            ["Category", q.category],
-            ["Source", q.source_type ?? "—"],
-            ["Format", q.format],
-            ["Certainty", q.answer_certainty],
-            ["Key", q.question_key ?? "—"],
-            ["Created", q.created_at ? q.created_at.slice(0, 10) : "—"],
+            ["Category",    q.category],
+            ["Source",      q.source_type ?? "—"],
+            ["Format",      q.format],
+            ["Certainty",   q.answer_certainty],
+            ["Key",         q.question_key ?? "—"],
+            ["Created",     q.created_at ? q.created_at.slice(0, 10) : "—"],
             ["Reviewed by", q.reviewed_by ?? "—"],
             ["Reviewed at", q.reviewed_at ? q.reviewed_at.slice(0, 10) : "—"],
           ].map(([label, value]) => (
             <div key={label} className="flex gap-1">
               <span className="text-muted-foreground">{label}:</span>
-              <span className="font-medium text-foreground truncate">{value}</span>
+              <span className="truncate font-medium text-foreground">{value}</span>
             </div>
           ))}
         </div>
@@ -534,10 +594,10 @@ function DetailPanel({
         {/* Question text */}
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Question</p>
-          <p className="text-sm text-foreground leading-relaxed">{q.question_text}</p>
+          <p className="text-sm leading-relaxed text-foreground">{q.question_text}</p>
         </div>
 
-        {/* Image */}
+        {/* Question image */}
         {q.image_path && (
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Question Image</p>
@@ -576,17 +636,33 @@ function DetailPanel({
         {q.explanation && (
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Explanation</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{q.explanation}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{q.explanation}</p>
           </div>
         )}
 
-        {/* Subject assets */}
-        {assetPaths.length > 0 && (
+        {/* Metadata assets (icon/splash/loading/item/ability/rune/summoner from stored paths) */}
+        {metadataAssets.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assets</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {subjectType === "ability" ? "Ability Asset" : "Assets"}
+            </p>
             <div className="flex flex-wrap gap-3">
-              {assetPaths.map(({ key, label }) => (
-                <AssetImage key={key} src={subjectAssets[key] as string} label={label} />
+              {metadataAssets.map(({ key, label }) => (
+                <AssetImage key={key} src={subject[key] as string} label={label} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Champion expansion for ability questions */}
+        {showChampionExpansion && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Champion Assets — {championName}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {championManifestAssets.map(({ url, label }) => (
+                <AssetImage key={label} src={url} label={label} />
               ))}
             </div>
           </div>
@@ -651,10 +727,30 @@ function DetailPanel({
 
 const PAGE_SIZE = 50;
 
+function toQuizQuestion(q: ReviewQuestion): QuizQuestion {
+  return {
+    id: q.id,
+    category: q.category,
+    question_key: q.question_key,
+    question_text: q.question_text,
+    format: q.format,
+    choices: q.choices,
+    image_path: q.image_path ?? undefined,
+    difficulty: q.difficulty,
+    metadata: q.metadata,
+    // pass through taxonomy fields that QuizQuestion accepts optionally
+    ...(q.source_type ? { source_type: q.source_type } : {}),
+    ...(q.answer_certainty ? { answer_certainty: q.answer_certainty } : {}),
+  };
+}
+
 export default function AdminQuizReview() {
   const [filters, setFilters] = useState<ReviewFilters>({ page: 1, page_size: PAGE_SIZE });
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // Selection state: map preserves question data across page changes
+  const [checkedQuestions, setCheckedQuestions] = useState<Map<number, ReviewQuestion>>(new Map());
 
   const { data: filterOptions } = useQuery({
     queryKey: ["review-filter-options"],
@@ -684,6 +780,32 @@ export default function AdminQuizReview() {
     if (next >= 0 && next < questions.length) setSelectedId(questions[next].id);
   };
 
+  const toggleCheck = (q: ReviewQuestion) => {
+    setCheckedQuestions((prev) => {
+      const next = new Map(prev);
+      if (next.has(q.id)) next.delete(q.id);
+      else next.set(q.id, q);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setCheckedQuestions(new Map());
+  const checkedCount = checkedQuestions.size;
+
+  const saveToPlaylist = () => {
+    const selected = Array.from(checkedQuestions.values());
+    const playlist: BroadcastPlaylist = {
+      id: `review_${Date.now()}`,
+      name: `Review Selection (${selected.length})`,
+      createdAt: Date.now(),
+      questions: selected.map(toQuizQuestion),
+    };
+    upsertPlaylist(playlist);
+    toast.success(`Saved "${playlist.name}" to Broadcast Playlists`, {
+      description: "Open Broadcast Studio → Saved Playlists tab to load it.",
+    });
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
@@ -707,20 +829,17 @@ export default function AdminQuizReview() {
         </div>
       </div>
 
-      {/* Body: sidebar + list + detail */}
+      {/* Body */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
 
         {/* Filter sidebar */}
         <div className="h-full w-64 shrink-0 overflow-y-auto border-r px-3 py-3">
-          <FilterSidebar
-            filters={filters}
-            onFilters={setFilters}
-            filterOptions={filterOptions}
-          />
+          <FilterSidebar filters={filters} onFilters={setFilters} filterOptions={filterOptions} />
         </div>
 
         {/* Question list */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-r">
+
           {/* Search bar */}
           <div className="shrink-0 flex gap-2 border-b px-3 py-2">
             <div className="relative flex-1">
@@ -733,7 +852,10 @@ export default function AdminQuizReview() {
                 className="h-7 pl-7 text-xs"
               />
               {search && (
-                <button onClick={() => { setSearch(""); setFilters((f) => ({ ...f, search: undefined, page: 1 })); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => { setSearch(""); setFilters((f) => ({ ...f, search: undefined, page: 1 })); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
                   <X className="h-3 w-3" />
                 </button>
               )}
@@ -741,8 +863,34 @@ export default function AdminQuizReview() {
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applySearch}>Search</Button>
           </div>
 
+          {/* Selection action bar — only shown when items are checked */}
+          {checkedCount > 0 && (
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b bg-primary/5 px-3 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <ListChecks className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-medium text-foreground">{checkedCount} selected</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  className="h-6 gap-1 text-[10px]"
+                  onClick={saveToPlaylist}
+                >
+                  <Send className="h-3 w-3" />
+                  Save to Broadcast Playlists
+                </Button>
+                <button
+                  onClick={clearSelection}
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* List */}
-          <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+          <div className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
             {isLoading && (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -762,7 +910,9 @@ export default function AdminQuizReview() {
                 key={q.id}
                 q={q}
                 selected={selectedId === q.id}
+                checked={checkedQuestions.has(q.id)}
                 onClick={() => setSelectedId(selectedId === q.id ? null : q.id)}
+                onCheck={toggleCheck}
               />
             ))}
           </div>
@@ -780,9 +930,7 @@ export default function AdminQuizReview() {
                 <ChevronLeft className="h-3 w-3 mr-0.5" />
                 Prev
               </Button>
-              <span className="text-[10px] text-muted-foreground">
-                Page {page} / {pages}
-              </span>
+              <span className="text-[10px] text-muted-foreground">Page {page} / {pages}</span>
               <Button
                 size="sm"
                 variant="ghost"
