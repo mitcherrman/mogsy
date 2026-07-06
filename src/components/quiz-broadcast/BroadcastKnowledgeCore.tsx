@@ -7,36 +7,68 @@
  * Visual hierarchy (bottom → top):
  *   Outer aura nebula
  *   → Mid aura ring
- *   → Outer gold crest (slow rotation)
- *   → Inner gold ring (counter-rotation)
- *   → Blue crystal — multi-layer gem (V2 art pass)
- *       Outer dark shell
- *       → Side face depth planes (6 trapezoids)
- *       → Outer facet highlights
- *       → Inner crystal shell
- *       → Inner facet highlights
- *       → Micro core hex
- *       → Caustic light beams (3, RAF-rotating)
- *       → Internal energy particles (16, RAF-orbiting)
- *       → Energy core (pulse)
- *       → Edge highlights
- *       → Inner glow highlight
- *       → Burst flash
- *   → Crystal inner brightness overlay
+ *   → Outer gold crest (slow rotation, SVG)
+ *   → Inner gold ring (counter-rotation, SVG)
+ *   → Central crystal:
+ *       · HextechCore3D — React Three Fiber 3D core (default)
+ *       · SvgCrystalCore — 2D SVG fallback (Suspense loading, no WebGL,
+ *         webglcontextlost, or error-boundary recovery)
  *   → Bloom flash
  *   → Burst shockwave ring
  *   → Orbital particles (3 rings, RAF-driven)
  *
  * Architecture:
- *   - Single RAF loop mounted once, reads props through refs.
- *   - Zero React re-renders during animation — all updates via direct style/setAttribute.
- *   - CSS drop-shadow on SVG <g> groups (not SVG filter elements) for GPU efficiency.
- *   - Internal crystal particles use SVG <circle> setAttribute (no layout thrash).
+ *   - Single RAF loop for crest/aura/particles, mounted once, reads props
+ *     through refs. Zero React re-renders during animation.
+ *   - Crystal-internal animation lives inside HextechCore3D (useFrame) or
+ *     SvgCrystalCore (its own RAF) respectively.
+ *   - The 3D core is lazy-loaded so three.js never enters the bundle for
+ *     pages that don't render the broadcast.
  */
 
-import { useEffect, useRef } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
 import { lerpCycleVisuals } from "./KnowledgeCoreConfig";
+import { SvgCrystalCore } from "./SvgCrystalCore";
+
+const HextechCore3D = lazy(() => import("./HextechCore3D"));
+
+/* ────────────────────────────────────────────────────────────────────────
+   WebGL support detection + error boundary — 24/7 fallback safety
+   ──────────────────────────────────────────────────────────────────────── */
+
+function supportsWebGL(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+interface BoundaryProps {
+  fallback: ReactNode;
+  onFail?: () => void;
+  children: ReactNode;
+}
+
+class Core3DErrorBoundary extends Component<BoundaryProps, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[KnowledgeCore] 3D core crashed, using SVG fallback", error, info);
+    this.props.onFail?.();
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 /* ────────────────────────────────────────────────────────────────────────
    Geometry constants — computed once at module load
@@ -87,137 +119,6 @@ const TICK_MARKS = Array.from({ length: 16 }, (_, i) => {
     y2: f(100 + Math.sin(a) * 76),
   };
 });
-
-// Crystal: pointy-top hexagon, center (100,100).
-// Outer shell r=45, inner shell r=38, micro core r=26.
-// Vertices i=0..5 at angles 90°, 30°, -30°, -90°, -150°, 150° (SVG y-down).
-function hexVerts(r: number): [number, number][] {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = ((90 - i * 60) * Math.PI) / 180;
-    return [100 + Math.cos(a) * r, 100 - Math.sin(a) * r] as [number, number];
-  });
-}
-const HEX_VERTS       = hexVerts(45);
-const INNER_HEX_VERTS = hexVerts(38);
-const MICRO_HEX_VERTS = hexVerts(26);
-
-const toPoints = (verts: [number, number][]) =>
-  verts.map(([x, y]) => `${f(x)},${f(y)}`).join(" ");
-
-const HEX_POINTS       = toPoints(HEX_VERTS);
-const INNER_HEX_POINTS = toPoints(INNER_HEX_VERTS);
-const MICRO_HEX_POINTS = toPoints(MICRO_HEX_VERTS);
-
-// Outer facet triangles: center → outer edge. Lighting from upper-right.
-const FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
-  const [x1, y1] = HEX_VERTS[i];
-  const [x2, y2] = HEX_VERTS[(i + 1) % 6];
-  return `M 100,100 L ${f(x1)},${f(y1)} L ${f(x2)},${f(y2)} Z`;
-});
-// Alternating strong light/dark facets — the reference gem reads through hard
-// value contrast between adjacent cuts, not through a uniform glow.
-const FACET_FILLS = [
-  "rgba(150,222,255,0.42)", // top — hit by light
-  "rgba(10,28,80,0.55)",    // upper-right — shadow cut
-  "rgba(90,170,255,0.20)",  // lower-right — bounce light
-  "rgba(4,14,48,0.62)",     // bottom — deepest shadow
-  "rgba(60,130,235,0.16)",  // lower-left
-  "rgba(120,195,255,0.30)", // upper-left — secondary light
-];
-
-// Inner facet triangles: center → inner hex edge (second depth layer).
-const INNER_FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
-  const [x1, y1] = INNER_HEX_VERTS[i];
-  const [x2, y2] = INNER_HEX_VERTS[(i + 1) % 6];
-  return `M 100,100 L ${f(x1)},${f(y1)} L ${f(x2)},${f(y2)} Z`;
-});
-const INNER_FACET_FILLS = [
-  "rgba(180,235,255,0.40)",
-  "rgba(12,36,100,0.42)",
-  "rgba(110,190,255,0.20)",
-  "rgba(6,20,64,0.48)",
-  "rgba(80,150,245,0.16)",
-  "rgba(150,215,255,0.28)",
-];
-
-// Bevel edge segments on the outer hex rim: top edges catch light, bottom
-// edges fall into shadow — sells the hard gem cut of the reference.
-const BEVEL_EDGES = Array.from({ length: 6 }, (_, i) => {
-  const [x1, y1] = HEX_VERTS[i];
-  const [x2, y2] = HEX_VERTS[(i + 1) % 6];
-  return { x1: f(x1), y1: f(y1), x2: f(x2), y2: f(y2) };
-});
-const BEVEL_STROKES = [
-  "rgba(190,240,255,0.85)", // top edge — brightest
-  "rgba(120,200,255,0.45)", // upper-right
-  "rgba(30,70,160,0.55)",   // lower-right — shadow
-  "rgba(8,20,60,0.80)",     // bottom — darkest
-  "rgba(24,60,150,0.55)",   // lower-left
-  "rgba(150,215,255,0.60)", // upper-left
-];
-
-// Side face trapezoids: outer hex edge → inner hex edge.
-// Creates the illusion of crystal thickness (depth planes on the rim).
-const SIDE_FACES = Array.from({ length: 6 }, (_, i) => {
-  const [ox1, oy1] = HEX_VERTS[i];
-  const [ox2, oy2] = HEX_VERTS[(i + 1) % 6];
-  const [ix1, iy1] = INNER_HEX_VERTS[i];
-  const [ix2, iy2] = INNER_HEX_VERTS[(i + 1) % 6];
-  return `${f(ox1)},${f(oy1)} ${f(ox2)},${f(oy2)} ${f(ix2)},${f(iy2)} ${f(ix1)},${f(iy1)}`;
-});
-// Light from upper-right: face 0 (top) is most lit, face 3 (bottom) is darkest.
-const SIDE_FACE_COLORS = [
-  "rgba(80,168,255,0.38)",  // face 0: top — lit
-  "rgba(46,112,218,0.24)",  // face 1: top-right
-  "rgba(16,64,168,0.15)",   // face 2: bottom-right
-  "rgba(8,36,126,0.10)",    // face 3: bottom — shadow
-  "rgba(14,56,150,0.15)",   // face 4: bottom-left
-  "rgba(34,96,198,0.23)",   // face 5: top-left
-];
-
-/* ────────────────────────────────────────────────────────────────────────
-   Internal crystal particle system — 16 particles in 3 orbit rings
-   Contained inside the crystal (radii 7, 15, 24 — well within r=45 hex)
-   ──────────────────────────────────────────────────────────────────────── */
-
-interface IntParticle {
-  baseR: number;
-  startAngle: number;
-  speed: number; // rad/sec
-  size: number;  // SVG r attribute
-}
-
-const INT_RING_CFG = [
-  { r: 7,  count: 4, speed: 0.24, size: 1.0  },
-  { r: 15, count: 5, speed: 0.16, size: 0.85 },
-  { r: 24, count: 7, speed: 0.10, size: 0.70 },
-] as const;
-
-const INT_PARTICLE_CFG: IntParticle[] = (() => {
-  const out: IntParticle[] = [];
-  INT_RING_CFG.forEach((ring, ri) => {
-    for (let j = 0; j < ring.count; j++) {
-      out.push({
-        baseR: ring.r,
-        startAngle: (j / ring.count) * Math.PI * 2 + ri * 0.85,
-        speed: ring.speed,
-        size: ring.size,
-      });
-    }
-  });
-  return out;
-})();
-const INT_PARTICLE_COUNT = INT_PARTICLE_CFG.length; // 16
-
-/* ────────────────────────────────────────────────────────────────────────
-   Caustic beam config — 3 ellipses slowly rotating inside the crystal
-   ──────────────────────────────────────────────────────────────────────── */
-
-const CAUSTIC_CFG = [
-  { rx: 24, ry: 2.4, startAngle: 0,   speed: 11  }, // deg/sec
-  { rx: 20, ry: 2.0, startAngle: 120, speed: -8  },
-  { rx: 16, ry: 1.7, startAngle: 240, speed: 17  },
-] as const;
 
 /* ────────────────────────────────────────────────────────────────────────
    Outer orbital particle system — 3 concentric orbit rings, 16 particles
@@ -288,34 +189,25 @@ export function BroadcastKnowledgeCore({
   phaseDurationMsRef.current = phaseDurationMs;
   questionIndexRef.current   = questionIndex;
 
-  // ── Outer element refs ───────────────────────────────────────────────
-  const outerRingRef   = useRef<SVGGElement>(null);
-  const innerRingRef   = useRef<SVGGElement>(null);
-  const auraRef        = useRef<HTMLDivElement>(null);
-  const midAuraRef     = useRef<HTMLDivElement>(null);
-  const crystalGlowRef = useRef<HTMLDivElement>(null);
-  const bloomRef       = useRef<HTMLDivElement>(null);
-  const burstRingRef   = useRef<HTMLDivElement>(null);
-  const particleRefs   = useRef<(HTMLDivElement | null)[]>([]);
+  // 3D core enablement — falls back permanently on any failure
+  const [use3D, setUse3D] = useState(
+    () => typeof window !== "undefined" && supportsWebGL(),
+  );
+  const disable3D = useCallback(() => setUse3D(false), []);
 
-  // ── Crystal inner element refs (V2 art pass) ─────────────────────────
-  const crystalCoreRef  = useRef<SVGCircleElement>(null);
-  const crystalBurstRef = useRef<SVGCircleElement>(null);
-  const causticRefs     = useRef<(SVGEllipseElement | null)[]>([]);
-  const swirlRefs       = useRef<(SVGPathElement | null)[]>([]);
-  const intParticleRefs = useRef<(SVGCircleElement | null)[]>([]);
+  // DOM refs — all animation writes go here, never through React state
+  const outerRingRef = useRef<SVGGElement>(null);
+  const innerRingRef = useRef<SVGGElement>(null);
+  const auraRef      = useRef<HTMLDivElement>(null);
+  const midAuraRef   = useRef<HTMLDivElement>(null);
+  const bloomRef     = useRef<HTMLDivElement>(null);
+  const burstRingRef = useRef<HTMLDivElement>(null);
+  const particleRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Single RAF — mounted once for the lifetime of the component
+  // Single RAF — crest rings, auras, bloom, burst ring, outer particles.
+  // Crystal-internal animation lives in HextechCore3D / SvgCrystalCore.
   useEffect(() => {
-    // Outer particle angles
     const angles = PARTICLE_CONFIG.map((p) => p.startAngle);
-    // Internal crystal particle angles
-    const intAngles = INT_PARTICLE_CFG.map((p) => p.startAngle);
-    // Caustic beam angles (degrees)
-    const causticAngles = CAUSTIC_CFG.map((c) => c.startAngle);
-    // Energy swirl arc angles (degrees)
-    const swirlAngles = [0, 180];
-
     let outerAngle = 0;
     let innerAngle = Math.PI;
     let prevPhase = phaseRef.current;
@@ -372,13 +264,6 @@ export function BroadcastKnowledgeCore({
         midAuraRef.current.style.opacity   = String(midOpacity.toFixed(3));
       }
 
-      // ── Crystal inner brightness overlay ────────────────────────────
-      const glowBreath        = Math.sin(now / 2600) * 0.06;
-      const crystalBrightness = Math.min(0.95, v.crystalBrightness + pulse * 0.55 + glowBreath);
-      if (crystalGlowRef.current) {
-        crystalGlowRef.current.style.opacity = String(crystalBrightness.toFixed(3));
-      }
-
       // ── Bloom flash ──────────────────────────────────────────────────
       if (bloomRef.current) {
         bloomRef.current.style.opacity = String(
@@ -426,115 +311,23 @@ export function BroadcastKnowledgeCore({
         el.style.opacity = String(Math.min(1, v.particleBrightness * twinkle).toFixed(3));
       });
 
-      // ── Crystal energy core pulse ────────────────────────────────────
-      // Slow breathing + fast low-amplitude flicker = unstable magical energy,
-      // not a lamp on a dimmer. Flicker amplitude grows with charge.
-      const cBreath  = Math.sin(now / 2800) * 0.055 + Math.sin(now / 1650) * 0.022;
-      const cFlicker =
-        (Math.sin(now / 87) * 0.5 + Math.sin(now / 133) * 0.5) *
-        (0.015 + pulse * 0.05 + v.crystalBrightness * 0.02);
-      const coreEl = crystalCoreRef.current;
-      if (coreEl) {
-        const coreR = 10 + cBreath * 3.5 + pulse * 10;
-        coreEl.setAttribute("r", f(Math.max(7, coreR)));
-        coreEl.style.opacity = String(
-          Math.min(1, 0.58 + v.crystalBrightness * 0.34 + pulse * 0.26 + cFlicker).toFixed(3),
-        );
-      }
-
-      // ── Energy swirl arcs — magic circulating around the core ───────
-      swirlAngles[0] = (swirlAngles[0] + (55 + pulse * 160) * dt) % 360;
-      swirlAngles[1] = (swirlAngles[1] - (38 + pulse * 120) * dt + 360) % 360;
-      swirlRefs.current.forEach((el, i) => {
-        if (!el) return;
-        el.setAttribute("transform", `rotate(${f(swirlAngles[i])}, 100, 100)`);
-        const sOp =
-          (0.10 + v.crystalBrightness * 0.28 + pulse * 0.45) *
-          (0.65 + Math.sin(now / 1400 + i * 2.4) * 0.35);
-        el.style.opacity = String(Math.min(0.85, sOp).toFixed(3));
-      });
-
-      // ── Caustic light beams ──────────────────────────────────────────
-      CAUSTIC_CFG.forEach((c, i) => {
-        causticAngles[i] =
-          (causticAngles[i] + c.speed * (1 + pulse * 1.6) * dt + 360) % 360;
-        const el = causticRefs.current[i];
-        if (!el) return;
-        el.setAttribute("transform", `rotate(${f(causticAngles[i])}, 100, 100)`);
-        const cOp =
-          (0.05 + v.crystalBrightness * 0.11 + pulse * 0.09) *
-          (0.55 + Math.sin(now / 2100 + i * 1.5) * 0.40);
-        el.style.opacity = String(Math.min(0.24, cOp).toFixed(3));
-      });
-
-      // ── Internal crystal particles ───────────────────────────────────
-      // Rings 1–2 orbit the core; ring 3 (i ≥ 9) rises as magic motes —
-      // sparks drifting up through the gem like energy boiling off the core.
-      const intSpeedMult = 0.5 + v.crystalBrightness * 0.5 + pulse * 1.6;
-      INT_PARTICLE_CFG.forEach((p, i) => {
-        const el = intParticleRefs.current[i];
-        if (!el) return;
-
-        const be = now - burstStartMs;
-        const isRiser = i >= 9;
-
-        if (isRiser) {
-          // Rising mote: loop bottom→top; fade in at bottom, out near top.
-          const riseSpeed = 5.5 + v.crystalBrightness * 5 + pulse * 14; // units/sec
-          const period = 52 / riseSpeed; // travel distance 52 units
-          const tCycle = ((now / 1000 + i * 1.37) % period) / period; // 0→1
-          const py = 126 - tCycle * 52; // 126 (below core) → 74 (upper gem)
-          const sway = Math.sin(now / 900 + i * 2.2) * (3.5 + pulse * 3);
-          const px = 100 + Math.cos(p.startAngle) * p.baseR * 0.45 + sway;
-          el.setAttribute("cx", f(px));
-          el.setAttribute("cy", f(py));
-          const fade = Math.sin(tCycle * Math.PI); // in/out at ends
-          const op = fade * (0.14 + v.crystalBrightness * 0.55 + pulse * 0.35);
-          el.style.opacity = String(Math.min(0.9, op).toFixed(3));
-          return;
-        }
-
-        intAngles[i] += p.speed * intSpeedMult * dt;
-
-        // Countdown: particles spiral inward toward core
-        let r = p.baseR;
-        if (pulse > 0.04 && phase === "question") {
-          r = p.baseR * (1 - pulse * 0.58);
-        }
-
-        // Reveal burst: particles explode briefly outward through facets
-        if (burstStartMs > 0 && be < 600) {
-          const bp = be / 600;
-          r = p.baseR * (1 + Math.sin(bp * Math.PI) * 1.9);
-        }
-
-        const px = 100 + Math.cos(intAngles[i]) * r;
-        const py = 100 + Math.sin(intAngles[i]) * r;
-        el.setAttribute("cx", f(px));
-        el.setAttribute("cy", f(py));
-
-        const twinkle = 0.48 + Math.sin(now / 680 + i * 1.9) * 0.42;
-        const op = (0.18 + v.crystalBrightness * 0.52 + pulse * 0.30) * twinkle;
-        el.style.opacity = String(Math.min(0.92, op).toFixed(3));
-      });
-
-      // ── Crystal burst flash (brief white fill at reveal moment) ─────
-      const burstEl = crystalBurstRef.current;
-      if (burstEl) {
-        const be = now - burstStartMs;
-        if (burstStartMs > 0 && be < 440) {
-          burstEl.style.opacity = String(((1 - be / 440) * 0.58).toFixed(3));
-        } else {
-          burstEl.style.opacity = "0";
-        }
-      }
-
       raf = requestAnimationFrame(tick);
     };
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, []); // mount once — reads all props through refs
+
+  // SVG crystal — Suspense fallback, WebGL-unavailable fallback, and
+  // permanent fallback after any 3D failure. Never remove.
+  const svgCore = (
+    <SvgCrystalCore
+      phase={phase}
+      questionIndex={questionIndex}
+      phaseStartedAt={phaseStartedAt}
+      phaseDurationMs={phaseDurationMs}
+    />
+  );
 
   return (
     <div
@@ -565,7 +358,7 @@ export function BroadcastKnowledgeCore({
           }}
         />
 
-        {/* ── Main SVG ───────────────────────────────────────────────────── */}
+        {/* ── Crest SVG: backing, gold crest, rings ──────────────────────── */}
         <svg
           viewBox="0 0 200 200"
           className="h-full w-full"
@@ -573,7 +366,6 @@ export function BroadcastKnowledgeCore({
           aria-hidden
         >
           <defs>
-            {/* Gold gradients — crest/rings (unchanged) */}
             <linearGradient id="kcGold" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%"   stopColor="#f5e090" />
               <stop offset="35%"  stopColor="#d4a820" />
@@ -584,62 +376,6 @@ export function BroadcastKnowledgeCore({
               <stop offset="0%"   stopColor="#fff5b8" />
               <stop offset="50%"  stopColor="#e8c040" />
               <stop offset="100%" stopColor="#c09020" />
-            </linearGradient>
-
-            {/* Crystal: outer dark shell — near-black sapphire, saturated rim */}
-            <radialGradient id="kcCrystalOuter" cx="42%" cy="36%" r="78%">
-              <stop offset="0%"   stopColor="#123a78" />
-              <stop offset="30%"  stopColor="#081f4c" />
-              <stop offset="65%"  stopColor="#040e26" />
-              <stop offset="100%" stopColor="#010510" />
-            </radialGradient>
-
-            {/* Crystal: inner shell — saturated royal blue, visible through outer */}
-            <radialGradient id="kcCrystalInner" cx="40%" cy="34%" r="70%">
-              <stop offset="0%"   stopColor="#3e92f2" />
-              <stop offset="30%"  stopColor="#1250c0" />
-              <stop offset="62%"  stopColor="#092a78" />
-              <stop offset="100%" stopColor="#04123e" />
-            </radialGradient>
-
-            {/* Crystal: micro core hex — electric cyan-blue, deepest layer */}
-            <radialGradient id="kcCrystalMicro" cx="46%" cy="42%" r="62%">
-              <stop offset="0%"   stopColor="#c2ecff" />
-              <stop offset="24%"  stopColor="#4aa2f8" />
-              <stop offset="58%"  stopColor="#1244ac" />
-              <stop offset="100%" stopColor="#061a52" />
-            </radialGradient>
-
-            {/* Crystal: energy core — tight white-hot point, fast falloff */}
-            <radialGradient id="kcCoreGlow" cx="50%" cy="48%" r="55%">
-              <stop offset="0%"   stopColor="#ffffff" />
-              <stop offset="12%"  stopColor="#eaf7ff" />
-              <stop offset="30%"  stopColor="#8ecbff" />
-              <stop offset="58%"  stopColor="#2a62e8" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#0d2888" stopOpacity="0"    />
-            </radialGradient>
-
-            {/* Energy swirl arc — cyan wisp, transparent at both tips */}
-            <linearGradient id="kcSwirl" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%"   stopColor="#6fd4ff" stopOpacity="0"   />
-              <stop offset="45%"  stopColor="#a4e6ff" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#4aa2f8" stopOpacity="0"   />
-            </linearGradient>
-
-            {/* Crystal: specular highlight — offset to simulate gem refraction */}
-            <radialGradient id="kcCrystalGlow" cx="40%" cy="35%" r="65%">
-              <stop offset="0%"   stopColor="#ffffff"  stopOpacity="0.90" />
-              <stop offset="22%"  stopColor="#aaddff"  stopOpacity="0.52" />
-              <stop offset="58%"  stopColor="#4488ff"  stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#2255cc"  stopOpacity="0"    />
-            </radialGradient>
-
-            {/* Caustic beam — center-bright linear, fades to transparent at ends */}
-            <linearGradient id="kcCaustic" x1="0%" y1="50%" x2="100%" y2="50%">
-              <stop offset="0%"   stopColor="#88deff" stopOpacity="0"   />
-              <stop offset="38%"  stopColor="#b8eeff" stopOpacity="1"   />
-              <stop offset="62%"  stopColor="#b8eeff" stopOpacity="1"   />
-              <stop offset="100%" stopColor="#88deff" stopOpacity="0"   />
             </linearGradient>
           </defs>
 
@@ -716,167 +452,24 @@ export function BroadcastKnowledgeCore({
             strokeWidth="0.8"
             opacity="0.40"
           />
-
-          {/* ── Blue crystal — multi-layer gem (V2 art pass) ──────────── */}
-          <g style={{ filter: "drop-shadow(0 0 10px rgba(40,130,255,0.86))" }}>
-
-            {/* Layer 1: Outer dark shell — rich deep blue base */}
-            <polygon points={HEX_POINTS} fill="url(#kcCrystalOuter)" />
-
-            {/* Layer 2: Side face depth planes — 6 trapezoids create crystal thickness */}
-            {SIDE_FACES.map((pts, i) => (
-              <polygon key={i} points={pts} fill={SIDE_FACE_COLORS[i]} />
-            ))}
-
-            {/* Layer 3: Outer facets — hard alternating light/dark gem cuts */}
-            {FACET_PATHS.map((d, i) => (
-              <path key={i} d={d} fill={FACET_FILLS[i]} />
-            ))}
-
-            {/* Layer 3b: Rim vignette — dark inner border makes the gem sit
-                recessed in its gold setting like the reference */}
-            <polygon
-              points={HEX_POINTS}
-              fill="none"
-              stroke="rgba(2,8,24,0.72)"
-              strokeWidth="4.5"
-            />
-
-            {/* Layer 4: Inner crystal shell — brighter second depth plane */}
-            <polygon points={INNER_HEX_POINTS} fill="url(#kcCrystalInner)" />
-
-            {/* Layer 5: Inner facets — same alternating cut pattern, trapped light */}
-            {INNER_FACET_PATHS.map((d, i) => (
-              <path key={i} d={d} fill={INNER_FACET_FILLS[i]} />
-            ))}
-
-            {/* Layer 6: Micro core hex — tertiary depth, bright cyan-blue */}
-            <polygon points={MICRO_HEX_POINTS} fill="url(#kcCrystalMicro)" />
-
-            {/* Layer 6b: Energy swirl arcs — magic circulating around the core */}
-            {[0, 1].map((i) => (
-              <path
-                key={i}
-                ref={(el: SVGPathElement | null) => { swirlRefs.current[i] = el; }}
-                d="M 100,78 A 22,22 0 0 1 122,100"
-                fill="none"
-                stroke="url(#kcSwirl)"
-                strokeWidth={i === 0 ? 2.2 : 1.4}
-                strokeLinecap="round"
-                opacity="0"
-              />
-            ))}
-
-            {/* Layer 7: Caustic light beams — RAF-driven very slow rotation */}
-            {CAUSTIC_CFG.map((c, i) => (
-              <ellipse
-                key={i}
-                ref={(el: SVGEllipseElement | null) => { causticRefs.current[i] = el; }}
-                cx="100" cy="100"
-                rx={c.rx} ry={c.ry}
-                fill="url(#kcCaustic)"
-                opacity="0"
-              />
-            ))}
-
-            {/* Layer 8: Internal energy particles — drifting inside crystal volume */}
-            {INT_PARTICLE_CFG.map((p, i) => (
-              <circle
-                key={i}
-                ref={(el: SVGCircleElement | null) => { intParticleRefs.current[i] = el; }}
-                cx="100" cy="100"
-                r={p.size}
-                fill="#a8e8ff"
-                opacity="0"
-              />
-            ))}
-
-            {/* Layer 9: Energy core — white-hot pulsing center point */}
-            <circle
-              ref={crystalCoreRef}
-              cx="100" cy="100"
-              r="12"
-              fill="url(#kcCoreGlow)"
-              opacity="0.60"
-            />
-
-            {/* Layer 10: Edge highlights — sharp cyan catches on top-facing edges */}
-            <line
-              x1="100.00" y1="55.00" x2="138.97" y2="77.50"
-              stroke="#88eeff" strokeWidth="1.3" strokeLinecap="round" opacity="0.55"
-            />
-            <line
-              x1="61.03" y1="77.50" x2="100.00" y2="55.00"
-              stroke="#66ccff" strokeWidth="0.9" strokeLinecap="round" opacity="0.36"
-            />
-            <line
-              x1="100.00" y1="62.00" x2="132.91" y2="81.00"
-              stroke="#44aaff" strokeWidth="0.6" strokeLinecap="round" opacity="0.28"
-            />
-
-            {/* Layer 11: Beveled hex rim — per-edge lit/shadow strokes */}
-            {BEVEL_EDGES.map((e, i) => (
-              <line
-                key={i}
-                x1={e.x1} y1={e.y1}
-                x2={e.x2} y2={e.y2}
-                stroke={BEVEL_STROKES[i]}
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            ))}
-
-            {/* Layer 12: Inner hex rim */}
-            <polygon
-              points={INNER_HEX_POINTS}
-              fill="none"
-              stroke="rgba(100,180,255,0.38)"
-              strokeWidth="0.5"
-            />
-
-            {/* Layer 13: Outer facet edge lines — subtle geometry definition */}
-            {FACET_PATHS.map((d, i) => (
-              <path
-                key={i} d={d}
-                fill="none"
-                stroke="rgba(120,200,255,0.16)"
-                strokeWidth="0.4"
-              />
-            ))}
-
-            {/* Layer 14: Specular highlight — upper-right offset, gem refraction */}
-            <ellipse
-              cx="108" cy="84"
-              rx="13" ry="10"
-              fill="url(#kcCrystalGlow)"
-              opacity="0.75"
-            />
-
-            {/* Layer 15: Crystal burst flash — brief white fill at reveal moment */}
-            <circle
-              ref={crystalBurstRef}
-              cx="100" cy="100"
-              r="45"
-              fill="white"
-              opacity="0"
-            />
-          </g>
         </svg>
 
-        {/* ── Crystal animated brightness overlay ────────────────────────── */}
-        {/* Two radial gradients layered: primary specular top-left, counter-catch bottom-right */}
-        <div
-          ref={crystalGlowRef}
-          aria-hidden
-          className="pointer-events-none absolute inset-[26%] rounded-full will-change-[opacity]"
-          style={{
-            background: [
-              "radial-gradient(circle at 50% 48%, rgba(230,246,255,0.55) 0%, rgba(140,205,255,0.26) 18%, transparent 42%)",
-              "radial-gradient(circle at 64% 68%, rgba(38,96,255,0.12) 0%, transparent 40%)",
-            ].join(", "),
-            opacity: 0.30,
-          }}
-        />
+        {/* ── Central crystal: 3D core with SVG fallback ─────────────────── */}
+        {use3D ? (
+          <Core3DErrorBoundary fallback={svgCore} onFail={disable3D}>
+            <Suspense fallback={svgCore}>
+              <HextechCore3D
+                phase={phase}
+                questionIndex={questionIndex}
+                phaseStartedAt={phaseStartedAt}
+                phaseDurationMs={phaseDurationMs}
+                onFail={disable3D}
+              />
+            </Suspense>
+          </Core3DErrorBoundary>
+        ) : (
+          svgCore
+        )}
 
         {/* ── Bloom flash (countdown pulse + reveal) ─────────────────────── */}
         <div
