@@ -268,12 +268,14 @@ export function useRevealTimeline({
         idleBreath.set(breath);
         subjectScale.set(1 + breath);
 
-        // Pre-launch tension: build very gently in the final 3 seconds
+        // Pre-launch tension: gentle scale build in the final 3 seconds.
+        // The old full-screen darkness fade is gone — HextechOverloadFX now
+        // provides a localized vignette around the Knowledge Core instead.
         const WINDOW = 3000;
         if (remaining > 0 && remaining <= WINDOW) {
           const preT = easeIn3(1 - remaining / WINDOW);
           sceneScale.set(1 + preT * 0.024);
-          darkness.set(preT * 0.14);
+          darkness.set(0);
         } else if (remaining > 0) {
           sceneScale.set(1);
           darkness.set(0);

@@ -204,6 +204,15 @@ export function BroadcastKnowledgeCore({
   const burstRingRef = useRef<HTMLDivElement>(null);
   const particleRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Crest conduction glow overlays — blue energy travelling outward through
+  // the gold crest, band by band (frame ring → inner diamonds → ticks →
+  // accents → main spikes).
+  const crestGlowFrameRef  = useRef<SVGCircleElement>(null);
+  const crestGlowInnerRef  = useRef<SVGGElement>(null);
+  const crestGlowTickRef   = useRef<SVGGElement>(null);
+  const crestGlowAccentRef = useRef<SVGGElement>(null);
+  const crestGlowMainRef   = useRef<SVGGElement>(null);
+
   // Single RAF — crest rings, auras, bloom, burst ring, outer particles.
   // Crystal-internal animation lives in HextechCore3D / SvgCrystalCore.
   useEffect(() => {
@@ -212,6 +221,10 @@ export function BroadcastKnowledgeCore({
     let innerAngle = Math.PI;
     let prevPhase = phaseRef.current;
     let burstStartMs = 0;
+    // Conduction wave state
+    let waveStart = -1e9;
+    let waveStrength = 0;
+    let nextWaveAt = performance.now() + 2500;
     let lastNow = performance.now();
     let raf = 0;
 
@@ -224,8 +237,13 @@ export function BroadcastKnowledgeCore({
       const phaseDurationMs= phaseDurationMsRef.current;
       const v              = lerpCycleVisuals(questionIndexRef.current);
 
-      // Detect reveal → trigger burst
-      if (phase === "reveal" && prevPhase !== "reveal") burstStartMs = now;
+      // Detect reveal → trigger burst + a strong conduction wave
+      if (phase === "reveal" && prevPhase !== "reveal") {
+        burstStartMs = now;
+        waveStart = now;
+        waveStrength = 1;
+        nextWaveAt = now + 900;
+      }
       prevPhase = phase;
 
       // ── Countdown pulse: 0→1 over final 3 s of question phase ───────
@@ -247,6 +265,43 @@ export function BroadcastKnowledgeCore({
       innerAngle = ((innerAngle - rotDps * 0.55 * dt) % 360 + 360) % 360;
       outerRingRef.current?.setAttribute("transform", `rotate(${f(outerAngle)}, 100, 100)`);
       innerRingRef.current?.setAttribute("transform", `rotate(${f(innerAngle)}, 100, 100)`);
+
+      // ── Crest energy conduction ──────────────────────────────────────
+      // Waves of blue energy travel outward from the crystal through the
+      // crest bands. Idle: an occasional gentle heartbeat. Overload (final
+      // ~5 s of countdown): faster, stronger waves. Reveal: one full-power
+      // wave (triggered with the burst above).
+      let overload = 0;
+      if (phase === "question" && phaseDurationMs > 0) {
+        const rem = Math.max(0, phaseDurationMs - (Date.now() - phaseStartedAt));
+        if (rem < 3000) overload = 0.35 + (1 - rem / 3000) * 0.65;
+        else if (rem < 5000) overload = ((5000 - rem) / 2000) * 0.35;
+      }
+
+      if (now >= nextWaveAt) {
+        waveStart = now;
+        waveStrength =
+          overload > 0 ? 0.35 + overload * 0.60 : 0.15 + v.glowStrength * 0.12;
+        nextWaveAt =
+          now + (overload > 0
+            ? 1500 - overload * 1050
+            : 5200 + Math.random() * 1800);
+      }
+
+      const wp = (now - waveStart) / 650;
+      const waveR = 46 + wp * 52; // travels 46 → 98 (crystal edge → spike tips)
+      const setBand = (el: SVGElement | null, bandR: number) => {
+        if (!el) return;
+        if (wp < 0 || wp > 1) { el.style.opacity = "0"; return; }
+        const op =
+          waveStrength * Math.exp(-((waveR - bandR) ** 2) / 98) * (1 - wp * 0.25);
+        el.style.opacity = op.toFixed(3);
+      };
+      setBand(crestGlowFrameRef.current, 51);
+      setBand(crestGlowInnerRef.current, 60);
+      setBand(crestGlowTickRef.current, 74);
+      setBand(crestGlowAccentRef.current, 76);
+      setBand(crestGlowMainRef.current, 82);
 
       // ── Outer aura ───────────────────────────────────────────────────
       const breathe    = Math.sin(now / 3400) * 0.042;
@@ -418,6 +473,33 @@ export function BroadcastKnowledgeCore({
                 opacity="0.50"
               />
             ))}
+
+            {/* Conduction glow overlays — icy-blue copies lit band-by-band
+                as energy travels outward from the crystal */}
+            <g
+              ref={crestGlowMainRef}
+              style={{ opacity: 0, filter: "drop-shadow(0 0 4px rgba(140,210,255,0.9))" }}
+            >
+              {MAIN_SPIKES.map((d, i) => (
+                <path key={i} d={d} fill="#cfe9ff" />
+              ))}
+            </g>
+            <g ref={crestGlowAccentRef} style={{ opacity: 0 }}>
+              {ACCENT_SPIKES.map((d, i) => (
+                <path key={i} d={d} fill="#dff2ff" />
+              ))}
+            </g>
+            <g ref={crestGlowTickRef} style={{ opacity: 0 }}>
+              {TICK_MARKS.map((t, i) => (
+                <line
+                  key={i}
+                  x1={t.x1} y1={t.y1}
+                  x2={t.x2} y2={t.y2}
+                  stroke="#cfe9ff"
+                  strokeWidth="1.0"
+                />
+              ))}
+            </g>
           </g>
 
           {/* ── Inner ring (counter-clockwise rotation) ───────────────── */}
@@ -442,6 +524,13 @@ export function BroadcastKnowledgeCore({
             {INNER_DIAMONDS.map((d, i) => (
               <path key={i} d={d} fill="url(#kcGoldBright)" opacity="0.62" />
             ))}
+
+            {/* Conduction glow overlay — inner diamond band */}
+            <g ref={crestGlowInnerRef} style={{ opacity: 0 }}>
+              {INNER_DIAMONDS.map((d, i) => (
+                <path key={i} d={d} fill="#cfe9ff" />
+              ))}
+            </g>
           </g>
 
           {/* Crystal frame ring */}
@@ -451,6 +540,15 @@ export function BroadcastKnowledgeCore({
             stroke="url(#kcGold)"
             strokeWidth="0.8"
             opacity="0.40"
+          />
+          {/* Conduction glow overlay — frame ring (first band the wave hits) */}
+          <circle
+            ref={crestGlowFrameRef}
+            cx="100" cy="100" r="51"
+            fill="none"
+            stroke="#bfe4ff"
+            strokeWidth="1.6"
+            style={{ opacity: 0 }}
           />
         </svg>
 

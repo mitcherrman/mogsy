@@ -8,6 +8,7 @@ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getChampionSplash, useChampionAssets } from "@/hooks/useChampionAssets";
 import { useRevealTimeline } from "./useRevealTimeline";
 import { BroadcastKnowledgeCore } from "./BroadcastKnowledgeCore";
+import { HextechOverloadFX } from "./HextechOverloadFX";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -59,11 +60,26 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
   const q = snapshot.currentQuestion;
   const revealActive = phase === "reveal" || phase === "explanation" || phase === "transition";
   const isShorts = v.aspect === "9:16";
+  // Overload FX anchors to the Knowledge Core when visible, stage center otherwise
+  const coreVisible = !v.showQrCode && !v.showWebsite;
 
   return (
     <ShellFrame fit={fitContainer} aspect={v.aspect}>
       <StageBackdrop theme={v.theme} animation={v.backgroundAnimation} />
       <GoldTrim />
+
+      {/* Hextech overload environment FX — cracks + localized vignette.
+          z-[6]: above backdrop/FXLayer, behind all scene content (z-20). */}
+      <div className="pointer-events-none absolute inset-0 z-[6]">
+        <HextechOverloadFX
+          phase={phase}
+          phaseStartedAt={snapshot.phaseStartedAt}
+          phaseDurationMs={snapshot.phaseDurationMs}
+          anchorX={coreVisible ? (isShorts ? 0.5 : 0.88) : 0.5}
+          anchorY={coreVisible ? (isShorts ? 0.88 : 0.49) : 0.5}
+          aspect={isShorts ? 9 / 16 : 16 / 9}
+        />
+      </div>
 
       {/* Top chrome */}
       <TopChrome snapshot={snapshot} />

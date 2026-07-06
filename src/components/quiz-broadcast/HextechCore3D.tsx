@@ -1,71 +1,186 @@
 /**
- * HextechCore3D — React Three Fiber 3D Hextech crystal core.
+ * HextechCore3D — React Three Fiber 3D Hextech crystal core (V3).
  *
- * Replaces the central SVG crystal of BroadcastKnowledgeCore with a
- * physically-deep faceted 3D crystal. The gold crest, rings, auras, burst
- * shockwave, and outer particles remain SVG/DOM around this canvas.
+ * A multi-faceted hexagonal gem replacing the V2 cube. The gold crest, rings,
+ * auras, burst shockwave, and outer particles remain SVG/DOM around this
+ * canvas; environment overload FX (cracks/vignette) live at broadcast level
+ * in HextechOverloadFX.
  *
- * Scene structure:
- *   Root group (scaled to match the SVG crest's min-dimension sizing)
- *   └── Spin group (slow idle Y rotation, charge acceleration, reveal impulse)
- *       └── Tilt group (corner-up isometric orientation)
- *           ├── Outer crystal: beveled cube, flat-shaded, dark transparent blue
- *           ├── Edge highlights: cyan line segments on the cube edges
- *           ├── Inner cube: emissive blue, second depth shell
- *           └── (tilt-independent, inside spin group:)
- *   ├── Core sphere: white-hot, breathing/flickering, toneMapped off → blooms
- *   ├── Core point light: illuminates the crystal interior from within
- *   ├── Energy arcs: 3 thin torus rings on different axes
- *   └── Particles: single THREE.Points buffer (80), spiral/burst/settle
+ * Geometry:
+ *   Procedural hexagonal gem — prism body + beveled frustum caps + apex
+ *   points (48 triangles). Non-indexed with per-face vertex colors so every
+ *   facet catches light differently ("carved, not modeled"). All vertices
+ *   carry small seeded jitter so the crystal is asymmetric like a real cut
+ *   stone. Prism axis faces the camera → the silhouette reads as the
+ *   concentric-hexagon face from the concept art.
  *
- * Performance:
- *   - dpr capped at 1.5, no shadows, no transmission/refraction
- *   - one Points draw call for all particles
- *   - Bloom with mipmapBlur, multisampling 0, threshold 0.55 so only the
- *     core/edges/arcs bloom — facet contrast is preserved
- *   - all animation in useFrame via refs; zero React re-renders per frame
+ * Construction (out → in):
+ *   Outer shell (deep sapphire) → mid shell (electric blue) → inner shell
+ *   (cyan) → white-hot nucleus + crossed star flares → internal particles.
+ *   Shells counter-rotate at different speeds — nested parallax sells volume.
  *
- * 24/7 safety:
- *   - webglcontextlost → onFail() so the parent swaps to the SVG fallback
+ * Phase behavior:
+ *   idle       slow spin, breathing nucleus, drifting particles, rare flicker
+ *   countdown  spin accelerates, particles spiral in, nucleus compresses and
+ *              brightens, orbit arcs speed up; in the final ~5 s the crystal
+ *              STRUGGLES — shells misalign with irregular jitter, discharge
+ *              arcs crackle off the surface, pulses turn erratic
+ *   reveal     white-hot flash, particle burst, rotation impulse, then the
+ *              shells SNAP back into perfect alignment
+ *   recovery   brightness settles, particles return, breathing resumes
+ *
+ * Performance: dpr ≤ 1.5, no shadows, no transmission; ~16 draw calls; one
+ * Points buffer for 80 particles; 3 pooled discharge-arc lines with
+ * preallocated buffers; Bloom mipmapBlur threshold 0.55, multisampling 0.
+ * 24/7 safety: webglcontextlost → onFail() → parent swaps to SVG fallback.
  */
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
 import { lerpCycleVisuals } from "./KnowledgeCoreConfig";
 
 /* ────────────────────────────────────────────────────────────────────────
-   Constants
+   Seeded RNG — deterministic procedural asymmetry
    ──────────────────────────────────────────────────────────────────────── */
 
-// Corner-up isometric tilt: 45° yaw then atan(1/√2) pitch.
-const TILT_X = Math.atan(Math.SQRT1_2);
-const TILT_Y = Math.PI / 4;
-
-const CUBE_SIZE = 1.6;
-// Corner-up silhouette height = edge · √3. The SVG crystal spanned 45% of
-// the crest's min dimension; ROOT_SCALE maps world units to match.
-const SILHOUETTE = CUBE_SIZE * Math.sqrt(3);
-const TARGET_FRACTION = 0.46;
-
-const PARTICLE_COUNT = 80;
-
-const ARC_CONFIGS = [
-  { radius: 0.62, tube: 0.012, axis: [1, 0.3, 0.2] as const,  speed: 0.7  },
-  { radius: 0.78, tube: 0.010, axis: [0.2, 1, -0.4] as const, speed: -0.5 },
-  { radius: 0.94, tube: 0.008, axis: [-0.5, 0.4, 1] as const, speed: 0.35 },
-];
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /* ────────────────────────────────────────────────────────────────────────
-   Particle orbit data — precomputed once per mount
+   Gem geometry — hexagonal prism + beveled caps + apex, jittered, per-face
+   vertex colors. Unit scale: ring radius 1.
    ──────────────────────────────────────────────────────────────────────── */
+
+const GEM_R = 1.0;    // hex ring radius
+const GEM_H = 0.42;   // prism half-length (z axis, toward camera)
+const CAP_R = 0.56;   // bevel ring radius
+const CAP_H = 0.26;   // bevel ring z beyond prism
+const APEX_H = 0.20;  // apex point z beyond bevel ring
+
+type Vec3 = [number, number, number];
+
+interface GemTemplate {
+  ringTop: Vec3[]; ringBot: Vec3[];
+  capTop: Vec3[];  capBot: Vec3[];
+  apexTop: Vec3;   apexBot: Vec3;
+}
+
+/** Jittered vertex template shared by all shells so their facets stay
+ *  parallel (nested-carved look) while never being mathematically perfect. */
+function makeGemTemplate(seed: number, jitter: number): GemTemplate {
+  const rng = mulberry32(seed);
+  const j = () => (rng() * 2 - 1) * jitter;
+  const ring = (r: number, z: number): Vec3[] =>
+    Array.from({ length: 6 }, (_, i) => {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      return [
+        Math.cos(a) * r + j(),
+        Math.sin(a) * r + j(),
+        z + j(),
+      ] as Vec3;
+    });
+  return {
+    ringTop: ring(GEM_R, GEM_H),
+    ringBot: ring(GEM_R, -GEM_H),
+    capTop:  ring(CAP_R, GEM_H + CAP_H),
+    capBot:  ring(CAP_R, -(GEM_H + CAP_H)),
+    apexTop: [j() * 0.4, j() * 0.4, GEM_H + CAP_H + APEX_H],
+    apexBot: [j() * 0.4, j() * 0.4, -(GEM_H + CAP_H + APEX_H)],
+  };
+}
+
+/** Non-indexed gem geometry with per-face brightness/tint vertex colors. */
+function buildGemGeometry(
+  tpl: GemTemplate,
+  colorSeed: number,
+  bMin: number,
+  bMax: number,
+): THREE.BufferGeometry {
+  const rng = mulberry32(colorSeed);
+  const positions: number[] = [];
+  const colors: number[] = [];
+
+  const tri = (a: Vec3, b: Vec3, c: Vec3) => {
+    positions.push(...a, ...b, ...c);
+    // One color per face — every facet catches light differently
+    const br = bMin + rng() * (bMax - bMin);
+    const r = br * (0.78 + rng() * 0.22);
+    const g = br * (0.90 + rng() * 0.10);
+    for (let k = 0; k < 3; k++) colors.push(r, g, br);
+  };
+  const quad = (a: Vec3, b: Vec3, c: Vec3, d: Vec3) => { tri(a, b, c); tri(a, c, d); };
+
+  const { ringTop, ringBot, capTop, capBot, apexTop, apexBot } = tpl;
+  for (let i = 0; i < 6; i++) {
+    const n = (i + 1) % 6;
+    quad(ringBot[i], ringBot[n], ringTop[n], ringTop[i]); // prism side
+    quad(ringTop[i], ringTop[n], capTop[n], capTop[i]);   // top bevel
+    tri(capTop[i], capTop[n], apexTop);                   // top cap
+    quad(ringBot[n], ringBot[i], capBot[i], capBot[n]);   // bottom bevel
+    tri(capBot[n], capBot[i], apexBot);                   // bottom cap
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Star flare texture — tiny one-time canvas radial gradient
+   ──────────────────────────────────────────────────────────────────────── */
+
+function makeFlareTexture(): THREE.CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.25, "rgba(200,235,255,0.55)");
+  g.addColorStop(1, "rgba(120,180,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Shell / arc / particle configuration
+   ──────────────────────────────────────────────────────────────────────── */
+
+const SHELLS = [
+  // Deep sapphire outer → electric blue mid → cyan inner
+  { scale: 1.00, color: "#10336e", emissive: "#0d2f80", opacity: 0.92, spin:  0.05, bMin: 0.55, bMax: 1.15 },
+  { scale: 0.66, color: "#1a5ad8", emissive: "#2468ff", opacity: 0.50, spin: -0.08, bMin: 0.65, bMax: 1.25 },
+  { scale: 0.40, color: "#3b96f2", emissive: "#55c0ff", opacity: 0.46, spin:  0.12, bMin: 0.75, bMax: 1.35 },
+] as const;
+
+// Corner-up silhouette width at unit scale (hex diameter)
+const SILHOUETTE = GEM_R * 2;
+const TARGET_FRACTION = 0.46;
+
+const ORBIT_ARC_CONFIGS = [
+  { radius: 0.55, tube: 0.012, axis: [1, 0.3, 0.2] as const,  speed: 0.7  },
+  { radius: 0.72, tube: 0.010, axis: [0.2, 1, -0.4] as const, speed: -0.5 },
+  { radius: 0.88, tube: 0.008, axis: [-0.5, 0.4, 1] as const, speed: 0.35 },
+];
+
+const PARTICLE_COUNT = 80;
+const DISCHARGE_ARCS = 3;
+const DISCHARGE_POINTS = 20;
 
 interface ParticleData {
   positions: Float32Array;
-  // Orthonormal basis (u, v) per particle defining its orbit plane
   u: Float32Array;
   v: Float32Array;
   baseR: Float32Array;
@@ -87,7 +202,6 @@ function buildParticleData(): ParticleData {
   const ref = new THREE.Vector3(0, 1, 0);
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
-    // Random orbit plane: random axis → orthonormal basis in that plane
     axis.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize();
     uVec.crossVectors(axis, Math.abs(axis.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : ref).normalize();
     vVec.crossVectors(axis, uVec).normalize();
@@ -95,7 +209,7 @@ function buildParticleData(): ParticleData {
     u[i * 3] = uVec.x; u[i * 3 + 1] = uVec.y; u[i * 3 + 2] = uVec.z;
     v[i * 3] = vVec.x; v[i * 3 + 1] = vVec.y; v[i * 3 + 2] = vVec.z;
 
-    baseR[i] = 0.18 + Math.random() * 0.55;          // inside the crystal volume
+    baseR[i] = 0.14 + Math.random() * 0.58;
     speed[i] = (0.25 + Math.random() * 0.5) * (Math.random() > 0.5 ? 1 : -1);
     offset[i] = Math.random() * Math.PI * 2;
   }
@@ -115,7 +229,6 @@ interface SceneProps {
 }
 
 function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: SceneProps) {
-  // Props → refs so useFrame always reads latest values without re-renders
   const phaseRef           = useRef(phase);
   const phaseStartedAtRef  = useRef(phaseStartedAt);
   const phaseDurationMsRef = useRef(phaseDurationMs);
@@ -126,12 +239,14 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
   questionIndexRef.current   = questionIndex;
 
   const rootRef      = useRef<THREE.Group>(null);
-  const spinRef      = useRef<THREE.Group>(null);
-  const outerMatRef  = useRef<THREE.MeshStandardMaterial>(null);
+  const assemblyRef  = useRef<THREE.Group>(null);
+  const shellRefs    = useRef<(THREE.Group | null)[]>([]);
+  const shellMatRefs = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
   const edgeMatRef   = useRef<THREE.LineBasicMaterial>(null);
-  const innerMatRef  = useRef<THREE.MeshStandardMaterial>(null);
-  const coreRef      = useRef<THREE.Mesh>(null);
-  const coreMatRef   = useRef<THREE.MeshBasicMaterial>(null);
+  const nucleusRef   = useRef<THREE.Mesh>(null);
+  const nucleusMatRef= useRef<THREE.MeshBasicMaterial>(null);
+  const flareRefs    = useRef<(THREE.Mesh | null)[]>([]);
+  const flareMatRefs = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   const lightRef     = useRef<THREE.PointLight>(null);
   const arcRefs      = useRef<(THREE.Group | null)[]>([]);
   const arcMatRefs   = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
@@ -140,42 +255,127 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
 
   const particles = useMemo(buildParticleData, []);
 
+  // Gem geometries: one jittered template shared by all shells (parallel
+  // facets), independent per-shell face-color randomization.
+  const gemGeometries = useMemo(() => {
+    const tpl = makeGemTemplate(0x51ab, 0.045);
+    return SHELLS.map((s, i) =>
+      buildGemGeometry(tpl, 0x1000 + i * 0x333, s.bMin, s.bMax),
+    );
+  }, []);
   const edgesGeometry = useMemo(
-    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE)),
-    [],
+    () => new THREE.EdgesGeometry(gemGeometries[0], 10),
+    [gemGeometries],
   );
-  useEffect(() => () => edgesGeometry.dispose(), [edgesGeometry]);
+  const flareTexture = useMemo(makeFlareTexture, []);
 
-  // Mutable animation state kept out of React
+  // Pooled discharge arcs: THREE.Line with preallocated buffers
+  const dischargeArcs = useMemo(() => {
+    return Array.from({ length: DISCHARGE_ARCS }, () => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(DISCHARGE_POINTS * 3), 3),
+      );
+      const mat = new THREE.LineBasicMaterial({
+        color: "#d6f2ff",
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+      });
+      return new THREE.Line(geo, mat);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      gemGeometries.forEach((g) => g.dispose());
+      edgesGeometry.dispose();
+      flareTexture.dispose();
+      dischargeArcs.forEach((l) => {
+        l.geometry.dispose();
+        (l.material as THREE.Material).dispose();
+      });
+    };
+  }, [gemGeometries, edgesGeometry, flareTexture, dischargeArcs]);
+
   const animState = useRef({
     prevPhase: phase,
     burstStartMs: 0,
     spinAngle: 0,
-    arcAngles: [0, 2.1, 4.2],
+    shellAngles: [0, 0, 0],
+    struggle: 0,
+    arcActiveUntil: [0, 0, 0],
+    arcNextAt: [0, 0, 0],
   });
 
   const { viewport } = useThree();
 
-  useFrame((state, dt) => {
+  /** Regenerate a discharge arc: a curved magical energy filament from the
+   *  crystal surface outward — not a straight lightning zigzag. */
+  const regenerateArc = (index: number, intensity: number) => {
+    const line = dischargeArcs[index];
+    const pos = line.geometry.attributes.position.array as Float32Array;
+
+    const dir1 = new THREE.Vector3(
+      Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1,
+    ).normalize();
+    const start = dir1.clone().multiplyScalar(0.85 + Math.random() * 0.25);
+    const outDir = dir1.clone()
+      .add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.7))
+      .normalize();
+    const len = (0.6 + Math.random() * 0.8) * (0.5 + intensity * 0.8);
+
+    // Perpendicular basis for lateral wander
+    const p1 = new THREE.Vector3().crossVectors(outDir, dir1).normalize();
+    if (p1.lengthSq() < 0.01) p1.set(0, 1, 0);
+    const p2 = new THREE.Vector3().crossVectors(outDir, p1).normalize();
+
+    const f1 = 2 + Math.random() * 3, f2 = 3 + Math.random() * 4;
+    const ph1 = Math.random() * Math.PI * 2, ph2 = Math.random() * Math.PI * 2;
+    const a1 = (Math.random() - 0.5) * 0.5, a2 = (Math.random() - 0.5) * 0.5;
+
+    for (let k = 0; k < DISCHARGE_POINTS; k++) {
+      const t = k / (DISCHARGE_POINTS - 1);
+      const envelope = Math.sin(t * Math.PI) * 0.22 * len;
+      const x = start.x + outDir.x * len * t +
+        (p1.x * Math.sin(t * f1 * Math.PI + ph1) * a1 + p2.x * Math.sin(t * f2 * Math.PI + ph2) * a2) * envelope +
+        (Math.random() - 0.5) * 0.03;
+      const y = start.y + outDir.y * len * t +
+        (p1.y * Math.sin(t * f1 * Math.PI + ph1) * a1 + p2.y * Math.sin(t * f2 * Math.PI + ph2) * a2) * envelope +
+        (Math.random() - 0.5) * 0.03;
+      const z = start.z + outDir.z * len * t +
+        (p1.z * Math.sin(t * f1 * Math.PI + ph1) * a1 + p2.z * Math.sin(t * f2 * Math.PI + ph2) * a2) * envelope +
+        (Math.random() - 0.5) * 0.03;
+      pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z;
+    }
+    line.geometry.attributes.position.needsUpdate = true;
+  };
+
+  useFrame((_, dt) => {
     const now = performance.now();
     const s = animState.current;
     const cappedDt = Math.min(dt, 0.05);
 
-    const currentPhase   = phaseRef.current;
-    const startedAt      = phaseStartedAtRef.current;
-    const durationMs     = phaseDurationMsRef.current;
-    const v              = lerpCycleVisuals(questionIndexRef.current);
+    const currentPhase = phaseRef.current;
+    const startedAt    = phaseStartedAtRef.current;
+    const durationMs   = phaseDurationMsRef.current;
+    const v            = lerpCycleVisuals(questionIndexRef.current);
 
-    // Detect reveal → trigger burst
     if (currentPhase === "reveal" && s.prevPhase !== "reveal") s.burstStartMs = now;
     s.prevPhase = currentPhase;
     const burstElapsed = s.burstStartMs > 0 ? now - s.burstStartMs : Infinity;
 
-    // ── Countdown pulse: identical curve to the 2D core ────────────────
+    // ── Pulse (3 s) + overload (5 s) curves ────────────────────────────
     let pulse = 0;
+    let overload = 0;
     if (currentPhase === "question" && durationMs > 0) {
       const remaining = Math.max(0, durationMs - (Date.now() - startedAt));
       if (remaining < 3000) pulse = 1 - remaining / 3000;
+      if (remaining < 3000) overload = 0.35 + (1 - remaining / 3000) * 0.65;
+      else if (remaining < 5000) overload = ((5000 - remaining) / 2000) * 0.35;
     } else if (currentPhase === "reveal") {
       pulse = burstElapsed < 350 ? 1.0 : Math.max(0, 1 - (burstElapsed - 350) / 1400);
     } else if (currentPhase === "explanation" || currentPhase === "transition") {
@@ -183,88 +383,137 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
       pulse = Math.max(0, 0.38 - elapsed / 5000);
     }
 
+    // ── Struggle: shells fight the overload, then snap back after reveal
+    const struggleTarget = currentPhase === "question" ? Math.pow(overload, 1.6) : 0;
+    // Slow build during charge; very fast release after reveal = the "snap"
+    const smoothing = currentPhase === "question" ? 4 : 14;
+    s.struggle += (struggleTarget - s.struggle) * Math.min(1, cappedDt * smoothing);
+
     // ── Root scale: track the crest's min-dimension sizing ─────────────
     if (rootRef.current) {
       const minDim = Math.min(viewport.width, viewport.height);
       const scale = (minDim * TARGET_FRACTION) / SILHOUETTE;
       rootRef.current.scale.setScalar(scale);
-      // Gentle float
-      rootRef.current.position.y = Math.sin(now / 2900) * 0.035 * scale;
+      rootRef.current.position.y = Math.sin(now / 2900) * 0.03 * scale;
     }
 
-    // ── Spin: idle rotation, charge acceleration, reveal impulse ───────
-    const impulse = burstElapsed < 900 ? Math.exp(-burstElapsed / 300) * 4.2 : 0;
-    const spinSpeed = 0.22 + v.ringSpeed * 0.10 + pulse * 0.9 + impulse;
+    // ── Assembly: tilt wobble + spin around the view axis ──────────────
+    const impulse = burstElapsed < 900 ? Math.exp(-burstElapsed / 300) * 3.4 : 0;
+    const spinSpeed = 0.10 + v.ringSpeed * 0.05 + pulse * 0.55 + impulse * 0.4;
     s.spinAngle += spinSpeed * cappedDt;
-    if (spinRef.current) {
-      spinRef.current.rotation.y = s.spinAngle;
-      // Subtle wobble so the rotation never reads as mechanical
-      spinRef.current.rotation.x = Math.sin(now / 4700) * 0.07;
-      spinRef.current.rotation.z = Math.sin(now / 6100) * 0.05;
-      // Reveal punch: quick scale pop that settles
+    if (assemblyRef.current) {
+      assemblyRef.current.rotation.set(
+        0.40 + Math.sin(now / 4700) * 0.06,
+        Math.sin(now / 5300) * 0.10,
+        s.spinAngle,
+      );
       const punch = burstElapsed < 500
-        ? 1 + Math.sin((burstElapsed / 500) * Math.PI) * 0.10
+        ? 1 + Math.sin((burstElapsed / 500) * Math.PI) * 0.09
         : 1;
-      spinRef.current.scale.setScalar(punch);
+      assemblyRef.current.scale.setScalar(punch);
     }
 
-    // ── Materials: brightness follows charge ───────────────────────────
+    // ── Shells: counter-rotation + struggle misalignment ───────────────
     const flicker =
       (Math.sin(now / 87) * 0.5 + Math.sin(now / 133) * 0.5) *
-      (0.02 + pulse * 0.07);
-    const breath = Math.sin(now / 2800) * 0.5 + 0.5; // 0..1
+      (0.02 + pulse * 0.06 + s.struggle * 0.10);
 
-    if (outerMatRef.current) {
-      outerMatRef.current.opacity = 0.88;
-      outerMatRef.current.emissiveIntensity = 0.12 + v.crystalBrightness * 0.22 + pulse * 0.35;
-    }
+    SHELLS.forEach((cfg, i) => {
+      s.shellAngles[i] += cfg.spin * (1 + pulse * 1.5) * cappedDt;
+      const g = shellRefs.current[i];
+      if (g) {
+        // Layered noise per shell — irregular, never synchronized
+        const n1 = Math.sin(now / 143 + i * 2.3) + Math.sin(now / 89 + i * 1.1) * 0.5;
+        const n2 = Math.cos(now / 171 + i * 3.1) + Math.sin(now / 113 + i * 0.7) * 0.5;
+        g.rotation.z = s.shellAngles[i] + s.struggle * 0.07 * n1;
+        g.position.x = s.struggle * 0.05 * n1;
+        g.position.y = s.struggle * 0.05 * n2;
+      }
+      const m = shellMatRefs.current[i];
+      if (m) {
+        m.emissiveIntensity =
+          (0.15 + i * 0.25) + v.crystalBrightness * (0.25 + i * 0.2) +
+          pulse * (0.4 + i * 0.35) + flicker * (1 + i);
+        m.opacity = SHELLS[i].opacity + pulse * 0.06;
+      }
+    });
+
     if (edgeMatRef.current) {
-      edgeMatRef.current.opacity = Math.min(0.9, 0.30 + v.crystalBrightness * 0.30 + pulse * 0.45 + flicker);
-    }
-    if (innerMatRef.current) {
-      innerMatRef.current.emissiveIntensity =
-        0.5 + v.crystalBrightness * 0.7 + pulse * 1.4 + flicker * 2;
-      innerMatRef.current.opacity = 0.42 + pulse * 0.18;
+      edgeMatRef.current.opacity = Math.min(
+        0.95,
+        0.34 + v.crystalBrightness * 0.30 + pulse * 0.40 + flicker,
+      );
     }
 
-    // ── Core: breathing idle, compression on charge, flash on reveal ───
-    if (coreRef.current && coreMatRef.current) {
-      // Countdown compresses the core (smaller but hotter)
-      const compress = currentPhase === "question" ? 1 - pulse * 0.28 : 1;
-      const flash = burstElapsed < 450 ? 1 + (1 - burstElapsed / 450) * 1.15 : 1;
-      const coreScale = (0.9 + breath * 0.18) * compress * flash;
-      coreRef.current.scale.setScalar(coreScale);
+    // ── Nucleus: compressed magical star ───────────────────────────────
+    const breath = Math.sin(now / 2800) * 0.5 + 0.5;
+    if (nucleusRef.current && nucleusMatRef.current) {
+      const compress = currentPhase === "question" ? 1 - pulse * 0.30 : 1;
+      const flash = burstElapsed < 450 ? 1 + (1 - burstElapsed / 450) * 1.5 : 1;
+      nucleusRef.current.scale.setScalar((0.88 + breath * 0.20) * compress * flash);
 
-      // Brightness: >1 RGB with toneMapped off drives bloom intensity
-      const heat = 1.0 + v.crystalBrightness * 0.5 + pulse * 1.3 +
-        (burstElapsed < 450 ? (1 - burstElapsed / 450) * 2.2 : 0) + flicker;
-      coreMatRef.current.color.setRGB(heat, heat * 1.02, heat * 1.10);
+      const heat = 1.1 + v.crystalBrightness * 0.5 + pulse * 1.5 +
+        (burstElapsed < 450 ? (1 - burstElapsed / 450) * 2.6 : 0) +
+        flicker * (1 + s.struggle * 3);
+      nucleusMatRef.current.color.setRGB(heat, heat * 1.02, heat * 1.10);
     }
+
+    // Star flares: cross streaks scale/fade with core heat
+    flareRefs.current.forEach((fl, i) => {
+      const m = flareMatRefs.current[i];
+      if (!fl || !m) return;
+      const heat = 0.35 + v.crystalBrightness * 0.25 + pulse * 0.5 +
+        (burstElapsed < 500 ? (1 - burstElapsed / 500) * 0.7 : 0);
+      m.opacity = Math.min(1, heat * (0.8 + Math.sin(now / 640 + i * 1.7) * 0.2));
+      const stretch = 1 + pulse * 0.5 + (burstElapsed < 500 ? (1 - burstElapsed / 500) * 0.8 : 0);
+      fl.scale.set(1.15 * stretch, 0.16, 1);
+    });
 
     if (lightRef.current) {
       lightRef.current.intensity = 1.4 + v.crystalBrightness * 1.2 + pulse * 3.2 +
         (burstElapsed < 450 ? (1 - burstElapsed / 450) * 5 : 0);
     }
 
-    // ── Energy arcs: independent axes, accelerate on charge ────────────
-    ARC_CONFIGS.forEach((cfg, i) => {
+    // ── Orbit arcs: independent axes, accelerate on charge ─────────────
+    ORBIT_ARC_CONFIGS.forEach((cfg, i) => {
       const g = arcRefs.current[i];
       const m = arcMatRefs.current[i];
-      s.arcAngles[i] += cfg.speed * (1 + pulse * 2.2 + impulse * 0.4) * cappedDt;
-      if (g) g.rotation.set(cfg.axis[0] + s.arcAngles[i] * 0.15, s.arcAngles[i], cfg.axis[2]);
+      const angle = (now / 1000) * cfg.speed * (1 + pulse * 2.2 + impulse * 0.4);
+      if (g) g.rotation.set(cfg.axis[0] + angle * 0.15, angle, cfg.axis[2]);
       if (m) {
         const flare = burstElapsed < 600 ? (1 - burstElapsed / 600) * 0.9 : 0;
-        const base = 0.16 + v.crystalBrightness * 0.22 + pulse * 0.40 + flare;
-        m.opacity = Math.min(0.95, base * (0.7 + Math.sin(now / 1600 + i * 2.1) * 0.3));
+        const base = 0.14 + v.crystalBrightness * 0.20 + pulse * 0.40 + flare;
+        m.opacity = Math.min(0.9, base * (0.7 + Math.sin(now / 1600 + i * 2.1) * 0.3));
       }
     });
+
+    // ── Discharge arcs: unstable energy crackling off the surface ──────
+    for (let i = 0; i < DISCHARGE_ARCS; i++) {
+      const line = dischargeArcs[i];
+      const mat = line.material as THREE.LineBasicMaterial;
+      const forceBurst = burstElapsed < 300;
+
+      if (now > s.arcNextAt[i] && (overload > 0.15 || forceBurst)) {
+        regenerateArc(i, forceBurst ? 1 : overload);
+        s.arcActiveUntil[i] = now + 110 + Math.random() * 140;
+        const interval = forceBurst
+          ? 80
+          : 180 + (1 - overload) * 1100 + Math.random() * 300;
+        s.arcNextAt[i] = s.arcActiveUntil[i] + interval;
+      }
+
+      if (now < s.arcActiveUntil[i]) {
+        const strength = forceBurst ? 1 : 0.35 + overload * 0.65;
+        mat.opacity = strength * (0.55 + Math.sin(now / 23 + i * 4) * 0.45);
+      } else {
+        mat.opacity = 0;
+      }
+    }
 
     // ── Particles: drift / spiral inward / burst outward / settle ──────
     if (pointsRef.current) {
       const pos = particles.positions;
       const t = now / 1000;
-
-      // Radius modulation shared logic
       const spiral = currentPhase === "question" ? 1 - pulse * 0.55 : 1;
       const burst = burstElapsed < 650 ? Math.sin((burstElapsed / 650) * Math.PI) * 0.85 : 0;
 
@@ -290,67 +539,77 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
 
   return (
     <group ref={rootRef}>
-      {/* Lighting — cool key from upper-right, deep blue fill, inner glow */}
+      {/* Lighting — cool key upper-right, deep blue fill, inner point glow */}
       <ambientLight intensity={0.30} color="#4a6db8" />
       <directionalLight position={[2.5, 3, 2]} intensity={1.5} color="#bfe0ff" />
       <directionalLight position={[-2, -1.5, -1]} intensity={0.45} color="#2a55cc" />
       <pointLight ref={lightRef} position={[0, 0, 0]} intensity={1.6} color="#66aaff" distance={4} decay={1.6} />
 
-      <group ref={spinRef}>
-        {/* Corner-up tilted crystal shells */}
-        <group rotation={[TILT_X, TILT_Y, 0]}>
-          {/* Outer crystal: beveled cube, flat-shaded dark sapphire glass */}
-          <RoundedBox args={[CUBE_SIZE, CUBE_SIZE, CUBE_SIZE]} radius={0.16} smoothness={2}>
-            <meshStandardMaterial
-              ref={outerMatRef}
-              color="#0a2a66"
-              emissive="#123a8c"
-              emissiveIntensity={0.15}
-              metalness={0.25}
-              roughness={0.22}
-              transparent
-              opacity={0.88}
-              flatShading
-            />
-          </RoundedBox>
+      <group ref={assemblyRef}>
+        {/* Nested faceted shells — counter-rotating, misalign under struggle */}
+        {SHELLS.map((cfg, i) => (
+          <group key={i} ref={(el) => { shellRefs.current[i] = el; }}>
+            <mesh geometry={gemGeometries[i]} scale={cfg.scale} renderOrder={i + 1}>
+              <meshStandardMaterial
+                ref={(el) => { shellMatRefs.current[i] = el; }}
+                color={cfg.color}
+                emissive={cfg.emissive}
+                emissiveIntensity={0.3}
+                metalness={0.28}
+                roughness={0.20}
+                transparent
+                opacity={cfg.opacity}
+                depthWrite={false}
+                flatShading
+                vertexColors
+              />
+            </mesh>
+          </group>
+        ))}
 
-          {/* Cyan edge highlights on the cube frame */}
-          <lineSegments geometry={edgesGeometry}>
-            <lineBasicMaterial
-              ref={edgeMatRef}
-              color="#5ec8ff"
-              transparent
-              opacity={0.4}
-              toneMapped={false}
-            />
-          </lineSegments>
+        {/* Sharp cyan edge highlights on the outer shell */}
+        <lineSegments geometry={edgesGeometry} renderOrder={5}>
+          <lineBasicMaterial
+            ref={edgeMatRef}
+            color="#5ec8ff"
+            transparent
+            opacity={0.4}
+            toneMapped={false}
+          />
+        </lineSegments>
 
-          {/* Inner cube: emissive second depth shell */}
-          <mesh scale={0.60}>
-            <boxGeometry args={[CUBE_SIZE, CUBE_SIZE, CUBE_SIZE]} />
-            <meshStandardMaterial
-              ref={innerMatRef}
-              color="#0d3888"
-              emissive="#2a70ff"
-              emissiveIntensity={0.7}
-              transparent
-              opacity={0.45}
-              depthWrite={false}
-              flatShading
-            />
-          </mesh>
-        </group>
-
-        {/* Core sphere: white-hot energy source (blooms) */}
-        <mesh ref={coreRef}>
-          <sphereGeometry args={[0.22, 24, 24]} />
-          <meshBasicMaterial ref={coreMatRef} color="#ffffff" toneMapped={false} />
+        {/* Nucleus: compressed white-hot star (blooms) */}
+        <mesh ref={nucleusRef} renderOrder={6}>
+          <sphereGeometry args={[0.13, 20, 20]} />
+          <meshBasicMaterial ref={nucleusMatRef} color="#ffffff" toneMapped={false} />
         </mesh>
 
-        {/* Energy arcs: thin glowing orbit rings, different axes */}
-        {ARC_CONFIGS.map((cfg, i) => (
+        {/* Crossed star flares — camera-facing streaks */}
+        {[0, Math.PI / 2].map((rot, i) => (
+          <mesh
+            key={i}
+            ref={(el) => { flareRefs.current[i] = el; }}
+            rotation={[0, 0, rot]}
+            scale={[1.15, 0.16, 1]}
+            renderOrder={7}
+          >
+            <planeGeometry args={[1, 1]} />
+            <meshBasicMaterial
+              ref={(el) => { flareMatRefs.current[i] = el; }}
+              map={flareTexture}
+              transparent
+              opacity={0.5}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+
+        {/* Orbit energy arcs: thin glowing rings, different axes */}
+        {ORBIT_ARC_CONFIGS.map((cfg, i) => (
           <group key={i} ref={(el) => { arcRefs.current[i] = el; }}>
-            <mesh>
+            <mesh renderOrder={4}>
               <torusGeometry args={[cfg.radius, cfg.tube, 8, 64]} />
               <meshBasicMaterial
                 ref={(el) => { arcMatRefs.current[i] = el; }}
@@ -364,8 +623,13 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
           </group>
         ))}
 
+        {/* Pooled discharge arcs — unstable magical energy filaments */}
+        {dischargeArcs.map((line, i) => (
+          <primitive key={i} object={line} renderOrder={8} />
+        ))}
+
         {/* Internal particles: one Points buffer, one draw call */}
-        <points ref={pointsRef}>
+        <points ref={pointsRef} renderOrder={3}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
@@ -375,7 +639,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
           <pointsMaterial
             ref={pointsMatRef}
             color="#aee6ff"
-            size={0.035}
+            size={0.032}
             sizeAttenuation
             transparent
             opacity={0.5}
