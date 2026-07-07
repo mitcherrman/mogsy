@@ -12,9 +12,11 @@ import { cn } from "@/lib/utils";
  * Review Panel — the decision surface for a single update.
  * Renders from GET /updates/{id} exclusively; approval is strict:
  *   click → dry_run:true → render plan → type "APPLY" → dry_run:false.
- * Never auto-approves. `recommended_action` gates the primary button.
- * Warnings are always visible; NO_LIVE_VALUE / RANK_OUT_OF_BOUNDS
- * disable approval entirely (would fail validation).
+ * Never auto-approves. This is an admin-only tool: warnings are shown
+ * prominently but never hard-block approval on their own. Approval is only
+ * disabled when the backend indicates it is not actionable
+ * (no pending_update_id, status !== PENDING, or the dry-run itself failed).
+ * `recommended_action` informs the primary button label/tone only.
  */
 export function ReviewPanel({
   updateId,
@@ -37,12 +39,14 @@ export function ReviewPanel({
   type Mode = "idle" | "progression" | "single";
   const [mode, setMode] = useState<Mode>("idle");
   const [confirmText, setConfirmText] = useState("");
+  const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     setMode("idle");
     setConfirmText("");
+    setAcknowledgeWarnings(false);
     setRejectOpen(false);
     setRejectReason("");
   }, [updateId]);
@@ -119,6 +123,8 @@ export function ReviewPanel({
       dryRunQ={dryRunQ}
       confirmText={confirmText}
       setConfirmText={setConfirmText}
+      acknowledgeWarnings={acknowledgeWarnings}
+      setAcknowledgeWarnings={setAcknowledgeWarnings}
       applyMut={applyMut}
       rejectOpen={rejectOpen}
       setRejectOpen={setRejectOpen}
@@ -137,6 +143,8 @@ function PanelBody({
   dryRunQ,
   confirmText,
   setConfirmText,
+  acknowledgeWarnings,
+  setAcknowledgeWarnings,
   applyMut,
   rejectOpen,
   setRejectOpen,
@@ -151,6 +159,8 @@ function PanelBody({
   dryRunQ: ReturnType<typeof useQuery<ApprovalResponse>>;
   confirmText: string;
   setConfirmText: (v: string) => void;
+  acknowledgeWarnings: boolean;
+  setAcknowledgeWarnings: (v: boolean) => void;
   applyMut: ReturnType<typeof useMutation<ApprovalResponse, unknown, void, unknown>>;
   rejectOpen: boolean;
   setRejectOpen: (v: boolean) => void;
@@ -159,10 +169,34 @@ function PanelBody({
   rejectMut: ReturnType<typeof useMutation<{ status: string }, unknown, void, unknown>>;
 }) {
   const primary = actionPrimaryStyle(d.recommended_action);
-  const hardBlockers = d.warnings.filter((w) =>
-    /^(NO_LIVE_VALUE|RANK_OUT_OF_BOUNDS)/i.test(w),
-  );
-  const approvalBlocked = hardBlockers.length > 0 || primary.disabled;
+
+  // Admin-only tool: warnings never hard-block approval. Approval is only
+  // disabled when the backend says the update is not actionable.
+  const status = (d.status ?? d.update?.status ?? "PENDING") as string;
+  const isPending = status === "PENDING";
+  const hasPendingId =
+    typeof d.update?.id === "number" ||
+    d.diff.some((row) => typeof row.pending_update_id === "number");
+  const notActionableReason = !hasPendingId
+    ? "No pending_update_id from backend"
+    : !isPending
+      ? `Update status is ${status}, not PENDING`
+      : null;
+  const approvalBlocked = notActionableReason !== null;
+
+  // Soft-warning signal: shown prominently in the dry-run confirmation so the
+  // admin has to acknowledge before we let them type APPLY. Does NOT disable.
+  const SOFT_WARNING_RE =
+    /(CONSENSUS_AMBIGUOUS|LOW_CONFIDENCE|DISPUTED|NO_LIVE_VALUE|RANK_OUT_OF_BOUNDS|MANUAL_REVIEW|VERIFY_SOURCE)/i;
+  const softWarnings = d.warnings.filter((w) => SOFT_WARNING_RE.test(w));
+  const cautionAction =
+    d.recommended_action === "manual_review" ||
+    d.recommended_action === "verify_source";
+  const consensusAmbiguous =
+    d.consensus?.classification === "AMBIGUOUS" ||
+    d.consensus?.classification === "PROVIDER_DISAGREEMENT";
+  const requiresAck =
+    softWarnings.length > 0 || cautionAction || consensusAmbiguous;
 
   const affectedRankCount = useMemo(
     () => d.diff.filter((x) => x.changed).length,
@@ -338,6 +372,31 @@ function PanelBody({
                     </div>
                   )}
                 </div>
+                {requiresAck && (
+                  <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 space-y-1.5">
+                    <div className="flex items-center gap-2 text-amber-300 text-[11px] font-extrabold uppercase tracking-wider">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Extra confirmation required
+                    </div>
+                    <ul className="text-[11px] text-amber-200 list-disc pl-5 space-y-0.5">
+                      {cautionAction && (
+                        <li>Recommended action is <span className="font-bold">{d.recommended_action}</span> — normally not auto-approvable.</li>
+                      )}
+                      {consensusAmbiguous && d.consensus && (
+                        <li>Provider consensus is <span className="font-bold">{d.consensus.classification}</span> ({d.consensus.confidence.toFixed(2)}).</li>
+                      )}
+                      {softWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                    <label className="flex items-center gap-2 text-[11px] text-amber-100 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={acknowledgeWarnings}
+                        onChange={(e) => setAcknowledgeWarnings(e.target.checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      I have reviewed the warnings and want to proceed anyway.
+                    </label>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">Type <span className="font-mono font-bold text-foreground">APPLY</span> to confirm:</label>
                   <input
@@ -348,13 +407,17 @@ function PanelBody({
                   />
                   <button
                     onClick={() => applyMut.mutate()}
-                    disabled={confirmText !== "APPLY" || applyMut.isPending}
+                    disabled={
+                      confirmText !== "APPLY" ||
+                      applyMut.isPending ||
+                      (requiresAck && !acknowledgeWarnings)
+                    }
                     className="rounded bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 disabled:opacity-40"
                   >
                     {applyMut.isPending ? "Applying…" : "Confirm write"}
                   </button>
                   <button
-                    onClick={() => { setMode("idle"); setConfirmText(""); }}
+                    onClick={() => { setMode("idle"); setConfirmText(""); setAcknowledgeWarnings(false); }}
                     className="text-xs text-muted-foreground hover:text-foreground"
                   >
                     Cancel
@@ -411,21 +474,21 @@ function PanelBody({
             onClick={() => setMode("single")}
             disabled={approvalBlocked || mode !== "idle"}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40"
-            title={hardBlockers.length ? "Blocked by validation warnings" : undefined}
+            title={notActionableReason ?? undefined}
           >
             Approve rank {d.update?.rank ?? ""} only
           </button>
 
           <button
             onClick={() => setMode("progression")}
-            disabled={approvalBlocked || mode !== "idle" || d.recommended_action === "approve"}
+            disabled={approvalBlocked || mode !== "idle"}
             className={cn(
               "rounded text-xs font-bold px-3 py-2 disabled:opacity-40",
-              d.recommended_action === "verify_source"
+              d.recommended_action === "verify_source" || d.recommended_action === "manual_review"
                 ? "border border-primary text-primary bg-transparent"
                 : "bg-primary text-primary-foreground",
             )}
-            title={hardBlockers.length ? "Blocked by validation warnings" : primary.label}
+            title={notActionableReason ?? primary.label}
           >
             ✓ Approve all {affectedRankCount || d.affected_ranks.length}
           </button>
