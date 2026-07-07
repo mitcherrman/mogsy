@@ -372,6 +372,31 @@ function PanelBody({
                     </div>
                   )}
                 </div>
+                {requiresAck && (
+                  <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 space-y-1.5">
+                    <div className="flex items-center gap-2 text-amber-300 text-[11px] font-extrabold uppercase tracking-wider">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Extra confirmation required
+                    </div>
+                    <ul className="text-[11px] text-amber-200 list-disc pl-5 space-y-0.5">
+                      {cautionAction && (
+                        <li>Recommended action is <span className="font-bold">{d.recommended_action}</span> — normally not auto-approvable.</li>
+                      )}
+                      {consensusAmbiguous && d.consensus && (
+                        <li>Provider consensus is <span className="font-bold">{d.consensus.classification}</span> ({d.consensus.confidence.toFixed(2)}).</li>
+                      )}
+                      {softWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                    <label className="flex items-center gap-2 text-[11px] text-amber-100 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={acknowledgeWarnings}
+                        onChange={(e) => setAcknowledgeWarnings(e.target.checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      I have reviewed the warnings and want to proceed anyway.
+                    </label>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">Type <span className="font-mono font-bold text-foreground">APPLY</span> to confirm:</label>
                   <input
@@ -382,13 +407,17 @@ function PanelBody({
                   />
                   <button
                     onClick={() => applyMut.mutate()}
-                    disabled={confirmText !== "APPLY" || applyMut.isPending}
+                    disabled={
+                      confirmText !== "APPLY" ||
+                      applyMut.isPending ||
+                      (requiresAck && !acknowledgeWarnings)
+                    }
                     className="rounded bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 disabled:opacity-40"
                   >
                     {applyMut.isPending ? "Applying…" : "Confirm write"}
                   </button>
                   <button
-                    onClick={() => { setMode("idle"); setConfirmText(""); }}
+                    onClick={() => { setMode("idle"); setConfirmText(""); setAcknowledgeWarnings(false); }}
                     className="text-xs text-muted-foreground hover:text-foreground"
                   >
                     Cancel
@@ -445,21 +474,21 @@ function PanelBody({
             onClick={() => setMode("single")}
             disabled={approvalBlocked || mode !== "idle"}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40"
-            title={hardBlockers.length ? "Blocked by validation warnings" : undefined}
+            title={notActionableReason ?? undefined}
           >
             Approve rank {d.update?.rank ?? ""} only
           </button>
 
           <button
             onClick={() => setMode("progression")}
-            disabled={approvalBlocked || mode !== "idle" || d.recommended_action === "approve"}
+            disabled={approvalBlocked || mode !== "idle"}
             className={cn(
               "rounded text-xs font-bold px-3 py-2 disabled:opacity-40",
-              d.recommended_action === "verify_source"
+              d.recommended_action === "verify_source" || d.recommended_action === "manual_review"
                 ? "border border-primary text-primary bg-transparent"
                 : "bg-primary text-primary-foreground",
             )}
-            title={hardBlockers.length ? "Blocked by validation warnings" : primary.label}
+            title={notActionableReason ?? primary.label}
           >
             ✓ Approve all {affectedRankCount || d.affected_ranks.length}
           </button>
