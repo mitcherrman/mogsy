@@ -393,13 +393,42 @@ function PanelBody({
             <p className="text-xs text-muted-foreground italic">Never applied before.</p>
           ) : (
             <ul className="text-xs space-y-1">
-              {d.apply_history.map((h) => (
-                <li key={h.id} className="flex items-center gap-2">
-                  <span className="tabular-nums text-muted-foreground">{relativeTime(h.applied_at)}</span>
-                  <span>rank {h.rank}: {String(h.old_value)} → <span className="text-emerald-300">{String(h.new_value)}</span></span>
-                  <span className="text-muted-foreground">by {h.approved_by}</span>
-                </li>
-              ))}
+              {d.apply_history.map((h: ApplyHistoryEntry) => {
+                const isUndone = Boolean(h.undone_at);
+                // Default to reversible when backend omits the flag, so admins
+                // aren't silently blocked; the backend enforces safety anyway.
+                const reversible = h.reversible !== false && !isUndone;
+                const undoInFlight =
+                  undoMut.isPending && undoMut.variables === h.id;
+                return (
+                  <li key={h.id} className="flex items-center gap-2 flex-wrap">
+                    <span className="tabular-nums text-muted-foreground">{relativeTime(h.applied_at)}</span>
+                    <span>rank {h.rank}: {String(h.old_value)} → <span className={cn("text-emerald-300", isUndone && "line-through opacity-60")}>{String(h.new_value)}</span></span>
+                    <span className="text-muted-foreground">by {h.approved_by}</span>
+                    {isUndone ? (
+                      <span className="ml-auto text-[10px] uppercase font-bold text-muted-foreground">
+                        Undone{h.undone_by ? ` by ${h.undone_by}` : ""}
+                      </span>
+                    ) : reversible ? (
+                      <button
+                        onClick={() => undoMut.mutate(h.id)}
+                        disabled={undoMut.isPending}
+                        className="ml-auto rounded border border-border bg-card text-[11px] font-bold px-2 py-0.5 hover:bg-secondary disabled:opacity-40"
+                        title="Restore the previous value. Backend blocks the undo if the DB value has changed since this apply."
+                      >
+                        {undoInFlight ? "Undoing…" : "Undo Apply"}
+                      </button>
+                    ) : (
+                      <span
+                        className="ml-auto text-[10px] uppercase font-bold text-muted-foreground"
+                        title="Backend marked this entry as not reversible."
+                      >
+                        Not reversible
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
