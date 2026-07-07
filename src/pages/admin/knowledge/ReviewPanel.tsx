@@ -39,12 +39,14 @@ export function ReviewPanel({
   type Mode = "idle" | "progression" | "single";
   const [mode, setMode] = useState<Mode>("idle");
   const [confirmText, setConfirmText] = useState("");
+  const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     setMode("idle");
     setConfirmText("");
+    setAcknowledgeWarnings(false);
     setRejectOpen(false);
     setRejectReason("");
   }, [updateId]);
