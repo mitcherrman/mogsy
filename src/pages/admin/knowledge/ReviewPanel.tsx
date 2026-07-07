@@ -192,7 +192,9 @@ function PanelBody({
   const cautionAction =
     d.recommended_action === "manual_review" ||
     d.recommended_action === "verify_source";
-  const consensusAmbiguous = d.consensus?.classification === "ambiguous";
+  const consensusAmbiguous =
+    d.consensus?.classification === "AMBIGUOUS" ||
+    d.consensus?.classification === "PROVIDER_DISAGREEMENT";
   const requiresAck =
     softWarnings.length > 0 || cautionAction || consensusAmbiguous;
 
