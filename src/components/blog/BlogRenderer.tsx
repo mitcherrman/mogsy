@@ -63,7 +63,7 @@ function renderNode(node: any, key: number, widgets: Record<string, any>): React
     case "paragraph": return <p key={key}>{children.length ? children : <br />}</p>;
     case "heading": {
       const lvl = Math.min(Math.max(node.attrs?.level ?? 2, 1), 4);
-      const Tag = (`h${lvl}`) as keyof JSX.IntrinsicElements;
+      const Tag = (`h${lvl}`) as "h1" | "h2" | "h3" | "h4";
       return <Tag key={key}>{children}</Tag>;
     }
     case "bulletList": return <ul key={key}>{children}</ul>;
