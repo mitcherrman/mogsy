@@ -1,11 +1,42 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import { Copy } from "lucide-react";
+import {
+  Copy,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Package,
+  Sparkles,
+  ShieldCheck,
+  Users,
+  ClipboardList,
+  Check,
+  Gauge,
+  ChevronDown,
+  ChevronRight,
+  Swords,
+  Flame,
+  Heart,
+  Zap as ZapIcon,
+  Wind,
+  Target,
+  Shield,
+  Beaker,
+} from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
 import type { PatchRundownResponse, RundownGroup } from "@/lib/knowledge-admin/types";
-import { ErrorBanner, ProviderBadge, SkeletonRow } from "./shared";
+import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
+import {
+  MetricCard,
+  RankingCard,
+  PropertyBreakdownCard,
+  SectionShell,
+  ProgressRing,
+  AwaitingBackendBanner,
+  PendingBadge,
+} from "./rundown/PlaceholderPrimitives";
 
 /**
  * Patch Rundown page. All rollups come from GET /patch-rundown; the
@@ -35,8 +66,15 @@ export default function KnowledgeRundown() {
 
   const data = scopedQ.data;
   const groupedByChampion = useMemo(() => groupByChampion(data?.groups ?? []), [data]);
-
   const generated = useMemo(() => (data ? buildGeneratedContent(data, patch) : null), [data, patch]);
+  const loading = scopedQ.isLoading;
+
+  // Real, non-derived counts we can safely surface today.
+  const championsChanged = data ? Object.keys(data.by_champion).length : null;
+  const valuesChanged = data
+    ? data.groups.reduce((sum, g) => sum + (g.rank_count ?? 0), 0)
+    : null;
+  const propertiesTouched = data ? Object.keys(data.by_property).length : null;
 
   return (
     <div className="space-y-4">
@@ -59,86 +97,200 @@ export default function KnowledgeRundown() {
       </div>
 
       {scopedQ.error && <ErrorBanner error={scopedQ.error} onRetry={() => scopedQ.refetch()} />}
-      {scopedQ.isLoading && <SkeletonRow className="h-24" />}
 
-      {data && (
-        <>
-          <header className="rounded-xl border border-border bg-card p-3 flex flex-wrap items-center gap-4 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">Review counts</div>
-              <div className="font-semibold">
-                <span className="text-amber-300">{data.review_counts.pending} pending</span>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-emerald-300">{data.review_counts.applied} applied</span>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-red-300">{data.review_counts.rejected} rejected</span>
-              </div>
-            </div>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">Severity</div>
-              <div className="font-semibold tabular-nums">
-                <span className="text-red-300">{data.by_severity.major}⚡ major</span>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-orange-300">{data.by_severity.moderate} moderate</span>
-                <span className="text-muted-foreground"> · </span>
-                <span className="text-muted-foreground">{data.by_severity.minor} minor</span>
-              </div>
-            </div>
-          </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <section className="rounded-xl border border-border bg-card p-3">
-              <h2 className="text-sm font-extrabold mb-2">By champion</h2>
-              <ul className="space-y-1 text-xs">
-                {Object.entries(data.by_champion)
-                  .sort((a, b) => b[1].pending - a[1].pending)
-                  .map(([champ, counts]) => (
-                    <li key={champ}>
-                      <details className="rounded border border-border">
-                        <summary className="cursor-pointer px-2 py-1 flex items-center gap-2">
-                          <span className="font-semibold">{champ}</span>
-                          <span className="text-muted-foreground">{counts.pending} pending</span>
-                        </summary>
-                        <ul className="border-t border-border p-2 space-y-1">
-                          {(groupedByChampion[champ] ?? []).map((g, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <ProviderBadge provider={g.provider} />
-                              <span>{g.ability_key} {g.property}</span>
-                              <span className="text-muted-foreground">{g.rank_count} rank{g.rank_count === 1 ? "" : "s"}</span>
-                              <Link
-                                to={`/admin/knowledge/queue?champion=${encodeURIComponent(champ)}&property=${encodeURIComponent(g.property)}`}
-                                className="ml-auto text-primary hover:underline"
-                              >
-                                review →
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    </li>
-                  ))}
-              </ul>
-            </section>
-
-            <section className="rounded-xl border border-border bg-card p-3 space-y-3">
-              <RollupList title="By property" data={data.by_property} />
-              <RollupList title="By provider" data={data.by_provider} />
-            </section>
+      {/* ─── 1. HERO SUMMARY ─────────────────────────────────────────────── */}
+      <SectionShell
+        title="Patch Intelligence"
+        subtitle="Live rollups from the knowledge database. Analytics fields marked pending will populate automatically once the backend endpoint ships."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <MetricCard
+            label="Patch Version"
+            value={patch || (loading ? undefined : "All patches")}
+            icon={<Sparkles className="h-4 w-4" />}
+            accent="info"
+            loading={loading}
+          />
+          <MetricCard
+            label="Champions Changed"
+            value={championsChanged ?? undefined}
+            icon={<Users className="h-4 w-4" />}
+            accent="default"
+            loading={loading}
+          />
+          <MetricCard
+            label="Items Changed"
+            icon={<Package className="h-4 w-4" />}
+            loading={loading}
+            hint="Item scope not exposed by API yet."
+          />
+          <MetricCard
+            label="Values Changed"
+            value={valuesChanged ?? undefined}
+            icon={<Activity className="h-4 w-4" />}
+            loading={loading}
+          />
+          <MetricCard
+            label="Properties Touched"
+            value={propertiesTouched ?? undefined}
+            icon={<Gauge className="h-4 w-4" />}
+            loading={loading}
+          />
+          <MetricCard
+            label="Buffs"
+            icon={<TrendingUp className="h-4 w-4" />}
+            accent="positive"
+            loading={loading}
+            hint="Requires signed delta rollups."
+          />
+          <MetricCard
+            label="Nerfs"
+            icon={<TrendingDown className="h-4 w-4" />}
+            accent="negative"
+            loading={loading}
+            hint="Requires signed delta rollups."
+          />
+          <MetricCard
+            label="Pending Reviews"
+            value={data?.review_counts.pending}
+            icon={<ClipboardList className="h-4 w-4" />}
+            accent="warning"
+            loading={loading}
+          />
+          <MetricCard
+            label="Approved Changes"
+            value={data?.review_counts.applied}
+            icon={<Check className="h-4 w-4" />}
+            accent="positive"
+            loading={loading}
+          />
+          <MetricCard
+            label="Knowledge Confidence"
+            icon={<ShieldCheck className="h-4 w-4" />}
+            loading={loading}
+            hint="Aggregate confidence not returned by /patch-rundown."
+          />
+        </div>
+        {data && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span>Severity mix:</span>
+            <SeverityBadge severity="major" /> <span className="tabular-nums">{data.by_severity.major}</span>
+            <SeverityBadge severity="moderate" /> <span className="tabular-nums">{data.by_severity.moderate}</span>
+            <SeverityBadge severity="minor" /> <span className="tabular-nums">{data.by_severity.minor}</span>
           </div>
+        )}
+      </SectionShell>
 
-          {generated && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-extrabold">Generated content</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <ContentCard title="Website changelog" body={generated.changelog} />
-                <ContentCard title="Discord post" body={generated.discord} />
-                <ContentCard title="YouTube script outline" body={generated.youtube} />
-                <ContentCard title="Quiz update notes" body={generated.quiz} />
+      {/* ─── 2. RANKINGS ─────────────────────────────────────────────────── */}
+      <SectionShell
+        title="Rankings"
+        subtitle="Superlatives across the patch. Requires signed-delta analytics from the backend."
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <RankingCard label="Biggest Buff" loading={loading} />
+          <RankingCard label="Biggest Nerf" loading={loading} />
+          <RankingCard label="Most Changed Champion" loading={loading} />
+          <RankingCard label="Largest Cooldown Reduction" loading={loading} />
+          <RankingCard label="Largest Mana Change" loading={loading} />
+          <RankingCard label="Largest Percentage Change" loading={loading} />
+          <RankingCard label="Largest Damage Increase" loading={loading} />
+          <RankingCard label="Largest Range Change" loading={loading} />
+        </div>
+      </SectionShell>
+
+      {/* ─── 3. PROPERTY BREAKDOWN ───────────────────────────────────────── */}
+      <SectionShell
+        title="Property Breakdown"
+        subtitle="Per-property rollup. Counts read from /patch-rundown; deltas awaiting backend."
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {PROPERTY_KEYS.map((prop) => {
+            const bucket = data?.by_property?.[prop.key];
+            const count = bucket ? bucket.pending + bucket.applied + bucket.rejected : null;
+            return (
+              <PropertyBreakdownCard
+                key={prop.key}
+                property={prop.label}
+                count={count}
+                loading={loading}
+              />
+            );
+          })}
+        </div>
+      </SectionShell>
+
+      {/* ─── 4. CHAMPION INTELLIGENCE ────────────────────────────────────── */}
+      <SectionShell
+        title="Champion Intelligence"
+        subtitle="Per-champion breakdown. Expand for provider & property list; scoring analytics awaiting backend."
+      >
+        {loading && <SkeletonRow className="h-24" />}
+        {data && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {Object.entries(data.by_champion)
+              .sort((a, b) => b[1].pending - a[1].pending)
+              .map(([champ, counts]) => (
+                <ChampionIntelCard
+                  key={champ}
+                  champion={champ}
+                  pending={counts.pending}
+                  applied={counts.applied}
+                  rejected={counts.rejected}
+                  groups={groupedByChampion[champ] ?? []}
+                />
+              ))}
+            {Object.keys(data.by_champion).length === 0 && (
+              <div className="text-xs text-muted-foreground italic">No champion changes in this scope.</div>
+            )}
+          </div>
+        )}
+      </SectionShell>
+
+      {/* ─── 5. KNOWLEDGE QUALITY ────────────────────────────────────────── */}
+      <SectionShell
+        title="Knowledge Quality"
+        subtitle="Reflects the backing knowledge base. Metrics served from /health once cross-linked."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {["Coverage", "Approved", "Pending", "Parser Gaps", "Consensus", "Confidence", "Health"].map((label) => (
+            <div key={label} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
+              <ProgressRing loading={loading} />
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
+                {label}
               </div>
-            </section>
-          )}
-        </>
+              {!loading && <PendingBadge />}
+            </div>
+          ))}
+        </div>
+      </SectionShell>
+
+      {/* ─── 6. GAMEPLAY IMPACT (future) ─────────────────────────────────── */}
+      <SectionShell
+        title="Gameplay Impact"
+        subtitle="Simulated combat metrics — read-only preview of the future analytics surface."
+        banner={
+          <AwaitingBackendBanner>
+            Available once Combat Lab simulation metrics are connected.
+          </AwaitingBackendBanner>
+        }
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {GAMEPLAY_METRICS.map((m) => (
+            <MetricCard key={m.label} label={m.label} icon={m.icon} accent="info" />
+          ))}
+        </div>
+      </SectionShell>
+
+      {/* ─── Generated content (existing) ────────────────────────────────── */}
+      {generated && (
+        <SectionShell title="Generated Content" subtitle="Templated summaries derived from applied changes.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ContentCard title="Website changelog" body={generated.changelog} />
+            <ContentCard title="Discord post" body={generated.discord} />
+            <ContentCard title="YouTube script outline" body={generated.youtube} />
+            <ContentCard title="Quiz update notes" body={generated.quiz} />
+          </div>
+        </SectionShell>
       )}
     </div>
   );
@@ -152,19 +304,104 @@ function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]>
   return out;
 }
 
-function RollupList({ title, data }: { title: string; data: Record<string, { pending: number; applied: number; rejected: number; total?: number }> }) {
-  const rows = Object.entries(data).sort((a, b) => b[1].pending - a[1].pending);
+/* ─── Property registry ──────────────────────────────────────────────── */
+const PROPERTY_KEYS: { key: string; label: string }[] = [
+  { key: "cooldown", label: "Cooldown" },
+  { key: "mana", label: "Mana" },
+  { key: "damage", label: "Damage" },
+  { key: "ratio", label: "Ratios" },
+  { key: "range", label: "Range" },
+  { key: "healing", label: "Healing" },
+  { key: "shield", label: "Shields" },
+  { key: "movement_speed", label: "Movement Speed" },
+];
+
+const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
+  { label: "Combo Damage",           icon: <Swords className="h-4 w-4" /> },
+  { label: "Burst Damage",           icon: <Flame className="h-4 w-4" /> },
+  { label: "Sustained DPS",          icon: <Activity className="h-4 w-4" /> },
+  { label: "Tankiness",              icon: <Shield className="h-4 w-4" /> },
+  { label: "Damage Per Mana",        icon: <ZapIcon className="h-4 w-4" /> },
+  { label: "Ability Casts / Min",    icon: <Sparkles className="h-4 w-4" /> },
+  { label: "Time To Kill",           icon: <Target className="h-4 w-4" /> },
+  { label: "Effective Health",       icon: <Heart className="h-4 w-4" /> },
+  { label: "Lane Sustain",           icon: <Heart className="h-4 w-4" /> },
+  { label: "Wave Clear",             icon: <Wind className="h-4 w-4" /> },
+  { label: "Objective Damage",       icon: <Target className="h-4 w-4" /> },
+  { label: "Gold Efficiency",        icon: <Beaker className="h-4 w-4" /> },
+];
+
+/** Expandable champion card — richer analytics slots in later. */
+function ChampionIntelCard({
+  champion,
+  pending,
+  applied,
+  rejected,
+  groups,
+}: {
+  champion: string;
+  pending: number;
+  applied: number;
+  rejected: number;
+  groups: RundownGroup[];
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <div>
-      <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground mb-1">{title}</h3>
-      <ul className="text-xs space-y-0.5">
-        {rows.map(([k, v]) => (
-          <li key={k} className="flex justify-between tabular-nums">
-            <span className="text-foreground">{k}</span>
-            <span className="text-muted-foreground">{v.pending}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted/20 transition"
+      >
+        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <div className="flex-1 min-w-0">
+          <div className="font-extrabold text-sm truncate">{champion}</div>
+          <div className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-amber-300">{pending} pending</span>
+            <span className="mx-1">·</span>
+            <span className="text-emerald-300">{applied} applied</span>
+            <span className="mx-1">·</span>
+            <span className="text-red-300">{rejected} rejected</span>
+          </div>
+        </div>
+        <PendingBadge />
+      </button>
+      {open && (
+        <div className="border-t border-border p-3 space-y-3 animate-fade-in">
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+              Property changes
+            </div>
+            <ul className="space-y-1 text-xs">
+              {groups.map((g, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <ProviderBadge provider={g.provider} />
+                  <span>{g.ability_key} {g.property}</span>
+                  <span className="text-muted-foreground">
+                    {g.rank_count} rank{g.rank_count === 1 ? "" : "s"}
+                  </span>
+                  <Link
+                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(g.property)}`}
+                    className="ml-auto text-primary hover:underline"
+                  >
+                    review →
+                  </Link>
+                </li>
+              ))}
+              {groups.length === 0 && (
+                <li className="text-muted-foreground italic">No pending groups.</li>
+              )}
+            </ul>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {["Summary", "Severity", "Impact score", "Rankings", "Confidence", "Provider evidence"].map((label) => (
+              <div key={label} className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+                <PendingBadge />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
