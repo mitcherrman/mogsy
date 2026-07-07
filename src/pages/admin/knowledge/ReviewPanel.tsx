@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ExternalLink, X } from "lucide-react";
+import { AlertTriangle, ExternalLink, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
 import type { ApprovalResponse, UpdateDetail } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
+import { getStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { ConfidenceBadge, ErrorBanner, ProviderBadge, SeverityBadge, actionPrimaryStyle, relativeTime } from "./shared";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,9 @@ export function ReviewPanel({
   const { user } = useAuth();
   const approvedBy = user?.email ?? "unknown@mogsy";
 
+  const [strict, setStrict] = useState<boolean>(() => getStrictApproval());
+  useEffect(() => subscribeStrictApproval(() => setStrict(getStrictApproval())), []);
+
   const detailQ = useQuery({
     queryKey: ["knowledge", "update", updateId],
     queryFn: () => knowledgeApi.getUpdate(updateId),
@@ -42,6 +46,8 @@ export function ReviewPanel({
   const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  // Which scope the pending direct-apply click targeted (fast mode only).
+  const [directScope, setDirectScope] = useState<"single" | "progression" | null>(null);
 
   useEffect(() => {
     setMode("idle");
@@ -49,6 +55,7 @@ export function ReviewPanel({
     setAcknowledgeWarnings(false);
     setRejectOpen(false);
     setRejectReason("");
+    setDirectScope(null);
   }, [updateId]);
 
   const dryRunQ = useQuery<ApprovalResponse>({
@@ -62,10 +69,12 @@ export function ReviewPanel({
   });
 
   const applyMut = useMutation({
-    mutationFn: () =>
-      mode === "progression"
+    mutationFn: () => {
+      const scope = directScope ?? mode;
+      return scope === "progression"
         ? knowledgeApi.approveProgression(updateId, { dry_run: false, approved_by: approvedBy })
-        : knowledgeApi.approve(updateId, { dry_run: false, approved_by: approvedBy }),
+        : knowledgeApi.approve(updateId, { dry_run: false, approved_by: approvedBy });
+    },
     onSuccess: (res) => {
       toast.success(
         `Applied${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
@@ -118,6 +127,7 @@ export function ReviewPanel({
     <PanelBody
       d={d}
       onClose={onClose}
+      strict={strict}
       mode={mode}
       setMode={setMode}
       dryRunQ={dryRunQ}
@@ -126,6 +136,8 @@ export function ReviewPanel({
       acknowledgeWarnings={acknowledgeWarnings}
       setAcknowledgeWarnings={setAcknowledgeWarnings}
       applyMut={applyMut}
+      directScope={directScope}
+      setDirectScope={setDirectScope}
       rejectOpen={rejectOpen}
       setRejectOpen={setRejectOpen}
       rejectReason={rejectReason}
@@ -138,6 +150,7 @@ export function ReviewPanel({
 function PanelBody({
   d,
   onClose,
+  strict,
   mode,
   setMode,
   dryRunQ,
@@ -146,6 +159,8 @@ function PanelBody({
   acknowledgeWarnings,
   setAcknowledgeWarnings,
   applyMut,
+  directScope,
+  setDirectScope,
   rejectOpen,
   setRejectOpen,
   rejectReason,
@@ -154,6 +169,7 @@ function PanelBody({
 }: {
   d: UpdateDetail;
   onClose?: () => void;
+  strict: boolean;
   mode: "idle" | "progression" | "single";
   setMode: (m: "idle" | "progression" | "single") => void;
   dryRunQ: ReturnType<typeof useQuery<ApprovalResponse>>;
@@ -162,6 +178,8 @@ function PanelBody({
   acknowledgeWarnings: boolean;
   setAcknowledgeWarnings: (v: boolean) => void;
   applyMut: ReturnType<typeof useMutation<ApprovalResponse, unknown, void, unknown>>;
+  directScope: "single" | "progression" | null;
+  setDirectScope: (s: "single" | "progression" | null) => void;
   rejectOpen: boolean;
   setRejectOpen: (v: boolean) => void;
   rejectReason: string;
@@ -202,6 +220,12 @@ function PanelBody({
     () => d.diff.filter((x) => x.changed).length,
     [d.diff],
   );
+
+  const directApply = (scope: "single" | "progression") => {
+    if (approvalBlocked || applyMut.isPending) return;
+    setDirectScope(scope);
+    applyMut.mutate();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -469,28 +493,44 @@ function PanelBody({
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          {/* Always offer single-rank approve as fallback */}
+          {/* Preview write — always available as an optional secondary action */}
           <button
-            onClick={() => setMode("single")}
-            disabled={approvalBlocked || mode !== "idle"}
+            onClick={() => setMode("progression")}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40 text-muted-foreground hover:text-foreground"
+            title="Run a dry-run and show the write plan without applying."
+          >
+            Preview write
+          </button>
+
+          {/* Approve single rank */}
+          <button
+            onClick={() => (strict ? setMode("single") : directApply("single"))}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40"
             title={notActionableReason ?? undefined}
           >
-            Approve rank {d.update?.rank ?? ""} only
+            {!strict && applyMut.isPending && directScope === "single"
+              ? "Applying…"
+              : `Approve rank ${d.update?.rank ?? ""} only`}
           </button>
 
+          {/* Approve all */}
           <button
-            onClick={() => setMode("progression")}
-            disabled={approvalBlocked || mode !== "idle"}
+            onClick={() => (strict ? setMode("progression") : directApply("progression"))}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
             className={cn(
-              "rounded text-xs font-bold px-3 py-2 disabled:opacity-40",
+              "rounded text-xs font-bold px-3 py-2 disabled:opacity-40 inline-flex items-center gap-1",
               d.recommended_action === "verify_source" || d.recommended_action === "manual_review"
                 ? "border border-primary text-primary bg-transparent"
                 : "bg-primary text-primary-foreground",
             )}
             title={notActionableReason ?? primary.label}
           >
-            ✓ Approve all {affectedRankCount || d.affected_ranks.length}
+            {!strict && <Zap className="h-3 w-3" />}
+            {!strict && applyMut.isPending && directScope === "progression"
+              ? "Applying…"
+              : `✓ Approve all ${affectedRankCount || d.affected_ranks.length}`}
           </button>
         </div>
       </div>
