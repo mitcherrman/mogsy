@@ -123,6 +123,8 @@ export function ReviewPanel({
       dryRunQ={dryRunQ}
       confirmText={confirmText}
       setConfirmText={setConfirmText}
+      acknowledgeWarnings={acknowledgeWarnings}
+      setAcknowledgeWarnings={setAcknowledgeWarnings}
       applyMut={applyMut}
       rejectOpen={rejectOpen}
       setRejectOpen={setRejectOpen}
