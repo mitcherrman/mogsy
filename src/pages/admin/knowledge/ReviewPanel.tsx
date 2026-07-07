@@ -169,10 +169,32 @@ function PanelBody({
   rejectMut: ReturnType<typeof useMutation<{ status: string }, unknown, void, unknown>>;
 }) {
   const primary = actionPrimaryStyle(d.recommended_action);
-  const hardBlockers = d.warnings.filter((w) =>
-    /^(NO_LIVE_VALUE|RANK_OUT_OF_BOUNDS)/i.test(w),
-  );
-  const approvalBlocked = hardBlockers.length > 0 || primary.disabled;
+
+  // Admin-only tool: warnings never hard-block approval. Approval is only
+  // disabled when the backend says the update is not actionable.
+  const status = (d.status ?? d.update?.status ?? "PENDING") as string;
+  const isPending = status === "PENDING";
+  const hasPendingId =
+    typeof d.update?.id === "number" ||
+    d.diff.some((row) => typeof row.pending_update_id === "number");
+  const notActionableReason = !hasPendingId
+    ? "No pending_update_id from backend"
+    : !isPending
+      ? `Update status is ${status}, not PENDING`
+      : null;
+  const approvalBlocked = notActionableReason !== null;
+
+  // Soft-warning signal: shown prominently in the dry-run confirmation so the
+  // admin has to acknowledge before we let them type APPLY. Does NOT disable.
+  const SOFT_WARNING_RE =
+    /(CONSENSUS_AMBIGUOUS|LOW_CONFIDENCE|DISPUTED|NO_LIVE_VALUE|RANK_OUT_OF_BOUNDS|MANUAL_REVIEW|VERIFY_SOURCE)/i;
+  const softWarnings = d.warnings.filter((w) => SOFT_WARNING_RE.test(w));
+  const cautionAction =
+    d.recommended_action === "manual_review" ||
+    d.recommended_action === "verify_source";
+  const consensusAmbiguous = d.consensus?.classification === "ambiguous";
+  const requiresAck =
+    softWarnings.length > 0 || cautionAction || consensusAmbiguous;
 
   const affectedRankCount = useMemo(
     () => d.diff.filter((x) => x.changed).length,
