@@ -61,11 +61,13 @@ function mulberry32(seed: number) {
    vertex colors. Unit scale: ring radius 1.
    ──────────────────────────────────────────────────────────────────────── */
 
+// Short prism + tall bevel caps: most of the visible face is angled gem
+// facets, so the silhouette reads as a carved gemstone, not a beveled cube.
 const GEM_R = 1.0;    // hex ring radius
-const GEM_H = 0.42;   // prism half-length (z axis, toward camera)
-const CAP_R = 0.56;   // bevel ring radius
-const CAP_H = 0.26;   // bevel ring z beyond prism
-const APEX_H = 0.20;  // apex point z beyond bevel ring
+const GEM_H = 0.30;   // prism half-length (z axis, toward camera)
+const CAP_R = 0.50;   // bevel ring radius
+const CAP_H = 0.34;   // bevel ring z beyond prism
+const APEX_H = 0.26;  // apex point z beyond bevel ring
 
 type Vec3 = [number, number, number];
 
@@ -167,7 +169,7 @@ const SHELLS = [
 
 // Corner-up silhouette width at unit scale (hex diameter)
 const SILHOUETTE = GEM_R * 2;
-const TARGET_FRACTION = 0.46;
+const TARGET_FRACTION = 0.54;
 
 const ORBIT_ARC_CONFIGS = [
   { radius: 0.55, tube: 0.012, axis: [1, 0.3, 0.2] as const,  speed: 0.7  },
@@ -258,7 +260,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
   // Gem geometries: one jittered template shared by all shells (parallel
   // facets), independent per-shell face-color randomization.
   const gemGeometries = useMemo(() => {
-    const tpl = makeGemTemplate(0x51ab, 0.045);
+    const tpl = makeGemTemplate(0x51ab, 0.06);
     return SHELLS.map((s, i) =>
       buildGemGeometry(tpl, 0x1000 + i * 0x333, s.bMin, s.bMax),
     );
@@ -377,7 +379,8 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
       if (remaining < 3000) overload = 0.35 + (1 - remaining / 3000) * 0.65;
       else if (remaining < 5000) overload = ((5000 - remaining) / 2000) * 0.35;
     } else if (currentPhase === "reveal") {
-      pulse = burstElapsed < 350 ? 1.0 : Math.max(0, 1 - (burstElapsed - 350) / 1400);
+      // 550 ms peak hold before decaying into recovery
+      pulse = burstElapsed < 550 ? 1.0 : Math.max(0, 1 - (burstElapsed - 550) / 1400);
     } else if (currentPhase === "explanation" || currentPhase === "transition") {
       const elapsed = Date.now() - startedAt;
       pulse = Math.max(0, 0.38 - elapsed / 5000);
@@ -452,21 +455,23 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
       const flash = burstElapsed < 450 ? 1 + (1 - burstElapsed / 450) * 1.5 : 1;
       nucleusRef.current.scale.setScalar((0.88 + breath * 0.20) * compress * flash);
 
-      const heat = 1.1 + v.crystalBrightness * 0.5 + pulse * 1.5 +
-        (burstElapsed < 450 ? (1 - burstElapsed / 450) * 2.6 : 0) +
+      const heat = 1.5 + v.crystalBrightness * 0.5 + pulse * 1.7 +
+        (burstElapsed < 450 ? (1 - burstElapsed / 450) * 3.0 : 0) +
         flicker * (1 + s.struggle * 3);
-      nucleusMatRef.current.color.setRGB(heat, heat * 1.02, heat * 1.10);
+      // Near-white with only a whisper of blue — the hottest point on screen
+      nucleusMatRef.current.color.setRGB(heat, heat * 1.01, heat * 1.06);
     }
 
     // Star flares: cross streaks scale/fade with core heat
     flareRefs.current.forEach((fl, i) => {
       const m = flareMatRefs.current[i];
       if (!fl || !m) return;
-      const heat = 0.35 + v.crystalBrightness * 0.25 + pulse * 0.5 +
+      const heat = 0.45 + v.crystalBrightness * 0.25 + pulse * 0.5 +
         (burstElapsed < 500 ? (1 - burstElapsed / 500) * 0.7 : 0);
       m.opacity = Math.min(1, heat * (0.8 + Math.sin(now / 640 + i * 1.7) * 0.2));
       const stretch = 1 + pulse * 0.5 + (burstElapsed < 500 ? (1 - burstElapsed / 500) * 0.8 : 0);
-      fl.scale.set(1.15 * stretch, 0.16, 1);
+      // Tighter streaks — the flare frames the nucleus, it doesn't replace it
+      fl.scale.set(1.0 * stretch, 0.13, 1);
     });
 
     if (lightRef.current) {
@@ -482,7 +487,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
       if (g) g.rotation.set(cfg.axis[0] + angle * 0.15, angle, cfg.axis[2]);
       if (m) {
         const flare = burstElapsed < 600 ? (1 - burstElapsed / 600) * 0.9 : 0;
-        const base = 0.14 + v.crystalBrightness * 0.20 + pulse * 0.40 + flare;
+        const base = 0.14 + v.crystalBrightness * 0.20 + pulse * 0.55 + flare;
         m.opacity = Math.min(0.9, base * (0.7 + Math.sin(now / 1600 + i * 2.1) * 0.3));
       }
     });
@@ -514,11 +519,11 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
     if (pointsRef.current) {
       const pos = particles.positions;
       const t = now / 1000;
-      const spiral = currentPhase === "question" ? 1 - pulse * 0.55 : 1;
+      const spiral = currentPhase === "question" ? 1 - pulse * 0.62 : 1;
       const burst = burstElapsed < 650 ? Math.sin((burstElapsed / 650) * Math.PI) * 0.85 : 0;
 
       for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const a = t * particles.speed[i] * (1 + pulse * 1.6) + particles.offset[i];
+        const a = t * particles.speed[i] * (1 + pulse * 2.2) + particles.offset[i];
         const r = particles.baseR[i] * spiral + burst * particles.baseR[i];
         const cos = Math.cos(a) * r;
         const sin = Math.sin(a) * r;
@@ -532,7 +537,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
     if (pointsMatRef.current) {
       pointsMatRef.current.opacity = Math.min(
         0.95,
-        0.30 + v.particleBrightness * 0.45 + pulse * 0.30,
+        0.30 + v.particleBrightness * 0.45 + pulse * 0.45,
       );
     }
   });
@@ -580,7 +585,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
 
         {/* Nucleus: compressed white-hot star (blooms) */}
         <mesh ref={nucleusRef} renderOrder={6}>
-          <sphereGeometry args={[0.13, 20, 20]} />
+          <sphereGeometry args={[0.10, 20, 20]} />
           <meshBasicMaterial ref={nucleusMatRef} color="#ffffff" toneMapped={false} />
         </mesh>
 
@@ -590,7 +595,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
             key={i}
             ref={(el) => { flareRefs.current[i] = el; }}
             rotation={[0, 0, rot]}
-            scale={[1.15, 0.16, 1]}
+            scale={[1.0, 0.13, 1]}
             renderOrder={7}
           >
             <planeGeometry args={[1, 1]} />
@@ -639,7 +644,7 @@ function CoreScene({ phase, questionIndex, phaseStartedAt, phaseDurationMs }: Sc
           <pointsMaterial
             ref={pointsMatRef}
             color="#aee6ff"
-            size={0.032}
+            size={0.036}
             sizeAttenuation
             transparent
             opacity={0.5}

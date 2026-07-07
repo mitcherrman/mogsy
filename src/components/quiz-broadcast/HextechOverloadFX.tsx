@@ -248,8 +248,9 @@ export function HextechOverloadFX({
         el.style.strokeDashoffset = String((1 - c.growth).toFixed(3));
         const flicker = 0.60 + Math.sin(now / 92 + i * 2.7) * 0.25 + Math.sin(now / 41 + i) * 0.15;
         const burstBoost = burstElapsed < 250 ? 0.35 : 0;
+        // 0.82 master scale — cracks support the crystal, never compete with it
         el.style.opacity = String(
-          Math.max(0, Math.min(1, c.growth * flicker * master + burstBoost * master)).toFixed(3),
+          Math.max(0, Math.min(1, (c.growth * flicker * master + burstBoost * master) * 0.82)).toFixed(3),
         );
       };
       mains.forEach((c, i) => growCrack(c, mainRefs.current[i], i));
@@ -313,7 +314,7 @@ export function HextechOverloadFX({
         preserveAspectRatio="xMidYMid slice"
         className="absolute inset-0 h-full w-full"
       >
-        <g style={{ filter: "drop-shadow(0 0 5px rgba(90,185,255,0.85))" }}>
+        <g style={{ filter: "drop-shadow(0 0 5px rgba(90,185,255,0.70))" }}>
           {Array.from({ length: MAIN_CRACKS }, (_, i) => (
             <path
               key={`m${i}`}

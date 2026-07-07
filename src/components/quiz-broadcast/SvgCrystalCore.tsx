@@ -228,7 +228,8 @@ export function SvgCrystalCore({
         if (remaining < 3000) pulse = 1 - remaining / 3000;
       } else if (phase === "reveal") {
         const elapsed = now - burstStartMs;
-        pulse = elapsed < 350 ? 1.0 : Math.max(0, 1 - (elapsed - 350) / 1400);
+        // 550 ms peak hold before decaying into recovery
+        pulse = elapsed < 550 ? 1.0 : Math.max(0, 1 - (elapsed - 550) / 1400);
       } else if (phase === "explanation" || phase === "transition") {
         const elapsed = Date.now() - phaseStartedAt;
         pulse = Math.max(0, 0.38 - elapsed / 5000);

@@ -253,7 +253,8 @@ export function BroadcastKnowledgeCore({
         if (remaining < 3000) pulse = 1 - remaining / 3000;
       } else if (phase === "reveal") {
         const elapsed = now - burstStartMs;
-        pulse = elapsed < 350 ? 1.0 : Math.max(0, 1 - (elapsed - 350) / 1400);
+        // 550 ms peak hold before decaying into recovery
+        pulse = elapsed < 550 ? 1.0 : Math.max(0, 1 - (elapsed - 550) / 1400);
       } else if (phase === "explanation" || phase === "transition") {
         const elapsed = Date.now() - phaseStartedAt;
         pulse = Math.max(0, 0.38 - elapsed / 5000);
@@ -281,20 +282,22 @@ export function BroadcastKnowledgeCore({
       if (now >= nextWaveAt) {
         waveStart = now;
         waveStrength =
-          overload > 0 ? 0.35 + overload * 0.60 : 0.15 + v.glowStrength * 0.12;
+          overload > 0 ? 0.50 + overload * 0.50 : 0.22 + v.glowStrength * 0.15;
         nextWaveAt =
           now + (overload > 0
             ? 1500 - overload * 1050
             : 5200 + Math.random() * 1800);
       }
 
-      const wp = (now - waveStart) / 650;
+      // Slightly slower travel + wider gaussian band → the outward-moving
+      // energy is easier to perceive against the gold
+      const wp = (now - waveStart) / 750;
       const waveR = 46 + wp * 52; // travels 46 → 98 (crystal edge → spike tips)
       const setBand = (el: SVGElement | null, bandR: number) => {
         if (!el) return;
         if (wp < 0 || wp > 1) { el.style.opacity = "0"; return; }
         const op =
-          waveStrength * Math.exp(-((waveR - bandR) ** 2) / 98) * (1 - wp * 0.25);
+          waveStrength * Math.exp(-((waveR - bandR) ** 2) / 130) * (1 - wp * 0.25);
         el.style.opacity = op.toFixed(3);
       };
       setBand(crestGlowFrameRef.current, 51);
@@ -478,7 +481,7 @@ export function BroadcastKnowledgeCore({
                 as energy travels outward from the crystal */}
             <g
               ref={crestGlowMainRef}
-              style={{ opacity: 0, filter: "drop-shadow(0 0 4px rgba(140,210,255,0.9))" }}
+              style={{ opacity: 0, filter: "drop-shadow(0 0 6px rgba(140,210,255,0.95))" }}
             >
               {MAIN_SPIKES.map((d, i) => (
                 <path key={i} d={d} fill="#cfe9ff" />
