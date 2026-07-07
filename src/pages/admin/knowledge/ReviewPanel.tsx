@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ExternalLink, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
-import type { ApprovalResponse, UpdateDetail } from "@/lib/knowledge-admin/types";
+import type { ApprovalResponse, UpdateDetail, ApplyHistoryEntry } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
 import { getStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { ConfidenceBadge, ErrorBanner, ProviderBadge, SeverityBadge, actionPrimaryStyle, relativeTime } from "./shared";
@@ -76,8 +76,18 @@ export function ReviewPanel({
         : knowledgeApi.approve(updateId, { dry_run: false, approved_by: approvedBy });
     },
     onSuccess: (res) => {
+      const historyId = typeof res.apply_history_id === "number" ? res.apply_history_id : null;
       toast.success(
-        `Applied${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
+        `Applied successfully${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
+        historyId !== null
+          ? {
+              duration: 12000,
+              action: {
+                label: "Undo",
+                onClick: () => undoMut.mutate(historyId),
+              },
+            }
+          : undefined,
       );
       qc.invalidateQueries({ queryKey: ["knowledge"] });
       onApplied?.();
@@ -91,6 +101,22 @@ export function ReviewPanel({
       } else {
         toast.error(err instanceof Error ? err.message : "Approve failed");
       }
+    },
+  });
+
+  const undoMut = useMutation({
+    mutationFn: (historyId: number) => knowledgeApi.undoApply(historyId),
+    onSuccess: (res) => {
+      toast.success(
+        `Undone${res.restored_full_progression ? `: restored ${res.restored_full_progression}` : ""}`,
+      );
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+      onApplied?.();
+    },
+    onError: (err) => {
+      // Surface backend error verbatim — includes the "value changed after
+      // approval" safety message when applicable.
+      toast.error(err instanceof Error ? err.message : "Undo failed");
     },
   });
 
