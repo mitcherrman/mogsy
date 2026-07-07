@@ -143,6 +143,8 @@ function PanelBody({
   dryRunQ,
   confirmText,
   setConfirmText,
+  acknowledgeWarnings,
+  setAcknowledgeWarnings,
   applyMut,
   rejectOpen,
   setRejectOpen,
@@ -157,6 +159,8 @@ function PanelBody({
   dryRunQ: ReturnType<typeof useQuery<ApprovalResponse>>;
   confirmText: string;
   setConfirmText: (v: string) => void;
+  acknowledgeWarnings: boolean;
+  setAcknowledgeWarnings: (v: boolean) => void;
   applyMut: ReturnType<typeof useMutation<ApprovalResponse, unknown, void, unknown>>;
   rejectOpen: boolean;
   setRejectOpen: (v: boolean) => void;
