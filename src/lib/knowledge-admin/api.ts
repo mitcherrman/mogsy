@@ -1,0 +1,110 @@
+/**
+ * Thin fetch wrapper for the Mogsy Knowledge Admin API.
+ * Base = VITE_COMBAT_API_URL + /api/admin/knowledge
+ * Every request carries the X-Admin-Key header from sessionStorage.
+ *
+ * We only speak endpoints defined in docs/admin_ui_api_contract.md.
+ * If a page needs data not covered by the contract, it must render an
+ * explicit "backend endpoint pending" placeholder rather than invent one.
+ */
+import { getAdminKey } from "./key";
+import type {
+  ApprovalResponse,
+  HealthResponse,
+  PatchRundownResponse,
+  UpdateDetail,
+  UpdatesListResponse,
+} from "./types";
+
+const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
+
+export class KnowledgeApiError extends Error {
+  status: number;
+  detail: string;
+  constructor(status: number, detail: string) {
+    super(detail || `HTTP ${status}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+type QueryValue = string | number | boolean | undefined | null;
+type QueryLike = Record<string, QueryValue>;
+
+async function request<T>(
+  path: string,
+  init: RequestInit & { query?: QueryLike } = {},
+): Promise<T> {
+  const key = getAdminKey();
+  if (!key) throw new KnowledgeApiError(403, "Admin key not set");
+
+  const url = new URL(`${BASE}${path}`);
+  if (init.query) {
+    for (const [k, v] of Object.entries(init.query)) {
+      if (v === undefined || v === null || v === "") continue;
+      url.searchParams.set(k, String(v));
+    }
+  }
+
+  const headers = new Headers(init.headers);
+  headers.set("X-Admin-Key", key);
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(url.toString(), { ...init, headers });
+  const text = await res.text();
+  let payload: unknown;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = { detail: text }; }
+  if (!res.ok) {
+    const detail = (payload as { detail?: string } | null)?.detail ?? `HTTP ${res.status}`;
+    throw new KnowledgeApiError(res.status, detail);
+  }
+  return payload as T;
+}
+
+export interface UpdatesQuery {
+  champion?: string;
+  property?: string;
+  provider?: string;
+  confidence_min?: number;
+  change_type?: string;
+  patch_version?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const knowledgeApi = {
+  listUpdates: (q: UpdatesQuery = {}) =>
+    request<UpdatesListResponse>("/updates", { query: q as QueryLike }),
+
+  getUpdate: (id: number) =>
+    request<UpdateDetail>(`/updates/${id}`),
+
+  approve: (id: number, opts: { dry_run: boolean; approved_by?: string }) =>
+    request<ApprovalResponse>(`/updates/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+
+  approveProgression: (id: number, opts: { dry_run: boolean; approved_by?: string }) =>
+    request<ApprovalResponse>(`/updates/${id}/approve-progression`, {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+
+  reject: (id: number, reason: string) =>
+    request<{ status: string }>(`/updates/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  health: (q: { category?: string; champion?: string; health_below?: number } = {}) =>
+    request<HealthResponse>("/health", { query: q as QueryLike }),
+
+  patchRundown: (q: { patch_version?: string; champion?: string; include_consensus?: boolean } = {}) =>
+    request<PatchRundownResponse>("/patch-rundown", { query: q as QueryLike }),
+};
+
+export const knowledgeApiBase = BASE;

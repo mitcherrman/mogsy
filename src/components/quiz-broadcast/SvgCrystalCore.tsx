@@ -199,9 +199,9 @@ export function SvgCrystalCore({
   const intParticleRefs = useRef<(SVGCircleElement | null)[]>([]);
 
   useEffect(() => {
-    const intAngles     = INT_PARTICLE_CFG.map((p) => p.startAngle);
-    const causticAngles = CAUSTIC_CFG.map((c) => c.startAngle);
-    const swirlAngles   = [0, 180];
+    const intAngles: number[]     = INT_PARTICLE_CFG.map((p) => p.startAngle);
+    const causticAngles: number[] = CAUSTIC_CFG.map((c) => c.startAngle);
+    const swirlAngles: number[]   = [0, 180];
 
     let prevPhase = phaseRef.current;
     let burstStartMs = 0;

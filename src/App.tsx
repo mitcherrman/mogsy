@@ -11,6 +11,7 @@ import AdminRoute from "./components/AdminRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { Suspense } from "react";
+import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
 
 const Index = R.Index.Component;
@@ -63,6 +64,15 @@ const Privacy = R.Privacy.Component;
 const Terms = R.Terms.Component;
 const Security = R.Security.Component;
 const Contact = R.Contact.Component;
+
+// Knowledge Admin — internal tool; lazy-loaded, master-admin gated.
+const KnowledgeAdminLayout = lazy(() => import("./pages/admin/knowledge/KnowledgeAdminLayout"));
+const KnowledgeDashboard = lazy(() => import("./pages/admin/knowledge/KnowledgeDashboard"));
+const KnowledgeQueue = lazy(() => import("./pages/admin/knowledge/KnowledgeQueue"));
+const KnowledgeReviewPage = lazy(() => import("./pages/admin/knowledge/KnowledgeReviewPage"));
+const KnowledgeHealth = lazy(() => import("./pages/admin/knowledge/KnowledgeHealth"));
+const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/KnowledgeChampionDetail"));
+const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
 
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
@@ -137,6 +147,23 @@ const App = () => (
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-review" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizReview /></Suspense></AdminRoute>} />
+                  <Route
+                    path="/admin/knowledge"
+                    element={
+                      <AdminRoute roles={["master_admin"]}>
+                        <Suspense fallback={<RouteFallback />}>
+                          <KnowledgeAdminLayout />
+                        </Suspense>
+                      </AdminRoute>
+                    }
+                  >
+                    <Route index element={<Suspense fallback={<RouteFallback />}><KnowledgeDashboard /></Suspense>} />
+                    <Route path="queue" element={<Suspense fallback={<RouteFallback />}><KnowledgeQueue /></Suspense>} />
+                    <Route path="review/:id" element={<Suspense fallback={<RouteFallback />}><KnowledgeReviewPage /></Suspense>} />
+                    <Route path="health" element={<Suspense fallback={<RouteFallback />}><KnowledgeHealth /></Suspense>} />
+                    <Route path="health/:champion" element={<Suspense fallback={<RouteFallback />}><KnowledgeChampionDetail /></Suspense>} />
+                    <Route path="rundown" element={<Suspense fallback={<RouteFallback />}><KnowledgeRundown /></Suspense>} />
+                  </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />

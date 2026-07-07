@@ -45,7 +45,7 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
 
   switch (block.type) {
     case "heading": {
-      const Tag = (p.level === 1 ? "h1" : p.level === 3 ? "h3" : "h2") as keyof JSX.IntrinsicElements;
+      const Tag = (p.level === 1 ? "h1" : p.level === 3 ? "h3" : "h2") as "h1" | "h2" | "h3";
       return <Tag className={cls} style={css} dangerouslySetInnerHTML={{ __html: sanitizeRichText(p.text || "Heading") }} />;
     }
     case "paragraph":
