@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Activity, ClipboardList, GaugeCircle, KeyRound, LayoutDashboard, LogOut, Newspaper } from "lucide-react";
+import { Activity, ClipboardList, GaugeCircle, KeyRound, LayoutDashboard, LogOut, Newspaper, ShieldCheck } from "lucide-react";
 import { clearAdminKey, getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
+import { getStrictApproval, setStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,6 +14,9 @@ import { cn } from "@/lib/utils";
 export default function KnowledgeAdminLayout() {
   const [hasKey, setHasKey] = useState<boolean>(() => !!getAdminKey());
   useEffect(() => subscribeAdminKey(() => setHasKey(!!getAdminKey())), []);
+
+  const [strict, setStrict] = useState<boolean>(() => getStrictApproval());
+  useEffect(() => subscribeStrictApproval(() => setStrict(getStrictApproval())), []);
 
   const [keyInput, setKeyInput] = useState("");
   const location = useLocation();
@@ -78,6 +82,24 @@ export default function KnowledgeAdminLayout() {
           </span>
           <div className="ml-auto flex items-center gap-2">
             <Link to="/admin" className="text-xs text-muted-foreground hover:text-foreground">← Admin</Link>
+            <label
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold rounded border px-2 py-1 cursor-pointer select-none",
+                strict
+                  ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground",
+              )}
+              title="When ON, approvals require dry-run preview, warning acknowledgement, and typing APPLY."
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <input
+                type="checkbox"
+                className="h-3 w-3 accent-amber-500"
+                checked={strict}
+                onChange={(e) => setStrictApproval(e.target.checked)}
+              />
+              Strict approval
+            </label>
             <button
               onClick={() => clearAdminKey()}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
