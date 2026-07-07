@@ -164,6 +164,7 @@ export function ReviewPanel({
       applyMut={applyMut}
       directScope={directScope}
       setDirectScope={setDirectScope}
+      undoMut={undoMut}
       rejectOpen={rejectOpen}
       setRejectOpen={setRejectOpen}
       rejectReason={rejectReason}
@@ -187,6 +188,7 @@ function PanelBody({
   applyMut,
   directScope,
   setDirectScope,
+  undoMut,
   rejectOpen,
   setRejectOpen,
   rejectReason,
@@ -206,6 +208,7 @@ function PanelBody({
   applyMut: ReturnType<typeof useMutation<ApprovalResponse, unknown, void, unknown>>;
   directScope: "single" | "progression" | null;
   setDirectScope: (s: "single" | "progression" | null) => void;
+  undoMut: ReturnType<typeof useMutation<import("@/lib/knowledge-admin/types").UndoResponse, unknown, number, unknown>>;
   rejectOpen: boolean;
   setRejectOpen: (v: boolean) => void;
   rejectReason: string;
