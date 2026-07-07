@@ -92,6 +92,11 @@ export interface ApplyHistoryEntry {
   confidence: number;
   approved_by: string;
   applied_at: string;
+  /** True if this apply can still be undone (backend-computed). */
+  reversible?: boolean;
+  /** ISO timestamp when this apply was previously undone. */
+  undone_at?: string | null;
+  undone_by?: string | null;
 }
 
 export interface UpdateDetail {
@@ -236,5 +241,15 @@ export interface ApprovalResponse {
   plan: ApprovalPlan;
   applied?: boolean;
   new_full_progression?: string | null;
+  /** Present on successful writes so the UI can offer Undo. */
+  apply_history_id?: number | null;
+  [k: string]: unknown;
+}
+
+export interface UndoResponse {
+  undone: boolean;
+  apply_history_id: number;
+  restored_value?: number | string | null;
+  restored_full_progression?: string | null;
   [k: string]: unknown;
 }

@@ -14,6 +14,7 @@ import type {
   PatchRundownResponse,
   UpdateDetail,
   UpdatesListResponse,
+  UndoResponse,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -105,6 +106,17 @@ export const knowledgeApi = {
 
   patchRundown: (q: { patch_version?: string; champion?: string; include_consensus?: boolean } = {}) =>
     request<PatchRundownResponse>("/patch-rundown", { query: q as QueryLike }),
+
+  /**
+   * Undo a previously-applied write. Backend enforces safety:
+   * only restores the prior value if the current DB value still matches
+   * the applied new value. Otherwise responds with a descriptive error
+   * (surfaced verbatim in the UI).
+   */
+  undoApply: (historyId: number) =>
+    request<UndoResponse>(`/apply-history/${historyId}/undo`, {
+      method: "POST",
+    }),
 };
 
 export const knowledgeApiBase = BASE;

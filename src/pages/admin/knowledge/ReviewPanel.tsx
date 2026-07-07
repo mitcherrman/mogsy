@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ExternalLink, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
-import type { ApprovalResponse, UpdateDetail } from "@/lib/knowledge-admin/types";
+import type { ApprovalResponse, UpdateDetail, ApplyHistoryEntry } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
 import { getStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { ConfidenceBadge, ErrorBanner, ProviderBadge, SeverityBadge, actionPrimaryStyle, relativeTime } from "./shared";
@@ -76,8 +76,18 @@ export function ReviewPanel({
         : knowledgeApi.approve(updateId, { dry_run: false, approved_by: approvedBy });
     },
     onSuccess: (res) => {
+      const historyId = typeof res.apply_history_id === "number" ? res.apply_history_id : null;
       toast.success(
-        `Applied${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
+        `Applied successfully${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
+        historyId !== null
+          ? {
+              duration: 12000,
+              action: {
+                label: "Undo",
+                onClick: () => undoMut.mutate(historyId),
+              },
+            }
+          : undefined,
       );
       qc.invalidateQueries({ queryKey: ["knowledge"] });
       onApplied?.();
@@ -91,6 +101,22 @@ export function ReviewPanel({
       } else {
         toast.error(err instanceof Error ? err.message : "Approve failed");
       }
+    },
+  });
+
+  const undoMut = useMutation({
+    mutationFn: (historyId: number) => knowledgeApi.undoApply(historyId),
+    onSuccess: (res) => {
+      toast.success(
+        `Undone${res.restored_full_progression ? `: restored ${res.restored_full_progression}` : ""}`,
+      );
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+      onApplied?.();
+    },
+    onError: (err) => {
+      // Surface backend error verbatim — includes the "value changed after
+      // approval" safety message when applicable.
+      toast.error(err instanceof Error ? err.message : "Undo failed");
     },
   });
 
@@ -138,6 +164,7 @@ export function ReviewPanel({
       applyMut={applyMut}
       directScope={directScope}
       setDirectScope={setDirectScope}
+      undoMut={undoMut}
       rejectOpen={rejectOpen}
       setRejectOpen={setRejectOpen}
       rejectReason={rejectReason}
@@ -161,6 +188,7 @@ function PanelBody({
   applyMut,
   directScope,
   setDirectScope,
+  undoMut,
   rejectOpen,
   setRejectOpen,
   rejectReason,
@@ -180,6 +208,7 @@ function PanelBody({
   applyMut: ReturnType<typeof useMutation<ApprovalResponse, unknown, void, unknown>>;
   directScope: "single" | "progression" | null;
   setDirectScope: (s: "single" | "progression" | null) => void;
+  undoMut: ReturnType<typeof useMutation<import("@/lib/knowledge-admin/types").UndoResponse, unknown, number, unknown>>;
   rejectOpen: boolean;
   setRejectOpen: (v: boolean) => void;
   rejectReason: string;
@@ -364,13 +393,42 @@ function PanelBody({
             <p className="text-xs text-muted-foreground italic">Never applied before.</p>
           ) : (
             <ul className="text-xs space-y-1">
-              {d.apply_history.map((h) => (
-                <li key={h.id} className="flex items-center gap-2">
-                  <span className="tabular-nums text-muted-foreground">{relativeTime(h.applied_at)}</span>
-                  <span>rank {h.rank}: {String(h.old_value)} → <span className="text-emerald-300">{String(h.new_value)}</span></span>
-                  <span className="text-muted-foreground">by {h.approved_by}</span>
-                </li>
-              ))}
+              {d.apply_history.map((h: ApplyHistoryEntry) => {
+                const isUndone = Boolean(h.undone_at);
+                // Default to reversible when backend omits the flag, so admins
+                // aren't silently blocked; the backend enforces safety anyway.
+                const reversible = h.reversible !== false && !isUndone;
+                const undoInFlight =
+                  undoMut.isPending && undoMut.variables === h.id;
+                return (
+                  <li key={h.id} className="flex items-center gap-2 flex-wrap">
+                    <span className="tabular-nums text-muted-foreground">{relativeTime(h.applied_at)}</span>
+                    <span>rank {h.rank}: {String(h.old_value)} → <span className={cn("text-emerald-300", isUndone && "line-through opacity-60")}>{String(h.new_value)}</span></span>
+                    <span className="text-muted-foreground">by {h.approved_by}</span>
+                    {isUndone ? (
+                      <span className="ml-auto text-[10px] uppercase font-bold text-muted-foreground">
+                        Undone{h.undone_by ? ` by ${h.undone_by}` : ""}
+                      </span>
+                    ) : reversible ? (
+                      <button
+                        onClick={() => undoMut.mutate(h.id)}
+                        disabled={undoMut.isPending}
+                        className="ml-auto rounded border border-border bg-card text-[11px] font-bold px-2 py-0.5 hover:bg-secondary disabled:opacity-40"
+                        title="Restore the previous value. Backend blocks the undo if the DB value has changed since this apply."
+                      >
+                        {undoInFlight ? "Undoing…" : "Undo Apply"}
+                      </button>
+                    ) : (
+                      <span
+                        className="ml-auto text-[10px] uppercase font-bold text-muted-foreground"
+                        title="Backend marked this entry as not reversible."
+                      >
+                        Not reversible
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
