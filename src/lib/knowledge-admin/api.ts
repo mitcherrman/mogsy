@@ -29,10 +29,11 @@ export class KnowledgeApiError extends Error {
 }
 
 type QueryValue = string | number | boolean | undefined | null;
+type QueryLike = Record<string, QueryValue>;
 
 async function request<T>(
   path: string,
-  init: RequestInit & { query?: Record<string, QueryValue> | Partial<Record<string, QueryValue>> } = {},
+  init: RequestInit & { query?: QueryLike } = {},
 ): Promise<T> {
   const key = getAdminKey();
   if (!key) throw new KnowledgeApiError(403, "Admin key not set");
@@ -76,7 +77,7 @@ export interface UpdatesQuery {
 
 export const knowledgeApi = {
   listUpdates: (q: UpdatesQuery = {}) =>
-    request<UpdatesListResponse>("/updates", { query: q }),
+    request<UpdatesListResponse>("/updates", { query: q as QueryLike }),
 
   getUpdate: (id: number) =>
     request<UpdateDetail>(`/updates/${id}`),
@@ -100,10 +101,10 @@ export const knowledgeApi = {
     }),
 
   health: (q: { category?: string; champion?: string; health_below?: number } = {}) =>
-    request<HealthResponse>("/health", { query: q }),
+    request<HealthResponse>("/health", { query: q as QueryLike }),
 
   patchRundown: (q: { patch_version?: string; champion?: string; include_consensus?: boolean } = {}) =>
-    request<PatchRundownResponse>("/patch-rundown", { query: q }),
+    request<PatchRundownResponse>("/patch-rundown", { query: q as QueryLike }),
 };
 
 export const knowledgeApiBase = BASE;
