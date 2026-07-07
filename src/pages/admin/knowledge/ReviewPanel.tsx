@@ -12,9 +12,11 @@ import { cn } from "@/lib/utils";
  * Review Panel — the decision surface for a single update.
  * Renders from GET /updates/{id} exclusively; approval is strict:
  *   click → dry_run:true → render plan → type "APPLY" → dry_run:false.
- * Never auto-approves. `recommended_action` gates the primary button.
- * Warnings are always visible; NO_LIVE_VALUE / RANK_OUT_OF_BOUNDS
- * disable approval entirely (would fail validation).
+ * Never auto-approves. This is an admin-only tool: warnings are shown
+ * prominently but never hard-block approval on their own. Approval is only
+ * disabled when the backend indicates it is not actionable
+ * (no pending_update_id, status !== PENDING, or the dry-run itself failed).
+ * `recommended_action` informs the primary button label/tone only.
  */
 export function ReviewPanel({
   updateId,
