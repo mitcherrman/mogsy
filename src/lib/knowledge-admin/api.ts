@@ -28,9 +28,11 @@ export class KnowledgeApiError extends Error {
   }
 }
 
+type QueryValue = string | number | boolean | undefined | null;
+
 async function request<T>(
   path: string,
-  init: RequestInit & { query?: Record<string, string | number | boolean | undefined | null> } = {},
+  init: RequestInit & { query?: Record<string, QueryValue> | Partial<Record<string, QueryValue>> } = {},
 ): Promise<T> {
   const key = getAdminKey();
   if (!key) throw new KnowledgeApiError(403, "Admin key not set");
