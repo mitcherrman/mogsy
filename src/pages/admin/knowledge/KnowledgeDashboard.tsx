@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
-import { ErrorBanner, HealthCategoryBadge, ProviderBadge, SkeletonRow, relativeTime } from "./shared";
+import { ErrorBanner, HealthCategoryBadge, SkeletonRow, relativeTime } from "./shared";
 
 /**
  * Knowledge Dashboard — landing page. Renders four summary cards, the
@@ -229,6 +229,3 @@ function ProgressBar({ applied, total }: { applied: number; total: number }) {
     </div>
   );
 }
-
-/** Unused import guard — keep ProviderBadge referenced so tree-shaking metadata is clean. */
-void ProviderBadge;
