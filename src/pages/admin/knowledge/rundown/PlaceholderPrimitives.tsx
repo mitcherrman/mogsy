@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import type { ReactNode } from "react";
+import { ChevronDown, ChevronRight, Copy } from "lucide-react";
 
 /* ────────────────────────────────────────────────────────────────────────
    Reusable placeholder / metric primitives for the Patch Intelligence
@@ -297,6 +299,345 @@ export function AwaitingBackendBanner({ children }: { children: ReactNode }) {
     <div className="rounded-lg border border-dashed border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-3 py-2 text-xs text-primary/90 flex items-center gap-2">
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
       {children}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Patch Intelligence primitives. Purely presentational — every value is
+   backend-provided. No derivation, no invented data.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function scoreTone(score: number): { text: string; bar: string; ring: string; glow: string } {
+  if (score >= 80) return { text: "text-emerald-300", bar: "bg-emerald-400", ring: "ring-emerald-500/30", glow: "from-emerald-500/25" };
+  if (score >= 55) return { text: "text-amber-300", bar: "bg-amber-400", ring: "ring-amber-500/30", glow: "from-amber-500/25" };
+  if (score >= 30) return { text: "text-sky-300", bar: "bg-sky-400", ring: "ring-sky-500/30", glow: "from-sky-500/25" };
+  return { text: "text-muted-foreground", bar: "bg-muted", ring: "ring-muted/40", glow: "from-muted/20" };
+}
+
+export function PatchScoreHero({
+  score,
+  classification,
+  explanation,
+  loading,
+}: {
+  score?: number | null;
+  classification?: string | null;
+  explanation?: string | null;
+  loading?: boolean;
+}) {
+  const has = typeof score === "number" && Number.isFinite(score);
+  const clamped = has ? Math.max(0, Math.min(100, score as number)) : 0;
+  const tone = scoreTone(clamped);
+  const size = 168;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = c * (clamped / 100);
+
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border bg-card p-5 ring-1 ring-inset",
+        "bg-gradient-to-br to-transparent",
+        tone.glow,
+        tone.ring,
+      )}
+    >
+      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="-rotate-90">
+            <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} fill="none" className="stroke-muted/25" />
+            {has && !loading && (
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                strokeWidth={stroke}
+                fill="none"
+                strokeLinecap="round"
+                stroke="currentColor"
+                className={cn(tone.text, "transition-[stroke-dashoffset] duration-1000 ease-out")}
+                strokeDasharray={`${dash} ${c - dash}`}
+              />
+            )}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {loading ? (
+              <ShimmerBar className="h-10 w-20" />
+            ) : has ? (
+              <>
+                <div className={cn("text-5xl font-black tabular-nums leading-none animate-fade-in", tone.text)}>
+                  {Math.round(clamped)}
+                </div>
+                <div className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">
+                  / 100
+                </div>
+              </>
+            ) : (
+              <PendingBadge />
+            )}
+          </div>
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground">
+            Patch Impact
+          </div>
+          {loading ? (
+            <ShimmerBar className="h-8 w-56" />
+          ) : classification ? (
+            <h1 className={cn("text-3xl font-black leading-tight animate-fade-in", tone.text)}>
+              {classification}
+            </h1>
+          ) : (
+            <div className="flex items-center gap-2"><ShimmerBar className="h-7 w-40" /><PendingBadge /></div>
+          )}
+          {explanation ? (
+            <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">{explanation}</p>
+          ) : !loading && (
+            <p className="text-xs italic text-muted-foreground">Awaiting explanation from backend.</p>
+          )}
+          {has && !loading && (
+            <div className="mt-3">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/30">
+                <div
+                  className={cn("h-full rounded-full transition-[width] duration-1000 ease-out", tone.bar)}
+                  style={{ width: `${clamped}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ExecSummaryItem {
+  label: string;
+  value?: string | number | null;
+  tone?: "positive" | "negative" | "info" | "default";
+}
+
+export function ExecutiveSummaryCard({
+  items,
+  loading,
+}: {
+  items: ExecSummaryItem[];
+  loading?: boolean;
+}) {
+  const tones: Record<NonNullable<ExecSummaryItem["tone"]>, string> = {
+    default: "text-foreground",
+    positive: "text-emerald-300",
+    negative: "text-red-300",
+    info: "text-sky-300",
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => {
+          const has = item.value !== undefined && item.value !== null && item.value !== "";
+          return (
+            <div
+              key={item.label}
+              className="group rounded-xl border border-border/60 bg-background/40 p-3 transition-transform duration-200 hover:-translate-y-0.5"
+            >
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                {item.label}
+              </div>
+              <div className="mt-1.5 min-h-[1.75rem]">
+                {loading ? (
+                  <ShimmerBar className="h-5 w-24" />
+                ) : has ? (
+                  <div className={cn("text-base font-extrabold tabular-nums animate-fade-in", tones[item.tone ?? "default"])}>
+                    {item.value}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2"><ShimmerBar className="h-4 w-16" /><PendingBadge /></div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ConfidenceChip({ value }: { value?: number | null }) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+  const tone =
+    pct >= 85 ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+    : pct >= 60 ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+    : "bg-red-500/15 text-red-300 border-red-500/30";
+  return (
+    <span className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold tabular-nums", tone)}>
+      {pct}% conf
+    </span>
+  );
+}
+
+function EvidenceBlock({ evidence }: { evidence: unknown }) {
+  if (evidence == null) return null;
+  let body: string;
+  if (typeof evidence === "string") body = evidence;
+  else {
+    try { body = JSON.stringify(evidence, null, 2); } catch { return null; }
+  }
+  return (
+    <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[11px] text-muted-foreground">
+      {body}
+    </pre>
+  );
+}
+
+export function InterestingFactCard({
+  headline,
+  confidence,
+  evidence,
+}: {
+  headline?: string | null;
+  confidence?: number | null;
+  evidence?: unknown;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasEvidence = evidence != null && !(Array.isArray(evidence) && evidence.length === 0);
+  return (
+    <div className="group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-3 ring-1 ring-inset ring-primary/20 transition-transform duration-200 hover:-translate-y-0.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary/80">
+          Did you know?
+        </div>
+        <ConfidenceChip value={confidence} />
+      </div>
+      <div className="mt-2 text-sm font-extrabold leading-snug animate-fade-in">
+        {headline || <span className="italic text-muted-foreground">Awaiting fact</span>}
+      </div>
+      {hasEvidence && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+        >
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {open ? "hide evidence" : "show evidence"}
+        </button>
+      )}
+      {open && hasEvidence && <EvidenceBlock evidence={evidence} />}
+    </div>
+  );
+}
+
+export function InsightCard({
+  title,
+  kind,
+  description,
+  available,
+  availability,
+  unavailableReason,
+  evidence,
+}: {
+  title?: string | null;
+  kind?: string | null;
+  description?: string | null;
+  available?: boolean | null;
+  availability?: string | null;
+  unavailableReason?: string | null;
+  evidence?: unknown;
+}) {
+  const [open, setOpen] = useState(false);
+  const isAvailable = available !== false && !unavailableReason;
+  const hasEvidence = evidence != null && !(Array.isArray(evidence) && evidence.length === 0);
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-3 transition-transform duration-200 hover:-translate-y-0.5",
+        isAvailable
+          ? "border-emerald-500/25 bg-gradient-to-br from-emerald-500/5 to-card"
+          : "border-amber-500/25 bg-gradient-to-br from-amber-500/5 to-card",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-extrabold leading-snug">
+            {title || <span className="italic text-muted-foreground">Untitled insight</span>}
+          </div>
+          {description && (
+            <p className="mt-1 text-xs text-foreground/80 leading-relaxed">{description}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {kind && (
+            <span className="rounded-md border border-border bg-background/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              {kind}
+            </span>
+          )}
+          <span
+            className={cn(
+              "rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider",
+              isAvailable
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-300",
+            )}
+          >
+            {isAvailable ? availability || "available" : "unavailable"}
+          </span>
+        </div>
+      </div>
+      {!isAvailable && unavailableReason && (
+        <div className="mt-2 rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-[11px] text-amber-200/90">
+          {unavailableReason}
+        </div>
+      )}
+      {hasEvidence && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+          >
+            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {open ? "hide evidence" : "show evidence"}
+          </button>
+          {open && <EvidenceBlock evidence={evidence} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function HeadlineCard({
+  headline,
+  kind,
+  onCopy,
+}: {
+  headline?: string | null;
+  kind?: string | null;
+  onCopy?: (headline: string) => void;
+}) {
+  const has = typeof headline === "string" && headline.trim().length > 0;
+  return (
+    <div className="group rounded-xl border border-border bg-card p-3 transition-transform duration-200 hover:-translate-y-0.5">
+      <div className="flex items-start justify-between gap-2">
+        {kind && (
+          <span className="rounded-md border border-border bg-background/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+            {kind}
+          </span>
+        )}
+        {has && (
+          <button
+            type="button"
+            onClick={() => onCopy?.(headline as string)}
+            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+          >
+            <Copy className="h-3 w-3" /> copy
+          </button>
+        )}
+      </div>
+      <div className="mt-2 text-sm font-extrabold leading-snug animate-fade-in">
+        {has ? headline : <span className="italic text-muted-foreground">Awaiting headline</span>}
+      </div>
     </div>
   );
 }
