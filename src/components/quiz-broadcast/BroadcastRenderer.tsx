@@ -553,8 +553,12 @@ function SubjectPanel({
 
   const subject = revealActive ? revealSubject : baseSubject;
   const shouldHide = spoiler && !revealActive;
+  const combatSubject = useMemo(() => getCombatCooldownSubject(question), [question]);
 
   const node = (() => {
+    if (combatSubject && !shouldHide) {
+      return <CombatCooldownSubjectCard key={`combat-${question.id}`} subject={combatSubject} />;
+    }
     if (shouldHide) {
       return (
         <SubjectPlaceholderCard
@@ -927,6 +931,226 @@ function SubjectPlaceholder() {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+   CombatCooldownSubjectCard — calculation-context card for derived
+   combat_simulation questions (champion art + ability + item haste sources)
+   ──────────────────────────────────────────────────────────────────────── */
+
+type CombatCooldownSubject = {
+  champion: string;
+  abilitySlot?: string;
+  abilityName?: string;
+  level?: number;
+  abilityRank?: number;
+  championIcon?: string | null;
+  championSplash?: string | null;
+  abilityIcon?: string | null;
+  itemIcons: { name: string; icon: string | null }[];
+};
+
+function getCombatCooldownSubject(question: QuizQuestion): CombatCooldownSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || subject.type !== "combat_cooldown") return null;
+  const champion = subject.champion as string | undefined;
+  if (!champion) return null;
+
+  const rawItems = Array.isArray(subject.item_icons) ? subject.item_icons : [];
+  return {
+    champion,
+    abilitySlot: subject.ability_slot as string | undefined,
+    abilityName: subject.ability_name as string | undefined,
+    level: (subject.level as number | undefined) ?? (meta.level as number | undefined),
+    abilityRank: (subject.ability_rank as number | undefined) ?? (meta.ability_rank as number | undefined),
+    championIcon: resolveQuizAssetUrl(subject.champion_icon as string | undefined),
+    championSplash: resolveQuizAssetUrl(subject.champion_splash as string | undefined),
+    abilityIcon: resolveQuizAssetUrl(subject.ability_icon as string | undefined),
+    itemIcons: rawItems.map((it) => {
+      const item = it as Record<string, unknown>;
+      return {
+        name: String(item.name ?? ""),
+        icon: resolveQuizAssetUrl(item.icon as string | undefined),
+      };
+    }),
+  };
+}
+
+function CombatCooldownSubjectCard({ subject }: { subject: CombatCooldownSubject }) {
+  const { data: championManifest } = useChampionAssets();
+  const [splashFailed, setSplashFailed] = useState(false);
+
+  // Prefer the metadata-provided splash; fall back to the manifest.
+  const splashUrl = useMemo(() => {
+    if (!splashFailed && subject.championSplash) return subject.championSplash;
+    return getChampionSplash(championManifest, subject.champion);
+  }, [splashFailed, subject.championSplash, subject.champion, championManifest]);
+
+  const slotLine = [subject.abilitySlot, subject.abilityName].filter(Boolean).join(" · ");
+  const stateLine = [
+    subject.level != null ? `Level ${subject.level}` : null,
+    subject.abilityRank != null ? `Rank ${subject.abilityRank}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="relative h-[94%] w-[94%] overflow-hidden rounded-2xl border border-[#d4b35a]/30 bg-black/40 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)]">
+      {/* Champion art background with slow drift */}
+      <motion.div
+        className="absolute inset-[-6%]"
+        initial={{ scale: 1.08, x: 0, y: 0 }}
+        animate={{ scale: 1.14, x: -8, y: -6 }}
+        transition={{ duration: 14, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+      >
+        {splashUrl ? (
+          <img
+            src={splashUrl}
+            alt={subject.champion}
+            onError={() => setSplashFailed(true)}
+            className="h-full w-full object-cover"
+            loading="eager"
+            decoding="async"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-slate-900 to-slate-800" />
+        )}
+      </motion.div>
+
+      {/* Readability gradients */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/45" />
+      <div className="pointer-events-none absolute inset-0 [box-shadow:inset_0_0_120px_rgba(0,0,0,0.6)]" />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-[#d4b35a]/20" />
+
+      {/* Calculation context stack */}
+      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[5%]">
+        <div className="text-[1.05vmin] font-bold uppercase tracking-[0.35em] text-[#e8c97a]/90">
+          Cooldown Calculation
+        </div>
+        <div className="mt-1 text-[2.5vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+          {subject.champion}
+        </div>
+        {slotLine && (
+          <div className="mt-0.5 text-[1.5vmin] font-bold uppercase tracking-[0.14em] text-[#f3dca0]/95 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+            {slotLine}
+          </div>
+        )}
+        {stateLine && (
+          <div className="mt-0.5 text-[1.15vmin] font-semibold uppercase tracking-[0.28em] text-white/70">
+            {stateLine}
+          </div>
+        )}
+
+        {/* Icon strip: champion + ability + items */}
+        <div className="mt-[4%] flex items-center gap-[3%]">
+          {subject.championIcon && (
+            <SubjectStripIcon url={subject.championIcon} alt={subject.champion} />
+          )}
+          {subject.abilityIcon && (
+            <SubjectStripIcon url={subject.abilityIcon} alt={subject.abilityName ?? "Ability"} highlight />
+          )}
+          {subject.itemIcons.map(
+            (it) => it.icon && <SubjectStripIcon key={it.name} url={it.icon} alt={it.name} label={it.name} />,
+          )}
+        </div>
+
+        <div className="mt-[4%] h-[2px] w-[40%] bg-gradient-to-r from-[#d4b35a] to-transparent" />
+      </div>
+    </div>
+  );
+}
+
+/* ── Structured explanation for derived calculation questions ─────────── */
+
+type CombatCalcData = {
+  baseCooldown: number;
+  abilityHaste: number;
+  finalExact: number;
+  finalDisplay: number;
+};
+
+function getCombatCalcData(question: QuizQuestion): CombatCalcData | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (subject?.type !== "combat_cooldown") return null;
+  const base = meta.base_cooldown;
+  const haste = meta.total_ability_haste;
+  const final = meta.final_cooldown;
+  if (typeof base !== "number" || typeof haste !== "number" || typeof final !== "number") return null;
+  const exact = typeof meta.final_cooldown_exact === "number" ? meta.final_cooldown_exact : final;
+  return { baseCooldown: base, abilityHaste: haste, finalExact: exact, finalDisplay: final };
+}
+
+/**
+ * Explanation card body. Combat-calculation questions get a structured math
+ * layout (inputs → formula → result); everything else keeps plain text.
+ */
+function ExplanationBody({ question, explanation }: { question: QuizQuestion; explanation: string | null }) {
+  const calc = getCombatCalcData(question);
+  if (!calc) return <div className="text-emerald-50/95">{explanation}</div>;
+
+  const { baseCooldown, abilityHaste, finalExact, finalDisplay } = calc;
+  const fmtNum = (v: number) => (Number.isInteger(v) ? String(v) : String(v));
+
+  return (
+    <div className="space-y-[0.5em] text-[1.05em] leading-snug">
+      <div className="flex flex-wrap gap-x-[1.6em] gap-y-[0.2em] text-emerald-50/90">
+        <span>
+          Base cooldown: <span className="font-bold text-white">{fmtNum(baseCooldown)}s</span>
+        </span>
+        <span>
+          Ability Haste: <span className="font-bold text-white">{fmtNum(abilityHaste)}</span>
+        </span>
+      </div>
+      <div className="font-mono text-[1.05em] font-bold tracking-tight text-emerald-100">
+        {fmtNum(baseCooldown)} × 100 / (100 + {fmtNum(abilityHaste)}) ={" "}
+        <span className="text-white">{Math.round(finalExact * 100) / 100}s</span>
+      </div>
+      <div className="text-emerald-50/90">
+        Displayed cooldown:{" "}
+        <span className="text-[1.2em] font-black tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+          {fmtNum(finalDisplay)} seconds
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SubjectStripIcon({
+  url,
+  alt,
+  label,
+  highlight,
+}: {
+  url: string;
+  alt: string;
+  label?: string;
+  highlight?: boolean;
+}) {
+  const [errored, setErrored] = useState(false);
+  if (errored) return null;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <img
+        src={url}
+        alt={alt}
+        onError={() => setErrored(true)}
+        className={`h-[5.2vmin] w-[5.2vmin] rounded-lg border object-cover shadow-[0_8px_22px_-6px_rgba(0,0,0,0.85)] ${
+          highlight ? "border-[#f3dca0]/70 ring-1 ring-[#f3dca0]/40" : "border-[#d4b35a]/40"
+        }`}
+      />
+      {label && (
+        <div className="max-w-[7vmin] truncate text-[0.85vmin] font-bold uppercase tracking-[0.18em] text-[#e8c97a]/85">
+          {label}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
    QuestionPanel — question, answers, countdown, reveal explanation
    ──────────────────────────────────────────────────────────────────────── */
 
@@ -986,7 +1210,7 @@ function QuestionPanel({
                   </div>
                 )}
               </div>
-              <div className="text-emerald-50/95">{explanation}</div>
+              <ExplanationBody question={question} explanation={explanation} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1761,7 +1985,7 @@ function ShortsSceneRow({
                     </div>
                   )}
                 </div>
-                <div className="text-emerald-50/95">{explanation}</div>
+                <ExplanationBody question={question} explanation={explanation} />
               </motion.div>
             )}
           </AnimatePresence>

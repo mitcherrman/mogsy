@@ -447,18 +447,28 @@ function DetailPanel({
 
   // Metadata-stored asset paths (works for all question types)
   const metadataAssets = [
-    { key: "icon",          label: "Icon" },
-    { key: "splash",        label: "Splash" },
-    { key: "loading",       label: "Loading" },
-    { key: "item_icon",     label: "Item Icon" },
-    { key: "ability_icon",  label: "Ability Icon" },
-    { key: "rune_icon",     label: "Rune Icon" },
-    { key: "summoner_icon", label: "Summoner Icon" },
+    { key: "icon",             label: "Icon" },
+    { key: "splash",           label: "Splash" },
+    { key: "loading",          label: "Loading" },
+    { key: "item_icon",        label: "Item Icon" },
+    { key: "ability_icon",     label: "Ability Icon" },
+    { key: "rune_icon",        label: "Rune Icon" },
+    { key: "summoner_icon",    label: "Summoner Icon" },
+    { key: "champion_icon",    label: "Champion Icon" },
+    { key: "champion_splash",  label: "Champion Splash" },
+    { key: "champion_loading", label: "Champion Loading" },
   ].filter(({ key }) => subject[key]);
 
-  // For ability questions, supplement with full champion art from the manifest
+  // Item icons stored as an array (combat_simulation questions)
+  const subjectItemIcons: { name: string; icon: string }[] = Array.isArray(subject.item_icons)
+    ? (subject.item_icons as Array<Record<string, unknown>>)
+        .filter((it) => it.icon)
+        .map((it) => ({ name: String(it.name ?? "Item"), icon: String(it.icon) }))
+    : [];
+
+  // For ability/combat questions, supplement with champion art from the manifest
   const championName = (
-    subjectType === "ability"
+    subjectType === "ability" || subjectType === "combat_cooldown"
       ? (subject.champion as string | undefined)
       : undefined
   ) ?? (assetBase?.champion_name as string | undefined);
@@ -679,14 +689,19 @@ function DetailPanel({
         )}
 
         {/* Metadata assets (icon/splash/loading/item/ability/rune/summoner from stored paths) */}
-        {metadataAssets.length > 0 && (
+        {(metadataAssets.length > 0 || subjectItemIcons.length > 0) && (
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {subjectType === "ability" ? "Ability Asset" : "Assets"}
+              {subjectType === "ability" ? "Ability Asset"
+                : subjectType === "combat_cooldown" ? "Calculation Assets"
+                : "Assets"}
             </p>
             <div className="flex flex-wrap gap-3">
               {metadataAssets.map(({ key, label }) => (
                 <AssetImage key={key} src={subject[key] as string} label={label} />
+              ))}
+              {subjectItemIcons.map(({ name, icon }) => (
+                <AssetImage key={`item-${name}`} src={icon} label={name} />
               ))}
             </div>
           </div>
