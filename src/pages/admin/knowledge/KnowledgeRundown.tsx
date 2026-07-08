@@ -340,13 +340,22 @@ function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]>
 /* ─── Property registry ──────────────────────────────────────────────── */
 const PROPERTY_KEYS: { key: string; label: string }[] = [
   { key: "cooldown", label: "Cooldown" },
-  { key: "mana", label: "Mana" },
+  { key: "mana_cost", label: "Mana Cost" },
   { key: "damage", label: "Damage" },
-  { key: "ratio", label: "Ratios" },
   { key: "range", label: "Range" },
+  { key: "ratio", label: "Ratios" },
   { key: "healing", label: "Healing" },
-  { key: "shield", label: "Shields" },
-  { key: "movement_speed", label: "Movement Speed" },
+  { key: "shield", label: "Shield" },
+];
+
+const KNOWLEDGE_METRICS: { key: keyof AnalyticsKnowledge; label: string }[] = [
+  { key: "coverage", label: "Coverage" },
+  { key: "approved", label: "Approved" },
+  { key: "pending", label: "Pending" },
+  { key: "parser_gaps", label: "Parser Gaps" },
+  { key: "consensus", label: "Consensus" },
+  { key: "confidence", label: "Confidence" },
+  { key: "health", label: "Health" },
 ];
 
 const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
