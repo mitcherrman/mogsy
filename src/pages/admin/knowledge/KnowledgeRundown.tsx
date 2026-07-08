@@ -4,25 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
-  Beaker,
   Check,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   Copy,
-  Flame,
   Gauge,
-  Heart,
-  Shield,
   ShieldCheck,
   Sparkles,
-  Swords,
-  Target,
   TrendingDown,
   TrendingUp,
   Users,
-  Wind,
-  Zap as ZapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
@@ -98,11 +90,6 @@ interface KnowledgeMetricDefinition {
   label: string;
 }
 
-interface GameplayMetricDefinition {
-  label: string;
-  icon: ReactNode;
-}
-
 const RANKING_DEFINITIONS: RankingDefinition[] = [
   { key: "most_changed_champion", label: "Most Changed Champion" },
   { key: "biggest_buff", label: "Biggest Buff" },
@@ -131,21 +118,6 @@ const KNOWLEDGE_METRICS: KnowledgeMetricDefinition[] = [
   { key: "consensus", label: "Consensus" },
   { key: "confidence", label: "Confidence" },
   { key: "health", label: "Health" },
-];
-
-const GAMEPLAY_METRICS: GameplayMetricDefinition[] = [
-  { label: "Combo Damage", icon: <Swords className="h-4 w-4" /> },
-  { label: "Burst Damage", icon: <Flame className="h-4 w-4" /> },
-  { label: "Sustained DPS", icon: <Activity className="h-4 w-4" /> },
-  { label: "Tankiness", icon: <Shield className="h-4 w-4" /> },
-  { label: "Damage Per Mana", icon: <ZapIcon className="h-4 w-4" /> },
-  { label: "Ability Casts / Min", icon: <Sparkles className="h-4 w-4" /> },
-  { label: "Time To Kill", icon: <Target className="h-4 w-4" /> },
-  { label: "Effective Health", icon: <Heart className="h-4 w-4" /> },
-  { label: "Lane Sustain", icon: <Heart className="h-4 w-4" /> },
-  { label: "Wave Clear", icon: <Wind className="h-4 w-4" /> },
-  { label: "Objective Damage", icon: <Target className="h-4 w-4" /> },
-  { label: "Gold Efficiency", icon: <Beaker className="h-4 w-4" /> },
 ];
 
 export default function KnowledgeRundown() {
