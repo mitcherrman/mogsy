@@ -475,12 +475,12 @@ function ChampionIntelCard({
               {groups.map((g, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <ProviderBadge provider={g.provider} />
-                  <span>{g.ability_key} {g.property}</span>
+                  <span>{toText(g.ability_key)} {toText(g.property)}</span>
                   <span className="text-muted-foreground">
                     {g.rank_count} rank{g.rank_count === 1 ? "" : "s"}
                   </span>
                   <Link
-                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(g.property)}`}
+                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(toText(g.property) ?? "")}`}
                     className="ml-auto text-primary hover:underline"
                   >
                     review →
@@ -516,11 +516,11 @@ function ChampionIntelCard({
                       const tone = delta == null ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-red-300" : "";
                       return (
                         <tr key={i} className="border-t border-border/40">
-                          <td className="pr-2">{c.rank ?? "—"}</td>
-                          <td className="pr-2">{c.ability_key ?? "—"}</td>
-                          <td className="pr-2">{c.property ?? "—"}</td>
-                          <td className="pr-2">{c.old_value ?? "—"}</td>
-                          <td className="pr-2">{c.new_value ?? "—"}</td>
+                          <td className="pr-2">{toText(c.rank) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.ability_key) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.property) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.old_value) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.new_value) ?? "—"}</td>
                           <td className={`pr-2 ${tone}`}>{delta != null ? (delta > 0 ? `+${delta}` : delta) : "—"}</td>
                           <td className={`pr-2 ${tone}`}>
                             {c.delta_pct != null ? `${c.delta_pct > 0 ? "+" : ""}${Math.round(c.delta_pct * 10) / 10}%` : "—"}
