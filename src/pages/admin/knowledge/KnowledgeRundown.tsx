@@ -337,6 +337,26 @@ function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]>
   return out;
 }
 
+/** Coerce any backend value into something safe to render as a React child. */
+function toText(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    const parts = [obj.ability_key, obj.property, obj.champion, obj.label, obj.name]
+      .filter((x) => typeof x === "string" && x)
+      .map(String);
+    if (parts.length) return parts.join(" · ");
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return null;
+    }
+  }
+  return String(v);
+}
+
 /* ─── Property registry ──────────────────────────────────────────────── */
 const PROPERTY_KEYS: { key: string; label: string }[] = [
   { key: "cooldown", label: "Cooldown" },
