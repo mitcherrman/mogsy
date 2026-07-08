@@ -430,7 +430,7 @@ function RankingEntryCard({
   const champion = toText(entryRecord?.champion);
   const ability = toText(entryRecord?.ability_key);
   const property = toText(entryRecord?.property);
-  const detail = toText(entryRecord?.detail) ?? [ability, property].filter(Boolean).join(" · ") || null;
+  const detail = toText(entryRecord?.detail) ?? ([ability, property].filter(Boolean).join(" · ") || null);
   const value = toText(entryRecord?.value);
 
   return (
