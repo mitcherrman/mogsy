@@ -34,6 +34,9 @@ import type {
   RundownGroup,
   Severity,
   PatchIntelligenceResponse,
+  GameplayImpactResponse,
+  GameplayImpactMetric,
+  GameplayImpactChampion,
 } from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
@@ -49,7 +52,12 @@ import {
   InterestingFactCard,
   InsightCard,
   HeadlineCard,
+  GameplayImpactSummaryCards,
+  GameplayMetricsTable,
+  GameplayChampionImpactCard,
+  AssumptionsPanel,
 } from "./rundown/PlaceholderPrimitives";
+import type { GameplayDetailFields } from "./rundown/PlaceholderPrimitives";
 
 type MetricValue = string | number | null;
 type RecordLike = Record<string, unknown>;
