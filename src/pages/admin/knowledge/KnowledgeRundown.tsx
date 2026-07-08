@@ -26,7 +26,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
-import type { PatchRundownResponse, RundownGroup } from "@/lib/knowledge-admin/types";
+import type {
+  PatchRundownResponse,
+  RundownGroup,
+  AnalyticsChampion,
+  AnalyticsRankingEntry,
+  AnalyticsPropertyBreakdown,
+  AnalyticsKnowledge,
+  Severity,
+} from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
   MetricCard,
