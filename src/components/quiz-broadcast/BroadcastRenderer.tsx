@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import type { EngineSnapshot, BroadcastVisuals } from "@/lib/quiz-broadcast/types";
 import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
 import type { QuizQuestion } from "@/lib/quiz/api";
-import { ScenarioCard, classifySubject, isSpoilerSubject, normalizeLabel } from "./scenario-cards";
+import { CalculationBreakdown, ScenarioCard, classifySubject, isSpoilerSubject, normalizeLabel } from "./scenario-cards";
 import { useRevealTimeline } from "./useRevealTimeline";
 import { BroadcastKnowledgeCore } from "./BroadcastKnowledgeCore";
 import { HextechOverloadFX } from "./HextechOverloadFX";
@@ -423,36 +423,31 @@ function getCombatCalcData(question: QuizQuestion): CombatCalcData | null {
 }
 
 /**
- * Explanation card body. Combat-calculation questions get a structured math
- * layout (inputs → formula → result); everything else keeps plain text.
+ * Explanation card body. Combat-calculation questions get the analyst
+ * calculator layout (inputs → computation chain → promoted result) via the
+ * generic CalculationBreakdown; everything else keeps plain text.
  */
 function ExplanationBody({ question, explanation }: { question: QuizQuestion; explanation: string | null }) {
   const calc = getCombatCalcData(question);
   if (!calc) return <div className="text-emerald-50/95">{explanation}</div>;
 
   const { baseCooldown, abilityHaste, finalExact, finalDisplay } = calc;
-  const fmtNum = (v: number) => (Number.isInteger(v) ? String(v) : String(v));
+  const multiplier = Math.round((100 / (100 + abilityHaste)) * 10000) / 10000;
+  const exact = Math.round(finalExact * 100) / 100;
 
   return (
-    <div className="space-y-[0.5em] text-[1.05em] leading-snug">
-      <div className="flex flex-wrap gap-x-[1.6em] gap-y-[0.2em] text-emerald-50/90">
-        <span>
-          Base cooldown: <span className="font-bold text-white">{fmtNum(baseCooldown)}s</span>
-        </span>
-        <span>
-          Ability Haste: <span className="font-bold text-white">{fmtNum(abilityHaste)}</span>
-        </span>
-      </div>
-      <div className="font-mono text-[1.05em] font-bold tracking-tight text-emerald-100">
-        {fmtNum(baseCooldown)} × 100 / (100 + {fmtNum(abilityHaste)}) ={" "}
-        <span className="text-white">{Math.round(finalExact * 100) / 100}s</span>
-      </div>
-      <div className="text-emerald-50/90">
-        Displayed cooldown:{" "}
-        <span className="text-[1.2em] font-black tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
-          {fmtNum(finalDisplay)} seconds
-        </span>
-      </div>
+    <div className="text-[1.05em]">
+      <CalculationBreakdown
+        inputs={[
+          { label: "Base cooldown", value: `${baseCooldown}s` },
+          { label: "Ability haste", value: String(abilityHaste) },
+        ]}
+        steps={[
+          { expression: `100 / (100 + ${abilityHaste})`, result: String(multiplier) },
+          { expression: `${baseCooldown} × ${multiplier}`, result: `${exact}s` },
+        ]}
+        result={{ label: "Displayed cooldown", value: `${finalDisplay} seconds` }}
+      />
     </div>
   );
 }

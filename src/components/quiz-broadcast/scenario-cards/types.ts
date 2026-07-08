@@ -39,7 +39,24 @@ export type CombatCooldownSubject = {
   championIcon?: string | null;
   championSplash?: string | null;
   abilityIcon?: string | null;
-  itemIcons: { name: string; icon: string | null }[];
+  /** effect is optional per-item flavor text (e.g. "+15 Ability Haste") */
+  itemIcons: { name: string; icon: string | null; effect?: string }[];
+  totalAbilityHaste?: number;
+};
+
+/** One entry in a ScenarioSection — item, rune, dragon, buff, patch, etc. */
+export type ScenarioEntryData = {
+  icon?: string | null;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  highlight?: boolean;
+};
+
+/** A labeled group of scenario entries. Sections with no entries don't render. */
+export type ScenarioSectionData = {
+  title: string;
+  entries: ScenarioEntryData[];
 };
 
 /** Discriminated union produced by selectScenario — one variant per card. */

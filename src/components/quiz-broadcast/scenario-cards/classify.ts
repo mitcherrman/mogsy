@@ -314,8 +314,11 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
       return {
         name: String(item.name ?? ""),
         icon: resolveQuizAssetUrl(item.icon as string | undefined),
+        effect: typeof item.effect === "string" ? item.effect : undefined,
       };
     }),
+    totalAbilityHaste:
+      typeof meta.total_ability_haste === "number" ? meta.total_ability_haste : undefined,
   };
 }
 

@@ -1,0 +1,169 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import type { ScenarioEntryData, ScenarioSectionData } from "./types";
+
+/**
+ * Scenario Card primitives — the shared building blocks every scenario type
+ * composes. A card answers WHO (ScenarioTitle), WHAT (ScenarioSubject),
+ * UNDER WHAT CONDITIONS (ConditionChip), USING WHAT BUILD (ScenarioSection)
+ * without the viewer reading a paragraph.
+ *
+ * Animation budget is deliberately small and lives here so every card
+ * inherits it: breathing glow on the subject icon, one shimmer sweep on the
+ * divider every ~9s. Background Ken Burns stays in ScenarioCardFrame.
+ */
+
+/** Card-type identity chip, pinned top-left over the artwork. */
+export function ScenarioBadge({ children }: { children: string }) {
+  return (
+    <div className="absolute left-[5%] top-[4%] z-10 rounded-md border border-[#d4b35a]/50 bg-black/55 px-[1.6vmin] py-[0.7vmin] text-[0.95vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a] backdrop-blur-sm">
+      {children}
+    </div>
+  );
+}
+
+/** WHO — the large hero title (champion, item, team…). */
+export function ScenarioTitle({ children }: { children: string }) {
+  return (
+    <div className="text-[2.7vmin] font-black uppercase tracking-[0.05em] text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * WHAT — the subject of the scenario: large icon with optional slot badge,
+ * name, and micro-label. The icon ring breathes slowly (gold glow pulse).
+ */
+export function ScenarioSubject({
+  iconUrl,
+  slotBadge,
+  title,
+  subtitle,
+}: {
+  iconUrl?: string | null;
+  slotBadge?: string;
+  title: string;
+  subtitle?: string;
+}) {
+  const [errored, setErrored] = useState(false);
+  return (
+    <div className="mt-[2.5%] flex items-center gap-[1.5vmin]">
+      {iconUrl && !errored && (
+        <div className="relative shrink-0">
+          {/* breathing glow */}
+          <motion.div
+            aria-hidden
+            className="absolute -inset-[0.5vmin] rounded-xl bg-[#f3dca0]/25 blur-md"
+            animate={{ opacity: [0.3, 0.65, 0.3] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <img
+            src={iconUrl}
+            alt={title}
+            onError={() => setErrored(true)}
+            className="relative h-[5.6vmin] w-[5.6vmin] rounded-lg border border-[#f3dca0]/70 object-cover shadow-[0_8px_22px_-6px_rgba(0,0,0,0.85)] ring-1 ring-[#f3dca0]/40"
+          />
+          {slotBadge && (
+            <div className="absolute -bottom-[0.7vmin] -right-[0.7vmin] flex h-[2.1vmin] w-[2.1vmin] items-center justify-center rounded-md bg-[#d4b35a] text-[1.2vmin] font-black text-[#2a1f08] shadow-[0_4px_10px_rgba(0,0,0,0.6)]">
+              {slotBadge}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="truncate text-[1.7vmin] font-bold uppercase tracking-[0.1em] text-[#f3dca0] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+          {title}
+        </div>
+        {subtitle && (
+          <div className="mt-[0.3vmin] text-[0.95vmin] font-semibold uppercase tracking-[0.24em] text-white/60">
+            {subtitle}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** UNDER WHAT CONDITIONS — one calculation parameter as a contained chip. */
+export function ConditionChip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-md border border-[#d4b35a]/30 bg-white/[0.04] px-[1.1vmin] py-[0.5vmin] text-[0.95vmin] font-semibold uppercase tracking-[0.2em] text-white/75">
+      {label} <span className="font-black text-white">{value}</span>
+    </div>
+  );
+}
+
+/** Gold hairline separator with a soft shimmer sweep every ~9 seconds. */
+export function ScenarioDivider() {
+  return (
+    <div className="relative mt-[3.5%] h-[2px] w-[62%] overflow-hidden bg-gradient-to-r from-[#d4b35a]/70 to-transparent">
+      <motion.div
+        aria-hidden
+        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-[#f3dca0]/80 to-transparent"
+        initial={{ x: "-120%" }}
+        animate={{ x: "340%" }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut", repeatDelay: 8.5 }}
+      />
+    </div>
+  );
+}
+
+/**
+ * USING WHAT BUILD — a labeled group of scenario entries (items, runes,
+ * dragons, buffs, patch…). Renders nothing when there are no entries; the
+ * renderer never knows what the entries represent.
+ */
+export function ScenarioSection({ section }: { section: ScenarioSectionData }) {
+  if (!section.entries.length) return null;
+  return (
+    <div className="mt-[3%]">
+      <div className="text-[0.9vmin] font-bold uppercase tracking-[0.3em] text-[#e8c97a]/75">{section.title}</div>
+      <div className="mt-[1.5%] flex flex-wrap gap-[0.9vmin]">
+        {section.entries.map((entry) => (
+          <ScenarioEntry key={`${section.title}-${entry.title}`} entry={entry} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One equipped component: icon + title + effect subtitle + optional badge. */
+export function ScenarioEntry({ entry }: { entry: ScenarioEntryData }) {
+  const [errored, setErrored] = useState(false);
+  return (
+    <div
+      className={`flex items-center gap-[0.9vmin] rounded-lg border py-[0.5vmin] pl-[0.5vmin] pr-[1.2vmin] ${
+        entry.highlight
+          ? "border-[#f3dca0]/70 bg-[#f3dca0]/10 ring-1 ring-[#f3dca0]/30"
+          : "border-[#d4b35a]/40 bg-[#d4b35a]/[0.08]"
+      }`}
+    >
+      {entry.icon && !errored && (
+        <img
+          src={entry.icon}
+          alt={entry.title}
+          onError={() => setErrored(true)}
+          className="h-[3.2vmin] w-[3.2vmin] rounded-md border border-[#d4b35a]/35 object-cover"
+        />
+      )}
+      <div className="min-w-0">
+        <div className="flex items-center gap-[0.7vmin]">
+          <span className="truncate text-[1.15vmin] font-bold uppercase tracking-[0.06em] text-white">
+            {entry.title}
+          </span>
+          {entry.badge && (
+            <span className="rounded bg-[#d4b35a]/90 px-[0.6vmin] py-[0.1vmin] text-[0.8vmin] font-black uppercase text-[#2a1f08]">
+              {entry.badge}
+            </span>
+          )}
+        </div>
+        {entry.subtitle && (
+          <div className="mt-[0.2vmin] truncate text-[0.85vmin] font-semibold uppercase tracking-[0.14em] text-[#e8c97a]/85">
+            {entry.subtitle}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
