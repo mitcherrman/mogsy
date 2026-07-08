@@ -923,6 +923,39 @@ function isRecord(value: unknown): value is RecordLike {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Pull the structured gameplay-aware detail out of an insight payload,
+ * if present. Backend owns the shape — we only render the specific
+ * fields the contract calls out.
+ */
+function extractGameplayDetail(insight: RecordLike | null | undefined): GameplayDetailFields | null {
+  if (!insight) return null;
+  const candidates = [insight.detail, insight.evidence, insight];
+  for (const candidate of candidates) {
+    if (!isRecord(candidate)) continue;
+    const hasAny =
+      "before" in candidate ||
+      "after" in candidate ||
+      "delta" in candidate ||
+      "delta_pct" in candidate ||
+      "metric_key" in candidate;
+    if (!hasAny) continue;
+    return {
+      champion: toText(candidate.champion),
+      ability: toText(candidate.ability),
+      ability_key: toText(candidate.ability_key),
+      metric_key: toText(candidate.metric_key),
+      before: candidate.before,
+      after: candidate.after,
+      delta: candidate.delta,
+      delta_pct: candidate.delta_pct,
+      unit: toText(candidate.unit),
+      assumptions: candidate.assumptions,
+    };
+  }
+  return null;
+}
+
 function getRecord(source: unknown, key: string): RecordLike | null {
   if (!isRecord(source)) return null;
   const value = source[key];
