@@ -407,3 +407,50 @@ export interface PatchIntelligenceResponse {
   headline_suggestions?: HeadlineSuggestion[] | null;
   [k: string]: unknown;
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Gameplay Impact (GET /gameplay-impact)
+
+   Backend-owned analytical output. Every field is optional / nullable;
+   the frontend renders exactly what is returned — no derivation.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export interface GameplayImpactMetric {
+  champion?: string | null;
+  role?: string | null;
+  ability?: string | null;
+  ability_key?: string | null;
+  metric_key?: string | null;
+  before?: number | string | null;
+  after?: number | string | null;
+  delta?: number | string | null;
+  delta_pct?: number | string | null;
+  unit?: string | null;
+  availability?: string | null;
+  available?: boolean | null;
+  unavailable_reason?: string | null;
+  assumptions?: unknown;
+  [k: string]: unknown;
+}
+
+export interface GameplayImpactChampion {
+  champion?: string | null;
+  role?: string | null;
+  available_metric_keys?: string[] | null;
+  unavailable_metric_keys?: string[] | null;
+  computed_count?: number | null;
+  unavailable_count?: number | null;
+  [k: string]: unknown;
+}
+
+export interface GameplayImpactResponse {
+  patch_version?: string | null;
+  generated_at?: string | null;
+  sources?: string[] | null;
+  metrics_computed?: number | null;
+  metrics_unavailable?: number | null;
+  assumptions?: unknown;
+  metrics?: GameplayImpactMetric[] | null;
+  champion_impacts?: GameplayImpactChampion[] | null;
+  [k: string]: unknown;
+}

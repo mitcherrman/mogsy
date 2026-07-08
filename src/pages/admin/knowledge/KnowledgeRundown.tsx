@@ -1,28 +1,19 @@
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity,
-  Beaker,
   Check,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   Copy,
-  Flame,
   Gauge,
-  Heart,
-  Shield,
   ShieldCheck,
   Sparkles,
-  Swords,
-  Target,
   TrendingDown,
   TrendingUp,
   Users,
-  Wind,
-  Zap as ZapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
@@ -34,6 +25,9 @@ import type {
   RundownGroup,
   Severity,
   PatchIntelligenceResponse,
+  GameplayImpactResponse,
+  GameplayImpactMetric,
+  GameplayImpactChampion,
 } from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
@@ -49,7 +43,12 @@ import {
   InterestingFactCard,
   InsightCard,
   HeadlineCard,
+  GameplayImpactSummaryCards,
+  GameplayMetricsTable,
+  GameplayChampionImpactCard,
+  AssumptionsPanel,
 } from "./rundown/PlaceholderPrimitives";
+import type { GameplayDetailFields } from "./rundown/PlaceholderPrimitives";
 
 type MetricValue = string | number | null;
 type RecordLike = Record<string, unknown>;
@@ -90,11 +89,6 @@ interface KnowledgeMetricDefinition {
   label: string;
 }
 
-interface GameplayMetricDefinition {
-  label: string;
-  icon: ReactNode;
-}
-
 const RANKING_DEFINITIONS: RankingDefinition[] = [
   { key: "most_changed_champion", label: "Most Changed Champion" },
   { key: "biggest_buff", label: "Biggest Buff" },
@@ -125,21 +119,6 @@ const KNOWLEDGE_METRICS: KnowledgeMetricDefinition[] = [
   { key: "health", label: "Health" },
 ];
 
-const GAMEPLAY_METRICS: GameplayMetricDefinition[] = [
-  { label: "Combo Damage", icon: <Swords className="h-4 w-4" /> },
-  { label: "Burst Damage", icon: <Flame className="h-4 w-4" /> },
-  { label: "Sustained DPS", icon: <Activity className="h-4 w-4" /> },
-  { label: "Tankiness", icon: <Shield className="h-4 w-4" /> },
-  { label: "Damage Per Mana", icon: <ZapIcon className="h-4 w-4" /> },
-  { label: "Ability Casts / Min", icon: <Sparkles className="h-4 w-4" /> },
-  { label: "Time To Kill", icon: <Target className="h-4 w-4" /> },
-  { label: "Effective Health", icon: <Heart className="h-4 w-4" /> },
-  { label: "Lane Sustain", icon: <Heart className="h-4 w-4" /> },
-  { label: "Wave Clear", icon: <Wind className="h-4 w-4" /> },
-  { label: "Objective Damage", icon: <Target className="h-4 w-4" /> },
-  { label: "Gold Efficiency", icon: <Beaker className="h-4 w-4" /> },
-];
-
 export default function KnowledgeRundown() {
   const [params, setParams] = useSearchParams();
   const patch = params.get("patch") ?? "";
@@ -168,6 +147,13 @@ export default function KnowledgeRundown() {
     queryKey: ["knowledge", "patch-intelligence", patch],
     queryFn: () =>
       knowledgeApi.patchIntelligence(patch ? { patch_version: patch } : {}),
+    retry: false,
+  });
+
+  const gameplayQuery = useQuery({
+    queryKey: ["knowledge", "gameplay-impact", patch],
+    queryFn: () =>
+      knowledgeApi.gameplayImpact(patch ? { patch_version: patch } : {}),
     retry: false,
   });
 
@@ -221,6 +207,16 @@ export default function KnowledgeRundown() {
     : [];
   const headlines = Array.isArray(intelligence?.headline_suggestions)
     ? (intelligence!.headline_suggestions as unknown[]).filter(isRecord)
+    : [];
+
+  const gameplay = isRecord(gameplayQuery.data) ? gameplayQuery.data as GameplayImpactResponse : null;
+  const gameplayLoading = gameplayQuery.isLoading;
+  const gameplayUnavailable = gameplayQuery.isError || !gameplay;
+  const gameplayMetrics = Array.isArray(gameplay?.metrics)
+    ? (gameplay!.metrics as unknown[]).filter(isRecord) as GameplayImpactMetric[]
+    : [];
+  const gameplayChampions = Array.isArray(gameplay?.champion_impacts)
+    ? (gameplay!.champion_impacts as unknown[]).filter(isRecord) as GameplayImpactChampion[]
     : [];
 
   const execItems = [
@@ -427,6 +423,7 @@ export default function KnowledgeRundown() {
                 availability={toText(insight.availability)}
                 unavailableReason={toText(insight.unavailable_reason)}
                 evidence={insight.evidence}
+                detail={extractGameplayDetail(insight)}
               />
             ))}
           </div>
@@ -533,13 +530,77 @@ export default function KnowledgeRundown() {
 
       <SectionShell
         title="Gameplay Impact"
-        subtitle="Simulated combat metrics — read-only preview of the future analytics surface."
-        banner={<AwaitingBackendBanner>Available once Combat Lab simulation metrics are connected.</AwaitingBackendBanner>}
+        subtitle="Gameplay-aware metrics from /gameplay-impact — analyst-grade view of what actually changed in combat."
+        banner={
+          gameplayUnavailable && !gameplayLoading ? (
+            <AwaitingBackendBanner>
+              Gameplay Impact unavailable for this patch; other sections remain intact.
+            </AwaitingBackendBanner>
+          ) : undefined
+        }
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {GAMEPLAY_METRICS.map((metric) => (
-            <MetricCard key={metric.label} label={metric.label} icon={metric.icon} accent="info" />
-          ))}
+        <div className="space-y-4">
+          <GameplayImpactSummaryCards
+            metricsComputed={safeNumber(gameplay?.metrics_computed)}
+            metricsUnavailable={safeNumber(gameplay?.metrics_unavailable)}
+            sources={
+              Array.isArray(gameplay?.sources)
+                ? ((gameplay!.sources as unknown[]).filter((v) => typeof v === "string") as string[])
+                : null
+            }
+            generatedAt={toText(gameplay?.generated_at)}
+            loading={gameplayLoading}
+          />
+
+          {gameplayLoading && <SkeletonRow className="h-24" />}
+
+          {!gameplayLoading && gameplayMetrics.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card p-4 text-xs italic text-muted-foreground">
+              No gameplay impact metrics available for this patch yet.
+            </div>
+          )}
+
+          {gameplayMetrics.length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                Top gameplay metrics
+              </div>
+              <GameplayMetricsTable metrics={gameplayMetrics as never} />
+            </div>
+          )}
+
+          {gameplayChampions.length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                Champion impacts
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {gameplayChampions.map((impact, index) => (
+                  <GameplayChampionImpactCard
+                    key={`gc-${toText(impact.champion) ?? index}`}
+                    champion={toText(impact.champion)}
+                    role={toText(impact.role)}
+                    availableKeys={
+                      Array.isArray(impact.available_metric_keys)
+                        ? (impact.available_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
+                        : null
+                    }
+                    unavailableKeys={
+                      Array.isArray(impact.unavailable_metric_keys)
+                        ? (impact.unavailable_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
+                        : null
+                    }
+                    computedCount={safeNumber(impact.computed_count)}
+                    unavailableCount={safeNumber(impact.unavailable_count)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameplay?.assumptions != null && (
+            <AssumptionsPanel assumptions={gameplay.assumptions} />
+          )}
         </div>
       </SectionShell>
 
@@ -831,6 +892,39 @@ function buildGeneratedContent(data: PatchRundownResponse, patch: string) {
 
 function isRecord(value: unknown): value is RecordLike {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Pull the structured gameplay-aware detail out of an insight payload,
+ * if present. Backend owns the shape — we only render the specific
+ * fields the contract calls out.
+ */
+function extractGameplayDetail(insight: RecordLike | null | undefined): GameplayDetailFields | null {
+  if (!insight) return null;
+  const candidates = [insight.detail, insight.evidence, insight];
+  for (const candidate of candidates) {
+    if (!isRecord(candidate)) continue;
+    const hasAny =
+      "before" in candidate ||
+      "after" in candidate ||
+      "delta" in candidate ||
+      "delta_pct" in candidate ||
+      "metric_key" in candidate;
+    if (!hasAny) continue;
+    return {
+      champion: toText(candidate.champion),
+      ability: toText(candidate.ability),
+      ability_key: toText(candidate.ability_key),
+      metric_key: toText(candidate.metric_key),
+      before: candidate.before,
+      after: candidate.after,
+      delta: candidate.delta,
+      delta_pct: candidate.delta_pct,
+      unit: toText(candidate.unit),
+      assumptions: candidate.assumptions,
+    };
+  }
+  return null;
 }
 
 function getRecord(source: unknown, key: string): RecordLike | null {

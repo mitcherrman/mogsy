@@ -17,6 +17,7 @@ import type {
   UndoResponse,
   PatchAnalyticsResponse,
   PatchIntelligenceResponse,
+  GameplayImpactResponse,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -125,6 +126,14 @@ export const knowledgeApi = {
    */
   patchIntelligence: (q: { patch_version?: string } = {}) =>
     request<PatchIntelligenceResponse>("/patch-intelligence", { query: q as QueryLike }),
+
+  /**
+   * Gameplay Impact — deterministic gameplay-aware analytics
+   * (simulation candidates, ability metrics, champion impacts). All
+   * derivation happens server-side; the UI only renders returned fields.
+   */
+  gameplayImpact: (q: { patch_version?: string } = {}) =>
+    request<GameplayImpactResponse>("/gameplay-impact", { query: q as QueryLike }),
 
   /**
    * Undo a previously-applied write. Backend enforces safety:
