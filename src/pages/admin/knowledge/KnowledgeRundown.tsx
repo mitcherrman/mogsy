@@ -227,9 +227,9 @@ export default function KnowledgeRundown() {
                 key={prop.key}
                 property={prop.label}
                 count={bd?.count ?? null}
-                largestDelta={bd?.largest_delta ?? null}
-                largestPct={bd?.largest_pct ?? null}
-                topChampion={bd?.top_champion ?? null}
+                largestDelta={toText(bd?.largest_delta)}
+                largestPct={toText(bd?.largest_pct)}
+                topChampion={toText(bd?.top_champion)}
                 loading={analyticsLoading}
               />
             );
