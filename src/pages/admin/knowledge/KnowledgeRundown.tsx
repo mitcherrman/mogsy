@@ -201,35 +201,36 @@ export default function KnowledgeRundown() {
       {/* ─── 2. RANKINGS ─────────────────────────────────────────────────── */}
       <SectionShell
         title="Rankings"
-        subtitle="Superlatives across the patch. Requires signed-delta analytics from the backend."
+        subtitle="Superlatives across the patch, served by /patch-analytics."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <RankingCard label="Biggest Buff" loading={loading} />
-          <RankingCard label="Biggest Nerf" loading={loading} />
-          <RankingCard label="Most Changed Champion" loading={loading} />
-          <RankingCard label="Largest Cooldown Reduction" loading={loading} />
-          <RankingCard label="Largest Mana Change" loading={loading} />
-          <RankingCard label="Largest Percentage Change" loading={loading} />
-          <RankingCard label="Largest Damage Increase" loading={loading} />
-          <RankingCard label="Largest Range Change" loading={loading} />
+          <RankingEntryCard label="Most Changed Champion" entry={rankings?.most_changed_champion} loading={analyticsLoading} />
+          <RankingEntryCard label="Biggest Buff" entry={rankings?.biggest_buff} loading={analyticsLoading} />
+          <RankingEntryCard label="Biggest Nerf" entry={rankings?.biggest_nerf} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest Cooldown Reduction" entry={rankings?.largest_cooldown_reduction} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest Mana Increase" entry={rankings?.largest_mana_increase} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest % Increase" entry={rankings?.largest_percentage_increase} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest % Decrease" entry={rankings?.largest_percentage_decrease} loading={analyticsLoading} />
         </div>
       </SectionShell>
 
       {/* ─── 3. PROPERTY BREAKDOWN ───────────────────────────────────────── */}
       <SectionShell
         title="Property Breakdown"
-        subtitle="Per-property rollup. Counts read from /patch-rundown; deltas awaiting backend."
+        subtitle="Per-property rollups from /patch-analytics."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PROPERTY_KEYS.map((prop) => {
-            const bucket = data?.by_property?.[prop.key];
-            const count = bucket ? bucket.pending + bucket.applied + bucket.rejected : null;
+            const bd = propertyBreakdown?.[prop.key];
             return (
               <PropertyBreakdownCard
                 key={prop.key}
                 property={prop.label}
-                count={count}
-                loading={loading}
+                count={bd?.count ?? null}
+                largestDelta={bd?.largest_delta ?? null}
+                largestPct={bd?.largest_pct ?? null}
+                topChampion={bd?.top_champion ?? null}
+                loading={analyticsLoading}
               />
             );
           })}
