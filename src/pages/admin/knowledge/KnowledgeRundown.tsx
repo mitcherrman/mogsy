@@ -240,20 +240,31 @@ export default function KnowledgeRundown() {
       {/* ─── 4. CHAMPION INTELLIGENCE ────────────────────────────────────── */}
       <SectionShell
         title="Champion Intelligence"
-        subtitle="Per-champion breakdown. Expand for provider & property list; scoring analytics awaiting backend."
+        subtitle="Per-champion analytics from /patch-analytics. Expand for per-rank change list."
       >
-        {loading && <SkeletonRow className="h-24" />}
-        {data && (
+        {(analyticsLoading || loading) && <SkeletonRow className="h-24" />}
+        {analyticsChampions && analyticsChampions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[...analyticsChampions]
+              .sort((a, b) => (b.net_change_score ?? 0) - (a.net_change_score ?? 0))
+              .map((c) => (
+                <ChampionIntelCard
+                  key={c.champion}
+                  champion={c.champion}
+                  analytics={c}
+                  groups={groupedByChampion[c.champion] ?? []}
+                />
+              ))}
+          </div>
+        ) : data ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {Object.entries(data.by_champion)
               .sort((a, b) => b[1].pending - a[1].pending)
-              .map(([champ, counts]) => (
+              .map(([champ]) => (
                 <ChampionIntelCard
                   key={champ}
                   champion={champ}
-                  pending={counts.pending}
-                  applied={counts.applied}
-                  rejected={counts.rejected}
+                  analytics={null}
                   groups={groupedByChampion[champ] ?? []}
                 />
               ))}
@@ -261,24 +272,28 @@ export default function KnowledgeRundown() {
               <div className="text-xs text-muted-foreground italic">No champion changes in this scope.</div>
             )}
           </div>
-        )}
+        ) : null}
       </SectionShell>
 
       {/* ─── 5. KNOWLEDGE QUALITY ────────────────────────────────────────── */}
       <SectionShell
         title="Knowledge Quality"
-        subtitle="Reflects the backing knowledge base. Metrics served from /health once cross-linked."
+        subtitle="Metrics served by /patch-analytics.knowledge."
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {["Coverage", "Approved", "Pending", "Parser Gaps", "Consensus", "Confidence", "Health"].map((label) => (
-            <div key={label} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
-              <ProgressRing loading={loading} />
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
-                {label}
+          {KNOWLEDGE_METRICS.map(({ key, label }) => {
+            const value = knowledge?.[key];
+            const has = value !== undefined && value !== null;
+            return (
+              <div key={key} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
+                <ProgressRing value={has ? value : undefined} loading={analyticsLoading} />
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
+                  {label}
+                </div>
+                {!analyticsLoading && !has && <PendingBadge />}
               </div>
-              {!loading && <PendingBadge />}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SectionShell>
 
