@@ -641,3 +641,318 @@ export function HeadlineCard({
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Gameplay Impact primitives.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function formatMaybeNumber(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const rounded = Math.round(value * 100) / 100;
+    return String(rounded);
+  }
+  if (typeof value === "string" && value.trim() !== "") return value;
+  return null;
+}
+
+function formatSignedMaybe(value: unknown, suffix = ""): string | null {
+  const raw = formatMaybeNumber(value);
+  if (raw == null) return null;
+  const asNum = typeof value === "number" ? value : Number(raw);
+  if (Number.isFinite(asNum) && asNum > 0) return `+${raw}${suffix}`;
+  return `${raw}${suffix}`;
+}
+
+function deltaTone(value: unknown): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "text-foreground";
+  if (n > 0) return "text-emerald-300";
+  if (n < 0) return "text-red-300";
+  return "text-foreground";
+}
+
+export interface GameplayDetailFields {
+  champion?: string | null;
+  ability?: string | null;
+  ability_key?: string | null;
+  metric_key?: string | null;
+  before?: unknown;
+  after?: unknown;
+  delta?: unknown;
+  delta_pct?: unknown;
+  unit?: string | null;
+  assumptions?: unknown;
+}
+
+/** Renders a structured metric delta block (before → after, delta, %). */
+export function GameplayMetricBlock({ detail }: { detail: GameplayDetailFields }) {
+  const before = formatMaybeNumber(detail.before);
+  const after = formatMaybeNumber(detail.after);
+  const delta = formatSignedMaybe(detail.delta, detail.unit ? ` ${detail.unit}` : "");
+  const deltaPct = formatSignedMaybe(detail.delta_pct, "%");
+  const ability = detail.ability || detail.ability_key || null;
+
+  const summary = [detail.champion, ability, detail.metric_key].filter(Boolean).join(" · ");
+  const hasAny = before || after || delta || deltaPct || summary;
+  if (!hasAny) return null;
+
+  return (
+    <div className="mt-2 rounded-lg border border-border/60 bg-background/40 p-2">
+      {summary && (
+        <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+          {summary}
+        </div>
+      )}
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs tabular-nums">
+        {before != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">before </span>
+            <span className="font-bold">{before}</span>
+          </span>
+        )}
+        {after != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">after </span>
+            <span className="font-bold">{after}</span>
+          </span>
+        )}
+        {delta != null && (
+          <span className={cn("font-black", deltaTone(detail.delta))}>Δ {delta}</span>
+        )}
+        {deltaPct != null && (
+          <span className={cn("font-black", deltaTone(detail.delta_pct))}>{deltaPct}</span>
+        )}
+        {detail.unit && !delta && (
+          <span className="text-[10px] text-muted-foreground">unit: {detail.unit}</span>
+        )}
+      </div>
+      {detail.assumptions != null && (
+        <AssumptionsInline value={detail.assumptions} />
+      )}
+    </div>
+  );
+}
+
+function AssumptionsInline({ value }: { value: unknown }) {
+  let text: string | null = null;
+  if (typeof value === "string") text = value;
+  else if (Array.isArray(value)) {
+    text = value.filter((v) => typeof v === "string").join(" · ") || null;
+    if (!text) {
+      try { text = JSON.stringify(value); } catch { text = null; }
+    }
+  } else if (value != null) {
+    try { text = JSON.stringify(value); } catch { text = null; }
+  }
+  if (!text) return null;
+  return (
+    <div className="mt-1.5 text-[10px] italic text-muted-foreground">
+      assumptions: {text}
+    </div>
+  );
+}
+
+export function GameplayImpactSummaryCards({
+  metricsComputed,
+  metricsUnavailable,
+  sources,
+  generatedAt,
+  loading,
+}: {
+  metricsComputed?: number | null;
+  metricsUnavailable?: number | null;
+  sources?: string[] | null;
+  generatedAt?: string | null;
+  loading?: boolean;
+}) {
+  const sourceText = Array.isArray(sources) && sources.length > 0 ? sources.join(" · ") : null;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <MetricCard label="Metrics Computed" value={metricsComputed ?? undefined} accent="positive" loading={loading} />
+      <MetricCard label="Metrics Unavailable" value={metricsUnavailable ?? undefined} accent="warning" loading={loading} />
+      <MetricCard label="Sources" value={sourceText ?? undefined} accent="info" loading={loading} />
+      <MetricCard label="Generated At" value={generatedAt ?? undefined} accent="default" loading={loading} />
+    </div>
+  );
+}
+
+export function GameplayMetricsTable({ metrics }: { metrics: GameplayDetailFields[] & { role?: string | null; availability?: string | null; available?: boolean | null; unavailable_reason?: string | null }[] }) {
+  if (!metrics || metrics.length === 0) return null;
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-[11px] tabular-nums">
+        <thead className="bg-background/40 text-muted-foreground">
+          <tr className="text-left">
+            <th className="px-2 py-1.5 font-bold">Champion</th>
+            <th className="px-2 py-1.5 font-bold">Role</th>
+            <th className="px-2 py-1.5 font-bold">Ability</th>
+            <th className="px-2 py-1.5 font-bold">Metric</th>
+            <th className="px-2 py-1.5 font-bold">Before</th>
+            <th className="px-2 py-1.5 font-bold">After</th>
+            <th className="px-2 py-1.5 font-bold">Δ</th>
+            <th className="px-2 py-1.5 font-bold">%</th>
+            <th className="px-2 py-1.5 font-bold">Unit</th>
+            <th className="px-2 py-1.5 font-bold">Availability</th>
+          </tr>
+        </thead>
+        <tbody>
+          {metrics.map((m, index) => {
+            const row = m as GameplayDetailFields & { role?: string | null; availability?: string | null; available?: boolean | null; unavailable_reason?: string | null };
+            const isAvail = row.available !== false && !row.unavailable_reason;
+            const availabilityLabel = isAvail
+              ? row.availability || "available"
+              : row.unavailable_reason || row.availability || "unavailable";
+            return (
+              <tr key={`gm-${index}`} className="border-t border-border/40">
+                <td className="px-2 py-1.5 font-bold">{row.champion ?? "—"}</td>
+                <td className="px-2 py-1.5">{row.role ?? "—"}</td>
+                <td className="px-2 py-1.5">{row.ability || row.ability_key || "—"}</td>
+                <td className="px-2 py-1.5 font-mono text-[10px]">{row.metric_key ?? "—"}</td>
+                <td className="px-2 py-1.5">{formatMaybeNumber(row.before) ?? "—"}</td>
+                <td className="px-2 py-1.5">{formatMaybeNumber(row.after) ?? "—"}</td>
+                <td className={cn("px-2 py-1.5 font-black", deltaTone(row.delta))}>
+                  {formatSignedMaybe(row.delta) ?? "—"}
+                </td>
+                <td className={cn("px-2 py-1.5 font-black", deltaTone(row.delta_pct))}>
+                  {formatSignedMaybe(row.delta_pct, "%") ?? "—"}
+                </td>
+                <td className="px-2 py-1.5 text-muted-foreground">{row.unit ?? "—"}</td>
+                <td className="px-2 py-1.5">
+                  <span
+                    className={cn(
+                      "inline-block rounded border px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider",
+                      isAvail
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-300",
+                    )}
+                    title={row.unavailable_reason ?? undefined}
+                  >
+                    {availabilityLabel}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function GameplayChampionImpactCard({
+  champion,
+  role,
+  availableKeys,
+  unavailableKeys,
+  computedCount,
+  unavailableCount,
+}: {
+  champion?: string | null;
+  role?: string | null;
+  availableKeys?: string[] | null;
+  unavailableKeys?: string[] | null;
+  computedCount?: number | null;
+  unavailableCount?: number | null;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-extrabold">{champion || "Unknown champion"}</div>
+          {role && <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{role}</div>}
+        </div>
+        <div className="flex shrink-0 items-center gap-1 text-[10px] font-bold">
+          {computedCount != null && (
+            <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300">
+              {computedCount} computed
+            </span>
+          )}
+          {unavailableCount != null && (
+            <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-amber-300">
+              {unavailableCount} pending
+            </span>
+          )}
+        </div>
+      </div>
+      {availableKeys && availableKeys.length > 0 && (
+        <div className="mt-2">
+          <div className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Available metrics</div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {availableKeys.map((key) => (
+              <span key={`av-${key}`} className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">
+                {key}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {unavailableKeys && unavailableKeys.length > 0 && (
+        <div className="mt-2">
+          <div className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Unavailable metrics</div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {unavailableKeys.map((key) => (
+              <span key={`un-${key}`} className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">
+                {key}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AssumptionsPanel({ assumptions }: { assumptions: unknown }) {
+  const [open, setOpen] = useState(false);
+  if (assumptions == null) return null;
+
+  let items: { key: string; value: string }[] = [];
+  let globalText: string | null = null;
+
+  if (typeof assumptions === "string") {
+    globalText = assumptions;
+  } else if (Array.isArray(assumptions)) {
+    items = assumptions
+      .map((item, index) => {
+        if (typeof item === "string") return { key: String(index), value: item };
+        try { return { key: String(index), value: JSON.stringify(item) }; } catch { return null; }
+      })
+      .filter((v): v is { key: string; value: string } => v != null);
+  } else if (typeof assumptions === "object") {
+    items = Object.entries(assumptions as Record<string, unknown>).map(([k, v]) => ({
+      key: k,
+      value: typeof v === "string" ? v : (() => { try { return JSON.stringify(v); } catch { return ""; } })(),
+    }));
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <div>
+          <div className="text-xs font-extrabold uppercase tracking-wider">Assumptions</div>
+          <div className="text-[10px] text-muted-foreground">Global assumptions behind these metrics</div>
+        </div>
+        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1 text-[11px] text-foreground/80">
+          {globalText && <div>{globalText}</div>}
+          {items.map((item) => (
+            <div key={item.key} className="flex gap-2 border-t border-border/30 pt-1">
+              <span className="min-w-[8rem] font-mono text-[10px] text-muted-foreground">{item.key}</span>
+              <span className="flex-1">{item.value}</span>
+            </div>
+          ))}
+          {!globalText && items.length === 0 && (
+            <div className="italic text-muted-foreground">No structured assumptions.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
