@@ -1,364 +1,105 @@
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Copy,
-  TrendingUp,
-  TrendingDown,
   Activity,
-  Package,
-  Sparkles,
-  ShieldCheck,
-  Users,
-  ClipboardList,
+  Beaker,
   Check,
-  Gauge,
   ChevronDown,
   ChevronRight,
-  Swords,
+  ClipboardList,
+  Copy,
   Flame,
+  Gauge,
   Heart,
-  Zap as ZapIcon,
-  Wind,
-  Target,
   Shield,
-  Beaker,
+  ShieldCheck,
+  Sparkles,
+  Swords,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Wind,
+  Zap as ZapIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
 import type {
+  AnalyticsKnowledge,
+  AnalyticsRankingEntry,
+  PatchAnalyticsResponse,
   PatchRundownResponse,
   RundownGroup,
-  AnalyticsChampion,
-  AnalyticsRankingEntry,
-  AnalyticsPropertyBreakdown,
-  AnalyticsKnowledge,
   Severity,
 } from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
-  MetricCard,
-  RankingCard,
-  PropertyBreakdownCard,
-  SectionShell,
-  ProgressRing,
   AwaitingBackendBanner,
+  MetricCard,
   PendingBadge,
+  ProgressRing,
+  PropertyBreakdownCard,
+  RankingCard,
+  SectionShell,
 } from "./rundown/PlaceholderPrimitives";
 
-/**
- * Patch Rundown page. All rollups come from GET /patch-rundown; the
- * generated content cards are client-side templates over `groups[]`
- * (docs §6). No LLM call — the copy just captures what actually
- * happened to the DB.
- */
-export default function KnowledgeRundown() {
-  const [params, setParams] = useSearchParams();
-  const patch = params.get("patch") ?? "";
+type MetricValue = string | number | null;
+type RecordLike = Record<string, unknown>;
 
-  // Load an unfiltered rundown once to derive the patch selector list.
-  const patchesQ = useQuery({
-    queryKey: ["knowledge", "rundown", "all-patches"],
-    queryFn: () => knowledgeApi.patchRundown({}),
-  });
-  const scopedQ = useQuery({
-    queryKey: ["knowledge", "rundown", patch],
-    queryFn: () => knowledgeApi.patchRundown(patch ? { patch_version: patch } : {}),
-  });
-
-  // Real analytics feed (nullable/optional at every field).
-  const analyticsQ = useQuery({
-    queryKey: ["knowledge", "patch-analytics", patch],
-    queryFn: () =>
-      knowledgeApi.patchAnalytics({
-        patch_version: patch || undefined,
-        include_changes: true,
-      }),
-    retry: false,
-  });
-
-  const availablePatches = useMemo(() => {
-    const set = new Set<string>();
-    (patchesQ.data?.groups ?? []).forEach((g) => g.patch_version && set.add(g.patch_version));
-    return Array.from(set).sort().reverse();
-  }, [patchesQ.data]);
-
-  const data = scopedQ.data;
-  const analytics = analyticsQ.data;
-  const hero = analytics?.hero ?? null;
-  const rankings = analytics?.rankings ?? null;
-  const propertyBreakdown = analytics?.property_breakdown ?? null;
-  const knowledge = analytics?.knowledge ?? null;
-  const analyticsChampions = analytics?.champions ?? null;
-  const groupedByChampion = useMemo(() => groupByChampion(data?.groups ?? []), [data]);
-  const generated = useMemo(() => (data ? buildGeneratedContent(data, patch) : null), [data, patch]);
-  const loading = scopedQ.isLoading;
-  const analyticsLoading = analyticsQ.isLoading;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <label className="text-xs text-muted-foreground">Patch</label>
-        <select
-          value={patch}
-          onChange={(e) => {
-            const next = new URLSearchParams(params);
-            if (e.target.value) next.set("patch", e.target.value);
-            else next.delete("patch");
-            setParams(next, { replace: true });
-          }}
-          className="rounded border border-border bg-background px-2 py-1 text-xs"
-        >
-          <option value="">All patches</option>
-          {availablePatches.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        {scopedQ.isFetching && <span className="text-[10px] text-muted-foreground">loading…</span>}
-      </div>
-
-      {scopedQ.error && <ErrorBanner error={scopedQ.error} onRetry={() => scopedQ.refetch()} />}
-      {analyticsQ.error && (
-        <ErrorBanner error={analyticsQ.error as Error} onRetry={() => analyticsQ.refetch()} />
-      )}
-
-      {/* ─── 1. HERO SUMMARY ─────────────────────────────────────────────── */}
-      <SectionShell
-        title="Patch Intelligence"
-        subtitle="Live rollups from the knowledge database. Analytics fields marked pending will populate automatically once the backend endpoint ships."
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <MetricCard
-            label="Patch Version"
-            value={patch || (loading ? undefined : "All patches")}
-            icon={<Sparkles className="h-4 w-4" />}
-            accent="info"
-            loading={loading}
-          />
-          <MetricCard
-            label="Champions Changed"
-            value={hero?.champions_changed ?? undefined}
-            icon={<Users className="h-4 w-4" />}
-            accent="default"
-            loading={analyticsLoading}
-          />
-          <MetricCard
-            label="Values Changed"
-            value={hero?.values_changed ?? undefined}
-            icon={<Activity className="h-4 w-4" />}
-            loading={analyticsLoading}
-          />
-          <MetricCard
-            label="Properties Changed"
-            value={hero?.properties_changed ?? undefined}
-            icon={<Gauge className="h-4 w-4" />}
-            loading={analyticsLoading}
-          />
-          <MetricCard
-            label="Buffs"
-            value={hero?.buff_count ?? undefined}
-            icon={<TrendingUp className="h-4 w-4" />}
-            accent="positive"
-            loading={analyticsLoading}
-          />
-          <MetricCard
-            label="Nerfs"
-            value={hero?.nerf_count ?? undefined}
-            icon={<TrendingDown className="h-4 w-4" />}
-            accent="negative"
-            loading={analyticsLoading}
-          />
-          <MetricCard
-            label="Pending Changes"
-            value={hero?.pending_changes ?? data?.review_counts.pending}
-            icon={<ClipboardList className="h-4 w-4" />}
-            accent="warning"
-            loading={analyticsLoading || loading}
-          />
-          <MetricCard
-            label="Approved Changes"
-            value={hero?.approved_changes ?? data?.review_counts.applied}
-            icon={<Check className="h-4 w-4" />}
-            accent="positive"
-            loading={analyticsLoading || loading}
-          />
-          <MetricCard
-            label="Champion Coverage"
-            value={hero?.champion_coverage != null ? `${Math.round(hero.champion_coverage * 100)}%` : undefined}
-            icon={<ShieldCheck className="h-4 w-4" />}
-            accent="info"
-            loading={analyticsLoading}
-          />
-        </div>
-        {data && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span>Severity mix:</span>
-            <SeverityBadge severity="major" /> <span className="tabular-nums">{data.by_severity.major}</span>
-            <SeverityBadge severity="moderate" /> <span className="tabular-nums">{data.by_severity.moderate}</span>
-            <SeverityBadge severity="minor" /> <span className="tabular-nums">{data.by_severity.minor}</span>
-          </div>
-        )}
-      </SectionShell>
-
-      {/* ─── 2. RANKINGS ─────────────────────────────────────────────────── */}
-      <SectionShell
-        title="Rankings"
-        subtitle="Superlatives across the patch, served by /patch-analytics."
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <RankingEntryCard label="Most Changed Champion" entry={rankings?.most_changed_champion} loading={analyticsLoading} />
-          <RankingEntryCard label="Biggest Buff" entry={rankings?.biggest_buff} loading={analyticsLoading} />
-          <RankingEntryCard label="Biggest Nerf" entry={rankings?.biggest_nerf} loading={analyticsLoading} />
-          <RankingEntryCard label="Largest Cooldown Reduction" entry={rankings?.largest_cooldown_reduction} loading={analyticsLoading} />
-          <RankingEntryCard label="Largest Mana Increase" entry={rankings?.largest_mana_increase} loading={analyticsLoading} />
-          <RankingEntryCard label="Largest % Increase" entry={rankings?.largest_percentage_increase} loading={analyticsLoading} />
-          <RankingEntryCard label="Largest % Decrease" entry={rankings?.largest_percentage_decrease} loading={analyticsLoading} />
-        </div>
-      </SectionShell>
-
-      {/* ─── 3. PROPERTY BREAKDOWN ───────────────────────────────────────── */}
-      <SectionShell
-        title="Property Breakdown"
-        subtitle="Per-property rollups from /patch-analytics."
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PROPERTY_KEYS.map((prop) => {
-            const bd = propertyBreakdown?.[prop.key];
-            return (
-              <PropertyBreakdownCard
-                key={prop.key}
-                property={prop.label}
-                count={bd?.count ?? null}
-                largestDelta={toText(bd?.largest_delta)}
-                largestPct={toText(bd?.largest_pct)}
-                topChampion={toText(bd?.top_champion)}
-                loading={analyticsLoading}
-              />
-            );
-          })}
-        </div>
-      </SectionShell>
-
-      {/* ─── 4. CHAMPION INTELLIGENCE ────────────────────────────────────── */}
-      <SectionShell
-        title="Champion Intelligence"
-        subtitle="Per-champion analytics from /patch-analytics. Expand for per-rank change list."
-      >
-        {(analyticsLoading || loading) && <SkeletonRow className="h-24" />}
-        {analyticsChampions && analyticsChampions.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[...analyticsChampions]
-              .sort((a, b) => (b.net_change_score ?? 0) - (a.net_change_score ?? 0))
-              .map((c) => (
-                <ChampionIntelCard
-                  key={c.champion}
-                  champion={c.champion}
-                  analytics={c}
-                  groups={groupedByChampion[c.champion] ?? []}
-                />
-              ))}
-          </div>
-        ) : data ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(data.by_champion)
-              .sort((a, b) => b[1].pending - a[1].pending)
-              .map(([champ]) => (
-                <ChampionIntelCard
-                  key={champ}
-                  champion={champ}
-                  analytics={null}
-                  groups={groupedByChampion[champ] ?? []}
-                />
-              ))}
-            {Object.keys(data.by_champion).length === 0 && (
-              <div className="text-xs text-muted-foreground italic">No champion changes in this scope.</div>
-            )}
-          </div>
-        ) : null}
-      </SectionShell>
-
-      {/* ─── 5. KNOWLEDGE QUALITY ────────────────────────────────────────── */}
-      <SectionShell
-        title="Knowledge Quality"
-        subtitle="Metrics served by /patch-analytics.knowledge."
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {KNOWLEDGE_METRICS.map(({ key, label }) => {
-            const value = knowledge?.[key];
-            const has = value !== undefined && value !== null;
-            return (
-              <div key={key} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
-                <ProgressRing value={has ? value : undefined} loading={analyticsLoading} />
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
-                  {label}
-                </div>
-                {!analyticsLoading && !has && <PendingBadge />}
-              </div>
-            );
-          })}
-        </div>
-      </SectionShell>
-
-      {/* ─── 6. GAMEPLAY IMPACT (future) ─────────────────────────────────── */}
-      <SectionShell
-        title="Gameplay Impact"
-        subtitle="Simulated combat metrics — read-only preview of the future analytics surface."
-        banner={
-          <AwaitingBackendBanner>
-            Available once Combat Lab simulation metrics are connected.
-          </AwaitingBackendBanner>
-        }
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {GAMEPLAY_METRICS.map((m) => (
-            <MetricCard key={m.label} label={m.label} icon={m.icon} accent="info" />
-          ))}
-        </div>
-      </SectionShell>
-
-      {/* ─── Generated content (existing) ────────────────────────────────── */}
-      {generated && (
-        <SectionShell title="Generated Content" subtitle="Templated summaries derived from applied changes.">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <ContentCard title="Website changelog" body={generated.changelog} />
-            <ContentCard title="Discord post" body={generated.discord} />
-            <ContentCard title="YouTube script outline" body={generated.youtube} />
-            <ContentCard title="Quiz update notes" body={generated.quiz} />
-          </div>
-        </SectionShell>
-      )}
-    </div>
-  );
+interface SafeChampionChange {
+  rank: MetricValue;
+  ability: string | null;
+  property: string | null;
+  oldValue: MetricValue;
+  newValue: MetricValue;
+  delta: number | null;
+  deltaPct: number | null;
 }
 
-function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]> {
-  const out: Record<string, RundownGroup[]> = {};
-  for (const g of groups) {
-    (out[g.entity_name] ??= []).push(g);
-  }
-  return out;
+interface SafeChampionAnalytics {
+  champion: string;
+  valuesChanged: MetricValue;
+  propertiesChanged: MetricValue;
+  buffs: MetricValue;
+  nerfs: MetricValue;
+  maxSeverity: Severity | null;
+  netChangeScore: number | null;
+  changes: SafeChampionChange[];
 }
 
-/** Coerce any backend value into something safe to render as a React child. */
-function toText(v: unknown): string | null {
-  if (v == null) return null;
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (typeof v === "object") {
-    const obj = v as Record<string, unknown>;
-    const parts = [obj.ability_key, obj.property, obj.champion, obj.label, obj.name]
-      .filter((x) => typeof x === "string" && x)
-      .map(String);
-    if (parts.length) return parts.join(" · ");
-    try {
-      return JSON.stringify(v);
-    } catch {
-      return null;
-    }
-  }
-  return String(v);
+interface RankingDefinition {
+  key: string;
+  label: string;
 }
 
-/* ─── Property registry ──────────────────────────────────────────────── */
-const PROPERTY_KEYS: { key: string; label: string }[] = [
+interface PropertyDefinition {
+  key: string;
+  label: string;
+}
+
+interface KnowledgeMetricDefinition {
+  key: keyof AnalyticsKnowledge;
+  label: string;
+}
+
+interface GameplayMetricDefinition {
+  label: string;
+  icon: ReactNode;
+}
+
+const RANKING_DEFINITIONS: RankingDefinition[] = [
+  { key: "most_changed_champion", label: "Most Changed Champion" },
+  { key: "biggest_buff", label: "Biggest Buff" },
+  { key: "biggest_nerf", label: "Biggest Nerf" },
+  { key: "largest_cooldown_reduction", label: "Largest Cooldown Reduction" },
+  { key: "largest_mana_increase", label: "Largest Mana Increase" },
+  { key: "largest_percentage_increase", label: "Largest % Increase" },
+  { key: "largest_percentage_decrease", label: "Largest % Decrease" },
+];
+
+const PROPERTY_KEYS: PropertyDefinition[] = [
   { key: "cooldown", label: "Cooldown" },
   { key: "mana_cost", label: "Mana Cost" },
   { key: "damage", label: "Damage" },
@@ -368,7 +109,7 @@ const PROPERTY_KEYS: { key: string; label: string }[] = [
   { key: "shield", label: "Shield" },
 ];
 
-const KNOWLEDGE_METRICS: { key: keyof AnalyticsKnowledge; label: string }[] = [
+const KNOWLEDGE_METRICS: KnowledgeMetricDefinition[] = [
   { key: "coverage", label: "Coverage" },
   { key: "approved", label: "Approved" },
   { key: "pending", label: "Pending" },
@@ -378,38 +119,320 @@ const KNOWLEDGE_METRICS: { key: keyof AnalyticsKnowledge; label: string }[] = [
   { key: "health", label: "Health" },
 ];
 
-const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
-  { label: "Combo Damage",           icon: <Swords className="h-4 w-4" /> },
-  { label: "Burst Damage",           icon: <Flame className="h-4 w-4" /> },
-  { label: "Sustained DPS",          icon: <Activity className="h-4 w-4" /> },
-  { label: "Tankiness",              icon: <Shield className="h-4 w-4" /> },
-  { label: "Damage Per Mana",        icon: <ZapIcon className="h-4 w-4" /> },
-  { label: "Ability Casts / Min",    icon: <Sparkles className="h-4 w-4" /> },
-  { label: "Time To Kill",           icon: <Target className="h-4 w-4" /> },
-  { label: "Effective Health",       icon: <Heart className="h-4 w-4" /> },
-  { label: "Lane Sustain",           icon: <Heart className="h-4 w-4" /> },
-  { label: "Wave Clear",             icon: <Wind className="h-4 w-4" /> },
-  { label: "Objective Damage",       icon: <Target className="h-4 w-4" /> },
-  { label: "Gold Efficiency",        icon: <Beaker className="h-4 w-4" /> },
+const GAMEPLAY_METRICS: GameplayMetricDefinition[] = [
+  { label: "Combo Damage", icon: <Swords className="h-4 w-4" /> },
+  { label: "Burst Damage", icon: <Flame className="h-4 w-4" /> },
+  { label: "Sustained DPS", icon: <Activity className="h-4 w-4" /> },
+  { label: "Tankiness", icon: <Shield className="h-4 w-4" /> },
+  { label: "Damage Per Mana", icon: <ZapIcon className="h-4 w-4" /> },
+  { label: "Ability Casts / Min", icon: <Sparkles className="h-4 w-4" /> },
+  { label: "Time To Kill", icon: <Target className="h-4 w-4" /> },
+  { label: "Effective Health", icon: <Heart className="h-4 w-4" /> },
+  { label: "Lane Sustain", icon: <Heart className="h-4 w-4" /> },
+  { label: "Wave Clear", icon: <Wind className="h-4 w-4" /> },
+  { label: "Objective Damage", icon: <Target className="h-4 w-4" /> },
+  { label: "Gold Efficiency", icon: <Beaker className="h-4 w-4" /> },
 ];
 
-/** Ranking card that unpacks an AnalyticsRankingEntry. */
+export default function KnowledgeRundown() {
+  const [params, setParams] = useSearchParams();
+  const patch = params.get("patch") ?? "";
+
+  const patchesQuery = useQuery({
+    queryKey: ["knowledge", "rundown", "all-patches"],
+    queryFn: () => knowledgeApi.patchRundown({}),
+  });
+
+  const rundownQuery = useQuery({
+    queryKey: ["knowledge", "rundown", patch],
+    queryFn: () => knowledgeApi.patchRundown(patch ? { patch_version: patch } : {}),
+  });
+
+  const analyticsQuery = useQuery({
+    queryKey: ["knowledge", "patch-analytics", patch],
+    queryFn: () =>
+      knowledgeApi.patchAnalytics({
+        patch_version: patch || undefined,
+        include_changes: true,
+      }),
+    retry: false,
+  });
+
+  const rundown = normalizeRundown(rundownQuery.data);
+  const analytics = normalizeAnalytics(analyticsQuery.data);
+  const analyticsLoading = analyticsQuery.isLoading;
+  const rundownLoading = rundownQuery.isLoading;
+
+  const availablePatches = useMemo(() => {
+    const patches = new Set<string>();
+    for (const group of patchesQuery.data?.groups ?? []) {
+      if (typeof group.patch_version === "string" && group.patch_version) {
+        patches.add(group.patch_version);
+      }
+    }
+    return Array.from(patches).sort().reverse();
+  }, [patchesQuery.data]);
+
+  const groupedByChampion = useMemo(
+    () => groupByChampion(rundown?.groups ?? []),
+    [rundown?.groups],
+  );
+
+  const fallbackChampionNames = useMemo(() => {
+    const names = Object.keys(rundown?.by_champion ?? {});
+    return names.sort((a, b) => a.localeCompare(b));
+  }, [rundown?.by_champion]);
+
+  const generatedContent = useMemo(
+    () => (rundown ? buildGeneratedContent(rundown, patch) : null),
+    [rundown, patch],
+  );
+
+  const analyticsUnavailable = analyticsQuery.isError || !analytics;
+  const hero = analytics?.hero ?? null;
+  const rankings = analytics?.rankings ?? null;
+  const propertyBreakdown = analytics?.propertyBreakdown ?? null;
+  const knowledge = analytics?.knowledge ?? null;
+  const champions = analytics?.champions ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-muted-foreground">Patch</label>
+        <select
+          value={patch}
+          onChange={(event) => {
+            const nextParams = new URLSearchParams(params);
+            if (event.target.value) {
+              nextParams.set("patch", event.target.value);
+            } else {
+              nextParams.delete("patch");
+            }
+            setParams(nextParams, { replace: true });
+          }}
+          className="rounded border border-border bg-background px-2 py-1 text-xs"
+        >
+          <option value="">All patches</option>
+          {availablePatches.map((availablePatch) => (
+            <option key={availablePatch} value={availablePatch}>
+              {availablePatch}
+            </option>
+          ))}
+        </select>
+        {rundownQuery.isFetching && (
+          <span className="text-[10px] text-muted-foreground">loading…</span>
+        )}
+      </div>
+
+      {rundownQuery.error && (
+        <ErrorBanner error={rundownQuery.error} onRetry={() => rundownQuery.refetch()} />
+      )}
+
+      <SectionShell
+        title="Patch Intelligence"
+        subtitle="Patch Rundown remains powered by /patch-rundown; /patch-analytics enhances fields when available."
+        banner={
+          analyticsUnavailable && !analyticsLoading ? (
+            <AwaitingBackendBanner>
+              Patch analytics unavailable; rendering the stable Patch Rundown data.
+            </AwaitingBackendBanner>
+          ) : undefined
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <MetricCard
+            label="Patch Version"
+            value={patch || (rundownLoading ? undefined : "All patches")}
+            icon={<Sparkles className="h-4 w-4" />}
+            accent="info"
+            loading={rundownLoading}
+          />
+          <MetricCard
+            label="Champions Changed"
+            value={toMetricValue(hero?.champions_changed) ?? fallbackCount(rundown?.by_champion)}
+            icon={<Users className="h-4 w-4" />}
+            loading={analyticsLoading && rundownLoading}
+          />
+          <MetricCard
+            label="Values Changed"
+            value={toMetricValue(hero?.values_changed)}
+            icon={<Activity className="h-4 w-4" />}
+            loading={analyticsLoading}
+          />
+          <MetricCard
+            label="Properties Changed"
+            value={toMetricValue(hero?.properties_changed) ?? fallbackCount(rundown?.by_property)}
+            icon={<Gauge className="h-4 w-4" />}
+            loading={analyticsLoading && rundownLoading}
+          />
+          <MetricCard
+            label="Buffs"
+            value={toMetricValue(hero?.buff_count)}
+            icon={<TrendingUp className="h-4 w-4" />}
+            accent="positive"
+            loading={analyticsLoading}
+          />
+          <MetricCard
+            label="Nerfs"
+            value={toMetricValue(hero?.nerf_count)}
+            icon={<TrendingDown className="h-4 w-4" />}
+            accent="negative"
+            loading={analyticsLoading}
+          />
+          <MetricCard
+            label="Pending Changes"
+            value={toMetricValue(hero?.pending_changes) ?? toMetricValue(rundown?.review_counts.pending)}
+            icon={<ClipboardList className="h-4 w-4" />}
+            accent="warning"
+            loading={analyticsLoading && rundownLoading}
+          />
+          <MetricCard
+            label="Approved Changes"
+            value={toMetricValue(hero?.approved_changes) ?? toMetricValue(rundown?.review_counts.applied)}
+            icon={<Check className="h-4 w-4" />}
+            accent="positive"
+            loading={analyticsLoading && rundownLoading}
+          />
+          <MetricCard
+            label="Champion Coverage"
+            value={formatPercent(hero?.champion_coverage)}
+            icon={<ShieldCheck className="h-4 w-4" />}
+            accent="info"
+            loading={analyticsLoading}
+          />
+        </div>
+
+        {rundown && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            <span>Severity mix:</span>
+            <SeverityBadge severity="major" />
+            <span className="tabular-nums">{safeNumber(rundown.by_severity.major) ?? 0}</span>
+            <SeverityBadge severity="moderate" />
+            <span className="tabular-nums">{safeNumber(rundown.by_severity.moderate) ?? 0}</span>
+            <SeverityBadge severity="minor" />
+            <span className="tabular-nums">{safeNumber(rundown.by_severity.minor) ?? 0}</span>
+          </div>
+        )}
+      </SectionShell>
+
+      <SectionShell title="Rankings" subtitle="Superlatives from /patch-analytics when the backend provides them.">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {RANKING_DEFINITIONS.map((definition) => (
+            <RankingEntryCard
+              key={definition.key}
+              label={definition.label}
+              entry={getRecord(rankings, definition.key)}
+              loading={analyticsLoading}
+            />
+          ))}
+        </div>
+      </SectionShell>
+
+      <SectionShell title="Property Breakdown" subtitle="Analytics breakdowns enhance stable /patch-rundown property counts.">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {PROPERTY_KEYS.map((propertyDefinition) => {
+            const analyticsProperty = getRecord(propertyBreakdown, propertyDefinition.key);
+            const rundownProperty = rundown?.by_property[propertyDefinition.key];
+            return (
+              <PropertyBreakdownCard
+                key={propertyDefinition.key}
+                property={propertyDefinition.label}
+                count={safeNumber(analyticsProperty?.count) ?? safeNumber(rundownProperty?.total)}
+                largestDelta={toText(analyticsProperty?.largest_delta)}
+                largestPct={toText(analyticsProperty?.largest_pct)}
+                topChampion={toText(analyticsProperty?.top_champion)}
+                loading={analyticsLoading && rundownLoading}
+              />
+            );
+          })}
+        </div>
+      </SectionShell>
+
+      <SectionShell title="Champion Intelligence" subtitle="Champion analytics are optional; patch-rundown groups remain the fallback.">
+        {(analyticsLoading || rundownLoading) && <SkeletonRow className="h-24" />}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {champions.length > 0
+            ? champions.map((championAnalytics) => (
+                <ChampionIntelCard
+                  key={championAnalytics.champion}
+                  champion={championAnalytics.champion}
+                  analytics={championAnalytics}
+                  groups={groupedByChampion[championAnalytics.champion] ?? []}
+                />
+              ))
+            : fallbackChampionNames.map((championName) => (
+                <ChampionIntelCard
+                  key={championName}
+                  champion={championName}
+                  analytics={null}
+                  groups={groupedByChampion[championName] ?? []}
+                />
+              ))}
+          {!rundownLoading && champions.length === 0 && fallbackChampionNames.length === 0 && (
+            <div className="text-xs italic text-muted-foreground">No champion changes in this scope.</div>
+          )}
+        </div>
+      </SectionShell>
+
+      <SectionShell title="Knowledge Quality" subtitle="Quality metrics render only when /patch-analytics provides them.">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {KNOWLEDGE_METRICS.map((metric) => {
+            const value = safeNumber(knowledge?.[metric.key]);
+            return (
+              <div key={metric.key} className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-3">
+                <ProgressRing value={value} loading={analyticsLoading} />
+                <div className="text-center text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  {metric.label}
+                </div>
+                {!analyticsLoading && value == null && <PendingBadge />}
+              </div>
+            );
+          })}
+        </div>
+      </SectionShell>
+
+      <SectionShell
+        title="Gameplay Impact"
+        subtitle="Simulated combat metrics — read-only preview of the future analytics surface."
+        banner={<AwaitingBackendBanner>Available once Combat Lab simulation metrics are connected.</AwaitingBackendBanner>}
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {GAMEPLAY_METRICS.map((metric) => (
+            <MetricCard key={metric.label} label={metric.label} icon={metric.icon} accent="info" />
+          ))}
+        </div>
+      </SectionShell>
+
+      {generatedContent && (
+        <SectionShell title="Generated Content" subtitle="Templated summaries derived from applied changes.">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ContentCard title="Website changelog" body={generatedContent.changelog} />
+            <ContentCard title="Discord post" body={generatedContent.discord} />
+            <ContentCard title="YouTube script outline" body={generatedContent.youtube} />
+            <ContentCard title="Quiz update notes" body={generatedContent.quiz} />
+          </div>
+        </SectionShell>
+      )}
+    </div>
+  );
+}
+
 function RankingEntryCard({
   label,
   entry,
   loading,
 }: {
   label: string;
-  entry?: AnalyticsRankingEntry | null;
+  entry?: unknown;
   loading?: boolean;
 }) {
-  const champion = toText(entry?.champion);
-  const abilityText = toText(entry?.ability_key);
-  const propertyText = toText(entry?.property);
-  const detailFromEntry = toText(entry?.detail);
-  const detailFallback = [abilityText, propertyText].filter(Boolean).join(" · ");
-  const detail = detailFromEntry ?? (detailFallback || null);
-  const value = toText(entry?.value);
+  const entryRecord = isRecord(entry) ? entry : null;
+  const champion = toText(entryRecord?.champion);
+  const ability = toText(entryRecord?.ability_key);
+  const property = toText(entryRecord?.property);
+  const detail = toText(entryRecord?.detail) ?? ([ability, property].filter(Boolean).join(" · ") || null);
+  const value = toText(entryRecord?.value);
+
   return (
     <RankingCard
       label={label}
@@ -421,80 +444,84 @@ function RankingEntryCard({
   );
 }
 
-/** Expandable champion card. Consumes AnalyticsChampion when available. */
 function ChampionIntelCard({
   champion,
   analytics,
   groups,
 }: {
   champion: string;
-  analytics: AnalyticsChampion | null;
+  analytics: SafeChampionAnalytics | null;
   groups: RundownGroup[];
 }) {
   const [open, setOpen] = useState(false);
-  const valuesChanged = analytics?.values_changed ?? null;
-  const propertiesChanged = analytics?.properties_changed ?? null;
-  const buffs = analytics?.buff_count ?? null;
-  const nerfs = analytics?.nerf_count ?? null;
-  const maxSeverity: Severity | null = analytics?.max_severity ?? null;
-  const net = analytics?.net_change_score ?? null;
-  const changes = analytics?.changes ?? null;
+  const valuesChanged = analytics?.valuesChanged ?? null;
+  const propertiesChanged = analytics?.propertiesChanged ?? null;
+  const buffs = analytics?.buffs ?? null;
+  const nerfs = analytics?.nerfs ?? null;
+  const netChangeScore = analytics?.netChangeScore ?? null;
+  const changes = analytics?.changes ?? [];
+  const hasSummary = valuesChanged != null || propertiesChanged != null || buffs != null || nerfs != null;
+
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted/20 transition"
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-muted/20"
       >
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <div className="flex-1 min-w-0">
-          <div className="font-extrabold text-sm truncate">{champion}</div>
-          <div className="text-[11px] text-muted-foreground tabular-nums flex flex-wrap gap-x-2">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-extrabold">{champion}</div>
+          <div className="flex flex-wrap gap-x-2 text-[11px] tabular-nums text-muted-foreground">
             {valuesChanged != null && <span>{valuesChanged} values</span>}
             {propertiesChanged != null && <span>· {propertiesChanged} props</span>}
             {buffs != null && <span className="text-emerald-300">· {buffs} buff{buffs === 1 ? "" : "s"}</span>}
             {nerfs != null && <span className="text-red-300">· {nerfs} nerf{nerfs === 1 ? "" : "s"}</span>}
-            {valuesChanged == null && propertiesChanged == null && buffs == null && nerfs == null && (
-              <span className="italic text-muted-foreground/60">awaiting analytics</span>
-            )}
+            {!hasSummary && <span className="italic text-muted-foreground/60">awaiting analytics</span>}
           </div>
         </div>
-        {maxSeverity ? <SeverityBadge severity={maxSeverity} /> : <PendingBadge />}
-        {net != null && (
-          <div className="text-xs font-black tabular-nums text-primary ml-2">
-            {net > 0 ? "+" : ""}{Math.round(net * 100) / 100}
+        {analytics?.maxSeverity ? <SeverityBadge severity={analytics.maxSeverity} /> : <PendingBadge />}
+        {netChangeScore != null && (
+          <div className="ml-2 text-xs font-black tabular-nums text-primary">
+            {netChangeScore > 0 ? "+" : ""}{formatNumber(netChangeScore)}
           </div>
         )}
       </button>
+
       {open && (
-        <div className="border-t border-border p-3 space-y-3 animate-fade-in">
+        <div className="animate-fade-in space-y-3 border-t border-border p-3">
           <div>
-            <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+            <div className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
               Property groups
             </div>
             <ul className="space-y-1 text-xs">
-              {groups.map((g, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <ProviderBadge provider={g.provider} />
-                  <span>{toText(g.ability_key)} {toText(g.property)}</span>
-                  <span className="text-muted-foreground">
-                    {g.rank_count} rank{g.rank_count === 1 ? "" : "s"}
-                  </span>
-                  <Link
-                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(toText(g.property) ?? "")}`}
-                    className="ml-auto text-primary hover:underline"
-                  >
-                    review →
-                  </Link>
-                </li>
-              ))}
-              {groups.length === 0 && (
-                <li className="text-muted-foreground italic">No pending groups.</li>
-              )}
+              {groups.map((group, index) => {
+                const ability = toText(group.ability_key);
+                const property = toText(group.property);
+                const rankCount = safeNumber(group.rank_count) ?? 0;
+                return (
+                  <li key={`${champion}-${property ?? "property"}-${index}`} className="flex items-center gap-2">
+                    <ProviderBadge provider={group.provider} />
+                    <span>{[ability, property].filter(Boolean).join(" ") || "Unknown property"}</span>
+                    <span className="text-muted-foreground">
+                      {rankCount} rank{rankCount === 1 ? "" : "s"}
+                    </span>
+                    <Link
+                      to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(property ?? "")}`}
+                      className="ml-auto text-primary hover:underline"
+                    >
+                      review →
+                    </Link>
+                  </li>
+                );
+              })}
+              {groups.length === 0 && <li className="italic text-muted-foreground">No pending groups.</li>}
             </ul>
           </div>
-          {changes && changes.length > 0 ? (
+
+          {changes.length > 0 ? (
             <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+              <div className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
                 Per-rank changes
               </div>
               <div className="overflow-x-auto">
@@ -511,20 +538,17 @@ function ChampionIntelCard({
                     </tr>
                   </thead>
                   <tbody>
-                    {changes.map((c, i) => {
-                      const delta = c.delta ?? null;
-                      const tone = delta == null ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-red-300" : "";
+                    {changes.map((change, index) => {
+                      const deltaTone = getDeltaTone(change.delta);
                       return (
-                        <tr key={i} className="border-t border-border/40">
-                          <td className="pr-2">{toText(c.rank) ?? "—"}</td>
-                          <td className="pr-2">{toText(c.ability_key) ?? "—"}</td>
-                          <td className="pr-2">{toText(c.property) ?? "—"}</td>
-                          <td className="pr-2">{toText(c.old_value) ?? "—"}</td>
-                          <td className="pr-2">{toText(c.new_value) ?? "—"}</td>
-                          <td className={`pr-2 ${tone}`}>{delta != null ? (delta > 0 ? `+${delta}` : delta) : "—"}</td>
-                          <td className={`pr-2 ${tone}`}>
-                            {c.delta_pct != null ? `${c.delta_pct > 0 ? "+" : ""}${Math.round(c.delta_pct * 10) / 10}%` : "—"}
-                          </td>
+                        <tr key={`${champion}-change-${index}`} className="border-t border-border/40">
+                          <td className="pr-2">{change.rank ?? "—"}</td>
+                          <td className="pr-2">{change.ability ?? "—"}</td>
+                          <td className="pr-2">{change.property ?? "—"}</td>
+                          <td className="pr-2">{change.oldValue ?? "—"}</td>
+                          <td className="pr-2">{change.newValue ?? "—"}</td>
+                          <td className={`pr-2 ${deltaTone}`}>{formatSignedNumber(change.delta)}</td>
+                          <td className={`pr-2 ${deltaTone}`}>{formatSignedPercent(change.deltaPct)}</td>
                         </tr>
                       );
                     })}
@@ -533,7 +557,7 @@ function ChampionIntelCard({
               </div>
             </div>
           ) : (
-            <div className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 rounded bg-background/40 px-2 py-1.5">
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Per-rank change list
               </div>
@@ -548,10 +572,11 @@ function ChampionIntelCard({
 
 function ContentCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{title}</h3>
         <button
+          type="button"
           onClick={() => {
             navigator.clipboard.writeText(body).then(() => toast.success("Copied"));
           }}
@@ -560,24 +585,178 @@ function ContentCard({ title, body }: { title: string; body: string }) {
           <Copy className="h-3 w-3" /> copy
         </button>
       </div>
-      <pre className="text-[11px] font-mono bg-background/60 rounded p-2 whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
-{body}
+      <pre className="max-h-64 whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[11px]">
+        {body}
       </pre>
     </div>
   );
 }
 
+function normalizeAnalytics(payload: PatchAnalyticsResponse | undefined) {
+  if (!isRecord(payload)) return null;
+  const hero = getRecord(payload, "hero");
+  const rankings = getRecord(payload, "rankings");
+  const propertyBreakdown = getRecord(payload, "property_breakdown");
+  const knowledge = getRecord(payload, "knowledge");
+  const champions = Array.isArray(payload.champions)
+    ? payload.champions.map(normalizeChampion).filter((item): item is SafeChampionAnalytics => item != null)
+    : [];
+
+  return {
+    hero,
+    rankings,
+    propertyBreakdown,
+    knowledge,
+    champions,
+  };
+}
+
+function normalizeChampion(value: unknown): SafeChampionAnalytics | null {
+  if (!isRecord(value)) return null;
+  const champion = toText(value.champion);
+  if (!champion) return null;
+  const changes = Array.isArray(value.changes)
+    ? value.changes.map(normalizeChampionChange).filter((item): item is SafeChampionChange => item != null)
+    : [];
+
+  return {
+    champion,
+    valuesChanged: toMetricValue(value.values_changed),
+    propertiesChanged: toMetricValue(value.properties_changed),
+    buffs: toMetricValue(value.buff_count),
+    nerfs: toMetricValue(value.nerf_count),
+    maxSeverity: safeSeverity(value.max_severity),
+    netChangeScore: safeNumber(value.net_change_score),
+    changes,
+  };
+}
+
+function normalizeChampionChange(value: unknown): SafeChampionChange | null {
+  if (!isRecord(value)) return null;
+  return {
+    rank: toMetricValue(value.rank),
+    ability: toText(value.ability_key),
+    property: toText(value.property),
+    oldValue: toMetricValue(value.old_value),
+    newValue: toMetricValue(value.new_value),
+    delta: safeNumber(value.delta),
+    deltaPct: safeNumber(value.delta_pct),
+  };
+}
+
+function normalizeRundown(payload: PatchRundownResponse | undefined): PatchRundownResponse | null {
+  if (!payload || !Array.isArray(payload.groups)) return null;
+  return payload;
+}
+
+function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]> {
+  const output: Record<string, RundownGroup[]> = {};
+  for (const group of groups) {
+    if (typeof group.entity_name === "string" && group.entity_name) {
+      output[group.entity_name] = [...(output[group.entity_name] ?? []), group];
+    }
+  }
+  return output;
+}
+
 function buildGeneratedContent(data: PatchRundownResponse, patch: string) {
   const label = patch || "current";
-  const lines = data.groups.map((g) => `- ${g.entity_name} ${g.ability_key ?? ""} ${g.property} (${g.rank_count} rank${g.rank_count === 1 ? "" : "s"}, ${g.provider})`);
-  const cooldownGroups = data.groups.filter((g) => g.property === "cooldown");
-  const champCount = Object.keys(data.by_champion).length;
-  const status = data.review_counts.applied > 0 && data.review_counts.pending === 0 ? "applied" : "in review";
+  const lines = data.groups.map((group) => {
+    const champion = toText(group.entity_name) ?? "Unknown champion";
+    const ability = toText(group.ability_key) ?? "";
+    const property = toText(group.property) ?? "property";
+    const provider = toText(group.provider) ?? "provider";
+    const rankCount = safeNumber(group.rank_count) ?? 0;
+    return `- ${champion} ${ability} ${property} (${rankCount} rank${rankCount === 1 ? "" : "s"}, ${provider})`;
+  });
+  const cooldownGroups = data.groups.filter((group) => group.property === "cooldown");
+  const championCount = Object.keys(data.by_champion).length;
+  const appliedCount = safeNumber(data.review_counts.applied) ?? 0;
+  const pendingCount = safeNumber(data.review_counts.pending) ?? 0;
+  const status = appliedCount > 0 && pendingCount === 0 ? "applied" : "in review";
+  const previewRows = data.groups.slice(0, 5).map((group, index) => {
+    const champion = toText(group.entity_name) ?? "Unknown champion";
+    const ability = toText(group.ability_key) ?? "";
+    const property = toText(group.property) ?? "property";
+    return `${index + 2}. ${champion} ${ability} ${property}`;
+  });
 
   const changelog = `## Patch ${label} — Mogsy DB\n\n${lines.join("\n") || "_no changes_"}\n\nStatus: ${status}.`;
-  const discord = `**Patch ${label} is in Mogsy!**\n${champCount} champion${champCount === 1 ? "" : "s"} touched · ${data.review_counts.applied} applied · ${data.review_counts.pending} still in review.`;
-  const youtube = `1. Intro: ${champCount} champions changed in patch ${label}\n${data.groups.slice(0, 5).map((g, i) => `${i + 2}. ${g.entity_name} ${g.ability_key ?? ""} ${g.property}`).join("\n")}`;
-  const quiz = `Regenerate cooldown Qs for:\n${cooldownGroups.map((g) => `- ${g.entity_name} ${g.ability_key ?? ""}`).join("\n") || "_none this patch_"}`;
+  const discord = `**Patch ${label} is in Mogsy!**\n${championCount} champion${championCount === 1 ? "" : "s"} touched · ${appliedCount} applied · ${pendingCount} still in review.`;
+  const youtube = `1. Intro: ${championCount} champions changed in patch ${label}\n${previewRows.join("\n")}`;
+  const quiz = `Regenerate cooldown Qs for:\n${cooldownGroups.map((group) => `- ${toText(group.entity_name) ?? "Unknown champion"} ${toText(group.ability_key) ?? ""}`).join("\n") || "_none this patch_"}`;
 
   return { changelog, discord, youtube, quiz };
+}
+
+function isRecord(value: unknown): value is RecordLike {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getRecord(source: unknown, key: string): RecordLike | null {
+  if (!isRecord(source)) return null;
+  const value = source[key];
+  return isRecord(value) ? value : null;
+}
+
+function toText(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (isRecord(value)) {
+    const parts = [value.ability_key, value.property, value.champion, value.label, value.name]
+      .filter((part): part is string => typeof part === "string" && part.length > 0);
+    if (parts.length > 0) return parts.join(" · ");
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+  return String(value);
+}
+
+function toMetricValue(value: unknown): MetricValue {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") return value;
+  return null;
+}
+
+function safeNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function fallbackCount(value: unknown): number | null {
+  return isRecord(value) ? Object.keys(value).length : null;
+}
+
+function safeSeverity(value: unknown): Severity | null {
+  return value === "major" || value === "moderate" || value === "minor" || value === "unknown" ? value : null;
+}
+
+function formatPercent(value: unknown): string | null {
+  const number = safeNumber(value);
+  return number == null ? null : `${Math.round(number * 100)}%`;
+}
+
+function formatNumber(value: number): string {
+  return String(Math.round(value * 100) / 100);
+}
+
+function formatSignedNumber(value: number | null): string {
+  if (value == null) return "—";
+  return value > 0 ? `+${formatNumber(value)}` : formatNumber(value);
+}
+
+function formatSignedPercent(value: number | null): string {
+  if (value == null) return "—";
+  const rounded = Math.round(value * 10) / 10;
+  return rounded > 0 ? `+${rounded}%` : `${rounded}%`;
+}
+
+function getDeltaTone(value: number | null): string {
+  if (value == null) return "";
+  if (value > 0) return "text-emerald-300";
+  if (value < 0) return "text-red-300";
+  return "";
 }
