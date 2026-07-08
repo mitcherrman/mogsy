@@ -373,21 +373,48 @@ const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
   { label: "Gold Efficiency",        icon: <Beaker className="h-4 w-4" /> },
 ];
 
-/** Expandable champion card — richer analytics slots in later. */
+/** Ranking card that unpacks an AnalyticsRankingEntry. */
+function RankingEntryCard({
+  label,
+  entry,
+  loading,
+}: {
+  label: string;
+  entry?: AnalyticsRankingEntry | null;
+  loading?: boolean;
+}) {
+  const champion = entry?.champion ?? null;
+  const detailParts = [entry?.ability_key, entry?.property].filter(Boolean) as string[];
+  const detail = entry?.detail ?? (detailParts.length ? detailParts.join(" · ") : null);
+  return (
+    <RankingCard
+      label={label}
+      champion={champion}
+      detail={detail}
+      value={entry?.value ?? null}
+      loading={loading}
+    />
+  );
+}
+
+/** Expandable champion card. Consumes AnalyticsChampion when available. */
 function ChampionIntelCard({
   champion,
-  pending,
-  applied,
-  rejected,
+  analytics,
   groups,
 }: {
   champion: string;
-  pending: number;
-  applied: number;
-  rejected: number;
+  analytics: AnalyticsChampion | null;
   groups: RundownGroup[];
 }) {
   const [open, setOpen] = useState(false);
+  const valuesChanged = analytics?.values_changed ?? null;
+  const propertiesChanged = analytics?.properties_changed ?? null;
+  const buffs = analytics?.buff_count ?? null;
+  const nerfs = analytics?.nerf_count ?? null;
+  const maxSeverity: Severity | null = analytics?.max_severity ?? null;
+  const net = analytics?.net_change_score ?? null;
+  const changes = analytics?.changes ?? null;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <button
@@ -397,21 +424,28 @@ function ChampionIntelCard({
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <div className="flex-1 min-w-0">
           <div className="font-extrabold text-sm truncate">{champion}</div>
-          <div className="text-[11px] text-muted-foreground tabular-nums">
-            <span className="text-amber-300">{pending} pending</span>
-            <span className="mx-1">·</span>
-            <span className="text-emerald-300">{applied} applied</span>
-            <span className="mx-1">·</span>
-            <span className="text-red-300">{rejected} rejected</span>
+          <div className="text-[11px] text-muted-foreground tabular-nums flex flex-wrap gap-x-2">
+            {valuesChanged != null && <span>{valuesChanged} values</span>}
+            {propertiesChanged != null && <span>· {propertiesChanged} props</span>}
+            {buffs != null && <span className="text-emerald-300">· {buffs} buff{buffs === 1 ? "" : "s"}</span>}
+            {nerfs != null && <span className="text-red-300">· {nerfs} nerf{nerfs === 1 ? "" : "s"}</span>}
+            {valuesChanged == null && propertiesChanged == null && buffs == null && nerfs == null && (
+              <span className="italic text-muted-foreground/60">awaiting analytics</span>
+            )}
           </div>
         </div>
-        <PendingBadge />
+        {maxSeverity ? <SeverityBadge severity={maxSeverity} /> : <PendingBadge />}
+        {net != null && (
+          <div className="text-xs font-black tabular-nums text-primary ml-2">
+            {net > 0 ? "+" : ""}{Math.round(net * 100) / 100}
+          </div>
+        )}
       </button>
       {open && (
         <div className="border-t border-border p-3 space-y-3 animate-fade-in">
           <div>
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
-              Property changes
+              Property groups
             </div>
             <ul className="space-y-1 text-xs">
               {groups.map((g, i) => (
@@ -434,14 +468,54 @@ function ChampionIntelCard({
               )}
             </ul>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {["Summary", "Severity", "Impact score", "Rankings", "Confidence", "Provider evidence"].map((label) => (
-              <div key={label} className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
-                <PendingBadge />
+          {changes && changes.length > 0 ? (
+            <div>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+                Per-rank changes
               </div>
-            ))}
-          </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] tabular-nums">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left">
+                      <th className="pr-2 font-bold">Rank</th>
+                      <th className="pr-2 font-bold">Ability</th>
+                      <th className="pr-2 font-bold">Property</th>
+                      <th className="pr-2 font-bold">Old</th>
+                      <th className="pr-2 font-bold">New</th>
+                      <th className="pr-2 font-bold">Δ</th>
+                      <th className="pr-2 font-bold">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {changes.map((c, i) => {
+                      const delta = c.delta ?? null;
+                      const tone = delta == null ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-red-300" : "";
+                      return (
+                        <tr key={i} className="border-t border-border/40">
+                          <td className="pr-2">{c.rank ?? "—"}</td>
+                          <td className="pr-2">{c.ability_key ?? "—"}</td>
+                          <td className="pr-2">{c.property ?? "—"}</td>
+                          <td className="pr-2">{c.old_value ?? "—"}</td>
+                          <td className="pr-2">{c.new_value ?? "—"}</td>
+                          <td className={`pr-2 ${tone}`}>{delta != null ? (delta > 0 ? `+${delta}` : delta) : "—"}</td>
+                          <td className={`pr-2 ${tone}`}>
+                            {c.delta_pct != null ? `${c.delta_pct > 0 ? "+" : ""}${Math.round(c.delta_pct * 10) / 10}%` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Per-rank change list
+              </div>
+              <PendingBadge />
+            </div>
+          )}
         </div>
       )}
     </div>
