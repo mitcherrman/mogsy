@@ -33,6 +33,7 @@ import type {
   PatchRundownResponse,
   RundownGroup,
   Severity,
+  PatchIntelligenceResponse,
 } from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
@@ -43,6 +44,11 @@ import {
   PropertyBreakdownCard,
   RankingCard,
   SectionShell,
+  PatchScoreHero,
+  ExecutiveSummaryCard,
+  InterestingFactCard,
+  InsightCard,
+  HeadlineCard,
 } from "./rundown/PlaceholderPrimitives";
 
 type MetricValue = string | number | null;
@@ -158,6 +164,13 @@ export default function KnowledgeRundown() {
     retry: false,
   });
 
+  const intelligenceQuery = useQuery({
+    queryKey: ["knowledge", "patch-intelligence", patch],
+    queryFn: () =>
+      knowledgeApi.patchIntelligence(patch ? { patch_version: patch } : {}),
+    retry: false,
+  });
+
   const rundown = normalizeRundown(rundownQuery.data);
   const analytics = normalizeAnalytics(analyticsQuery.data);
   const analyticsLoading = analyticsQuery.isLoading;
@@ -195,6 +208,37 @@ export default function KnowledgeRundown() {
   const knowledge = analytics?.knowledge ?? null;
   const champions = analytics?.champions ?? [];
 
+  const intelligence = isRecord(intelligenceQuery.data) ? intelligenceQuery.data as PatchIntelligenceResponse : null;
+  const intelligenceLoading = intelligenceQuery.isLoading;
+  const intelligenceUnavailable = intelligenceQuery.isError || !intelligence;
+  const patchScore = getRecord(intelligence, "patch_score");
+  const execSummary = getRecord(intelligence, "executive_summary_input");
+  const interestingFacts = Array.isArray(intelligence?.interesting_facts)
+    ? (intelligence!.interesting_facts as unknown[]).filter(isRecord)
+    : [];
+  const insights = Array.isArray(intelligence?.insights)
+    ? (intelligence!.insights as unknown[]).filter(isRecord)
+    : [];
+  const headlines = Array.isArray(intelligence?.headline_suggestions)
+    ? (intelligence!.headline_suggestions as unknown[]).filter(isRecord)
+    : [];
+
+  const execItems = [
+    { label: "Primary Theme", value: toText(execSummary?.primary_theme), tone: "info" as const },
+    { label: "Secondary Theme", value: toText(execSummary?.secondary_theme), tone: "info" as const },
+    { label: "Patch Classification", value: toText(execSummary?.patch_classification) },
+    { label: "Largest Buff", value: toText(execSummary?.largest_buff), tone: "positive" as const },
+    { label: "Largest Nerf", value: toText(execSummary?.largest_nerf), tone: "negative" as const },
+    { label: "Champions Changed", value: toMetricValue(execSummary?.champions_changed) },
+    { label: "Values Changed", value: toMetricValue(execSummary?.values_changed) },
+    { label: "Buff Count", value: toMetricValue(execSummary?.buff_count), tone: "positive" as const },
+    { label: "Nerf Count", value: toMetricValue(execSummary?.nerf_count), tone: "negative" as const },
+  ];
+
+  const copyHeadline = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Headline copied"));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -227,6 +271,25 @@ export default function KnowledgeRundown() {
       {rundownQuery.error && (
         <ErrorBanner error={rundownQuery.error} onRetry={() => rundownQuery.refetch()} />
       )}
+
+      <SectionShell
+        title="Patch Score"
+        subtitle="Deterministic patch impact score derived server-side by /patch-intelligence."
+        banner={
+          intelligenceUnavailable && !intelligenceLoading ? (
+            <AwaitingBackendBanner>
+              Patch Intelligence unavailable; continuing with Patch Analytics + Rundown data.
+            </AwaitingBackendBanner>
+          ) : undefined
+        }
+      >
+        <PatchScoreHero
+          score={safeNumber(patchScore?.score)}
+          classification={toText(patchScore?.classification)}
+          explanation={toText(patchScore?.explanation)}
+          loading={intelligenceLoading}
+        />
+      </SectionShell>
 
       <SectionShell
         title="Patch Intelligence"
@@ -311,6 +374,83 @@ export default function KnowledgeRundown() {
             <span className="tabular-nums">{safeNumber(rundown.by_severity.moderate) ?? 0}</span>
             <SeverityBadge severity="minor" />
             <span className="tabular-nums">{safeNumber(rundown.by_severity.minor) ?? 0}</span>
+          </div>
+        )}
+      </SectionShell>
+
+      <SectionShell
+        title="Executive Summary"
+        subtitle="Structured summary from /patch-intelligence — dashboard cards, never AI prose."
+      >
+        <ExecutiveSummaryCard items={execItems} loading={intelligenceLoading} />
+      </SectionShell>
+
+      <SectionShell
+        title="Interesting Facts"
+        subtitle="Backend-flagged 'did you know?' insights with per-fact confidence and evidence."
+      >
+        {intelligenceLoading ? (
+          <SkeletonRow className="h-20" />
+        ) : interestingFacts.length === 0 ? (
+          <div className="text-xs italic text-muted-foreground">No interesting facts surfaced for this patch.</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {interestingFacts.map((fact, index) => (
+              <InterestingFactCard
+                key={`fact-${index}`}
+                headline={toText(fact.headline)}
+                confidence={safeNumber(fact.confidence)}
+                evidence={fact.evidence}
+              />
+            ))}
+          </div>
+        )}
+      </SectionShell>
+
+      <SectionShell
+        title="Patch Intelligence"
+        subtitle="Every insight the backend produced — available or unavailable — rendered verbatim."
+      >
+        {intelligenceLoading ? (
+          <SkeletonRow className="h-20" />
+        ) : insights.length === 0 ? (
+          <div className="text-xs italic text-muted-foreground">No insights produced for this patch.</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {insights.map((insight, index) => (
+              <InsightCard
+                key={`insight-${index}`}
+                title={toText(insight.title)}
+                kind={toText(insight.kind)}
+                description={toText(insight.description)}
+                available={typeof insight.available === "boolean" ? insight.available : null}
+                availability={toText(insight.availability)}
+                unavailableReason={toText(insight.unavailable_reason)}
+                evidence={insight.evidence}
+              />
+            ))}
+          </div>
+        )}
+      </SectionShell>
+
+      <SectionShell
+        title="Headline Suggestions"
+        subtitle="Ready-to-copy headlines for YouTube, Discord, Twitter and future distribution."
+      >
+        {intelligenceLoading ? (
+          <SkeletonRow className="h-16" />
+        ) : headlines.length === 0 ? (
+          <div className="text-xs italic text-muted-foreground">No headline suggestions yet for this patch.</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {headlines.map((headline, index) => (
+              <HeadlineCard
+                key={`headline-${index}`}
+                headline={toText(headline.headline)}
+                kind={toText(headline.kind)}
+                onCopy={copyHeadline}
+              />
+            ))}
           </div>
         )}
       </SectionShell>
