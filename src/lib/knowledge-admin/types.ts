@@ -344,3 +344,66 @@ export interface PatchAnalyticsResponse {
   knowledge?: AnalyticsKnowledge | null;
   [k: string]: unknown;
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Patch Intelligence (GET /patch-intelligence)
+
+   Deterministic analysis owned entirely by the backend. All fields are
+   nullable / optional. The frontend never derives, calculates, or
+   invents values — missing keys render as "awaiting backend" states.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export interface PatchScore {
+  /** 0..100 integer score. */
+  score?: number | null;
+  classification?: string | null;
+  explanation?: string | null;
+}
+
+export interface ExecutiveSummaryInput {
+  primary_theme?: string | null;
+  secondary_theme?: string | null;
+  largest_buff?: string | null;
+  largest_nerf?: string | null;
+  patch_classification?: string | null;
+  champions_changed?: number | null;
+  values_changed?: number | null;
+  buff_count?: number | null;
+  nerf_count?: number | null;
+  [k: string]: unknown;
+}
+
+export interface InterestingFact {
+  headline?: string | null;
+  /** 0..1 confidence fraction. */
+  confidence?: number | null;
+  evidence?: unknown;
+  [k: string]: unknown;
+}
+
+export interface PatchInsight {
+  title?: string | null;
+  kind?: string | null;
+  description?: string | null;
+  available?: boolean | null;
+  availability?: string | null;
+  unavailable_reason?: string | null;
+  evidence?: unknown;
+  [k: string]: unknown;
+}
+
+export interface HeadlineSuggestion {
+  headline?: string | null;
+  kind?: string | null;
+  [k: string]: unknown;
+}
+
+export interface PatchIntelligenceResponse {
+  patch_version?: string | null;
+  patch_score?: PatchScore | null;
+  executive_summary_input?: ExecutiveSummaryInput | null;
+  interesting_facts?: InterestingFact[] | null;
+  insights?: PatchInsight[] | null;
+  headline_suggestions?: HeadlineSuggestion[] | null;
+  [k: string]: unknown;
+}

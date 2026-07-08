@@ -16,6 +16,7 @@ import type {
   UpdatesListResponse,
   UndoResponse,
   PatchAnalyticsResponse,
+  PatchIntelligenceResponse,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -115,6 +116,15 @@ export const knowledgeApi = {
    */
   patchAnalytics: (q: { patch_version?: string; include_changes?: boolean } = {}) =>
     request<PatchAnalyticsResponse>("/patch-analytics", { query: q as QueryLike }),
+
+  /**
+   * Patch Intelligence — deterministic analysis (patch score, executive
+   * summary, insights, headlines). All fields are backend-owned; the UI
+   * only renders. Failures gracefully degrade to /patch-analytics +
+   * /patch-rundown.
+   */
+  patchIntelligence: (q: { patch_version?: string } = {}) =>
+    request<PatchIntelligenceResponse>("/patch-intelligence", { query: q as QueryLike }),
 
   /**
    * Undo a previously-applied write. Backend enforces safety:
