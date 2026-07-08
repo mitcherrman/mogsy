@@ -537,6 +537,7 @@ export function InsightCard({
   availability,
   unavailableReason,
   evidence,
+  detail,
 }: {
   title?: string | null;
   kind?: string | null;
@@ -545,6 +546,7 @@ export function InsightCard({
   availability?: string | null;
   unavailableReason?: string | null;
   evidence?: unknown;
+  detail?: GameplayDetailFields | null;
 }) {
   const [open, setOpen] = useState(false);
   const isAvailable = available !== false && !unavailableReason;
@@ -590,6 +592,7 @@ export function InsightCard({
           {unavailableReason}
         </div>
       )}
+      {detail && <GameplayMetricBlock detail={detail} />}
       {hasEvidence && (
         <>
           <button
