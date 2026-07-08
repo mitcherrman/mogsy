@@ -179,6 +179,13 @@ export default function KnowledgeRundown() {
     retry: false,
   });
 
+  const gameplayQuery = useQuery({
+    queryKey: ["knowledge", "gameplay-impact", patch],
+    queryFn: () =>
+      knowledgeApi.gameplayImpact(patch ? { patch_version: patch } : {}),
+    retry: false,
+  });
+
   const rundown = normalizeRundown(rundownQuery.data);
   const analytics = normalizeAnalytics(analyticsQuery.data);
   const analyticsLoading = analyticsQuery.isLoading;
