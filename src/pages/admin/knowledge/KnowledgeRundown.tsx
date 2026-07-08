@@ -132,62 +132,57 @@ export default function KnowledgeRundown() {
           />
           <MetricCard
             label="Champions Changed"
-            value={championsChanged ?? undefined}
+            value={hero?.champions_changed ?? undefined}
             icon={<Users className="h-4 w-4" />}
             accent="default"
-            loading={loading}
-          />
-          <MetricCard
-            label="Items Changed"
-            icon={<Package className="h-4 w-4" />}
-            loading={loading}
-            hint="Item scope not exposed by API yet."
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Values Changed"
-            value={valuesChanged ?? undefined}
+            value={hero?.values_changed ?? undefined}
             icon={<Activity className="h-4 w-4" />}
-            loading={loading}
+            loading={analyticsLoading}
           />
           <MetricCard
-            label="Properties Touched"
-            value={propertiesTouched ?? undefined}
+            label="Properties Changed"
+            value={hero?.properties_changed ?? undefined}
             icon={<Gauge className="h-4 w-4" />}
-            loading={loading}
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Buffs"
+            value={hero?.buff_count ?? undefined}
             icon={<TrendingUp className="h-4 w-4" />}
             accent="positive"
-            loading={loading}
-            hint="Requires signed delta rollups."
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Nerfs"
+            value={hero?.nerf_count ?? undefined}
             icon={<TrendingDown className="h-4 w-4" />}
             accent="negative"
-            loading={loading}
-            hint="Requires signed delta rollups."
+            loading={analyticsLoading}
           />
           <MetricCard
-            label="Pending Reviews"
-            value={data?.review_counts.pending}
+            label="Pending Changes"
+            value={hero?.pending_changes ?? data?.review_counts.pending}
             icon={<ClipboardList className="h-4 w-4" />}
             accent="warning"
-            loading={loading}
+            loading={analyticsLoading || loading}
           />
           <MetricCard
             label="Approved Changes"
-            value={data?.review_counts.applied}
+            value={hero?.approved_changes ?? data?.review_counts.applied}
             icon={<Check className="h-4 w-4" />}
             accent="positive"
-            loading={loading}
+            loading={analyticsLoading || loading}
           />
           <MetricCard
-            label="Knowledge Confidence"
+            label="Champion Coverage"
+            value={hero?.champion_coverage != null ? `${Math.round(hero.champion_coverage * 100)}%` : undefined}
             icon={<ShieldCheck className="h-4 w-4" />}
-            loading={loading}
-            hint="Aggregate confidence not returned by /patch-rundown."
+            accent="info"
+            loading={analyticsLoading}
           />
         </div>
         {data && (
