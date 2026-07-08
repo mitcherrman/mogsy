@@ -237,6 +237,7 @@ export class BroadcastEngine {
     this.startedAt = null;
     this.correctAnswer = null;
     this.explanation = null;
+    this.revealRequestId++; // invalidate any in-flight reveal fetch
     this.repeatsCompleted = 0;
     this.playedHistory.clear();
     this.phaseStartedAt = 0;
@@ -264,6 +265,7 @@ export class BroadcastEngine {
     this.startedAt = null;
     this.correctAnswer = null;
     this.explanation = null;
+    this.revealRequestId++; // invalidate any in-flight reveal fetch
     this.phaseStartedAt = 0;
     this.phaseDurationMs = 0;
     this.sessionId = newSessionId();
@@ -348,6 +350,12 @@ export class BroadcastEngine {
   }
 
   private async fetchReveal(question: QuizQuestion) {
+    // Every reveal fetch — including the synchronous inline path — bumps the
+    // request id so any in-flight response for a previous question is
+    // invalidated. Otherwise a slow API reveal can land after the engine has
+    // advanced and overwrite the current question's answer/explanation.
+    const id = ++this.revealRequestId;
+
     // Try metadata first — mock data and overrides ship it inline.
     const meta = (question.metadata ?? {}) as Record<string, unknown>;
     const inlineAnswer = (meta.correct_answer as string | undefined) ?? null;
@@ -357,7 +365,6 @@ export class BroadcastEngine {
       this.explanation = inlineExplanation;
       return;
     }
-    const id = ++this.revealRequestId;
     try {
       const firstChoice = question.choices?.[0];
       const sel = typeof firstChoice === "string" ? firstChoice : firstChoice?.label ?? "";
@@ -370,6 +377,7 @@ export class BroadcastEngine {
       this.correctAnswer = res.correct_answer ?? null;
       this.explanation = res.explanation ?? null;
     } catch {
+      if (id !== this.revealRequestId) return; // outdated failure — keep current data
       this.correctAnswer = null;
       this.explanation = null;
     }
