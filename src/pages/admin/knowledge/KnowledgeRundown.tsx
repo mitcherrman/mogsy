@@ -403,15 +403,19 @@ function RankingEntryCard({
   entry?: AnalyticsRankingEntry | null;
   loading?: boolean;
 }) {
-  const champion = entry?.champion ?? null;
-  const detailParts = [entry?.ability_key, entry?.property].filter(Boolean) as string[];
-  const detail = entry?.detail ?? (detailParts.length ? detailParts.join(" · ") : null);
+  const champion = toText(entry?.champion);
+  const abilityText = toText(entry?.ability_key);
+  const propertyText = toText(entry?.property);
+  const detailFromEntry = toText(entry?.detail);
+  const detailFallback = [abilityText, propertyText].filter(Boolean).join(" · ");
+  const detail = detailFromEntry ?? (detailFallback || null);
+  const value = toText(entry?.value);
   return (
     <RankingCard
       label={label}
       champion={champion}
       detail={detail}
-      value={entry?.value ?? null}
+      value={value}
       loading={loading}
     />
   );
