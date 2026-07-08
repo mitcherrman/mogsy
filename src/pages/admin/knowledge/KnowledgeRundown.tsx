@@ -559,13 +559,77 @@ export default function KnowledgeRundown() {
 
       <SectionShell
         title="Gameplay Impact"
-        subtitle="Simulated combat metrics — read-only preview of the future analytics surface."
-        banner={<AwaitingBackendBanner>Available once Combat Lab simulation metrics are connected.</AwaitingBackendBanner>}
+        subtitle="Gameplay-aware metrics from /gameplay-impact — analyst-grade view of what actually changed in combat."
+        banner={
+          gameplayUnavailable && !gameplayLoading ? (
+            <AwaitingBackendBanner>
+              Gameplay Impact unavailable for this patch; other sections remain intact.
+            </AwaitingBackendBanner>
+          ) : undefined
+        }
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {GAMEPLAY_METRICS.map((metric) => (
-            <MetricCard key={metric.label} label={metric.label} icon={metric.icon} accent="info" />
-          ))}
+        <div className="space-y-4">
+          <GameplayImpactSummaryCards
+            metricsComputed={safeNumber(gameplay?.metrics_computed)}
+            metricsUnavailable={safeNumber(gameplay?.metrics_unavailable)}
+            sources={
+              Array.isArray(gameplay?.sources)
+                ? ((gameplay!.sources as unknown[]).filter((v) => typeof v === "string") as string[])
+                : null
+            }
+            generatedAt={toText(gameplay?.generated_at)}
+            loading={gameplayLoading}
+          />
+
+          {gameplayLoading && <SkeletonRow className="h-24" />}
+
+          {!gameplayLoading && gameplayMetrics.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card p-4 text-xs italic text-muted-foreground">
+              No gameplay impact metrics available for this patch yet.
+            </div>
+          )}
+
+          {gameplayMetrics.length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                Top gameplay metrics
+              </div>
+              <GameplayMetricsTable metrics={gameplayMetrics as never} />
+            </div>
+          )}
+
+          {gameplayChampions.length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                Champion impacts
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {gameplayChampions.map((impact, index) => (
+                  <GameplayChampionImpactCard
+                    key={`gc-${toText(impact.champion) ?? index}`}
+                    champion={toText(impact.champion)}
+                    role={toText(impact.role)}
+                    availableKeys={
+                      Array.isArray(impact.available_metric_keys)
+                        ? (impact.available_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
+                        : null
+                    }
+                    unavailableKeys={
+                      Array.isArray(impact.unavailable_metric_keys)
+                        ? (impact.unavailable_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
+                        : null
+                    }
+                    computedCount={safeNumber(impact.computed_count)}
+                    unavailableCount={safeNumber(impact.unavailable_count)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameplay?.assumptions != null && (
+            <AssumptionsPanel assumptions={gameplay.assumptions} />
+          )}
         </div>
       </SectionShell>
 
