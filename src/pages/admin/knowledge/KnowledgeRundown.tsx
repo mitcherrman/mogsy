@@ -116,6 +116,9 @@ export default function KnowledgeRundown() {
       </div>
 
       {scopedQ.error && <ErrorBanner error={scopedQ.error} onRetry={() => scopedQ.refetch()} />}
+      {analyticsQ.error && (
+        <ErrorBanner error={analyticsQ.error as Error} onRetry={() => analyticsQ.refetch()} />
+      )}
 
       {/* ─── 1. HERO SUMMARY ─────────────────────────────────────────────── */}
       <SectionShell
