@@ -253,3 +253,94 @@ export interface UndoResponse {
   restored_full_progression?: string | null;
   [k: string]: unknown;
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Patch Analytics (GET /patch-analytics)
+
+   Everything is nullable / optional. The frontend does NOT compute or
+   derive fields — if the backend returns `null` (or omits a key), the UI
+   renders an "awaiting backend" / "no data" placeholder.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export interface AnalyticsHero {
+  champions_changed?: number | null;
+  values_changed?: number | null;
+  properties_changed?: number | null;
+  buff_count?: number | null;
+  nerf_count?: number | null;
+  pending_changes?: number | null;
+  approved_changes?: number | null;
+  /** 0..1 fraction of the champion pool with tracked changes. */
+  champion_coverage?: number | null;
+}
+
+export interface AnalyticsRankingEntry {
+  champion?: string | null;
+  ability_key?: string | null;
+  property?: string | null;
+  detail?: string | null;
+  value?: number | string | null;
+}
+
+export interface AnalyticsRankings {
+  most_changed_champion?: AnalyticsRankingEntry | null;
+  biggest_buff?: AnalyticsRankingEntry | null;
+  biggest_nerf?: AnalyticsRankingEntry | null;
+  largest_cooldown_reduction?: AnalyticsRankingEntry | null;
+  largest_mana_increase?: AnalyticsRankingEntry | null;
+  largest_percentage_increase?: AnalyticsRankingEntry | null;
+  largest_percentage_decrease?: AnalyticsRankingEntry | null;
+  [k: string]: AnalyticsRankingEntry | null | undefined;
+}
+
+export interface AnalyticsPropertyBreakdown {
+  count?: number | null;
+  largest_delta?: number | string | null;
+  largest_pct?: number | string | null;
+  top_champion?: string | null;
+  buff_count?: number | null;
+  nerf_count?: number | null;
+}
+
+export interface AnalyticsChampionChange {
+  rank?: number | null;
+  ability_key?: string | null;
+  property?: string | null;
+  old_value?: number | string | null;
+  new_value?: number | string | null;
+  delta?: number | null;
+  delta_pct?: number | null;
+  severity?: Severity | null;
+}
+
+export interface AnalyticsChampion {
+  champion: string;
+  values_changed?: number | null;
+  properties_changed?: number | null;
+  buff_count?: number | null;
+  nerf_count?: number | null;
+  max_severity?: Severity | null;
+  net_change_score?: number | null;
+  changes?: AnalyticsChampionChange[] | null;
+}
+
+export interface AnalyticsKnowledge {
+  /** All values are 0..1 fractions if present. */
+  coverage?: number | null;
+  approved?: number | null;
+  pending?: number | null;
+  parser_gaps?: number | null;
+  consensus?: number | null;
+  confidence?: number | null;
+  health?: number | null;
+}
+
+export interface PatchAnalyticsResponse {
+  patch_version?: string | null;
+  hero?: AnalyticsHero | null;
+  rankings?: AnalyticsRankings | null;
+  property_breakdown?: Record<string, AnalyticsPropertyBreakdown | null> | null;
+  champions?: AnalyticsChampion[] | null;
+  knowledge?: AnalyticsKnowledge | null;
+  [k: string]: unknown;
+}
