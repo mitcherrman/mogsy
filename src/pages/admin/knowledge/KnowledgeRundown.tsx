@@ -238,6 +238,16 @@ export default function KnowledgeRundown() {
     ? (intelligence!.headline_suggestions as unknown[]).filter(isRecord)
     : [];
 
+  const gameplay = isRecord(gameplayQuery.data) ? gameplayQuery.data as GameplayImpactResponse : null;
+  const gameplayLoading = gameplayQuery.isLoading;
+  const gameplayUnavailable = gameplayQuery.isError || !gameplay;
+  const gameplayMetrics = Array.isArray(gameplay?.metrics)
+    ? (gameplay!.metrics as unknown[]).filter(isRecord) as GameplayImpactMetric[]
+    : [];
+  const gameplayChampions = Array.isArray(gameplay?.champion_impacts)
+    ? (gameplay!.champion_impacts as unknown[]).filter(isRecord) as GameplayImpactChampion[]
+    : [];
+
   const execItems = [
     { label: "Primary Theme", value: toText(execSummary?.primary_theme), tone: "info" as const },
     { label: "Secondary Theme", value: toText(execSummary?.secondary_theme), tone: "info" as const },
