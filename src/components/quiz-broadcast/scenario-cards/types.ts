@@ -54,6 +54,10 @@ export type ItemAnalysisSubject = {
   /** Single known stat from exact-stat questions ("15" + "Ability Haste"). */
   statValue?: { value: string; label: string };
   buildsInto?: string;
+  /** Build-path questions: components named in the question (safe pre-reveal). */
+  knownComponents: string[];
+  /** Build-path questions: the ANSWER — render only when revealed. */
+  missingComponent?: { name: string; icon: string | null };
 };
 
 /** One entry in a ScenarioSection — item, rune, dragon, buff, patch, etc. */

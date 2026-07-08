@@ -337,6 +337,24 @@ export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubj
       ? { value: meta.formatted_value, label: meta.stat_label }
       : undefined;
 
+  const knownComponents = Array.isArray(meta.known_components)
+    ? meta.known_components.filter((c): c is string => typeof c === "string")
+    : [];
+
+  // The missing component is the correct answer. Parsed here but the card
+  // must only render it when the reveal is active. Icon derived from the
+  // standard assets/items/{id}.png convention; the card hides it on 404.
+  const missingComponent =
+    typeof meta.missing_component_item_name === "string"
+      ? {
+          name: meta.missing_component_item_name,
+          icon:
+            typeof meta.missing_component_item_id === "number"
+              ? resolveQuizAssetUrl(`assets/items/${meta.missing_component_item_id}.png`)
+              : null,
+        }
+      : undefined;
+
   return {
     name,
     icon: resolveQuizAssetUrl((subject.icon as string | undefined) ?? (meta.asset_path as string | undefined)),
@@ -344,6 +362,8 @@ export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubj
     statCodes: Array.isArray(meta.stats) ? meta.stats.filter((s): s is string => typeof s === "string") : [],
     statValue,
     buildsInto: typeof meta.parent_item_name === "string" ? meta.parent_item_name : undefined,
+    knownComponents,
+    missingComponent,
   };
 }
 
