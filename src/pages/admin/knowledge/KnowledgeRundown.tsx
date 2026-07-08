@@ -26,7 +26,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
-import type { PatchRundownResponse, RundownGroup } from "@/lib/knowledge-admin/types";
+import type {
+  PatchRundownResponse,
+  RundownGroup,
+  AnalyticsChampion,
+  AnalyticsRankingEntry,
+  AnalyticsPropertyBreakdown,
+  AnalyticsKnowledge,
+  Severity,
+} from "@/lib/knowledge-admin/types";
 import { ErrorBanner, ProviderBadge, SkeletonRow, SeverityBadge } from "./shared";
 import {
   MetricCard,
@@ -58,6 +66,17 @@ export default function KnowledgeRundown() {
     queryFn: () => knowledgeApi.patchRundown(patch ? { patch_version: patch } : {}),
   });
 
+  // Real analytics feed (nullable/optional at every field).
+  const analyticsQ = useQuery({
+    queryKey: ["knowledge", "patch-analytics", patch],
+    queryFn: () =>
+      knowledgeApi.patchAnalytics({
+        patch_version: patch || undefined,
+        include_changes: true,
+      }),
+    retry: false,
+  });
+
   const availablePatches = useMemo(() => {
     const set = new Set<string>();
     (patchesQ.data?.groups ?? []).forEach((g) => g.patch_version && set.add(g.patch_version));
@@ -65,16 +84,16 @@ export default function KnowledgeRundown() {
   }, [patchesQ.data]);
 
   const data = scopedQ.data;
+  const analytics = analyticsQ.data;
+  const hero = analytics?.hero ?? null;
+  const rankings = analytics?.rankings ?? null;
+  const propertyBreakdown = analytics?.property_breakdown ?? null;
+  const knowledge = analytics?.knowledge ?? null;
+  const analyticsChampions = analytics?.champions ?? null;
   const groupedByChampion = useMemo(() => groupByChampion(data?.groups ?? []), [data]);
   const generated = useMemo(() => (data ? buildGeneratedContent(data, patch) : null), [data, patch]);
   const loading = scopedQ.isLoading;
-
-  // Real, non-derived counts we can safely surface today.
-  const championsChanged = data ? Object.keys(data.by_champion).length : null;
-  const valuesChanged = data
-    ? data.groups.reduce((sum, g) => sum + (g.rank_count ?? 0), 0)
-    : null;
-  const propertiesTouched = data ? Object.keys(data.by_property).length : null;
+  const analyticsLoading = analyticsQ.isLoading;
 
   return (
     <div className="space-y-4">
@@ -97,6 +116,9 @@ export default function KnowledgeRundown() {
       </div>
 
       {scopedQ.error && <ErrorBanner error={scopedQ.error} onRetry={() => scopedQ.refetch()} />}
+      {analyticsQ.error && (
+        <ErrorBanner error={analyticsQ.error as Error} onRetry={() => analyticsQ.refetch()} />
+      )}
 
       {/* ─── 1. HERO SUMMARY ─────────────────────────────────────────────── */}
       <SectionShell
@@ -113,62 +135,57 @@ export default function KnowledgeRundown() {
           />
           <MetricCard
             label="Champions Changed"
-            value={championsChanged ?? undefined}
+            value={hero?.champions_changed ?? undefined}
             icon={<Users className="h-4 w-4" />}
             accent="default"
-            loading={loading}
-          />
-          <MetricCard
-            label="Items Changed"
-            icon={<Package className="h-4 w-4" />}
-            loading={loading}
-            hint="Item scope not exposed by API yet."
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Values Changed"
-            value={valuesChanged ?? undefined}
+            value={hero?.values_changed ?? undefined}
             icon={<Activity className="h-4 w-4" />}
-            loading={loading}
+            loading={analyticsLoading}
           />
           <MetricCard
-            label="Properties Touched"
-            value={propertiesTouched ?? undefined}
+            label="Properties Changed"
+            value={hero?.properties_changed ?? undefined}
             icon={<Gauge className="h-4 w-4" />}
-            loading={loading}
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Buffs"
+            value={hero?.buff_count ?? undefined}
             icon={<TrendingUp className="h-4 w-4" />}
             accent="positive"
-            loading={loading}
-            hint="Requires signed delta rollups."
+            loading={analyticsLoading}
           />
           <MetricCard
             label="Nerfs"
+            value={hero?.nerf_count ?? undefined}
             icon={<TrendingDown className="h-4 w-4" />}
             accent="negative"
-            loading={loading}
-            hint="Requires signed delta rollups."
+            loading={analyticsLoading}
           />
           <MetricCard
-            label="Pending Reviews"
-            value={data?.review_counts.pending}
+            label="Pending Changes"
+            value={hero?.pending_changes ?? data?.review_counts.pending}
             icon={<ClipboardList className="h-4 w-4" />}
             accent="warning"
-            loading={loading}
+            loading={analyticsLoading || loading}
           />
           <MetricCard
             label="Approved Changes"
-            value={data?.review_counts.applied}
+            value={hero?.approved_changes ?? data?.review_counts.applied}
             icon={<Check className="h-4 w-4" />}
             accent="positive"
-            loading={loading}
+            loading={analyticsLoading || loading}
           />
           <MetricCard
-            label="Knowledge Confidence"
+            label="Champion Coverage"
+            value={hero?.champion_coverage != null ? `${Math.round(hero.champion_coverage * 100)}%` : undefined}
             icon={<ShieldCheck className="h-4 w-4" />}
-            loading={loading}
-            hint="Aggregate confidence not returned by /patch-rundown."
+            accent="info"
+            loading={analyticsLoading}
           />
         </div>
         {data && (
@@ -184,35 +201,36 @@ export default function KnowledgeRundown() {
       {/* ─── 2. RANKINGS ─────────────────────────────────────────────────── */}
       <SectionShell
         title="Rankings"
-        subtitle="Superlatives across the patch. Requires signed-delta analytics from the backend."
+        subtitle="Superlatives across the patch, served by /patch-analytics."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <RankingCard label="Biggest Buff" loading={loading} />
-          <RankingCard label="Biggest Nerf" loading={loading} />
-          <RankingCard label="Most Changed Champion" loading={loading} />
-          <RankingCard label="Largest Cooldown Reduction" loading={loading} />
-          <RankingCard label="Largest Mana Change" loading={loading} />
-          <RankingCard label="Largest Percentage Change" loading={loading} />
-          <RankingCard label="Largest Damage Increase" loading={loading} />
-          <RankingCard label="Largest Range Change" loading={loading} />
+          <RankingEntryCard label="Most Changed Champion" entry={rankings?.most_changed_champion} loading={analyticsLoading} />
+          <RankingEntryCard label="Biggest Buff" entry={rankings?.biggest_buff} loading={analyticsLoading} />
+          <RankingEntryCard label="Biggest Nerf" entry={rankings?.biggest_nerf} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest Cooldown Reduction" entry={rankings?.largest_cooldown_reduction} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest Mana Increase" entry={rankings?.largest_mana_increase} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest % Increase" entry={rankings?.largest_percentage_increase} loading={analyticsLoading} />
+          <RankingEntryCard label="Largest % Decrease" entry={rankings?.largest_percentage_decrease} loading={analyticsLoading} />
         </div>
       </SectionShell>
 
       {/* ─── 3. PROPERTY BREAKDOWN ───────────────────────────────────────── */}
       <SectionShell
         title="Property Breakdown"
-        subtitle="Per-property rollup. Counts read from /patch-rundown; deltas awaiting backend."
+        subtitle="Per-property rollups from /patch-analytics."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PROPERTY_KEYS.map((prop) => {
-            const bucket = data?.by_property?.[prop.key];
-            const count = bucket ? bucket.pending + bucket.applied + bucket.rejected : null;
+            const bd = propertyBreakdown?.[prop.key];
             return (
               <PropertyBreakdownCard
                 key={prop.key}
                 property={prop.label}
-                count={count}
-                loading={loading}
+                count={bd?.count ?? null}
+                largestDelta={bd?.largest_delta ?? null}
+                largestPct={bd?.largest_pct ?? null}
+                topChampion={bd?.top_champion ?? null}
+                loading={analyticsLoading}
               />
             );
           })}
@@ -222,20 +240,31 @@ export default function KnowledgeRundown() {
       {/* ─── 4. CHAMPION INTELLIGENCE ────────────────────────────────────── */}
       <SectionShell
         title="Champion Intelligence"
-        subtitle="Per-champion breakdown. Expand for provider & property list; scoring analytics awaiting backend."
+        subtitle="Per-champion analytics from /patch-analytics. Expand for per-rank change list."
       >
-        {loading && <SkeletonRow className="h-24" />}
-        {data && (
+        {(analyticsLoading || loading) && <SkeletonRow className="h-24" />}
+        {analyticsChampions && analyticsChampions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[...analyticsChampions]
+              .sort((a, b) => (b.net_change_score ?? 0) - (a.net_change_score ?? 0))
+              .map((c) => (
+                <ChampionIntelCard
+                  key={c.champion}
+                  champion={c.champion}
+                  analytics={c}
+                  groups={groupedByChampion[c.champion] ?? []}
+                />
+              ))}
+          </div>
+        ) : data ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {Object.entries(data.by_champion)
               .sort((a, b) => b[1].pending - a[1].pending)
-              .map(([champ, counts]) => (
+              .map(([champ]) => (
                 <ChampionIntelCard
                   key={champ}
                   champion={champ}
-                  pending={counts.pending}
-                  applied={counts.applied}
-                  rejected={counts.rejected}
+                  analytics={null}
                   groups={groupedByChampion[champ] ?? []}
                 />
               ))}
@@ -243,24 +272,28 @@ export default function KnowledgeRundown() {
               <div className="text-xs text-muted-foreground italic">No champion changes in this scope.</div>
             )}
           </div>
-        )}
+        ) : null}
       </SectionShell>
 
       {/* ─── 5. KNOWLEDGE QUALITY ────────────────────────────────────────── */}
       <SectionShell
         title="Knowledge Quality"
-        subtitle="Reflects the backing knowledge base. Metrics served from /health once cross-linked."
+        subtitle="Metrics served by /patch-analytics.knowledge."
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {["Coverage", "Approved", "Pending", "Parser Gaps", "Consensus", "Confidence", "Health"].map((label) => (
-            <div key={label} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
-              <ProgressRing loading={loading} />
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
-                {label}
+          {KNOWLEDGE_METRICS.map(({ key, label }) => {
+            const value = knowledge?.[key];
+            const has = value !== undefined && value !== null;
+            return (
+              <div key={key} className="rounded-xl border border-border bg-card p-3 flex flex-col items-center gap-2">
+                <ProgressRing value={has ? value : undefined} loading={analyticsLoading} />
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground text-center">
+                  {label}
+                </div>
+                {!analyticsLoading && !has && <PendingBadge />}
               </div>
-              {!loading && <PendingBadge />}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SectionShell>
 
@@ -307,13 +340,22 @@ function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]>
 /* ─── Property registry ──────────────────────────────────────────────── */
 const PROPERTY_KEYS: { key: string; label: string }[] = [
   { key: "cooldown", label: "Cooldown" },
-  { key: "mana", label: "Mana" },
+  { key: "mana_cost", label: "Mana Cost" },
   { key: "damage", label: "Damage" },
-  { key: "ratio", label: "Ratios" },
   { key: "range", label: "Range" },
+  { key: "ratio", label: "Ratios" },
   { key: "healing", label: "Healing" },
-  { key: "shield", label: "Shields" },
-  { key: "movement_speed", label: "Movement Speed" },
+  { key: "shield", label: "Shield" },
+];
+
+const KNOWLEDGE_METRICS: { key: keyof AnalyticsKnowledge; label: string }[] = [
+  { key: "coverage", label: "Coverage" },
+  { key: "approved", label: "Approved" },
+  { key: "pending", label: "Pending" },
+  { key: "parser_gaps", label: "Parser Gaps" },
+  { key: "consensus", label: "Consensus" },
+  { key: "confidence", label: "Confidence" },
+  { key: "health", label: "Health" },
 ];
 
 const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
@@ -331,21 +373,48 @@ const GAMEPLAY_METRICS: { label: string; icon: React.ReactNode }[] = [
   { label: "Gold Efficiency",        icon: <Beaker className="h-4 w-4" /> },
 ];
 
-/** Expandable champion card — richer analytics slots in later. */
+/** Ranking card that unpacks an AnalyticsRankingEntry. */
+function RankingEntryCard({
+  label,
+  entry,
+  loading,
+}: {
+  label: string;
+  entry?: AnalyticsRankingEntry | null;
+  loading?: boolean;
+}) {
+  const champion = entry?.champion ?? null;
+  const detailParts = [entry?.ability_key, entry?.property].filter(Boolean) as string[];
+  const detail = entry?.detail ?? (detailParts.length ? detailParts.join(" · ") : null);
+  return (
+    <RankingCard
+      label={label}
+      champion={champion}
+      detail={detail}
+      value={entry?.value ?? null}
+      loading={loading}
+    />
+  );
+}
+
+/** Expandable champion card. Consumes AnalyticsChampion when available. */
 function ChampionIntelCard({
   champion,
-  pending,
-  applied,
-  rejected,
+  analytics,
   groups,
 }: {
   champion: string;
-  pending: number;
-  applied: number;
-  rejected: number;
+  analytics: AnalyticsChampion | null;
   groups: RundownGroup[];
 }) {
   const [open, setOpen] = useState(false);
+  const valuesChanged = analytics?.values_changed ?? null;
+  const propertiesChanged = analytics?.properties_changed ?? null;
+  const buffs = analytics?.buff_count ?? null;
+  const nerfs = analytics?.nerf_count ?? null;
+  const maxSeverity: Severity | null = analytics?.max_severity ?? null;
+  const net = analytics?.net_change_score ?? null;
+  const changes = analytics?.changes ?? null;
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <button
@@ -355,21 +424,28 @@ function ChampionIntelCard({
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <div className="flex-1 min-w-0">
           <div className="font-extrabold text-sm truncate">{champion}</div>
-          <div className="text-[11px] text-muted-foreground tabular-nums">
-            <span className="text-amber-300">{pending} pending</span>
-            <span className="mx-1">·</span>
-            <span className="text-emerald-300">{applied} applied</span>
-            <span className="mx-1">·</span>
-            <span className="text-red-300">{rejected} rejected</span>
+          <div className="text-[11px] text-muted-foreground tabular-nums flex flex-wrap gap-x-2">
+            {valuesChanged != null && <span>{valuesChanged} values</span>}
+            {propertiesChanged != null && <span>· {propertiesChanged} props</span>}
+            {buffs != null && <span className="text-emerald-300">· {buffs} buff{buffs === 1 ? "" : "s"}</span>}
+            {nerfs != null && <span className="text-red-300">· {nerfs} nerf{nerfs === 1 ? "" : "s"}</span>}
+            {valuesChanged == null && propertiesChanged == null && buffs == null && nerfs == null && (
+              <span className="italic text-muted-foreground/60">awaiting analytics</span>
+            )}
           </div>
         </div>
-        <PendingBadge />
+        {maxSeverity ? <SeverityBadge severity={maxSeverity} /> : <PendingBadge />}
+        {net != null && (
+          <div className="text-xs font-black tabular-nums text-primary ml-2">
+            {net > 0 ? "+" : ""}{Math.round(net * 100) / 100}
+          </div>
+        )}
       </button>
       {open && (
         <div className="border-t border-border p-3 space-y-3 animate-fade-in">
           <div>
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
-              Property changes
+              Property groups
             </div>
             <ul className="space-y-1 text-xs">
               {groups.map((g, i) => (
@@ -392,14 +468,54 @@ function ChampionIntelCard({
               )}
             </ul>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {["Summary", "Severity", "Impact score", "Rankings", "Confidence", "Provider evidence"].map((label) => (
-              <div key={label} className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
-                <PendingBadge />
+          {changes && changes.length > 0 ? (
+            <div>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+                Per-rank changes
               </div>
-            ))}
-          </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] tabular-nums">
+                  <thead className="text-muted-foreground">
+                    <tr className="text-left">
+                      <th className="pr-2 font-bold">Rank</th>
+                      <th className="pr-2 font-bold">Ability</th>
+                      <th className="pr-2 font-bold">Property</th>
+                      <th className="pr-2 font-bold">Old</th>
+                      <th className="pr-2 font-bold">New</th>
+                      <th className="pr-2 font-bold">Δ</th>
+                      <th className="pr-2 font-bold">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {changes.map((c, i) => {
+                      const delta = c.delta ?? null;
+                      const tone = delta == null ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-red-300" : "";
+                      return (
+                        <tr key={i} className="border-t border-border/40">
+                          <td className="pr-2">{c.rank ?? "—"}</td>
+                          <td className="pr-2">{c.ability_key ?? "—"}</td>
+                          <td className="pr-2">{c.property ?? "—"}</td>
+                          <td className="pr-2">{c.old_value ?? "—"}</td>
+                          <td className="pr-2">{c.new_value ?? "—"}</td>
+                          <td className={`pr-2 ${tone}`}>{delta != null ? (delta > 0 ? `+${delta}` : delta) : "—"}</td>
+                          <td className={`pr-2 ${tone}`}>
+                            {c.delta_pct != null ? `${c.delta_pct > 0 ? "+" : ""}${Math.round(c.delta_pct * 10) / 10}%` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded bg-background/40 px-2 py-1.5 flex items-center justify-between gap-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Per-rank change list
+              </div>
+              <PendingBadge />
+            </div>
+          )}
         </div>
       )}
     </div>
