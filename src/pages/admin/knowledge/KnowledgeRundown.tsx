@@ -452,6 +452,7 @@ export default function KnowledgeRundown() {
                 availability={toText(insight.availability)}
                 unavailableReason={toText(insight.unavailable_reason)}
                 evidence={insight.evidence}
+                detail={extractGameplayDetail(insight)}
               />
             ))}
           </div>
