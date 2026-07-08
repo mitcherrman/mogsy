@@ -227,9 +227,9 @@ export default function KnowledgeRundown() {
                 key={prop.key}
                 property={prop.label}
                 count={bd?.count ?? null}
-                largestDelta={bd?.largest_delta ?? null}
-                largestPct={bd?.largest_pct ?? null}
-                topChampion={bd?.top_champion ?? null}
+                largestDelta={toText(bd?.largest_delta)}
+                largestPct={toText(bd?.largest_pct)}
+                topChampion={toText(bd?.top_champion)}
                 loading={analyticsLoading}
               />
             );
@@ -337,6 +337,26 @@ function groupByChampion(groups: RundownGroup[]): Record<string, RundownGroup[]>
   return out;
 }
 
+/** Coerce any backend value into something safe to render as a React child. */
+function toText(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    const parts = [obj.ability_key, obj.property, obj.champion, obj.label, obj.name]
+      .filter((x) => typeof x === "string" && x)
+      .map(String);
+    if (parts.length) return parts.join(" · ");
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return null;
+    }
+  }
+  return String(v);
+}
+
 /* ─── Property registry ──────────────────────────────────────────────── */
 const PROPERTY_KEYS: { key: string; label: string }[] = [
   { key: "cooldown", label: "Cooldown" },
@@ -383,15 +403,19 @@ function RankingEntryCard({
   entry?: AnalyticsRankingEntry | null;
   loading?: boolean;
 }) {
-  const champion = entry?.champion ?? null;
-  const detailParts = [entry?.ability_key, entry?.property].filter(Boolean) as string[];
-  const detail = entry?.detail ?? (detailParts.length ? detailParts.join(" · ") : null);
+  const champion = toText(entry?.champion);
+  const abilityText = toText(entry?.ability_key);
+  const propertyText = toText(entry?.property);
+  const detailFromEntry = toText(entry?.detail);
+  const detailFallback = [abilityText, propertyText].filter(Boolean).join(" · ");
+  const detail = detailFromEntry ?? (detailFallback || null);
+  const value = toText(entry?.value);
   return (
     <RankingCard
       label={label}
       champion={champion}
       detail={detail}
-      value={entry?.value ?? null}
+      value={value}
       loading={loading}
     />
   );
@@ -451,12 +475,12 @@ function ChampionIntelCard({
               {groups.map((g, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <ProviderBadge provider={g.provider} />
-                  <span>{g.ability_key} {g.property}</span>
+                  <span>{toText(g.ability_key)} {toText(g.property)}</span>
                   <span className="text-muted-foreground">
                     {g.rank_count} rank{g.rank_count === 1 ? "" : "s"}
                   </span>
                   <Link
-                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(g.property)}`}
+                    to={`/admin/knowledge/queue?champion=${encodeURIComponent(champion)}&property=${encodeURIComponent(toText(g.property) ?? "")}`}
                     className="ml-auto text-primary hover:underline"
                   >
                     review →
@@ -492,11 +516,11 @@ function ChampionIntelCard({
                       const tone = delta == null ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-red-300" : "";
                       return (
                         <tr key={i} className="border-t border-border/40">
-                          <td className="pr-2">{c.rank ?? "—"}</td>
-                          <td className="pr-2">{c.ability_key ?? "—"}</td>
-                          <td className="pr-2">{c.property ?? "—"}</td>
-                          <td className="pr-2">{c.old_value ?? "—"}</td>
-                          <td className="pr-2">{c.new_value ?? "—"}</td>
+                          <td className="pr-2">{toText(c.rank) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.ability_key) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.property) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.old_value) ?? "—"}</td>
+                          <td className="pr-2">{toText(c.new_value) ?? "—"}</td>
                           <td className={`pr-2 ${tone}`}>{delta != null ? (delta > 0 ? `+${delta}` : delta) : "—"}</td>
                           <td className={`pr-2 ${tone}`}>
                             {c.delta_pct != null ? `${c.delta_pct > 0 ? "+" : ""}${Math.round(c.delta_pct * 10) / 10}%` : "—"}
