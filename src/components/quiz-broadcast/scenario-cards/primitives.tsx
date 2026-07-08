@@ -85,6 +85,38 @@ export function ScenarioSubject({
   );
 }
 
+/**
+ * Hero artwork for subjects without splash art (items, runes, spells):
+ * a large centered icon with a soft gold glow and gentle float, sitting in
+ * the card's upper art zone.
+ */
+export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
+  const [errored, setErrored] = useState(false);
+  if (!iconUrl || errored) return null;
+  return (
+    <div className="absolute inset-x-0 top-[10%] flex h-[46%] items-center justify-center">
+      <motion.div
+        className="relative"
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <motion.div
+          aria-hidden
+          className="absolute -inset-[2vmin] rounded-3xl bg-[#d4b35a]/20 blur-2xl"
+          animate={{ opacity: [0.4, 0.75, 0.4] }}
+          transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <img
+          src={iconUrl}
+          alt={alt}
+          onError={() => setErrored(true)}
+          className="relative h-[13vmin] w-[13vmin] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
+        />
+      </motion.div>
+    </div>
+  );
+}
+
 /** UNDER WHAT CONDITIONS — one calculation parameter as a contained chip. */
 export function ConditionChip({ label, value }: { label: string; value: string | number }) {
   return (

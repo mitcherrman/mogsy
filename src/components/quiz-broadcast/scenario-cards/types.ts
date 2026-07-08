@@ -44,6 +44,18 @@ export type CombatCooldownSubject = {
   totalAbilityHaste?: number;
 };
 
+/** Parsed payload for item analysis questions. */
+export type ItemAnalysisSubject = {
+  name: string;
+  icon?: string | null;
+  cost?: number;
+  /** Raw stat codes from metadata.stats (e.g. "AD", "ABILITY_HASTE"). */
+  statCodes: string[];
+  /** Single known stat from exact-stat questions ("15" + "Ability Haste"). */
+  statValue?: { value: string; label: string };
+  buildsInto?: string;
+};
+
 /** One entry in a ScenarioSection — item, rune, dragon, buff, patch, etc. */
 export type ScenarioEntryData = {
   icon?: string | null;
@@ -62,6 +74,7 @@ export type ScenarioSectionData = {
 /** Discriminated union produced by selectScenario — one variant per card. */
 export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
+  | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }
   | { card: "placeholder"; key: string; kind: SubjectKind; category: string }

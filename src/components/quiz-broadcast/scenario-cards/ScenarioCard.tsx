@@ -4,6 +4,7 @@ import type { ScenarioCardProps, ScenarioSelection } from "./types";
 import { selectScenario } from "./classify";
 import { ChampionScenarioCard } from "./ChampionScenarioCard";
 import { CombatCalculationScenarioCard } from "./CombatCalculationScenarioCard";
+import { ItemAnalysisScenarioCard } from "./ItemAnalysisScenarioCard";
 import { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 
 /**
@@ -35,17 +36,19 @@ export function ScenarioCard({ question, revealActive, correctAnswer }: Scenario
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           className="flex h-full w-full items-center justify-center"
         >
-          {renderCard(selection)}
+          {renderCard(selection, revealActive)}
         </motion.div>
       </AnimatePresence>
     </div>
   );
 }
 
-function renderCard(selection: ScenarioSelection) {
+function renderCard(selection: ScenarioSelection, revealed: boolean) {
   switch (selection.card) {
     case "combat_calculation":
       return <CombatCalculationScenarioCard subject={selection.combat} />;
+    case "item_analysis":
+      return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;
     case "champion_profile":
       return <ChampionScenarioCard champion={selection.champion} />;
     case "collectible":

@@ -17,6 +17,7 @@ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
+  ItemAnalysisSubject,
   ScenarioSelection,
   SubjectKind,
 } from "./types";
@@ -322,6 +323,30 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
   };
 }
 
+export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || subject.type !== "item") return null;
+  const name = (subject.name as string | undefined) ?? (meta.item_name as string | undefined);
+  if (!name) return null;
+
+  const statValue =
+    typeof meta.formatted_value === "string" && typeof meta.stat_label === "string"
+      ? { value: meta.formatted_value, label: meta.stat_label }
+      : undefined;
+
+  return {
+    name,
+    icon: resolveQuizAssetUrl((subject.icon as string | undefined) ?? (meta.asset_path as string | undefined)),
+    cost: typeof meta.cost === "number" ? meta.cost : undefined,
+    statCodes: Array.isArray(meta.stats) ? meta.stats.filter((s): s is string => typeof s === "string") : [],
+    statValue,
+    buildsInto: typeof meta.parent_item_name === "string" ? meta.parent_item_name : undefined,
+  };
+}
+
 /** Explicit scenario type from metadata.presentation.scenario_type, if any. */
 function getExplicitScenarioType(question: QuizQuestion): string | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
@@ -346,6 +371,7 @@ export function selectScenario(
   const shouldHide = spoiler && !revealActive;
 
   const combat = getCombatCooldownSubject(question);
+  const item = getItemAnalysisSubject(question);
   const explicit = getExplicitScenarioType(question);
 
   // Tier 1: explicit scenario_type (falls through when the payload is missing)
@@ -353,14 +379,20 @@ export function selectScenario(
     if ((explicit === "combat_calculation" || explicit === "combat_simulation") && combat) {
       return { card: "combat_calculation", key: `combat-${question.id}`, combat };
     }
+    if (explicit === "item" && item) {
+      return { card: "item_analysis", key: `item-${question.id}`, item };
+    }
     if ((explicit === "champion_profile" || explicit === "champion") && subject.label) {
       return { card: "champion_profile", key: `champ-${subject.label}`, champion: subject.label };
     }
   }
 
-  // Tier 2: assets.subject.type — today's combat cooldown behavior
+  // Tier 2: assets.subject.type
   if (combat && !shouldHide) {
     return { card: "combat_calculation", key: `combat-${question.id}`, combat };
+  }
+  if (item && !shouldHide) {
+    return { card: "item_analysis", key: `item-${question.id}`, item };
   }
 
   // Tier 3: legacy SubjectPanel order, unchanged

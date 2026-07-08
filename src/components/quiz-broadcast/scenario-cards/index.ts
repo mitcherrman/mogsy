@@ -1,10 +1,12 @@
 export { ScenarioCard } from "./ScenarioCard";
 export { ScenarioCardFrame } from "./ScenarioCardFrame";
+export { ItemAnalysisScenarioCard } from "./ItemAnalysisScenarioCard";
 export {
   ConditionChip,
   ScenarioBadge,
   ScenarioDivider,
   ScenarioEntry,
+  ScenarioHeroIcon,
   ScenarioSection,
   ScenarioSubject,
   ScenarioTitle,
@@ -18,6 +20,7 @@ export {
   classifySubject,
   deriveRevealSubject,
   getCombatCooldownSubject,
+  getItemAnalysisSubject,
   inferKindFromQuestion,
   isSpoilerSubject,
   normalizeLabel,
@@ -26,6 +29,7 @@ export {
 export type {
   ClassifiedSubject,
   CombatCooldownSubject,
+  ItemAnalysisSubject,
   ScenarioCardProps,
   ScenarioEntryData,
   ScenarioSectionData,
