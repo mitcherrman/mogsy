@@ -66,6 +66,17 @@ export default function KnowledgeRundown() {
     queryFn: () => knowledgeApi.patchRundown(patch ? { patch_version: patch } : {}),
   });
 
+  // Real analytics feed (nullable/optional at every field).
+  const analyticsQ = useQuery({
+    queryKey: ["knowledge", "patch-analytics", patch],
+    queryFn: () =>
+      knowledgeApi.patchAnalytics({
+        patch_version: patch || undefined,
+        include_changes: true,
+      }),
+    retry: false,
+  });
+
   const availablePatches = useMemo(() => {
     const set = new Set<string>();
     (patchesQ.data?.groups ?? []).forEach((g) => g.patch_version && set.add(g.patch_version));
@@ -73,16 +84,16 @@ export default function KnowledgeRundown() {
   }, [patchesQ.data]);
 
   const data = scopedQ.data;
+  const analytics = analyticsQ.data;
+  const hero = analytics?.hero ?? null;
+  const rankings = analytics?.rankings ?? null;
+  const propertyBreakdown = analytics?.property_breakdown ?? null;
+  const knowledge = analytics?.knowledge ?? null;
+  const analyticsChampions = analytics?.champions ?? null;
   const groupedByChampion = useMemo(() => groupByChampion(data?.groups ?? []), [data]);
   const generated = useMemo(() => (data ? buildGeneratedContent(data, patch) : null), [data, patch]);
   const loading = scopedQ.isLoading;
-
-  // Real, non-derived counts we can safely surface today.
-  const championsChanged = data ? Object.keys(data.by_champion).length : null;
-  const valuesChanged = data
-    ? data.groups.reduce((sum, g) => sum + (g.rank_count ?? 0), 0)
-    : null;
-  const propertiesTouched = data ? Object.keys(data.by_property).length : null;
+  const analyticsLoading = analyticsQ.isLoading;
 
   return (
     <div className="space-y-4">
