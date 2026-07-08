@@ -15,6 +15,7 @@ import type {
   UpdateDetail,
   UpdatesListResponse,
   UndoResponse,
+  PatchAnalyticsResponse,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -106,6 +107,14 @@ export const knowledgeApi = {
 
   patchRundown: (q: { patch_version?: string; champion?: string; include_consensus?: boolean } = {}) =>
     request<PatchRundownResponse>("/patch-rundown", { query: q as QueryLike }),
+
+  /**
+   * Patch Intelligence analytics. Backend owns all derivation; the UI
+   * only reads. Fields may be null / omitted while the endpoint is still
+   * being built out — the UI renders "awaiting backend" for those.
+   */
+  patchAnalytics: (q: { patch_version?: string; include_changes?: boolean } = {}) =>
+    request<PatchAnalyticsResponse>("/patch-analytics", { query: q as QueryLike }),
 
   /**
    * Undo a previously-applied write. Backend enforces safety:
