@@ -205,6 +205,12 @@ export type QuizReport = {
 // Quiz Review Console types
 // ---------------------------------------------------------------------------
 
+export type ReviewQuestionPack = {
+  pack_key: string;
+  title: string;
+  position?: number | null;
+};
+
 export type ReviewQuestion = {
   id: number;
   question_key?: string | null;
@@ -227,6 +233,8 @@ export type ReviewQuestion = {
   reviewed_by?: string | null;
   created_at?: string | null;
   metadata?: Record<string, unknown>;
+  pack_keys?: string[];
+  packs?: ReviewQuestionPack[];
 };
 
 export type ReviewListResponse = {
@@ -244,6 +252,7 @@ export type ReviewFilterOptions = {
   source_types: string[];
   formats: string[];
   review_statuses: string[];
+  packs?: Array<{ pack_key: string; title: string }>;
 };
 
 export type ReviewFilters = {
@@ -261,6 +270,7 @@ export type ReviewFilters = {
   has_image?: number;
   ability_slot?: string;
   subject_type?: string;
+  pack_key?: string;
   page?: number;
   page_size?: number;
 };
@@ -404,6 +414,7 @@ export const quizApi = {
     if (filters.has_image !== undefined) params.set("has_image", String(filters.has_image));
     if (filters.ability_slot) params.set("ability_slot", filters.ability_slot);
     if (filters.subject_type) params.set("subject_type", filters.subject_type);
+    if (filters.pack_key) params.set("pack_key", filters.pack_key);
     if (filters.page !== undefined) params.set("page", String(filters.page));
     if (filters.page_size !== undefined) params.set("page_size", String(filters.page_size));
     const qs = params.toString();

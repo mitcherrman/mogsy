@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
-  ArrowLeft, Loader2, Wrench, ListChecks, Send,
+  ArrowLeft, Loader2, Wrench, ListChecks, Send, Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   resolveQuizAssetUrl,
   type ReviewQuestion,
   type ReviewFilters,
+  type ReviewFilterOptions,
   type ReviewPatchPayload,
   type QuizQuestion,
 } from "@/lib/quiz/api";
@@ -115,7 +116,7 @@ function choiceLabel(c: string | { label: string; raw_stats?: string[] }): strin
 type FilterSidebarProps = {
   filters: ReviewFilters;
   onFilters: (f: ReviewFilters) => void;
-  filterOptions?: { categories: string[]; source_types: string[]; formats: string[]; review_statuses: string[] };
+  filterOptions?: ReviewFilterOptions;
 };
 
 function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps) {
@@ -131,7 +132,7 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
     filters.category, filters.source_type, filters.answer_certainty, filters.format,
     filters.review_status, filters.is_active, filters.favorite_for_shorts,
     filters.missing_asset, filters.has_image, filters.difficulty_min, filters.difficulty_max,
-    filters.ability_slot, filters.subject_type,
+    filters.ability_slot, filters.subject_type, filters.pack_key,
   ].filter((v) => v !== undefined && v !== "").length;
 
   return (
@@ -281,6 +282,24 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
           </SelectContent>
         </Select>
       </div>
+
+      {(filterOptions?.packs?.length ?? 0) > 0 && (
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground">Pack</label>
+          <Select
+            value={filters.pack_key ?? "__all__"}
+            onValueChange={(v) => v === "__all__" ? clear("pack_key") : set("pack_key", v)}
+          >
+            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All</SelectItem>
+              {filterOptions?.packs?.map((p) => (
+                <SelectItem key={p.pack_key} value={p.pack_key}>{p.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="text-[10px] font-medium text-muted-foreground">Quick Filters</label>
@@ -638,6 +657,23 @@ function DetailPanel({
             </div>
           ))}
         </div>
+
+        {/* Pack badges */}
+        {(q.packs?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {q.packs?.map((p) => (
+              <span
+                key={p.pack_key}
+                title={p.pack_key}
+                className="inline-flex items-center gap-1 rounded-md border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+              >
+                <Package className="h-3 w-3" />
+                {p.title}
+                {p.position != null && <span className="text-amber-300/60">#{p.position}</span>}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Question text */}
         <div className="space-y-1">
