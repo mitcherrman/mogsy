@@ -18,9 +18,9 @@ export function PendingBadge({ className }: { className?: string }) {
         "inline-flex items-center rounded-full border border-dashed border-primary/40 bg-primary/5 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-primary/80",
         className,
       )}
-      title="Awaiting backend analytics endpoint"
+      title="No data for this scope"
     >
-      awaiting backend
+      no data
     </span>
   );
 }
@@ -323,9 +323,10 @@ export function PatchScoreHero({
 }: {
   score?: number | null;
   classification?: string | null;
-  explanation?: string | null;
+  explanation?: unknown;
   loading?: boolean;
 }) {
+  const { summary, drivers, raw } = parseExplanation(explanation);
   const has = typeof score === "number" && Number.isFinite(score);
   const clamped = has ? Math.max(0, Math.min(100, score as number)) : 0;
   const tone = scoreTone(clamped);
@@ -392,11 +393,33 @@ export function PatchScoreHero({
           ) : (
             <div className="flex items-center gap-2"><ShimmerBar className="h-7 w-40" /><PendingBadge /></div>
           )}
-          {explanation ? (
-            <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">{explanation}</p>
-          ) : !loading && (
-            <p className="text-xs italic text-muted-foreground">Awaiting explanation from backend.</p>
+          {summary && (
+            <p className="text-sm text-foreground/80 leading-relaxed animate-fade-in">{summary}</p>
           )}
+          {drivers.length > 0 && (
+            <div className="mt-2 space-y-1">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+                Score drivers
+              </div>
+              <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                {drivers.map((driver, index) => (
+                  <li
+                    key={`driver-${index}`}
+                    className="flex items-baseline justify-between gap-2 rounded border border-border/60 bg-background/40 px-2 py-1 text-xs"
+                  >
+                    <span className="truncate text-foreground/90">{driver.label}</span>
+                    <span className={cn("shrink-0 font-black tabular-nums", driverTone(driver.points))}>
+                      {formatDriverPoints(driver.points)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!summary && drivers.length === 0 && !loading && (
+            <p className="text-xs italic text-muted-foreground">No score explanation provided.</p>
+          )}
+          {raw && <ExplanationRawDetails raw={raw} />}
           {has && !loading && (
             <div className="mt-3">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/30">
@@ -411,6 +434,131 @@ export function PatchScoreHero({
       </div>
     </div>
   );
+}
+
+interface ExplanationDriver {
+  label: string;
+  points: number | null;
+}
+
+function parseExplanation(value: unknown): {
+  summary: string | null;
+  drivers: ExplanationDriver[];
+  raw: string | null;
+} {
+  if (value == null) return { summary: null, drivers: [], raw: null };
+  if (typeof value === "string") {
+    return { summary: value, drivers: [], raw: null };
+  }
+  if (typeof value !== "object") {
+    return { summary: String(value), drivers: [], raw: null };
+  }
+  const record = value as Record<string, unknown>;
+  const summaryKeys = ["summary", "description", "text", "message"];
+  let summary: string | null = null;
+  for (const key of summaryKeys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      summary = candidate;
+      break;
+    }
+  }
+  const drivers: ExplanationDriver[] = [];
+  const driverContainers: unknown[] = [
+    record.drivers,
+    record.components,
+    record.breakdown,
+    record.parts,
+  ];
+  for (const container of driverContainers) {
+    if (Array.isArray(container)) {
+      for (const entry of container) {
+        if (entry && typeof entry === "object") {
+          const e = entry as Record<string, unknown>;
+          const label =
+            (typeof e.label === "string" && e.label) ||
+            (typeof e.name === "string" && e.name) ||
+            (typeof e.key === "string" && humanizeKind(e.key)) ||
+            null;
+          if (!label) continue;
+          const points =
+            typeof e.points === "number" ? e.points
+            : typeof e.value === "number" ? e.value
+            : typeof e.score === "number" ? e.score
+            : typeof e.contribution === "number" ? e.contribution
+            : null;
+          drivers.push({ label, points });
+        }
+      }
+    } else if (container && typeof container === "object") {
+      for (const [key, val] of Object.entries(container as Record<string, unknown>)) {
+        drivers.push({
+          label: humanizeKind(key),
+          points: typeof val === "number" ? val : null,
+        });
+      }
+    }
+  }
+  let raw: string | null = null;
+  try {
+    raw = JSON.stringify(value, null, 2);
+  } catch {
+    raw = null;
+  }
+  return { summary, drivers, raw };
+}
+
+function driverTone(points: number | null): string {
+  if (points == null) return "text-muted-foreground";
+  if (points > 0) return "text-emerald-300";
+  if (points < 0) return "text-red-300";
+  return "text-muted-foreground";
+}
+
+function formatDriverPoints(points: number | null): string {
+  if (points == null) return "—";
+  const rounded = Math.round(points * 100) / 100;
+  return rounded > 0 ? `+${rounded}` : `${rounded}`;
+}
+
+function ExplanationRawDetails({ raw }: { raw: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground"
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {open ? "hide score details" : "show score details"}
+      </button>
+      {open && (
+        <pre className="mt-1 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[11px] text-muted-foreground">
+          {raw}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/** Convert snake_case / kebab-case kind identifiers to Title Case labels. */
+export function humanizeKind(kind: string | null | undefined): string | null {
+  if (!kind || typeof kind !== "string") return null;
+  const trimmed = kind.trim();
+  if (!trimmed) return null;
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return word;
+      const upper = word.toUpperCase();
+      // Preserve acronyms
+      if (["CD", "AP", "AD", "HP", "MP"].includes(upper)) return upper;
+      if (word.toLowerCase() === "pct") return "%";
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 interface ExecSummaryItem {
@@ -538,6 +686,7 @@ export function InsightCard({
   unavailableReason,
   evidence,
   detail,
+  compact,
 }: {
   title?: string | null;
   kind?: string | null;
@@ -547,10 +696,33 @@ export function InsightCard({
   unavailableReason?: string | null;
   evidence?: unknown;
   detail?: GameplayDetailFields | null;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isAvailable = available !== false && !unavailableReason;
   const hasEvidence = evidence != null && !(Array.isArray(evidence) && evidence.length === 0);
+  const displayTitle =
+    (title && title.trim()) || humanizeKind(kind) || "Insight";
+  const kindLabel = humanizeKind(kind);
+
+  if (compact) {
+    return (
+      <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="truncate text-xs font-bold text-foreground/90">{displayTitle}</div>
+          {kindLabel && (
+            <span className="shrink-0 rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+              {kind}
+            </span>
+          )}
+        </div>
+        {unavailableReason && (
+          <div className="mt-1 text-[11px] text-amber-200/80">{unavailableReason}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -563,16 +735,16 @@ export function InsightCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-extrabold leading-snug">
-            {title || <span className="italic text-muted-foreground">Untitled insight</span>}
+            {displayTitle}
           </div>
           {description && (
             <p className="mt-1 text-xs text-foreground/80 leading-relaxed">{description}</p>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          {kind && (
+          {kindLabel && (
             <span className="rounded-md border border-border bg-background/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              {kind}
+              {kindLabel}
             </span>
           )}
           <span
@@ -680,6 +852,11 @@ export interface GameplayDetailFields {
   ability?: string | null;
   ability_key?: string | null;
   metric_key?: string | null;
+  property?: string | null;
+  rank?: unknown;
+  net_change_score?: unknown;
+  old_value?: unknown;
+  new_value?: unknown;
   before?: unknown;
   after?: unknown;
   delta?: unknown;
@@ -690,14 +867,20 @@ export interface GameplayDetailFields {
 
 /** Renders a structured metric delta block (before → after, delta, %). */
 export function GameplayMetricBlock({ detail }: { detail: GameplayDetailFields }) {
-  const before = formatMaybeNumber(detail.before);
-  const after = formatMaybeNumber(detail.after);
+  const before = formatMaybeNumber(detail.before ?? detail.old_value);
+  const after = formatMaybeNumber(detail.after ?? detail.new_value);
   const delta = formatSignedMaybe(detail.delta, detail.unit ? ` ${detail.unit}` : "");
   const deltaPct = formatSignedMaybe(detail.delta_pct, "%");
   const ability = detail.ability || detail.ability_key || null;
+  const metricLabel = humanizeKind(detail.metric_key) || detail.metric_key || null;
+  const propertyLabel = humanizeKind(detail.property) || detail.property || null;
+  const rank = formatMaybeNumber(detail.rank);
+  const netChange = formatSignedMaybe(detail.net_change_score);
 
-  const summary = [detail.champion, ability, detail.metric_key].filter(Boolean).join(" · ");
-  const hasAny = before || after || delta || deltaPct || summary;
+  const summary = [detail.champion, ability, metricLabel || propertyLabel]
+    .filter(Boolean)
+    .join(" · ");
+  const hasAny = before || after || delta || deltaPct || summary || rank || netChange;
   if (!hasAny) return null;
 
   return (
@@ -728,6 +911,18 @@ export function GameplayMetricBlock({ detail }: { detail: GameplayDetailFields }
         )}
         {detail.unit && !delta && (
           <span className="text-[10px] text-muted-foreground">unit: {detail.unit}</span>
+        )}
+        {rank != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">rank </span>
+            <span className="font-bold">{rank}</span>
+          </span>
+        )}
+        {netChange != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">net </span>
+            <span className={cn("font-bold", deltaTone(detail.net_change_score))}>{netChange}</span>
+          </span>
         )}
       </div>
       {detail.assumptions != null && (
