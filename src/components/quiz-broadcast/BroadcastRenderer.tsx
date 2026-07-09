@@ -209,7 +209,7 @@ function TopChrome({ snapshot }: { snapshot: EngineSnapshot }) {
         {v.showLogo && (
           <div className="flex items-center gap-1.5 rounded-md border border-[#d4b35a]/35 bg-black/40 px-2 py-1">
             <Sparkles className="h-3 w-3 text-[#e8c97a]" />
-            <span className="text-[0.95cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]">Mogsy</span>
+            <span className="text-[1.08cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]">Mogsy</span>
           </div>
         )}
         {v.showCategoryBadge && q && <ChromeBadge tone="cyan">{String(q.category).replace(/_/g, " ")}</ChromeBadge>}
@@ -239,7 +239,7 @@ function ChromeBadge({ children, tone }: { children: React.ReactNode; tone: "cya
           ? "border-[#d4b35a]/45 text-[#f3dca0] bg-[#d4b35a]/[0.08]"
           : "border-white/15 text-white/60 bg-white/[0.04]";
   return (
-    <span className={`rounded-md border px-2 py-1 text-[0.9cqmin] font-semibold uppercase tracking-[0.28em] ${cls}`}>
+    <span className={`rounded-md border px-2 py-1 text-[1.02cqmin] font-semibold uppercase tracking-[0.28em] ${cls}`}>
       {children}
     </span>
   );
@@ -500,14 +500,14 @@ function QuestionPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.34, ease: "easeOut" }}
-              className="absolute inset-x-0 top-0 rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/12 via-emerald-300/8 to-cyan-300/8 p-[1.4%] text-[1.75cqmin] leading-relaxed text-emerald-50 backdrop-blur-md"
+              className="absolute inset-x-0 top-0 rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/12 via-emerald-300/8 to-cyan-300/8 p-[1.4%] text-[2cqmin] leading-relaxed text-emerald-50 backdrop-blur-md"
             >
               <div className="mb-1 flex items-baseline justify-between gap-3">
-                <div className="text-[1.05cqmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
+                <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
                   Correct Answer
                 </div>
                 {correctAnswer && (
-                  <div className="text-[1.7cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                  <div className="text-[1.95cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
                     {correctAnswer}
                   </div>
                 )}
@@ -527,7 +527,7 @@ const QuestionText = memo(function QuestionText({ text }: { text: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="text-[4.6cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+      className="text-[5.2cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
     >
       <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
         {text}
@@ -567,7 +567,7 @@ const AnswerGrid = memo(function AnswerGrid({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * i + 0.1, duration: 0.32, ease: "easeOut" }}
             className={[
-              "relative flex min-h-[7cqmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.3cqmin] font-bold backdrop-blur-md",
+              "relative flex min-h-[7.6cqmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.6cqmin] font-bold backdrop-blur-md",
               "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] duration-[320ms] ease-out",
               isCorrect
                 ? "border-emerald-300/90 bg-gradient-to-br from-emerald-400/35 via-emerald-400/22 to-cyan-400/22 text-white shadow-[0_0_90px_rgba(16,185,129,0.7)] scale-[1.06] -translate-y-[0.4cqmin] z-[2]"
@@ -602,7 +602,7 @@ const AnswerGrid = memo(function AnswerGrid({
             />
             <span
               className={[
-                "relative inline-flex h-[3.4cqmin] w-[3.4cqmin] shrink-0 items-center justify-center rounded-md text-[1.7cqmin] font-black tabular-nums",
+                "relative inline-flex h-[3.8cqmin] w-[3.8cqmin] shrink-0 items-center justify-center rounded-md text-[1.9cqmin] font-black tabular-nums",
                 isCorrect
                   ? "bg-emerald-400/35 text-emerald-50 shadow-[0_0_18px_rgba(16,185,129,0.6)]"
                   : "bg-[#d4b35a]/15 text-[#f3dca0] ring-1 ring-inset ring-[#d4b35a]/40",
@@ -1287,12 +1287,47 @@ function ShortsSceneRow({
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.42, ease: "easeOut" }}
-            className="text-center text-[3.75cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+            className="text-center text-[4.25cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
           >
             <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
               {question.question_text}
             </span>
           </motion.h1>
+        </div>
+
+        {/* Explanation card — Shorts placement: directly below the question and
+            above the answers. Collapses to zero height when inactive so the
+            question → answers spacing is preserved. */}
+        <div className="px-[3.5%]">
+          <AnimatePresence>
+            {revealActive && explanation && visuals.showTips && (
+              <motion.div
+                key="reveal-shorts"
+                initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+                className="relative mt-[1.6%] overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[2.2cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
+              >
+                <motion.div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+                  initial={{ x: "-20%", opacity: 0 }}
+                  animate={{ x: "260%", opacity: [0, 0.7, 0] }}
+                  transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
+                />
+                <div className="mb-1 flex items-baseline justify-between gap-3">
+                  <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
+                  {revealName && (
+                    <div className="max-w-[52%] truncate text-right text-[1.95cqmin] font-black uppercase tracking-wide text-white">
+                      {revealName}
+                    </div>
+                  )}
+                </div>
+                <ExplanationBody question={question} explanation={explanation} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Countdown bar */}
@@ -1308,39 +1343,6 @@ function ShortsSceneRow({
         {/* Answers */}
         <div className="flex flex-1 flex-col justify-center px-[3.5%]">
           <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
-        </div>
-
-        {/* Explanation card */}
-        <div className="min-h-[11%] px-[3.5%]">
-          <AnimatePresence>
-            {revealActive && explanation && visuals.showTips && (
-              <motion.div
-                key="reveal-shorts"
-                initial={{ opacity: 0, y: 18, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-                className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
-              >
-                <motion.div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
-                  initial={{ x: "-20%", opacity: 0 }}
-                  animate={{ x: "260%", opacity: [0, 0.7, 0] }}
-                  transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
-                />
-                <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <div className="text-[1.05cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
-                  {revealName && (
-                    <div className="max-w-[52%] truncate text-right text-[1.75cqmin] font-black uppercase tracking-wide text-white">
-                      {revealName}
-                    </div>
-                  )}
-                </div>
-                <ExplanationBody question={question} explanation={explanation} />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </motion.div>
 
