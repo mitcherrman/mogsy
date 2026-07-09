@@ -843,14 +843,20 @@ export interface GameplayDetailFields {
 
 /** Renders a structured metric delta block (before → after, delta, %). */
 export function GameplayMetricBlock({ detail }: { detail: GameplayDetailFields }) {
-  const before = formatMaybeNumber(detail.before);
-  const after = formatMaybeNumber(detail.after);
+  const before = formatMaybeNumber(detail.before ?? detail.old_value);
+  const after = formatMaybeNumber(detail.after ?? detail.new_value);
   const delta = formatSignedMaybe(detail.delta, detail.unit ? ` ${detail.unit}` : "");
   const deltaPct = formatSignedMaybe(detail.delta_pct, "%");
   const ability = detail.ability || detail.ability_key || null;
+  const metricLabel = humanizeKind(detail.metric_key) || detail.metric_key || null;
+  const propertyLabel = humanizeKind(detail.property) || detail.property || null;
+  const rank = formatMaybeNumber(detail.rank);
+  const netChange = formatSignedMaybe(detail.net_change_score);
 
-  const summary = [detail.champion, ability, detail.metric_key].filter(Boolean).join(" · ");
-  const hasAny = before || after || delta || deltaPct || summary;
+  const summary = [detail.champion, ability, metricLabel || propertyLabel]
+    .filter(Boolean)
+    .join(" · ");
+  const hasAny = before || after || delta || deltaPct || summary || rank || netChange;
   if (!hasAny) return null;
 
   return (
@@ -881,6 +887,18 @@ export function GameplayMetricBlock({ detail }: { detail: GameplayDetailFields }
         )}
         {detail.unit && !delta && (
           <span className="text-[10px] text-muted-foreground">unit: {detail.unit}</span>
+        )}
+        {rank != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">rank </span>
+            <span className="font-bold">{rank}</span>
+          </span>
+        )}
+        {netChange != null && (
+          <span>
+            <span className="text-[10px] uppercase text-muted-foreground">net </span>
+            <span className={cn("font-bold", deltaTone(detail.net_change_score))}>{netChange}</span>
+          </span>
         )}
       </div>
       {detail.assumptions != null && (
