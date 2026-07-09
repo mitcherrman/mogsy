@@ -824,6 +824,63 @@ function ContentCard({ title, body }: { title: string; body: string }) {
   );
 }
 
+function UnavailableInsightsSection({ insights }: { insights: RecordLike[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.03]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+      >
+        {open ? <ChevronDown className="h-4 w-4 text-amber-300" /> : <ChevronRight className="h-4 w-4 text-amber-300" />}
+        <span className="text-xs font-extrabold uppercase tracking-wider text-amber-200">
+          Unavailable Insights
+        </span>
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-200 tabular-nums">
+          {insights.length} unavailable
+        </span>
+      </button>
+      {open && (
+        <div className="grid grid-cols-1 gap-2 border-t border-amber-500/20 p-3 md:grid-cols-2 lg:grid-cols-3">
+          {insights.map((insight, index) => (
+            <InsightCard
+              key={`insight-unavailable-${index}`}
+              title={toText(insight.title)}
+              kind={toText(insight.kind)}
+              available={false}
+              unavailableReason={toText(insight.unavailable_reason)}
+              compact
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function _oldContentCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{title}</h3>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(body).then(() => toast.success("Copied"));
+          }}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <Copy className="h-3 w-3" /> copy
+        </button>
+      </div>
+      <pre className="max-h-64 whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[11px]">
+        {body}
+      </pre>
+    </div>
+  );
+}
+
 function normalizeAnalytics(payload: PatchAnalyticsResponse | undefined) {
   if (!isRecord(payload)) return null;
   const hero = getRecord(payload, "hero");
