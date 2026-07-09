@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
-  ArrowLeft, Loader2, Wrench, ListChecks, Send, Package,
+  ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import SEOHead from "@/components/SEOHead";
 import {
   quizApi,
   resolveQuizAssetUrl,
+  QuizAdminAuthError,
   type ReviewQuestion,
   type ReviewFilters,
   type ReviewFilterOptions,
@@ -29,6 +30,57 @@ import {
 } from "@/hooks/useChampionAssets";
 import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
+import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
+
+// ---------------------------------------------------------------------------
+// Admin key (shared with Knowledge Admin — backend uses one KNOWLEDGE_ADMIN_KEY
+// secret for both admin surfaces). Session-scoped; never placed in query keys.
+// ---------------------------------------------------------------------------
+
+function useAdminKey(): string | null {
+  const [key, setKey] = useState<string | null>(getAdminKey);
+  useEffect(() => subscribeAdminKey(() => setKey(getAdminKey())), []);
+  return key;
+}
+
+function isAuthError(err: unknown): boolean {
+  return err instanceof QuizAdminAuthError;
+}
+
+function AdminKeyPanel({ invalid }: { invalid: boolean }) {
+  const [value, setValue] = useState("");
+  const save = () => {
+    const v = value.trim();
+    if (v) setAdminKey(v);
+  };
+  return (
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-muted/20 p-5">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-amber-400" />
+          <h2 className="text-sm font-semibold">{invalid ? "Admin key invalid" : "Admin key required"}</h2>
+        </div>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {invalid
+            ? "The saved admin key was rejected. Enter the current X-Admin-Key to continue."
+            : "Enter the X-Admin-Key (KNOWLEDGE_ADMIN_KEY) to load the review console. Stored for this browser session only, and shared with Knowledge Admin."}
+        </p>
+        <Input
+          type="password"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+          placeholder="X-Admin-Key value"
+          className="h-8 text-xs"
+          autoFocus
+        />
+        <Button size="sm" className="h-7 w-full text-xs" disabled={!value.trim()} onClick={save}>
+          Save key
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -421,6 +473,7 @@ function DetailPanel({
     queryKey: ["review-question", questionId],
     queryFn: () => quizApi.getReviewQuestion(questionId),
     staleTime: 30_000,
+    retry: false,
   });
 
   // Champion asset manifest (globally cached, ~free after first load)
@@ -841,18 +894,37 @@ export default function AdminQuizReview() {
   // Selection state: map preserves question data across page changes
   const [checkedQuestions, setCheckedQuestions] = useState<Map<number, ReviewQuestion>>(new Map());
 
+  const queryClient = useQueryClient();
+  const adminKey = useAdminKey();
+  const hasAdminKey = !!adminKey;
+
+  // When the key is set or changed, refetch the review queries. The raw key is
+  // never a query key — invalidation is what ties cache freshness to the key.
+  useEffect(() => {
+    if (!hasAdminKey) return;
+    void queryClient.invalidateQueries({ queryKey: ["review-filter-options"] });
+    void queryClient.invalidateQueries({ queryKey: ["review-questions"] });
+    void queryClient.invalidateQueries({ queryKey: ["review-question"] });
+  }, [adminKey, hasAdminKey, queryClient]);
+
   const { data: filterOptions } = useQuery({
     queryKey: ["review-filter-options"],
     queryFn: () => quizApi.getReviewFilterOptions(),
     staleTime: 5 * 60_000,
+    enabled: hasAdminKey,
+    retry: false,
   });
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["review-questions", filters],
     queryFn: () => quizApi.getReviewQuestions(filters),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+    enabled: hasAdminKey,
+    retry: false,
   });
+
+  const authError = !hasAdminKey || isAuthError(error);
 
   const questions = data?.questions ?? [];
   const total = data?.total ?? 0;
@@ -894,6 +966,23 @@ export default function AdminQuizReview() {
       description: "Open Broadcast Studio → Saved Playlists tab to load it.",
     });
   };
+
+  if (authError) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+        <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
+        <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
+          <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Broadcast Studio
+          </Link>
+          <span className="text-muted-foreground/40">/</span>
+          <h1 className="text-sm font-semibold">Quiz Review Console</h1>
+        </div>
+        <AdminKeyPanel invalid={hasAdminKey} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">

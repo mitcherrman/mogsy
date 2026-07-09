@@ -1,3 +1,5 @@
+import { getAdminKey } from "@/lib/knowledge-admin/key";
+
 const API_BASE_URL = (import.meta.env.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
 
 export type QuizSet = {
@@ -185,6 +187,36 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Thrown when the admin key is missing or rejected by the backend (403). */
+export class QuizAdminAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuizAdminAuthError";
+  }
+}
+
+/**
+ * Shared fetch path for every /api/quiz/admin/review/* endpoint. Reads the
+ * session-scoped admin key (same store as Knowledge Admin — the backend uses
+ * one shared secret) and attaches it as X-Admin-Key. Never used for public
+ * quiz endpoints, so the secret is not sent where it isn't needed.
+ */
+async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const key = getAdminKey();
+  if (!key) throw new QuizAdminAuthError("Admin key not set");
+  try {
+    return await request<T>(path, {
+      ...init,
+      headers: { ...(init?.headers || {}), "X-Admin-Key": key },
+    });
+  } catch (e) {
+    if (e instanceof Error && /\b403\b/.test(e.message)) {
+      throw new QuizAdminAuthError("Invalid admin key");
+    }
+    throw e;
+  }
+}
+
 export type QuizReport = {
   id: number | string;
   question_id: number | string;
@@ -253,6 +285,29 @@ export type ReviewFilterOptions = {
   formats: string[];
   review_statuses: string[];
   packs?: Array<{ pack_key: string; title: string }>;
+};
+
+export type ReviewPackSummary = {
+  pack_key: string;
+  title: string;
+  description?: string | null;
+  topic?: string | null;
+  champion?: string | null;
+  calculation_type?: string | null;
+  scenario_family?: string | null;
+  intended_use?: string[];
+  difficulty_min?: number | null;
+  difficulty_max?: number | null;
+  status?: string;
+  question_count?: number;
+};
+
+export type ReviewPacksResponse = { ok: boolean; packs: ReviewPackSummary[] };
+export type ReviewPackQuestionsResponse = {
+  ok: boolean;
+  pack: ReviewPackSummary;
+  total: number;
+  questions: ReviewQuestion[];
 };
 
 export type ReviewFilters = {
@@ -418,15 +473,21 @@ export const quizApi = {
     if (filters.page !== undefined) params.set("page", String(filters.page));
     if (filters.page_size !== undefined) params.set("page_size", String(filters.page_size));
     const qs = params.toString();
-    return request<ReviewListResponse>(`/api/quiz/admin/review/questions${qs ? `?${qs}` : ""}`);
+    return adminRequest<ReviewListResponse>(`/api/quiz/admin/review/questions${qs ? `?${qs}` : ""}`);
   },
   getReviewQuestion: (id: number) =>
-    request<{ ok: boolean; question: ReviewQuestion }>(`/api/quiz/admin/review/questions/${id}`),
+    adminRequest<{ ok: boolean; question: ReviewQuestion }>(`/api/quiz/admin/review/questions/${id}`),
   patchReviewQuestion: (id: number, payload: ReviewPatchPayload) =>
-    request<{ ok: boolean; question_id: number; updated: string[] }>(
+    adminRequest<{ ok: boolean; question_id: number; updated: string[] }>(
       `/api/quiz/admin/review/questions/${id}`,
       { method: "PATCH", body: JSON.stringify(payload) },
     ),
   getReviewFilterOptions: () =>
-    request<ReviewFilterOptions>("/api/quiz/admin/review/filter-options"),
+    adminRequest<ReviewFilterOptions>("/api/quiz/admin/review/filter-options"),
+  getReviewPacks: () =>
+    adminRequest<ReviewPacksResponse>("/api/quiz/admin/review/packs"),
+  getReviewPackQuestions: (packKey: string) =>
+    adminRequest<ReviewPackQuestionsResponse>(
+      `/api/quiz/admin/review/packs/${encodeURIComponent(packKey)}/questions`,
+    ),
 };
