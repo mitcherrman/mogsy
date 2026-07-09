@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks, Radio, Settings2, Save } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Wrench, CheckCircle2, XCircle, Loader2, Zap, Power, PowerOff, ListChecks, Radio, Settings2, Save, Video } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -267,6 +267,12 @@ export default function QuizAdmin() {
             <Link to="/admin/quiz-broadcast">
               <Radio className="h-4 w-4" />
               Broadcast Studio
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-1 border-purple-500/40 text-purple-300 hover:bg-purple-500/10">
+            <Link to="/admin/quiz-video-export">
+              <Video className="h-4 w-4" />
+              Video Export
             </Link>
           </Button>
           <Button

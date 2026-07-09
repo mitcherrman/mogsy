@@ -59,6 +59,7 @@ const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
 const AdminQuizReview = R.AdminQuizReview.Component;
+const AdminVideoExport = R.AdminVideoExport.Component;
 const About = R.About.Component;
 const Privacy = R.Privacy.Component;
 const Terms = R.Terms.Component;
@@ -147,6 +148,7 @@ const App = () => (
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-review" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizReview /></Suspense></AdminRoute>} />
+                  <Route path="/admin/quiz-video-export" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense></AdminRoute>} />
                   <Route
                     path="/admin/knowledge"
                     element={
