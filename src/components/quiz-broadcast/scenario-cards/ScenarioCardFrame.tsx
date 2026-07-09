@@ -42,7 +42,7 @@ export function ScenarioCardFrame({
             alt={backgroundAlt}
             onError={onBackgroundError}
             className="h-full w-full object-cover"
-            style={{ objectPosition: "40% 50%" }}
+            style={{ objectPosition: "60% 50%" }}
             loading="eager"
             decoding="async"
           />
