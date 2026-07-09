@@ -12,7 +12,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "video:studio": "remotion studio",
+    "video:render": "npx -y tsx scripts/render-quiz-video.ts",
+    "video:timestamps": "npx -y tsx scripts/render-quiz-video.ts --timestamps-only"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -46,6 +49,7 @@
     "@react-three/drei": "^9.114.6",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
+    "@remotion/cli": "^4.0.487",
     "@supabase/supabase-js": "^2.97.0",
     "@tanstack/react-query": "^5.83.0",
     "@tiptap/extension-image": "^3.23.5",
@@ -74,6 +78,7 @@
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
+    "remotion": "^4.0.487",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
