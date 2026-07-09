@@ -1281,8 +1281,9 @@ function ShortsSceneRow({
         className="relative z-10 flex min-h-0 flex-1 flex-col"
         style={{ y: contentYStr, opacity: tl.contentOpacity }}
       >
-        {/* Question text */}
-        <div className="px-[4%]">
+        {/* Question text — nudged down slightly so the question/insight group
+            sits lower without crowding the subject art above. */}
+        <div className="px-[4%] pt-[2.2%]">
           <motion.h1
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1295,40 +1296,21 @@ function ShortsSceneRow({
           </motion.h1>
         </div>
 
-        {/* Explanation card — Shorts placement: directly below the question and
-            above the answers. Collapses to zero height when inactive so the
-            question → answers spacing is preserved. */}
-        <div className="px-[3.5%]">
-          <AnimatePresence>
-            {revealActive && explanation && visuals.showTips && (
-              <motion.div
-                key="reveal-shorts"
-                initial={{ opacity: 0, y: 18, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-                className="relative mt-[1.6%] overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[2.2cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
-              >
-                <motion.div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
-                  initial={{ x: "-20%", opacity: 0 }}
-                  animate={{ x: "260%", opacity: [0, 0.7, 0] }}
-                  transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
-                />
-                <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
-                  {revealName && (
-                    <div className="max-w-[52%] truncate text-right text-[1.95cqmin] font-black uppercase tracking-wide text-white">
-                      {revealName}
-                    </div>
-                  )}
-                </div>
-                <ExplanationBody question={question} explanation={explanation} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Insight flip panel — stable slot below the question, above answers.
+            Dormant "INSIGHT LOCKED" face during the question phase; flips on
+            the Y axis to the explanation face on reveal. Same footprint both
+            ways, so the flip causes no layout shift. Hidden entirely when
+            tips are disabled. */}
+        {visuals.showTips && (
+          <div className="px-[3.5%]">
+            <ShortsInsightFlipPanel
+              revealed={revealActive && !!explanation}
+              question={question}
+              explanation={explanation}
+              revealName={revealName}
+            />
+          </div>
+        )}
 
         {/* Countdown bar */}
         <div className="px-[6%] py-[1.2%]">
@@ -1340,8 +1322,9 @@ function ShortsSceneRow({
           />
         </div>
 
-        {/* Answers */}
-        <div className="flex flex-1 flex-col justify-center px-[3.5%]">
+        {/* Answers — top-aligned so they hug the question/insight group
+            instead of floating down toward the core. */}
+        <div className="flex flex-1 flex-col justify-start px-[3.5%] pt-[1.2%]">
           <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
         </div>
       </motion.div>
@@ -1376,5 +1359,77 @@ function ShortsSceneRow({
       {/* Bottom breathing room so answers never kiss the stage edge */}
       <div className="shrink-0 pb-[2.5%]" />
     </motion.div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   ShortsInsightFlipPanel — Shorts-only insight slot with a cinematic Y-axis
+   card flip. The dormant "INSIGHT LOCKED" face occupies the slot during the
+   question phase; on reveal the panel turns over to the explanation face.
+   Both faces share one grid cell, so the footprint (and therefore layout)
+   is identical before/after the flip. 16:9 keeps its own explanation card.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function ShortsInsightFlipPanel({
+  revealed,
+  question,
+  explanation,
+  revealName,
+}: {
+  revealed: boolean;
+  question: QuizQuestion;
+  explanation: string | null;
+  revealName: string | null | undefined;
+}) {
+  return (
+    <div className="mt-[1.6%]" style={{ perspective: "900px" }}>
+      <motion.div
+        className="relative grid [transform-style:preserve-3d]"
+        initial={false}
+        animate={{ rotateY: revealed ? 180 : 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {/* Dormant face — dark glass, waiting state */}
+        <div
+          aria-hidden={revealed}
+          className="relative flex min-h-[7cqmin] items-center justify-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-br from-black/55 via-[#07112d]/60 to-black/55 p-[2.4%] backdrop-blur-md [backface-visibility:hidden] [grid-area:1/1]"
+        >
+          <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-[#d4b35a]/15" />
+          <div className="flex items-center gap-[1.6cqmin]">
+            <span className="h-[0.9cqmin] w-[0.9cqmin] animate-pulse rounded-full bg-cyan-300/70 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+            <span className="text-[1.4cqmin] font-bold uppercase tracking-[0.42em] text-cyan-100/60">
+              Insight Locked
+            </span>
+            <span className="h-[0.9cqmin] w-[0.9cqmin] animate-pulse rounded-full bg-[#d4b35a]/70 shadow-[0_0_10px_rgba(212,179,90,0.8)]" />
+          </div>
+        </div>
+
+        {/* Revealed face — existing emerald/gold insight styling, pre-rotated
+            180° so it reads correctly once the panel turns over */}
+        <div
+          aria-hidden={!revealed}
+          className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[2.2cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md [backface-visibility:hidden] [grid-area:1/1] [transform:rotateY(180deg)]"
+        >
+          {revealed && (
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+              initial={{ x: "-20%", opacity: 0 }}
+              animate={{ x: "260%", opacity: [0, 0.7, 0] }}
+              transition={{ duration: 1.15, ease: "easeOut", delay: 0.4 }}
+            />
+          )}
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
+            {revealName && (
+              <div className="max-w-[52%] truncate text-right text-[1.95cqmin] font-black uppercase tracking-wide text-white">
+                {revealName}
+              </div>
+            )}
+          </div>
+          <ExplanationBody question={question} explanation={explanation} />
+        </div>
+      </motion.div>
+    </div>
   );
 }
