@@ -1392,14 +1392,11 @@ function ShortsInsightFlipPanel({
         {/* Dormant face — dark glass, waiting state */}
         <div
           aria-hidden={revealed}
-          className="relative flex min-h-[7cqmin] items-center justify-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-br from-black/55 via-[#07112d]/60 to-black/55 p-[2.4%] backdrop-blur-md [backface-visibility:hidden] [grid-area:1/1]"
+          className="relative flex min-h-[4.8cqmin] items-center justify-center overflow-hidden rounded-xl border border-cyan-300/20 bg-gradient-to-br from-black/55 via-[#07112d]/60 to-black/55 p-[1.6%] backdrop-blur-md [backface-visibility:hidden] [grid-area:1/1]"
         >
           <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-[#d4b35a]/15" />
           <div className="flex items-center gap-[1.6cqmin]">
             <span className="h-[0.9cqmin] w-[0.9cqmin] animate-pulse rounded-full bg-cyan-300/70 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            <span className="text-[1.4cqmin] font-bold uppercase tracking-[0.42em] text-cyan-100/60">
-              Insight Locked
-            </span>
             <span className="h-[0.9cqmin] w-[0.9cqmin] animate-pulse rounded-full bg-[#d4b35a]/70 shadow-[0_0_10px_rgba(212,179,90,0.8)]" />
           </div>
         </div>
