@@ -88,7 +88,7 @@ export const DEFAULT_TIMING: BroadcastTiming = {
   revealMs: 4000,
   explanationMs: 6000,
   transitionMs: 1200,
-  countdownMs: 12000,
+  countdownMs: 2000,
   delayBeforeNextMs: 600,
 };
 
