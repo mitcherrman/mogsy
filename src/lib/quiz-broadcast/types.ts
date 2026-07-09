@@ -84,7 +84,7 @@ export type EngineSnapshot = {
 };
 
 export const DEFAULT_TIMING: BroadcastTiming = {
-  questionMs: 12000,
+  questionMs: 3000,
   revealMs: 4000,
   explanationMs: 6000,
   transitionMs: 1200,
