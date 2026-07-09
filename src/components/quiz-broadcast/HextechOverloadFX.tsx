@@ -32,7 +32,7 @@ const BRANCHES = 7;
 const MAX_RADIUS = 330; // square units — confines cracks to inner ~2/3 region
 
 /* Small deterministic RNG so each episode is fully procedural but coherent */
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed >>> 0;
   return () => {
     a |= 0; a = (a + 0x6d2b79f5) | 0;

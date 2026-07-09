@@ -26,17 +26,14 @@ import { useEffect, useRef } from "react";
 import { useMotionValue } from "framer-motion";
 import type { MotionValue } from "framer-motion";
 import type { BroadcastPhase } from "@/lib/quiz-broadcast/types";
-
-const B_LAUNCH = 0.15;
-const B_IMPACT = 0.28;
-const B_SETTLE = 0.55;
-const B_NAME   = 0.66;
-
-function easeIn3(t: number)    { return t * t * t; }
-function easeOut3(t: number)   { return 1 - (1 - t) ** 3; }
-function easeInOut3(t: number) {
-  return t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
-}
+// All camera math lives in revealTimelineMath so the Remotion video export
+// runs the EXACT same choreography with frame-derived time.
+import {
+  computeQuestionPose,
+  computeRevealPose,
+  revealTFor,
+  type RevealPose,
+} from "./revealTimelineMath";
 
 export interface RevealTimeline {
   /** Whole-scene push-in scale (camera zoom). Also carries pre-launch tension. */
@@ -108,7 +105,6 @@ export function useRevealTimeline({
   // questionId is included so that when the question changes the effect re-runs,
   // the ref mismatch is detected, and all MotionValues hard-reset to neutral
   // before the new question's phase RAF starts.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let raf = 0;
 
@@ -141,111 +137,31 @@ export function useRevealTimeline({
     // so it doesn't snap back to question layout mid-exit.
     // A new questionId already hard-reset above; the new question then enters
     // whichever phase the engine is in (typically "question" → idle breathing).
+    const applyPose = (pose: RevealPose) => {
+      sceneScale.set(pose.sceneScale);
+      sceneX.set(pose.sceneX);
+      contentX.set(pose.contentX);
+      contentY.set(pose.contentY);
+      contentOpacity.set(pose.contentOpacity);
+      qrX.set(pose.qrX);
+      qrY.set(pose.qrY);
+      qrOpacity.set(pose.qrOpacity);
+      subjectWidthPct.set(pose.subjectWidthPct);
+      subjectHeightPct.set(pose.subjectHeightPct);
+      subjectScale.set(pose.subjectScale);
+      darkness.set(pose.darkness);
+      nameOpacity.set(pose.nameOpacity);
+      idleBreath.set(pose.idleBreath);
+    };
+
     if (phase === "reveal" || phase === "explanation" || phase === "transition") {
       const tick = () => {
         const now = Date.now();
         const elapsed = Math.max(0, now - phaseStartedAt);
 
         // During explanation hold the reveal at its fully-settled state (t=1).
-        const t =
-          phase === "reveal" && phaseDurationMs > 0
-            ? Math.min(1, elapsed / phaseDurationMs)
-            : 1;
-
-        const launchT = Math.min(1, t / B_LAUNCH);
-        const impactT = Math.max(0, Math.min(1, (t - B_LAUNCH) / (B_IMPACT - B_LAUNCH)));
-        const settleT = Math.max(0, Math.min(1, (t - B_IMPACT) / (B_SETTLE - B_IMPACT)));
-        const nameT   = Math.max(0, Math.min(1, (t - B_NAME)   / (1 - B_NAME)));
-
-        if (isSpoiler) {
-          // ── Full cinematic sequence ─────────────────────────────
-
-          // Content exit
-          const cExit = easeIn3(launchT);
-          if (!isShorts) {
-            contentX.set(cExit * 52);
-            contentOpacity.set(Math.max(0, 1 - cExit * 1.25));
-            qrX.set(cExit * 36);
-            qrOpacity.set(Math.max(0, 1 - launchT * 2.8));
-          } else {
-            contentY.set(cExit * 85);
-            contentOpacity.set(Math.max(0, 1 - cExit * 1.25));
-            qrY.set(cExit * 70);
-            qrOpacity.set(Math.max(0, 1 - launchT * 2.8));
-          }
-
-          // Scene push-in: build through launch, peak at impact, settle back
-          const maxScale = 1.14;
-          let scale: number;
-          if (t < B_LAUNCH) {
-            scale = 1 + easeIn3(launchT) * (maxScale - 1) * 0.55;
-          } else if (t < B_IMPACT) {
-            scale = 1 + (maxScale - 1) * (0.55 + impactT * 0.45);
-          } else if (t < B_SETTLE) {
-            scale = maxScale - easeOut3(settleT) * (maxScale - 1);
-          } else {
-            scale = 1;
-          }
-          sceneScale.set(scale);
-
-          // Camera pan toward subject (16:9 only) + brief shake at impact
-          const panTarget = isShorts ? 0 : 5.2;
-          const panProgress = easeInOut3(Math.min(1, t / B_SETTLE));
-          const shakeEnd = B_LAUNCH + 0.065;
-          let shake = 0;
-          if (t >= B_LAUNCH && t < shakeEnd) {
-            const st = (t - B_LAUNCH) / (shakeEnd - B_LAUNCH);
-            shake = Math.sin(st * Math.PI * 13) * (1 - st) * 0.4;
-          }
-          sceneX.set(panTarget * panProgress + shake);
-
-          // Subject panel size: expand to fill as camera pushes in
-          const sizeT = easeOut3(Math.min(1, t / B_SETTLE));
-          if (!isShorts) {
-            subjectWidthPct.set(28 + sizeT * 60); // 28 → 88%
-          } else {
-            subjectHeightPct.set(34 + sizeT * 34); // 34 → 68%
-          }
-
-          // Subject card breathing after settle
-          const breathAmp = t >= B_SETTLE ? 0.022 : 0;
-          const breathScale = 1 + Math.sin((now / 4200) * Math.PI * 2) * breathAmp;
-          subjectScale.set(breathScale);
-
-          // Darkness: build, peak at impact, soften at settle, hold ambient
-          const darkPeak = 0.42;
-          let dark: number;
-          if (t < B_LAUNCH) {
-            dark = easeIn3(launchT) * darkPeak;
-          } else if (t < B_IMPACT) {
-            dark = darkPeak;
-          } else if (t < B_SETTLE) {
-            dark = darkPeak - easeOut3(settleT) * darkPeak * 0.55;
-          } else {
-            dark = darkPeak * 0.42;
-          }
-          darkness.set(dark);
-
-          // Name card
-          nameOpacity.set(easeOut3(nameT));
-
-        } else {
-          // ── Non-spoiler: gentle highlight mode ─────────────────
-          // Content stays visible, only a subtle scale + dim.
-          contentX.set(0);
-          contentY.set(0);
-          contentOpacity.set(1);
-          qrX.set(0);
-          qrY.set(0);
-          qrOpacity.set(Math.max(0.6, 1 - easeIn3(launchT) * 0.4));
-          subjectWidthPct.set(28);
-          subjectHeightPct.set(34);
-          subjectScale.set(1);
-          sceneScale.set(1 + easeInOut3(Math.min(1, t / B_SETTLE)) * 0.018);
-          sceneX.set(0);
-          darkness.set(easeIn3(launchT) * 0.1);
-          nameOpacity.set(0);
-        }
+        const t = revealTFor(phase, elapsed, phaseDurationMs);
+        applyPose(computeRevealPose({ t, nowMs: now, isSpoiler, isShorts }));
 
         // reveal: tick until t=1; explanation/transition: keep ticking for subject breathing
         if (phase === "reveal" && t < 1) raf = requestAnimationFrame(tick);
@@ -263,22 +179,15 @@ export function useRevealTimeline({
         const elapsed = Math.max(0, now - phaseStartedAt);
         const remaining = phaseDurationMs > 0 ? phaseDurationMs - elapsed : Infinity;
 
-        // Idle breath on subject
-        const breath = Math.sin((now / 5200) * Math.PI * 2) * 0.013;
-        idleBreath.set(breath);
-        subjectScale.set(1 + breath);
-
-        // Pre-launch tension: gentle scale build in the final 3 seconds.
-        // The old full-screen darkness fade is gone — HextechOverloadFX now
-        // provides a localized vignette around the Knowledge Core instead.
-        const WINDOW = 3000;
-        if (remaining > 0 && remaining <= WINDOW) {
-          const preT = easeIn3(1 - remaining / WINDOW);
-          sceneScale.set(1 + preT * 0.024);
-          darkness.set(0);
-        } else if (remaining > 0) {
-          sceneScale.set(1);
-          darkness.set(0);
+        // Idle breathing + pre-launch tension in the final 3 s. The old
+        // full-screen darkness fade is gone — HextechOverloadFX provides a
+        // localized vignette around the Knowledge Core instead.
+        if (remaining > 0) {
+          applyPose(computeQuestionPose({ nowMs: now, remainingMs: remaining }));
+        } else {
+          const breathPose = computeQuestionPose({ nowMs: now, remainingMs: Infinity });
+          idleBreath.set(breathPose.idleBreath);
+          subjectScale.set(breathPose.subjectScale);
         }
 
         raf = requestAnimationFrame(tick);
@@ -292,6 +201,7 @@ export function useRevealTimeline({
     }
 
     return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, phaseStartedAt, phaseDurationMs, isSpoiler, isShorts, questionId]);
 
   return {

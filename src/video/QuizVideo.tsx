@@ -61,12 +61,7 @@ export const QuizVideo: React.FC<{ data: QuizVideoData }> = ({ data }) => {
             durationInFrames={qt.endFrame - qt.startFrame}
             name={`Q${qt.index + 1}`}
           >
-            <BroadcastQuestionScene
-              timeline={qt}
-              total={timeline.questions.length}
-              website={data.website}
-              patch={data.patch}
-            />
+            <BroadcastQuestionScene timeline={qt} total={timeline.questions.length} patch={data.patch} />
           </Sequence>
         ))}
 
@@ -78,6 +73,14 @@ export const QuizVideo: React.FC<{ data: QuizVideoData }> = ({ data }) => {
 
         {/* Broadcast bottom progress bar — advances per question */}
         <ProgressBar timelineTotal={timeline.questions.length} />
+
+        {/* Website CTA — video-only, small stage corner so it never displaces
+            the broadcast layout (the Knowledge Core keeps its panel). */}
+        {data.website && (
+          <div className="pointer-events-none absolute bottom-[1.6%] right-[2%] z-[12] text-[1.15cqmin] font-bold uppercase tracking-[0.28em] text-[#f3dca0]/60">
+            {data.website}
+          </div>
+        )}
       </AbsoluteFill>
     </QueryClientProvider>
   );

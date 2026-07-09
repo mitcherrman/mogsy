@@ -98,19 +98,19 @@ function makeSpikeD(
 }
 
 // 8 main crest spikes at every 45°
-const MAIN_SPIKES = [0, 45, 90, 135, 180, 225, 270, 315].map((a) =>
+export const MAIN_SPIKES = [0, 45, 90, 135, 180, 225, 270, 315].map((a) =>
   makeSpikeD(a, 93, 79, 66, 7.5),
 );
 // 8 small accent spikes at 22.5° offsets (between main spikes)
-const ACCENT_SPIKES = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map((a) =>
+export const ACCENT_SPIKES = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map((a) =>
   makeSpikeD(a, 82, 76, 70, 3.5),
 );
 // 6 small inner-ring diamonds
-const INNER_DIAMONDS = [0, 60, 120, 180, 240, 300].map((a) =>
+export const INNER_DIAMONDS = [0, 60, 120, 180, 240, 300].map((a) =>
   makeSpikeD(a, 64, 61, 57, 2.5),
 );
 // 16 tick marks around outer ring
-const TICK_MARKS = Array.from({ length: 16 }, (_, i) => {
+export const TICK_MARKS = Array.from({ length: 16 }, (_, i) => {
   const a = (i * 22.5 * Math.PI) / 180;
   return {
     x1: f(100 + Math.cos(a) * 72),
@@ -124,7 +124,7 @@ const TICK_MARKS = Array.from({ length: 16 }, (_, i) => {
    Outer orbital particle system — 3 concentric orbit rings, 16 particles
    ──────────────────────────────────────────────────────────────────────── */
 
-interface ParticleInfo {
+export interface ParticleInfo {
   orbitRadius: number;
   startAngle: number;
   baseSpeed: number;
@@ -139,7 +139,7 @@ const ORBIT_RINGS = [
   { r: 68, count: 7,  speed: 0.28, size: 1.5, color: "34,102,204"  },
 ] as const;
 
-const PARTICLE_CONFIG: ParticleInfo[] = (() => {
+export const PARTICLE_CONFIG: ParticleInfo[] = (() => {
   const out: ParticleInfo[] = [];
   ORBIT_RINGS.forEach((ring, orbitIndex) => {
     for (let j = 0; j < ring.count; j++) {

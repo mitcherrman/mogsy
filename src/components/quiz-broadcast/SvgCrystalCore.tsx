@@ -51,19 +51,19 @@ const MICRO_HEX_VERTS = hexVerts(26);
 const toPoints = (verts: [number, number][]) =>
   verts.map(([x, y]) => `${f(x)},${f(y)}`).join(" ");
 
-const HEX_POINTS       = toPoints(HEX_VERTS);
-const INNER_HEX_POINTS = toPoints(INNER_HEX_VERTS);
-const MICRO_HEX_POINTS = toPoints(MICRO_HEX_VERTS);
+export const HEX_POINTS       = toPoints(HEX_VERTS);
+export const INNER_HEX_POINTS = toPoints(INNER_HEX_VERTS);
+export const MICRO_HEX_POINTS = toPoints(MICRO_HEX_VERTS);
 
 // Outer facet triangles: center → outer edge.
-const FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
+export const FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
   const [x1, y1] = HEX_VERTS[i];
   const [x2, y2] = HEX_VERTS[(i + 1) % 6];
   return `M 100,100 L ${f(x1)},${f(y1)} L ${f(x2)},${f(y2)} Z`;
 });
 // Alternating strong light/dark facets — the gem reads through hard value
 // contrast between adjacent cuts, not through a uniform glow.
-const FACET_FILLS = [
+export const FACET_FILLS = [
   "rgba(150,222,255,0.42)", // top — hit by light
   "rgba(10,28,80,0.55)",    // upper-right — shadow cut
   "rgba(90,170,255,0.20)",  // lower-right — bounce light
@@ -73,12 +73,12 @@ const FACET_FILLS = [
 ];
 
 // Inner facet triangles: center → inner hex edge (second depth layer).
-const INNER_FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
+export const INNER_FACET_PATHS = Array.from({ length: 6 }, (_, i) => {
   const [x1, y1] = INNER_HEX_VERTS[i];
   const [x2, y2] = INNER_HEX_VERTS[(i + 1) % 6];
   return `M 100,100 L ${f(x1)},${f(y1)} L ${f(x2)},${f(y2)} Z`;
 });
-const INNER_FACET_FILLS = [
+export const INNER_FACET_FILLS = [
   "rgba(180,235,255,0.40)",
   "rgba(12,36,100,0.42)",
   "rgba(110,190,255,0.20)",
@@ -89,12 +89,12 @@ const INNER_FACET_FILLS = [
 
 // Bevel edge segments on the outer hex rim: top edges catch light, bottom
 // edges fall into shadow — sells the hard gem cut.
-const BEVEL_EDGES = Array.from({ length: 6 }, (_, i) => {
+export const BEVEL_EDGES = Array.from({ length: 6 }, (_, i) => {
   const [x1, y1] = HEX_VERTS[i];
   const [x2, y2] = HEX_VERTS[(i + 1) % 6];
   return { x1: f(x1), y1: f(y1), x2: f(x2), y2: f(y2) };
 });
-const BEVEL_STROKES = [
+export const BEVEL_STROKES = [
   "rgba(190,240,255,0.85)", // top edge — brightest
   "rgba(120,200,255,0.45)", // upper-right
   "rgba(30,70,160,0.55)",   // lower-right — shadow
@@ -104,7 +104,7 @@ const BEVEL_STROKES = [
 ];
 
 // Side face trapezoids: outer hex edge → inner hex edge (crystal thickness).
-const SIDE_FACES = Array.from({ length: 6 }, (_, i) => {
+export const SIDE_FACES = Array.from({ length: 6 }, (_, i) => {
   const [ox1, oy1] = HEX_VERTS[i];
   const [ox2, oy2] = HEX_VERTS[(i + 1) % 6];
   const [ix1, iy1] = INNER_HEX_VERTS[i];
@@ -112,7 +112,7 @@ const SIDE_FACES = Array.from({ length: 6 }, (_, i) => {
   return `${f(ox1)},${f(oy1)} ${f(ox2)},${f(oy2)} ${f(ix2)},${f(iy2)} ${f(ix1)},${f(iy1)}`;
 });
 // Light from upper-right: face 0 (top) is most lit, face 3 (bottom) darkest.
-const SIDE_FACE_COLORS = [
+export const SIDE_FACE_COLORS = [
   "rgba(80,168,255,0.38)",
   "rgba(46,112,218,0.24)",
   "rgba(16,64,168,0.15)",
@@ -125,7 +125,7 @@ const SIDE_FACE_COLORS = [
    Internal particle system — 16 particles: rings 1–2 orbit, ring 3 rises
    ──────────────────────────────────────────────────────────────────────── */
 
-interface IntParticle {
+export interface IntParticle {
   baseR: number;
   startAngle: number;
   speed: number; // rad/sec
@@ -138,7 +138,7 @@ const INT_RING_CFG = [
   { r: 24, count: 7, speed: 0.10, size: 0.70 },
 ] as const;
 
-const INT_PARTICLE_CFG: IntParticle[] = (() => {
+export const INT_PARTICLE_CFG: IntParticle[] = (() => {
   const out: IntParticle[] = [];
   INT_RING_CFG.forEach((ring, ri) => {
     for (let j = 0; j < ring.count; j++) {
@@ -157,7 +157,7 @@ const INT_PARTICLE_CFG: IntParticle[] = (() => {
    Caustic beam config — 3 ellipses slowly rotating inside the crystal
    ──────────────────────────────────────────────────────────────────────── */
 
-const CAUSTIC_CFG = [
+export const CAUSTIC_CFG = [
   { rx: 24, ry: 2.4, startAngle: 0,   speed: 11  }, // deg/sec
   { rx: 20, ry: 2.0, startAngle: 120, speed: -8  },
   { rx: 16, ry: 1.7, startAngle: 240, speed: 17  },
