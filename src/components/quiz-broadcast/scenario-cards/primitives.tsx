@@ -16,7 +16,7 @@ import type { ScenarioEntryData, ScenarioSectionData } from "./types";
 /** Card-type identity chip, pinned top-left over the artwork. */
 export function ScenarioBadge({ children }: { children: string }) {
   return (
-    <div className="absolute left-[5%] top-[4%] z-10 rounded-md border border-[#d4b35a]/50 bg-black/55 px-[1.6vmin] py-[0.7vmin] text-[0.95vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a] backdrop-blur-sm">
+    <div className="absolute left-[5%] top-[4%] z-10 rounded-md border border-[#d4b35a]/50 bg-black/55 px-[1.6cqmin] py-[0.7cqmin] text-[0.95cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a] backdrop-blur-sm">
       {children}
     </div>
   );
@@ -25,7 +25,7 @@ export function ScenarioBadge({ children }: { children: string }) {
 /** WHO — the large hero title (champion, item, team…). */
 export function ScenarioTitle({ children }: { children: string }) {
   return (
-    <div className="text-[2.7vmin] font-black uppercase tracking-[0.05em] text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+    <div className="text-[2.7cqmin] font-black uppercase tracking-[0.05em] text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
       {children}
     </div>
   );
@@ -48,13 +48,13 @@ export function ScenarioSubject({
 }) {
   const [errored, setErrored] = useState(false);
   return (
-    <div className="mt-[2.5%] flex items-center gap-[1.5vmin]">
+    <div className="mt-[2.5%] flex items-center gap-[1.5cqmin]">
       {iconUrl && !errored && (
         <div className="relative shrink-0">
           {/* breathing glow */}
           <motion.div
             aria-hidden
-            className="absolute -inset-[0.5vmin] rounded-xl bg-[#f3dca0]/25 blur-md"
+            className="absolute -inset-[0.5cqmin] rounded-xl bg-[#f3dca0]/25 blur-md"
             animate={{ opacity: [0.3, 0.65, 0.3] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -62,21 +62,21 @@ export function ScenarioSubject({
             src={iconUrl}
             alt={title}
             onError={() => setErrored(true)}
-            className="relative h-[5.6vmin] w-[5.6vmin] rounded-lg border border-[#f3dca0]/70 object-cover shadow-[0_8px_22px_-6px_rgba(0,0,0,0.85)] ring-1 ring-[#f3dca0]/40"
+            className="relative h-[5.6cqmin] w-[5.6cqmin] rounded-lg border border-[#f3dca0]/70 object-cover shadow-[0_8px_22px_-6px_rgba(0,0,0,0.85)] ring-1 ring-[#f3dca0]/40"
           />
           {slotBadge && (
-            <div className="absolute -bottom-[0.7vmin] -right-[0.7vmin] flex h-[2.1vmin] w-[2.1vmin] items-center justify-center rounded-md bg-[#d4b35a] text-[1.2vmin] font-black text-[#2a1f08] shadow-[0_4px_10px_rgba(0,0,0,0.6)]">
+            <div className="absolute -bottom-[0.7cqmin] -right-[0.7cqmin] flex h-[2.1cqmin] w-[2.1cqmin] items-center justify-center rounded-md bg-[#d4b35a] text-[1.2cqmin] font-black text-[#2a1f08] shadow-[0_4px_10px_rgba(0,0,0,0.6)]">
               {slotBadge}
             </div>
           )}
         </div>
       )}
       <div className="min-w-0">
-        <div className="truncate text-[1.7vmin] font-bold uppercase tracking-[0.1em] text-[#f3dca0] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+        <div className="truncate text-[1.7cqmin] font-bold uppercase tracking-[0.1em] text-[#f3dca0] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
           {title}
         </div>
         {subtitle && (
-          <div className="mt-[0.3vmin] text-[0.95vmin] font-semibold uppercase tracking-[0.24em] text-white/60">
+          <div className="mt-[0.3cqmin] text-[0.95cqmin] font-semibold uppercase tracking-[0.24em] text-white/60">
             {subtitle}
           </div>
         )}
@@ -102,7 +102,7 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
       >
         <motion.div
           aria-hidden
-          className="absolute -inset-[2vmin] rounded-3xl bg-[#d4b35a]/20 blur-2xl"
+          className="absolute -inset-[2cqmin] rounded-3xl bg-[#d4b35a]/20 blur-2xl"
           animate={{ opacity: [0.4, 0.75, 0.4] }}
           transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -110,7 +110,7 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
           src={iconUrl}
           alt={alt}
           onError={() => setErrored(true)}
-          className="relative h-[13vmin] w-[13vmin] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
+          className="relative h-[13cqmin] w-[13cqmin] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
         />
       </motion.div>
     </div>
@@ -120,7 +120,7 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
 /** UNDER WHAT CONDITIONS — one calculation parameter as a contained chip. */
 export function ConditionChip({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-[#d4b35a]/30 bg-white/[0.04] px-[1.1vmin] py-[0.5vmin] text-[0.95vmin] font-semibold uppercase tracking-[0.2em] text-white/75">
+    <div className="rounded-md border border-[#d4b35a]/30 bg-white/[0.04] px-[1.1cqmin] py-[0.5cqmin] text-[0.95cqmin] font-semibold uppercase tracking-[0.2em] text-white/75">
       {label} <span className="font-black text-white">{value}</span>
     </div>
   );
@@ -150,8 +150,8 @@ export function ScenarioSection({ section }: { section: ScenarioSectionData }) {
   if (!section.entries.length) return null;
   return (
     <div className="mt-[3%]">
-      <div className="text-[0.9vmin] font-bold uppercase tracking-[0.3em] text-[#e8c97a]/75">{section.title}</div>
-      <div className="mt-[1.5%] flex flex-wrap gap-[0.9vmin]">
+      <div className="text-[0.9cqmin] font-bold uppercase tracking-[0.3em] text-[#e8c97a]/75">{section.title}</div>
+      <div className="mt-[1.5%] flex flex-wrap gap-[0.9cqmin]">
         {section.entries.map((entry) => (
           <ScenarioEntry key={`${section.title}-${entry.title}`} entry={entry} />
         ))}
@@ -165,7 +165,7 @@ export function ScenarioEntry({ entry }: { entry: ScenarioEntryData }) {
   const [errored, setErrored] = useState(false);
   return (
     <div
-      className={`flex items-center gap-[0.9vmin] rounded-lg border py-[0.5vmin] pl-[0.5vmin] pr-[1.2vmin] ${
+      className={`flex items-center gap-[0.9cqmin] rounded-lg border py-[0.5cqmin] pl-[0.5cqmin] pr-[1.2cqmin] ${
         entry.highlight
           ? "border-[#f3dca0]/70 bg-[#f3dca0]/10 ring-1 ring-[#f3dca0]/30"
           : "border-[#d4b35a]/40 bg-[#d4b35a]/[0.08]"
@@ -176,22 +176,22 @@ export function ScenarioEntry({ entry }: { entry: ScenarioEntryData }) {
           src={entry.icon}
           alt={entry.title}
           onError={() => setErrored(true)}
-          className="h-[3.2vmin] w-[3.2vmin] rounded-md border border-[#d4b35a]/35 object-cover"
+          className="h-[3.2cqmin] w-[3.2cqmin] rounded-md border border-[#d4b35a]/35 object-cover"
         />
       )}
       <div className="min-w-0">
-        <div className="flex items-center gap-[0.7vmin]">
-          <span className="truncate text-[1.15vmin] font-bold uppercase tracking-[0.06em] text-white">
+        <div className="flex items-center gap-[0.7cqmin]">
+          <span className="truncate text-[1.15cqmin] font-bold uppercase tracking-[0.06em] text-white">
             {entry.title}
           </span>
           {entry.badge && (
-            <span className="rounded bg-[#d4b35a]/90 px-[0.6vmin] py-[0.1vmin] text-[0.8vmin] font-black uppercase text-[#2a1f08]">
+            <span className="rounded bg-[#d4b35a]/90 px-[0.6cqmin] py-[0.1cqmin] text-[0.8cqmin] font-black uppercase text-[#2a1f08]">
               {entry.badge}
             </span>
           )}
         </div>
         {entry.subtitle && (
-          <div className="mt-[0.2vmin] truncate text-[0.85vmin] font-semibold uppercase tracking-[0.14em] text-[#e8c97a]/85">
+          <div className="mt-[0.2cqmin] truncate text-[0.85cqmin] font-semibold uppercase tracking-[0.14em] text-[#e8c97a]/85">
             {entry.subtitle}
           </div>
         )}

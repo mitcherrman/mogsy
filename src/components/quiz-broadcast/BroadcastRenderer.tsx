@@ -77,7 +77,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
           phaseStartedAt={snapshot.phaseStartedAt}
           phaseDurationMs={snapshot.phaseDurationMs}
           anchorX={coreVisible ? (isShorts ? 0.5 : 0.88) : 0.5}
-          anchorY={coreVisible ? (isShorts ? 0.88 : 0.49) : 0.5}
+          anchorY={coreVisible ? (isShorts ? 0.96 : 0.49) : 0.5}
           aspect={isShorts ? 9 / 16 : 16 / 9}
         />
       </div>
@@ -209,7 +209,7 @@ function TopChrome({ snapshot }: { snapshot: EngineSnapshot }) {
         {v.showLogo && (
           <div className="flex items-center gap-1.5 rounded-md border border-[#d4b35a]/35 bg-black/40 px-2 py-1">
             <Sparkles className="h-3 w-3 text-[#e8c97a]" />
-            <span className="text-[0.95vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]">Mogsy</span>
+            <span className="text-[0.95cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]">Mogsy</span>
           </div>
         )}
         {v.showCategoryBadge && q && <ChromeBadge tone="cyan">{String(q.category).replace(/_/g, " ")}</ChromeBadge>}
@@ -239,7 +239,7 @@ function ChromeBadge({ children, tone }: { children: React.ReactNode; tone: "cya
           ? "border-[#d4b35a]/45 text-[#f3dca0] bg-[#d4b35a]/[0.08]"
           : "border-white/15 text-white/60 bg-white/[0.04]";
   return (
-    <span className={`rounded-md border px-2 py-1 text-[0.9vmin] font-semibold uppercase tracking-[0.28em] ${cls}`}>
+    <span className={`rounded-md border px-2 py-1 text-[0.9cqmin] font-semibold uppercase tracking-[0.28em] ${cls}`}>
       {children}
     </span>
   );
@@ -354,10 +354,10 @@ function SceneRow({
               className="pointer-events-none absolute bottom-[5%] left-1/2 z-30 w-[72%] -translate-x-1/2 rounded-2xl border border-[#d4b35a]/55 bg-black/55 px-[5%] py-[2%] text-center shadow-[0_22px_60px_rgba(0,0,0,0.7)] backdrop-blur-md"
               style={{ opacity: tl.nameOpacity }}
             >
-              <div className="text-[1.15vmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
+              <div className="text-[1.15cqmin] font-bold uppercase tracking-[0.45em] text-[#e8c97a]/90">
                 Correct Answer
               </div>
-              <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
+              <div className="mt-2 bg-gradient-to-b from-white via-[#fff2bd] to-[#b8893a] bg-clip-text text-[6cqmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)]">
                 {revealName}
               </div>
             </motion.div>
@@ -500,14 +500,14 @@ function QuestionPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.34, ease: "easeOut" }}
-              className="absolute inset-x-0 top-0 rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/12 via-emerald-300/8 to-cyan-300/8 p-[1.4%] text-[1.75vmin] leading-relaxed text-emerald-50 backdrop-blur-md"
+              className="absolute inset-x-0 top-0 rounded-xl border border-emerald-300/30 bg-gradient-to-br from-emerald-400/12 via-emerald-300/8 to-cyan-300/8 p-[1.4%] text-[1.75cqmin] leading-relaxed text-emerald-50 backdrop-blur-md"
             >
               <div className="mb-1 flex items-baseline justify-between gap-3">
-                <div className="text-[1.05vmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
+                <div className="text-[1.05cqmin] font-bold uppercase tracking-[0.3em] text-emerald-200/90">
                   Correct Answer
                 </div>
                 {correctAnswer && (
-                  <div className="text-[1.7vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
+                  <div className="text-[1.7cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]">
                     {correctAnswer}
                   </div>
                 )}
@@ -527,7 +527,7 @@ const QuestionText = memo(function QuestionText({ text }: { text: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="text-[4.6vmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+      className="text-[4.6cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
     >
       <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
         {text}
@@ -567,10 +567,10 @@ const AnswerGrid = memo(function AnswerGrid({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * i + 0.1, duration: 0.32, ease: "easeOut" }}
             className={[
-              "relative flex min-h-[7vmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.3vmin] font-bold backdrop-blur-md",
+              "relative flex min-h-[7cqmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.3cqmin] font-bold backdrop-blur-md",
               "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] duration-[320ms] ease-out",
               isCorrect
-                ? "border-emerald-300/90 bg-gradient-to-br from-emerald-400/35 via-emerald-400/22 to-cyan-400/22 text-white shadow-[0_0_90px_rgba(16,185,129,0.7)] scale-[1.06] -translate-y-[0.4vmin] z-[2]"
+                ? "border-emerald-300/90 bg-gradient-to-br from-emerald-400/35 via-emerald-400/22 to-cyan-400/22 text-white shadow-[0_0_90px_rgba(16,185,129,0.7)] scale-[1.06] -translate-y-[0.4cqmin] z-[2]"
                 : isWrong
                   ? "border-white/8 bg-white/[0.02] text-white/25 opacity-35 [filter:grayscale(0.85)_blur(0.5px)]"
                   : "border-[#d4b35a]/25 bg-gradient-to-br from-white/[0.07] to-white/[0.02] text-white hover:border-[#d4b35a]/45",
@@ -602,7 +602,7 @@ const AnswerGrid = memo(function AnswerGrid({
             />
             <span
               className={[
-                "relative inline-flex h-[3.4vmin] w-[3.4vmin] shrink-0 items-center justify-center rounded-md text-[1.7vmin] font-black tabular-nums",
+                "relative inline-flex h-[3.4cqmin] w-[3.4cqmin] shrink-0 items-center justify-center rounded-md text-[1.7cqmin] font-black tabular-nums",
                 isCorrect
                   ? "bg-emerald-400/35 text-emerald-50 shadow-[0_0_18px_rgba(16,185,129,0.6)]"
                   : "bg-[#d4b35a]/15 text-[#f3dca0] ring-1 ring-inset ring-[#d4b35a]/40",
@@ -642,7 +642,7 @@ function CountdownInline({
   phaseStartedAt: number;
   phaseDurationMs: number;
 }) {
-  if (!active || phaseDurationMs <= 0) return <div className="h-[2.4vmin]" />;
+  if (!active || phaseDurationMs <= 0) return <div className="h-[2.4cqmin]" />;
   return <CountdownView style={style} phaseStartedAt={phaseStartedAt} phaseDurationMs={phaseDurationMs} />;
 }
 
@@ -682,7 +682,7 @@ function CountdownView({
       <div className="flex items-center justify-center">
         <div
           ref={digitsRef}
-          className="rounded-lg border border-[#d4b35a]/40 bg-black/40 px-[1.4%] py-[0.6%] text-[3.2vmin] font-black tabular-nums text-[#f3dca0] backdrop-blur"
+          className="rounded-lg border border-[#d4b35a]/40 bg-black/40 px-[1.4%] py-[0.6%] text-[3.2cqmin] font-black tabular-nums text-[#f3dca0] backdrop-blur"
         >
           --
         </div>
@@ -692,7 +692,7 @@ function CountdownView({
   if (style === "ring") {
     const C = 2 * Math.PI * 40;
     return (
-      <div className="relative mx-auto h-[6vmin] w-[6vmin]">
+      <div className="relative mx-auto h-[6cqmin] w-[6cqmin]">
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
           <circle cx="50" cy="50" r={40} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
           <circle
@@ -718,7 +718,7 @@ function CountdownView({
     );
   }
   return (
-    <div className="relative h-[1.4vmin] w-full overflow-hidden rounded-full bg-white/8 ring-1 ring-inset ring-[#d4b35a]/20">
+    <div className="relative h-[1.4cqmin] w-full overflow-hidden rounded-full bg-white/8 ring-1 ring-inset ring-[#d4b35a]/20">
       <div
         ref={barRef}
         className="h-full rounded-full bg-gradient-to-r from-[#d4b35a] via-[#f3dca0] to-emerald-300 will-change-[width] shadow-[0_0_18px_rgba(212,179,90,0.55)]"
@@ -775,21 +775,21 @@ function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
     >
       <div className="pointer-events-none absolute inset-[4%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/25" />
       <div className="relative text-center">
-        <div className="text-[0.95vmin] font-bold uppercase tracking-[0.4em] text-[#e8c97a]">Play along</div>
-        <div className="mt-1 text-[1.4vmin] font-extrabold uppercase tracking-[0.18em] text-white">Scan to join</div>
+        <div className="text-[0.95cqmin] font-bold uppercase tracking-[0.4em] text-[#e8c97a]">Play along</div>
+        <div className="mt-1 text-[1.4cqmin] font-extrabold uppercase tracking-[0.18em] text-white">Scan to join</div>
       </div>
       {visuals.showQrCode && (
         <div className="relative rounded-lg border border-[#d4b35a]/35 bg-white/95 p-[6%] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
           <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
             alt=""
-            className="h-[8vmin] w-[8vmin]"
+            className="h-[8cqmin] w-[8cqmin]"
           />
         </div>
       )}
       <div className="relative text-center">
-        <div className="text-[1.05vmin] uppercase tracking-[0.35em] text-white/55">Web</div>
-        <div className="mt-0.5 text-[1.5vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
+        <div className="text-[1.05cqmin] uppercase tracking-[0.35em] text-white/55">Web</div>
+        <div className="mt-0.5 text-[1.5cqmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
       </div>
     </motion.div>
   );
@@ -803,7 +803,7 @@ function BottomTimeline({ current, total }: { current: number; total: number }) 
   const pct = total > 0 ? (current / total) * 100 : 0;
   return (
     <div className="absolute inset-x-0 bottom-0 z-10 px-[2%] pb-[1%]">
-      <div className="relative h-[0.7vmin] w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-inset ring-[#d4b35a]/15">
+      <div className="relative h-[0.7cqmin] w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-inset ring-[#d4b35a]/15">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#d4b35a] via-[#f3dca0] to-cyan-300/80 shadow-[0_0_14px_rgba(212,179,90,0.5)]"
           initial={false}
@@ -904,23 +904,53 @@ function SparkleField() {
 function IdleStanding() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center text-center text-white/80">
-      <div className="mb-3 text-[1.5vmin] uppercase tracking-[0.45em] text-[#e8c97a]">Mogsy Quiz Broadcast</div>
-      <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[6.5vmin] font-black uppercase text-transparent">
+      <div className="mb-3 text-[1.5cqmin] uppercase tracking-[0.45em] text-[#e8c97a]">Mogsy Quiz Broadcast</div>
+      <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[6.5cqmin] font-black uppercase text-transparent">
         Standing by
       </div>
-      <div className="mt-3 text-[1.3vmin] uppercase tracking-[0.3em] text-white/40">The host returns shortly</div>
+      <div className="mt-3 text-[1.3cqmin] uppercase tracking-[0.3em] text-white/40">The host returns shortly</div>
     </div>
   );
 }
 
+/**
+ * ShellFrame — the broadcast stage.
+ *
+ * The stage is a fixed-aspect canvas (16:9 landscape or 9:16 Shorts) and a
+ * CSS size-container: every broadcast component sizes itself in cqmin
+ * (container-relative), so composition is identical no matter what shape the
+ * pop-out browser window happens to be.
+ *
+ * fit=false (pop-out / OBS window): the stage letterboxes — centered on a
+ * black matte, scaled to the largest size that fits the window while keeping
+ * its exact aspect. Recording crops to the stage for a clean 1080x1920 (or
+ * 1920x1080) frame.
+ *
+ * fit=true (Studio embedded preview): same container behavior inside the
+ * panel, so the preview is a true miniature of the broadcast.
+ */
 function ShellFrame({ children, fit, aspect }: { children: React.ReactNode; fit: boolean; aspect: "16:9" | "9:16" }) {
+  const ratio = aspect === "16:9" ? "16 / 9" : "9 / 16";
   if (!fit) {
-    return <div className="relative h-screen w-screen overflow-hidden bg-black text-white">{children}</div>;
+    const width =
+      aspect === "16:9"
+        ? "min(100vw, calc(100vh * 16 / 9))"
+        : "min(100vw, calc(100vh * 9 / 16))";
+    return (
+      <div className="grid h-screen w-screen place-items-center overflow-hidden bg-black">
+        <div
+          className="relative overflow-hidden bg-black text-white"
+          style={{ aspectRatio: ratio, width, containerType: "size" }}
+        >
+          {children}
+        </div>
+      </div>
+    );
   }
-  const ratio = aspect === "16:9" ? "aspect-video" : "aspect-[9/16]";
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl border border-[#d4b35a]/25 bg-black text-white ${ratio}`}
+      className="relative w-full overflow-hidden rounded-xl border border-[#d4b35a]/25 bg-black text-white"
+      style={{ aspectRatio: ratio, containerType: "size" }}
     >
       {children}
     </div>
@@ -1036,7 +1066,7 @@ function FinalCountdownOverlay({
             {/* shockwave */}
             <motion.div
               aria-hidden
-              className="absolute h-[44vmin] w-[44vmin] rounded-full border border-[#f3dca0]/60"
+              className="absolute h-[44cqmin] w-[44cqmin] rounded-full border border-[#f3dca0]/60"
               initial={{ opacity: 0.9, scale: 0.15 }}
               animate={{ opacity: 0, scale: 2.4 }}
               transition={{ duration: 0.85, ease: "easeOut" }}
@@ -1048,7 +1078,7 @@ function FinalCountdownOverlay({
             {/* numeral */}
             <motion.div
               className="relative flex items-center justify-center"
-              initial={{ y: "-18vmin", scale: 0.55, opacity: 0, rotate: -3 }}
+              initial={{ y: "-18cqmin", scale: 0.55, opacity: 0, rotate: -3 }}
               animate={{
                 y: 0,
                 scale: [0.55, n === 1 ? 1.38 : 1.24, 1.05],
@@ -1058,11 +1088,11 @@ function FinalCountdownOverlay({
               exit={{ scale: 1.65, opacity: 0, rotate: 3 }}
               transition={{ duration: 0.62, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="absolute -inset-[12vmin] rounded-full bg-[radial-gradient(circle,rgba(243,220,160,0.34),rgba(212,179,90,0.16)_38%,transparent_70%)] blur-xl" />
-              <div className="absolute -inset-[6vmin] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.12),transparent_68%)]" />
+              <div className="absolute -inset-[12cqmin] rounded-full bg-[radial-gradient(circle,rgba(243,220,160,0.34),rgba(212,179,90,0.16)_38%,transparent_70%)] blur-xl" />
+              <div className="absolute -inset-[6cqmin] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.12),transparent_68%)]" />
 
               <span
-                className="relative select-none bg-gradient-to-b from-white via-[#fff0b8] to-[#b7791f] bg-clip-text text-[26vmin] font-black leading-none tracking-[-0.08em] text-transparent drop-shadow-[0_0_42px_rgba(243,220,160,0.85)]"
+                className="relative select-none bg-gradient-to-b from-white via-[#fff0b8] to-[#b7791f] bg-clip-text text-[26cqmin] font-black leading-none tracking-[-0.08em] text-transparent drop-shadow-[0_0_42px_rgba(243,220,160,0.85)]"
                 style={{
                   WebkitTextStroke: "2px rgba(255,255,255,0.22)",
                   textShadow: "0 0 32px rgba(243,220,160,0.75), 0 10px 48px rgba(0,0,0,0.85)",
@@ -1203,6 +1233,26 @@ function ShortsSceneRow({
         transition={{ duration: 0.55, ease: "easeOut" }}
       />
 
+      {/* Crystal core — cinematic BACKGROUND anchor. Large, bottom-center,
+          intentionally cropped by the stage's bottom edge so it reads as a
+          huge magical object rising behind the quiz. Strictly below content
+          (z-[2] vs content z-10); a gradient veil over its upper half keeps
+          answers/explanation readable where they overlap it. */}
+      {!visuals.showQrCode && !visuals.showWebsite && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[2]">
+          <div className="relative mx-auto aspect-square w-[85cqmin] translate-y-[44%]">
+            <BroadcastKnowledgeCore
+              phase={phase}
+              questionIndex={questionIndex}
+              phaseStartedAt={phaseStartedAt}
+              phaseDurationMs={phaseDurationMs}
+              compact
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#03040d]/80 via-[#03040d]/30 to-transparent" />
+          </div>
+        </div>
+      )}
+
       {/* Subject art hero — height expands on reveal */}
       <motion.div
         className="relative z-10 flex w-full shrink-0 items-center justify-center px-[3%] pt-[2.2%]"
@@ -1216,10 +1266,10 @@ function ShortsSceneRow({
             className="pointer-events-none absolute bottom-[5%] left-1/2 z-20 w-[82%] -translate-x-1/2 rounded-xl border border-[#d4b35a]/45 bg-black/55 px-[4%] py-[1.8%] text-center shadow-[0_14px_36px_rgba(0,0,0,0.65)] backdrop-blur-md"
             style={{ opacity: tl.nameOpacity }}
           >
-            <div className="text-[1.15vmin] font-bold uppercase tracking-[0.38em] text-[#e8c97a]/90">
+            <div className="text-[1.15cqmin] font-bold uppercase tracking-[0.38em] text-[#e8c97a]/90">
               Correct Answer
             </div>
-            <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4vmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
+            <div className="mt-1 bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-[3.4cqmin] font-black uppercase leading-none tracking-wide text-transparent drop-shadow-[0_3px_14px_rgba(0,0,0,0.8)]">
               {revealName}
             </div>
           </motion.div>
@@ -1237,7 +1287,7 @@ function ShortsSceneRow({
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.42, ease: "easeOut" }}
-            className="text-center text-[3.75vmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+            className="text-center text-[3.75cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
           >
             <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
               {question.question_text}
@@ -1270,7 +1320,7 @@ function ShortsSceneRow({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.98 }}
                 transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-                className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95vmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
+                className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[1.95cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
               >
                 <motion.div
                   aria-hidden
@@ -1280,9 +1330,9 @@ function ShortsSceneRow({
                   transition={{ duration: 1.15, ease: "easeOut", delay: 0.15 }}
                 />
                 <div className="mb-1 flex items-baseline justify-between gap-3">
-                  <div className="text-[1.05vmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
+                  <div className="text-[1.05cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
                   {revealName && (
-                    <div className="max-w-[52%] truncate text-right text-[1.75vmin] font-black uppercase tracking-wide text-white">
+                    <div className="max-w-[52%] truncate text-right text-[1.75cqmin] font-black uppercase tracking-wide text-white">
                       {revealName}
                     </div>
                   )}
@@ -1294,39 +1344,35 @@ function ShortsSceneRow({
         </div>
       </motion.div>
 
-      {/* CTA footer — exits with content */}
-      <motion.div
-        className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
-        style={{ y: qrYStr, opacity: tl.qrOpacity }}
-      >
-        {visuals.showQrCode || visuals.showWebsite ? (
-          <>
-            {visuals.showQrCode && (
-              <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
-                  alt=""
-                  className="h-[5vmin] w-[5vmin]"
-                />
-              </div>
-            )}
-            {visuals.showWebsite && (
-              <div className="flex flex-col text-left">
-                <div className="text-[1vmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-                <div className="text-[1.6vmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
-              </div>
-            )}
-          </>
-        ) : (
-          <BroadcastKnowledgeCore
-            phase={phase}
-            questionIndex={questionIndex}
-            phaseStartedAt={phaseStartedAt}
-            phaseDurationMs={phaseDurationMs}
-            compact
-          />
-        )}
-      </motion.div>
+      {/* CTA footer — exits with content. The crystal core no longer lives
+          here (it is the absolute background layer above); the footer only
+          renders when there is QR/website content, so the answer/explanation
+          zones gain the freed vertical space in core mode. */}
+      {(visuals.showQrCode || visuals.showWebsite) && (
+        <motion.div
+          className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
+          style={{ y: qrYStr, opacity: tl.qrOpacity }}
+        >
+          {visuals.showQrCode && (
+            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+                alt=""
+                className="h-[5cqmin] w-[5cqmin]"
+              />
+            </div>
+          )}
+          {visuals.showWebsite && (
+            <div className="flex flex-col text-left">
+              <div className="text-[1cqmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
+              <div className="text-[1.6cqmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Bottom breathing room so answers never kiss the stage edge */}
+      <div className="shrink-0 pb-[2.5%]" />
     </motion.div>
   );
 }

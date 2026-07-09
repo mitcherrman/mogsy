@@ -72,7 +72,7 @@ export function ItemAnalysisScenarioCard({
           <motion.img
             src={item.icon}
             alt=""
-            className="absolute left-1/2 top-[26%] h-[52vmin] w-[52vmin] max-w-none -translate-x-[58%] -translate-y-1/2 rounded-[4vmin] object-cover opacity-[0.13] blur-md saturate-[1.15]"
+            className="absolute left-1/2 top-[26%] h-[52cqmin] w-[52cqmin] max-w-none -translate-x-[58%] -translate-y-1/2 rounded-[4cqmin] object-cover opacity-[0.13] blur-md saturate-[1.15]"
             animate={{ x: ["-58%", "-52%", "-58%"], scale: [1, 1.06, 1] }}
             transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -91,14 +91,14 @@ export function ItemAnalysisScenarioCard({
           {/* radial shrine rings */}
           <motion.div
             aria-hidden
-            className="absolute h-[26vmin] w-[26vmin] rounded-full border border-[#d4b35a]/25"
+            className="absolute h-[26cqmin] w-[26cqmin] rounded-full border border-[#d4b35a]/25"
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
             style={{ borderStyle: "dashed" }}
           />
           <motion.div
             aria-hidden
-            className="absolute h-[20vmin] w-[20vmin] rounded-full border border-[#7dd3fc]/15"
+            className="absolute h-[20cqmin] w-[20cqmin] rounded-full border border-[#7dd3fc]/15"
             animate={{ scale: [1, 1.05, 1], opacity: [0.5, 0.9, 0.5] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -106,21 +106,21 @@ export function ItemAnalysisScenarioCard({
           {/* soft hextech glow */}
           <motion.div
             aria-hidden
-            className="absolute h-[15vmin] w-[15vmin] rounded-full bg-[#d4b35a]/25 blur-2xl"
+            className="absolute h-[15cqmin] w-[15cqmin] rounded-full bg-[#d4b35a]/25 blur-2xl"
             animate={{ opacity: [0.5, 0.85, 0.5] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
 
           {/* particle specks */}
           {[
-            { left: "-9vmin", top: "-5vmin", delay: 0 },
-            { left: "9.5vmin", top: "-2vmin", delay: 1.6 },
-            { left: "7vmin", top: "7vmin", delay: 3.1 },
+            { left: "-9cqmin", top: "-5cqmin", delay: 0 },
+            { left: "9.5cqmin", top: "-2cqmin", delay: 1.6 },
+            { left: "7cqmin", top: "7cqmin", delay: 3.1 },
           ].map((p, i) => (
             <motion.div
               key={i}
               aria-hidden
-              className="absolute h-[0.45vmin] w-[0.45vmin] rounded-full bg-[#f3dca0]"
+              className="absolute h-[0.45cqmin] w-[0.45cqmin] rounded-full bg-[#f3dca0]"
               style={{ left: p.left, top: p.top }}
               animate={{ y: [0, -8, 0], opacity: [0, 0.8, 0] }}
               transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: p.delay }}
@@ -139,7 +139,7 @@ export function ItemAnalysisScenarioCard({
           {/* pedestal shadow */}
           <motion.div
             aria-hidden
-            className="absolute top-[9.5vmin] h-[1.6vmin] w-[11vmin] rounded-[50%] bg-black/55 blur-md"
+            className="absolute top-[9.5cqmin] h-[1.6cqmin] w-[11cqmin] rounded-[50%] bg-black/55 blur-md"
             animate={{ scaleX: [1, 0.9, 1], opacity: [0.55, 0.4, 0.55] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -150,7 +150,7 @@ export function ItemAnalysisScenarioCard({
       {/* Bottom label + reveal-gated sections */}
       <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[5%]">
         <ScenarioTitle>{item.name}</ScenarioTitle>
-        <div className="mt-[0.4vmin] text-[0.95vmin] font-semibold uppercase tracking-[0.24em] text-white/60">
+        <div className="mt-[0.4cqmin] text-[0.95cqmin] font-semibold uppercase tracking-[0.24em] text-white/60">
           {hasRecipe ? "Item · Build Path" : "Item"}
         </div>
 
@@ -171,7 +171,7 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
   if (!iconUrl || errored) {
     return (
-      <div className="flex h-[14vmin] w-[14vmin] items-center justify-center rounded-2xl border border-[#d4b35a]/40 bg-black/40 text-[3vmin] text-white/30">
+      <div className="flex h-[14cqmin] w-[14cqmin] items-center justify-center rounded-2xl border border-[#d4b35a]/40 bg-black/40 text-[3cqmin] text-white/30">
         ?
       </div>
     );
@@ -181,7 +181,7 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
       src={iconUrl}
       alt={alt}
       onError={() => setErrored(true)}
-      className="h-[14vmin] w-[14vmin] rounded-2xl border-2 border-[#d4b35a]/60 object-cover shadow-[0_18px_44px_-8px_rgba(0,0,0,0.9)] ring-1 ring-[#f3dca0]/30"
+      className="h-[14cqmin] w-[14cqmin] rounded-2xl border-2 border-[#d4b35a]/60 object-cover shadow-[0_18px_44px_-8px_rgba(0,0,0,0.9)] ring-1 ring-[#f3dca0]/30"
     />
   );
 }
@@ -204,8 +204,8 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
   // Children: known components in order, mystery/answer slot last.
   const childCount = item.knownComponents.length + 1;
   const compact = childCount >= 4;
-  const tile = compact ? "h-[5.6vmin] w-[5.6vmin]" : "h-[7.2vmin] w-[7.2vmin]";
-  const labelWidth = compact ? "max-w-[8vmin]" : "max-w-[10vmin]";
+  const tile = compact ? "h-[5.6cqmin] w-[5.6cqmin]" : "h-[7.2cqmin] w-[7.2cqmin]";
+  const labelWidth = compact ? "max-w-[8cqmin]" : "max-w-[10cqmin]";
 
   // Connector endpoints as percentages of the row width.
   const childX = Array.from({ length: childCount }, (_, i) => ((i + 0.5) / childCount) * 100);
@@ -214,7 +214,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
     <div className="absolute inset-x-[6%] top-[7%] h-[57%]">
       {/* glass panel */}
       <div className="absolute inset-0 rounded-2xl border border-[#d4b35a]/20 bg-black/35 backdrop-blur-sm" />
-      <div className="absolute left-1/2 top-[2.5%] -translate-x-1/2 text-[0.85vmin] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/70">
+      <div className="absolute left-1/2 top-[2.5%] -translate-x-1/2 text-[0.85cqmin] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/70">
         Build Path
       </div>
 
@@ -223,7 +223,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
         <div className="relative flex flex-col items-center">
           <motion.div
             aria-hidden
-            className="absolute -inset-[1.6vmin] rounded-2xl bg-[#d4b35a]/20 blur-xl"
+            className="absolute -inset-[1.6cqmin] rounded-2xl bg-[#d4b35a]/20 blur-xl"
             animate={{ opacity: [0.45, 0.8, 0.45] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -232,14 +232,14 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
             animate={{ y: [0, -4, 0] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <ItemNodeTile iconUrl={item.icon} name={item.name} sizeClass="h-[10.5vmin] w-[10.5vmin]" focal />
+            <ItemNodeTile iconUrl={item.icon} name={item.name} sizeClass="h-[10.5cqmin] w-[10.5cqmin]" focal />
           </motion.div>
         </div>
 
         {/* Connectors */}
         <svg
           aria-hidden
-          className="h-[6.5vmin] w-full shrink-0"
+          className="h-[6.5cqmin] w-full shrink-0"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
@@ -264,16 +264,16 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
         {/* Component row */}
         <div className="flex w-full flex-1 items-start justify-around">
           {item.knownComponents.map((comp) => (
-            <div key={comp.name} className="flex flex-col items-center gap-[0.7vmin]">
+            <div key={comp.name} className="flex flex-col items-center gap-[0.7cqmin]">
               <ItemNodeTile iconUrl={comp.icon} name={comp.name} sizeClass={tile} />
-              <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-bold uppercase tracking-[0.08em] text-white/85`}>
+              <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-bold uppercase tracking-[0.08em] text-white/85`}>
                 {comp.name}
               </div>
             </div>
           ))}
 
           {/* Mystery / answer node — identical box pre & post reveal */}
-          <div className="flex flex-col items-center gap-[0.7vmin]">
+          <div className="flex flex-col items-center gap-[0.7cqmin]">
             {revealed && item.missingComponent ? (
               <>
                 <motion.div
@@ -284,7 +284,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                 >
                   <motion.div
                     aria-hidden
-                    className="absolute -inset-[0.9vmin] rounded-xl bg-[#f3dca0]/25 blur-lg"
+                    className="absolute -inset-[0.9cqmin] rounded-xl bg-[#f3dca0]/25 blur-lg"
                     animate={{ opacity: [0.5, 0.9, 0.5] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   />
@@ -295,14 +295,14 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                     answer
                   />
                 </motion.div>
-                <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-black uppercase tracking-[0.08em] text-[#f3dca0]`}>
+                <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-black uppercase tracking-[0.08em] text-[#f3dca0]`}>
                   {item.missingComponent.name}
                 </div>
               </>
             ) : (
               <>
                 <motion.div
-                  className={`flex ${tile} items-center justify-center rounded-xl border-2 border-dashed border-[#7dd3fc]/60 bg-black/55 text-[2.8vmin] font-black text-[#7dd3fc]`}
+                  className={`flex ${tile} items-center justify-center rounded-xl border-2 border-dashed border-[#7dd3fc]/60 bg-black/55 text-[2.8cqmin] font-black text-[#7dd3fc]`}
                   animate={{
                     opacity: [0.6, 1, 0.6],
                     boxShadow: [
@@ -315,7 +315,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                 >
                   ?
                 </motion.div>
-                <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-bold uppercase tracking-[0.12em] text-[#7dd3fc]/80`}>
+                <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-bold uppercase tracking-[0.12em] text-[#7dd3fc]/80`}>
                   Missing
                 </div>
               </>
@@ -365,7 +365,7 @@ function ItemNodeTile({
     <div
       className={`flex ${sizeClass} items-center justify-center rounded-xl bg-gradient-to-b from-[#1a1610] to-[#0c0a08] shadow-[0_10px_28px_-8px_rgba(0,0,0,0.9)] ${border}`}
     >
-      <span className="text-[1.9vmin] font-black tracking-wide text-[#e8c97a]/90">{monogram(name)}</span>
+      <span className="text-[1.9cqmin] font-black tracking-wide text-[#e8c97a]/90">{monogram(name)}</span>
     </div>
   );
 }

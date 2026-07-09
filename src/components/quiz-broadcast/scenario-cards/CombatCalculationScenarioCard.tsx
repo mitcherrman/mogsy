@@ -72,7 +72,7 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
         )}
 
         {(subject.level != null || subject.abilityRank != null) && (
-          <div className="mt-[3%] flex flex-wrap gap-[0.8vmin]">
+          <div className="mt-[3%] flex flex-wrap gap-[0.8cqmin]">
             {subject.level != null && <ConditionChip label="Level" value={subject.level} />}
             {subject.abilityRank != null && <ConditionChip label="Rank" value={subject.abilityRank} />}
           </div>

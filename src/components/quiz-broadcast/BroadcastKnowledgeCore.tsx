@@ -628,7 +628,7 @@ export function BroadcastKnowledgeCore({
         {!compact && (
           <div className="pointer-events-none absolute inset-x-0 bottom-[6%] flex items-center justify-center">
             <span
-              className="select-none text-[0.62vmin] font-black uppercase tracking-[0.60em] text-[#6ab0e8]"
+              className="select-none text-[0.62cqmin] font-black uppercase tracking-[0.60em] text-[#6ab0e8]"
               style={{ opacity: 0.18 }}
             >
               mogsy

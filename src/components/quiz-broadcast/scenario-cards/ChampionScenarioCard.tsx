@@ -25,8 +25,8 @@ export function ChampionScenarioCard({ champion }: { champion: string }) {
       lightStreak
     >
       <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[6%] opacity-0">
-        <div className="text-[1.05vmin] font-bold uppercase tracking-[0.35em] text-[#e8c97a]/90">Champion</div>
-        <div className="mt-1 text-[2.6vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+        <div className="text-[1.05cqmin] font-bold uppercase tracking-[0.35em] text-[#e8c97a]/90">Champion</div>
+        <div className="mt-1 text-[2.6cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
           {champion}
         </div>
         <div className="mt-2 h-[2px] w-[40%] bg-gradient-to-r from-[#d4b35a] to-transparent" />

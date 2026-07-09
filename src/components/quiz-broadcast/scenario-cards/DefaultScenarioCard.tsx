@@ -40,7 +40,7 @@ export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; lab
       />
       {/* gold inner trim */}
       <div className="pointer-events-none absolute inset-[6%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/35" />
-      <div className="mt-[8%] text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">
+      <div className="mt-[8%] text-[0.95cqmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">
         {" "}
         {kindLabel}{" "}
       </div>
@@ -51,18 +51,18 @@ export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; lab
             src={iconUrl}
             alt={label || kindLabel}
             onError={() => setErrored(true)}
-            className="relative h-[11vmin] w-[11vmin] rounded-xl border border-[#d4b35a]/40 object-cover shadow-[0_10px_30px_-8px_rgba(0,0,0,0.8)]"
+            className="relative h-[11cqmin] w-[11cqmin] rounded-xl border border-[#d4b35a]/40 object-cover shadow-[0_10px_30px_-8px_rgba(0,0,0,0.8)]"
           />
         ) : (
-          <div className="relative flex h-[11vmin] w-[11vmin] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[2vmin] text-white/40">
+          <div className="relative flex h-[11cqmin] w-[11cqmin] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[2cqmin] text-white/40">
             ?
           </div>
         )}
       </div>
       {label && (
         <div className="mt-[6%] max-w-[86%] text-center">
-          <div className="text-[0.9vmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]/80">{kindLabel}</div>
-          <div className="mt-1 text-[2.05vmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
+          <div className="text-[0.9cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]/80">{kindLabel}</div>
+          <div className="mt-1 text-[2.05cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
             {label}
           </div>
         </div>
@@ -98,17 +98,17 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
       <div className={`pointer-events-none absolute inset-0 rounded-2xl ${accent.glow} blur-3xl opacity-50`} />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 flex select-none items-center justify-center text-[28vmin] font-black leading-none text-white/[0.04]"
+        className="pointer-events-none absolute inset-0 flex select-none items-center justify-center text-[28cqmin] font-black leading-none text-white/[0.04]"
       >
         ?
       </div>
       <div className="relative z-10 flex flex-col items-center gap-[3%] px-[8%] text-center">
-        <div className="text-[0.95vmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{accent.label}</div>
-        <div className="text-[1.4vmin] font-semibold uppercase tracking-[0.32em] text-white/55">
+        <div className="text-[0.95cqmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{accent.label}</div>
+        <div className="text-[1.4cqmin] font-semibold uppercase tracking-[0.32em] text-white/55">
           {category.replace(/_/g, " ")}
         </div>
         <div className="mt-[2%] h-[2px] w-[44%] bg-gradient-to-r from-transparent via-[#d4b35a]/60 to-transparent" />
-        <div className="mt-[3%] text-[1.15vmin] uppercase tracking-[0.28em] text-white/40">Reveal incoming…</div>
+        <div className="mt-[3%] text-[1.15cqmin] uppercase tracking-[0.28em] text-white/40">Reveal incoming…</div>
       </div>
     </motion.div>
   );
@@ -116,7 +116,7 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
 
 export function SubjectPlaceholder() {
   return (
-    <div className="flex h-[78%] w-[80%] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[1.4vmin] uppercase tracking-[0.3em] text-white/30">
+    <div className="flex h-[78%] w-[80%] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[1.4cqmin] uppercase tracking-[0.3em] text-white/30">
       Mogsy
     </div>
   );
