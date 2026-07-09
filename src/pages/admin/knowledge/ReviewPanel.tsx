@@ -78,7 +78,7 @@ export function ReviewPanel({
     onSuccess: (res) => {
       const historyId = typeof res.apply_history_id === "number" ? res.apply_history_id : null;
       toast.success(
-        `Applied successfully${res.new_full_progression ? `: ${res.new_full_progression}` : ""}`,
+        `Applied successfully${res.after_value ? `: ${res.after_value}` : ""}`,
         historyId !== null
           ? {
               duration: 12000,
@@ -108,7 +108,7 @@ export function ReviewPanel({
     mutationFn: (historyId: number) => knowledgeApi.undoApply(historyId),
     onSuccess: (res) => {
       toast.success(
-        `Undone${res.restored_full_progression ? `: restored ${res.restored_full_progression}` : ""}`,
+        `Undone${res.after_value ? `: restored ${res.after_value}` : ""}`,
       );
       qc.invalidateQueries({ queryKey: ["knowledge"] });
       onApplied?.();

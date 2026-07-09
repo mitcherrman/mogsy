@@ -205,14 +205,14 @@ export default function KnowledgeRundown() {
   const insights = Array.isArray(intelligence?.insights)
     ? (intelligence!.insights as unknown[]).filter(isRecord)
     : [];
-  const headlines = Array.isArray(intelligence?.headline_suggestions)
-    ? (intelligence!.headline_suggestions as unknown[]).filter(isRecord)
+  const headlines = Array.isArray(intelligence?.headlines)
+    ? (intelligence!.headlines as unknown[]).filter(isRecord)
     : [];
 
   const gameplay = isRecord(gameplayQuery.data) ? gameplayQuery.data as GameplayImpactResponse : null;
   const gameplayLoading = gameplayQuery.isLoading;
   const gameplayUnavailable = gameplayQuery.isError || !gameplay;
-  const gameplayMetrics = Array.isArray(gameplay?.metrics)
+  const gameplayMetrics: GameplayImpactMetric[] = Array.isArray(gameplay?.metrics)
     ? (gameplay!.metrics as unknown[]).filter(isRecord) as GameplayImpactMetric[]
     : [];
   const gameplayChampions = Array.isArray(gameplay?.champion_impacts)
@@ -230,9 +230,9 @@ export default function KnowledgeRundown() {
   const execItems = [
     { label: "Primary Theme", value: toText(execSummary?.primary_theme), tone: "info" as const },
     { label: "Secondary Theme", value: toText(execSummary?.secondary_theme), tone: "info" as const },
-    { label: "Patch Classification", value: toText(execSummary?.patch_classification) },
-    { label: "Largest Buff", value: toText(execSummary?.largest_buff), tone: "positive" as const },
-    { label: "Largest Nerf", value: toText(execSummary?.largest_nerf), tone: "negative" as const },
+    { label: "Patch Classification", value: toText(execSummary?.patch_label) },
+    { label: "Largest Buff", value: toText(getRecord(execSummary, "largest_buff")?.subject), tone: "positive" as const },
+    { label: "Largest Nerf", value: toText(getRecord(execSummary, "largest_nerf")?.subject), tone: "negative" as const },
     { label: "Champions Changed", value: toMetricValue(execSummary?.champions_changed) },
     { label: "Values Changed", value: toMetricValue(execSummary?.values_changed) },
     { label: "Buff Count", value: toMetricValue(execSummary?.buff_count), tone: "positive" as const },
@@ -441,7 +441,6 @@ export default function KnowledgeRundown() {
                     kind={toText(insight.kind)}
                     description={toText(insight.description)}
                     available={typeof insight.available === "boolean" ? insight.available : null}
-                    availability={toText(insight.availability)}
                     unavailableReason={toText(insight.unavailable_reason)}
                     evidence={insight.evidence}
                     detail={extractGameplayDetail(insight)}
@@ -474,8 +473,8 @@ export default function KnowledgeRundown() {
             {headlines.map((headline, index) => (
               <HeadlineCard
                 key={`headline-${index}`}
-                headline={toText(headline.headline)}
-                kind={toText(headline.kind)}
+                headline={toText(headline.text)}
+                kind={toText(Array.isArray(headline.tags) ? headline.tags[0] : null)}
                 onCopy={copyHeadline}
               />
             ))}
@@ -596,7 +595,7 @@ export default function KnowledgeRundown() {
               <div className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
                 Top gameplay metrics
               </div>
-              <GameplayMetricsTable metrics={gameplayMetrics as never} />
+              <GameplayMetricsTable metrics={gameplayMetrics} />
             </div>
           )}
 
@@ -606,25 +605,33 @@ export default function KnowledgeRundown() {
                 Champion impacts
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {gameplayChampions.map((impact, index) => (
-                  <GameplayChampionImpactCard
-                    key={`gc-${toText(impact.champion) ?? index}`}
-                    champion={toText(impact.champion)}
-                    role={toText(impact.role)}
-                    availableKeys={
-                      Array.isArray(impact.available_metric_keys)
-                        ? (impact.available_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
-                        : null
-                    }
-                    unavailableKeys={
-                      Array.isArray(impact.unavailable_metric_keys)
-                        ? (impact.unavailable_metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
-                        : null
-                    }
-                    computedCount={safeNumber(impact.computed_count)}
-                    unavailableCount={safeNumber(impact.unavailable_count)}
-                  />
-                ))}
+                {gameplayChampions.map((impact, index) => {
+                  // Backend nests counts/keys under `summary`; it only ever
+                  // sends the AVAILABLE metric keys there — unavailable keys
+                  // are derived client-side from the per-metric list.
+                  const summary = isRecord(impact.summary) ? impact.summary : null;
+                  const metricsList = Array.isArray(impact.metrics)
+                    ? (impact.metrics as unknown[]).filter(isRecord)
+                    : [];
+                  const availableKeys = Array.isArray(summary?.metric_keys)
+                    ? (summary!.metric_keys as unknown[]).filter((v) => typeof v === "string") as string[]
+                    : null;
+                  const unavailableKeys = metricsList
+                    .filter((m) => m.available === false)
+                    .map((m) => toText(m.key))
+                    .filter((v): v is string => v != null);
+                  return (
+                    <GameplayChampionImpactCard
+                      key={`gc-${toText(impact.champion) ?? index}`}
+                      champion={toText(impact.champion)}
+                      role={toText(impact.role)}
+                      availableKeys={availableKeys}
+                      unavailableKeys={unavailableKeys.length > 0 ? unavailableKeys : null}
+                      computedCount={safeNumber(summary?.metrics_computed)}
+                      unavailableCount={safeNumber(summary?.metrics_unavailable)}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}

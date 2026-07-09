@@ -226,31 +226,62 @@ export interface PatchRundownResponse {
 }
 
 export interface ApprovalPlan {
+  entity_name?: string | null;
+  ability_key?: string | null;
+  ability_name?: string | null;
+  property?: string | null;
+  production_table?: string | null;
+  production_column?: string | null;
   old_full_progression?: string | null;
   new_full_progression?: string | null;
   rank_writes?: {
+    proposed_update_id: number;
     rank: number;
     old_value: number | string | null;
     new_value: number | string | null;
   }[];
+  provider?: Provider | null;
+  patch_version?: string | null;
+  confidence?: number | null;
+  change_type?: ChangeType | null;
+  approved_by?: string | null;
   [k: string]: unknown;
 }
 
 export interface ApprovalResponse {
+  success?: boolean;
   dry_run: boolean;
-  plan: ApprovalPlan;
-  applied?: boolean;
-  new_full_progression?: string | null;
-  /** Present on successful writes so the UI can offer Undo. */
+  /** All apply_history row ids written by this call (empty on dry_run). */
+  history_ids?: number[];
+  /** Present on successful writes so the UI can offer Undo — pass to
+   *  knowledgeApi.undoApply(). Same as history_ids[0]. */
   apply_history_id?: number | null;
+  /** proposed_update ids flipped to APPLIED (empty on dry_run). */
+  applied_update_ids?: number[];
+  before_value?: string | null;
+  after_value?: string | null;
+  plan: ApprovalPlan;
   [k: string]: unknown;
 }
 
 export interface UndoResponse {
-  undone: boolean;
-  apply_history_id: number;
-  restored_value?: number | string | null;
-  restored_full_progression?: string | null;
+  success: boolean;
+  /** Undoing any rank of a progression undoes the whole batch — every
+   *  apply_history row id restored. */
+  history_ids_undone: number[];
+  entity_name?: string | null;
+  ability_key?: string | null;
+  property?: string | null;
+  /** Full progression string the DB had before this undo (i.e. what the
+   *  original apply wrote). */
+  before_value?: string | null;
+  /** Full progression string the DB now has (i.e. the restored value). */
+  after_value?: string | null;
+  /** knowledge_proposed_updates ids returned to PENDING. */
+  restored_update_ids?: number[];
+  restored_status?: string | null;
+  undone_by?: string | null;
+  undone_at?: string | null;
   [k: string]: unknown;
 }
 
@@ -357,54 +388,118 @@ export interface PatchScore {
   /** 0..100 integer score. */
   score?: number | null;
   classification?: string | null;
-  explanation?: string | null;
+  /** Per-factor breakdown (patch_score.components on the backend), e.g.
+   *  { breadth: 12.5, volume: 8, magnitude: ..., depth: ..., distribution: ... }.
+   *  Not a string — render as a structured breakdown, not via toText(). */
+  explanation?: Record<string, unknown> | null;
+}
+
+/** {subject, detail} pointer into a champion-level insight, or null. */
+export interface InsightRef {
+  subject?: string | null;
+  detail?: Record<string, unknown> | null;
 }
 
 export interface ExecutiveSummaryInput {
+  patch_version?: string | null;
   primary_theme?: string | null;
   secondary_theme?: string | null;
-  largest_buff?: string | null;
-  largest_nerf?: string | null;
-  patch_classification?: string | null;
+  largest_buff?: InsightRef | null;
+  largest_nerf?: InsightRef | null;
+  /** 0..100 integer, duplicated from patch_score.score for convenience. */
+  patch_score?: number | null;
+  patch_label?: string | null;
   champions_changed?: number | null;
   values_changed?: number | null;
   buff_count?: number | null;
   nerf_count?: number | null;
+  /** Cross-references into PatchIntelligenceResponse.interesting_facts[].fact_id. */
+  interesting_fact_ids?: string[] | null;
+  /** Cross-references into PatchIntelligenceResponse.headlines[].headline_id. */
+  headline_ids?: string[] | null;
   [k: string]: unknown;
 }
 
 export interface InterestingFact {
+  fact_id?: string | null;
+  type?: string | null;
   headline?: string | null;
   /** 0..1 confidence fraction. */
   confidence?: number | null;
+  supporting_change_ids?: number[] | null;
+  /** Same array as supporting_change_ids — backend sends both keys. */
   evidence?: unknown;
   [k: string]: unknown;
 }
 
+/**
+ * Union of every key populated across the 24 insight kinds (regular +
+ * gameplay-aware — see knowledge_engine/intelligence/insights.py and
+ * gameplay_insights.py _metric_detail / _change_detail). Any one insight
+ * only fills a subset; the rest are absent, not null-but-typed.
+ */
+export interface InsightDetail {
+  champion?: string | null;
+  ability?: string | null;
+  ability_key?: string | null;
+  property?: string | null;
+  rank?: number | null;
+  old_value?: number | string | null;
+  new_value?: number | string | null;
+  delta?: number | null;
+  delta_pct?: number | null;
+  net_change_score?: number | null;
+  buff_count?: number | null;
+  nerf_count?: number | null;
+  values_changed?: number | null;
+  /** Gameplay-aware insights (biggest_cast_frequency_buff, etc). */
+  metric_key?: string | null;
+  before?: number | string | null;
+  after?: number | string | null;
+  unit?: string | null;
+  assumptions?: string[] | null;
+  /** best_simulation_candidate only. */
+  total_abs_delta_pct?: number | null;
+  metric_keys?: string[] | null;
+  rule?: string | null;
+  [k: string]: unknown;
+}
+
 export interface PatchInsight {
-  title?: string | null;
   kind?: string | null;
+  title?: string | null;
   description?: string | null;
+  detail?: InsightDetail | null;
+  /** Always null today — Insight has no confidence field backend-side. */
+  confidence?: number | null;
   available?: boolean | null;
-  availability?: string | null;
   unavailable_reason?: string | null;
   evidence?: unknown;
   [k: string]: unknown;
 }
 
 export interface HeadlineSuggestion {
-  headline?: string | null;
-  kind?: string | null;
+  headline_id?: string | null;
+  text?: string | null;
+  /** Always null today — Headline has no score field backend-side. */
+  score?: number | null;
+  /** Single-element array carrying the producing insight kind. */
+  tags?: string[] | null;
+  supporting_change_ids?: number[] | null;
   [k: string]: unknown;
 }
 
 export interface PatchIntelligenceResponse {
   patch_version?: string | null;
+  generated_at?: string | null;
+  sources?: string[] | null;
   patch_score?: PatchScore | null;
-  executive_summary_input?: ExecutiveSummaryInput | null;
-  interesting_facts?: InterestingFact[] | null;
+  /** 24 insight kinds total: 19 factual + 5 gameplay-aware (Phase 23). */
   insights?: PatchInsight[] | null;
-  headline_suggestions?: HeadlineSuggestion[] | null;
+  interesting_facts?: InterestingFact[] | null;
+  /** Backend key is "headlines", not "headline_suggestions". */
+  headlines?: HeadlineSuggestion[] | null;
+  executive_summary_input?: ExecutiveSummaryInput | null;
   [k: string]: unknown;
 }
 
@@ -415,31 +510,55 @@ export interface PatchIntelligenceResponse {
    the frontend renders exactly what is returned — no derivation.
    ──────────────────────────────────────────────────────────────────────── */
 
+/** One assumption disclosure: { key, value, basis }. */
+export interface GameplayAssumption {
+  key?: string | null;
+  value?: string | null;
+  basis?: string | null;
+  [k: string]: unknown;
+}
+
+export interface GameplayPerRankEntry {
+  rank?: number | null;
+  before?: number | null;
+  after?: number | null;
+  delta?: number | null;
+}
+
 export interface GameplayImpactMetric {
+  /** e.g. "ability_casts_per_minute", "mana_per_minute". Backend field is
+   *  literally "key" — NOT "metric_key" (that name is only used inside
+   *  PatchInsight.detail on /patch-intelligence, a different serializer). */
+  key?: string | null;
   champion?: string | null;
-  role?: string | null;
   ability?: string | null;
-  ability_key?: string | null;
-  metric_key?: string | null;
-  before?: number | string | null;
-  after?: number | string | null;
-  delta?: number | string | null;
-  delta_pct?: number | string | null;
+  property?: string | null;
+  patch_version?: string | null;
+  before?: number | null;
+  after?: number | null;
+  delta?: number | null;
+  delta_pct?: number | null;
   unit?: string | null;
-  availability?: string | null;
+  per_rank?: GameplayPerRankEntry[] | null;
+  assumptions?: GameplayAssumption[] | null;
+  supporting_history_ids?: number[] | null;
   available?: boolean | null;
   unavailable_reason?: string | null;
-  assumptions?: unknown;
+  source?: string | null;
   [k: string]: unknown;
 }
 
 export interface GameplayImpactChampion {
   champion?: string | null;
   role?: string | null;
-  available_metric_keys?: string[] | null;
-  unavailable_metric_keys?: string[] | null;
-  computed_count?: number | null;
-  unavailable_count?: number | null;
+  metrics?: GameplayImpactMetric[] | null;
+  summary?: {
+    metrics_computed?: number | null;
+    metrics_unavailable?: number | null;
+    /** Available metric keys only — backend does not send a separate
+     *  unavailable-keys list; derive it from metrics[].available === false. */
+    metric_keys?: string[] | null;
+  } | null;
   [k: string]: unknown;
 }
 
@@ -449,7 +568,9 @@ export interface GameplayImpactResponse {
   sources?: string[] | null;
   metrics_computed?: number | null;
   metrics_unavailable?: number | null;
-  assumptions?: unknown;
+  /** Global v1 assumption defaults (haste, duration window). Per-metric
+   *  assumptions live on each GameplayImpactMetric.assumptions instead. */
+  assumptions?: GameplayAssumption[] | null;
   metrics?: GameplayImpactMetric[] | null;
   champion_impacts?: GameplayImpactChampion[] | null;
   [k: string]: unknown;

@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronRight, Copy } from "lucide-react";
+import type { GameplayImpactMetric } from "@/lib/knowledge-admin/types";
 
 /* ────────────────────────────────────────────────────────────────────────
    Reusable placeholder / metric primitives for the Patch Intelligence
@@ -975,7 +976,7 @@ export function GameplayImpactSummaryCards({
   );
 }
 
-export function GameplayMetricsTable({ metrics }: { metrics: GameplayDetailFields[] & { role?: string | null; availability?: string | null; available?: boolean | null; unavailable_reason?: string | null }[] }) {
+export function GameplayMetricsTable({ metrics }: { metrics: GameplayImpactMetric[] }) {
   if (!metrics || metrics.length === 0) return null;
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -983,7 +984,6 @@ export function GameplayMetricsTable({ metrics }: { metrics: GameplayDetailField
         <thead className="bg-background/40 text-muted-foreground">
           <tr className="text-left">
             <th className="px-2 py-1.5 font-bold">Champion</th>
-            <th className="px-2 py-1.5 font-bold">Role</th>
             <th className="px-2 py-1.5 font-bold">Ability</th>
             <th className="px-2 py-1.5 font-bold">Metric</th>
             <th className="px-2 py-1.5 font-bold">Before</th>
@@ -995,18 +995,14 @@ export function GameplayMetricsTable({ metrics }: { metrics: GameplayDetailField
           </tr>
         </thead>
         <tbody>
-          {metrics.map((m, index) => {
-            const row = m as GameplayDetailFields & { role?: string | null; availability?: string | null; available?: boolean | null; unavailable_reason?: string | null };
+          {metrics.map((row, index) => {
             const isAvail = row.available !== false && !row.unavailable_reason;
-            const availabilityLabel = isAvail
-              ? row.availability || "available"
-              : row.unavailable_reason || row.availability || "unavailable";
+            const availabilityLabel = isAvail ? "available" : row.unavailable_reason || "unavailable";
             return (
               <tr key={`gm-${index}`} className="border-t border-border/40">
                 <td className="px-2 py-1.5 font-bold">{row.champion ?? "—"}</td>
-                <td className="px-2 py-1.5">{row.role ?? "—"}</td>
-                <td className="px-2 py-1.5">{row.ability || row.ability_key || "—"}</td>
-                <td className="px-2 py-1.5 font-mono text-[10px]">{row.metric_key ?? "—"}</td>
+                <td className="px-2 py-1.5">{row.ability ?? "—"}</td>
+                <td className="px-2 py-1.5 font-mono text-[10px]">{row.key ?? "—"}</td>
                 <td className="px-2 py-1.5">{formatMaybeNumber(row.before) ?? "—"}</td>
                 <td className="px-2 py-1.5">{formatMaybeNumber(row.after) ?? "—"}</td>
                 <td className={cn("px-2 py-1.5 font-black", deltaTone(row.delta))}>
