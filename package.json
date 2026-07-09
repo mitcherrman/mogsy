@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "video:studio": "remotion studio",
+    "video:prepare": "npx -y tsx scripts/prepare-quiz-video.ts",
     "video:render": "npx -y tsx scripts/render-quiz-video.ts",
     "video:timestamps": "npx -y tsx scripts/render-quiz-video.ts --timestamps-only"
   },

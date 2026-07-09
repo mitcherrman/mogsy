@@ -11,6 +11,15 @@ The existing Broadcast Studio / BroadcastRenderer are untouched.
 ## Commands
 
 ```bash
+# Build a video input JSON from REAL quiz questions (Quiz Review Console API)
+export ADMIN_KEY=<KNOWLEDGE_ADMIN_KEY>          # or pass --admin-key
+npm run video:prepare -- --favorites --limit 5
+npm run video:prepare -- --category item_exact_stats --difficulty-max 2
+npm run video:prepare -- --pack <pack_key> --title "Item Quiz #1"
+npm run video:prepare -- --in exported.json      # offline: adapt a local dump
+# → out/quiz-video-input.json, then:
+npm run video:render -- --props out/quiz-video-input.json
+
 # Render the sample video + timestamps into out/
 npm run video:render
 
@@ -83,6 +92,12 @@ slide-out transition → outro card.
   deterministic. The wall-clock/RAF/three.js BroadcastRenderer is
   intentionally NOT reused — it cannot render deterministically per frame.
 - `scripts/render-quiz-video.ts` — one-command render + timestamp export.
+- `adapter.ts` + `scripts/prepare-quiz-video.ts` — convert real quiz
+  questions (ReviewQuestion shape from the Quiz Review Console API, the
+  only quiz read that ships correct answers inline) into `QuizVideoData`.
+  Unusable rows (wrong format, missing answer, answer not among choices)
+  are skipped with per-question reasons, never silently dropped.
+  Read-only against the backend; supports `--in <file>` for offline dumps.
 
 ## Future (not v1)
 
