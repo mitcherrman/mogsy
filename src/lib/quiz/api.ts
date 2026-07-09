@@ -1,6 +1,8 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
 
-const API_BASE_URL = (import.meta.env.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
+// Optional access: under the Remotion webpack bundle (video export)
+// `import.meta.env` is undefined; the Vite app build is unaffected.
+const API_BASE_URL = (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
 
 export type QuizSet = {
   id: number | string;

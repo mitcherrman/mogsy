@@ -26,6 +26,16 @@ describe("adaptQuestion", () => {
     expect(q.explanation).toMatch(/multiplier/);
   });
 
+  it("passes source metadata through verbatim for the broadcast ScenarioCard framework", () => {
+    const q = adaptQuestion(GOOD);
+    if (typeof q === "string") throw new Error(q);
+    expect(q.metadata).toEqual(GOOD.metadata);
+    // No metadata → field omitted, not an empty object.
+    const bare = adaptQuestion({ id: 2, question_text: "Q?", choices: ["a", "b"], correct_answer: "a" });
+    if (typeof bare === "string") throw new Error(bare);
+    expect(bare.metadata).toBeUndefined();
+  });
+
   it("accepts string correct_answer and metadata fallbacks", () => {
     const q = adaptQuestion({
       id: 1,

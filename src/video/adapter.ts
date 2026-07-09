@@ -98,6 +98,9 @@ export function adaptQuestion(q: SourceQuestion): QuizVideoQuestion | string {
     item_name: metaString(meta, "item", "item_name"),
     ability_name: metaString(meta, "ability", "ability_name"),
     patch: metaString(meta, "patch", "patch_version"),
+    // Verbatim passthrough: the shared broadcast ScenarioCard framework
+    // classifies subjects (splash/item/combat-calc cards) from metadata.
+    metadata: Object.keys(meta).length ? meta : undefined,
   };
 }
 

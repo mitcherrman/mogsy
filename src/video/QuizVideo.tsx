@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   AbsoluteFill,
   Sequence,
@@ -7,74 +7,95 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { COLORS, FONT_STACK } from "./format";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BottomTimeline, GoldTrim, StageBackdrop } from "@/components/quiz-broadcast/BroadcastRenderer";
+import { FONT_STACK } from "./format";
 import { buildTimeline } from "./timing";
 import type { QuizVideoData } from "./types";
-import { QuizQuestionScene } from "./QuizQuestionScene";
+import { BroadcastQuestionScene } from "./BroadcastQuestionScene";
 
 /**
- * Top-level composition: intro card → question scenes → outro card,
- * laid out on the shared deterministic timeline (see ./timing.ts).
+ * Top-level composition: intro card → question scenes → outro card, laid out
+ * on the shared deterministic timeline (./timing.ts).
+ *
+ * The stage itself (backdrop, gold trim, progress bar) and the question
+ * scenes are the REAL quiz-broadcast components — the live broadcast is the
+ * visual source of truth; Remotion is only the frame-based export controller.
+ *
+ * No API fetch happens inside the render: the champion asset manifest is
+ * embedded in the input JSON by scripts/prepare-quiz-video.ts and seeded
+ * into a react-query cache here, so useChampionAssets resolves instantly.
  */
 export const QuizVideo: React.FC<{ data: QuizVideoData }> = ({ data }) => {
   const timeline = buildTimeline(data);
+
+  // Seed the champion manifest so broadcast components never fetch.
+  // staleTime: Infinity keeps the seeded value (manifest or null) fresh for
+  // the whole render; queries therefore never hit their queryFn.
+  const queryClient = useMemo(() => {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, gcTime: Infinity, retry: false } },
+    });
+    qc.setQueryData(["champion-assets"], data.champion_manifest ?? null);
+    return qc;
+  }, [data.champion_manifest]);
+
   return (
-    <AbsoluteFill style={{ background: COLORS.bg0, fontFamily: FONT_STACK }}>
-      <Backdrop />
-      {timeline.introFrames > 0 && (
-        <Sequence durationInFrames={timeline.introFrames} name="Intro">
-          <TitleCard title={data.title} subtitle={data.subtitle} website={data.website} patch={data.patch} />
-        </Sequence>
-      )}
-      {timeline.questions.map((qt) => (
-        <Sequence
-          key={String(qt.question.id)}
-          from={qt.startFrame}
-          durationInFrames={qt.endFrame - qt.startFrame}
-          name={`Q${qt.index + 1}`}
-        >
-          <QuizQuestionScene timeline={qt} total={timeline.questions.length} />
-        </Sequence>
-      ))}
-      {timeline.outroFrames > 0 && (
-        <Sequence from={timeline.outroStartFrame} durationInFrames={timeline.outroFrames} name="Outro">
-          <OutroCard website={data.website} />
-        </Sequence>
-      )}
-      <Footer website={data.website} />
-    </AbsoluteFill>
+    <QueryClientProvider client={queryClient}>
+      {/* containerType: broadcast components size themselves in cqmin, so the
+          1920x1080 frame must be a CSS size-container (like ShellFrame). */}
+      <AbsoluteFill style={{ fontFamily: FONT_STACK, containerType: "size" }} className="bg-black text-white">
+        <StageBackdrop theme="hextech" animation="particles" />
+        <GoldTrim />
+
+        {timeline.introFrames > 0 && (
+          <Sequence durationInFrames={timeline.introFrames} name="Intro">
+            <TitleCard title={data.title} subtitle={data.subtitle} website={data.website} patch={data.patch} />
+          </Sequence>
+        )}
+
+        {timeline.questions.map((qt) => (
+          <Sequence
+            key={String(qt.question.id)}
+            from={qt.startFrame}
+            durationInFrames={qt.endFrame - qt.startFrame}
+            name={`Q${qt.index + 1}`}
+          >
+            <BroadcastQuestionScene
+              timeline={qt}
+              total={timeline.questions.length}
+              website={data.website}
+              patch={data.patch}
+            />
+          </Sequence>
+        ))}
+
+        {timeline.outroFrames > 0 && (
+          <Sequence from={timeline.outroStartFrame} durationInFrames={timeline.outroFrames} name="Outro">
+            <OutroCard website={data.website} />
+          </Sequence>
+        )}
+
+        {/* Broadcast bottom progress bar — advances per question */}
+        <ProgressBar timelineTotal={timeline.questions.length} />
+      </AbsoluteFill>
+    </QueryClientProvider>
   );
 };
 
-/* ── Static backdrop: radial hextech glow + vignette (deterministic) ───── */
-
-const Backdrop: React.FC = () => {
+/** Frame-driven wrapper for the shared BottomTimeline progress bar. The
+ *  scenes already show Q n/m, so the bar simply fills across the video. */
+const ProgressBar: React.FC<{ timelineTotal: number }> = ({ timelineTotal }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  // Slow deterministic pulse driven purely by frame number
-  const pulse = 0.5 + 0.5 * Math.sin((frame / fps) * Math.PI * 0.25);
-  return (
-    <AbsoluteFill
-      style={{
-        background: `radial-gradient(1200px 700px at 50% 40%, ${COLORS.bg1} 0%, ${COLORS.bg0} 70%)`,
-      }}
-    >
-      <AbsoluteFill
-        style={{
-          background: `radial-gradient(900px 500px at 50% 45%, rgba(10,200,185,${0.05 + pulse * 0.04}) 0%, transparent 65%)`,
-        }}
-      />
-      <AbsoluteFill
-        style={{
-          boxShadow: "inset 0 0 220px rgba(0,0,0,0.85)",
-        }}
-      />
-      {/* Gold trim */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, transparent, ${COLORS.gold}, transparent)` }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, transparent, ${COLORS.gold}, transparent)` }} />
-    </AbsoluteFill>
+  const { durationInFrames } = useVideoConfig();
+  const current = Math.min(
+    timelineTotal,
+    Math.max(0, Math.round((frame / Math.max(1, durationInFrames)) * timelineTotal)),
   );
+  return <BottomTimeline current={current} total={timelineTotal} />;
 };
+
+/* ── Intro / outro title cards — broadcast IdleStanding styling ─────────── */
 
 const TitleCard: React.FC<{ title: string; subtitle?: string; website?: string; patch?: string }> = ({
   title,
@@ -90,25 +111,18 @@ const TitleCard: React.FC<{ title: string; subtitle?: string; website?: string; 
   });
   return (
     <AbsoluteFill
-      style={{
-        alignItems: "center",
-        justifyContent: "center",
-        color: COLORS.text,
-        opacity: enter * exit,
-        transform: `scale(${0.92 + enter * 0.08})`,
-        textAlign: "center",
-      }}
+      className="items-center justify-center text-center"
+      style={{ opacity: enter * exit, transform: `scale(${0.92 + enter * 0.08})` }}
     >
-      <div style={{ fontSize: 110, fontWeight: 900, letterSpacing: 3, color: COLORS.goldBright, textShadow: `0 0 60px rgba(200,170,110,0.5)` }}>
+      <div className="mb-3 text-[1.5cqmin] uppercase tracking-[0.45em] text-[#e8c97a]">Mogsy Quiz Broadcast</div>
+      <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[7cqmin] font-black uppercase text-transparent">
         {title}
       </div>
       {subtitle && (
-        <div style={{ fontSize: 44, marginTop: 28, color: COLORS.textDim }}>{subtitle}</div>
+        <div className="mt-3 text-[2.2cqmin] text-white/70">{subtitle}</div>
       )}
       {patch && (
-        <div style={{ fontSize: 30, marginTop: 40, color: COLORS.cyan, letterSpacing: 2 }}>
-          PATCH {patch}
-        </div>
+        <div className="mt-4 text-[1.4cqmin] uppercase tracking-[0.3em] text-cyan-300/90">Patch {patch}</div>
       )}
     </AbsoluteFill>
   );
@@ -119,39 +133,16 @@ const OutroCard: React.FC<{ website?: string }> = ({ website }) => {
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 30 });
   return (
-    <AbsoluteFill
-      style={{ alignItems: "center", justifyContent: "center", textAlign: "center", opacity: enter }}
-    >
-      <div style={{ fontSize: 80, fontWeight: 900, color: COLORS.goldBright }}>
+    <AbsoluteFill className="items-center justify-center text-center" style={{ opacity: enter }}>
+      <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[5.5cqmin] font-black uppercase text-transparent">
         How many did you get?
       </div>
-      <div style={{ fontSize: 42, marginTop: 30, color: COLORS.textDim }}>
-        Drop your score in the comments
-      </div>
+      <div className="mt-4 text-[2.2cqmin] text-white/70">Drop your score in the comments</div>
       {website && (
-        <div style={{ fontSize: 38, marginTop: 46, color: COLORS.cyan, fontWeight: 700 }}>
+        <div className="mt-6 text-[2cqmin] font-extrabold tracking-wider text-[#f3dca0]">
           Play daily at {website}
         </div>
       )}
     </AbsoluteFill>
-  );
-};
-
-const Footer: React.FC<{ website?: string }> = ({ website }) => {
-  if (!website) return null;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 24,
-        right: 48,
-        fontSize: 26,
-        color: "rgba(240,230,210,0.45)",
-        letterSpacing: 1,
-        fontFamily: FONT_STACK,
-      }}
-    >
-      {website}
-    </div>
   );
 };

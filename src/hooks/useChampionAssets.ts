@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
+// Optional access: under the Remotion webpack bundle (video export)
+// `import.meta.env` is undefined; the Vite app build is unaffected.
 const API_BASE_URL = (
-  (import.meta.env.VITE_COMBAT_API_URL as string | undefined) || "https://web-production-83e53.up.railway.app"
+  (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) || "https://web-production-83e53.up.railway.app"
 ).replace(/\/+$/, "");
 
 export type ChampionAsset = {

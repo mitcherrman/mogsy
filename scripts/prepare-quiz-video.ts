@@ -94,6 +94,28 @@ async function loadQuestions(): Promise<SourceQuestion[]> {
   return questions;
 }
 
+/**
+ * Fetch the public champion asset manifest so the broadcast ScenarioCard
+ * components can resolve splash art during the render WITHOUT any network
+ * fetch inside Remotion. Failure is non-fatal: cards fall back to gradients.
+ */
+async function loadChampionManifest(): Promise<unknown | null> {
+  const api = (arg("--api") ?? process.env.VITE_COMBAT_API_URL ?? envFromDotEnv("VITE_COMBAT_API_URL"))
+    ?.replace(/\/+$/, "");
+  if (!api) return null;
+  try {
+    const res = await fetch(`${api}/api/assets/champions`, { headers: { accept: "application/json" } });
+    if (!res.ok) {
+      console.warn(`Champion manifest fetch failed (${res.status}) — splash art will use fallbacks.`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn(`Champion manifest fetch failed (${err instanceof Error ? err.message : err}) — splash art will use fallbacks.`);
+    return null;
+  }
+}
+
 async function main() {
   const outPath = resolve(arg("--out") ?? "out/quiz-video-input.json");
   const limit = Number(arg("--limit") ?? 5);
@@ -115,6 +137,10 @@ async function main() {
     console.error("\nNo usable questions after adaptation — nothing written.");
     process.exit(1);
   }
+
+  // Embed the champion manifest so Remotion renders fetch nothing.
+  const manifest = await loadChampionManifest();
+  if (manifest) data.champion_manifest = manifest;
 
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, JSON.stringify(data, null, 2), "utf8");

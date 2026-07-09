@@ -168,7 +168,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
    StageBackdrop / GoldTrim
    ──────────────────────────────────────────────────────────────────────── */
 
-function StageBackdrop({
+export function StageBackdrop({
   theme,
   animation,
 }: {
@@ -202,7 +202,7 @@ function StageBackdrop({
   );
 }
 
-function GoldTrim() {
+export function GoldTrim() {
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#d4b35a]/70 to-transparent" />
@@ -248,7 +248,7 @@ function TopChrome({ snapshot }: { snapshot: EngineSnapshot }) {
   );
 }
 
-function ChromeBadge({ children, tone }: { children: React.ReactNode; tone: "cyan" | "amber" | "gold" | "muted" }) {
+export function ChromeBadge({ children, tone }: { children: React.ReactNode; tone: "cyan" | "amber" | "gold" | "muted" }) {
   const cls =
     tone === "cyan"
       ? "border-cyan-300/30 text-cyan-100/85 bg-cyan-400/[0.05]"
@@ -446,7 +446,7 @@ function getCombatCalcData(question: QuizQuestion): CombatCalcData | null {
  * calculator layout (inputs → computation chain → promoted result) via the
  * generic CalculationBreakdown; everything else keeps plain text.
  */
-function ExplanationBody({ question, explanation }: { question: QuizQuestion; explanation: string | null }) {
+export function ExplanationBody({ question, explanation }: { question: QuizQuestion; explanation: string | null }) {
   const calc = getCombatCalcData(question);
   if (!calc) return <div className="text-emerald-50/95">{explanation}</div>;
 
@@ -540,7 +540,7 @@ function QuestionPanel({
   );
 }
 
-const QuestionText = memo(function QuestionText({ text }: { text: string }) {
+export const QuestionText = memo(function QuestionText({ text }: { text: string }) {
   return (
     <motion.h1
       initial={{ opacity: 0, y: 8 }}
@@ -559,7 +559,7 @@ const QuestionText = memo(function QuestionText({ text }: { text: string }) {
    AnswerGrid
    ──────────────────────────────────────────────────────────────────────── */
 
-const AnswerGrid = memo(function AnswerGrid({
+export const AnswerGrid = memo(function AnswerGrid({
   choices,
   style,
   revealActive,
@@ -783,7 +783,7 @@ function RightPanel({
    PlayAlongPanel — premium CTA card with QR
    ──────────────────────────────────────────────────────────────────────── */
 
-function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
+export function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
   if (!visuals.showQrCode && !visuals.showWebsite) return null;
   return (
     <motion.div
@@ -818,7 +818,7 @@ function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
    BottomTimeline — slim progress styling
    ──────────────────────────────────────────────────────────────────────── */
 
-function BottomTimeline({ current, total }: { current: number; total: number }) {
+export function BottomTimeline({ current, total }: { current: number; total: number }) {
   const pct = total > 0 ? (current / total) * 100 : 0;
   return (
     <div className="absolute inset-x-0 bottom-0 z-10 px-[2%] pb-[1%]">

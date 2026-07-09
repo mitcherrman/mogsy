@@ -26,6 +26,13 @@ export type QuizVideoQuestion = {
   patch?: string;
   /** Optional per-question timing overrides, in seconds. */
   durations?: Partial<QuizSegmentSeconds>;
+  /**
+   * Raw source-question metadata (ReviewQuestion.metadata), passed through
+   * verbatim so the shared quiz-broadcast ScenarioCard framework can pick
+   * the same subject visuals (champion splash, item analysis, combat calc)
+   * in the video export as in the live broadcast.
+   */
+  metadata?: Record<string, unknown>;
 };
 
 /** Per-question segment lengths, in seconds. */
@@ -55,6 +62,13 @@ export type QuizVideoData = {
   /** Default segment lengths; individual questions may override. */
   default_durations?: Partial<QuizSegmentSeconds>;
   questions: QuizVideoQuestion[];
+  /**
+   * Champion asset manifest (GET /api/assets/champions), embedded by the
+   * prepare step so the broadcast ScenarioCard components can resolve splash
+   * art WITHOUT fetching during the Remotion render (the video root seeds a
+   * react-query cache with this value). Null/absent → gradient fallback.
+   */
+  champion_manifest?: unknown;
 };
 
 export const DEFAULT_SEGMENTS: QuizSegmentSeconds = {
