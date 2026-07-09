@@ -975,13 +975,23 @@ function extractGameplayDetail(insight: RecordLike | null | undefined): Gameplay
       "after" in candidate ||
       "delta" in candidate ||
       "delta_pct" in candidate ||
-      "metric_key" in candidate;
+      "metric_key" in candidate ||
+      "old_value" in candidate ||
+      "new_value" in candidate ||
+      "property" in candidate ||
+      "rank" in candidate ||
+      "net_change_score" in candidate;
     if (!hasAny) continue;
     return {
       champion: toText(candidate.champion),
       ability: toText(candidate.ability),
       ability_key: toText(candidate.ability_key),
       metric_key: toText(candidate.metric_key),
+      property: toText(candidate.property),
+      rank: candidate.rank,
+      net_change_score: candidate.net_change_score,
+      old_value: candidate.old_value,
+      new_value: candidate.new_value,
       before: candidate.before,
       after: candidate.after,
       delta: candidate.delta,
