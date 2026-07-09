@@ -828,6 +828,11 @@ export interface GameplayDetailFields {
   ability?: string | null;
   ability_key?: string | null;
   metric_key?: string | null;
+  property?: string | null;
+  rank?: unknown;
+  net_change_score?: unknown;
+  old_value?: unknown;
+  new_value?: unknown;
   before?: unknown;
   after?: unknown;
   delta?: unknown;
