@@ -686,6 +686,7 @@ export function InsightCard({
   unavailableReason,
   evidence,
   detail,
+  compact,
 }: {
   title?: string | null;
   kind?: string | null;
@@ -695,10 +696,33 @@ export function InsightCard({
   unavailableReason?: string | null;
   evidence?: unknown;
   detail?: GameplayDetailFields | null;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const isAvailable = available !== false && !unavailableReason;
   const hasEvidence = evidence != null && !(Array.isArray(evidence) && evidence.length === 0);
+  const displayTitle =
+    (title && title.trim()) || humanizeKind(kind) || "Insight";
+  const kindLabel = humanizeKind(kind);
+
+  if (compact) {
+    return (
+      <div className="rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="truncate text-xs font-bold text-foreground/90">{displayTitle}</div>
+          {kindLabel && (
+            <span className="shrink-0 rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+              {kind}
+            </span>
+          )}
+        </div>
+        {unavailableReason && (
+          <div className="mt-1 text-[11px] text-amber-200/80">{unavailableReason}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -711,16 +735,16 @@ export function InsightCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-extrabold leading-snug">
-            {title || <span className="italic text-muted-foreground">Untitled insight</span>}
+            {displayTitle}
           </div>
           {description && (
             <p className="mt-1 text-xs text-foreground/80 leading-relaxed">{description}</p>
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          {kind && (
+          {kindLabel && (
             <span className="rounded-md border border-border bg-background/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              {kind}
+              {kindLabel}
             </span>
           )}
           <span
