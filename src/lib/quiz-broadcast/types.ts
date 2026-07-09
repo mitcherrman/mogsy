@@ -46,6 +46,10 @@ export type BroadcastVisuals = {
   showRuneIcons: boolean;
   showPatchLabel: boolean;
   showTips: boolean;
+  /** Global master switch for explanation/insight cards (both 16:9 and Shorts). */
+  showExplanations: boolean;
+  /** Shorts-only: hide the pre-reveal dormant insight placeholder panel. */
+  hideShortsDormantInsight: boolean;
 };
 
 export type BroadcastConfig = {
@@ -114,6 +118,8 @@ export const DEFAULT_VISUALS: BroadcastVisuals = {
   showRuneIcons: true,
   showPatchLabel: true,
   showTips: true,
+  showExplanations: true,
+  hideShortsDormantInsight: true,
 };
 
 export const DEFAULT_CONFIG: BroadcastConfig = {

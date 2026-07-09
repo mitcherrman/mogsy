@@ -18,6 +18,8 @@ const TOGGLES: { key: keyof BroadcastVisuals; label: string }[] = [
   { key: "showRuneIcons", label: "Rune icons" },
   { key: "showPatchLabel", label: "Patch label" },
   { key: "showTips", label: "Tips / insight" },
+  { key: "showExplanations", label: "Show explanations" },
+  { key: "hideShortsDormantInsight", label: "Hide dormant insight (Shorts)" },
 ];
 
 export default function VisualSettings({ engine, snapshot }: { engine: BroadcastEngine; snapshot: EngineSnapshot }) {

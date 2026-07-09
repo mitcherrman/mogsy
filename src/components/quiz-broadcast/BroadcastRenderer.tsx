@@ -493,7 +493,7 @@ function QuestionPanel({
       />
       <div className="relative min-h-[12%]">
         <AnimatePresence>
-          {revealActive && explanation && visuals.showTips && (
+          {revealActive && explanation && visuals.showTips && visuals.showExplanations && (
             <motion.div
               key="reveal-overlay"
               initial={{ opacity: 0, y: 8 }}
@@ -1297,20 +1297,29 @@ function ShortsSceneRow({
         </div>
 
         {/* Insight flip panel — stable slot below the question, above answers.
-            Dormant "INSIGHT LOCKED" face during the question phase; flips on
-            the Y axis to the explanation face on reveal. Same footprint both
-            ways, so the flip causes no layout shift. Hidden entirely when
-            tips are disabled. */}
-        {visuals.showTips && (
-          <div className="px-[3.5%]">
-            <ShortsInsightFlipPanel
-              revealed={revealActive && !!explanation}
-              question={question}
-              explanation={explanation}
-              revealName={revealName}
-            />
-          </div>
-        )}
+            Dormant face during the question phase (unless hidden); flips on
+            the Y axis to the explanation face on reveal. Gated by the global
+            explanation master switch (showTips && showExplanations); the
+            dormant placeholder is independently suppressed by
+            hideShortsDormantInsight. When the dormant panel is hidden, the
+            slot renders nothing until reveal, then flips the explanation in. */}
+        {(() => {
+          const explanationsOn = visuals.showTips && visuals.showExplanations;
+          const revealedInsight = revealActive && !!explanation;
+          const showDormant = !visuals.hideShortsDormantInsight;
+          if (!explanationsOn || (!revealedInsight && !showDormant)) return null;
+          return (
+            <div className="px-[3.5%]">
+              <ShortsInsightFlipPanel
+                revealed={revealedInsight}
+                showDormant={showDormant}
+                question={question}
+                explanation={explanation}
+                revealName={revealName}
+              />
+            </div>
+          );
+        })()}
 
         {/* Countdown bar */}
         <div className="px-[6%] py-[1.2%]">
@@ -1372,15 +1381,65 @@ function ShortsSceneRow({
 
 function ShortsInsightFlipPanel({
   revealed,
+  showDormant,
   question,
   explanation,
   revealName,
 }: {
   revealed: boolean;
+  showDormant: boolean;
   question: QuizQuestion;
   explanation: string | null;
   revealName: string | null | undefined;
 }) {
+  // Nothing to show: no dormant placeholder requested and not yet revealed.
+  if (!revealed && !showDormant) return null;
+
+  const insightFace = (
+    <div
+      aria-hidden={!revealed}
+      className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[2.2cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md"
+    >
+      {revealed && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
+          initial={{ x: "-20%", opacity: 0 }}
+          animate={{ x: "260%", opacity: [0, 0.7, 0] }}
+          transition={{ duration: 1.15, ease: "easeOut", delay: 0.4 }}
+        />
+      )}
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
+        {revealName && (
+          <div className="max-w-[52%] truncate text-right text-[1.95cqmin] font-black uppercase tracking-wide text-white">
+            {revealName}
+          </div>
+        )}
+      </div>
+      <ExplanationBody question={question} explanation={explanation} />
+    </div>
+  );
+
+  // Dormant panel suppressed: the slot appears only on reveal and the
+  // explanation flips in on its own (no two-faced turn-over needed).
+  if (!showDormant) {
+    return (
+      <div className="mt-[1.6%]" style={{ perspective: "900px" }}>
+        <motion.div
+          className="[transform-style:preserve-3d]"
+          initial={{ rotateY: -90, opacity: 0 }}
+          animate={{ rotateY: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {insightFace}
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Dormant → revealed: a single card turning over on the Y axis. Both faces
+  // share one grid cell so the footprint is identical before/after the flip.
   return (
     <div className="mt-[1.6%]" style={{ perspective: "900px" }}>
       <motion.div
@@ -1401,30 +1460,9 @@ function ShortsInsightFlipPanel({
           </div>
         </div>
 
-        {/* Revealed face — existing emerald/gold insight styling, pre-rotated
-            180° so it reads correctly once the panel turns over */}
-        <div
-          aria-hidden={!revealed}
-          className="relative overflow-hidden rounded-xl border border-emerald-300/35 bg-gradient-to-br from-emerald-400/18 via-emerald-300/10 to-cyan-300/10 p-[2.4%] text-[2.2cqmin] leading-snug text-emerald-50 shadow-[0_16px_38px_rgba(0,0,0,0.45)] backdrop-blur-md [backface-visibility:hidden] [grid-area:1/1] [transform:rotateY(180deg)]"
-        >
-          {revealed && (
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute -inset-y-1/2 -left-1/3 w-1/3 rotate-[18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent"
-              initial={{ x: "-20%", opacity: 0 }}
-              animate={{ x: "260%", opacity: [0, 0.7, 0] }}
-              transition={{ duration: 1.15, ease: "easeOut", delay: 0.4 }}
-            />
-          )}
-          <div className="mb-1 flex items-baseline justify-between gap-3">
-            <div className="text-[1.2cqmin] font-bold uppercase tracking-[0.34em] text-emerald-200/90">Insight</div>
-            {revealName && (
-              <div className="max-w-[52%] truncate text-right text-[1.95cqmin] font-black uppercase tracking-wide text-white">
-                {revealName}
-              </div>
-            )}
-          </div>
-          <ExplanationBody question={question} explanation={explanation} />
+        {/* Revealed face — pre-rotated 180° so it reads correctly once turned */}
+        <div className="[backface-visibility:hidden] [grid-area:1/1] [transform:rotateY(180deg)]">
+          {insightFace}
         </div>
       </motion.div>
     </div>
