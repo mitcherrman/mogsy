@@ -219,6 +219,14 @@ export default function KnowledgeRundown() {
     ? (gameplay!.champion_impacts as unknown[]).filter(isRecord) as GameplayImpactChampion[]
     : [];
 
+  const availableInsights = insights.filter((insight) => {
+    const av = insight.available;
+    const reason = insight.unavailable_reason;
+    return av !== false && !reason;
+  });
+  const unavailableInsights = insights.filter((insight) => !availableInsights.includes(insight));
+  const scopeLabel = patch || "All approved changes";
+
   const execItems = [
     { label: "Primary Theme", value: toText(execSummary?.primary_theme), tone: "info" as const },
     { label: "Secondary Theme", value: toText(execSummary?.secondary_theme), tone: "info" as const },
@@ -237,6 +245,17 @@ export default function KnowledgeRundown() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-3">
+        <div>
+          <h1 className="text-xl font-black uppercase tracking-[0.14em] bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
+            Patch Intel
+          </h1>
+          <p className="text-[11px] text-muted-foreground">
+            Scope: <span className="font-bold text-foreground/80">{scopeLabel}</span>
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-xs text-muted-foreground">Patch</label>
         <select
@@ -301,7 +320,7 @@ export default function KnowledgeRundown() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <MetricCard
             label="Patch Version"
-            value={patch || (rundownLoading ? undefined : "All patches")}
+            value={patch || (rundownLoading ? undefined : "All approved changes")}
             icon={<Sparkles className="h-4 w-4" />}
             accent="info"
             loading={rundownLoading}
@@ -412,20 +431,32 @@ export default function KnowledgeRundown() {
         ) : insights.length === 0 ? (
           <div className="text-xs italic text-muted-foreground">No insights produced for this patch.</div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {insights.map((insight, index) => (
-              <InsightCard
-                key={`insight-${index}`}
-                title={toText(insight.title)}
-                kind={toText(insight.kind)}
-                description={toText(insight.description)}
-                available={typeof insight.available === "boolean" ? insight.available : null}
-                availability={toText(insight.availability)}
-                unavailableReason={toText(insight.unavailable_reason)}
-                evidence={insight.evidence}
-                detail={extractGameplayDetail(insight)}
-              />
-            ))}
+          <div className="space-y-3">
+            {availableInsights.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {availableInsights.map((insight, index) => (
+                  <InsightCard
+                    key={`insight-available-${index}`}
+                    title={toText(insight.title)}
+                    kind={toText(insight.kind)}
+                    description={toText(insight.description)}
+                    available={typeof insight.available === "boolean" ? insight.available : null}
+                    availability={toText(insight.availability)}
+                    unavailableReason={toText(insight.unavailable_reason)}
+                    evidence={insight.evidence}
+                    detail={extractGameplayDetail(insight)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs italic text-muted-foreground">
+                No available insights for this scope yet.
+              </div>
+            )}
+
+            {unavailableInsights.length > 0 && (
+              <UnavailableInsightsSection insights={unavailableInsights} />
+            )}
           </div>
         )}
       </SectionShell>
