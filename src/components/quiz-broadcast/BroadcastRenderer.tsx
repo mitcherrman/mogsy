@@ -124,14 +124,14 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
         )}
       </div>
 
-      {/* Shorts crystal core — FOREGROUND spill. Anchored to the true stage
-          bottom edge (only the ShellFrame's overflow crops it), rendered above
-          the scene (z-[26] vs scene z-20, below countdown z-[45]) so it leaks
-          over the lower content like a physical object in front of the stage.
-          Lives outside SceneSlider, so it stays put across question slides. */}
+      {/* Shorts crystal core — subtle stage fixture. Anchored to the true stage
+          bottom edge so only the ShellFrame/stage overflow crops it. Rendered
+          outside SceneSlider so it stays stable across question slides, but kept
+          visually behind the main scene content so it reads as atmosphere instead
+          of competing with the answers. */}
       {isShorts && coreVisible && phase !== "idle" && q && (
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[26]">
-          <div className="relative mx-auto aspect-square w-[88cqmin] translate-y-[42%]">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[18] opacity-70">
+          <div className="relative mx-auto aspect-square w-[76cqmin] translate-y-[55%]">
             <BroadcastKnowledgeCore
               phase={phase}
               questionIndex={snapshot.currentIndex + 1}
@@ -142,7 +142,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
           </div>
         </div>
       )}
-
+      
       {/* Bottom progress timeline */}
       <BottomTimeline
         current={Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)}
