@@ -68,7 +68,7 @@ export default function KnowledgeAdminLayout() {
     { to: "/admin/knowledge", label: "Dashboard", icon: LayoutDashboard, end: true },
     { to: "/admin/knowledge/queue", label: "Review Queue", icon: ClipboardList },
     { to: "/admin/knowledge/health", label: "Champion Health", icon: GaugeCircle },
-    { to: "/admin/knowledge/rundown", label: "Patch Rundown", icon: Newspaper },
+    { to: "/admin/knowledge/rundown", label: "Patch Intel", icon: Newspaper },
   ];
 
   return (
