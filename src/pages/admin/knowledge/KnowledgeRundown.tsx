@@ -859,28 +859,6 @@ function UnavailableInsightsSection({ insights }: { insights: RecordLike[] }) {
   );
 }
 
-function _oldContentCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">{title}</h3>
-        <button
-          type="button"
-          onClick={() => {
-            navigator.clipboard.writeText(body).then(() => toast.success("Copied"));
-          }}
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          <Copy className="h-3 w-3" /> copy
-        </button>
-      </div>
-      <pre className="max-h-64 whitespace-pre-wrap break-words rounded bg-background/60 p-2 font-mono text-[11px]">
-        {body}
-      </pre>
-    </div>
-  );
-}
-
 function normalizeAnalytics(payload: PatchAnalyticsResponse | undefined) {
   if (!isRecord(payload)) return null;
   const hero = getRecord(payload, "hero");
