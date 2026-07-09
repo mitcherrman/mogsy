@@ -337,21 +337,41 @@ export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubj
       ? { value: meta.formatted_value, label: meta.stat_label }
       : undefined;
 
+  // Verified icon paths shipped by the generator/backfill as
+  // known_component_icons: [{name, item_id, icon}]. Merged into the name
+  // list; components without an icon fall back to a monogram tile.
+  const iconByName = new Map<string, string>();
+  if (Array.isArray(meta.known_component_icons)) {
+    for (const entry of meta.known_component_icons) {
+      const e = entry as Record<string, unknown>;
+      if (typeof e.name === "string" && typeof e.icon === "string" && e.icon) {
+        iconByName.set(e.name, e.icon);
+      }
+    }
+  }
   const knownComponents = Array.isArray(meta.known_components)
-    ? meta.known_components.filter((c): c is string => typeof c === "string")
+    ? meta.known_components
+        .filter((c): c is string => typeof c === "string")
+        .map((name) => ({
+          name,
+          icon: resolveQuizAssetUrl(iconByName.get(name)),
+        }))
     : [];
 
   // The missing component is the correct answer. Parsed here but the card
-  // must only render it when the reveal is active. Icon derived from the
-  // standard assets/items/{id}.png convention; the card hides it on 404.
+  // must only render it when the reveal is active. Prefer the verified
+  // missing_component_icon (node asset_path — ids are DD map-variant ids, so
+  // a constructed {id}.png path is only a legacy fallback; card hides 404s).
   const missingComponent =
     typeof meta.missing_component_item_name === "string"
       ? {
           name: meta.missing_component_item_name,
           icon:
-            typeof meta.missing_component_item_id === "number"
-              ? resolveQuizAssetUrl(`assets/items/${meta.missing_component_item_id}.png`)
-              : null,
+            typeof meta.missing_component_icon === "string" && meta.missing_component_icon
+              ? resolveQuizAssetUrl(meta.missing_component_icon)
+              : typeof meta.missing_component_item_id === "number"
+                ? resolveQuizAssetUrl(`assets/items/${meta.missing_component_item_id}.png`)
+                : null,
         }
       : undefined;
 

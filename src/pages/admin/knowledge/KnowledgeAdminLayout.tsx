@@ -4,6 +4,7 @@ import { Activity, ClipboardList, GaugeCircle, KeyRound, LayoutDashboard, LogOut
 import { clearAdminKey, getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
 import { getStrictApproval, setStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { cn } from "@/lib/utils";
+import { ApprovedChangesPanel } from "./ApprovedChangesPanel";
 
 /**
  * Knowledge Admin shell.
@@ -20,6 +21,7 @@ export default function KnowledgeAdminLayout() {
 
   const [keyInput, setKeyInput] = useState("");
   const location = useLocation();
+  const isQueueRoute = location.pathname.startsWith("/admin/knowledge/queue");
 
   if (!hasKey) {
     return (
@@ -110,29 +112,43 @@ export default function KnowledgeAdminLayout() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
-          <nav className="flex md:flex-col gap-1 overflow-x-auto">
-            {items.map((it) => (
-              <NavLink
-                key={it.to}
-                to={it.to}
-                end={it.end}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  )
-                }
-              >
-                <it.icon className="h-4 w-4" />
-                {it.label}
-              </NavLink>
-            ))}
-          </nav>
+        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+          <div className="flex flex-col gap-3 min-w-0">
+            <nav className="flex md:flex-col gap-1 overflow-x-auto">
+              {items.map((it) => (
+                <NavLink
+                  key={it.to}
+                  to={it.to}
+                  end={it.end}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors whitespace-nowrap",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    )
+                  }
+                >
+                  <it.icon className="h-4 w-4" />
+                  {it.label}
+                </NavLink>
+              ))}
+            </nav>
+            {/* Approved Changes panel — Review Queue only, below the nav. */}
+            {isQueueRoute && (
+              <div className="hidden md:block">
+                <ApprovedChangesPanel />
+              </div>
+            )}
+          </div>
           <main key={location.pathname} className="min-w-0">
             <Outlet />
+            {/* On small screens the panel moves below the queue content. */}
+            {isQueueRoute && (
+              <div className="mt-4 md:hidden">
+                <ApprovedChangesPanel />
+              </div>
+            )}
           </main>
         </div>
       </div>

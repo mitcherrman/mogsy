@@ -54,8 +54,12 @@ export type ItemAnalysisSubject = {
   /** Single known stat from exact-stat questions ("15" + "Ability Haste"). */
   statValue?: { value: string; label: string };
   buildsInto?: string;
-  /** Build-path questions: components named in the question (safe pre-reveal). */
-  knownComponents: string[];
+  /**
+   * Build-path questions: components named in the question (safe pre-reveal).
+   * icon is a resolved URL when metadata carries known_component_icons;
+   * absent icons fall back to a monogram tile in the Recipe Tree.
+   */
+  knownComponents: { name: string; icon: string | null }[];
   /** Build-path questions: the ANSWER — render only when revealed. */
   missingComponent?: { name: string; icon: string | null };
 };

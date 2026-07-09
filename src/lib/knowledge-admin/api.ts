@@ -18,6 +18,7 @@ import type {
   PatchAnalyticsResponse,
   PatchIntelligenceResponse,
   GameplayImpactResponse,
+  ApplyHistoryResponse,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -134,6 +135,14 @@ export const knowledgeApi = {
    */
   gameplayImpact: (q: { patch_version?: string } = {}) =>
     request<GameplayImpactResponse>("/gameplay-impact", { query: q as QueryLike }),
+
+  /**
+   * Recently applied approvals (grouped per approval batch), newest first.
+   * Read-only — powers the Review Queue "Approved Changes" side panel.
+   * active=true → only undoable; active=false → only already-undone.
+   */
+  applyHistory: (q: { limit?: number; patch_version?: string; champion?: string; active?: boolean } = {}) =>
+    request<ApplyHistoryResponse>("/apply-history", { query: q as QueryLike }),
 
   /**
    * Undo a previously-applied write. Backend enforces safety:

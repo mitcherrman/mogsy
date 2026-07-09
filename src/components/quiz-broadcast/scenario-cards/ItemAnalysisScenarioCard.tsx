@@ -263,11 +263,11 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
 
         {/* Component row */}
         <div className="flex w-full flex-1 items-start justify-around">
-          {item.knownComponents.map((name) => (
-            <div key={name} className="flex flex-col items-center gap-[0.7vmin]">
-              <ItemNodeTile name={name} sizeClass={tile} />
+          {item.knownComponents.map((comp) => (
+            <div key={comp.name} className="flex flex-col items-center gap-[0.7vmin]">
+              <ItemNodeTile iconUrl={comp.icon} name={comp.name} sizeClass={tile} />
               <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-bold uppercase tracking-[0.08em] text-white/85`}>
-                {name}
+                {comp.name}
               </div>
             </div>
           ))}

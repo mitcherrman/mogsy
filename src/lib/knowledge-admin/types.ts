@@ -286,6 +286,47 @@ export interface UndoResponse {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+   Apply History — "Approved Changes" side panel (GET /apply-history)
+
+   Read-only. Each entry is one approval BATCH (a progression approval is
+   grouped back into a single entry). history_id is the id to pass to undo.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export interface AppliedChange {
+  /** Canonical apply_history id — pass to knowledgeApi.undoApply(). */
+  history_id: number;
+  history_ids?: number[];
+  proposal_id?: number | null;
+  champion_name: string;
+  ability_key?: string | null;
+  ability_name?: string | null;
+  property?: string | null;
+  patch_version?: string | null;
+  provider?: Provider | null;
+  confidence?: number | null;
+  rank_count?: number | null;
+  old_value?: number | string | null;
+  new_value?: number | string | null;
+  old_full_progression?: string | null;
+  new_full_progression?: string | null;
+  applied_at?: string | null;
+  applied_by?: string | null;
+  undone_at?: string | null;
+  undone_by?: string | null;
+  /** Recorded state only (not yet undone). The production drift check runs
+   *  at undo time, so can_undo=true can still 409. */
+  can_undo?: boolean | null;
+  undo_unavailable_reason?: string | null;
+  [k: string]: unknown;
+}
+
+export interface ApplyHistoryResponse {
+  total: number;
+  limit: number;
+  entries: AppliedChange[];
+}
+
+/* ────────────────────────────────────────────────────────────────────────
    Patch Analytics (GET /patch-analytics)
 
    Everything is nullable / optional. The frontend does NOT compute or
