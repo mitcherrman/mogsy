@@ -18,9 +18,9 @@ export function PendingBadge({ className }: { className?: string }) {
         "inline-flex items-center rounded-full border border-dashed border-primary/40 bg-primary/5 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-primary/80",
         className,
       )}
-      title="Awaiting backend analytics endpoint"
+      title="No data for this scope"
     >
-      awaiting backend
+      no data
     </span>
   );
 }
