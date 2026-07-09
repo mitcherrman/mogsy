@@ -5,19 +5,19 @@ import { ScenarioCardFrame } from "./ScenarioCardFrame";
 import { ScenarioBadge, ScenarioDivider, ScenarioSection, ScenarioTitle } from "./primitives";
 
 /**
- * Item Analysis card — "artifact dossier" treatment.
+ * Item Analysis card.
  *
- * Zones (top to bottom):
- *   ITEM ANALYSIS badge
- *   hero artifact: oversized ghost item art + radial shrine rings + crisp
- *   floating icon on a pedestal glow
- *   recipe strip (build-path questions): known components + "?" -> final item;
- *   the "?" fills with the missing component ONLY at reveal (it's the answer)
- *   item name + subtitle, then reveal-gated data sections
+ * Build-path questions render the RECIPE TREE — a League-shop-inspired tree
+ * (final item on top, connector lines down to component nodes) sized as the
+ * card's main visual, since the recipe is the teaching object. The unknown
+ * component is a pulsing "?" node that fills with the answer at reveal.
  *
- * Spoiler rules: known_components appear verbatim in the question text, so the
- * strip is safe pre-reveal. missingComponent and the info sections are gated
- * on `revealed`.
+ * Non-recipe item questions keep the "artifact dossier" hero treatment
+ * (ghost art + shrine rings + floating icon).
+ *
+ * Spoiler rules: known_components appear verbatim in the question text, so
+ * the tree is safe pre-reveal. The missing component's name/icon and the
+ * info sections render ONLY when `revealed` (it is the correct answer).
  */
 export function ItemAnalysisScenarioCard({
   item,
@@ -81,7 +81,11 @@ export function ItemAnalysisScenarioCard({
 
       <ScenarioBadge>Item Analysis</ScenarioBadge>
 
+      {/* Build-path questions: the recipe tree IS the hero */}
+      {hasRecipe && <RecipeTree item={item} revealed={revealed} />}
+
       {/* Hero artifact zone: shrine rings + glow + crisp floating icon */}
+      {!hasRecipe && (
       <div className="absolute inset-x-0 top-[8%] flex h-[42%] items-center justify-center">
         <div className="relative flex items-center justify-center">
           {/* radial shrine rings */}
@@ -141,12 +145,6 @@ export function ItemAnalysisScenarioCard({
           />
         </div>
       </div>
-
-      {/* Recipe / build-path strip */}
-      {hasRecipe && (
-        <div className="absolute inset-x-0 top-[52%] flex justify-center px-[6%]">
-          <RecipeStrip item={item} revealed={revealed} />
-        </div>
       )}
 
       {/* Bottom label + reveal-gated sections */}
@@ -188,109 +186,194 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   );
 }
 
-/**
- * known component chips + "?" slot -> final item. The "?" fills with the
- * missing component only when revealed (it is the correct answer).
- */
-function RecipeStrip({ item, revealed }: { item: ItemAnalysisSubject; revealed: boolean }) {
+/* ────────────────────────────────────────────────────────────────────────
+   Recipe Tree — League-shop-inspired build tree.
+
+     [ final item ]          large focal node
+        /   |   \            thin connector lines
+   [known][known][ ? ]       component nodes; "?" becomes the answer at reveal
+
+   Known components arrive as names only (no icon paths in metadata), so
+   their nodes render as monogram tiles — League-shop empty-slot style. If
+   the metadata ever ships known-component icons, ItemNodeTile already
+   accepts an iconUrl. The "?" node reserves identical dimensions to the
+   revealed answer node, so the reveal never shifts layout.
+   ──────────────────────────────────────────────────────────────────────── */
+
+function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: boolean }) {
+  // Children: known components in order, mystery/answer slot last.
+  const childCount = item.knownComponents.length + 1;
+  const compact = childCount >= 4;
+  const tile = compact ? "h-[5.6vmin] w-[5.6vmin]" : "h-[7.2vmin] w-[7.2vmin]";
+  const labelWidth = compact ? "max-w-[8vmin]" : "max-w-[10vmin]";
+
+  // Connector endpoints as percentages of the row width.
+  const childX = Array.from({ length: childCount }, (_, i) => ((i + 0.5) / childCount) * 100);
+
   return (
-    <div className="flex max-w-full flex-wrap items-center justify-center gap-x-[0.9vmin] gap-y-[0.7vmin] rounded-xl border border-[#d4b35a]/25 bg-black/45 px-[1.6vmin] py-[1vmin] backdrop-blur-sm">
-      {item.knownComponents.map((name) => (
-        <span key={name} className="flex items-center gap-[0.9vmin]">
-          <ComponentChip label={name} known />
-          <Plus />
-        </span>
-      ))}
+    <div className="absolute inset-x-[6%] top-[7%] h-[57%]">
+      {/* glass panel */}
+      <div className="absolute inset-0 rounded-2xl border border-[#d4b35a]/20 bg-black/35 backdrop-blur-sm" />
+      <div className="absolute left-1/2 top-[2.5%] -translate-x-1/2 text-[0.85vmin] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/70">
+        Build Path
+      </div>
 
-      {/* mystery slot / revealed answer */}
-      {revealed && item.missingComponent ? (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <ComponentChip
-            label={item.missingComponent.name}
-            iconUrl={item.missingComponent.icon}
-            answer
+      <div className="relative flex h-full flex-col items-center px-[4%] pb-[3%] pt-[9%]">
+        {/* Final item — focal node */}
+        <div className="relative flex flex-col items-center">
+          <motion.div
+            aria-hidden
+            className="absolute -inset-[1.6vmin] rounded-2xl bg-[#d4b35a]/20 blur-xl"
+            animate={{ opacity: [0.45, 0.8, 0.45] }}
+            transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
-        </motion.span>
-      ) : (
-        <motion.span
-          className="flex h-[3.4vmin] min-w-[3.4vmin] items-center justify-center rounded-lg border border-[#f3dca0]/60 bg-black/60 px-[0.9vmin] text-[1.6vmin] font-black text-[#f3dca0]"
-          animate={{ opacity: [0.55, 1, 0.55], boxShadow: [
-            "0 0 4px rgba(243,220,160,0.15)",
-            "0 0 12px rgba(243,220,160,0.4)",
-            "0 0 4px rgba(243,220,160,0.15)",
-          ] }}
-          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          <motion.div
+            className="relative"
+            animate={{ y: [0, -4, 0] }}
+            transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <ItemNodeTile iconUrl={item.icon} name={item.name} sizeClass="h-[10.5vmin] w-[10.5vmin]" focal />
+          </motion.div>
+        </div>
+
+        {/* Connectors */}
+        <svg
+          aria-hidden
+          className="h-[6.5vmin] w-full shrink-0"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
         >
-          ?
-        </motion.span>
-      )}
+          {childX.map((x, i) => {
+            const isMystery = i === childCount - 1;
+            return (
+              <line
+                key={i}
+                x1="50"
+                y1="4"
+                x2={x}
+                y2="96"
+                stroke={isMystery ? "#7dd3fc" : "#d4b35a"}
+                strokeOpacity={isMystery ? 0.5 : 0.35}
+                strokeWidth="1.4"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
+        </svg>
 
-      <span className="mx-[0.4vmin] text-[1.5vmin] font-bold text-[#e8c97a]/80">→</span>
+        {/* Component row */}
+        <div className="flex w-full flex-1 items-start justify-around">
+          {item.knownComponents.map((name) => (
+            <div key={name} className="flex flex-col items-center gap-[0.7vmin]">
+              <ItemNodeTile name={name} sizeClass={tile} />
+              <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-bold uppercase tracking-[0.08em] text-white/85`}>
+                {name}
+              </div>
+            </div>
+          ))}
 
-      {/* final item mini icon */}
-      <MiniIcon iconUrl={item.icon} alt={item.name} />
+          {/* Mystery / answer node — identical box pre & post reveal */}
+          <div className="flex flex-col items-center gap-[0.7vmin]">
+            {revealed && item.missingComponent ? (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative"
+                >
+                  <motion.div
+                    aria-hidden
+                    className="absolute -inset-[0.9vmin] rounded-xl bg-[#f3dca0]/25 blur-lg"
+                    animate={{ opacity: [0.5, 0.9, 0.5] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <ItemNodeTile
+                    iconUrl={item.missingComponent.icon}
+                    name={item.missingComponent.name}
+                    sizeClass={tile}
+                    answer
+                  />
+                </motion.div>
+                <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-black uppercase tracking-[0.08em] text-[#f3dca0]`}>
+                  {item.missingComponent.name}
+                </div>
+              </>
+            ) : (
+              <>
+                <motion.div
+                  className={`flex ${tile} items-center justify-center rounded-xl border-2 border-dashed border-[#7dd3fc]/60 bg-black/55 text-[2.8vmin] font-black text-[#7dd3fc]`}
+                  animate={{
+                    opacity: [0.6, 1, 0.6],
+                    boxShadow: [
+                      "0 0 6px rgba(125,211,252,0.15)",
+                      "0 0 18px rgba(125,211,252,0.45)",
+                      "0 0 6px rgba(125,211,252,0.15)",
+                    ],
+                  }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  ?
+                </motion.div>
+                <div className={`${labelWidth} truncate text-center text-[0.95vmin] font-bold uppercase tracking-[0.12em] text-[#7dd3fc]/80`}>
+                  Missing
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ComponentChip({
-  label,
+/**
+ * A single tree node tile: item icon when available, otherwise a monogram
+ * placeholder (League-shop empty-slot style). Never shows a broken image.
+ */
+function ItemNodeTile({
   iconUrl,
-  known,
+  name,
+  sizeClass,
+  focal,
   answer,
 }: {
-  label: string;
   iconUrl?: string | null;
-  known?: boolean;
+  name: string;
+  sizeClass: string;
+  focal?: boolean;
   answer?: boolean;
 }) {
   const [errored, setErrored] = useState(false);
-  return (
-    <span
-      className={`flex items-center gap-[0.6vmin] rounded-lg border px-[0.9vmin] py-[0.45vmin] text-[1vmin] font-bold uppercase tracking-[0.08em] ${
-        answer
-          ? "border-[#f3dca0]/80 bg-[#f3dca0]/15 text-[#f3dca0] shadow-[0_0_14px_rgba(243,220,160,0.3)]"
-          : known
-            ? "border-[#d4b35a]/50 bg-[#d4b35a]/10 text-white"
-            : "border-white/20 bg-white/5 text-white/70"
-      }`}
-    >
-      {iconUrl && !errored && (
-        <img
-          src={iconUrl}
-          alt=""
-          onError={() => setErrored(true)}
-          className="h-[2.2vmin] w-[2.2vmin] rounded border border-[#d4b35a]/40 object-cover"
-        />
-      )}
-      <span className="max-w-[11vmin] truncate">{label}</span>
-    </span>
-  );
-}
+  const border = answer
+    ? "border-2 border-[#f3dca0]/80 ring-1 ring-[#f3dca0]/40"
+    : focal
+      ? "border-2 border-[#d4b35a]/70 ring-1 ring-[#f3dca0]/30"
+      : "border border-[#d4b35a]/40";
 
-function MiniIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
-  const [errored, setErrored] = useState(false);
-  if (!iconUrl || errored) {
+  if (iconUrl && !errored) {
     return (
-      <span className="max-w-[10vmin] truncate text-[1vmin] font-bold uppercase text-white/80">{alt}</span>
+      <img
+        src={iconUrl}
+        alt={name}
+        onError={() => setErrored(true)}
+        className={`${sizeClass} rounded-xl object-cover shadow-[0_10px_28px_-8px_rgba(0,0,0,0.9)] ${border}`}
+      />
     );
   }
   return (
-    <img
-      src={iconUrl}
-      alt={alt}
-      onError={() => setErrored(true)}
-      className="h-[3.2vmin] w-[3.2vmin] rounded-lg border border-[#d4b35a]/50 object-cover shadow-[0_6px_16px_-4px_rgba(0,0,0,0.8)]"
-    />
+    <div
+      className={`flex ${sizeClass} items-center justify-center rounded-xl bg-gradient-to-b from-[#1a1610] to-[#0c0a08] shadow-[0_10px_28px_-8px_rgba(0,0,0,0.9)] ${border}`}
+    >
+      <span className="text-[1.9vmin] font-black tracking-wide text-[#e8c97a]/90">{monogram(name)}</span>
+    </div>
   );
 }
 
-function Plus() {
-  return <span className="text-[1.4vmin] font-bold text-[#e8c97a]/70">+</span>;
+function monogram(name: string): string {
+  const words = name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).filter(Boolean);
+  if (!words.length) return "?";
+  return words.slice(0, 2).map((w) => w[0].toUpperCase()).join("");
 }
 
 const STAT_CODE_LABELS: Record<string, string> = {
