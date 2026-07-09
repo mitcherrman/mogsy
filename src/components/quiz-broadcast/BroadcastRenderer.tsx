@@ -124,6 +124,25 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
         )}
       </div>
 
+      {/* Shorts crystal core — FOREGROUND spill. Anchored to the true stage
+          bottom edge (only the ShellFrame's overflow crops it), rendered above
+          the scene (z-[26] vs scene z-20, below countdown z-[45]) so it leaks
+          over the lower content like a physical object in front of the stage.
+          Lives outside SceneSlider, so it stays put across question slides. */}
+      {isShorts && coreVisible && phase !== "idle" && q && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[26]">
+          <div className="relative mx-auto aspect-square w-[88cqmin] translate-y-[42%]">
+            <BroadcastKnowledgeCore
+              phase={phase}
+              questionIndex={snapshot.currentIndex + 1}
+              phaseStartedAt={snapshot.phaseStartedAt}
+              phaseDurationMs={snapshot.phaseDurationMs}
+              compact
+            />
+          </div>
+        </div>
+      )}
+
       {/* Bottom progress timeline */}
       <BottomTimeline
         current={Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)}
@@ -1233,26 +1252,6 @@ function ShortsSceneRow({
         transition={{ duration: 0.55, ease: "easeOut" }}
       />
 
-      {/* Crystal core — cinematic BACKGROUND anchor. Large, bottom-center,
-          intentionally cropped by the stage's bottom edge so it reads as a
-          huge magical object rising behind the quiz. Strictly below content
-          (z-[2] vs content z-10); a gradient veil over its upper half keeps
-          answers/explanation readable where they overlap it. */}
-      {!visuals.showQrCode && !visuals.showWebsite && (
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[2]">
-          <div className="relative mx-auto aspect-square w-[85cqmin] translate-y-[44%]">
-            <BroadcastKnowledgeCore
-              phase={phase}
-              questionIndex={questionIndex}
-              phaseStartedAt={phaseStartedAt}
-              phaseDurationMs={phaseDurationMs}
-              compact
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#03040d]/80 via-[#03040d]/30 to-transparent" />
-          </div>
-        </div>
-      )}
-
       {/* Subject art hero — height expands on reveal */}
       <motion.div
         className="relative z-10 flex w-full shrink-0 items-center justify-center px-[3%] pt-[2.2%]"
@@ -1339,9 +1338,9 @@ function ShortsSceneRow({
       </motion.div>
 
       {/* CTA footer — exits with content. The crystal core no longer lives
-          here (it is the absolute background layer above); the footer only
-          renders when there is QR/website content, so the answer/explanation
-          zones gain the freed vertical space in core mode. */}
+          here (it is a stage-level foreground layer in BroadcastStage); the
+          footer only renders when there is QR/website content, so the answer/
+          explanation zones gain the freed vertical space in core mode. */}
       {(visuals.showQrCode || visuals.showWebsite) && (
         <motion.div
           className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
