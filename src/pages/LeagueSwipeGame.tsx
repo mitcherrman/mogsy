@@ -61,18 +61,50 @@ export default function LeagueSwipeGame() {
   const [streak, setStreak] = useState(0);
   const [rounds, setRounds] = useState(0);
   const shownAt = useRef(Date.now());
+  // Session-scoped anti-repeat: exact matchups already shown, plus a short
+  // cooldown window so the same entity doesn't headline back-to-back rounds.
+  const seenPairs = useRef<Set<string>>(new Set());
+  const recentEntities = useRef<string[]>([]);
+  const RECENT_ENTITY_WINDOW = 6;
 
   const nextMatchup = useCallback(() => {
     if (!game) return;
+    const generate = (): SwipeMatchup | null => {
+      if (game.mode === "opinion" && championNames.length >= 2) {
+        return makeOpinionMatchup(game, championNames);
+      }
+      if (game.slug === "higher-base-stat" && championStats.length >= 2) {
+        return makeStatMatchup(game, championStats);
+      }
+      if (game.slug === "item-cost-duel" && items.length >= 2) {
+        return makeItemCostMatchup(game, items);
+      }
+      return null;
+    };
+    const pairKey = (m: SwipeMatchup) =>
+      [m.left.id, m.right.id].sort().join("|") + "|" + String(m.context?.stat ?? "");
+
+    // Prefer a matchup that is both unseen and entity-fresh; degrade to just
+    // unseen, then to anything, so small pools can never stall the loop.
     let m: SwipeMatchup | null = null;
-    if (game.mode === "opinion" && championNames.length >= 2) {
-      m = makeOpinionMatchup(game, championNames);
-    } else if (game.slug === "higher-base-stat" && championStats.length >= 2) {
-      m = makeStatMatchup(game, championStats);
-    } else if (game.slug === "item-cost-duel" && items.length >= 2) {
-      m = makeItemCostMatchup(game, items);
+    let fallback: SwipeMatchup | null = null;
+    for (let attempt = 0; attempt < 30 && !m; attempt++) {
+      const candidate = generate();
+      if (!candidate) break;
+      fallback = candidate;
+      if (seenPairs.current.has(pairKey(candidate))) continue;
+      const entityFresh =
+        !recentEntities.current.includes(candidate.left.id) &&
+        !recentEntities.current.includes(candidate.right.id);
+      if (entityFresh || attempt >= 20) m = candidate;
     }
+    m = m ?? fallback;
     if (m) {
+      seenPairs.current.add(pairKey(m));
+      recentEntities.current = [m.left.id, m.right.id, ...recentEntities.current].slice(
+        0,
+        RECENT_ENTITY_WINDOW,
+      );
       setMatchup(m);
       setSelectedId(null);
       setReveal(null);
@@ -84,6 +116,23 @@ export default function LeagueSwipeGame() {
   useEffect(() => {
     if (!matchup) nextMatchup();
   }, [matchup, nextMatchup]);
+
+  // Auto-advance after the reveal so the loop keeps flowing. Knowledge games
+  // get a little longer to read the values/explanation. The countdown bar is
+  // a width transition kicked off one frame after the reveal mounts; manual
+  // "Next" or unmount clears everything via the effect cleanup.
+  const autoAdvanceMs = game?.mode === "knowledge" ? 3500 : 2500;
+  const [countdownOn, setCountdownOn] = useState(false);
+  useEffect(() => {
+    if (!reveal) return;
+    const raf = requestAnimationFrame(() => setCountdownOn(true));
+    const timer = setTimeout(nextMatchup, autoAdvanceMs);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+      setCountdownOn(false);
+    };
+  }, [reveal, nextMatchup, autoAdvanceMs]);
 
   const handleChoose = useCallback(
     async (side: "left" | "right") => {
@@ -344,9 +393,20 @@ export default function LeagueSwipeGame() {
 
           <button
             onClick={nextMatchup}
-            className="mt-4 w-full inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
+            className="relative overflow-hidden mt-4 w-full inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
           >
             Next matchup <ArrowRight className="h-4 w-4" />
+            {/* Auto-advance countdown */}
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-0 h-1 bg-[#1a1530]/35"
+              style={{
+                width: countdownOn ? "100%" : "0%",
+                transitionProperty: "width",
+                transitionTimingFunction: "linear",
+                transitionDuration: countdownOn ? `${autoAdvanceMs}ms` : "0ms",
+              }}
+            />
           </button>
         </div>
       )}

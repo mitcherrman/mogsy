@@ -55,6 +55,7 @@ const QuizAdmin = R.QuizAdmin.Component;
 const LolHub = R.LolHub.Component;
 const LeagueSwipeHub = R.LeagueSwipeHub.Component;
 const LeagueSwipeGame = R.LeagueSwipeGame.Component;
+const LeagueSwipeStats = R.LeagueSwipeStats.Component;
 const LolTierList = R.LolTierList.Component;
 const LolDocumentation = R.LolDocumentation.Component;
 const LolHistory = R.LolHistory.Component;
@@ -186,6 +187,7 @@ const App = () => (
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
                   <Route path="/league-swipe" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeHub /></Suspense>} />
+                  <Route path="/league-swipe/stats" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeStats /></Suspense>} />
                   <Route path="/league-swipe/:gameSlug" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeGame /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LolDocumentation /></Suspense>} />

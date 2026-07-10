@@ -209,6 +209,97 @@ export type SwipeRevealAggregates = {
   otherRating: number | null;
 };
 
+// ---------------------------------------------------------------------------
+// Stats portal (read-only)
+// ---------------------------------------------------------------------------
+
+// The league_swipe_* tables/RPCs postdate the generated Database types.
+const sb = supabase as unknown as {
+  from: (table: string) => any;
+  rpc: (fn: string, args?: Record<string, unknown>) => any;
+};
+
+export type SwipeMatchupStat = {
+  game: string;
+  gameTitle?: string;
+  entityA: string;
+  entityB: string;
+  votesA: number;
+  votesB: number;
+  total: number;
+};
+
+export type SwipeGlobalStats = {
+  totals: {
+    swipes: number;
+    opinionVotes: number;
+    knowledgeAnswers: number;
+    correct: number;
+    incorrect: number;
+    accuracy: number | null;
+    avgResponseMs: number | null;
+    uniqueMatchups: number;
+  };
+  perGame: Array<{ slug: string; title: string; mode: SwipeGameMode; swipes: number; accuracy: number | null }>;
+  mostMissed: Array<{ game: string; entityA: string; entityB: string; correct: string | null; missCount: number }>;
+  mostVoted: SwipeMatchupStat[];
+  closest: SwipeMatchupStat[];
+  blowouts: SwipeMatchupStat[];
+};
+
+export async function fetchSwipeStats(): Promise<SwipeGlobalStats> {
+  const { data, error } = await sb.rpc("get_league_swipe_stats");
+  if (error) throw new Error(error.message);
+  return data as SwipeGlobalStats;
+}
+
+export type SwipeEntityRating = {
+  entity_id: string;
+  rating: number;
+  vote_count: number;
+  win_count: number;
+};
+
+/** Top-rated entities for one opinion game, by game slug. */
+export async function fetchTopRatings(gameSlug: string, limit = 10): Promise<SwipeEntityRating[]> {
+  const { data: games, error: gameErr } = await sb
+    .from("league_swipe_games")
+    .select("id")
+    .eq("slug", gameSlug)
+    .limit(1);
+  if (gameErr || !games?.length) return [];
+  const { data, error } = await sb
+    .from("league_swipe_entity_ratings")
+    .select("entity_id, rating, vote_count, win_count")
+    .eq("game_id", games[0].id)
+    .order("rating", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []) as SwipeEntityRating[];
+}
+
+export type SwipeOwnResult = {
+  selected_entity: string;
+  other_entity: string;
+  correct_entity: string | null;
+  is_correct: boolean | null;
+  response_time_ms: number | null;
+  created_at: string;
+  game_id: string;
+};
+
+/** Current user's recent knowledge answers (RLS limits results to own rows). */
+export async function fetchMyRecentResults(limit = 10): Promise<SwipeOwnResult[]> {
+  const { data, error } = await sb
+    .from("league_swipe_results")
+    .select("selected_entity, other_entity, correct_entity, is_correct, response_time_ms, created_at, game_id")
+    .not("is_correct", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []) as SwipeOwnResult[];
+}
+
 export async function recordSwipeResult(params: {
   gameSlug: string;
   selected: string;

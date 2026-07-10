@@ -160,10 +160,17 @@ begin
            (v_game.id, v_game.entity_type, p_other)
     on conflict (game_id, entity_id) do nothing;
 
+    -- Lock both rating rows in canonical (a, b) order regardless of which was
+    -- selected, so opposite-direction concurrent votes can't deadlock.
+    perform 1 from league_swipe_entity_ratings
+      where game_id = v_game.id and entity_id = v_a for update;
+    perform 1 from league_swipe_entity_ratings
+      where game_id = v_game.id and entity_id = v_b for update;
+
     select rating into v_winner_rating from league_swipe_entity_ratings
-      where game_id = v_game.id and entity_id = p_selected for update;
+      where game_id = v_game.id and entity_id = p_selected;
     select rating into v_loser_rating from league_swipe_entity_ratings
-      where game_id = v_game.id and entity_id = p_other for update;
+      where game_id = v_game.id and entity_id = p_other;
 
     v_expected := 1 / (1 + power(10::numeric, (v_loser_rating - v_winner_rating) / 400.0));
     v_change := greatest(1, round(32 * (1 - v_expected))::integer);

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Brain, Flame, Heart, Coins } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Flame, Heart, Coins } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets";
 import { LEAGUE_SWIPE_GAMES, type SwipeGameConfig } from "@/lib/league-swipe/api";
@@ -41,6 +41,25 @@ export default function LeagueSwipeHub() {
           />
         ))}
       </div>
+
+      {/* Stats portal */}
+      <Link
+        to="/league-swipe/stats"
+        className="group mt-4 flex items-center gap-4 rounded-2xl border border-border bg-gradient-to-br from-[#1e3a5f]/60 to-[#0a1428]/90 backdrop-blur-sm p-5 hover:border-[#c9a84c]/50 transition-all hover:scale-[1.01]"
+      >
+        <div className="rounded-lg bg-black/40 border border-white/10 p-3">
+          <BarChart3 className="h-5 w-5 text-[#c9a84c]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            Community Stats
+            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-[#c9a84c] transition-all" />
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Top-rated champions, closest calls, biggest blowouts, and community accuracy.
+          </p>
+        </div>
+      </Link>
     </div>
   );
 }
