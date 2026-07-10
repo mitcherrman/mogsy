@@ -166,24 +166,6 @@ export type Database = {
           },
         ]
       }
-      broadcast_live_state: {
-        Row: {
-          id: string
-          snapshot: Json
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          snapshot: Json
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          snapshot?: Json
-          updated_at?: string
-        }
-        Relationships: []
-      }
       app_settings: {
         Row: {
           key: string
@@ -341,6 +323,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      broadcast_live_state: {
+        Row: {
+          id: string
+          snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          snapshot: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       champion_images: {
         Row: {
