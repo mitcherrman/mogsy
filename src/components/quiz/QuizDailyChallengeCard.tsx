@@ -129,7 +129,7 @@ export default function QuizDailyChallengeCard({
               size="sm"
               onClick={onPlay}
               disabled={disabled || completed}
-              className="shrink-0 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
+              className="shrink-0 min-h-11 sm:min-h-9 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
             >
               {completed ? "Completed" : "Play Now"}
               {!completed && <ArrowRight className="ml-1 h-3.5 w-3.5" />}

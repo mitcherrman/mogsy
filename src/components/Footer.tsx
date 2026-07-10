@@ -40,12 +40,12 @@ export default function Footer() {
                 : "Community-driven ranking games, quizzes, and competitions for gamers everywhere."}
             </p>
           </div>
-          <nav aria-label="Footer" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 gap-y-2 text-sm">
+          <nav aria-label="Footer" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 text-sm">
             {links.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
-                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1.5 py-2.5 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                 {label}

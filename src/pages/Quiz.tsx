@@ -674,7 +674,7 @@ export default function Quiz() {
               <p className="text-xs text-muted-foreground">Test your League of Legends knowledge</p>
             </div>
           </div>
-          <Button asChild variant="ghost" size="sm" className="gap-1 text-xs">
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex gap-1 text-xs">
             <Link to="/quiz/diagnostics">
               <Stethoscope className="h-3.5 w-3.5" />
               Diagnostics
