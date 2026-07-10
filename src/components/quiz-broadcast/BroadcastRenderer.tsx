@@ -935,7 +935,7 @@ function BroadcastRunnerTimerLane({
           loop
           muted
           playsInline
-          className="h-[11.2cqmin] w-auto object-contain opacity-100 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+          className="h-[20cqmin] w-auto object-contain opacity-100 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
         />
       </motion.div>
     </div>
