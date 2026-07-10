@@ -203,12 +203,12 @@ export default function Auth() {
   // Confirmation sent / Reset sent screens
   if (mode === "confirm-sent" || mode === "reset-sent") {
     return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
+      <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
         <SEOHead title="Check Your Email — Mogsy" description="Confirm your email to finish signing up for Mogsy." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center"
+          className="w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8 text-center"
         >
           <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Mail className="h-8 w-8 text-primary" />
@@ -259,12 +259,12 @@ export default function Auth() {
   // Forgot password screen
   if (mode === "forgot") {
     return (
-      <div className="flex min-h-dvh items-center justify-center px-4">
+      <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
         <SEOHead title="Reset Password — Mogsy" description="Reset your Mogsy password." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md rounded-2xl border border-border bg-card p-8"
+          className="w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8"
         >
           <div className="mb-6 text-center">
             <Link to="/" className="inline-block mb-4">
@@ -306,7 +306,7 @@ export default function Auth() {
 
   // Main sign in / sign up form
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4">
+    <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
       <SEOHead
         title={mode === "signup" ? "Sign Up — Mogsy" : "Sign In — Mogsy"}
         description="Sign in or create your Mogsy account. Start voting, competing, and climbing the leaderboard."
@@ -314,7 +314,7 @@ export default function Auth() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-8"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8"
       >
         <div className="mb-6 text-center">
           <Link to="/" className="inline-block mb-4">
@@ -346,7 +346,7 @@ export default function Auth() {
           <div className="flex rounded-lg bg-muted p-1 mb-6">
             <button
               onClick={() => setMode("signin")}
-              className={`flex-1 rounded-md py-2 text-sm font-bold transition-all ${
+              className={`flex-1 rounded-md py-2.5 min-h-11 text-sm font-bold transition-all ${
                 mode === "signin"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -356,7 +356,7 @@ export default function Auth() {
             </button>
             <button
               onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md py-2 text-sm font-bold transition-all ${
+              className={`flex-1 rounded-md py-2.5 min-h-11 text-sm font-bold transition-all ${
                 mode === "signup"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"

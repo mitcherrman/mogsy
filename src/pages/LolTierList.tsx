@@ -162,7 +162,7 @@ export default function LolTierList() {
               role="tab"
               aria-selected={role === r}
               onClick={() => setRole(r)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                className={`px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors ${
                   role === r
                     ? "bg-[#c9a84c]/90 text-black border-[#c9a84c]"
                     : "bg-card/70 backdrop-blur-sm text-foreground border-border hover:border-[#c9a84c]/50"

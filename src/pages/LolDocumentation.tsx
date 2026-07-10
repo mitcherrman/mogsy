@@ -188,7 +188,7 @@ export default function LolDocumentation() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
-              <SelectTrigger className="w-[140px] bg-black/40 border-[#c9a84c]/20">
+              <SelectTrigger className="w-full sm:w-[140px] bg-black/40 border-[#c9a84c]/20">
                 <Filter className="h-3.5 w-3.5 mr-1.5" style={{ color: GOLD }} />
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
@@ -202,7 +202,7 @@ export default function LolDocumentation() {
               </SelectContent>
             </Select>
             <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as any)}>
-              <SelectTrigger className="w-[160px] bg-black/40 border-[#c9a84c]/20">
+              <SelectTrigger className="w-full sm:w-[160px] bg-black/40 border-[#c9a84c]/20">
                 <Filter className="h-3.5 w-3.5 mr-1.5" style={{ color: GOLD }} />
                 <SelectValue placeholder="Scope" />
               </SelectTrigger>
@@ -216,7 +216,7 @@ export default function LolDocumentation() {
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
-              <SelectTrigger className="w-[150px] bg-black/40 border-[#c9a84c]/20">
+              <SelectTrigger className="w-full sm:w-[150px] bg-black/40 border-[#c9a84c]/20">
                 <ArrowDownUp className="h-3.5 w-3.5 mr-1.5" style={{ color: GOLD }} />
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
