@@ -546,7 +546,8 @@ export const QuestionText = memo(function QuestionText({ text }: { text: string 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="font-sans text-[4.7cqmin] font-black leading-[1.08] tracking-[-0.035em] text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+      className="font-sans text-[4.6cqmin] font-black leading-[1.08] tracking-[-0.035em] text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+      style={{ fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
     >
       <span className="inline-block text-white">
         {text}
