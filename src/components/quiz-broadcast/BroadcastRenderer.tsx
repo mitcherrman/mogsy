@@ -142,6 +142,17 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
         </div>
       )}
 
+      {/* Akali runner — decorative looping video that runs along the bottom
+          timeline with the remaining question time. z-[12]: above the timeline
+          (z-10) and backdrop FX, below the Shorts crystal core (z-[18]) and
+          the main scene (z-20). */}
+      <BroadcastRunnerAsset
+        phase={phase}
+        phaseStartedAt={snapshot.phaseStartedAt}
+        phaseDurationMs={snapshot.phaseDurationMs}
+        isShorts={isShorts}
+      />
+
       {/* Bottom progress timeline */}
       <BottomTimeline
         current={Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)}
@@ -853,6 +864,73 @@ export function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
         <div className="mt-0.5 text-[1.5cqmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
       </div>
     </motion.div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   BroadcastRunnerAsset — decorative Akali runner along the bottom timeline.
+   During the question phase the runner travels left → right in step with the
+   countdown (linear over the remaining time, resuming mid-phase for late
+   subscribers). On reveal/explanation/transition it fades out; hidden while
+   idle. Purely presentational: muted looping video, pointer-events-none,
+   aria-hidden — no engine/timing involvement.
+   ──────────────────────────────────────────────────────────────────────── */
+
+const RUNNER_ASSET_SRC = "/quiz-broadcast/assets/akali-running.mp4";
+
+function BroadcastRunnerAsset({
+  phase,
+  phaseStartedAt,
+  phaseDurationMs,
+  isShorts,
+}: {
+  phase: BroadcastPhase;
+  phaseStartedAt: number;
+  phaseDurationMs: number;
+  isShorts: boolean;
+}) {
+  const active = phase === "question" && phaseDurationMs > 0;
+
+  // Late-join support: start from the current countdown progress, not 0.
+  // Only read once per phase (the motion.div is keyed by phaseStartedAt, so
+  // re-renders don't restart the run).
+  const elapsed = Math.max(0, Date.now() - phaseStartedAt);
+  const progress = Math.min(1, elapsed / Math.max(1, phaseDurationMs));
+  const startLeft = 4 + progress * 88; // 4% → 92% track
+  const remainingSec = Math.max(0, (phaseDurationMs - elapsed) / 1000);
+
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute inset-x-[2%] z-[12] ${isShorts ? "bottom-[2%]" : "bottom-[2.4%]"}`}
+    >
+      <AnimatePresence>
+        {active && (
+          <motion.div
+            key={phaseStartedAt}
+            className={`absolute bottom-0 -translate-x-1/2 ${isShorts ? "w-[11cqmin]" : "w-[8cqmin]"}`}
+            initial={{ left: `${startLeft}%`, opacity: 0 }}
+            animate={{ left: "92%", opacity: isShorts ? 0.6 : 0.75 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              left: { duration: remainingSec, ease: "linear" },
+              opacity: { duration: 0.45, ease: "easeOut" },
+            }}
+          >
+            {/* mix-blend-screen sinks a dark video background into the stage,
+                so the runner reads as a sprite instead of a rectangular box */}
+            <video
+              src={RUNNER_ASSET_SRC}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-auto w-full object-contain mix-blend-screen drop-shadow-[0_0_14px_rgba(212,179,90,0.35)]"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
