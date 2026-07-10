@@ -279,7 +279,7 @@ export function HextechOverloadFX({
           question/answer panels. */}
       <div
         ref={vignetteRef}
-        className="absolute will-change-[opacity]"
+        className="absolute rounded-full overflow-hidden will-change-[opacity] [mask-image:radial-gradient(circle,black_0%,black_58%,transparent_76%)]"
         style={{
           left: `${anchorX * 100}%`,
           top: `${anchorY * 100}%`,
@@ -295,7 +295,7 @@ export function HextechOverloadFX({
       {/* Energy buildup glow at the anchor */}
       <div
         ref={glowRef}
-        className="absolute will-change-[opacity]"
+        className="absolute rounded-full overflow-hidden will-change-[opacity] [mask-image:radial-gradient(circle,black_0%,black_62%,transparent_80%)]"
         style={{
           left: `${anchorX * 100}%`,
           top: `${anchorY * 100}%`,
@@ -312,7 +312,13 @@ export function HextechOverloadFX({
       <svg
         viewBox="0 0 1000 1000"
         preserveAspectRatio="xMidYMid slice"
-        className="absolute inset-0 h-full w-full"
+        className="absolute inset-0 h-full w-full [mask-image:radial-gradient(circle_at_var(--fx-x,50%)_var(--fx-y,50%),black_0%,black_44%,transparent_72%)]"
+        style={
+          {
+            "--fx-x": `${anchorX * 100}%`,
+            "--fx-y": `${anchorY * 100}%`,
+          } as React.CSSProperties
+        }
       >
         <g style={{ filter: "drop-shadow(0 0 5px rgba(90,185,255,0.70))" }}>
           {Array.from({ length: MAIN_CRACKS }, (_, i) => (
