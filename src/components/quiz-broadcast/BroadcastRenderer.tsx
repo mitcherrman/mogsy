@@ -61,8 +61,6 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
   const q = snapshot.currentQuestion;
   const revealActive = phase === "reveal" || phase === "explanation" || phase === "transition";
   const isShorts = v.aspect === "9:16";
-  // Overload FX anchors to the Knowledge Core when visible, stage center otherwise
-  const coreVisible = !v.showQrCode && !v.showWebsite;
 
   return (
     <ShellFrame fit={fitContainer} aspect={v.aspect}>
@@ -70,14 +68,15 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <GoldTrim />
 
       {/* Hextech overload environment FX — cracks + localized vignette.
-          z-[6]: above backdrop/FXLayer, behind all scene content (z-20). */}
+          z-[6]: above backdrop/FXLayer, behind all scene content (z-20).
+          Anchored to the Knowledge Core, which is now always visible. */}
       <div className="pointer-events-none absolute inset-0 z-[6]">
         <HextechOverloadFX
           phase={phase}
           phaseStartedAt={snapshot.phaseStartedAt}
           phaseDurationMs={snapshot.phaseDurationMs}
-          anchorX={coreVisible ? (isShorts ? 0.5 : 0.88) : 0.5}
-          anchorY={coreVisible ? (isShorts ? 0.96 : 0.49) : 0.5}
+          anchorX={isShorts ? 0.5 : 0.88}
+          anchorY={isShorts ? 0.96 : 0.49}
           aspect={isShorts ? 9 / 16 : 16 / 9}
         />
       </div>
@@ -129,7 +128,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
           outside SceneSlider so it stays stable across question slides, but kept
           visually behind the main scene content so it reads as atmosphere instead
           of competing with the answers. */}
-      {isShorts && coreVisible && phase !== "idle" && q && (
+      {isShorts && phase !== "idle" && q && (
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[18] opacity-70">
           <div className="relative mx-auto aspect-square w-[76cqmin] translate-y-[48%]">
             <BroadcastKnowledgeCore
@@ -406,7 +405,6 @@ function SceneRow({
           style={{ x: qrXStr, opacity: tl.qrOpacity }}
         >
           <RightPanel
-            visuals={visuals}
             phase={phase}
             questionIndex={questionIndex}
             phaseStartedAt={phaseStartedAt}
@@ -510,6 +508,7 @@ function QuestionPanel({
         phaseStartedAt={phaseStartedAt}
         phaseDurationMs={phaseDurationMs}
       />
+      <CompactPlayAlongPanel visuals={visuals} size="wide" />
       <div className="relative min-h-[12%]">
         <AnimatePresence>
           {revealActive && explanation && visuals.showTips && visuals.showExplanations && (
@@ -749,27 +748,22 @@ function CountdownView({
 }
 
 /* ────────────────────────────────────────────────────────────────────────
-   RightPanel — decides between QR/website CTA and Hextech Knowledge Core.
-   When both showQrCode and showWebsite are OFF, the Knowledge Core occupies
-   the right-hand panel. The column wrapper and motion bindings are unchanged.
+   RightPanel — the Hextech Knowledge Core. Always rendered; the QR/website
+   play-along CTA now lives as a compact strip under the answers instead of
+   replacing the core. The column wrapper and motion bindings are unchanged.
    ──────────────────────────────────────────────────────────────────────── */
 
 function RightPanel({
-  visuals,
   phase,
   questionIndex,
   phaseStartedAt,
   phaseDurationMs,
 }: {
-  visuals: BroadcastVisuals;
   phase: BroadcastPhase;
   questionIndex: number;
   phaseStartedAt: number;
   phaseDurationMs: number;
 }) {
-  if (visuals.showQrCode || visuals.showWebsite) {
-    return <PlayAlongPanel visuals={visuals} />;
-  }
   return (
     <BroadcastKnowledgeCore
       phase={phase}
@@ -781,7 +775,54 @@ function RightPanel({
 }
 
 /* ────────────────────────────────────────────────────────────────────────
-   PlayAlongPanel — premium CTA card with QR
+   CompactPlayAlongPanel — small supporting CTA strip under the answers.
+   Renders nothing when both showQrCode and showWebsite are off. Sized in
+   cqmin so it stays a footnote next to the answers rather than a subject.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export function CompactPlayAlongPanel({
+  visuals,
+  size = "wide",
+}: {
+  visuals: BroadcastVisuals;
+  size?: "wide" | "shorts";
+}) {
+  if (!visuals.showQrCode && !visuals.showWebsite) return null;
+  const qrPx = size === "shorts" ? "h-[5cqmin] w-[5cqmin]" : "h-[4.4cqmin] w-[4.4cqmin]";
+  const urlText = size === "shorts" ? "text-[1.5cqmin]" : "text-[1.35cqmin]";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut", delay: 0.25 }}
+      className={`flex items-center gap-[1.6cqmin] rounded-xl border border-[#d4b35a]/25 bg-black/40 px-[1.8cqmin] py-[1cqmin] backdrop-blur-md ${
+        size === "shorts" ? "self-center" : "self-start"
+      }`}
+    >
+      {visuals.showQrCode && (
+        <div className="rounded-md border border-[#d4b35a]/35 bg-white/95 p-[0.5cqmin] shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
+            alt=""
+            className={qrPx}
+          />
+        </div>
+      )}
+      <div className="flex min-w-0 flex-col text-left">
+        <div className="text-[1cqmin] font-bold uppercase tracking-[0.35em] text-[#e8c97a]/90">Play along</div>
+        {visuals.showWebsite && (
+          <div className={`truncate font-extrabold tracking-wider text-[#f3dca0] ${urlText}`}>
+            {visuals.websiteUrl}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   PlayAlongPanel — premium full-height CTA card with QR. No longer wired
+   into the layout (the compact strip replaced it); kept exported for reuse.
    ──────────────────────────────────────────────────────────────────────── */
 
 export function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
@@ -1231,7 +1272,6 @@ function ShortsSceneRow({
 
   const subjectHeightStr = useTransform(tl.subjectHeightPct, (v) => `${v}%`);
   const contentYStr      = useTransform(tl.contentY,         (v) => `${v}%`);
-  const qrYStr           = useTransform(tl.qrY,              (v) => `${v}%`);
 
   return (
     <motion.div
@@ -1332,38 +1372,17 @@ function ShortsSceneRow({
         </div>
 
         {/* Answers — top-aligned so they hug the question/insight group
-            instead of floating down toward the core. */}
+            instead of floating down toward the core. The compact play-along
+            CTA sits directly under the answers (inside the content stack, so
+            it exits with the content on reveal) and stays above the stage-
+            level crystal core at the bottom edge. */}
         <div className="flex flex-1 flex-col justify-start px-[3.5%] pt-[1.2%]">
           <AnswerGrid choices={choices} style="rows" revealActive={revealActive} correctAnswer={correctAnswer} />
+          <div className="mt-[2%] flex justify-center">
+            <CompactPlayAlongPanel visuals={visuals} size="shorts" />
+          </div>
         </div>
       </motion.div>
-
-      {/* CTA footer — exits with content. The crystal core no longer lives
-          here (it is a stage-level foreground layer in BroadcastStage); the
-          footer only renders when there is QR/website content, so the answer/
-          explanation zones gain the freed vertical space in core mode. */}
-      {(visuals.showQrCode || visuals.showWebsite) && (
-        <motion.div
-          className="relative z-10 flex shrink-0 items-center justify-center gap-3 pb-[1.2%]"
-          style={{ y: qrYStr, opacity: tl.qrOpacity }}
-        >
-          {visuals.showQrCode && (
-            <div className="rounded-md border border-[#d4b35a]/40 bg-white/95 p-1 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=${encodeURIComponent(`https://${visuals.websiteUrl}`)}`}
-                alt=""
-                className="h-[5cqmin] w-[5cqmin]"
-              />
-            </div>
-          )}
-          {visuals.showWebsite && (
-            <div className="flex flex-col text-left">
-              <div className="text-[1cqmin] uppercase tracking-[0.35em] text-white/55">Play along</div>
-              <div className="text-[1.6cqmin] font-extrabold tracking-wider text-[#f3dca0]">{visuals.websiteUrl}</div>
-            </div>
-          )}
-        </motion.div>
-      )}
 
       {/* Bottom breathing room so answers never kiss the stage edge */}
       <div className="shrink-0 pb-[2.5%]" />
