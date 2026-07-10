@@ -918,7 +918,7 @@ function BroadcastRunnerTimerLane({
       {/* Akali — simple circular fade only. */}
       <motion.div
         key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
-        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[0.15cqmin] w-[21cqmin]" : "bottom-[0.05cqmin] w-[19cqmin]"}`}
+        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[0.1cqmin]" : "bottom-[-0.1cqmin]"}`}
         initial={isQuestion ? { left: `${startLeft}%`, opacity: 0 } : false}
         animate={{ left: "92%", opacity: isShorts ? 0.78 : 0.92 }}
         transition={{
@@ -926,14 +926,20 @@ function BroadcastRunnerTimerLane({
           opacity: { duration: 0.45, ease: "easeOut" },
         }}
       >
-        <div className={`relative overflow-hidden rounded-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_58%,transparent_84%)] ${isShorts ? "h-[11cqmin]" : "h-[9.8cqmin]"}`}>
+        <div
+          className={`relative overflow-hidden rounded-full ${isShorts ? "h-[12cqmin] w-[12cqmin]" : "h-[10.5cqmin] w-[10.5cqmin]"}`}
+          style={{
+            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 56%, transparent 82%)",
+            maskImage: "radial-gradient(circle at center, black 0%, black 56%, transparent 82%)",
+          }}
+        >
           <video
             src={RUNNER_ASSET_SRC}
             autoPlay
             loop
             muted
             playsInline
-            className="h-[8.3cqmin] w-auto scale-[1.48] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+            className="absolute left-1/2 top-1/2 h-[8.6cqmin] w-auto -translate-x-1/2 -translate-y-1/2 scale-[1.65] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
           />
         </div>
       </motion.div>
