@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, Swords, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import lolIcon from "@/assets/lol-icon.png";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 
 const SEEN_KEY = "mogsy.lolWelcome.seen.v1";
 
@@ -45,6 +46,7 @@ export default function LolWelcomeIntro() {
   };
 
   const startQuiz = () => {
+    trackFunnelEvent("lol_start_quiz_clicked", { cta: "welcome_intro" });
     markSeen();
     navigate("/quiz");
   };

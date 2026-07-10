@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import LolWelcomeIntro, { hasSeenLolWelcome } from "@/components/lol/LolWelcomeIntro";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 
 const LOL_TAG = "League of Legends";
 
@@ -125,6 +126,11 @@ export default function LolHub() {
     }
   }, [user]);
 
+  // Funnel: landing view, once per mount.
+  useEffect(() => {
+    trackFunnelEvent("lol_landing_viewed");
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     supabase
@@ -204,7 +210,10 @@ export default function LolHub() {
                 time — and test damage math in the Combat Lab simulator.
               </p>
               <button
-                onClick={() => navigate("/quiz")}
+                onClick={() => {
+                  trackFunnelEvent("lol_start_quiz_clicked", { cta: "hero" });
+                  navigate("/quiz");
+                }}
                 className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
               >
                 Start Quiz — No Account Needed
@@ -269,12 +278,20 @@ export default function LolHub() {
               </div>
               <h2 className="text-lg md:text-xl font-bold text-foreground">Two options. One tap.</h2>
             </div>
-            <Link
-              to="/league-swipe"
-              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
-            >
-              All games <ArrowRight className="h-3 w-3" />
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/league-swipe/stats"
+                className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
+              >
+                Stats <ArrowRight className="h-3 w-3" />
+              </Link>
+              <Link
+                to="/league-swipe"
+                className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
+              >
+                All games <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3">
             {SWIPE_GAME_CARDS.map((g) => (

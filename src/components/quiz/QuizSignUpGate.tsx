@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { motion } from "framer-motion";
 import { Sparkles, Flame, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,11 @@ interface Props {
 
 export default function QuizSignUpGate({ progress, actionCount, returnTo = "/quiz", onDismiss }: Props) {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    trackFunnelEvent("quiz_signup_gate_shown", { action_count: actionCount, returnTo });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const xp = progress?.xp ?? 0;
   const streak = progress?.current_streak ?? 0;
@@ -83,7 +90,10 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
 
         <Button
           className="w-full mb-2 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
-          onClick={() => navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`)}
+          onClick={() => {
+            trackFunnelEvent("quiz_signup_clicked", { returnTo });
+            navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`);
+          }}
         >
           Create Account
         </Button>
@@ -91,7 +101,10 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
           <Button
             variant="outline"
             className="w-full mb-2 text-sm"
-            onClick={onDismiss}
+            onClick={() => {
+              trackFunnelEvent("quiz_guest_continue_clicked", { returnTo });
+              onDismiss();
+            }}
           >
             Keep Playing as Guest
           </Button>

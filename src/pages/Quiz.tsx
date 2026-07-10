@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, CheckCircle2, XCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame } from "lucide-react";
@@ -361,11 +362,14 @@ export default function Quiz() {
       }
       setQuestions(remaining as QuizQuestion[]);
       setPhase("active");
+      if (isAnonymous) {
+        trackFunnelEvent("quiz_guest_started", { quiz_mode: "daily_challenge", total_questions: remaining.length });
+      }
     } catch (err: any) {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load daily challenge.");
     }
-  }, [userId, applyDailyChallengeResponse, startHistorySession]);
+  }, [userId, applyDailyChallengeResponse, startHistorySession, isAnonymous]);
 
   useEffect(() => {
     setProgressLoading(true);
@@ -467,11 +471,14 @@ export default function Quiz() {
       }
       setQuestions(qs);
       setPhase("active");
+      if (isAnonymous) {
+        trackFunnelEvent("quiz_guest_started", { quiz_mode: "standard", set_id: set.name, total_questions: qs.length });
+      }
     } catch (err: any) {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load questions.");
     }
-  }, [startHistorySession]);
+  }, [startHistorySession, isAnonymous]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
@@ -542,6 +549,11 @@ export default function Quiz() {
       }
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
+      trackFunnelEvent("quiz_question_answered", {
+        quiz_mode: isDailyChallenge.current ? "daily_challenge" : "standard",
+        question_index: currentIndex,
+        is_correct: !!result.is_correct,
+      });
 
       // Gate / nudge tracking for anonymous users.
       if (isAnonymous && gateConfig) {
@@ -599,12 +611,21 @@ export default function Quiz() {
         explanation: "Could not verify answer. Please check your connection and try again.",
       });
     }
-  }, [currentQuestion, answerResult, userId, loadProgress, loadAchievements]);
+  }, [currentQuestion, currentIndex, answerResult, userId, loadProgress, loadAchievements]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       completeHistorySession();
       setPhase("result");
+      const completionPayload = {
+        quiz_mode: isDailyChallenge.current ? "daily_challenge" : "standard",
+        set_id: currentSet?.name ?? null,
+        correct_count: score,
+        total_questions: questions.length,
+      };
+      trackFunnelEvent("quiz_completed", completionPayload);
+      // Results render immediately after completion in the same view.
+      trackFunnelEvent("quiz_results_viewed", completionPayload);
       // First signup prompt appears after a completed quiz, not before.
       if (gateArmed.current && isAnonymous) {
         setShowGate(true);
@@ -615,7 +636,7 @@ export default function Quiz() {
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentIndex, questions.length, isAnonymous, completeHistorySession]);
+  }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score]);
 
   const handlePlayAgain = useCallback(() => {
     if (currentSet) {

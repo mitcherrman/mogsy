@@ -12,6 +12,7 @@ import SEOHead from "@/components/SEOHead";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -38,6 +39,15 @@ export default function Auth() {
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
+  const cameFromQuiz = initialMode === "signup" && safeReturnTo.startsWith("/quiz");
+
+  // Funnel: signup page viewed via the post-quiz gate, once per mount.
+  useEffect(() => {
+    if (cameFromQuiz) {
+      trackFunnelEvent("auth_signup_viewed_from_quiz", { returnTo: safeReturnTo });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Guest-first onboarding: a guest arriving at "sign up" defaults into the
   // account-link flow so their anonymous quiz progress carries over.
@@ -129,6 +139,9 @@ export default function Auth() {
         toast({ title: "Linking failed", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Account created!", description: "Your progress has been saved." });
+        if (cameFromQuiz) {
+          trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "link_anonymous" });
+        }
         resetGateState();
         if (user) await redeemInvite(user.id);
         navigate(safeReturnTo);
@@ -192,6 +205,9 @@ export default function Auth() {
           toast({ title: "Signup failed", description: error.message, variant: "destructive" });
         }
       } else {
+        if (cameFromQuiz) {
+          trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "email_signup" });
+        }
         resetGateState();
         setMode("confirm-sent");
       }
