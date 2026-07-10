@@ -36,7 +36,6 @@ const lolEntries: SitemapEntry[] = [
   { path: "/lol/docs", changefreq: "weekly", priority: "0.5" },
   { path: "/combat-lab", changefreq: "weekly", priority: "0.8" },
   { path: "/blog", changefreq: "daily", priority: "0.9" },
-  { path: "/auth", changefreq: "monthly", priority: "0.4" },
   { path: "/about", changefreq: "monthly", priority: "0.6" },
   { path: "/privacy", changefreq: "monthly", priority: "0.4" },
   { path: "/terms", changefreq: "monthly", priority: "0.4" },
