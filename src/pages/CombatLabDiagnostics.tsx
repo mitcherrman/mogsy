@@ -963,6 +963,7 @@ export default function CombatLabDiagnostics() {
       <SEOHead
         title="Combat Lab Diagnostics — Mogsy"
         description="Developer diagnostics for the Combat Lab backend integration."
+        noindex
       />
 
       {/* Header */}

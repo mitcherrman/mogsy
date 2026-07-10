@@ -104,7 +104,9 @@ export default function Layout() {
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
       </main>
-      {!isLolSection && <Footer />}
+      {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
+          Riot disclaimer stay visible; it self-hides on gameplay routes. */}
+      <Footer />
       {isLolSection && pathname !== "/lol" && (
         <Link
           to="/lol"

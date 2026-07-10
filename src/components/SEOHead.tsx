@@ -21,6 +21,8 @@ interface SEOHeadProps {
   };
   /** Comma-separated keywords for the page. */
   keywords?: string;
+  /** Ask crawlers not to index this route (utility/OBS/diagnostic pages). */
+  noindex?: boolean;
 }
 
 function upsertMeta(selector: string, attr: "name" | "property", key: string, content: string) {
@@ -33,10 +35,18 @@ function upsertMeta(selector: string, attr: "name" | "property", key: string, co
   el.setAttribute("content", content);
 }
 
-export default function SEOHead({ title, description, path, image, jsonLd, type, article, keywords }: SEOHeadProps) {
+export default function SEOHead({ title, description, path, image, jsonLd, type, article, keywords, noindex }: SEOHeadProps) {
   useEffect(() => {
     document.title = title;
     upsertMeta('meta[name="description"]', "name", "description", description);
+
+    // Robots: set noindex on utility routes, and clear it again when a normal
+    // route mounts (meta tags persist across SPA navigations).
+    if (noindex) {
+      upsertMeta('meta[name="robots"]', "name", "robots", "noindex, nofollow");
+    } else {
+      document.head.querySelector('meta[name="robots"]')?.remove();
+    }
 
     const routePath = path ?? (typeof window !== "undefined" ? window.location.pathname : "/");
     const url = `${SITE_URL}${routePath}`;
@@ -100,7 +110,7 @@ export default function SEOHead({ title, description, path, image, jsonLd, type,
       for (const node of ldNodes) node.remove();
       for (const node of articleNodes) node.remove();
     };
-  }, [title, description, path, image, jsonLd, type, article, keywords]);
+  }, [title, description, path, image, jsonLd, type, article, keywords, noindex]);
 
   return null;
 }

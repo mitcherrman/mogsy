@@ -21,8 +21,30 @@ interface SitemapEntry {
   priority?: string;
 }
 
-const staticEntries: SitemapEntry[] = [
+// Mirrors LEAGUE_ONLY_MODE in src/lib/site-config.ts (this script runs
+// standalone in node, so the flag is duplicated here — keep them in sync).
+// While true, legacy Mogsy routes (/home, /play, /swipe*, /leagues,
+// /leaderboard, /shop, /user profiles, custom links) redirect to /lol and
+// must not be promoted in the sitemap.
+const LEAGUE_ONLY_MODE = true;
+
+const lolEntries: SitemapEntry[] = [
   { path: "/", changefreq: "daily", priority: "1.0" },
+  { path: "/lol", changefreq: "daily", priority: "1.0" },
+  { path: "/quiz", changefreq: "daily", priority: "0.9" },
+  { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
+  { path: "/lol/docs", changefreq: "weekly", priority: "0.5" },
+  { path: "/combat-lab", changefreq: "weekly", priority: "0.8" },
+  { path: "/blog", changefreq: "daily", priority: "0.9" },
+  { path: "/auth", changefreq: "monthly", priority: "0.4" },
+  { path: "/about", changefreq: "monthly", priority: "0.6" },
+  { path: "/privacy", changefreq: "monthly", priority: "0.4" },
+  { path: "/terms", changefreq: "monthly", priority: "0.4" },
+  { path: "/security", changefreq: "monthly", priority: "0.5" },
+  { path: "/contact", changefreq: "monthly", priority: "0.6" },
+];
+
+const legacyEntries: SitemapEntry[] = [
   { path: "/home", changefreq: "daily", priority: "0.8" },
   { path: "/play", changefreq: "daily", priority: "0.9" },
   { path: "/swipe", changefreq: "daily", priority: "0.8" },
@@ -32,19 +54,13 @@ const staticEntries: SitemapEntry[] = [
   { path: "/leagues/compete", changefreq: "weekly", priority: "0.8" },
   { path: "/elo-check", changefreq: "daily", priority: "0.7" },
   { path: "/shop", changefreq: "weekly", priority: "0.7" },
-  { path: "/auth", changefreq: "monthly", priority: "0.5" },
   { path: "/profile", changefreq: "weekly", priority: "0.6" },
   { path: "/referral", changefreq: "monthly", priority: "0.5" },
-  { path: "/blog", changefreq: "daily", priority: "0.9" },
-  { path: "/lol", changefreq: "weekly", priority: "0.8" },
-  { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
-  { path: "/combat-lab", changefreq: "weekly", priority: "0.7" },
-  { path: "/about", changefreq: "monthly", priority: "0.6" },
-  { path: "/privacy", changefreq: "monthly", priority: "0.4" },
-  { path: "/terms", changefreq: "monthly", priority: "0.4" },
-  { path: "/security", changefreq: "monthly", priority: "0.5" },
-  { path: "/contact", changefreq: "monthly", priority: "0.6" },
 ];
+
+const staticEntries: SitemapEntry[] = LEAGUE_ONLY_MODE
+  ? lolEntries
+  : [...lolEntries, ...legacyEntries];
 
 async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
   if (!SUPABASE_ANON_KEY) {
@@ -54,6 +70,14 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const entries: SitemapEntry[] = [];
+
+  // League-only mode: leaderboards, swipe presets, custom links and user
+  // profiles all redirect to /lol — only blog posts stay indexable.
+  if (LEAGUE_ONLY_MODE) {
+    const blogEntries = await fetchBlogPostEntries(supabase);
+    entries.push(...blogEntries);
+    return entries;
+  }
 
   // Public leaderboards — one per league
   const { data: leagues, error: lErr } = await supabase

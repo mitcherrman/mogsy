@@ -129,16 +129,21 @@ export default function LolHub() {
     <div>
       {showWelcome && <LolWelcomeIntro />}
       <SEOHead
-        title="Mogsy League of Legends — Rankings, News & Combat Lab"
-        description="The League of Legends hub on Mogsy. Rank champions, simulate fights in the Combat Lab, and read the latest LoL news and tier lists."
+        title="Mogsy LoL Quiz | League of Legends Trivia and Training"
+        description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
         path="/lol"
-        keywords="league of legends, lol tier list, lol champions, combat lab, lol news, mogsy"
+        keywords="league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list"
         jsonLd={[
           {
             "@context": "https://schema.org",
-            "@type": "CollectionPage",
-            name: "Mogsy League of Legends Hub",
+            "@type": "WebApplication",
+            name: "Mogsy LoL Quiz",
             url: `${SITE_URL}/lol`,
+            applicationCategory: "GameApplication",
+            operatingSystem: "Web",
+            description:
+              "League of Legends quiz and training tool: champion, item, ability, build and esports trivia, plus a damage simulator.",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
           },
         ]}
       />
@@ -175,10 +180,19 @@ export default function LolHub() {
             <img src={lolIcon} alt="League of Legends" className="h-16 w-16 md:h-20 md:w-20 rounded-xl shadow-lg" />
             <div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">Mogsy x LoL</div>
-              <h1 className="text-2xl md:text-4xl font-bold text-foreground">League of Legends Hub</h1>
+              <h1 className="text-2xl md:text-4xl font-bold text-foreground">League of Legends Quiz &amp; Training</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-xl">
-                Rank champions, run matchups in the Combat Lab, and catch up on the latest LoL drops.
+                Mogsy is a League of Legends learning game. Play LoL quizzes about champions, items,
+                abilities, builds, objectives, patch changes and esports history — one question at a
+                time — and test damage math in the Combat Lab simulator.
               </p>
+              <button
+                onClick={() => navigate("/quiz")}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
+              >
+                Start Quiz — No Account Needed
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>

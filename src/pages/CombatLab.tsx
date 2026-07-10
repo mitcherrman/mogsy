@@ -696,8 +696,10 @@ export default function CombatLab() {
   return (
     <div className="px-4 md:px-0 py-6 md:py-10 xl:w-[120%] xl:-ml-[10%]">
       <SEOHead
-        title="Combat Lab — Mogsy"
-        description="League of Legends combat simulator. Build combos, pick items and runes, and benchmark damage with the Mogsy Combat Lab."
+        title="Mogsy Combat Lab | League of Legends Damage Simulator"
+        description="Test League of Legends champion damage, items, abilities, runes, and combat scenarios in the Mogsy Combat Lab damage simulator. Free, in-browser, no account needed."
+        path="/combat-lab"
+        keywords="league of legends damage simulator, lol damage calculator, champion damage, combat lab, lol builds, league of legends training tool"
       />
 
       {/* Header */}
@@ -730,6 +732,15 @@ export default function CombatLab() {
           </button>
         </div>
       </header>
+
+      {/* Visible explanatory copy — the page should read as a tool with a
+          purpose, not a bare app shell. */}
+      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+        The Combat Lab is a free League of Legends damage simulator. Pick a champion, set levels,
+        items, and runes, then run abilities and combos against a configurable target to see exact
+        damage numbers — a training tool for theorycrafting builds, learning trade timings, and
+        checking patch-to-patch damage changes.
+      </p>
 
       <MetadataAuditPanel
         loading={metaLoading}

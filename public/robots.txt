@@ -1,17 +1,14 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+# Private / utility routes — not useful in search results
+Disallow: /admin
+Disallow: /admin/
+Disallow: /moderator
+Disallow: /secret-room
+Disallow: /reset-password
+Disallow: /broadcast/
+Disallow: /quiz/diagnostics
+Disallow: /combat-lab/diagnostics
 
 # DOMAIN CONFIG: Update domain below when changing domain
 Sitemap: https://mogsy.app/sitemap.xml

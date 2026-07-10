@@ -523,6 +523,7 @@ export default function QuizDiagnostics() {
       <SEOHead
         title="Quiz Diagnostics — Mogsy"
         description="Developer diagnostics for the League Quiz backend integration."
+        noindex
       />
 
       {/* Header */}

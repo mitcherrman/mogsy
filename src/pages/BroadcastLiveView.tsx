@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SEOHead from "@/components/SEOHead";
 import BroadcastRenderer from "@/components/quiz-broadcast/BroadcastRenderer";
 import { subscribeLiveSnapshot } from "@/lib/quiz-broadcast/liveSync";
 import type { EngineSnapshot } from "@/lib/quiz-broadcast/types";
@@ -29,5 +30,11 @@ export default function BroadcastLiveView() {
     };
   }, []);
 
-  return <BroadcastRenderer snapshot={snapshot} />;
+  return (
+    <>
+      {/* OBS-only output surface — never index */}
+      <SEOHead title="Mogsy Live Broadcast" description="OBS browser source for the Mogsy quiz broadcast." noindex />
+      <BroadcastRenderer snapshot={snapshot} />
+    </>
+  );
 }

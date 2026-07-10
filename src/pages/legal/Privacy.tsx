@@ -10,7 +10,7 @@ export default function Privacy() {
       path="/privacy"
       heading="Privacy Policy"
       intro={`This policy explains how ${SITE_NAME} handles your information when you use our platform.`}
-      updated="2026-06-17"
+      updated="2026-07-10"
       keywords="privacy policy, data protection, mogsy privacy, gdpr"
     >
       <Section title="Information we collect">
@@ -64,6 +64,27 @@ export default function Privacy() {
           providers) may set their own cookies subject to their own policies.
           You can clear cookies in your browser at any time, though this may
           sign you out and reset preferences.
+        </p>
+      </Section>
+
+      <Section title="Advertising">
+        <p>
+          Mogsy may display advertising, including ads served by Google AdSense.
+          Advertising partners may use cookies or similar technologies to serve
+          ads based on your prior visits to this or other websites. Google's use
+          of advertising cookies enables it and its partners to serve ads based
+          on your visits to Mogsy and/or other sites on the internet. You may
+          opt out of personalized advertising by visiting{" "}
+          <a
+            href="https://www.google.com/settings/ads"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Google Ads Settings
+          </a>
+          . Where required, we show non-personalized ads or request consent
+          before personalized ads are served.
         </p>
       </Section>
 

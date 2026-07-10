@@ -9,7 +9,7 @@ export default function Terms() {
       path="/terms"
       heading="Terms of Service"
       intro={`By using ${SITE_NAME}, you agree to these terms.`}
-      updated="2026-06-17"
+      updated="2026-07-10"
       keywords="terms of service, user agreement, mogsy terms"
     >
       <Section title="Eligibility">
@@ -55,6 +55,27 @@ export default function Terms() {
             "Take reasonable action to prevent abuse and protect users",
           ]}
         />
+      </Section>
+
+      <Section title="Fan content disclaimer">
+        <p>
+          Mogsy is an unofficial fan project. Mogsy isn't endorsed by Riot
+          Games and doesn't reflect the views or opinions of Riot Games or
+          anyone officially involved in producing or managing Riot Games
+          properties. Riot Games, League of Legends, and all associated
+          properties are trademarks or registered trademarks of Riot Games,
+          Inc. Game data and imagery referenced by Mogsy are used for
+          informational and educational purposes under Riot Games'{" "}
+          <a
+            href="https://www.riotgames.com/en/legal"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            Legal Jibber Jabber
+          </a>{" "}
+          fan content policy.
+        </p>
       </Section>
 
       <Section title="Disclaimer of warranties">
