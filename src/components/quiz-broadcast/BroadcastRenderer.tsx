@@ -587,7 +587,7 @@ export const AnswerGrid = memo(function AnswerGrid({
             transition={{ delay: 0.05 * i + 0.1, duration: 0.32, ease: "easeOut" }}
             className={[
               "relative flex min-h-[7.6cqmin] items-center gap-[1.2%] overflow-hidden rounded-xl border px-[2%] py-[1.4%] text-[2.6cqmin] font-bold backdrop-blur-md",
-              "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] duration-[320ms] ease-out",
+              "transition-[background-color,border-color,color,box-shadow,opacity,filter,transform] [transition-duration:320ms] ease-out",
               isCorrect
                 ? "border-emerald-300/90 bg-gradient-to-br from-emerald-400/35 via-emerald-400/22 to-cyan-400/22 text-white shadow-[0_0_90px_rgba(16,185,129,0.7)] scale-[1.06] -translate-y-[0.4cqmin] z-[2]"
                 : isWrong

@@ -25,13 +25,32 @@ import { dirname, resolve } from "node:path";
 import { adaptQuestions, type SourceQuestion } from "../src/video/adapter";
 import { buildTimeline, formatTimestamp } from "../src/video/timing";
 
+/**
+ * Some npm versions/shells swallow `npm run … -- --flag value` instead of
+ * forwarding it (warning: `Unknown cli config "--flag"`) and expose the value
+ * as an npm_config_* env var instead. Check argv first, then that fallback,
+ * so both `npm run video:prepare -- --limit 5` and direct
+ * `npx tsx scripts/prepare-quiz-video.ts --limit 5` behave identically.
+ */
+function npmConfig(flag: string): string | undefined {
+  const name = flag.replace(/^--/, "");
+  for (const key of [`npm_config_${name}`, `npm_config_${name.replace(/-/g, "_")}`]) {
+    const v = process.env[key];
+    if (v !== undefined && v !== "") return v;
+  }
+  return undefined;
+}
+
 function arg(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
-  return i >= 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith("--")
-    ? process.argv[i + 1]
-    : undefined;
+  if (i >= 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith("--")) {
+    return process.argv[i + 1];
+  }
+  const fromNpm = npmConfig(flag);
+  return fromNpm !== undefined && fromNpm !== "true" ? fromNpm : undefined;
 }
-const has = (flag: string) => process.argv.includes(flag);
+
+const has = (flag: string) => process.argv.includes(flag) || npmConfig(flag) === "true";
 
 function envFromDotEnv(name: string): string | undefined {
   try {

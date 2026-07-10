@@ -9,7 +9,13 @@ import { RemotionRoot } from "./Root";
 // The live app loads Inter via <link> tags in index.html, which the Remotion
 // bundle never sees. Load the same family here; Remotion delays rendering
 // until the font is ready, so every frame uses the broadcast typeface.
-loadFont("normal", { weights: ["400", "500", "600", "700", "800", "900"] });
+// Restricted to the latin subset + the weights the broadcast actually uses
+// (400 base, 500 medium, 600 semibold, 700 bold, 800 extrabold, 900 black)
+// so the loader doesn't fan out dozens of subset requests per render tab.
+loadFont("normal", {
+  subsets: ["latin"],
+  weights: ["400", "500", "600", "700", "800", "900"],
+});
 
 // Determinism: broadcast components carry decorative framer-motion loops
 // (breathing glows, shimmer sweeps, Ken Burns) that are wall-clock driven.

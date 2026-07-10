@@ -660,7 +660,7 @@ function MoggedOverlay() {
 
       {/* Gigachad image */}
       <div
-        className="absolute bottom-0 right-0 pointer-events-none transition-all duration-[2000ms] ease-out"
+        className="absolute bottom-0 right-0 pointer-events-none transition-all [transition-duration:2000ms] ease-out"
         style={{
           opacity: show ? 0.35 : 0,
           transform: show ? "translateY(0) scale(1)" : "translateY(40px) scale(0.95)",
@@ -678,7 +678,7 @@ function MoggedOverlay() {
 
       {/* "MOGGED" text watermark */}
       <div
-        className="absolute top-[15%] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-[2500ms]"
+        className="absolute top-[15%] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity [transition-duration:2500ms]"
         style={{ opacity: show ? 0.06 : 0 }}
       >
         <span

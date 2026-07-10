@@ -19,14 +19,33 @@ import { basename, dirname, join, resolve } from "node:path";
 import { buildChapters, buildMetadata, buildTimeline, formatTimestamp } from "../src/video/timing";
 import type { QuizVideoData } from "../src/video/types";
 
+/**
+ * Some npm versions/shells swallow `npm run … -- --flag value` instead of
+ * forwarding it (warning: `Unknown cli config "--flag"`) and expose the value
+ * as an npm_config_* env var instead. Check argv first, then that fallback,
+ * so `npm run video:render -- --props x --out y` and the direct
+ * `npx tsx scripts/render-quiz-video.ts …` invocation behave identically.
+ */
+function npmConfig(flag: string): string | undefined {
+  const name = flag.replace(/^--/, "");
+  for (const key of [`npm_config_${name}`, `npm_config_${name.replace(/-/g, "_")}`]) {
+    const v = process.env[key];
+    if (v !== undefined && v !== "") return v;
+  }
+  return undefined;
+}
+
 function arg(flag: string, fallback?: string): string | undefined {
   const i = process.argv.indexOf(flag);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+  if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
+  const fromNpm = npmConfig(flag);
+  return fromNpm !== undefined && fromNpm !== "true" ? fromNpm : fallback;
 }
 
 const propsPath = resolve(arg("--props", "src/video/sample-quiz-video.json")!);
 const outPath = resolve(arg("--out", "out/quiz-video.mp4")!);
-const timestampsOnly = process.argv.includes("--timestamps-only");
+const timestampsOnly =
+  process.argv.includes("--timestamps-only") || npmConfig("--timestamps-only") === "true";
 
 const data = JSON.parse(readFileSync(propsPath, "utf8")) as QuizVideoData;
 if (!data.questions?.length) {
