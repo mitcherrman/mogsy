@@ -1,4 +1,5 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
+import { getBackendAuthHeaders } from "@/lib/backend-auth";
 
 // Optional access: under the Remotion webpack bundle (video export)
 // `import.meta.env` is undefined; the Vite app build is unaffected.
@@ -176,10 +177,12 @@ export function resolveQuizAssetUrl(path?: string | null): string | undefined {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await getBackendAuthHeaders();
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(init?.headers || {}),
     },
   });

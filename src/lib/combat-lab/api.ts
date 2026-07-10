@@ -1,3 +1,5 @@
+import { getBackendAuthHeaders } from "@/lib/backend-auth";
+
 const API_BASE_URL =
   (import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
   "http://127.0.0.1:8000";
@@ -360,10 +362,12 @@ export function getEventLabel(e: TimelineEvent): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeaders = await getBackendAuthHeaders();
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(init?.headers || {}),
     },
   });
