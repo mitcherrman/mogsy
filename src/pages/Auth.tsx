@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import SEOHead from "@/components/SEOHead";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
+import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { resetGateState } from "@/lib/quiz/onboarding-gate";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -28,13 +30,22 @@ export default function Auth() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite");
-  const returnTo = searchParams.get("returnTo") || "/home";
+  const defaultReturnTo = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/home";
+  const returnTo = searchParams.get("returnTo") || defaultReturnTo;
 
   // Only allow relative paths to prevent open-redirect attacks.
-  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/home";
+  const safeReturnTo = returnTo.startsWith("/") ? returnTo : defaultReturnTo;
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
+
+  // Guest-first onboarding: a guest arriving at "sign up" defaults into the
+  // account-link flow so their anonymous quiz progress carries over.
+  useEffect(() => {
+    if (isAnonymous && initialMode === "signup") {
+      setShowLinkFlow(true);
+    }
+  }, [isAnonymous, initialMode]);
 
   // Store invite code
   useEffect(() => {
@@ -118,6 +129,7 @@ export default function Auth() {
         toast({ title: "Linking failed", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Account created!", description: "Your progress has been saved." });
+        resetGateState();
         if (user) await redeemInvite(user.id);
         navigate(safeReturnTo);
       }
@@ -149,6 +161,7 @@ export default function Auth() {
           toast({ title: "Login failed", description: error.message, variant: "destructive" });
         }
       } else {
+        resetGateState();
         navigate(safeReturnTo);
       }
     } else if (mode === "signup") {
@@ -179,6 +192,7 @@ export default function Auth() {
           toast({ title: "Signup failed", description: error.message, variant: "destructive" });
         }
       } else {
+        resetGateState();
         setMode("confirm-sent");
       }
     }
@@ -308,9 +322,13 @@ export default function Auth() {
           </Link>
           {isAnonymous && showLinkFlow ? (
             <>
-              <h2 className="text-xl font-bold text-foreground">Claim your account</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                {LEAGUE_ONLY_MODE ? "Save your score" : "Claim your account"}
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Keep all your progress, matches, and settings
+                {LEAGUE_ONLY_MODE
+                  ? "Save your score and track your League knowledge"
+                  : "Keep all your progress, matches, and settings"}
               </p>
             </>
           ) : (
@@ -352,7 +370,9 @@ export default function Auth() {
         {isAnonymous && showLinkFlow && (
           <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 p-3">
             <p className="text-xs text-primary font-medium">
-              ✨ Your match history, Elo ratings, diamonds, and settings will all be preserved!
+              {LEAGUE_ONLY_MODE
+                ? "✨ Your quiz XP, streaks, rank, and results will all be preserved!"
+                : "✨ Your match history, Elo ratings, diamonds, and settings will all be preserved!"}
             </p>
           </div>
         )}

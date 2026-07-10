@@ -218,6 +218,9 @@ export default function Quiz() {
   // Gate / nudge state
   const [gateConfig, setGateConfig] = useState<QuizOnboardingConfig | null>(null);
   const [showGate, setShowGate] = useState(false);
+  // Guest-first: the hard gate never interrupts mid-quiz. Crossing the
+  // threshold "arms" it; it displays on the quiz-complete screen instead.
+  const gateArmed = useRef(false);
   const [showNudge, setShowNudge] = useState(false);
   const [anonActionCount, setAnonActionCount] = useState(() => getAnonymousActionCount());
 
@@ -516,7 +519,8 @@ export default function Quiz() {
         const newCount = incrementAnonymousActions();
         setAnonActionCount(newCount);
         if (gateConfig.hard_gate_enabled && newCount >= gateConfig.hard_gate_threshold) {
-          setShowGate(true);
+          // Arm only — shown after the quiz completes, never mid-question.
+          gateArmed.current = true;
         } else if (
           gateConfig.soft_nudge_enabled &&
           newCount >= gateConfig.soft_nudge_threshold &&
@@ -571,13 +575,17 @@ export default function Quiz() {
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       setPhase("result");
+      // First signup prompt appears after a completed quiz, not before.
+      if (gateArmed.current && isAnonymous) {
+        setShowGate(true);
+      }
     } else {
       setCurrentIndex((i) => i + 1);
       setSelectedAnswer(null);
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentIndex, questions.length]);
+  }, [currentIndex, questions.length, isAnonymous]);
 
   const handlePlayAgain = useCallback(() => {
     if (currentSet) {
@@ -624,12 +632,13 @@ export default function Quiz() {
 
   return (
     <div>
-      {/* Hard gate overlay — no dismiss, shown after answer resolves */}
+      {/* Post-quiz signup prompt — dismissible ("Keep Playing as Guest") */}
       {showGate && (
         <QuizSignUpGate
           progress={userProgress}
           actionCount={anonActionCount}
           returnTo="/quiz"
+          onDismiss={() => setShowGate(false)}
         />
       )}
 

@@ -12,6 +12,7 @@ import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
+import LolWelcomeIntro, { hasSeenLolWelcome } from "@/components/lol/LolWelcomeIntro";
 
 const LOL_TAG = "League of Legends";
 
@@ -95,6 +96,9 @@ export default function LolHub() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const isAnonymous = !user || user.is_anonymous === true;
+  // First-visit guest welcome — decided once on mount so signing in
+  // anonymously mid-session doesn't pop it up again.
+  const [showWelcome] = useState(() => isAnonymous && !hasSeenLolWelcome());
 
   // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
   useEffect(() => {
@@ -123,6 +127,7 @@ export default function LolHub() {
 
   return (
     <div>
+      {showWelcome && <LolWelcomeIntro />}
       <SEOHead
         title="Mogsy League of Legends — Rankings, News & Combat Lab"
         description="The League of Legends hub on Mogsy. Rank champions, simulate fights in the Combat Lab, and read the latest LoL news and tier lists."

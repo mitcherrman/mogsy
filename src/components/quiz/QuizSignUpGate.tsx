@@ -8,9 +8,11 @@ interface Props {
   progress: QuizProgress | null;
   actionCount: number;
   returnTo?: string;
+  /** When provided, shows a "Keep Playing as Guest" option that closes the gate. */
+  onDismiss?: () => void;
 }
 
-export default function QuizSignUpGate({ progress, actionCount, returnTo = "/quiz" }: Props) {
+export default function QuizSignUpGate({ progress, actionCount, returnTo = "/quiz", onDismiss }: Props) {
   const navigate = useNavigate();
 
   const xp = progress?.xp ?? 0;
@@ -39,11 +41,17 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
         </div>
 
         <h2 className="text-center text-xl font-bold text-[#f5e9c8] mb-1">
-          Save your progress
+          Save your score?
         </h2>
-        <p className="text-center text-sm text-muted-foreground mb-5">
-          You've answered {actionCount} questions. Create a free account to keep going and save everything.
+        <p className="text-center text-sm text-muted-foreground mb-4">
+          Create a free account to track your League quiz progress, streaks, and results.
         </p>
+        <ul className="mx-auto mb-5 w-fit space-y-1 text-xs text-muted-foreground">
+          <li>✦ Save your score &amp; XP</li>
+          <li>✦ Keep your streaks</li>
+          <li>✦ Appear on leaderboards</li>
+          <li>✦ Unlock more quiz features later</li>
+        </ul>
 
         {/* Stats row */}
         {(xp > 0 || streak > 0 || rankName) && (
@@ -77,8 +85,17 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
           className="w-full mb-2 bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
           onClick={() => navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`)}
         >
-          Create free account
+          Create Account
         </Button>
+        {onDismiss && (
+          <Button
+            variant="outline"
+            className="w-full mb-2 text-sm"
+            onClick={onDismiss}
+          >
+            Keep Playing as Guest
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="w-full text-sm text-muted-foreground"
