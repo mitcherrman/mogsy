@@ -1275,9 +1275,49 @@ function VersionFooter() {
   );
 }
 
+function resetBroadcastStorage() {
+  const confirmed = window.confirm(
+    "Reset saved broadcast settings? This will clear saved timing, visuals, active session, and latest broadcast snapshot from this browser, then reload the page."
+  );
+  if (!confirmed) return;
+
+  Object.keys(localStorage)
+    .filter(
+      (k) =>
+        k.toLowerCase().includes("quizbroadcast") ||
+        k.toLowerCase().includes("quiz-broadcast") ||
+        k.toLowerCase().includes("broadcast"),
+    )
+    .forEach((k) => localStorage.removeItem(k));
+
+  location.reload();
+}
+
+function ResetStoragePanel() {
+  return (
+    <Card className="border-amber-500/20 bg-amber-500/[0.03] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Trash2 className="h-4 w-4 text-amber-300" />
+          <div>
+            <div className="text-sm font-semibold">Reset Local Broadcast Settings/Storage</div>
+            <div className="max-w-xl text-[11px] text-muted-foreground">
+              Clears saved broadcast config/session so deployed defaults reload. Browser-local only — does not touch backend quiz questions or playlists.
+            </div>
+          </div>
+        </div>
+        <Button size="sm" variant="destructive" onClick={resetBroadcastStorage}>
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />Reset Storage
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export default function DeveloperTools(props: Props) {
   return (
     <div className="space-y-3">
+      <ResetStoragePanel />
       <ExportCenter {...props} />
       <Tabs defaultValue="diag" className="w-full">
         <TabsList className="flex h-auto flex-wrap gap-1">
