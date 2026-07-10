@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText, X } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -50,10 +50,10 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
     cutoutOffsetPct: -2,
   },
   {
-    to: "/lol/tier-list",
-    title: "LoL Tier List",
-    description: "Meta rankings for Top, Jungle, Mid, ADC and Support this patch.",
-    Icon: Trophy,
+    to: "/league-swipe",
+    title: "League Swipe",
+    description: "Quick head-to-head duels — vote favorites, guess stats and item costs.",
+    Icon: Zap,
     side: "right",
     championName: "Jinx",
     cutoutOffsetPct: 0,
@@ -76,6 +76,14 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
     championName: "Viktor",
     cutoutOffsetPct: -2,
   },
+];
+
+// League Swipe MVP games surfaced on the hub (see /league-swipe).
+const SWIPE_GAME_CARDS = [
+  { slug: "favorite-champion", title: "Favorite Champion", description: "Choose your favorites and shape the community ranking.", Icon: Heart },
+  { slug: "most-annoying-champion", title: "Most Annoying Champion", description: "Vote on League's most tilting champions.", Icon: Flame },
+  { slug: "higher-base-stat", title: "Stat Duel", description: "Guess which champion has the higher stat.", Icon: Brain },
+  { slug: "item-cost-duel", title: "Item Cost Duel", description: "Learn item costs through quick comparisons.", Icon: Coins },
 ];
 
 // The general swipe hub is hidden while the site is League-only.
@@ -240,6 +248,43 @@ export default function LolHub() {
               accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
             />
           ))}
+        </div>
+
+        {/* League Swipe Games */}
+        <div className="mt-8">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <div className="flex items-center gap-2 text-[#c9a84c]">
+                <Zap className="h-4 w-4" />
+                <span className="text-[10px] uppercase tracking-widest font-bold">League Swipe Games</span>
+              </div>
+              <h2 className="text-lg md:text-xl font-bold text-foreground">Two options. One tap.</h2>
+            </div>
+            <Link
+              to="/league-swipe"
+              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
+            >
+              All games <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3">
+            {SWIPE_GAME_CARDS.map((g) => (
+              <Link
+                key={g.slug}
+                to={`/league-swipe/${g.slug}`}
+                className="group rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f]/60 to-[#0a1428]/90 backdrop-blur-sm p-4 hover:border-[#c9a84c]/50 transition-all hover:scale-[1.01]"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="rounded-lg bg-black/40 border border-white/10 p-2">
+                    <g.Icon className="h-4 w-4 text-[#c9a84c]" />
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground flex-1">{g.title}</h3>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-[#c9a84c] transition-all" />
+                </div>
+                <p className="text-xs text-muted-foreground">{g.description}</p>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* News / Blog */}
