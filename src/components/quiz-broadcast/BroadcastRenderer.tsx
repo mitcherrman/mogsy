@@ -868,7 +868,7 @@ export function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
    no engine/timing involvement.
    ──────────────────────────────────────────────────────────────────────── */
 
-const RUNNER_ASSET_SRC = "/quiz-broadcast/assets/akali-running.mp4";
+const RUNNER_ASSET_SRC = "/quiz-broadcast/assets/akali-transparent.webm";
 
 function BroadcastRunnerTimerLane({
   phase,
@@ -918,33 +918,25 @@ function BroadcastRunnerTimerLane({
           )}
         </div>
 
-      {/* Akali — simple circular fade only. */}
+      {/* Akali — transparent WebM, no blend/mask hacks needed. */}
       <motion.div
         key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
-        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[0.1cqmin]" : "bottom-[-0.1cqmin]"}`}
+        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[-0.35cqmin]" : "bottom-[-0.45cqmin]"}`}
         initial={isQuestion ? { left: `${startLeft}%`, opacity: 0 } : false}
-        animate={{ left: "92%", opacity: isShorts ? 0.78 : 0.92 }}
+        animate={{ left: "92%", opacity: isShorts ? 0.9 : 1 }}
         transition={{
           left: { duration: isQuestion ? remainingSec : 0.3, ease: "linear" },
           opacity: { duration: 0.45, ease: "easeOut" },
         }}
       >
-        <div
-          className={`relative overflow-hidden rounded-full ${isShorts ? "h-[18cqmin] w-[18cqmin]" : "h-[16cqmin] w-[16cqmin]"}`}
-          style={{
-            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 72%, transparent 96%)",
-            maskImage: "radial-gradient(circle at center, black 0%, black 72%, transparent 96%)",
-          }}
-        >
-          <video
-            src={RUNNER_ASSET_SRC}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute left-1/2 top-1/2 h-[10.2cqmin] w-auto -translate-x-1/2 -translate-y-1/2 scale-[1.55] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
-          />
-        </div>
+        <video
+          src={RUNNER_ASSET_SRC}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="h-[11.2cqmin] w-auto object-contain opacity-100 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+        />
       </motion.div>
     </div>
   );
