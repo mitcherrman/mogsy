@@ -26,10 +26,73 @@ describe("adaptQuestion", () => {
     expect(q.explanation).toMatch(/multiplier/);
   });
 
-  it("passes source metadata through verbatim for the broadcast ScenarioCard framework", () => {
+  it("synthesizes assets.subject from legacy item/spell/rune fields", () => {
+    // Item Costs shape: item_name + top-level image_path, no assets.subject
+    const item = adaptQuestion({
+      id: 1,
+      question_text: "How much does Stormsurge cost?",
+      choices: ["2750 gold", "2800 gold"],
+      correct_answer: "2800 gold",
+      metadata: { item_name: "Stormsurge", cost: 2800 },
+      image_path: "assets/items/3871.png",
+    });
+    if (typeof item === "string") throw new Error(item);
+    expect(item.image_path).toBe("assets/items/3871.png");
+    expect((item.metadata!.assets as { subject?: unknown }).subject).toEqual({
+      type: "item",
+      id: undefined,
+      name: "Stormsurge",
+      icon: "assets/items/3871.png",
+    });
+
+    // Summoner Spells shape: spell_name + asset_path
+    const spell = adaptQuestion({
+      id: 2,
+      question_text: "Which summoner spell is used for mobility?",
+      choices: ["Flash", "Ignite"],
+      correct_answer: "Flash",
+      metadata: { spell_name: "Flash", spell_key: "F", asset_path: "assets/spells/Flash.png" },
+    });
+    if (typeof spell === "string") throw new Error(spell);
+    expect((spell.metadata!.assets as { subject?: unknown }).subject).toMatchObject({
+      type: "spell",
+      name: "Flash",
+      slot: "F",
+      icon: "assets/spells/Flash.png",
+    });
+
+    // Runes shape
+    const rune = adaptQuestion({
+      id: 3,
+      question_text: "Which rune tree contains Lethal Tempo?",
+      choices: ["Precision", "Domination"],
+      correct_answer: "Precision",
+      metadata: { rune_name: "Lethal Tempo", asset_path: "assets/runes/LethalTempo.png" },
+    });
+    if (typeof rune === "string") throw new Error(rune);
+    expect((rune.metadata!.assets as { subject?: unknown }).subject).toMatchObject({ type: "rune", name: "Lethal Tempo" });
+  });
+
+  it("never overwrites an existing assets.subject", () => {
+    const existing = { type: "item", id: "3916", name: "Oblivion Orb", icon: "assets/items/3916.png" };
+    const q = adaptQuestion({
+      id: 4,
+      question_text: "How much AP does Oblivion Orb give?",
+      choices: ["30", "40"],
+      correct_answer: "30",
+      metadata: { item_name: "Oblivion Orb", assets: { subject: existing } },
+      image_path: "assets/items/other.png",
+    });
+    if (typeof q === "string") throw new Error(q);
+    expect((q.metadata!.assets as { subject?: unknown }).subject).toEqual(existing);
+  });
+
+  it("passes source metadata through (plus normalized subject) for the broadcast ScenarioCard framework", () => {
     const q = adaptQuestion(GOOD);
     if (typeof q === "string") throw new Error(q);
-    expect(q.metadata).toEqual(GOOD.metadata);
+    // Original fields preserved; legacy item_name normalized into assets.subject.
+    expect(q.metadata).toMatchObject(GOOD.metadata!);
+    expect(q.metadata!.assets).toMatchObject({ subject: { type: "item", name: "Rabadon's Deathcap" } });
     // No metadata → field omitted, not an empty object.
     const bare = adaptQuestion({ id: 2, question_text: "Q?", choices: ["a", "b"], correct_answer: "a" });
     if (typeof bare === "string") throw new Error(bare);

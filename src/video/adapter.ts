@@ -24,6 +24,9 @@ export type SourceQuestion = {
   correct_answer?: string | { type?: string; value?: string } | null;
   explanation?: string | null;
   metadata?: Record<string, unknown>;
+  /** Top-level asset path (e.g. "assets/items/3161.png") — the live
+   *  classifySubject's final subject fallback. */
+  image_path?: string | null;
   is_active?: boolean;
 };
 
@@ -68,6 +71,49 @@ function metaString(meta: Record<string, unknown> | undefined, ...keys: string[]
 
 const norm = (s: string) => s.trim().toLowerCase();
 
+/**
+ * Normalize legacy metadata into the KOS `assets.subject` shape the broadcast
+ * ScenarioCard framework selects on.
+ *
+ * Newer generator batches ship metadata.assets.subject (and the live
+ * broadcast renders its rich Item Analysis / champion / ability cards from
+ * it), but several categories still carry only legacy fields — item_name +
+ * asset_path/image_path (Item Costs, Item Recognition), spell_name
+ * (Summoner Spells), rune_name (Runes). The live classifySubject has
+ * fallbacks for some of these; synthesizing the subject here lets the SAME
+ * shared cards render their designed variants (e.g. the Item Analysis card
+ * with the cost pill) instead of degrading to placeholder/monogram tiles.
+ *
+ * Never overwrites an existing assets.subject. Spoiler gating is unaffected:
+ * isSpoilerSubject sees the same label/choices relationship the live
+ * broadcast sees when its data is rich.
+ */
+export function normalizeSubjectMetadata(
+  meta: Record<string, unknown>,
+  imagePath?: string | null,
+): Record<string, unknown> {
+  const assets = (meta.assets ?? {}) as Record<string, unknown>;
+  if (assets.subject && typeof assets.subject === "object") return meta;
+
+  const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim() ? v : undefined;
+  const iconFallback = str(meta.asset_path) ?? str(imagePath);
+
+  let subject: Record<string, unknown> | undefined;
+  if (str(meta.item_name)) {
+    const itemId = typeof meta.item_id === "number" ? meta.item_id : undefined;
+    const icon = iconFallback ?? (itemId !== undefined ? `assets/items/${itemId}.png` : undefined);
+    subject = { type: "item", id: itemId, name: meta.item_name, icon };
+  } else if (str(meta.spell_name)) {
+    subject = { type: "spell", name: meta.spell_name, slot: str(meta.spell_key), icon: iconFallback };
+  } else if (str(meta.rune_name)) {
+    subject = { type: "rune", name: meta.rune_name, icon: iconFallback };
+  }
+
+  if (!subject) return meta;
+  return { ...meta, assets: { ...assets, subject } };
+}
+
 /** Convert one source question; returns a string reason when unusable. */
 export function adaptQuestion(q: SourceQuestion): QuizVideoQuestion | string {
   if (q.format && q.format !== "multiple_choice") return `unsupported format "${q.format}"`;
@@ -98,9 +144,11 @@ export function adaptQuestion(q: SourceQuestion): QuizVideoQuestion | string {
     item_name: metaString(meta, "item", "item_name"),
     ability_name: metaString(meta, "ability", "ability_name"),
     patch: metaString(meta, "patch", "patch_version"),
-    // Verbatim passthrough: the shared broadcast ScenarioCard framework
-    // classifies subjects (splash/item/combat-calc cards) from metadata.
-    metadata: Object.keys(meta).length ? meta : undefined,
+    // Passthrough for the shared broadcast ScenarioCard framework, with
+    // legacy icon fields normalized into assets.subject (see above).
+    metadata: Object.keys(meta).length ? normalizeSubjectMetadata(meta, q.image_path) : undefined,
+    // Live classifySubject's final fallback — must survive adaptation.
+    image_path: q.image_path ?? undefined,
   };
 }
 

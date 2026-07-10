@@ -58,6 +58,7 @@ function toBroadcastQuestion(q: QuizVideoQuestion): QuizQuestion {
     choices: q.choices,
     difficulty: q.difficulty,
     metadata: q.metadata,
+    image_path: q.image_path,
   } as QuizQuestion;
 }
 

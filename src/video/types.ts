@@ -28,11 +28,18 @@ export type QuizVideoQuestion = {
   durations?: Partial<QuizSegmentSeconds>;
   /**
    * Raw source-question metadata (ReviewQuestion.metadata), passed through
-   * verbatim so the shared quiz-broadcast ScenarioCard framework can pick
-   * the same subject visuals (champion splash, item analysis, combat calc)
-   * in the video export as in the live broadcast.
+   * so the shared quiz-broadcast ScenarioCard framework can pick the same
+   * subject visuals (champion splash, item analysis, combat calc) in the
+   * video export as in the live broadcast. The adapter may normalize legacy
+   * icon fields into metadata.assets.subject (see adapter.ts).
    */
   metadata?: Record<string, unknown>;
+  /**
+   * Top-level asset path from the source question (e.g. "assets/items/3161.png").
+   * The live classifySubject uses this as its final subject fallback, so the
+   * video must carry it too or icon-only questions degrade to placeholders.
+   */
+  image_path?: string;
 };
 
 /** Per-question segment lengths, in seconds. */
