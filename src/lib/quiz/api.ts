@@ -143,6 +143,32 @@ export type DailyChallengeSubmitPayload = {
   selected_answer: string;
   challenge_date?: string;
   time_taken_ms?: number;
+  session_id?: number;
+};
+
+export type QuizHistoryEntry = {
+  session_id: number;
+  date: string;
+  started_at?: string;
+  completed_at?: string;
+  mode?: string;
+  category?: string | null;
+  difficulty?: string | null;
+  quiz_set_id?: string | null;
+  score: number;
+  total_questions: number;
+  accuracy: number;
+  duration_seconds?: number | null;
+};
+
+export type QuizHistoryResponse = {
+  ok: boolean;
+  is_pro: boolean;
+  results: QuizHistoryEntry[];
+  total_count: number;
+  limited: boolean;
+  free_limit: number;
+  upsell_message: string | null;
 };
 
 export type DailyChallengeSubmitResult = QuizAnswerResult & {
@@ -390,6 +416,7 @@ export const quizApi = {
     question_id: number | string;
     selected_answer: string;
     time_taken_ms?: number;
+    session_id?: number;
   }) =>
     request<QuizAnswerResult>("/api/quiz/attempts", {
       method: "POST",
@@ -458,6 +485,17 @@ export const quizApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  /** Start a quiz session for history tracking. Failures must not block play. */
+  startSession: (payload: { mode?: string; category?: string; difficulty?: string; quiz_set_id?: string }) =>
+    request<{ ok: boolean; session_id?: number }>("/api/quiz/sessions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  /** Mark a quiz session finished; backend computes duration + accuracy. */
+  completeSession: (sessionId: number) =>
+    request<{ ok: boolean }>(`/api/quiz/sessions/${sessionId}/complete`, { method: "POST" }),
+  /** Completed quiz sessions for the signed-in (or anonymous) user. Free = last 10, Pro = all. */
+  getHistory: () => request<QuizHistoryResponse>("/api/quiz/history"),
 
   // ---------------------------------------------------------------------------
   // Quiz Review Console

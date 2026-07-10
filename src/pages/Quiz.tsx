@@ -226,6 +226,31 @@ export default function Quiz() {
 
   // True while the user is playing the daily challenge (vs a normal quiz set).
   const isDailyChallenge = useRef(false);
+  // Backend history session for the current quiz run. Best-effort: created in
+  // the background on quiz start; null means play proceeds untracked.
+  const sessionIdRef = useRef<number | null>(null);
+
+  const startHistorySession = useCallback((mode: string, category?: string) => {
+    sessionIdRef.current = null;
+    quizApi
+      .startSession({ mode, category })
+      .then((res) => {
+        if (res.ok && typeof res.session_id === "number") {
+          sessionIdRef.current = res.session_id;
+        }
+      })
+      .catch(() => {
+        // History tracking must never block gameplay.
+      });
+  }, []);
+
+  const completeHistorySession = useCallback(() => {
+    const sessionId = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (sessionId != null) {
+      quizApi.completeSession(sessionId).catch(() => {});
+    }
+  }, []);
   // Bonus XP earned on daily challenge completion — captured from the last submit response.
   const dailyBonusXpEarned = useRef(0);
   // The theme blurb map mirrors the backend theme names.
@@ -314,6 +339,7 @@ export default function Quiz() {
 
   const handlePlayDailyChallenge = useCallback(async () => {
     isDailyChallenge.current = true;
+    startHistorySession("daily");
     setCurrentSet(null);
     setPhase("loading-questions");
     setScore(0);
@@ -339,7 +365,7 @@ export default function Quiz() {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load daily challenge.");
     }
-  }, [userId, applyDailyChallengeResponse]);
+  }, [userId, applyDailyChallengeResponse, startHistorySession]);
 
   useEffect(() => {
     setProgressLoading(true);
@@ -421,6 +447,7 @@ export default function Quiz() {
 
   const handleSelectSet = useCallback(async (set: QuizSet) => {
     isDailyChallenge.current = false;
+    startHistorySession("standard", set.name);
     setCurrentSet(set);
     setPhase("loading-questions");
     setScore(0);
@@ -444,7 +471,7 @@ export default function Quiz() {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load questions.");
     }
-  }, []);
+  }, [startHistorySession]);
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
@@ -487,6 +514,7 @@ export default function Quiz() {
           user_id: userId,
           question_id: currentQuestion.id,
           selected_answer: choice,
+          session_id: sessionIdRef.current ?? undefined,
         });
         result = dcResult;
         // Update daily challenge state from the backend response.
@@ -509,6 +537,7 @@ export default function Quiz() {
           user_id: userId,
           question_id: currentQuestion.id,
           selected_answer: choice,
+          session_id: sessionIdRef.current ?? undefined,
         });
       }
       setAnswerResult(result);
@@ -574,6 +603,7 @@ export default function Quiz() {
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
+      completeHistorySession();
       setPhase("result");
       // First signup prompt appears after a completed quiz, not before.
       if (gateArmed.current && isAnonymous) {
@@ -585,7 +615,7 @@ export default function Quiz() {
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentIndex, questions.length, isAnonymous]);
+  }, [currentIndex, questions.length, isAnonymous, completeHistorySession]);
 
   const handlePlayAgain = useCallback(() => {
     if (currentSet) {

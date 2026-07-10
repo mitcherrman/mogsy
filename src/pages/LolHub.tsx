@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins, History as HistoryIcon } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -66,6 +66,15 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
     side: "left",
     championName: "Draven",
     cutoutOffsetPct: 2,
+  },
+  {
+    to: "/lol/history",
+    title: "Quiz History",
+    description: "Review your recent quiz results — scores, accuracy, and pace.",
+    Icon: HistoryIcon,
+    side: "left",
+    championName: "Zilean",
+    cutoutOffsetPct: 0,
   },
   {
     to: "/lol/docs",
