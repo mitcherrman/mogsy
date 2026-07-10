@@ -922,8 +922,7 @@ function BroadcastRunnerTimerLane({
         </div>
       </div>
 
-      {/* Akali runner pod — circular fade + overhead tunnel so the MP4 reads as
-          part of the timer lane instead of a separate rectangular sticker. */}
+      {/* Akali — simple spotlight/shadow treatment so the MP4 reads less like a box. */}
       <motion.div
         key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
         className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[-0.1cqmin] w-[22cqmin]" : "bottom-[-0.2cqmin] w-[20cqmin]"}`}
@@ -934,36 +933,24 @@ function BroadcastRunnerTimerLane({
           opacity: { duration: 0.45, ease: "easeOut" },
         }}
       >
-        <div className={`relative ${isShorts ? "h-[12cqmin]" : "h-[10.5cqmin]"}`}>
-          {/* Soft circular fade behind Akali */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-[9.5cqmin] w-[9.5cqmin] rounded-full bg-[#07112d]/80 blur-[1.45cqmin]" />
-            <div className="absolute h-[8cqmin] w-[8cqmin] rounded-full bg-cyan-300/12 blur-[0.9cqmin]" />
-            <div className="absolute h-[6.6cqmin] w-[6.6cqmin] rounded-full bg-[#d4b35a]/12 blur-[0.7cqmin]" />
-          </div>
+        <div className={`relative overflow-hidden rounded-[1.6cqmin] [mask-image:radial-gradient(ellipse_at_center,black_0%,black_62%,transparent_92%)] ${isShorts ? "h-[12cqmin]" : "h-[10.5cqmin]"}`}>
+          {/* Soft shadow/vignette around the video edges */}
+          <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_50%_52%,rgba(3,7,18,0)_0%,rgba(3,7,18,0.04)_34%,rgba(3,7,18,0.42)_72%,rgba(3,7,18,0.82)_100%)]" />
 
-          {/* Overhead tunnel/canopy */}
-          <div className="absolute left-1/2 top-[0.1cqmin] h-[7.2cqmin] w-[15.5cqmin] -translate-x-1/2 overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-full rounded-t-full border border-cyan-300/16 bg-gradient-to-b from-cyan-300/10 via-[#0b1737]/40 to-transparent shadow-[0_0_1.3cqmin_rgba(80,220,255,0.12)]" />
-            <div className="absolute left-[9%] right-[9%] top-[12%] h-[68%] rounded-t-full border border-[#d4b35a]/12 bg-gradient-to-b from-white/7 via-transparent to-transparent" />
-            <div className="absolute left-[18%] right-[18%] top-[28%] h-[45%] rounded-t-full border border-cyan-200/10" />
-          </div>
+          {/* Subtle flashlight on Akali */}
+          <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_50%_38%,rgba(255,239,190,0.28)_0%,rgba(255,220,140,0.15)_20%,rgba(255,220,140,0.06)_38%,rgba(255,220,140,0)_60%)]" />
 
-          {/* Glow bridge connecting Akali to the timer platform */}
-          <div className="absolute bottom-[1.2cqmin] left-1/2 h-[2.5cqmin] w-[13.5cqmin] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-cyan-300/16 to-transparent blur-[0.55cqmin]" />
-          <div className="absolute bottom-[0.8cqmin] left-1/2 h-[0.65cqmin] w-[11cqmin] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#d4b35a]/24 to-transparent" />
+          {/* Small ground shadow */}
+          <div className="pointer-events-none absolute left-1/2 top-[72%] z-10 h-[14%] w-[44%] -translate-x-1/2 rounded-full bg-black/45 blur-[10px]" />
 
-          {/* Akali video */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <video
-              src={RUNNER_ASSET_SRC}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-[8.3cqmin] w-auto scale-[1.5] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
-            />
-          </div>
+          <video
+            src={RUNNER_ASSET_SRC}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="relative z-0 h-[8.3cqmin] w-auto scale-[1.5] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+          />
         </div>
       </motion.div>
     </div>
