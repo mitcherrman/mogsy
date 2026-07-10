@@ -546,7 +546,7 @@ export const QuestionText = memo(function QuestionText({ text }: { text: string 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="text-[5.2cqmin] font-black leading-[1.14] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
+      className="font-sans text-[5.2cqmin] font-black leading-[1.08] tracking-tight text-white drop-shadow-[0_4px_22px_rgba(0,0,0,0.7)]"
     >
       <span className="inline-block bg-gradient-to-b from-white via-white to-[#f3dca0] bg-clip-text text-transparent">
         {text}
