@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
@@ -10,7 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
-import { Suspense } from "react";
+import { Suspense, type ReactElement } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
 
@@ -99,6 +100,14 @@ import { RouteLoader } from "@/components/Layout";
  */
 const RouteFallback = () => <div aria-hidden className="min-h-[50vh]" />;
 
+/**
+ * League-only public mode: wraps non-League route elements so they redirect
+ * to the League hub while the flag is on. Components stay in the codebase —
+ * flip LEAGUE_ONLY_MODE in site-config.ts to restore them.
+ */
+const leagueGate = (element: ReactElement) =>
+  LEAGUE_ONLY_MODE ? <Navigate to={LEAGUE_HOME_ROUTE} replace /> : element;
+
 function AuthQuerySyncBridge() {
   useAuthQuerySync();
   return null;
@@ -114,23 +123,23 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
+                <Route path="/" element={leagueGate(<Suspense fallback={<RouteLoader />}><Index /></Suspense>)} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
-                  <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                  <Route path="/play" element={<ProtectedRoute><Play /></ProtectedRoute>} />
+                  <Route path="/home" element={leagueGate(<ProtectedRoute><Home /></ProtectedRoute>)} />
+                  <Route path="/play" element={leagueGate(<ProtectedRoute><Play /></ProtectedRoute>)} />
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/referral" element={<ProtectedRoute><Referral /></ProtectedRoute>} />
-                  <Route path="/swipe" element={<ProtectedRoute><SwipeHub /></ProtectedRoute>} />
-                  <Route path="/swipe-game" element={<ProtectedRoute><Swipe /></ProtectedRoute>} />
-                  <Route path="/leagues/:type" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
-                  <Route path="/leaderboard/:leagueId" element={<Leaderboard />} />
-                  <Route path="/swipe/preset/:leagueId" element={<SwipePreset />} />
-                  <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
-                  <Route path="/swipe-leagues" element={<ProtectedRoute><SwipeLeagues /></ProtectedRoute>} />
-                  <Route path="/elo-check" element={<ProtectedRoute><EloCheck /></ProtectedRoute>} />
+                  <Route path="/referral" element={leagueGate(<ProtectedRoute><Referral /></ProtectedRoute>)} />
+                  <Route path="/swipe" element={leagueGate(<ProtectedRoute><SwipeHub /></ProtectedRoute>)} />
+                  <Route path="/swipe-game" element={leagueGate(<ProtectedRoute><Swipe /></ProtectedRoute>)} />
+                  <Route path="/leagues/:type" element={leagueGate(<ProtectedRoute><Leagues /></ProtectedRoute>)} />
+                  <Route path="/leaderboard/:leagueId" element={leagueGate(<Leaderboard />)} />
+                  <Route path="/swipe/preset/:leagueId" element={leagueGate(<SwipePreset />)} />
+                  <Route path="/shop" element={leagueGate(<ProtectedRoute><Shop /></ProtectedRoute>)} />
+                  <Route path="/swipe-leagues" element={leagueGate(<ProtectedRoute><SwipeLeagues /></ProtectedRoute>)} />
+                  <Route path="/elo-check" element={leagueGate(<ProtectedRoute><EloCheck /></ProtectedRoute>)} />
                   <Route path="/user/:profileId" element={<UserProfile />} />
                   <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
                   <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense></AdminRoute>} />
@@ -138,8 +147,8 @@ const App = () => (
                   <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense></AdminRoute>} />
                   <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense></AdminRoute>} />
                   <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
-                  <Route path="/multiplayer" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Multiplayer /></Suspense></ProtectedRoute>} />
-                  <Route path="/multiplayer/game/:gameId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>} />
+                  <Route path="/multiplayer" element={leagueGate(<ProtectedRoute><Suspense fallback={<RouteFallback />}><Multiplayer /></Suspense></ProtectedRoute>)} />
+                  <Route path="/multiplayer/game/:gameId" element={leagueGate(<ProtectedRoute><Suspense fallback={<RouteFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>)} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />

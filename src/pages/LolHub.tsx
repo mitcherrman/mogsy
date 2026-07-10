@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Swords, Flame, Newspaper, ArrowRight, Trophy, BrainCircuit, FileText, X } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { SITE_URL } from "@/lib/site-config";
+import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import lolIcon from "@/assets/lol-icon.png";
@@ -28,7 +28,7 @@ type ZipperFeature = {
 };
 
 // Easy to reorder / re-map champions later.
-const ZIPPER_FEATURES: ZipperFeature[] = [
+const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
   {
     to: "/combat-lab",
     title: "Combat Lab",
@@ -76,6 +76,15 @@ const ZIPPER_FEATURES: ZipperFeature[] = [
     cutoutOffsetPct: -2,
   },
 ];
+
+// The general swipe hub is hidden while the site is League-only.
+const ZIPPER_FEATURES = LEAGUE_ONLY_MODE
+  ? ALL_ZIPPER_FEATURES.filter((f) => f.to !== "/swipe").map((f, i) => ({
+      ...f,
+      // Re-alternate sides so the zipper stays zig-zagged after filtering.
+      side: (i % 2 === 0 ? "right" : "left") as HexZipperSide,
+    }))
+  : ALL_ZIPPER_FEATURES;
 
 export default function LolHub() {
   const { user } = useAuth();

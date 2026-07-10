@@ -11,12 +11,20 @@ import lolIcon from "@/assets/lol-icon.png";
 import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
 import { prefetchRoute } from "@/lib/route-prefetch";
+import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
 const baseNavItems = [
   { path: "/home", label: "Home", icon: Home },
   { path: "/play", label: "Play", icon: Play, mode: "play" as const },
   { path: "/swipe", label: "Swipe", icon: Flame, mode: "swipe" as const },
-  
+
+  { path: "/profile", label: "Profile", icon: User },
+];
+
+// League-only public mode: nav is trimmed to the League experience.
+const leagueNavItems = [
+  { path: LEAGUE_HOME_ROUTE, label: "Home", icon: Home },
+  { path: "/quiz", label: "Quiz", icon: Play },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
@@ -46,10 +54,12 @@ export default function Navbar({ themeId }: { themeId?: string }) {
   const { settings } = useAppSettings();
   const [navRevealed, setNavRevealed] = useState(false);
 
-  const navItems = baseNavItems.filter(item => {
-    if (!("mode" in item) || !item.mode) return true;
-    return item.mode === settings.nav_tab_mode;
-  });
+  const navItems = LEAGUE_ONLY_MODE
+    ? leagueNavItems
+    : baseNavItems.filter(item => {
+        if (!("mode" in item) || !item.mode) return true;
+        return item.mode === settings.nav_tab_mode;
+      });
 
   // Detect game routes where bottom nav should auto-hide
   const isGameRoute = location.pathname.startsWith("/swipe") || location.pathname.includes("/multiplayer/game");
@@ -111,7 +121,8 @@ export default function Navbar({ themeId }: { themeId?: string }) {
             <img src={lolIcon} alt="League of Legends" className="h-7 w-7 sm:h-8 sm:w-8 rounded" />
           </Link>
 
-          <NavBanner />
+          {/* Rotating swipe-league banner is general Mogsy content — hidden in League-only mode */}
+          {LEAGUE_ONLY_MODE ? <div className="flex-1 min-w-0" /> : <NavBanner />}
 
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             {/* Desktop nav items */}
@@ -146,8 +157,8 @@ export default function Navbar({ themeId }: { themeId?: string }) {
             {/* Notification bell */}
             <UserNotificationBell />
 
-            {/* Diamond balance */}
-            {diamonds !== null && (
+            {/* Diamond balance — shop is hidden in League-only mode */}
+            {!LEAGUE_ONLY_MODE && diamonds !== null && (
               <Link
                 to="/shop"
                 className="ml-1 flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 transition-all hover:scale-105 active:scale-95 border border-primary/20 hover:border-primary/40"
