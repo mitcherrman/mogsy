@@ -922,28 +922,49 @@ function BroadcastRunnerTimerLane({
         </div>
       </div>
 
-      {/* Akali — runs along the platform during the question; parks at the
-          end of the lane through reveal/explanation/transition. */}
+      {/* Akali runner pod — circular fade + overhead tunnel so the MP4 reads as
+          part of the timer lane instead of a separate rectangular sticker. */}
       <motion.div
         key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
-        className={`absolute bottom-[0.5cqmin] -translate-x-1/2 ${isShorts ? "w-[18cqmin]" : "w-[16cqmin]"}`}
+        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[-0.1cqmin] w-[22cqmin]" : "bottom-[-0.2cqmin] w-[20cqmin]"}`}
         initial={isQuestion ? { left: `${startLeft}%`, opacity: 0 } : false}
-        animate={{ left: "92%", opacity: isShorts ? 0.7 : 0.85 }}
+        animate={{ left: "92%", opacity: isShorts ? 0.78 : 0.92 }}
         transition={{
           left: { duration: isQuestion ? remainingSec : 0.3, ease: "linear" },
           opacity: { duration: 0.45, ease: "easeOut" },
         }}
       >
-        {/* mix-blend-screen sinks the dark video background into the lane,
-            so the runner reads as a sprite instead of a rectangular box */}
-        <video
-          src={RUNNER_ASSET_SRC}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="h-auto w-full scale-[1.35] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
-        />
+        <div className={`relative ${isShorts ? "h-[12cqmin]" : "h-[10.5cqmin]"}`}>
+          {/* Soft circular fade behind Akali */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-[9.5cqmin] w-[9.5cqmin] rounded-full bg-[#07112d]/80 blur-[1.45cqmin]" />
+            <div className="absolute h-[8cqmin] w-[8cqmin] rounded-full bg-cyan-300/12 blur-[0.9cqmin]" />
+            <div className="absolute h-[6.6cqmin] w-[6.6cqmin] rounded-full bg-[#d4b35a]/12 blur-[0.7cqmin]" />
+          </div>
+
+          {/* Overhead tunnel/canopy */}
+          <div className="absolute left-1/2 top-[0.1cqmin] h-[7.2cqmin] w-[15.5cqmin] -translate-x-1/2 overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-full rounded-t-full border border-cyan-300/16 bg-gradient-to-b from-cyan-300/10 via-[#0b1737]/40 to-transparent shadow-[0_0_1.3cqmin_rgba(80,220,255,0.12)]" />
+            <div className="absolute left-[9%] right-[9%] top-[12%] h-[68%] rounded-t-full border border-[#d4b35a]/12 bg-gradient-to-b from-white/7 via-transparent to-transparent" />
+            <div className="absolute left-[18%] right-[18%] top-[28%] h-[45%] rounded-t-full border border-cyan-200/10" />
+          </div>
+
+          {/* Glow bridge connecting Akali to the timer platform */}
+          <div className="absolute bottom-[1.2cqmin] left-1/2 h-[2.5cqmin] w-[13.5cqmin] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-cyan-300/16 to-transparent blur-[0.55cqmin]" />
+          <div className="absolute bottom-[0.8cqmin] left-1/2 h-[0.65cqmin] w-[11cqmin] -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#d4b35a]/24 to-transparent" />
+
+          {/* Akali video */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <video
+              src={RUNNER_ASSET_SRC}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-[8.3cqmin] w-auto scale-[1.5] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
+            />
+          </div>
+        </div>
       </motion.div>
     </div>
   );
