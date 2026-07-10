@@ -142,21 +142,17 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
         </div>
       )}
 
-      {/* Akali runner — decorative looping video that runs along the bottom
-          timeline with the remaining question time. z-[12]: above the timeline
-          (z-10) and backdrop FX, below the Shorts crystal core (z-[18]) and
-          the main scene (z-20). */}
-      <BroadcastRunnerAsset
+      {/* Bottom runner lane — the single bottom timing element: the current-
+          question countdown platform with Akali running along it. Replaces
+          both the playlist BottomTimeline (intentionally no longer rendered)
+          and the inline CountdownInline bars. z-[14]: above backdrop FX,
+          below the Shorts crystal core (z-[18]) and the main scene (z-20). */}
+      <BroadcastRunnerTimerLane
         phase={phase}
         phaseStartedAt={snapshot.phaseStartedAt}
         phaseDurationMs={snapshot.phaseDurationMs}
         isShorts={isShorts}
-      />
-
-      {/* Bottom progress timeline */}
-      <BottomTimeline
-        current={Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)}
-        total={snapshot.playlistLength}
+        hasQuestion={!!q}
       />
 
       {/* Decorative FX layer */}
@@ -404,9 +400,6 @@ function SceneRow({
             revealActive={revealActive}
             correctAnswer={correctAnswer}
             explanation={explanation}
-            phaseStartedAt={phaseStartedAt}
-            phaseDurationMs={phaseDurationMs}
-            phaseIsQuestion={phaseIsQuestion}
           />
         </motion.div>
 
@@ -490,18 +483,12 @@ function QuestionPanel({
   revealActive,
   correctAnswer,
   explanation,
-  phaseStartedAt,
-  phaseDurationMs,
-  phaseIsQuestion,
 }: {
   question: QuizQuestion;
   visuals: BroadcastVisuals;
   revealActive: boolean;
   correctAnswer: string | null;
   explanation: string | null;
-  phaseStartedAt: number;
-  phaseDurationMs: number;
-  phaseIsQuestion: boolean;
 }) {
   const choices = useMemo(() => (question.choices ?? []).map(choiceLabel), [question]);
   return (
@@ -513,12 +500,8 @@ function QuestionPanel({
         revealActive={revealActive}
         correctAnswer={correctAnswer}
       />
-      <CountdownInline
-        active={phaseIsQuestion}
-        style={visuals.countdownStyle}
-        phaseStartedAt={phaseStartedAt}
-        phaseDurationMs={phaseDurationMs}
-      />
+      {/* Current-question countdown now lives in the bottom runner lane
+          (BroadcastRunnerTimerLane) — no inline bar here. */}
       <CompactPlayAlongPanel visuals={visuals} size="wide" />
       <div className="relative min-h-[12%]">
         <AnimatePresence>
@@ -661,7 +644,9 @@ export const AnswerGrid = memo(function AnswerGrid({
    CountdownInline — bar/digits/ring, rAF-driven
    ──────────────────────────────────────────────────────────────────────── */
 
-function CountdownInline({
+// No longer rendered in the broadcast layout (the bottom runner lane owns the
+// question timer); kept exported for reuse.
+export function CountdownInline({
   active,
   style,
   phaseStartedAt,
@@ -868,68 +853,98 @@ export function PlayAlongPanel({ visuals }: { visuals: BroadcastVisuals }) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
-   BroadcastRunnerAsset — decorative Akali runner along the bottom timeline.
-   During the question phase the runner travels left → right in step with the
-   countdown (linear over the remaining time, resuming mid-phase for late
-   subscribers). On reveal/explanation/transition it fades out; hidden while
-   idle. Purely presentational: muted looping video, pointer-events-none,
-   aria-hidden — no engine/timing involvement.
+   BroadcastRunnerTimerLane — the single bottom timing element.
+   A dark platform lane hugging the stage bottom holds the current-question
+   countdown bar; Akali (looping MP4) runs on top of it, left → right in step
+   with the remaining question time (late joiners start at the correct
+   progress point). On reveal/explanation/transition Akali stays parked at
+   the end of the lane and the bar sits empty; the next question resets her
+   to the start. Hidden while idle / without a question. Replaces both the
+   playlist BottomTimeline and the inline CountdownInline bars. Purely
+   presentational: muted looping video, pointer-events-none, aria-hidden —
+   no engine/timing involvement.
    ──────────────────────────────────────────────────────────────────────── */
 
 const RUNNER_ASSET_SRC = "/quiz-broadcast/assets/akali-running.mp4";
 
-function BroadcastRunnerAsset({
+function BroadcastRunnerTimerLane({
   phase,
   phaseStartedAt,
   phaseDurationMs,
   isShorts,
+  hasQuestion,
 }: {
   phase: BroadcastPhase;
   phaseStartedAt: number;
   phaseDurationMs: number;
   isShorts: boolean;
+  hasQuestion: boolean;
 }) {
-  const active = phase === "question" && phaseDurationMs > 0;
+  const isQuestion = phase === "question" && phaseDurationMs > 0;
 
   // Late-join support: start from the current countdown progress, not 0.
-  // Only read once per phase (the motion.div is keyed by phaseStartedAt, so
-  // re-renders don't restart the run).
+  // The runner/bar are keyed by phaseStartedAt, so re-renders don't restart
+  // the run.
   const elapsed = Math.max(0, Date.now() - phaseStartedAt);
   const progress = Math.min(1, elapsed / Math.max(1, phaseDurationMs));
   const startLeft = 4 + progress * 88; // 4% → 92% track
   const remainingSec = Math.max(0, (phaseDurationMs - elapsed) / 1000);
 
+  if (!hasQuestion || phase === "idle") return null;
+
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute inset-x-[2%] z-[12] ${isShorts ? "bottom-[2%]" : "bottom-[2.4%]"}`}
+      className={`pointer-events-none absolute inset-x-[2%] z-[14] ${
+        isShorts ? "bottom-[1.2%] h-[5.5cqmin]" : "bottom-[1.4%] h-[7cqmin]"
+      }`}
     >
-      <AnimatePresence>
-        {active && (
-          <motion.div
-            key={phaseStartedAt}
-            className={`absolute bottom-[-0.4cqmin] -translate-x-1/2 overflow-hidden rounded-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_54%,transparent_78%)] ${isShorts ? "w-[18cqmin]" : "w-[15cqmin]"}`}
-            initial={{ left: `${startLeft}%`, opacity: 0 }}
-            animate={{ left: "92%", opacity: isShorts ? 0.6 : 0.75 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              left: { duration: remainingSec, ease: "linear" },
-              opacity: { duration: 0.45, ease: "easeOut" },
-            }}
-          >
-            {/* mix-blend-screen sinks a dark video background into the stage,
-                so the runner reads as a sprite instead of a rectangular box */}
-            <video
-              src={RUNNER_ASSET_SRC}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-auto w-full scale-[1.35] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
+      {/* Platform — dark navy glass matched to the MP4 background so Akali's
+          video rectangle blends in. Soft cyan/gold glow, no hard border. */}
+      <div className="absolute inset-0 overflow-hidden rounded-xl bg-gradient-to-r from-black/65 via-[#07112d]/70 to-black/65 ring-1 ring-inset ring-[#d4b35a]/10">
+        <div className="absolute inset-0 opacity-60 [background:radial-gradient(ellipse_at_50%_120%,rgba(34,211,238,0.14),transparent_60%),linear-gradient(to_top,rgba(212,179,90,0.08),transparent_55%)]" />
+
+        {/* Current-question timer bar — the surface Akali runs on. Drains
+            from the late-join remainder to 0% during the question; stays
+            empty through reveal/explanation/transition. */}
+        <div className="absolute inset-x-[1.5%] bottom-[0.7cqmin] h-[0.9cqmin] overflow-hidden rounded-full bg-white/8 ring-1 ring-inset ring-[#d4b35a]/15">
+          {isQuestion ? (
+            <motion.div
+              key={`bar-${phaseStartedAt}`}
+              className="h-full rounded-full bg-gradient-to-r from-[#d4b35a] via-[#f3dca0] to-emerald-300 shadow-[0_0_18px_rgba(212,179,90,0.55)]"
+              initial={{ width: `${(1 - progress) * 100}%` }}
+              animate={{ width: "0%" }}
+              transition={{ duration: remainingSec, ease: "linear" }}
             />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ) : (
+            <div className="h-full w-0" />
+          )}
+        </div>
+      </div>
+
+      {/* Akali — runs along the platform during the question; parks at the
+          end of the lane through reveal/explanation/transition. */}
+      <motion.div
+        key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
+        className={`absolute bottom-[0.5cqmin] -translate-x-1/2 ${isShorts ? "w-[18cqmin]" : "w-[16cqmin]"}`}
+        initial={isQuestion ? { left: `${startLeft}%`, opacity: 0 } : false}
+        animate={{ left: "92%", opacity: isShorts ? 0.7 : 0.85 }}
+        transition={{
+          left: { duration: isQuestion ? remainingSec : 0.3, ease: "linear" },
+          opacity: { duration: 0.45, ease: "easeOut" },
+        }}
+      >
+        {/* mix-blend-screen sinks the dark video background into the lane,
+            so the runner reads as a sprite instead of a rectangular box */}
+        <video
+          src={RUNNER_ASSET_SRC}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="h-auto w-full scale-[1.35] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
+        />
+      </motion.div>
     </div>
   );
 }
@@ -1439,15 +1454,8 @@ function ShortsSceneRow({
           );
         })()}
 
-        {/* Countdown bar */}
-        <div className="px-[6%] py-[1.2%]">
-          <CountdownInline
-            active={phaseIsQuestion}
-            style="bar"
-            phaseStartedAt={phaseStartedAt}
-            phaseDurationMs={phaseDurationMs}
-          />
-        </div>
+        {/* Current-question countdown now lives in the bottom runner lane
+            (BroadcastRunnerTimerLane) — no inline bar here. */}
 
         {/* Answers — top-aligned so they hug the question/insight group
             instead of floating down toward the core. The compact play-along
