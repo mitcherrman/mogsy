@@ -89,11 +89,11 @@ export type EngineSnapshot = {
 
 export const DEFAULT_TIMING: BroadcastTiming = {
   questionMs: 15000,
-  revealMs: 2000,
-  explanationMs: 2500,
-  transitionMs: 700,
-  countdownMs: 3000,
-  delayBeforeNextMs: 500,
+  revealMs: 10000,
+  explanationMs: 10000,
+  transitionMs: 10000,
+  countdownMs: 10000,
+  delayBeforeNextMs: 10000,
 };
 
 export const DEFAULT_VISUALS: BroadcastVisuals = {
