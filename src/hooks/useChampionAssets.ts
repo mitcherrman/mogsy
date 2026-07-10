@@ -55,7 +55,10 @@ export function useChampionAssets() {
 export function resolveAssetUrl(path?: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${API_BASE_URL}/${path.replace(/\\/g, "/").replace(/^\/+/, "")}`;
+  // Remotion export override — see resolveQuizAssetUrl in @/lib/quiz/api.
+  const override = (globalThis as { __MOGSY_ASSET_BASE__?: string }).__MOGSY_ASSET_BASE__;
+  const base = (override || API_BASE_URL).replace(/\/+$/, "");
+  return `${base}/${path.replace(/\\/g, "/").replace(/^\/+/, "")}`;
 }
 
 /** Look up a champion's transparent cutout PNG URL from the manifest. */

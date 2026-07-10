@@ -84,7 +84,11 @@ function simulate(
     waveStart: -1e9,
     waveStrength: 0,
   };
-  let nextWaveAt = 2500; // first heartbeat, as in the live loop
+  // First conduction heartbeat at 800 ms (live: 2500 ms after mount). The
+  // live core mounts once per broadcast, so its waves are already flowing
+  // when a question starts; the video core restarts per question — an early
+  // first wave keeps the crest as alive as the broadcast's steady state.
+  let nextWaveAt = 800;
 
   const dt = STEP_MS / 1000;
   for (let t = 0; t < localMs; t += STEP_MS) {

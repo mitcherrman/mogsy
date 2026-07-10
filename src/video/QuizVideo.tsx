@@ -13,6 +13,45 @@ import { FONT_STACK } from "./format";
 import { buildTimeline } from "./timing";
 import type { QuizVideoData } from "./types";
 import { BroadcastQuestionScene } from "./BroadcastQuestionScene";
+import { VideoKnowledgeCore } from "./broadcast-fx/VideoKnowledgeCore";
+import type { VideoPhaseState } from "./broadcast-fx/videoPhase";
+
+/** Idle broadcast-phase state for the intro/outro core (gentle heartbeat,
+ *  no countdown pressure). Time comes from the card's local frame clock. */
+function idleCoreState(localMs: number): VideoPhaseState {
+  return {
+    phase: "question",
+    phaseElapsedMs: localMs,
+    phaseDurationMs: 0,
+    remainingToRevealMs: Infinity,
+    sinceRevealMs: -Infinity,
+    localMs,
+  };
+}
+const zero = () => 0;
+
+/** The Knowledge Core standing idle behind the intro/outro title cards —
+ *  fills the broadcast's title beats with its identity object instead of
+ *  dead air. Deterministic: driven by the card's local frame time. */
+const IdleCoreBackdrop: React.FC<{ opacity: number }> = ({ opacity }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const localMs = (frame / fps) * 1000;
+  return (
+    <AbsoluteFill className="items-center justify-center" style={{ opacity }}>
+      <div className="h-[62%] w-[35%]">
+        <VideoKnowledgeCore
+          state={idleCoreState(localMs)}
+          questionIndex={1}
+          revealAtMs={Infinity}
+          pulseAt={zero}
+          overloadAt={zero}
+          compact
+        />
+      </div>
+    </AbsoluteFill>
+  );
+};
 
 /**
  * Top-level composition: intro card → question scenes → outro card, laid out
@@ -28,6 +67,14 @@ import { BroadcastQuestionScene } from "./BroadcastQuestionScene";
  */
 export const QuizVideo: React.FC<{ data: QuizVideoData }> = ({ data }) => {
   const timeline = buildTimeline(data);
+
+  // Publish the asset base BEFORE children render so resolveQuizAssetUrl /
+  // resolveAssetUrl turn relative metadata paths into real URLs. The Remotion
+  // bundle has no import.meta.env, so without this every relative icon/splash
+  // would resolve against the localhost fallback and 404 into placeholders.
+  if (data.asset_base_url) {
+    (globalThis as { __MOGSY_ASSET_BASE__?: string }).__MOGSY_ASSET_BASE__ = data.asset_base_url;
+  }
 
   // Seed the champion manifest so broadcast components never fetch.
   // staleTime: Infinity keeps the seeded value (manifest or null) fresh for
@@ -113,10 +160,12 @@ const TitleCard: React.FC<{ title: string; subtitle?: string; website?: string; 
     extrapolateRight: "clamp",
   });
   return (
-    <AbsoluteFill
-      className="items-center justify-center text-center"
-      style={{ opacity: enter * exit, transform: `scale(${0.92 + enter * 0.08})` }}
-    >
+    <>
+      <IdleCoreBackdrop opacity={0.28 * enter * exit} />
+      <AbsoluteFill
+        className="items-center justify-center text-center"
+        style={{ opacity: enter * exit, transform: `scale(${0.92 + enter * 0.08})` }}
+      >
       <div className="mb-3 text-[1.5cqmin] uppercase tracking-[0.45em] text-[#e8c97a]">Mogsy Quiz Broadcast</div>
       <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[7cqmin] font-black uppercase text-transparent">
         {title}
@@ -127,7 +176,8 @@ const TitleCard: React.FC<{ title: string; subtitle?: string; website?: string; 
       {patch && (
         <div className="mt-4 text-[1.4cqmin] uppercase tracking-[0.3em] text-cyan-300/90">Patch {patch}</div>
       )}
-    </AbsoluteFill>
+      </AbsoluteFill>
+    </>
   );
 };
 
@@ -136,16 +186,19 @@ const OutroCard: React.FC<{ website?: string }> = ({ website }) => {
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 30 });
   return (
-    <AbsoluteFill className="items-center justify-center text-center" style={{ opacity: enter }}>
-      <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[5.5cqmin] font-black uppercase text-transparent">
-        How many did you get?
-      </div>
-      <div className="mt-4 text-[2.2cqmin] text-white/70">Drop your score in the comments</div>
-      {website && (
-        <div className="mt-6 text-[2cqmin] font-extrabold tracking-wider text-[#f3dca0]">
-          Play daily at {website}
+    <>
+      <IdleCoreBackdrop opacity={0.28 * enter} />
+      <AbsoluteFill className="items-center justify-center text-center" style={{ opacity: enter }}>
+        <div className="bg-gradient-to-b from-white to-[#f3dca0] bg-clip-text text-[5.5cqmin] font-black uppercase text-transparent">
+          How many did you get?
         </div>
-      )}
-    </AbsoluteFill>
+        <div className="mt-4 text-[2.2cqmin] text-white/70">Drop your score in the comments</div>
+        {website && (
+          <div className="mt-6 text-[2cqmin] font-extrabold tracking-wider text-[#f3dca0]">
+            Play daily at {website}
+          </div>
+        )}
+      </AbsoluteFill>
+    </>
   );
 };

@@ -69,6 +69,12 @@ export type QuizVideoData = {
    * react-query cache with this value). Null/absent → gradient fallback.
    */
   champion_manifest?: unknown;
+  /**
+   * API base URL for resolving relative asset paths (metadata icons, manifest
+   * splashes) during the Remotion render. Embedded by the prepare step; the
+   * bundle has no import.meta.env so it cannot discover this itself.
+   */
+  asset_base_url?: string;
 };
 
 export const DEFAULT_SEGMENTS: QuizSegmentSeconds = {

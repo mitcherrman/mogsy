@@ -166,7 +166,11 @@ export type QuizOverride = {
 export function resolveQuizAssetUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path)) return path;
-  const base = API_BASE_URL.replace(/\/+$/, "");
+  // Remotion export override: the video bundle has no import.meta.env, so the
+  // prepare step embeds the API base in the input JSON and QuizVideo publishes
+  // it here. Never set in the live app.
+  const override = (globalThis as { __MOGSY_ASSET_BASE__?: string }).__MOGSY_ASSET_BASE__;
+  const base = (override || API_BASE_URL).replace(/\/+$/, "");
   const rel = path.replace(/\\/g, "/").replace(/^\/+/, "");
   return `${base}/${rel}`;
 }

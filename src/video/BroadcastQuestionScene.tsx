@@ -144,11 +144,15 @@ export const BroadcastQuestionScene: React.FC<{
     pose = computeRevealPose({ t, nowMs, isSpoiler, isShorts: false });
   }
 
-  // SceneSlider equivalent: enter (x 80→0, 0.42 s) and exit during transition.
+  // SceneSlider equivalent: enter (x 80→0, 0.42 s). The exit slide runs over
+  // the FINAL 0.42 s of the transition segment — the revealed scene holds on
+  // screen until it hands off directly to the next question's slide-in, so
+  // there are no dead empty frames between questions (live SceneSlider
+  // overlaps exit/enter the same way).
   const enterMs = msOf(frame);
   const enterT = Math.min(1, enterMs / 420);
   const enterEase = 1 - (1 - enterT) ** 3;
-  const exitT = interpolate(frame, [outAt, Math.min(endAt, outAt + Math.round(0.42 * fps))], [0, 1], clamp);
+  const exitT = interpolate(frame, [Math.max(outAt, endAt - Math.round(0.42 * fps)), endAt], [0, 1], clamp);
   const sliderX = (1 - enterEase) * 80 - exitT * 80;
   const sliderOpacity = enterEase * (1 - exitT);
 

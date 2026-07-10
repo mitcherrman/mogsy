@@ -142,6 +142,12 @@ async function main() {
   const manifest = await loadChampionManifest();
   if (manifest) data.champion_manifest = manifest;
 
+  // Embed the API base so relative asset paths (metadata icons, manifest
+  // splashes) resolve inside the Remotion bundle, which has no import.meta.env.
+  const assetBase = (arg("--api") ?? process.env.VITE_COMBAT_API_URL ?? envFromDotEnv("VITE_COMBAT_API_URL"))
+    ?.replace(/\/+$/, "");
+  if (assetBase) data.asset_base_url = assetBase;
+
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, JSON.stringify(data, null, 2), "utf8");
 
