@@ -4,6 +4,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+
+/**
+ * League-only mode: the navbar bell shows only LoL-product notifications.
+ * Old/general Mogsy types (rankings, leagues, promos, social) stay in the DB
+ * untouched and reappear when LEAGUE_ONLY_MODE is turned off.
+ * `update`/`warning` are kept as product-relevant site notices.
+ */
+const LOL_NOTIFICATION_TYPES = new Set([
+  "lol_quiz",
+  "quiz_broadcast",
+  "combat_lab",
+  "lol_patch",
+  "esports_quiz",
+  "lol_site_notice",
+  "update",
+  "warning",
+]);
+
+const isLeagueRelevant = (n: { type: string }) =>
+  !LEAGUE_ONLY_MODE || LOL_NOTIFICATION_TYPES.has(n.type);
 
 interface UserNotification {
   id: string;
@@ -52,6 +73,13 @@ const typeIcons: Record<string, typeof Bell> = {
   friend_accepted: UserCheck,
   comment_reply: MessageSquare,
   comment_reaction: MessageSquare,
+  // LoL product types
+  lol_quiz: Star,
+  quiz_broadcast: Megaphone,
+  combat_lab: Zap,
+  lol_patch: Info,
+  esports_quiz: Trophy,
+  lol_site_notice: Bell,
 };
 
 const adminTypeIcons: Record<string, typeof Bell> = {
@@ -108,6 +136,8 @@ export default function UserNotificationBell() {
             notif.target_type === "all" ||
             (notif.profile_id != null && notif.profile_id === myProfileIdRef.current);
           if (!isForMe) return;
+          // League-only mode: drop old/general Mogsy notification types.
+          if (!isLeagueRelevant(notif)) return;
           // Ignore notifications created before this user signed up
           const signedUpAt = user.created_at ? new Date(user.created_at).getTime() : 0;
           if (signedUpAt && new Date(notif.created_at).getTime() < signedUpAt) return;
@@ -120,19 +150,21 @@ export default function UserNotificationBell() {
       )
       .subscribe();
 
-    // Real-time for friendships
-    const friendChannel = supabase
-      .channel("friend-notifs")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "friendships" },
-        () => { loadFriendNotifs(); }
-      )
-      .subscribe();
+    // Real-time for friendships (legacy social — not subscribed in League-only mode)
+    const friendChannel = LEAGUE_ONLY_MODE
+      ? null
+      : supabase
+          .channel("friend-notifs")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "friendships" },
+            () => { loadFriendNotifs(); }
+          )
+          .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(friendChannel);
+      if (friendChannel) supabase.removeChannel(friendChannel);
     };
   }, [user]);
 
@@ -181,7 +213,7 @@ export default function UserNotificationBell() {
       supabase.from("user_notification_reads").select("notification_id").eq("user_id", user.id),
     ]);
 
-    setNotifications((notifRes.data as UserNotification[]) || []);
+    setNotifications(((notifRes.data as UserNotification[]) || []).filter(isLeagueRelevant));
     setReadIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
     setLoaded(true);
   };
@@ -198,6 +230,9 @@ export default function UserNotificationBell() {
   };
 
   const loadFriendNotifs = async () => {
+    // Friend requests are part of the old Mogsy social experience — dormant
+    // while the site is League-only.
+    if (LEAGUE_ONLY_MODE) return;
     if (!user) return;
     // Get my profile
     const { data: myProfile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();

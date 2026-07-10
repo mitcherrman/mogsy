@@ -59,6 +59,14 @@ const NOTIFICATION_TYPES = [
   { value: "update", label: "App Update", icon: Zap, description: "Feature update" },
   { value: "warning", label: "Warning", icon: AlertTriangle, description: "Important warning" },
   { value: "spotlight", label: "Spotlight", icon: Crown, description: "Spotlight user/item" },
+  // LoL product types — the only user-visible types (besides update/warning)
+  // while LEAGUE_ONLY_MODE is on. See UserNotificationBell allowlist.
+  { value: "lol_quiz", label: "League Quiz", icon: Star, description: "League quiz updates / new questions" },
+  { value: "quiz_broadcast", label: "Quiz Broadcast", icon: Megaphone, description: "Live quiz broadcast announcement" },
+  { value: "combat_lab", label: "Combat Lab", icon: Zap, description: "Combat Lab / simulator update" },
+  { value: "lol_patch", label: "LoL Patch", icon: Globe, description: "Patch / game data update" },
+  { value: "esports_quiz", label: "Esports Quiz", icon: Trophy, description: "Esports trivia / history update" },
+  { value: "lol_site_notice", label: "LoL Site Notice", icon: Bell, description: "Site notice for the LoL product" },
 ];
 
 const TARGET_TYPES = [
