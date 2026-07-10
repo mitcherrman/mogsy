@@ -21,6 +21,8 @@ import ProfileFavoriteCards from "@/components/ProfileFavoriteCards";
 import { getThemeById } from "@/lib/profile-themes";
 import ThemeOverlay from "@/components/ThemeOverlay";
 import RecentMatchups from "@/components/RecentMatchups";
+import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { BrainCircuit } from "lucide-react";
 
 interface ProfileData {
   id: string;
@@ -265,6 +267,19 @@ export default function UserProfile() {
     }
     setProfile(profileData as unknown as ProfileData);
 
+    // League-only mode: skip the old swipe-league stats, favorites and
+    // comments — the public profile shows identity + League CTAs only.
+    if (LEAGUE_ONLY_MODE) {
+      const { data: photoData } = await supabase
+        .from("profile_photos")
+        .select("url, sort_order")
+        .eq("profile_id", profileId!)
+        .order("sort_order");
+      if (photoData) setPhotos(photoData);
+      setLoading(false);
+      return;
+    }
+
     // Fetch photos, league memberships, and top comment in parallel
     const [photosRes, membershipsRes, commentsRes] = await Promise.all([
       supabase
@@ -477,7 +492,11 @@ export default function UserProfile() {
       <ThemeOverlay themeId={theme.id} />
       <SEOHead
         title={`${profile.display_name || "User"} — Mogsy`}
-        description={`View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`}
+        description={
+          LEAGUE_ONLY_MODE
+            ? `View ${profile.display_name}'s Mogsy League profile. League quiz, Combat Lab and game knowledge. ${profile.status_message || ""}`
+            : `View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`
+        }
         image={profile.avatar_url || undefined}
         jsonLd={{
           "@context": "https://schema.org",
@@ -632,7 +651,38 @@ export default function UserProfile() {
           </motion.div>
         )}
 
-        {/* Recent Matchups */}
+        {/* League-only mode: League-focused public profile block */}
+        {LEAGUE_ONLY_MODE && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
+          >
+            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
+              <BrainCircuit className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
+              Mogsy League Player
+            </h2>
+            <p className={cn("text-sm", theme.styles.textColor || "text-foreground/80")}>
+              {profile.display_name || "This player"} is part of Mogsy League — quizzes, Combat Lab and League game knowledge.
+              Public League stats are coming soon.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button size="sm" variant="secondary" onClick={() => navigate("/quiz")}>
+                <BrainCircuit className="h-3.5 w-3.5 mr-1" /> League Quiz
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate("/combat-lab")}>
+                <Swords className="h-3.5 w-3.5 mr-1" /> Combat Lab
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate("/lol")}>
+                <Trophy className="h-3.5 w-3.5 mr-1" /> League Hub
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Recent Matchups (legacy Mogsy — hidden in League-only mode) */}
+        {!LEAGUE_ONLY_MODE && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -640,8 +690,10 @@ export default function UserProfile() {
         >
           <RecentMatchups profileId={profileId!} themeStyles={theme.styles} />
         </motion.div>
+        )}
 
-        {/* Quick stats row */}
+        {/* Quick stats row (legacy swipe Elo — hidden in League-only mode) */}
+        {!LEAGUE_ONLY_MODE && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -664,6 +716,7 @@ export default function UserProfile() {
             <p className={cn("text-[10px] uppercase tracking-wider", theme.styles.mutedColor || "text-muted-foreground")}>Leagues</p>
           </div>
         </motion.div>
+        )}
 
 
         {/* League Leaderboard */}

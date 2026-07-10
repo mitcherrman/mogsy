@@ -17,6 +17,10 @@ import SEOHead from "@/components/SEOHead";
 import { profileThemes } from "@/lib/profile-themes";
 import FavoritesEditor from "@/components/FavoritesEditor";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { useProfileConfig } from "@/hooks/useProfileConfig";
+import LeagueProfileStats from "@/components/profile/LeagueProfileStats";
+import ProfileConfigPanel from "@/components/profile/ProfileConfigPanel";
 
 
 const frameOptions = [
@@ -62,6 +66,11 @@ export default function Profile() {
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
+  const { config, setOption, resetConfig } = useProfileConfig();
+  // Legacy Mogsy modules (boost/frames/favorites) are hidden in League-only
+  // mode. Only admin/dev users (moderator+) see the toggle to re-enable them;
+  // the role check also guards against a stale localStorage value.
+  const showLegacy = !LEAGUE_ONLY_MODE || (config.showLegacyMogsy && isModerator);
 
   // Load + listen for theme config so locks stay in sync with the FAB
   useEffect(() => {
@@ -406,7 +415,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-dvh px-2 sm:px-4 py-4 sm:py-8">
-      <SEOHead title="My Profile — Mogsy" description="View and edit your Mogsy profile. Manage your photos, bio, social links, and see your ranking stats." />
+      <SEOHead title="My Profile — Mogsy League" description="Your Mogsy League of Legends profile. Track your League quiz progress, Combat Lab experiments, and Mogsy game knowledge." />
       <div className="container mx-auto max-w-4xl xl:max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
@@ -414,7 +423,12 @@ export default function Profile() {
               <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-              <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Edit Profile</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Mogsy League Profile</h1>
+                <p className="hidden sm:block text-xs text-muted-foreground">
+                  Track your League quiz progress, Combat Lab experiments, and Mogsy game knowledge.
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {isModerator && (
@@ -429,15 +443,17 @@ export default function Profile() {
                   <ShieldCheck className="h-4 w-4" />
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon" aria-label="Open referral"
-                onClick={() => navigate("/referral")}
-                className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
-              >
-                <Gift className="h-4 w-4" />
-              </Button>
+              {!LEAGUE_ONLY_MODE && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon" aria-label="Open referral"
+                  onClick={() => navigate("/referral")}
+                  className="text-muted-foreground hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
+                >
+                  <Gift className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -465,9 +481,21 @@ export default function Profile() {
 
 
 
+          {/* League stats + customization panel */}
+          <div className="space-y-4 sm:space-y-6 mb-4 sm:mb-6">
+            <ProfileConfigPanel
+              config={config}
+              setOption={setOption}
+              resetConfig={resetConfig}
+              showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
+            />
+            <LeagueProfileStats userId={user?.id || "anonymous"} config={config} />
+          </div>
+
           <form onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-              {/* Left sidebar: Exposure Boost */}
+              {/* Left sidebar: Exposure Boost (legacy Mogsy — hidden in League-only mode) */}
+              {showLegacy && (
               <div className="lg:w-56 shrink-0 order-2 lg:order-1">
                 <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -497,10 +525,12 @@ export default function Profile() {
                   )}
                 </div>
               </div>
+              )}
 
               {/* Center: Main profile form */}
               <div className="flex-1 min-w-0 order-1 lg:order-2 space-y-4 sm:space-y-6">
                 {/* Photos */}
+                {config.showPhotos && (
                 <div className="rounded-2xl border border-border bg-card p-3 sm:p-5">
                   <Label className="text-sm sm:text-base font-bold mb-2 sm:mb-3 block">Photos</Label>
                   <div className="flex gap-2 sm:gap-3 flex-wrap">
@@ -529,6 +559,7 @@ export default function Profile() {
                     </p>
                   )}
                 </div>
+                )}
 
                 {/* Basic info */}
                 <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 space-y-3 sm:space-y-4">
@@ -672,6 +703,7 @@ export default function Profile() {
                 </div>
 
                 {/* Social links */}
+                {config.showSocials && (
                 <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 space-y-3">
                   <Label className="text-sm sm:text-base font-bold block">Social Links</Label>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">Paste the full link to your profile. Usernames and @ handles won't be accepted.</p>
@@ -713,11 +745,10 @@ export default function Profile() {
                     ))}
                   </div>
                 </div>
+                )}
 
-
-
-                {/* Favorites */}
-                <FavoritesEditor profileId={profileId} />
+                {/* Favorites (legacy Mogsy — hidden in League-only mode) */}
+                {showLegacy && <FavoritesEditor profileId={profileId} />}
 
                 {/* Save button */}
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
@@ -725,8 +756,9 @@ export default function Profile() {
                 </Button>
               </div>
 
-              {/* Right sidebar: Profile Frame */}
+              {/* Right sidebar: Profile Frame (legacy) + Theme */}
               <div className="lg:w-56 shrink-0 order-3">
+                {showLegacy && (
                 <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-primary" />
@@ -775,9 +807,10 @@ export default function Profile() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Profile Theme */}
-                <div className="sticky top-[22rem] rounded-2xl border border-border bg-card p-4 space-y-3 mt-4">
+                <div className={`sticky ${showLegacy ? "top-[22rem] mt-4" : "top-20"} rounded-2xl border border-border bg-card p-4 space-y-3`}>
                   <div className="flex items-center gap-2">
                     <Palette className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Theme</h3>
