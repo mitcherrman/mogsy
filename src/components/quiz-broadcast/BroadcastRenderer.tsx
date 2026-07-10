@@ -908,7 +908,7 @@ function BroadcastRunnerAsset({
         {active && (
           <motion.div
             key={phaseStartedAt}
-            className={`absolute bottom-0 -translate-x-1/2 ${isShorts ? "w-[11cqmin]" : "w-[8cqmin]"}`}
+            className={`absolute bottom-[-0.4cqmin] -translate-x-1/2 overflow-hidden rounded-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_54%,transparent_78%)] ${isShorts ? "w-[18cqmin]" : "w-[15cqmin]"}`}
             initial={{ left: `${startLeft}%`, opacity: 0 }}
             animate={{ left: "92%", opacity: isShorts ? 0.6 : 0.75 }}
             exit={{ opacity: 0 }}
@@ -925,7 +925,7 @@ function BroadcastRunnerAsset({
               loop
               muted
               playsInline
-              className="h-auto w-full object-contain mix-blend-screen drop-shadow-[0_0_14px_rgba(212,179,90,0.35)]"
+              className="h-auto w-full scale-[1.35] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_18px_rgba(212,179,90,0.45)]"
             />
           </motion.div>
         )}
