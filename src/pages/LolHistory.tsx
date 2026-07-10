@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { quizApi, type QuizHistoryResponse } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { ensureBackendAuthToken } from "@/lib/backend-auth";
 
 function formatDate(iso?: string): string {
   if (!iso) return "";
@@ -30,28 +30,37 @@ function modeLabel(mode?: string): string {
   return "Quiz";
 }
 
+const GUEST_SESSION_ERROR = "We couldn’t start a guest session. Please try again.";
+
 export default function LolHistory() {
-  const { user } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [history, setHistory] = useState<QuizHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    // Let AuthProvider finish restoring/creating the session first.
+    if (authLoading) return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Guest-first: make sure an anonymous session exists so the JWT-only
-        // history endpoint can identify the guest.
-        if (!user) {
-          await supabase.auth.signInAnonymously();
+        // Guest-first: the history endpoint is JWT-only, so guarantee a
+        // Supabase session (anonymous if need be) has a token before calling.
+        const token = await ensureBackendAuthToken();
+        if (!token) {
+          if (!cancelled) setError(GUEST_SESSION_ERROR);
+          return;
         }
         const data = await quizApi.getHistory();
         if (!cancelled) setHistory(data);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Could not load quiz history.");
+          const message = err instanceof Error ? err.message : "";
+          // A 401 here means the guest token didn't take — not the user's fault.
+          setError(/\b401\b/.test(message) ? GUEST_SESSION_ERROR : message || "Could not load quiz history.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -59,7 +68,7 @@ export default function LolHistory() {
     };
     load();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [authLoading, reloadKey]);
 
   const results = history?.results ?? [];
 
@@ -90,7 +99,7 @@ export default function LolHistory() {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <p>{error}</p>
-            <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            <Button variant="outline" className="mt-4" onClick={() => setReloadKey((k) => k + 1)}>
               Try again
             </Button>
           </CardContent>

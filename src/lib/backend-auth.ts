@@ -15,3 +15,28 @@ export async function getBackendAuthHeaders(): Promise<Record<string, string>> {
     return {};
   }
 }
+
+// Guest-first guarantee for JWT-only backend endpoints (e.g. quiz history):
+// make sure a Supabase session — anonymous if need be — exists and return its
+// access token, or null if a guest session genuinely can't be established.
+export async function ensureBackendAuthToken(): Promise<string | null> {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) return data.session.access_token;
+
+    const { data: anon } = await supabase.auth.signInAnonymously();
+    if (anon?.session?.access_token) return anon.session.access_token;
+
+    // A concurrent sign-in (e.g. AuthProvider init) may land the session a
+    // tick later via onAuthStateChange — poll briefly before giving up.
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const { data: retry } = await supabase.auth.getSession();
+      if (retry.session?.access_token) return retry.session.access_token;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
