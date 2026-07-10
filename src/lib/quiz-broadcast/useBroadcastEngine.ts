@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { EngineSnapshot } from "./types";
 import { createPublisher, createSubscriber, type SubscriberDiagnostics } from "./channel";
 import { getBroadcastEngine } from "./engineSingleton";
+import { publishLiveSnapshot } from "./liveSync";
 
 /**
  * Studio hook — owns one BroadcastEngine instance and republishes its
@@ -18,6 +19,9 @@ export function useBroadcastEngine() {
     const unsub = engine.subscribe((s) => {
       setSnapshot(s);
       publisher.post(s);
+      // Mirror to Supabase so the public OBS viewer (/broadcast/live-view)
+      // stays in sync — BroadcastChannel can't reach a separate browser.
+      publishLiveSnapshot(s);
     });
     const unsubReq = publisher.onRequest(() => publisher.post(engine.snapshot()));
     return () => {

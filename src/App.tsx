@@ -58,6 +58,7 @@ const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
+const BroadcastLiveView = R.BroadcastLiveView.Component;
 const AdminQuizReview = R.AdminQuizReview.Component;
 const AdminVideoExport = R.AdminVideoExport.Component;
 const About = R.About.Component;
@@ -182,6 +183,7 @@ const App = () => (
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
+                <Route path="/broadcast/live-view" element={<Suspense fallback={<RouteLoader />}><BroadcastLiveView /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
