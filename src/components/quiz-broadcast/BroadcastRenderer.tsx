@@ -131,7 +131,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
           of competing with the answers. */}
       {isShorts && coreVisible && phase !== "idle" && q && (
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[18] opacity-70">
-          <div className="relative mx-auto aspect-square w-[76cqmin] translate-y-[55%]">
+          <div className="relative mx-auto aspect-square w-[76cqmin] translate-y-[48%]">
             <BroadcastKnowledgeCore
               phase={phase}
               questionIndex={snapshot.currentIndex + 1}
@@ -142,7 +142,7 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
           </div>
         </div>
       )}
-      
+
       {/* Bottom progress timeline */}
       <BottomTimeline
         current={Math.min(snapshot.currentIndex + 1, snapshot.playlistLength)}
