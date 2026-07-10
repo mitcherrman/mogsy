@@ -23,9 +23,13 @@ import ThemeOverlay from "@/components/ThemeOverlay";
 import RecentMatchups from "@/components/RecentMatchups";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { BrainCircuit } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { quizApi, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import LeaguePublicProfile from "@/components/profile/LeaguePublicProfile";
 
 interface ProfileData {
   id: string;
+  user_id: string | null;
   display_name: string | null;
   avatar_url: string | null;
   age: number | null;
@@ -470,6 +474,26 @@ export default function UserProfile() {
   const activeSocials = Object.entries(socials).filter(([, v]) => v && v.trim());
   const theme = getThemeById(profile?.custom_theme || "default");
 
+  // League identity: quiz rank pill in the hero. Same query key as
+  // LeaguePublicProfile below, so react-query dedupes the fetch.
+  const targetUserId = LEAGUE_ONLY_MODE ? profile?.user_id ?? null : null;
+  const isOwnProfile = !!user && !!profile?.user_id && user.id === profile.user_id;
+  const { data: quizProgress } = useQuery({
+    queryKey: ["quiz-progress", targetUserId],
+    queryFn: () => quizApi.getProgress(targetUserId!),
+    enabled: !!targetUserId,
+  });
+  const quizRankObj = (quizProgress?.rank && typeof quizProgress.rank === "object" ? quizProgress.rank : null) as any;
+  const quizRankName =
+    quizProgress?.rank_name ||
+    quizRankObj?.rank_name ||
+    (typeof quizProgress?.rank === "string" ? quizProgress.rank : null);
+  const quizRankIcon =
+    resolveQuizAssetUrl(quizProgress?.rank_icon) ||
+    resolveQuizAssetUrl(quizRankObj?.small_icon_path) ||
+    resolveQuizAssetUrl(quizRankObj?.icon_path);
+  const showQuizRank = !!quizRankName && (quizProgress?.attempts ?? 0) > 0;
+
   if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
@@ -584,7 +608,26 @@ export default function UserProfile() {
             </div>
 
             {/* Prominent rank badge */}
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+              {showQuizRank && (
+                <div className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider border-2",
+                  "border-[#c9a84c]/50 bg-[#c9a84c]/10 text-[#f0d78c]"
+                )}>
+                  {quizRankIcon && (
+                    <img
+                      src={quizRankIcon}
+                      alt=""
+                      className="h-5 w-5 object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  )}
+                  <span>{quizRankName}</span>
+                  <BrainCircuit className="h-3.5 w-3.5" />
+                </div>
+              )}
               {rankEnabled && bestCompeteTier !== "unranked" && (
                 <div className={cn(
                   "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-extrabold uppercase tracking-wider border-2",
@@ -651,34 +694,14 @@ export default function UserProfile() {
           </motion.div>
         )}
 
-        {/* League-only mode: League-focused public profile block */}
+        {/* League-only mode: lean public League profile (stats, badges, takes, CTA) */}
         {LEAGUE_ONLY_MODE && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className={cn("rounded-xl border bg-card p-4", theme.styles.cardBg)}
-          >
-            <h2 className={cn("text-sm font-bold mb-2 flex items-center gap-1.5", theme.styles.headingColor || "text-foreground")}>
-              <BrainCircuit className={cn("h-3.5 w-3.5", theme.styles.iconAccent || "text-primary")} />
-              Mogsy League Player
-            </h2>
-            <p className={cn("text-sm", theme.styles.textColor || "text-foreground/80")}>
-              {profile.display_name || "This player"} is part of Mogsy League — quizzes, Combat Lab and League game knowledge.
-              Public League stats are coming soon.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button size="sm" variant="secondary" onClick={() => navigate("/quiz")}>
-                <BrainCircuit className="h-3.5 w-3.5 mr-1" /> League Quiz
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => navigate("/combat-lab")}>
-                <Swords className="h-3.5 w-3.5 mr-1" /> Combat Lab
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => navigate("/lol")}>
-                <Trophy className="h-3.5 w-3.5 mr-1" /> League Hub
-              </Button>
-            </div>
-          </motion.div>
+          <LeaguePublicProfile
+            userId={targetUserId}
+            displayName={profile.display_name || "This player"}
+            isOwnProfile={isOwnProfile}
+            themeStyles={theme.styles}
+          />
         )}
 
         {/* Recent Matchups (legacy Mogsy — hidden in League-only mode) */}
