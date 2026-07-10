@@ -151,19 +151,19 @@ export default function LolHub() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Anonymous sign-up nudge banner */}
         {isAnonymous && !nudgeDismissed && (
-          <div className="mb-4 flex items-center gap-3 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 px-4 py-2.5 text-sm">
-            <span className="flex-1 text-[#f5e9c8]/90">
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 px-4 py-2.5 text-sm">
+            <span className="flex-1 min-w-[12rem] text-[#f5e9c8]/90">
               Sign up to save your XP, streaks, and progress across Mogsy League.
             </span>
             <button
               onClick={() => navigate("/auth?mode=signup&returnTo=/lol")}
-              className="shrink-0 rounded-md bg-[#c9a84c]/20 px-3 py-1 text-xs font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
+              className="shrink-0 inline-flex min-h-[40px] items-center rounded-md bg-[#c9a84c]/20 px-3 py-2 text-sm font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
             >
               Sign up free
             </button>
             <button
               onClick={() => setNudgeDismissed(true)}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 -m-1 p-2.5 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" />
@@ -188,7 +188,7 @@ export default function LolHub() {
               </p>
               <button
                 onClick={() => navigate("/quiz")}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
+                className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
               >
                 Start Quiz — No Account Needed
                 <ArrowRight className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function LolHub() {
             </div>
             <Link
               to="/blog"
-              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
             >
               All posts <ArrowRight className="h-3 w-3" />
             </Link>
@@ -267,7 +267,7 @@ export default function LolHub() {
               No League of Legends posts yet. Check back soon for patch breakdowns, tier lists and drama recaps.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {posts.map((p) => (
                 <BlogPostCard key={p.id} post={p} size="sm" />
               ))}

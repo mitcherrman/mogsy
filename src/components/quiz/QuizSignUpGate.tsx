@@ -25,17 +25,17 @@ export default function QuizSignUpGate({ progress, actionCount, returnTo = "/qui
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-background/80 backdrop-blur-sm px-4 py-6"
     >
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-sm rounded-2xl border border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl border border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 max-[430px]:p-5 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
       >
         {/* Lock icon */}
-        <div className="flex justify-center mb-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
+        <div className="flex justify-center mb-4 [@media(max-height:480px)]:mb-2">
+          <div className="flex h-14 w-14 [@media(max-height:480px)]:h-10 [@media(max-height:480px)]:w-10 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
             <Lock className="h-6 w-6 text-[#f0d78c]" />
           </div>
         </div>

@@ -26,7 +26,7 @@ export default function QuizSignUpNudge({ returnTo = "/quiz" }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: 0.25 }}
-          className="fixed bottom-4 left-1/2 z-[150] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-[#c9a84c]/40 bg-[#1a1530]/95 px-4 py-3 shadow-lg backdrop-blur-sm"
+          className="fixed bottom-4 [@media(max-height:480px)]:bottom-2 left-1/2 z-[150] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-[#c9a84c]/40 bg-[#1a1530]/95 px-4 py-3 [@media(max-height:480px)]:py-2 shadow-lg backdrop-blur-sm"
         >
           <div className="flex items-center gap-3">
             <Sparkles className="h-4 w-4 shrink-0 text-[#f0d78c]" />

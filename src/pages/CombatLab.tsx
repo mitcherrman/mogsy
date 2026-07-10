@@ -741,6 +741,10 @@ export default function CombatLab() {
         damage numbers — a training tool for theorycrafting builds, learning trade timings, and
         checking patch-to-patch damage changes.
       </p>
+      <p className="lg:hidden mb-4 max-w-3xl text-xs text-muted-foreground/70">
+        On mobile, the Attacker, Combat, and Defender panels stack vertically — scroll down to see
+        each section. For the full side-by-side view, try a larger screen.
+      </p>
 
       <MetadataAuditPanel
         loading={metaLoading}
@@ -6553,7 +6557,7 @@ function LiveStatsPanel({
             No active stacks, buffs, or counters yet. Take an action to populate runtime state.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-md border border-border/50">
+          <div className="overflow-x-auto rounded-md border border-border/50">
             <table className="w-full text-[10px]">
               <thead className="bg-background/40 text-[9px] uppercase tracking-wider text-muted-foreground">
                 <tr>

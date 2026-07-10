@@ -429,8 +429,8 @@
 
 /* Gold-on-teal card frame — every Card / bordered surface inside the LoL theme
    picks up the LoLdle plate look without per-component changes. */
-.theme-lol .bg-card,
-.theme-lol [class*="border-border"] {
+.theme-lol .bg-card:not(.absolute):not(.fixed):not(.sticky),
+.theme-lol [class*="border-border"]:not(.absolute):not(.fixed):not(.sticky) {
   position: relative;
 }
 .theme-lol .bg-card {

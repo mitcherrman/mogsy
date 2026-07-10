@@ -210,15 +210,17 @@ export default function Navbar({ themeId }: { themeId?: string }) {
               </button>
             )}
             <div className="flex items-center justify-center gap-4 h-14 px-4">
-              {/* Friends button */}
-              <MobileNavButton
-                icon={Users}
-                label="Friends"
-                hasTheme={!!hasTheme}
-                themeId={themeId}
-                onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
-                badge={pendingCount > 0 ? pendingCount : undefined}
-              />
+              {/* Friends button — legacy social, hidden in League-only mode */}
+              {!LEAGUE_ONLY_MODE && (
+                <MobileNavButton
+                  icon={Users}
+                  label="Friends"
+                  hasTheme={!!hasTheme}
+                  themeId={themeId}
+                  onClick={() => window.dispatchEvent(new CustomEvent("open-friends-panel"))}
+                  badge={pendingCount > 0 ? pendingCount : undefined}
+                />
+              )}
 
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;

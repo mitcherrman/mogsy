@@ -872,8 +872,9 @@ export default function Quiz() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4"
+            className="space-y-4 [@media(max-height:480px)]:space-y-2"
           >
+            <div className="sticky top-0 z-20 -mx-4 space-y-2 bg-background/90 px-4 py-2 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
               {(() => {
                 const style = getCategoryStyle(currentQuestion.category);
@@ -922,6 +923,7 @@ export default function Quiz() {
             </div>
 
             <Progress value={progress} className="h-2" />
+            </div>
 
             {(() => {
               const meta = (currentQuestion.metadata || {}) as Record<string, any>;
@@ -1230,7 +1232,7 @@ export default function Quiz() {
                     </Button>
                   </div>
                 ) : (
-                <div className={choicesHaveImages ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2.5"}>
+                <div className={choicesHaveImages ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)]:gap-2"}>
                   {(currentQuestion.choices || []).map((choice, idx) => {
                     const label = getChoiceLabel(choice);
                     const imgPath = getChoiceImage(choice);
@@ -1494,7 +1496,7 @@ export default function Quiz() {
                   className="h-3 w-full max-w-xs mx-auto"
                 />
 
-                <div className="flex justify-center gap-3">
+                <div className="flex flex-wrap justify-center gap-3">
                   <Button variant="outline" onClick={() => setPhase("sets")}>
                     Choose another set
                   </Button>
@@ -1641,7 +1643,7 @@ function DailyChallengeResult({
           </div>
 
           {/* Stats row */}
-          <div className="flex justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-2xl font-bold text-orange-300 inline-flex items-center gap-1">
                 <Flame className="h-5 w-5" />{streak}

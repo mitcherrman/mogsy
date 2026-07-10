@@ -56,13 +56,13 @@ export default function LolWelcomeIntro() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-background/90 backdrop-blur-md px-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-background/90 backdrop-blur-md px-4 py-6"
         >
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-md rounded-2xl border border-[#c9a84c]/30 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 shadow-[0_0_50px_rgba(0,0,0,0.7)]"
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#c9a84c]/30 bg-gradient-to-br from-[#1a1530]/95 via-[#0a1428]/95 to-[#0a0a1a]/95 p-6 max-[430px]:p-5 shadow-[0_0_50px_rgba(0,0,0,0.7)]"
           >
             {/* Glowing logo */}
             <div className="flex justify-center mb-4">

@@ -340,7 +340,7 @@ export default function UserNotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50">
+        <div className="absolute right-0 top-10 w-[calc(100vw-1.5rem)] max-w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50">
           <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
             <p className="text-xs font-bold text-foreground">Notifications</p>
             {unreadCount > 0 && (
