@@ -20,17 +20,33 @@ export default function ResetPassword() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for recovery token in URL hash
-    const hash = window.location.hash;
-    if (hash && hash.includes("type=recovery")) {
+    // Recovery links can arrive in three forms:
+    // 1) Legacy hash:  #access_token=...&type=recovery
+    // 2) PKCE query:   ?code=...   (Supabase auto-exchanges when detectSessionInUrl is on)
+    // 3) Error hash:   #error=access_denied&error_code=otp_expired
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+
+    if (hash.includes("error=") || hash.includes("otp_expired")) {
+      setHasRecoveryToken(false);
+      return;
+    }
+
+    if (hash.includes("type=recovery") || search.includes("code=")) {
       setHasRecoveryToken(true);
     }
 
-    // Also listen for auth events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    // Listen for Supabase auth events. PKCE recovery fires PASSWORD_RECOVERY
+    // (or SIGNED_IN once the code is exchanged).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setHasRecoveryToken(true);
       }
+    });
+
+    // If a session already exists when landing here (code was exchanged before mount), allow reset.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setHasRecoveryToken(true);
     });
 
     return () => subscription.unsubscribe();
