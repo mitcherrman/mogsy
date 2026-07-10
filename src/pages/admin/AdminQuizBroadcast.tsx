@@ -313,7 +313,7 @@ export default function AdminQuizBroadcast() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div>
-            <CardTitle>Quiz Broadcast Studio TEST 22222</CardTitle>
+            <CardTitle>Quiz Broadcast Studio</CardTitle>
             <CardDescription>Configure, preview and control the 24/7 quiz livestream. Open the dedicated Broadcast Window for OBS capture.</CardDescription>
           </div>
           <Link
