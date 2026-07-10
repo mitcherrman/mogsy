@@ -30,22 +30,28 @@ const proFeatures = [
   "Priority in swipe queues",
 ];
 
-const STRIPE_PRO_PRICE_ID = "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
-const STRIPE_PRO_ANNUAL_PRICE_ID = "price_1TZRqtD9NqEQUIGhXUSpw5DI";
-const STRIPE_GIFT_PRO_MONTHLY_PRICE_ID = "price_1TZS2yD9NqEQUIGhP9HWjgy1";
-const STRIPE_GIFT_PRO_ANNUAL_PRICE_ID = "price_1TZS92D9NqEQUIGhCx5fczRp";
-const WINBACK_COUPON_ID = "sCkrnnuL"; // 30% off 3 months
+// Price IDs are env-driven so test mode can use its own prices
+// (set VITE_STRIPE_* in .env.local); fallbacks are the live IDs.
+const STRIPE_PRO_PRICE_ID =
+  import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
+const STRIPE_PRO_ANNUAL_PRICE_ID =
+  import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID || "price_1TZRqtD9NqEQUIGhXUSpw5DI";
+const STRIPE_GIFT_PRO_MONTHLY_PRICE_ID =
+  import.meta.env.VITE_STRIPE_GIFT_PRO_MONTHLY_PRICE_ID || "price_1TZS2yD9NqEQUIGhP9HWjgy1";
+const STRIPE_GIFT_PRO_ANNUAL_PRICE_ID =
+  import.meta.env.VITE_STRIPE_GIFT_PRO_ANNUAL_PRICE_ID || "price_1TZS92D9NqEQUIGhCx5fczRp";
+const WINBACK_COUPON_ID = import.meta.env.VITE_STRIPE_WINBACK_COUPON_ID || "sCkrnnuL"; // 30% off 3 months
 
 const PRO_MONTHLY_PRICE = 9.99;
 const PRO_ANNUAL_PRICE = 83.99;
 const PRO_ANNUAL_SAVINGS_PCT = Math.round((1 - PRO_ANNUAL_PRICE / (PRO_MONTHLY_PRICE * 12)) * 100); // 30%
 
 const diamondPacks = [
-  { id: "pack_50", amount: 50, price: 0.99, stripePriceId: "price_1T3UbgD9NqEQUIGhYrBcRg9p", tag: null },
-  { id: "pack_200", amount: 200, price: 2.99, stripePriceId: "price_1T3UbyD9NqEQUIGhjzroRY0y", tag: null },
-  { id: "pack_500", amount: 500, price: 4.99, stripePriceId: "price_1T3UcSD9NqEQUIGhHHKuZRgT", tag: "Popular" },
-  { id: "pack_1500", amount: 1500, price: 9.99, stripePriceId: "price_1T3UcdD9NqEQUIGhSzHaDXi1", tag: "Best Value" },
-  { id: "pack_5000", amount: 5000, price: 24.99, stripePriceId: "price_1T3UcpD9NqEQUIGhjNr7NtLu", tag: "Mega" },
+  { id: "pack_50", amount: 50, price: 0.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_50_PRICE_ID || "price_1T3UbgD9NqEQUIGhYrBcRg9p", tag: null },
+  { id: "pack_200", amount: 200, price: 2.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_200_PRICE_ID || "price_1T3UbyD9NqEQUIGhjzroRY0y", tag: null },
+  { id: "pack_500", amount: 500, price: 4.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_500_PRICE_ID || "price_1T3UcSD9NqEQUIGhHHKuZRgT", tag: "Popular" },
+  { id: "pack_1500", amount: 1500, price: 9.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_1500_PRICE_ID || "price_1T3UcdD9NqEQUIGhSzHaDXi1", tag: "Best Value" },
+  { id: "pack_5000", amount: 5000, price: 24.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_5000_PRICE_ID || "price_1T3UcpD9NqEQUIGhjNr7NtLu", tag: "Mega" },
 ];
 
 const powerUps = [

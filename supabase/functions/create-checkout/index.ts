@@ -72,12 +72,16 @@ serve(async (req) => {
       mode: mode || "payment",
       success_url: `${origin}/shop?success=true`,
       cancel_url: `${origin}/shop?canceled=true`,
+      // Lets the stripe-webhook function map events back to the Supabase user
+      client_reference_id: user.id,
+      metadata: { supabase_user_id: user.id },
     };
 
     // Add 7-day free trial for subscriptions
     if (mode === "subscription" && !gift) {
       sessionConfig.subscription_data = {
         trial_period_days: 7,
+        metadata: { supabase_user_id: user.id },
       };
     }
 
@@ -127,6 +131,7 @@ serve(async (req) => {
       // recipient gets is_pro extended by 30/365 days when they redeem.
       sessionConfig.line_items = [{ price: priceId, quantity: 1 }];
       sessionConfig.metadata = {
+        supabase_user_id: user.id,
         gift_id: giftRow.id,
         gift_type: giftType,
         recipient_email: recipientEmail,
