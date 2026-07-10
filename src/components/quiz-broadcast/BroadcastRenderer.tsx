@@ -204,6 +204,9 @@ export function StageBackdrop({
       )}
       {/* Vignette */}
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.7)_100%)]" />
+      
+      {/* Bottom darkness ramp — fades the lower 25% of the stage to black so bottom UI/assets blend cleanly. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[25%] bg-gradient-to-t from-black via-black/75 to-transparent" />
     </>
   );
 }
@@ -927,10 +930,10 @@ function BroadcastRunnerTimerLane({
         }}
       >
         <div
-          className={`relative overflow-hidden rounded-full ${isShorts ? "h-[12cqmin] w-[12cqmin]" : "h-[10.5cqmin] w-[10.5cqmin]"}`}
+          className={`relative overflow-hidden rounded-full ${isShorts ? "h-[18cqmin] w-[18cqmin]" : "h-[16cqmin] w-[16cqmin]"}`}
           style={{
-            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 56%, transparent 82%)",
-            maskImage: "radial-gradient(circle at center, black 0%, black 56%, transparent 82%)",
+            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 72%, transparent 96%)",
+            maskImage: "radial-gradient(circle at center, black 0%, black 72%, transparent 96%)",
           }}
         >
           <video
@@ -939,7 +942,7 @@ function BroadcastRunnerTimerLane({
             loop
             muted
             playsInline
-            className="absolute left-1/2 top-1/2 h-[8.6cqmin] w-auto -translate-x-1/2 -translate-y-1/2 scale-[1.65] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+            className="absolute left-1/2 top-1/2 h-[10.2cqmin] w-auto -translate-x-1/2 -translate-y-1/2 scale-[1.55] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
           />
         </div>
       </motion.div>
