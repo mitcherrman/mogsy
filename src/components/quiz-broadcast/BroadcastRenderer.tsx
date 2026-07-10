@@ -896,18 +896,12 @@ function BroadcastRunnerTimerLane({
     <div
       aria-hidden
       className={`pointer-events-none absolute inset-x-[2%] z-[14] ${
-        isShorts ? "bottom-[1.2%] h-[5.5cqmin]" : "bottom-[1.4%] h-[7cqmin]"
+        isShorts ? "bottom-[1.1%] h-[5.2cqmin]" : "bottom-[1.1%] h-[5.8cqmin]"
       }`}
     >
-      {/* Platform — dark navy glass matched to the MP4 background so Akali's
-          video rectangle blends in. Soft cyan/gold glow, no hard border. */}
-      <div className="absolute inset-0 overflow-hidden rounded-xl bg-gradient-to-r from-black/65 via-[#07112d]/70 to-black/65 ring-1 ring-inset ring-[#d4b35a]/10">
-        <div className="absolute inset-0 opacity-60 [background:radial-gradient(ellipse_at_50%_120%,rgba(34,211,238,0.14),transparent_60%),linear-gradient(to_top,rgba(212,179,90,0.08),transparent_55%)]" />
-
-        {/* Current-question timer bar — the surface Akali runs on. Drains
-            from the late-join remainder to 0% during the question; stays
-            empty through reveal/explanation/transition. */}
-        <div className="absolute inset-x-[1.5%] bottom-[0.7cqmin] h-[0.9cqmin] overflow-hidden rounded-full bg-white/8 ring-1 ring-inset ring-[#d4b35a]/15">
+      {/* Current-question timer bar — thin bottom platform Akali runs above.
+          No large lane/card background. */}
+      <div className="absolute inset-x-[1.5%] bottom-[0.35cqmin] h-[0.8cqmin] overflow-hidden rounded-full bg-white/8 ring-1 ring-inset ring-[#d4b35a]/15">
           {isQuestion ? (
             <motion.div
               key={`bar-${phaseStartedAt}`}
@@ -920,12 +914,11 @@ function BroadcastRunnerTimerLane({
             <div className="h-full w-0" />
           )}
         </div>
-      </div>
 
-      {/* Akali — simple spotlight/shadow treatment so the MP4 reads less like a box. */}
+      {/* Akali — simple circular fade only. */}
       <motion.div
         key={isQuestion ? `run-${phaseStartedAt}` : "parked"}
-        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[-0.1cqmin] w-[22cqmin]" : "bottom-[-0.2cqmin] w-[20cqmin]"}`}
+        className={`absolute -translate-x-1/2 ${isShorts ? "bottom-[0.15cqmin] w-[21cqmin]" : "bottom-[0.05cqmin] w-[19cqmin]"}`}
         initial={isQuestion ? { left: `${startLeft}%`, opacity: 0 } : false}
         animate={{ left: "92%", opacity: isShorts ? 0.78 : 0.92 }}
         transition={{
@@ -933,23 +926,14 @@ function BroadcastRunnerTimerLane({
           opacity: { duration: 0.45, ease: "easeOut" },
         }}
       >
-        <div className={`relative overflow-hidden rounded-[1.6cqmin] [mask-image:radial-gradient(ellipse_at_center,black_0%,black_62%,transparent_92%)] ${isShorts ? "h-[12cqmin]" : "h-[10.5cqmin]"}`}>
-          {/* Soft shadow/vignette around the video edges */}
-          <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_50%_52%,rgba(3,7,18,0)_0%,rgba(3,7,18,0.04)_34%,rgba(3,7,18,0.42)_72%,rgba(3,7,18,0.82)_100%)]" />
-
-          {/* Subtle flashlight on Akali */}
-          <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_50%_38%,rgba(255,239,190,0.28)_0%,rgba(255,220,140,0.15)_20%,rgba(255,220,140,0.06)_38%,rgba(255,220,140,0)_60%)]" />
-
-          {/* Small ground shadow */}
-          <div className="pointer-events-none absolute left-1/2 top-[72%] z-10 h-[14%] w-[44%] -translate-x-1/2 rounded-full bg-black/45 blur-[10px]" />
-
+        <div className={`relative overflow-hidden rounded-full [mask-image:radial-gradient(ellipse_at_center,black_0%,black_58%,transparent_84%)] ${isShorts ? "h-[11cqmin]" : "h-[9.8cqmin]"}`}>
           <video
             src={RUNNER_ASSET_SRC}
             autoPlay
             loop
             muted
             playsInline
-            className="relative z-0 h-[8.3cqmin] w-auto scale-[1.5] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
+            className="h-[8.3cqmin] w-auto scale-[1.48] object-contain mix-blend-screen opacity-95 brightness-125 contrast-150 saturate-125 drop-shadow-[0_0_14px_rgba(212,179,90,0.28)]"
           />
         </div>
       </motion.div>
