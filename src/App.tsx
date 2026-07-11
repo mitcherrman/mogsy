@@ -57,7 +57,10 @@ const LeagueSwipeHub = R.LeagueSwipeHub.Component;
 const LeagueSwipeGame = R.LeagueSwipeGame.Component;
 const LeagueSwipeStats = R.LeagueSwipeStats.Component;
 const LolTierList = R.LolTierList.Component;
-const LolDocumentation = R.LolDocumentation.Component;
+const LolDevChangelog = R.LolDevChangelog.Component;
+const LeagueDocsLanding = R.LeagueDocsLanding.Component;
+const LeagueDocsChampionIndex = R.LeagueDocsChampionIndex.Component;
+const LeagueDocsChampionDetail = R.LeagueDocsChampionDetail.Component;
 const LolHistory = R.LolHistory.Component;
 const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPro = R.LolPro.Component;
@@ -192,7 +195,10 @@ const App = () => (
                   <Route path="/league-swipe/stats" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeStats /></Suspense>} />
                   <Route path="/league-swipe/:gameSlug" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeGame /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
-                  <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LolDocumentation /></Suspense>} />
+                  <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />
+                  <Route path="/lol/docs/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionIndex /></Suspense>} />
+                  <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
+                  <Route path="/lol/dev-changelog" element={<Suspense fallback={<RouteFallback />}><LolDevChangelog /></Suspense>} />
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
                   <Route path="/lol/pro" element={<Suspense fallback={<RouteFallback />}><LolPro /></Suspense>} />

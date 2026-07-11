@@ -14,6 +14,10 @@ const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY ??
   "";
 
+// Combat/quiz backend — used for League Docs champion pages. No hardcoded
+// fallback: when the env var is absent, champion entries are skipped.
+const COMBAT_API_URL = (process.env.VITE_COMBAT_API_URL ?? "").replace(/\/+$/, "");
+
 interface SitemapEntry {
   path: string;
   lastmod?: string;
@@ -33,7 +37,8 @@ const lolEntries: SitemapEntry[] = [
   { path: "/lol", changefreq: "daily", priority: "1.0" },
   { path: "/quiz", changefreq: "daily", priority: "0.9" },
   { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
-  { path: "/lol/docs", changefreq: "weekly", priority: "0.5" },
+  { path: "/lol/docs", changefreq: "weekly", priority: "0.8" },
+  { path: "/lol/docs/champions", changefreq: "weekly", priority: "0.7" },
   { path: "/combat-lab", changefreq: "weekly", priority: "0.8" },
   { path: "/blog", changefreq: "daily", priority: "0.9" },
   { path: "/about", changefreq: "monthly", priority: "0.6" },
@@ -62,13 +67,16 @@ const staticEntries: SitemapEntry[] = LEAGUE_ONLY_MODE
   : [...lolEntries, ...legacyEntries];
 
 async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
+  // League Docs champion pages don't need Supabase — always attempt them.
+  const championEntries = await fetchChampionDocEntries();
+
   if (!SUPABASE_ANON_KEY) {
-    console.warn("[sitemap] No anon key available — skipping dynamic entries.");
-    return [];
+    console.warn("[sitemap] No anon key available — skipping Supabase-backed entries.");
+    return championEntries;
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const entries: SitemapEntry[] = [];
+  const entries: SitemapEntry[] = [...championEntries];
 
   // League-only mode: leaderboards, swipe presets, custom links and user
   // profiles all redirect to /lol — only blog posts stay indexable.
@@ -125,6 +133,48 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
   entries.push(...blogEntries);
 
   return entries;
+}
+
+// Duplicated from src/lib/league-docs/api.ts championSlug() — this script runs
+// standalone in node and can't import app modules. Keep them in sync.
+function championSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/['’.]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// League Docs champion pages — one per champion, from the public meta endpoint.
+async function fetchChampionDocEntries(): Promise<SitemapEntry[]> {
+  if (!COMBAT_API_URL) {
+    console.warn("[sitemap] VITE_COMBAT_API_URL not set — skipping champion doc entries.");
+    return [];
+  }
+  try {
+    const res = await fetch(`${COMBAT_API_URL}/api/meta/champions`, {
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) {
+      console.warn(`[sitemap] champions fetch failed: HTTP ${res.status}`);
+      return [];
+    }
+    const data = (await res.json()) as { champions?: Array<string | { name?: string; champion_name?: string }> };
+    const entries: SitemapEntry[] = [];
+    for (const c of data?.champions ?? []) {
+      const name = typeof c === "string" ? c : c?.name ?? c?.champion_name;
+      if (!name) continue;
+      entries.push({
+        path: `/lol/docs/champions/${championSlug(name)}`,
+        changefreq: "weekly",
+        priority: "0.6",
+      });
+    }
+    return entries;
+  } catch (err) {
+    console.warn("[sitemap] champions fetch failed:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 // Public user profiles — one per non-bot, non-anonymous profile

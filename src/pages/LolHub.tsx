@@ -80,7 +80,7 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
   {
     to: "/lol/docs",
     title: "League Docs",
-    description: "Searchable, timestamped log of every change to LoL pages.",
+    description: "Browse champion stats, items, mechanics, and patch knowledge.",
     Icon: FileText,
     side: "right",
     championName: "Viktor",

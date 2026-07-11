@@ -9,14 +9,15 @@
  *
  * AUTO-UPDATE CONVENTION (for the Lovable AI assistant):
  * Whenever you (the AI) ship ANY change that touches a LoL surface — the /lol hub,
- * /lol/tier-list, /lol/docs, /combat-lab*, /quiz*, the Hextech theme, the LoL
- * navbar/back button, or any /lol-only component — you MUST prepend a new
- * LolChangeEntry to LOL_CHANGELOG below in the SAME turn as the change.
+ * /lol/tier-list, /lol/docs, /lol/dev-changelog, /combat-lab*, /quiz*, the Hextech
+ * theme, the LoL navbar/back button, or any /lol-only component — you MUST prepend
+ * a new LolChangeEntry to LOL_CHANGELOG below in the SAME turn as the change.
  * Use the current UTC timestamp, pick an accurate `type` and `scopes`, write a
  * one-paragraph `summary`, list concrete UI/behavior bullets in `details`, and
  * list every file you edited in `files` plus every route affected in `routes`.
- * This file IS the source of truth that powers /lol/docs and the ChatGPT copy
- * buttons — skipping the entry silently breaks the docs.
+ * This file IS the source of truth that powers the internal /lol/dev-changelog page
+ * and its ChatGPT copy buttons — skipping the entry silently breaks that log.
+ * (/lol/docs is now the public League knowledge base and does NOT render this file.)
  */
 
 export type LolChangeType =
@@ -54,6 +55,35 @@ export interface LolChangeEntry {
 }
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
+  {
+    timestamp: "2026-07-10T00:00:00Z",
+    title: "League Docs repositioned as public knowledge base; dev changelog moved",
+    type: "feature",
+    scopes: ["docs", "hub", "navigation"],
+    summary:
+      "The /lol/docs route is now a public League of Legends knowledge base (landing page, champion index, and champion detail pages with base stats, per-level growth, and a 1–18 level projection). The previous developer changelog experience moved unchanged to /lol/dev-changelog, which is noindexed and no longer in the sitemap.",
+    details: [
+      "New landing page at /lol/docs: champion search, browse-category cards (Champions active; Items, Mechanics, Patch Changes, Compare marked Soon), featured champion grid, Quiz/Combat Lab framing, and a data-trust section.",
+      "New champion index at /lol/docs/champions: searchable alphabetical icon grid with loading, error/retry, and empty states.",
+      "New champion detail at /lol/docs/champions/:slug: base stats + growth table, level 1–18 projection slider using the engine's riot level multiplier, honest data-metadata panel, and restrained Soon placeholders.",
+      "LolDocumentation.tsx renamed to LolDevChangelog.tsx; UI, filters, and copy buttons preserved; page now noindex with internal framing.",
+      "LoL hub League Docs card description updated to knowledge-base wording; sitemap gained /lol/docs/champions.",
+    ],
+    files: [
+      "src/pages/lol-docs/LeagueDocsLanding.tsx",
+      "src/pages/lol-docs/LeagueDocsChampionIndex.tsx",
+      "src/pages/lol-docs/LeagueDocsChampionDetail.tsx",
+      "src/pages/LolDevChangelog.tsx",
+      "src/lib/league-docs/api.ts",
+      "src/hooks/useChampionBaseStats.ts",
+      "src/lib/route-prefetch.ts",
+      "src/App.tsx",
+      "src/pages/LolHub.tsx",
+      "public/sitemap.xml",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol/docs", "/lol/docs/champions", "/lol/dev-changelog", "/lol"],
+  },
   {
     timestamp: "2026-06-25T03:00:00Z",
     title: "Combat Lab: Full Session Debug Report Export",

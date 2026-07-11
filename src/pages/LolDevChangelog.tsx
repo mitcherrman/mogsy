@@ -105,7 +105,7 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
-export default function LolDocumentation() {
+export default function LolDevChangelog() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<LolChangeType | "all">("all");
   const [scopeFilter, setScopeFilter] = useState<LolChangeScope | "all">("all");
@@ -146,9 +146,10 @@ export default function LolDocumentation() {
   return (
     <div>
       <SEOHead
-        title="Mogsy LoL — League Documentation & Changelog"
-        description="A searchable, filterable log of every Lovable change made to Mogsy's League of Legends pages. Copy entries straight into ChatGPT for context."
-        path="/lol/docs"
+        title="Mogsy — Developer Changelog (Internal)"
+        description="Internal development changelog for Mogsy's League of Legends pages."
+        path="/lol/dev-changelog"
+        noindex
       />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -160,11 +161,11 @@ export default function LolDocumentation() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] uppercase tracking-[0.25em] font-bold" style={{ color: GOLD }}>
-                Mogsy x LoL · Docs
+                Mogsy x LoL · Internal
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">League Documentation</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Developer Changelog</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
-                A timestamped log of every Lovable change to the LoL hub, tier list, Combat Lab and Quiz. Search, filter, and copy entries straight into ChatGPT so it knows the current state.
+                A timestamped log of every Lovable change to the LoL hub, tier list, Combat Lab and Quiz. Search, filter, and copy entries straight into ChatGPT so it knows the current state. The public knowledge base lives at /lol/docs.
               </p>
             </div>
           </div>
@@ -187,7 +188,7 @@ export default function LolDocumentation() {
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as LolChangeType | "all")}>
               <SelectTrigger className="w-full sm:w-[140px] bg-black/40 border-[#c9a84c]/20">
                 <Filter className="h-3.5 w-3.5 mr-1.5" style={{ color: GOLD }} />
                 <SelectValue placeholder="Type" />
@@ -201,7 +202,7 @@ export default function LolDocumentation() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as any)}>
+            <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as LolChangeScope | "all")}>
               <SelectTrigger className="w-full sm:w-[160px] bg-black/40 border-[#c9a84c]/20">
                 <Filter className="h-3.5 w-3.5 mr-1.5" style={{ color: GOLD }} />
                 <SelectValue placeholder="Scope" />
