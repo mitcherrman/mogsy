@@ -127,8 +127,35 @@ export type SandboxStepResponse = {
   events?: TimelineEvent[];
   remaining_by_scope?: Record<string, TargetScopeInfo>;
   attacker_stats?: Record<string, number | string>;
+  credits?: CombatLabCreditStatus;
   [k: string]: unknown;
 };
+
+/** Combat Lab daily usage credits (mirrors the backend credit status). */
+export type CombatLabCreditStatus = {
+  is_pro: boolean;
+  unlimited: boolean;
+  credits_used: number;
+  credits_limit: number | null;
+  credits_remaining: number | null;
+  blocked: boolean;
+  reset_at: string | null;
+  upsell_message: string | null;
+};
+
+/**
+ * Thrown when a Free user has spent their daily Combat Lab credits. Carries the
+ * credit status + upsell copy so the UI can show a clean gate instead of a raw
+ * error. Distinguishable from a normal simulation failure via instanceof.
+ */
+export class CombatLabCreditsExhaustedError extends Error {
+  credits: CombatLabCreditStatus;
+  constructor(credits: CombatLabCreditStatus) {
+    super(credits.upsell_message || "Daily Combat Lab limit reached.");
+    this.name = "CombatLabCreditsExhaustedError";
+    this.credits = credits;
+  }
+}
 
 /** Backend-aligned request shapes. */
 export type CombatLabBasicAttackRequest = {
@@ -538,6 +565,9 @@ export const combatApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  /** Read-only daily credit status for the current (verified/anon) user. */
+  credits: () =>
+    request<{ ok: boolean; credits: CombatLabCreditStatus }>("/api/combat-lab/credits"),
 };
 
 /**
@@ -550,6 +580,10 @@ export const combatApi = {
 function unwrapInteractive(raw: any): CombatLabInteractiveResponse {
   if (!raw || typeof raw !== "object") {
     throw new Error("Empty response from combat engine");
+  }
+  if (raw.blocked === true && raw.credits && typeof raw.credits === "object") {
+    // Daily credit gate — surface as a typed error the UI turns into an upsell.
+    throw new CombatLabCreditsExhaustedError(raw.credits as CombatLabCreditStatus);
   }
   if (raw.ok === false) {
     const msg =

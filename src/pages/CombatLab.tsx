@@ -31,6 +31,8 @@ import {
   Database,
   Filter,
   Wand2,
+  Crown,
+  Lock,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import ChampionVisual from "@/components/combat-lab/ChampionVisual";
@@ -86,6 +88,8 @@ import {
   type TargetDefense,
   type TargetDefensePreviewResponse,
   type TargetDefenseMetadata,
+  type CombatLabCreditStatus,
+  CombatLabCreditsExhaustedError,
 } from "@/lib/combat-lab/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1733,6 +1737,10 @@ function InteractiveSandbox({
   const [lastRequest, setLastRequest] = useState<unknown>(null);
   const [lastResponse, setLastResponse] = useState<unknown>(null);
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
+  // Daily Combat Lab credits. `credits` drives the unobtrusive indicator;
+  // `creditsGate` is set only when a run is blocked, showing the upsell card.
+  const [credits, setCredits] = useState<CombatLabCreditStatus | null>(null);
+  const [creditsGate, setCreditsGate] = useState<CombatLabCreditStatus | null>(null);
   const [lastAction, setLastAction] = useState<
     | { kind: "basic-attack" }
     | { kind: "active"; action_id: string; abilityKey?: "Q" | "W" | "E" | "R"; rank?: number }
@@ -1791,6 +1799,19 @@ function InteractiveSandbox({
       localStorage.setItem("combat-lab:rank-mode", rankMode);
     } catch {}
   }, [rankMode]);
+
+  // Load the daily credit status once so the indicator is populated before the
+  // user's first simulation. Best-effort — a failure just leaves it hidden.
+  useEffect(() => {
+    let cancelled = false;
+    combatApi
+      .credits()
+      .then((res) => {
+        if (!cancelled && res?.credits) setCredits(res.credits);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const championLevel = Math.max(
     1,
     Math.min(20, Number(config.stats?.LEVEL ?? 18) || 18)
@@ -2174,6 +2195,7 @@ function InteractiveSandbox({
       }
     }
     setError(null);
+    setCreditsGate(null);
     setBusy(action_id || kind);
     const abilityKey = kind === "active" ? detectAbilityKey(action_id) : undefined;
     const abilityRank = abilityKey ? abilityRanks[abilityKey] : undefined;
@@ -2263,6 +2285,7 @@ function InteractiveSandbox({
         res = await combatApi.active(payload as CombatLabActiveRequest);
       }
       setLastResponse(res);
+      if (res.credits) setCredits(res.credits);
       applyResponse(res);
       // Build a Combat Timeline entry from the new events appended by this action.
       const newEvents = Array.isArray(res.events) ? res.events : [];
@@ -2331,8 +2354,14 @@ function InteractiveSandbox({
       setSelectedTimelineId(entry.id);
       void eventsBeforeLen;
     } catch (e: any) {
-      setError(e?.message || `${kind} failed`);
-      setLastResponse({ error: e?.message || String(e) });
+      if (e instanceof CombatLabCreditsExhaustedError) {
+        // Free daily limit reached — show the upsell gate, not a raw error.
+        setCredits(e.credits);
+        setCreditsGate(e.credits);
+      } else {
+        setError(e?.message || `${kind} failed`);
+        setLastResponse({ error: e?.message || String(e) });
+      }
     } finally {
       setBusy(null);
     }
@@ -2768,6 +2797,45 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
+      {/* Daily credits indicator — unobtrusive, right-aligned. */}
+      {credits && (
+        <div className="flex justify-end">
+          {credits.unlimited ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 py-1 text-xs font-medium text-[#f0d78c]">
+              <Crown className="h-3.5 w-3.5" />
+              Pro: Unlimited simulations
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+              <Zap className="h-3.5 w-3.5" />
+              {Math.max(0, credits.credits_remaining ?? 0)} of {credits.credits_limit} free simulations left today
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Credit gate — shown when a Free user runs out. Clean upsell, no raw error. */}
+      {creditsGate && (
+        <Card className="border-[#c9a84c]/40 bg-[#c9a84c]/5">
+          <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+            <Lock className="h-7 w-7 text-[#c9a84c]" />
+            <p className="max-w-md text-sm">
+              {creditsGate.upsell_message ||
+                "You’ve used today’s free Combat Lab simulations. Upgrade to Mogsy Pro for unlimited Combat Lab usage."}
+            </p>
+            <div className="flex flex-col items-center gap-2 sm:flex-row">
+              <Button asChild className="border-0 font-semibold text-[#0a1428] hover:opacity-90"
+                      style={{ background: "linear-gradient(90deg, #c9a84c, #a8862f)" }}>
+                <Link to="/lol/pro">Upgrade to Mogsy Pro</Link>
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Or come back tomorrow — free simulations reset daily.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* VERSUS HEADER: Attacker | Combat | Defender */}
       <div className="grid gap-3 lg:grid-cols-[29fr_42fr_29fr]">
         {/* ATTACKER COLUMN */}
