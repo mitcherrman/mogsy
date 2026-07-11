@@ -24,6 +24,59 @@ export default function CombatSidePanel({
 }
 
 /**
+ * Mobile-only progressive disclosure: below the desktop breakpoint the
+ * children collapse behind a labeled row that summarizes the current
+ * selections; at lg+ the children render exactly as before with no
+ * disclosure chrome, so desktop layout is unchanged.
+ */
+export function MoreSection({
+  label,
+  summary,
+  children,
+}: {
+  label: string;
+  summary: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-md border border-border/50 bg-background/30 lg:rounded-none lg:border-0 lg:bg-transparent">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-muted/20 lg:hidden"
+        aria-expanded={open}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-wider text-foreground/90">
+            {label}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">{summary}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-primary/80">
+          {open ? (
+            <>
+              Close <ChevronUp className="h-3 w-3" />
+            </>
+          ) : (
+            <>
+              Edit <ChevronDown className="h-3 w-3" />
+            </>
+          )}
+        </span>
+      </button>
+      <div
+        className={`${
+          open ? "block border-t border-border/40 px-2.5 py-2.5" : "hidden"
+        } lg:block lg:border-0 lg:p-0`}
+      >
+        <div className="space-y-2">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Inline-expandable configuration row: shows the current selection at a
  * glance, expands in place to reveal the existing editor controls.
  */

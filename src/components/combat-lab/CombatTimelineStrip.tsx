@@ -61,7 +61,12 @@ export default function CombatTimelineStrip({
               const selected = selectedId === e.id;
               const name = e.abilityKey ? `${e.abilityKey}` : e.kind === "basic-attack" ? "AA" : e.label;
               return (
-                <div key={e.id} className="flex shrink-0 items-center gap-1.5">
+                <div
+                  key={e.id}
+                  className={`flex shrink-0 items-center gap-1.5 ${
+                    isLast ? "animate-in fade-in slide-in-from-right-2 duration-300" : ""
+                  }`}
+                >
                   {i > 0 && <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground/50" />}
                   <button
                     type="button"

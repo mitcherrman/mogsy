@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import ChampionVisual from "@/components/combat-lab/ChampionVisual";
-import CombatSidePanel, { ConfigRow } from "@/components/combat-lab/CombatSidePanel";
+import CombatSidePanel, { ConfigRow, MoreSection } from "@/components/combat-lab/CombatSidePanel";
 import CombatArena from "@/components/combat-lab/CombatArena";
 import CombatTimelineStrip from "@/components/combat-lab/CombatTimelineStrip";
 import {
@@ -712,27 +712,42 @@ export default function CombatLab() {
           Combat Lab
         </h1>
         <div className="flex items-center gap-2">
-          <ApiStatusBadge status={apiStatus} />
-          <Link
-            to="/combat-lab/diagnostics"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-          >
-            <Activity className="h-3 w-3" />
-            Diagnostics
-          </Link>
-          <button
-            type="button"
-            onClick={() => setDevMode((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors ${
-              devMode
-                ? "border-primary/60 bg-primary/15 text-primary"
-                : "border-border/50 bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-primary"
+          {/* Mobile: developer chrome collapses to a small connection dot.
+              Desktop (and Dev Mode on mobile) keeps the full controls. */}
+          <span
+            className={`h-2 w-2 rounded-full lg:hidden ${
+              apiStatus === "online"
+                ? "bg-emerald-400"
+                : apiStatus === "offline"
+                  ? "bg-red-500"
+                  : "bg-amber-400"
             }`}
-            title="Toggle developer mode"
-          >
-            <Activity className="h-3 w-3" />
-            Dev Mode {devMode ? "ON" : "OFF"}
-          </button>
+            title={`Backend ${apiStatus}`}
+            aria-label={`Backend ${apiStatus}`}
+          />
+          <div className={`items-center gap-2 ${devMode ? "flex" : "hidden lg:flex"}`}>
+            <ApiStatusBadge status={apiStatus} />
+            <Link
+              to="/combat-lab/diagnostics"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <Activity className="h-3 w-3" />
+              Diagnostics
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDevMode((v) => !v)}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors ${
+                devMode
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-border/50 bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-primary"
+              }`}
+              title="Toggle developer mode"
+            >
+              <Activity className="h-3 w-3" />
+              Dev Mode {devMode ? "ON" : "OFF"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1108,6 +1123,8 @@ export default function CombatLab() {
         each section. For the full side-by-side view, try a larger screen.
       </p>
 
+      {/* Metadata counts are a developer indicator — desktop or Dev Mode only */}
+      <div className={devMode ? undefined : "hidden lg:block"}>
       <MetadataAuditPanel
         loading={metaLoading}
         apiStatus={apiStatus}
@@ -1118,6 +1135,7 @@ export default function CombatLab() {
         summoners={summoners}
         actions={actionsMeta}
       />
+      </div>
     </div>
   );
 }
@@ -2762,7 +2780,11 @@ function InteractiveSandbox({
               level={config.stats?.LEVEL ?? 18}
               skinKey={attackerSkin}
               onSkinChange={setAttackerSkin}
-              className="min-h-[300px] flex-1"
+              className={
+                config.champion
+                  ? "min-h-[300px] flex-1"
+                  : "h-[200px] lg:h-auto lg:min-h-[300px] lg:flex-1"
+              }
             />
           }
         >
@@ -2816,6 +2838,19 @@ function InteractiveSandbox({
                 withIcons
               />
             </ConfigRow>
+            <MoreSection
+              label="More setup"
+              summary={[
+                config.runes.length > 0
+                  ? config.runes.slice(0, 2).join("/") +
+                    (config.runes.length > 2 ? ` +${config.runes.length - 2}` : "")
+                  : "No runes",
+                summonerPicks.filter(Boolean).length > 0
+                  ? summonerPicks.filter(Boolean).join("/")
+                  : "No summoners",
+                `Crit ${config.crit_mode}`,
+              ].join(" · ")}
+            >
             <ConfigRow
               label="Runes"
               summary={config.runes.length > 0 ? config.runes.join(" · ") : "None"}
@@ -2920,6 +2955,7 @@ function InteractiveSandbox({
             </div>
               </div>
             </ConfigRow>
+            </MoreSection>
           </div>
         </SectionCard>
         <ActiveEffectsPanel
@@ -3081,40 +3117,59 @@ function InteractiveSandbox({
         {/* DEFENDER COLUMN */}
         <CombatSidePanel
           visual={
-            <ChampionVisual
-              role="defender"
-              championId={
-                targetSetup.targetMode === "target_champion"
-                  ? targetSetup.targetChampionName
-                  : ""
-              }
-              championLabel={
-                targetSetup.targetMode === "target_champion"
-                  ? champions.find(
-                      (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
-                    )?.name || targetSetup.targetChampionName
-                  : undefined
-              }
-              level={
-                targetSetup.targetMode === "target_champion"
-                  ? targetSetup.targetLevel
-                  : undefined
-              }
-              emptyMessage={
-                targetSetup.targetMode === "target_dummy"
-                  ? "Custom Target Dummy active"
-                  : targetSetup.targetMode === "target_profile"
-                    ? "Legacy target profile active"
-                    : "Select a defender champion"
-              }
-              skinKey={
-                targetSetup.targetMode === "target_champion" ? defenderSkin : undefined
-              }
-              onSkinChange={
-                targetSetup.targetMode === "target_champion" ? setDefenderSkin : undefined
-              }
-              className="min-h-[300px] flex-1"
-            />
+            targetSetup.targetMode === "target_champion" ? (
+              <ChampionVisual
+                role="defender"
+                championId={targetSetup.targetChampionName}
+                championLabel={
+                  champions.find(
+                    (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
+                  )?.name || targetSetup.targetChampionName
+                }
+                level={targetSetup.targetLevel}
+                emptyMessage="Select a defender champion"
+                skinKey={defenderSkin}
+                onSkinChange={setDefenderSkin}
+                className={
+                  targetSetup.targetChampionName
+                    ? "min-h-[300px] flex-1"
+                    : "h-[200px] lg:h-auto lg:min-h-[300px] lg:flex-1"
+                }
+              />
+            ) : (
+              <>
+                {/* Mobile: non-champion defenders get a compact identity card —
+                    the large media slot is reserved for real champion art. */}
+                <div className="rounded-xl border border-accent/40 bg-card/50 px-4 py-3 lg:hidden">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Defender
+                  </div>
+                  <div className="text-lg font-extrabold leading-tight text-foreground">
+                    {targetSetup.targetMode === "target_dummy"
+                      ? "Target Dummy"
+                      : "Target Profile"}
+                  </div>
+                  {targetSetup.targetMode === "target_dummy" && (
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      {targetSetup.dummyHP.toLocaleString()} HP · {targetSetup.dummyArmor}{" "}
+                      Armor · {targetSetup.dummyMR} MR
+                    </div>
+                  )}
+                </div>
+                <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+                  <ChampionVisual
+                    role="defender"
+                    championId=""
+                    emptyMessage={
+                      targetSetup.targetMode === "target_dummy"
+                        ? "Custom Target Dummy active"
+                        : "Legacy target profile active"
+                    }
+                    className="min-h-[300px] flex-1"
+                  />
+                </div>
+              </>
+            )
           }
         >
           <DefenderPanel
@@ -3128,6 +3183,7 @@ function InteractiveSandbox({
             onApplyDefense={applyDefense}
             applyBusy={defenderApplyBusy}
             offline={offline}
+            devMode={devMode}
           />
           <ActiveEffectsPanel
             title="Active Defender Effects"
@@ -3869,6 +3925,7 @@ function DefenderPanel({
   onApplyDefense,
   applyBusy,
   offline,
+  devMode = false,
 }: {
   setup: TargetSetupState;
   update: <K extends keyof TargetSetupState>(key: K, value: TargetSetupState[K]) => void;
@@ -3880,6 +3937,7 @@ function DefenderPanel({
   onApplyDefense: (defenseName: string) => void;
   applyBusy: string | null;
   offline: boolean;
+  devMode?: boolean;
 }) {
   const modes: { id: TargetMode; label: string }[] = [
     { id: "target_champion", label: "Champion Defender" },
@@ -3966,6 +4024,20 @@ function DefenderPanel({
                 withIcons
               />
             </ConfigRow>
+            <MoreSection
+              label="More defenses"
+              summary={[
+                setup.targetRuneNames.length > 0
+                  ? setup.targetRuneNames.slice(0, 2).join("/") +
+                    (setup.targetRuneNames.length > 2
+                      ? ` +${setup.targetRuneNames.length - 2}`
+                      : "")
+                  : "No runes",
+                championDefenses.length > 0
+                  ? `${championDefenses.length} defenses`
+                  : "No defenses applied",
+              ].join(" · ")}
+            >
             <ConfigRow
               label="Runes"
               summary={
@@ -4003,6 +4075,7 @@ function DefenderPanel({
                 showChampionSection
               />
             </ConfigRow>
+            </MoreSection>
           </div>
         )}
 
@@ -4036,43 +4109,55 @@ function DefenderPanel({
                   onChange={(e) => update("dummyMR", Math.max(0, Number(e.target.value) || 0))}
                 />
               </div>
-              <div>
-                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Shield</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={setup.dummyShield}
-                  onChange={(e) => update("dummyShield", Math.max(0, Number(e.target.value) || 0))}
-                />
-              </div>
-              <div className="col-span-2">
-                <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">DR %</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={setup.dummyDR}
-                  onChange={(e) =>
-                    update("dummyDR", Math.max(0, Math.min(100, Number(e.target.value) || 0)))
-                  }
-                />
-              </div>
             </div>
             <div className="text-[10px] text-muted-foreground">
-              Sent as target_stats {`{ HP, ARMOR, MR }`}. Shield / DR are advisory; switch to a
-              Champion Defender to apply real defenses into combat state.
+              Set a custom target's health and defenses.
             </div>
-            <DefenderAbilitiesList
-              championDefenses={[]}
-              genericDefenses={genericDefenses}
-              defenderLabel="Target Dummy"
-              applyBusy={applyBusy}
-              offline={offline}
-              onApplyDefense={onApplyDefense}
-              advancedOpen={advancedOpen}
-              setAdvancedOpen={setAdvancedOpen}
-              showChampionSection={false}
-            />
+            <MoreSection
+              label="More defenses"
+              summary={`Shield ${setup.dummyShield.toLocaleString()} · DR ${setup.dummyDR}%`}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Shield</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={setup.dummyShield}
+                    onChange={(e) => update("dummyShield", Math.max(0, Number(e.target.value) || 0))}
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">DR %</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={setup.dummyDR}
+                    onChange={(e) =>
+                      update("dummyDR", Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                    }
+                  />
+                </div>
+              </div>
+              {devMode && (
+                <div className="text-[10px] text-muted-foreground">
+                  Sent as target_stats {`{ HP, ARMOR, MR }`}. Shield / DR are advisory; switch to a
+                  Champion Defender to apply real defenses into combat state.
+                </div>
+              )}
+              <DefenderAbilitiesList
+                championDefenses={[]}
+                genericDefenses={genericDefenses}
+                defenderLabel="Target Dummy"
+                applyBusy={applyBusy}
+                offline={offline}
+                onApplyDefense={onApplyDefense}
+                advancedOpen={advancedOpen}
+                setAdvancedOpen={setAdvancedOpen}
+                showChampionSection={false}
+              />
+            </MoreSection>
           </div>
         )}
       </div>
