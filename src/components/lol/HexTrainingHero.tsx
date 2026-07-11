@@ -113,14 +113,14 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                   onStartQuiz();
                   navigate("/quiz");
                 }}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
+                className="hero-cta-gold inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
               >
                 Start Quiz
                 <ArrowRight className="h-4 w-4" />
               </button>
               <Link
                 to="/combat-lab"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0ac8ff]/40 bg-[#0ac8ff]/10 px-4 py-2.5 text-sm font-bold text-[#8fdcff] hover:bg-[#0ac8ff]/20 hover:border-[#0ac8ff]/70 transition-colors"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0ac8ff]/40 bg-[#0ac8ff]/10 px-4 py-2.5 text-sm font-bold text-[#8fdcff] hover:bg-[#0ac8ff]/20 hover:border-[#0ac8ff]/70 hover:-translate-y-0.5 hover:shadow-[0_4px_18px_rgba(10,200,255,0.35)] motion-reduce:hover:translate-y-0 transition-all duration-300"
               >
                 Open Combat Lab
               </Link>
@@ -142,7 +142,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                       aria-pressed={active}
                       className={`shrink-0 inline-flex min-h-[40px] items-center gap-2 px-3.5 py-2 text-xs font-bold transition-colors border ${
                         active
-                          ? "border-[#c9a84c]/80 bg-[#c9a84c]/15 text-[#f0d78c]"
+                          ? "hero-tab-active border-[#c9a84c]/80 bg-[#c9a84c]/15 text-[#f0d78c]"
                           : "border-white/10 bg-black/30 text-[#a09b8c] hover:border-[#0ac8ff]/40 hover:text-[#cfe9f5]"
                       }`}
                       style={{
@@ -224,20 +224,42 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
               <div className="hero-glow-pulse absolute inset-10 rounded-full" style={{ boxShadow: "0 0 60px rgba(10,200,255,0.25) inset" }} />
             </div>
 
-            {/* Ambient particles */}
+            {/* Ambient particles — varied size, delay, and duration */}
             <div className="pointer-events-none absolute inset-0" aria-hidden>
-              {[15, 40, 62, 80].map((left, i) => (
+              {[
+                { left: 12, size: 3, delay: 0, dur: 7.5 },
+                { left: 34, size: 4, delay: 2.2, dur: 9 },
+                { left: 55, size: 2, delay: 4.1, dur: 6.5 },
+                { left: 72, size: 3, delay: 1.3, dur: 8 },
+                { left: 88, size: 2, delay: 5.4, dur: 10 },
+              ].map((p) => (
                 <span
-                  key={left}
-                  className="hero-particle absolute bottom-0 h-1 w-1 rounded-full bg-[#0ac8ff]/70"
-                  style={{ left: `${left}%`, animationDelay: `${i * 1.7}s` }}
+                  key={p.left}
+                  className="hero-particle absolute bottom-0 rounded-full bg-[#0ac8ff]/50"
+                  style={{
+                    left: `${p.left}%`,
+                    width: p.size,
+                    height: p.size,
+                    animationDelay: `${p.delay}s`,
+                    animationDuration: `${p.dur}s`,
+                  }}
                 />
               ))}
             </div>
 
+            {/* Decorative side diamonds */}
+            <div className="pointer-events-none absolute inset-y-0 right-3 hidden md:flex flex-col items-center justify-center gap-6" aria-hidden>
+              <span className="hero-diamond h-2 w-2 border border-[#c9a84c]/40" />
+              <span className="hero-diamond h-1.5 w-1.5 bg-[#0ac8ff]/30" style={{ animationDelay: "-4s" }} />
+              <span className="hero-diamond h-2 w-2 border border-[#0ac8ff]/35" style={{ animationDelay: "-7s" }} />
+            </div>
+
             {/* Floating mini-panel — re-keyed per mode for fade/slide-in */}
             <div key={mode.key} className="hero-mode-in absolute left-4 bottom-4 md:left-6 md:bottom-6 z-10">
-              <ModePanel modeKey={mode.key} />
+              {/* Drift lives on an inner wrapper so it composes with the mode-in transform */}
+              <div className="hero-panel-drift">
+                <ModePanel modeKey={mode.key} />
+              </div>
             </div>
           </div>
         </div>

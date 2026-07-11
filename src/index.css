@@ -682,16 +682,17 @@ html.high-contrast * { text-shadow: none !important; }
 
 /* LoL hub Hextech training hero */
 @keyframes hero-champ-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-6px) scale(1.015); }
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(2px, -4px) scale(1.012); }
+  66% { transform: translate(-3px, -6px) scale(1.022); }
 }
-.hero-champ-float { animation: hero-champ-float 8s ease-in-out infinite; will-change: transform; }
+.hero-champ-float { animation: hero-champ-float 9s ease-in-out infinite; will-change: transform; }
 
 @keyframes hero-glow-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.95; }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
 }
-.hero-glow-pulse { animation: hero-glow-pulse 5s ease-in-out infinite; }
+.hero-glow-pulse { animation: hero-glow-pulse 6s ease-in-out infinite; }
 
 @keyframes hero-ring-spin { to { transform: rotate(360deg); } }
 .hero-ring-spin { animation: hero-ring-spin 40s linear infinite; }
@@ -710,6 +711,44 @@ html.high-contrast * { text-shadow: none !important; }
 }
 .hero-particle { animation: hero-particle-rise 7s linear infinite; }
 
+/* Mini-panel vertical drift — on an inner wrapper so it composes with hero-mode-in */
+@keyframes hero-panel-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.hero-panel-drift { animation: hero-panel-drift 5.5s ease-in-out infinite; }
+
+/* Gold light sweep across the primary CTA on hover */
+.hero-cta-gold { position: relative; overflow: hidden; }
+.hero-cta-gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 246, 215, 0.45) 50%, transparent 65%);
+  transform: translateX(-110%);
+  pointer-events: none;
+}
+.hero-cta-gold:hover::after,
+.hero-cta-gold:focus-visible::after {
+  transition: transform 0.7s ease;
+  transform: translateX(110%);
+}
+
+/* Active training-mode tab: soft gold energy pulse on the border/glow */
+/* Inset-only glow: the tab buttons are clip-path'd, so outer shadows would be clipped */
+@keyframes hero-tab-pulse {
+  0%, 100% { box-shadow: inset 0 0 8px rgba(201, 168, 76, 0.12); }
+  50% { box-shadow: inset 0 0 16px rgba(201, 168, 76, 0.3); }
+}
+.hero-tab-active { animation: hero-tab-pulse 3s ease-in-out infinite; }
+
+/* Decorative side diamonds: very slow bob + slight rotation around 45° */
+@keyframes hero-diamond-bob {
+  0%, 100% { transform: translateY(0) rotate(45deg); }
+  50% { transform: translateY(-4px) rotate(51deg); }
+}
+.hero-diamond { animation: hero-diamond-bob 10s ease-in-out infinite; }
+
 .hero-hexgrid {
   background-image:
     linear-gradient(30deg, rgba(10, 200, 255, 0.06) 1px, transparent 1px),
@@ -724,8 +763,13 @@ html.high-contrast * { text-shadow: none !important; }
   .hero-ring-spin,
   .hero-ring-spin-reverse,
   .hero-mode-in,
-  .hero-particle {
+  .hero-particle,
+  .hero-panel-drift,
+  .hero-tab-active,
+  .hero-diamond {
     animation: none !important;
   }
   .hero-particle { opacity: 0; }
+  .hero-diamond { transform: rotate(45deg); }
+  .hero-cta-gold::after { display: none; }
 }
