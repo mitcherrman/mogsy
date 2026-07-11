@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "champion-images authenticated read" ON storage.objects;

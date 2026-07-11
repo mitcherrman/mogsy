@@ -1301,6 +1301,181 @@ export type Database = {
           },
         ]
       }
+      league_swipe_entity_ratings: {
+        Row: {
+          entity_id: string
+          entity_type: string
+          game_id: string
+          rating: number
+          updated_at: string
+          vote_count: number
+          win_count: number
+        }
+        Insert: {
+          entity_id: string
+          entity_type?: string
+          game_id: string
+          rating?: number
+          updated_at?: string
+          vote_count?: number
+          win_count?: number
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: string
+          game_id?: string
+          rating?: number
+          updated_at?: string
+          vote_count?: number
+          win_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_swipe_entity_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "league_swipe_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_swipe_games: {
+        Row: {
+          created_at: string
+          description: string | null
+          entity_type: string
+          id: string
+          is_active: boolean
+          mode: string
+          prompt: string
+          slug: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          mode: string
+          prompt: string
+          slug: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          mode?: string
+          prompt?: string
+          slug?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      league_swipe_matchups: {
+        Row: {
+          created_at: string
+          entity_a: string
+          entity_b: string
+          game_id: string
+          id: string
+          votes_a: number
+          votes_b: number
+        }
+        Insert: {
+          created_at?: string
+          entity_a: string
+          entity_b: string
+          game_id: string
+          id?: string
+          votes_a?: number
+          votes_b?: number
+        }
+        Update: {
+          created_at?: string
+          entity_a?: string
+          entity_b?: string
+          game_id?: string
+          id?: string
+          votes_a?: number
+          votes_b?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_swipe_matchups_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "league_swipe_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_swipe_results: {
+        Row: {
+          context: Json | null
+          correct_entity: string | null
+          created_at: string
+          game_id: string
+          id: string
+          is_correct: boolean | null
+          matchup_id: string
+          other_entity: string
+          other_value: number | null
+          response_time_ms: number | null
+          selected_entity: string
+          selected_value: number | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          correct_entity?: string | null
+          created_at?: string
+          game_id: string
+          id?: string
+          is_correct?: boolean | null
+          matchup_id: string
+          other_entity: string
+          other_value?: number | null
+          response_time_ms?: number | null
+          selected_entity: string
+          selected_value?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          correct_entity?: string | null
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_correct?: boolean | null
+          matchup_id?: string
+          other_entity?: string
+          other_value?: number | null
+          response_time_ms?: number | null
+          selected_entity?: string
+          selected_value?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_swipe_results_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "league_swipe_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_swipe_results_matchup_id_fkey"
+            columns: ["matchup_id"]
+            isOneToOne: false
+            referencedRelation: "league_swipe_matchups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leagues: {
         Row: {
           category: string | null
@@ -2734,6 +2909,7 @@ export type Database = {
         Args: { _game_id: string; _result: Json }
         Returns: undefined
       }
+      get_league_swipe_stats: { Args: never; Returns: Json }
       get_my_referral_code: {
         Args: never
         Returns: {
@@ -2832,6 +3008,19 @@ export type Database = {
           _league_id: string
           _loser_profile_id: string
           _winner_profile_id: string
+        }
+        Returns: Json
+      }
+      record_league_swipe_result: {
+        Args: {
+          p_context?: Json
+          p_correct_entity?: string
+          p_game_slug: string
+          p_other: string
+          p_other_value?: number
+          p_response_time_ms?: number
+          p_selected: string
+          p_selected_value?: number
         }
         Returns: Json
       }
