@@ -52,11 +52,38 @@ export type BroadcastVisuals = {
   hideShortsDormantInsight: boolean;
 };
 
+/** One configurable broadcast sound effect. */
+export type BroadcastSfxItem = {
+  enabled: boolean;
+  /** Browser path to the audio file, e.g. "/quiz-broadcast/audio/sfx/reveal.mp3". */
+  src: string;
+  volume: number; // 0..1, multiplied by masterVolume
+};
+
+export type BroadcastSfxEvent =
+  | "questionStart"
+  | "countdownTick"
+  | "reveal"
+  | "correctAnswer"
+  | "transition";
+
+export type BroadcastSfx = {
+  enabled: boolean;
+  masterVolume: number; // 0..1
+  sounds: Record<BroadcastSfxEvent, BroadcastSfxItem>;
+};
+
+/** Partial shape accepted when patching/merging saved SFX configs. */
+export type BroadcastSfxPatch = Partial<Omit<BroadcastSfx, "sounds">> & {
+  sounds?: Partial<Record<BroadcastSfxEvent, Partial<BroadcastSfxItem>>>;
+};
+
 export type BroadcastConfig = {
   timing: BroadcastTiming;
   visuals: BroadcastVisuals;
   playback: PlaybackMode;
   repeatCount: number;
+  sfx: BroadcastSfx;
 };
 
 export type BroadcastPlaylist = {
@@ -122,9 +149,56 @@ export const DEFAULT_VISUALS: BroadcastVisuals = {
   hideShortsDormantInsight: true,
 };
 
+export const SFX_EVENTS: BroadcastSfxEvent[] = [
+  "questionStart",
+  "countdownTick",
+  "reveal",
+  "correctAnswer",
+  "transition",
+];
+
+const DEFAULT_SFX_ITEM: BroadcastSfxItem = {
+  enabled: false,
+  src: "",
+  volume: 0.6,
+};
+
+export const DEFAULT_SFX: BroadcastSfx = {
+  enabled: false,
+  masterVolume: 0.5,
+  sounds: {
+    questionStart: { ...DEFAULT_SFX_ITEM },
+    countdownTick: { ...DEFAULT_SFX_ITEM },
+    reveal: { ...DEFAULT_SFX_ITEM },
+    correctAnswer: { ...DEFAULT_SFX_ITEM },
+    transition: { ...DEFAULT_SFX_ITEM },
+  },
+};
+
+/**
+ * Deep-merge an (optionally partial / legacy) SFX config over a base.
+ * Old saved configs predate `sfx` entirely — every merge path
+ * (localStorage config, durable session, engine patch) goes through this
+ * so missing keys always fall back to safe defaults.
+ */
+export function mergeSfx(base: BroadcastSfx, patch?: BroadcastSfxPatch | null): BroadcastSfx {
+  const b = base ?? DEFAULT_SFX;
+  if (!patch) return b;
+  const sounds = {} as BroadcastSfx["sounds"];
+  for (const ev of SFX_EVENTS) {
+    sounds[ev] = { ...DEFAULT_SFX_ITEM, ...b.sounds?.[ev], ...(patch.sounds?.[ev] ?? {}) };
+  }
+  return {
+    enabled: patch.enabled ?? b.enabled ?? DEFAULT_SFX.enabled,
+    masterVolume: patch.masterVolume ?? b.masterVolume ?? DEFAULT_SFX.masterVolume,
+    sounds,
+  };
+}
+
 export const DEFAULT_CONFIG: BroadcastConfig = {
   timing: DEFAULT_TIMING,
   visuals: DEFAULT_VISUALS,
   playback: "sequential",
   repeatCount: 1,
+  sfx: DEFAULT_SFX,
 };

@@ -1,5 +1,5 @@
 import type { BroadcastConfig, BroadcastPlaylist } from "./types";
-import { DEFAULT_CONFIG } from "./types";
+import { DEFAULT_CONFIG, mergeSfx } from "./types";
 
 const PLAYLISTS_KEY = "mogsy.quizBroadcast.playlists.v1";
 const CONFIG_KEY = "mogsy.quizBroadcast.config.v1";
@@ -48,6 +48,7 @@ export function loadConfig(): BroadcastConfig {
       ...parsed,
       timing: { ...DEFAULT_CONFIG.timing, ...(parsed.timing ?? {}) },
       visuals: { ...DEFAULT_CONFIG.visuals, ...(parsed.visuals ?? {}) },
+      sfx: mergeSfx(DEFAULT_CONFIG.sfx, parsed.sfx),
     };
   } catch {
     return DEFAULT_CONFIG;

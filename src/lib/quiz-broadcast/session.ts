@@ -1,6 +1,6 @@
 import type { QuizQuestion } from "@/lib/quiz/api";
 import type { BroadcastConfig, BroadcastPhase } from "./types";
-import { DEFAULT_CONFIG } from "./types";
+import { DEFAULT_CONFIG, mergeSfx } from "./types";
 
 /**
  * ActiveBroadcastSession
@@ -102,6 +102,7 @@ export function loadActiveSession(): ActiveBroadcastSession | null {
         ...(parsed.config ?? {}),
         timing: { ...base.config.timing, ...((parsed.config?.timing) ?? {}) },
         visuals: { ...base.config.visuals, ...((parsed.config?.visuals) ?? {}) },
+        sfx: mergeSfx(base.config.sfx, parsed.config?.sfx),
       },
       questions: Array.isArray(parsed.questions) ? parsed.questions : [],
       playedHistory: Array.isArray(parsed.playedHistory) ? parsed.playedHistory : [],

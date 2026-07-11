@@ -5,8 +5,10 @@ import {
   type BroadcastPhase,
   type BroadcastTiming,
   type BroadcastVisuals,
+  type BroadcastSfxPatch,
   type EngineSnapshot,
   DEFAULT_CONFIG,
+  mergeSfx,
 } from "./types";
 import {
   type ActiveBroadcastSession,
@@ -15,9 +17,10 @@ import {
   saveActiveSession,
 } from "./session";
 
-type ConfigPatch = Partial<Omit<BroadcastConfig, "timing" | "visuals">> & {
+type ConfigPatch = Partial<Omit<BroadcastConfig, "timing" | "visuals" | "sfx">> & {
   timing?: Partial<BroadcastTiming>;
   visuals?: Partial<BroadcastVisuals>;
+  sfx?: BroadcastSfxPatch;
 };
 
 type Listener = (s: EngineSnapshot) => void;
@@ -195,6 +198,7 @@ export class BroadcastEngine {
       ...next,
       timing: { ...this.config.timing, ...(next.timing ?? {}) },
       visuals: { ...this.config.visuals, ...(next.visuals ?? {}) },
+      sfx: mergeSfx(this.config.sfx, next.sfx),
     };
     this.emit();
     this.persistNow();

@@ -90,6 +90,7 @@ import PlaylistBuilder from "@/components/quiz-broadcast/PlaylistBuilder";
 import ControlPanel from "@/components/quiz-broadcast/ControlPanel";
 import TimingSettings from "@/components/quiz-broadcast/TimingSettings";
 import VisualSettings from "@/components/quiz-broadcast/VisualSettings";
+import SfxSettings from "@/components/quiz-broadcast/SfxSettings";
 import BroadcastStats from "@/components/quiz-broadcast/BroadcastStats";
 import PlaylistLibrary from "@/components/quiz-broadcast/PlaylistLibrary";
 import DeveloperTools from "@/components/quiz-broadcast/DeveloperTools";
@@ -370,6 +371,7 @@ export default function AdminQuizBroadcast() {
               <TabsTrigger value="library">Saved Playlists</TabsTrigger>
               <TabsTrigger value="timing">Timing</TabsTrigger>
               <TabsTrigger value="visuals">Visuals</TabsTrigger>
+              <TabsTrigger value="audio">Audio</TabsTrigger>
               <TabsTrigger value="dev">Developer Tools</TabsTrigger>
             </TabsList>
             <TabsContent value="browse" className="h-[460px] pt-3">
@@ -396,6 +398,9 @@ export default function AdminQuizBroadcast() {
             </TabsContent>
             <TabsContent value="visuals" className="pt-3">
               <VisualSettings engine={engine} snapshot={snapshot} />
+            </TabsContent>
+            <TabsContent value="audio" className="pt-3">
+              <SfxSettings engine={engine} snapshot={snapshot} />
             </TabsContent>
             <TabsContent value="dev" className="pt-3">
               <DeveloperTools

@@ -8,6 +8,7 @@ import { CalculationBreakdown, ScenarioCard, classifySubject, isSpoilerSubject, 
 import { useRevealTimeline } from "./useRevealTimeline";
 import { BroadcastKnowledgeCore } from "./BroadcastKnowledgeCore";
 import { HextechOverloadFX } from "./HextechOverloadFX";
+import BroadcastSfxLayer from "./BroadcastSfxLayer";
 
 type Props = {
   snapshot: EngineSnapshot | null;
@@ -159,6 +160,11 @@ function BroadcastStage({ snapshot, fitContainer }: { snapshot: EngineSnapshot; 
       <div className="pointer-events-none absolute inset-0 z-[5]">
         <FXLayer revealActive={revealActive} />
       </div>
+
+      {/* Sound effects — presentation-only audio keyed to phase changes.
+          Renders nothing except a small unlock button when autoplay is
+          blocked; never affects timing or engine state. */}
+      <BroadcastSfxLayer snapshot={snapshot} />
 
       {/* Dramatic final 3·2·1 countdown — rAF-driven overlay, mounted once */}
       <FinalCountdownOverlay
