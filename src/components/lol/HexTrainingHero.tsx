@@ -5,6 +5,7 @@ import {
   type ChampionManifest,
   getChampionSplash,
 } from "@/hooks/useChampionAssets";
+import { playUiSfx } from "@/lib/ui-sfx";
 
 export type TrainingModeKey = "quiz" | "lab" | "swipe";
 
@@ -110,6 +111,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => {
+                  playUiSfx("primaryAction");
                   onStartQuiz();
                   navigate("/quiz");
                 }}
@@ -120,6 +122,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
               </button>
               <Link
                 to="/combat-lab"
+                onClick={() => playUiSfx("primaryAction")}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0ac8ff]/40 bg-[#0ac8ff]/10 px-4 py-2.5 text-sm font-bold text-[#8fdcff] hover:bg-[#0ac8ff]/20 hover:border-[#0ac8ff]/70 hover:-translate-y-0.5 hover:shadow-[0_4px_18px_rgba(10,200,255,0.35)] motion-reduce:hover:translate-y-0 transition-all duration-300"
               >
                 Open Combat Lab

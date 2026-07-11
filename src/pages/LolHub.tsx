@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import LolWelcomeIntro, { hasSeenLolWelcome } from "@/components/lol/LolWelcomeIntro";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { playUiSfx } from "@/lib/ui-sfx";
 
 const LOL_TAG = "League of Legends";
 
@@ -129,6 +130,9 @@ export default function LolHub() {
   // Funnel: landing view, once per mount.
   useEffect(() => {
     trackFunnelEvent("lol_landing_viewed");
+    // appEnter SFX — playUiSfx skips this internally on a cold page load
+    // (no user gesture yet), so it only sounds after internal navigation.
+    playUiSfx("appEnter");
   }, []);
 
   useEffect(() => {
@@ -179,7 +183,10 @@ export default function LolHub() {
               Sign up to save your XP, streaks, and progress across Mogsy League.
             </span>
             <button
-              onClick={() => navigate("/auth?mode=signup&returnTo=/lol")}
+              onClick={() => {
+                playUiSfx("primaryAction");
+                navigate("/auth?mode=signup&returnTo=/lol");
+              }}
               className="shrink-0 inline-flex min-h-[40px] items-center rounded-md bg-[#c9a84c]/20 px-3 py-2 text-sm font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
             >
               Sign up free
@@ -208,7 +215,7 @@ export default function LolHub() {
             // Slight negative margin from card #2 onward for the zipper overlap.
             const stagger = i === 0 ? "" : "-mt-4";
             return (
-              <div key={f.to} className={`${widthCls} ${alignCls} ${stagger}`}>
+              <div key={f.to} className={`${widthCls} ${alignCls} ${stagger}`} onClick={() => playUiSfx("sectionOpen")}>
                 <HexZipperCard
                   to={f.to}
                   title={f.title}
@@ -275,6 +282,7 @@ export default function LolHub() {
               <Link
                 key={g.slug}
                 to={`/league-swipe/${g.slug}`}
+                onClick={() => playUiSfx("sectionOpen")}
                 className="group rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f]/60 to-[#0a1428]/90 backdrop-blur-sm p-4 hover:border-[#c9a84c]/50 transition-all hover:scale-[1.01]"
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -342,6 +350,7 @@ function HubTile({
   return (
     <Link
       to={to}
+      onClick={() => playUiSfx("sectionOpen")}
       className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} backdrop-blur-sm p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
     >
       <div className="flex items-start gap-4">

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
 import TwoFactorAuth from "@/components/TwoFactorAuth";
+import UiSfxSettings from "@/components/UiSfxSettings";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -183,6 +184,9 @@ export default function Settings() {
             onChange={setSoundsMuted}
           />
         </motion.section>
+
+        {/* Sound Effects (main app UI SFX) */}
+        <UiSfxSettings />
 
         {/* Accessibility */}
         <motion.section

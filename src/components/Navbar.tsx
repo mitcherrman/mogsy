@@ -12,6 +12,7 @@ import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { playUiSfx } from "@/lib/ui-sfx";
 
 const baseNavItems = [
   { path: "/home", label: "Home", icon: Home },
@@ -114,6 +115,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
             onMouseEnter={() => prefetchRoute("/lol")}
             onFocus={() => prefetchRoute("/lol")}
             onTouchStart={() => prefetchRoute("/lol")}
+            onClick={() => playUiSfx("navClick")}
             aria-label="League of Legends hub"
             title="League of Legends"
             className="shrink-0 rounded-md ring-1 ring-transparent hover:ring-primary/40 transition-all hover:scale-105 active:scale-95"
@@ -136,6 +138,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
                     onMouseEnter={() => prefetchRoute(item.path)}
                     onFocus={() => prefetchRoute(item.path)}
                     onTouchStart={() => prefetchRoute(item.path)}
+                    onClick={() => playUiSfx("navClick")}
                     className="relative px-1.5 sm:px-3 py-2 text-sm font-medium transition-colors"
                   >
                     <span className={`flex items-center gap-1 ${isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined}>
@@ -230,6 +233,7 @@ export default function Navbar({ themeId }: { themeId?: string }) {
                     to={item.path}
                     onTouchStart={() => prefetchRoute(item.path)}
                     onMouseEnter={() => prefetchRoute(item.path)}
+                    onClick={() => playUiSfx("navClick")}
                     className="relative flex flex-col items-center gap-0.5 py-1 px-3"
                   >
                     <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} style={hasTheme && !isActive ? { color: "hsl(0,0%,70%)" } : hasTheme && isActive ? { color: "hsl(0,0%,95%)" } : undefined} />
