@@ -161,6 +161,29 @@ export type QuizHistoryEntry = {
   duration_seconds?: number | null;
 };
 
+export type MissedQuestion = {
+  attempt_id: number;
+  question_id: number;
+  question_text: string | null;
+  selected_answer: string | null;
+  correct_answer: string;
+  category: string | null;
+  difficulty: number | null;
+  missed_at: string;
+  explanation: string | null;
+};
+
+export type MissedQuestionsResponse = {
+  ok: boolean;
+  is_pro: boolean;
+  locked: boolean;
+  results: MissedQuestion[];
+  upsell_message?: string;
+  total_count?: number;
+  limit?: number;
+  offset?: number;
+};
+
 export type QuizHistoryResponse = {
   ok: boolean;
   is_pro: boolean;
@@ -496,6 +519,11 @@ export const quizApi = {
     request<{ ok: boolean }>(`/api/quiz/sessions/${sessionId}/complete`, { method: "POST" }),
   /** Completed quiz sessions for the signed-in (or anonymous) user. Free = last 10, Pro = all. */
   getHistory: () => request<QuizHistoryResponse>("/api/quiz/history"),
+  /** Missed Question Bank. Free users get a locked/upsell state; Pro users get the data. */
+  getMissedQuestions: (params?: { limit?: number; offset?: number }) =>
+    request<MissedQuestionsResponse>(
+      `/api/quiz/missed-questions?limit=${params?.limit ?? 50}&offset=${params?.offset ?? 0}`,
+    ),
 
   // ---------------------------------------------------------------------------
   // Quiz Review Console

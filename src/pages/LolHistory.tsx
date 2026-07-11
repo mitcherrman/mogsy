@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { History, ArrowLeft, Lock, Clock, Target } from "lucide-react";
+import { History, ArrowLeft, Lock, Clock, Target, BookX, ChevronRight } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -86,6 +86,22 @@ export default function LolHistory() {
         <History className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Quiz History</h1>
       </div>
+
+      <Link
+        to="/lol/missed-questions"
+        className="mb-6 flex items-center justify-between rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-accent/50"
+      >
+        <span className="flex items-center gap-3">
+          <BookX className="h-5 w-5 text-primary" />
+          <span>
+            <span className="block font-medium">Missed Question Bank</span>
+            <span className="block text-sm text-muted-foreground">
+              Review every question you missed and practice your weak spots.
+            </span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
 
       {loading && (
         <div className="space-y-3">
