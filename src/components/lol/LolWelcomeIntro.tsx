@@ -24,8 +24,8 @@ function markSeen() {
 
 const STEPS = [
   { icon: BrainCircuit, text: "Mogsy is a League of Legends quiz game." },
-  { icon: Swords, text: "Answer questions on champions, items, abilities, builds, objectives, patches and esports." },
-  { icon: GraduationCap, text: "Learn one question at a time — no account needed to start." },
+  { icon: Swords, text: "Test yourself on champions, items, abilities, builds, and esports." },
+  { icon: GraduationCap, text: "Learn one question at a time — no account needed." },
 ];
 
 // Mock answer cards for the animated preview — generic, no Riot art.
@@ -84,7 +84,7 @@ export default function LolWelcomeIntro() {
             </div>
 
             <h2 className="text-center text-xl font-bold text-[#f5e9c8] mb-4">
-              Welcome to Mogsy League
+              Welcome to Mogsy LoL
             </h2>
 
             <div className="space-y-2.5 mb-5">

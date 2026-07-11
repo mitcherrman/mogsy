@@ -61,6 +61,7 @@ const PRO_FEATURES: ProFeature[] = [
     title: "Advanced Category Stats",
     description: "See your accuracy by champions, items, abilities, and more.",
     Icon: BarChart3,
+    comingSoon: true,
   },
   {
     title: "Custom Practice Filters",
@@ -87,7 +88,7 @@ const PRO_FEATURES: ProFeature[] = [
     comingSoon: true,
   },
   {
-    title: "Matchup Cards",
+    title: "Earned Matchup Cards",
     description: "Beat the set. Unlock the card.",
     Icon: Layers,
     comingSoon: true,
@@ -174,7 +175,7 @@ export default function LolPro() {
           Practice smarter
         </p>
         <h2 className="mx-auto mt-3 max-w-xl text-3xl font-bold text-[#f5e9c8]">
-          Serious about improving at League?
+          Track your progress. Review your mistakes. Practice smarter.
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
           Mogsy Pro helps serious League players practice smarter. Track your full quiz
