@@ -182,6 +182,93 @@ export async function getProChampions(): Promise<ProChampionsIndexResponse> {
   return { ...data, champions: Array.isArray(data?.champions) ? data.champions : [] };
 }
 
+export type ProChampionRowsByYear = {
+  year: number;
+  game_rows: number;
+  pick_rows: number;
+  ban_rows: number;
+  patch_null_rows: number;
+  min_match_date: string | null;
+  max_match_date: string | null;
+};
+
+/** Rates on champion stats are FRACTIONS (0.54 = 54%), unlike the year endpoint's percents. */
+export type ProChampionYearlyStats = {
+  year: number;
+  scope_name: string | null;
+  picks: number | null;
+  bans: number | null;
+  presence_games: number | null;
+  wins: number | null;
+  losses: number | null;
+  total_games_in_scope: number | null;
+  win_rate: number | null;
+  pick_rate: number | null;
+  ban_rate: number | null;
+  presence_rate: number | null;
+  top_role: string | null;
+  top_role_share: number | null;
+};
+
+export type ProChampionScopedStats = ProChampionYearlyStats & {
+  scope_description: string | null;
+};
+
+export type ProChampionImportJob = {
+  year: number;
+  status: string;
+  skip_reason: string | null;
+  rows_created: number | null;
+  latest_match_date: string | null;
+};
+
+export type ProChampionGame = {
+  game_id: string | null;
+  tournament: string | null;
+  league: string | null;
+  region: string | null;
+  match_date: string | null;
+  patch: string | null;
+  team: string | null;
+  opponent: string | null;
+  player: string | null;
+  role: string | null;
+  side: string | null;
+  win: number | null;
+  event_type: string | null;
+  source_url: string | null;
+};
+
+export type ProChampionDetail = {
+  ok?: boolean;
+  champion: string;
+  slug: string;
+  years_with_data: number[];
+  rows_by_year: ProChampionRowsByYear[];
+  yearly_stats: ProChampionYearlyStats[];
+  scoped_stats: ProChampionScopedStats[];
+  import_jobs: ProChampionImportJob[];
+  recent_games: ProChampionGame[];
+};
+
+/** Fetch pro-data detail for one champion. Throws ApiStatusError(404) for unknown slugs. */
+export async function getProChampion(slug: string): Promise<ProChampionDetail> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/pro/champions/${encodeURIComponent(slug)}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new ApiStatusError(res.status, res.statusText);
+  const data = (await res.json()) as ProChampionDetail;
+  return {
+    ...data,
+    years_with_data: Array.isArray(data?.years_with_data) ? data.years_with_data : [],
+    rows_by_year: Array.isArray(data?.rows_by_year) ? data.rows_by_year : [],
+    yearly_stats: Array.isArray(data?.yearly_stats) ? data.yearly_stats : [],
+    scoped_stats: Array.isArray(data?.scoped_stats) ? data.scoped_stats : [],
+    import_jobs: Array.isArray(data?.import_jobs) ? data.import_jobs : [],
+    recent_games: Array.isArray(data?.recent_games) ? data.recent_games : [],
+  };
+}
+
 /**
  * URL slug for a champion name: "Aurelion Sol" → "aurelion-sol",
  * "Kai'Sa" → "kaisa", "Nunu & Willump" → "nunu-willump".

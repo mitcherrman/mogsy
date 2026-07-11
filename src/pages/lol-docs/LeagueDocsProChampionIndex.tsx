@@ -282,9 +282,13 @@ export default function LeagueDocsProChampionIndex() {
                               {nf.format(totalRows(c))}
                             </td>
                             <td className="px-4 py-2 text-right">
-                              <span className="rounded border border-border bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                                Details coming next
-                              </span>
+                              <Link
+                                to={`/lol/docs/pro/champions/${c.slug}`}
+                                aria-label={`View ${c.champion} pro data details`}
+                                className="inline-flex items-center gap-1 rounded border border-[#c9a84c]/40 bg-black/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
+                              >
+                                View details
+                              </Link>
                             </td>
                           </tr>
                         );
@@ -317,6 +321,13 @@ export default function LeagueDocsProChampionIndex() {
                           <MobileStat label="Bans" value={nf.format(c.ban_rows)} />
                           <MobileStat label="Total" value={nf.format(totalRows(c))} />
                         </dl>
+                        <Link
+                          to={`/lol/docs/pro/champions/${c.slug}`}
+                          aria-label={`View ${c.champion} pro data details`}
+                          className="mt-2.5 flex items-center justify-center rounded-md border border-[#c9a84c]/40 bg-black/30 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors"
+                        >
+                          View details
+                        </Link>
                       </div>
                     );
                   })}
