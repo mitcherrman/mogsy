@@ -204,7 +204,9 @@ function CardStat({ label, value }: { label: string; value: string }) {
 }
 
 export default function LeagueDocsProData() {
-  const { data, isLoading, isError, refetch, isRefetching } = useProCoverage();
+  // isPending, not isLoading: a query paused before its first result must
+  // show the skeleton, not the "no data imported" empty state.
+  const { data, isPending, isError, refetch, isRefetching } = useProCoverage();
 
   const years = useMemo(
     () => (data?.years ?? []).slice().sort((a, b) => b.year - a.year),
@@ -282,7 +284,7 @@ export default function LeagueDocsProData() {
           </div>
         </div>
 
-        {isLoading ? (
+        {isPending ? (
           <div className="space-y-4" aria-busy="true" aria-label="Loading pro data coverage">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -389,10 +391,20 @@ export default function LeagueDocsProData() {
                     </Button>
                   ))}
                 </div>
-                <p className="mt-3 text-[11px] text-muted-foreground">
-                  Champion pro pages (per-champion picks, bans, win rates by year and scope) arrive
-                  after that.
-                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+                  >
+                    <Link to="/lol/docs/pro/champions">Browse champions</Link>
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    See which champions have imported pro data. Per-champion detail pages arrive
+                    after that.
+                  </p>
+                </div>
               </div>
             </section>
 

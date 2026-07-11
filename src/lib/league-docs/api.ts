@@ -156,6 +156,32 @@ export async function getProYear(year: number): Promise<ProYearDetail> {
   };
 }
 
+export type ProChampionIndexEntry = {
+  champion: string;
+  slug: string;
+  /** Count of distinct years with imported rows (spans may be sparse, not continuous). */
+  years_with_data: number;
+  first_year: number | null;
+  last_year: number | null;
+  pick_rows: number;
+  ban_rows: number;
+};
+
+export type ProChampionsIndexResponse = {
+  ok?: boolean;
+  champions: ProChampionIndexEntry[];
+};
+
+/** Fetch the index of champions with imported pro-data rows (public endpoint). */
+export async function getProChampions(): Promise<ProChampionsIndexResponse> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/pro/champions`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new ApiStatusError(res.status, res.statusText);
+  const data = (await res.json()) as ProChampionsIndexResponse;
+  return { ...data, champions: Array.isArray(data?.champions) ? data.champions : [] };
+}
+
 /**
  * URL slug for a champion name: "Aurelion Sol" → "aurelion-sol",
  * "Kai'Sa" → "kaisa", "Nunu & Willump" → "nunu-willump".

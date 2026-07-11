@@ -278,7 +278,9 @@ export default function LeagueDocsProYear() {
   const parsed = /^\d{4}$/.test(yearParam ?? "") ? Number(yearParam) : null;
   const year = isPlausibleProYear(parsed) ? parsed : null;
 
-  const { data, isLoading, isError, error, refetch, isRefetching } = useProYear(year);
+  // isPending, not isLoading: a query paused before its first result must
+  // show the skeleton, not fall through to the generic error state.
+  const { data, isPending, isError, error, refetch, isRefetching } = useProYear(year);
   // Coverage list is cached from the Pro Data page; used only to derive
   // safe previous/next tracked-year links. Optional — no UI blocks on it.
   const { data: coverage } = useProCoverage();
@@ -323,7 +325,7 @@ export default function LeagueDocsProYear() {
         keywords={`lol esports ${year}, league pro play ${year}, ${year} pick ban stats`}
       />
 
-      {isLoading ? (
+      {isPending ? (
         <div className="space-y-4" aria-busy="true" aria-label={`Loading ${year} pro data`}>
           <div className="h-[120px] rounded-2xl border border-border bg-card/40 animate-pulse" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -494,8 +496,11 @@ function YearContent({
           </p>
         )}
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Champion pro pages — per-champion picks, bans, and win rates across years and scopes —
-          are coming soon.
+          Want the champion view?{" "}
+          <Link to="/lol/docs/pro/champions" className="font-semibold text-[#c9a84c] hover:underline">
+            Browse champions
+          </Link>{" "}
+          with imported pro data — per-champion detail pages are coming soon.
         </p>
       </section>
 

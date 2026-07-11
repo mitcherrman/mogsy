@@ -63,6 +63,7 @@ const LeagueDocsChampionIndex = R.LeagueDocsChampionIndex.Component;
 const LeagueDocsChampionDetail = R.LeagueDocsChampionDetail.Component;
 const LeagueDocsProData = R.LeagueDocsProData.Component;
 const LeagueDocsProYear = R.LeagueDocsProYear.Component;
+const LeagueDocsProChampionIndex = R.LeagueDocsProChampionIndex.Component;
 const LolHistory = R.LolHistory.Component;
 const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPro = R.LolPro.Component;
@@ -202,6 +203,7 @@ const App = () => (
                   <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
                   <Route path="/lol/docs/pro" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProData /></Suspense>} />
                   <Route path="/lol/docs/pro/years/:year" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProYear /></Suspense>} />
+                  <Route path="/lol/docs/pro/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionIndex /></Suspense>} />
                   <Route path="/lol/dev-changelog" element={<Suspense fallback={<RouteFallback />}><LolDevChangelog /></Suspense>} />
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
