@@ -33,7 +33,10 @@ import {
   Wand2,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import ChampionProfile from "@/components/combat-lab/ChampionProfile";
+import ChampionVisual from "@/components/combat-lab/ChampionVisual";
+import CombatSidePanel, { ConfigRow } from "@/components/combat-lab/CombatSidePanel";
+import CombatArena from "@/components/combat-lab/CombatArena";
+import CombatTimelineStrip from "@/components/combat-lab/CombatTimelineStrip";
 import {
   useChampionAssets,
   getChampionSkins,
@@ -694,7 +697,7 @@ export default function CombatLab() {
   };
 
   return (
-    <div className="px-4 md:px-0 py-6 md:py-10 xl:w-[120%] xl:-ml-[10%]">
+    <div className="px-4 md:px-0 py-4 md:py-5 2xl:w-[120%] 2xl:-ml-[10%]">
       <SEOHead
         title="Mogsy Combat Lab | League of Legends Damage Simulator"
         description="Test League of Legends champion damage, items, abilities, runes, and combat scenarios in the Mogsy Combat Lab damage simulator. Free, in-browser, no account needed."
@@ -732,30 +735,6 @@ export default function CombatLab() {
           </button>
         </div>
       </header>
-
-      {/* Visible explanatory copy — the page should read as a tool with a
-          purpose, not a bare app shell. */}
-      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
-        The Combat Lab is a free League of Legends damage simulator. Pick a champion, set levels,
-        items, and runes, then run abilities and combos against a configurable target to see exact
-        damage numbers — a training tool for theorycrafting builds, learning trade timings, and
-        checking patch-to-patch damage changes.
-      </p>
-      <p className="lg:hidden mb-4 max-w-3xl text-xs text-muted-foreground/70">
-        On mobile, the Attacker, Combat, and Defender panels stack vertically — scroll down to see
-        each section. For the full side-by-side view, try a larger screen.
-      </p>
-
-      <MetadataAuditPanel
-        loading={metaLoading}
-        apiStatus={apiStatus}
-        champions={champions}
-        items={items}
-        runes={runes}
-        targets={targets}
-        summoners={summoners}
-        actions={actionsMeta}
-      />
 
       <Tabs defaultValue="sandbox" className="w-full">
         {/* Rotation Simulator hidden in Phase 2A — Interactive Sandbox is the primary experience.
@@ -1114,6 +1093,31 @@ export default function CombatLab() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Visible explanatory copy — the page should read as a tool with a
+          purpose, not a bare app shell. Sits below the workspace so the
+          simulator itself fits the first screen on desktop. */}
+      <p className="mt-6 mb-4 max-w-3xl text-sm text-muted-foreground">
+        The Combat Lab is a free League of Legends damage simulator. Pick a champion, set levels,
+        items, and runes, then run abilities and combos against a configurable target to see exact
+        damage numbers — a training tool for theorycrafting builds, learning trade timings, and
+        checking patch-to-patch damage changes.
+      </p>
+      <p className="lg:hidden mb-4 max-w-3xl text-xs text-muted-foreground/70">
+        On mobile, the Attacker, Combat, and Defender panels stack vertically — scroll down to see
+        each section. For the full side-by-side view, try a larger screen.
+      </p>
+
+      <MetadataAuditPanel
+        loading={metaLoading}
+        apiStatus={apiStatus}
+        champions={champions}
+        items={items}
+        runes={runes}
+        targets={targets}
+        summoners={summoners}
+        actions={actionsMeta}
+      />
     </div>
   );
 }
@@ -2747,68 +2751,106 @@ function InteractiveSandbox({
   return (
     <div className="space-y-6">
       {/* VERSUS HEADER: Attacker | Combat | Defender */}
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid gap-3 lg:grid-cols-[29fr_42fr_29fr]">
         {/* ATTACKER COLUMN */}
-        <div className="space-y-4 lg:col-span-4">
-        <SectionCard title="Attacker Champion" icon={Swords}>
-          <div className="space-y-3">
-            <SearchSelect
-              label="Champion"
-              placeholder="Select champion…"
-              value={config.champion}
-              options={champions}
-              onChange={(v) => update("champion", v)}
-              loading={metaLoading}
-              withIcons
+        <CombatSidePanel
+          visual={
+            <ChampionVisual
+              role="attacker"
+              championId={config.champion}
+              championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
+              level={config.stats?.LEVEL ?? 18}
+              skinKey={attackerSkin}
+              onSkinChange={setAttackerSkin}
+              className="min-h-[300px] flex-1"
             />
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Level
-                </Label>
-                {(config.stats?.LEVEL ?? 18) >= 19 && (
-                  <Badge variant="outline" className="text-[10px] h-5 border-amber-500/40 text-amber-400 bg-amber-500/10">
-                    Extended
-                  </Badge>
-                )}
-              </div>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={config.stats?.LEVEL ?? 18}
-                onChange={(e) => {
-                  const lvl = Math.max(1, Math.min(20, Number(e.target.value) || 1));
-                  update("stats", { ...(config.stats || {}), LEVEL: lvl });
-                }}
+          }
+        >
+        <SectionCard title="Attacker" icon={Swords}>
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_76px] items-end gap-2">
+              <SearchSelect
+                label="Champion"
+                placeholder="Select champion…"
+                value={config.champion}
+                options={champions}
+                onChange={(v) => update("champion", v)}
+                loading={metaLoading}
+                withIcons
               />
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Lvl
+                  </Label>
+                  {(config.stats?.LEVEL ?? 18) >= 19 && (
+                    <Badge variant="outline" className="text-[10px] h-5 border-amber-500/40 text-amber-400 bg-amber-500/10">
+                      Ext
+                    </Badge>
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={config.stats?.LEVEL ?? 18}
+                  onChange={(e) => {
+                    const lvl = Math.max(1, Math.min(20, Number(e.target.value) || 1));
+                    update("stats", { ...(config.stats || {}), LEVEL: lvl });
+                  }}
+                />
+              </div>
             </div>
-            <MultiSelect
-              label="Items (max 6)"
-              placeholder="Select items…"
-              values={config.items}
-              options={items}
-              onChange={(v) => update("items", v)}
-              max={6}
-              loading={metaLoading}
-              withIcons
-            />
-            <MultiSelect
+            <ConfigRow
+              label="Items"
+              summary={config.items.length > 0 ? config.items.join(" · ") : "None"}
+            >
+              <MultiSelect
+                label="Items (max 6)"
+                placeholder="Select items…"
+                values={config.items}
+                options={items}
+                onChange={(v) => update("items", v)}
+                max={6}
+                loading={metaLoading}
+                withIcons
+              />
+            </ConfigRow>
+            <ConfigRow
               label="Runes"
-              placeholder="Select runes…"
-              values={config.runes}
-              options={runes}
-              onChange={(v) => update("runes", v)}
-              grouped
-              loading={metaLoading}
-              withIcons
-            />
-            <SummonerPicker
-              options={summoners}
-              values={summonerPicks}
-              onChange={setSummonerPicks}
-              loading={metaLoading}
-            />
+              summary={config.runes.length > 0 ? config.runes.join(" · ") : "None"}
+            >
+              <MultiSelect
+                label="Runes"
+                placeholder="Select runes…"
+                values={config.runes}
+                options={runes}
+                onChange={(v) => update("runes", v)}
+                grouped
+                loading={metaLoading}
+                withIcons
+              />
+            </ConfigRow>
+            <ConfigRow
+              label="Summoners"
+              summary={
+                summonerPicks.filter(Boolean).length > 0
+                  ? summonerPicks.filter(Boolean).join(" · ")
+                  : "None"
+              }
+            >
+              <SummonerPicker
+                options={summoners}
+                values={summonerPicks}
+                onChange={setSummonerPicks}
+                loading={metaLoading}
+              />
+            </ConfigRow>
+            <ConfigRow
+              label="State"
+              summary={`Crit: ${config.crit_mode}${devMode ? " · Dev overrides active" : ""}`}
+            >
+              <div className="space-y-3">
             {devMode ? (
               <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
                 <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -2876,6 +2918,8 @@ function InteractiveSandbox({
                 ))}
               </div>
             </div>
+              </div>
+            </ConfigRow>
           </div>
         </SectionCard>
         <ActiveEffectsPanel
@@ -2891,23 +2935,22 @@ function InteractiveSandbox({
             ATTACKER_EFFECT_PATTERNS
           )}
         />
-        <ChampionProfile
-          role="attacker"
-          championId={config.champion}
-          championLabel={champions.find((c) => (c.id ?? c.name) === config.champion)?.name}
-          level={config.stats?.LEVEL ?? 18}
-          items={config.items}
-          skinKey={attackerSkin}
-          onSkinChange={setAttackerSkin}
-        />
-        </div>
+        </CombatSidePanel>
 
         {/* CENTER COMBAT COLUMN */}
-        <div className="space-y-4 lg:col-span-4 lg:order-none order-last">
-          <SectionCard
-            title="Combat"
-            icon={Swords}
-            right={
+        <div className="flex flex-col gap-3 lg:order-none order-last">
+          <DefenderHPCard
+            defenderName={defenderDisplayName}
+            hp={defenderHP}
+            mode={targetSetup.targetMode}
+            runtime={targetRuntime}
+            flash={hpFlash}
+            devMode={devMode}
+          />
+          <CombatArena
+            attackerName={attackerDisplayName}
+            defenderName={defenderDisplayName}
+            controls={
               <div className="flex items-center gap-2">
                 <label
                   className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
@@ -2926,21 +2969,6 @@ function InteractiveSandbox({
               </div>
             }
           >
-            <div className="mb-3 flex items-center justify-center gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2 text-xs">
-              <span className="truncate font-semibold text-primary">
-                {config.champion || "Attacker"}
-              </span>
-              <Swords className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">VS</span>
-              <Swords className="h-4 w-4 shrink-0 text-muted-foreground rotate-180" />
-              <span className="truncate font-semibold text-accent">
-                {targetSetup.targetMode === "target_champion"
-                  ? targetSetup.targetChampionName || "Defender"
-                  : targetSetup.targetMode === "target_dummy"
-                  ? "Target Dummy"
-                  : config.target_profile || "Target Profile"}
-              </span>
-            </div>
           <div className="space-y-2">
             {config.champion && (
               <div className="text-[11px] text-muted-foreground">
@@ -3039,7 +3067,7 @@ function InteractiveSandbox({
               />
             ))}
           </div>
-        </SectionCard>
+        </CombatArena>
         <LastActionCard
           event={lastCombatEvent}
           attackerName={attackerDisplayName}
@@ -3051,15 +3079,44 @@ function InteractiveSandbox({
         </div>
 
         {/* DEFENDER COLUMN */}
-        <div className="space-y-4 lg:col-span-4">
-          <DefenderHPCard
-            defenderName={defenderDisplayName}
-            hp={defenderHP}
-            mode={targetSetup.targetMode}
-            runtime={targetRuntime}
-            flash={hpFlash}
-            devMode={devMode}
-          />
+        <CombatSidePanel
+          visual={
+            <ChampionVisual
+              role="defender"
+              championId={
+                targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetChampionName
+                  : ""
+              }
+              championLabel={
+                targetSetup.targetMode === "target_champion"
+                  ? champions.find(
+                      (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
+                    )?.name || targetSetup.targetChampionName
+                  : undefined
+              }
+              level={
+                targetSetup.targetMode === "target_champion"
+                  ? targetSetup.targetLevel
+                  : undefined
+              }
+              emptyMessage={
+                targetSetup.targetMode === "target_dummy"
+                  ? "Custom Target Dummy active"
+                  : targetSetup.targetMode === "target_profile"
+                    ? "Legacy target profile active"
+                    : "Select a defender champion"
+              }
+              skinKey={
+                targetSetup.targetMode === "target_champion" ? defenderSkin : undefined
+              }
+              onSkinChange={
+                targetSetup.targetMode === "target_champion" ? setDefenderSkin : undefined
+              }
+              className="min-h-[300px] flex-1"
+            />
+          }
+        >
           <DefenderPanel
             setup={targetSetup}
             update={updateTargetSetup}
@@ -3085,48 +3142,15 @@ function InteractiveSandbox({
               DEFENDER_EFFECT_PATTERNS
             )}
           />
-          <MitigationBreakdownPanel events={events} />
-          <TargetRuntimeSummary runtime={targetRuntime} />
-          <ChampionProfile
-            role="defender"
-            championId={
-              targetSetup.targetMode === "target_champion"
-                ? targetSetup.targetChampionName
-                : ""
-            }
-            championLabel={
-              targetSetup.targetMode === "target_champion"
-                ? champions.find(
-                    (c) => (c.id ?? c.name) === targetSetup.targetChampionName,
-                  )?.name || targetSetup.targetChampionName
-                : undefined
-            }
-            level={
-              targetSetup.targetMode === "target_champion"
-                ? targetSetup.targetLevel
-                : undefined
-            }
-            items={
-              targetSetup.targetMode === "target_champion"
-                ? targetSetup.targetItemNames
-                : undefined
-            }
-            emptyMessage={
-              targetSetup.targetMode === "target_dummy"
-                ? "Custom Target Dummy active"
-                : targetSetup.targetMode === "target_profile"
-                  ? "Legacy target profile active"
-                  : "Select a defender champion"
-            }
-            skinKey={
-              targetSetup.targetMode === "target_champion" ? defenderSkin : undefined
-            }
-            onSkinChange={
-              targetSetup.targetMode === "target_champion" ? setDefenderSkin : undefined
-            }
-          />
-        </div>
+        </CombatSidePanel>
       </div>
+
+      {/* COMBAT TIMELINE — compact horizontal strip, always in the first screen */}
+      <CombatTimelineStrip
+        entries={combatTimeline}
+        selectedId={selectedTimelineId}
+        onSelect={setSelectedTimelineId}
+      />
 
       {/* SECONDARY ROW: champion profile + live stats */}
       {/* SECONDARY ROW: live stats (champion profiles now live inside each side's column) */}
@@ -3159,6 +3183,8 @@ function InteractiveSandbox({
           devMode={devMode}
         />
         <DamageBreakdownPanel events={events} />
+        <MitigationBreakdownPanel events={events} />
+        <TargetRuntimeSummary runtime={targetRuntime} />
         <ReadableCombatFeed
           events={events}
           attackerName={attackerDisplayName}
@@ -3894,64 +3920,89 @@ function DefenderPanel({
         </div>
 
         {setup.targetMode === "target_champion" && (
-          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
-            <SearchSelect
-              label="Defender champion"
-              placeholder="Select defender champion…"
-              value={setup.targetChampionName}
-              options={champions}
-              onChange={(v) => update("targetChampionName", v)}
-              loading={metaLoading}
-              withIcons
-            />
-            <div>
-              <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
-                Defender level
-              </Label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={setup.targetLevel}
-                onChange={(e) =>
-                  update(
-                    "targetLevel",
-                    Math.max(1, Math.min(20, Number(e.target.value) || 1))
-                  )
-                }
+          <div className="space-y-2 rounded-md border border-border/50 bg-background/30 p-2.5">
+            <div className="grid grid-cols-[1fr_76px] items-end gap-2">
+              <SearchSelect
+                label="Defender champion"
+                placeholder="Select defender champion…"
+                value={setup.targetChampionName}
+                options={champions}
+                onChange={(v) => update("targetChampionName", v)}
+                loading={metaLoading}
+                withIcons
               />
+              <div>
+                <Label className="mb-1.5 block text-xs uppercase tracking-wide text-muted-foreground">
+                  Lvl
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={setup.targetLevel}
+                  onChange={(e) =>
+                    update(
+                      "targetLevel",
+                      Math.max(1, Math.min(20, Number(e.target.value) || 1))
+                    )
+                  }
+                />
+              </div>
             </div>
-            <MultiSelect
-              label="Defender items"
-              placeholder="Select items…"
-              values={setup.targetItemNames}
-              options={items}
-              onChange={(v) => update("targetItemNames", v)}
-              max={6}
-              loading={metaLoading}
-              withIcons
-            />
-            <MultiSelect
-              label="Defender runes"
-              placeholder="Select runes…"
-              values={setup.targetRuneNames}
-              options={runes}
-              onChange={(v) => update("targetRuneNames", v)}
-              grouped
-              loading={metaLoading}
-              withIcons
-            />
-            <DefenderAbilitiesList
-              championDefenses={championDefenses}
-              genericDefenses={genericDefenses}
-              defenderLabel={defenderLabel}
-              applyBusy={applyBusy}
-              offline={offline}
-              onApplyDefense={onApplyDefense}
-              advancedOpen={advancedOpen}
-              setAdvancedOpen={setAdvancedOpen}
-              showChampionSection
-            />
+            <ConfigRow
+              label="Items"
+              summary={
+                setup.targetItemNames.length > 0 ? setup.targetItemNames.join(" · ") : "None"
+              }
+            >
+              <MultiSelect
+                label="Defender items"
+                placeholder="Select items…"
+                values={setup.targetItemNames}
+                options={items}
+                onChange={(v) => update("targetItemNames", v)}
+                max={6}
+                loading={metaLoading}
+                withIcons
+              />
+            </ConfigRow>
+            <ConfigRow
+              label="Runes"
+              summary={
+                setup.targetRuneNames.length > 0 ? setup.targetRuneNames.join(" · ") : "None"
+              }
+            >
+              <MultiSelect
+                label="Defender runes"
+                placeholder="Select runes…"
+                values={setup.targetRuneNames}
+                options={runes}
+                onChange={(v) => update("targetRuneNames", v)}
+                grouped
+                loading={metaLoading}
+                withIcons
+              />
+            </ConfigRow>
+            <ConfigRow
+              label="Defenses"
+              summary={
+                championDefenses.length > 0
+                  ? `${championDefenses.length} for ${defenderLabel || "champion"}`
+                  : "Apply defensive abilities"
+              }
+            >
+              <DefenderAbilitiesList
+                championDefenses={championDefenses}
+                genericDefenses={genericDefenses}
+                defenderLabel={defenderLabel}
+                applyBusy={applyBusy}
+                offline={offline}
+                onApplyDefense={onApplyDefense}
+                advancedOpen={advancedOpen}
+                setAdvancedOpen={setAdvancedOpen}
+                showChampionSection
+              />
+            </ConfigRow>
           </div>
         )}
 
