@@ -31,6 +31,7 @@ import {
   type ProTopChampion,
   type ProYearDetail,
 } from "@/lib/league-docs/api";
+import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
 
 const GOLD = "#c9a84c";
 
@@ -109,9 +110,9 @@ function StatCard({ label, value, Icon }: { label: string; value: string; Icon: 
   );
 }
 
-function ChampionCell({ name, icon }: { name: string; icon: string | undefined }) {
-  return (
-    <span className="flex items-center gap-2 min-w-0">
+function ChampionCell({ name, icon, to }: { name: string; icon: string | undefined; to?: string }) {
+  const inner = (
+    <>
       {icon ? (
         <img
           src={icon}
@@ -123,8 +124,16 @@ function ChampionCell({ name, icon }: { name: string; icon: string | undefined }
         <span className="h-6 w-6 rounded border border-border bg-black/40 shrink-0" />
       )}
       <span className="truncate font-semibold text-foreground">{name}</span>
-    </span>
+    </>
   );
+  if (to) {
+    return (
+      <Link to={to} className="group flex items-center gap-2 min-w-0 hover:text-[#c9a84c]">
+        {inner}
+      </Link>
+    );
+  }
+  return <span className="flex items-center gap-2 min-w-0">{inner}</span>;
 }
 
 function EmptyList({ message }: { message: string }) {
@@ -143,6 +152,7 @@ function TopList({
   showWinRate,
   emptyMessage,
   getIcon,
+  year,
 }: {
   title: string;
   Icon: React.ElementType;
@@ -151,6 +161,7 @@ function TopList({
   showWinRate: boolean;
   emptyMessage: string;
   getIcon: (name: string) => string | undefined;
+  year: number;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
@@ -179,7 +190,13 @@ function TopList({
           <tbody>
             {entries.map((e) => (
               <tr key={e.slug} className="border-b border-border/40 last:border-0">
-                <td className="px-4 py-2"><ChampionCell name={e.champion} icon={getIcon(e.champion)} /></td>
+                <td className="px-4 py-2">
+                  <ChampionCell
+                    name={e.champion}
+                    icon={getIcon(e.champion)}
+                    to={buildProChampionUrl({ slug: e.slug, year })}
+                  />
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">{nf.format(e.count)}</td>
                 {showWinRate && (
                   <>
@@ -204,10 +221,12 @@ function PresenceList({
   entries,
   emptyMessage,
   getIcon,
+  year,
 }: {
   entries: ProPresenceChampion[];
   emptyMessage: string;
   getIcon: (name: string) => string | undefined;
+  year: number;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
@@ -232,7 +251,13 @@ function PresenceList({
           <tbody>
             {entries.map((e) => (
               <tr key={e.slug} className="border-b border-border/40 last:border-0">
-                <td className="px-4 py-2"><ChampionCell name={e.champion} icon={getIcon(e.champion)} /></td>
+                <td className="px-4 py-2">
+                  <ChampionCell
+                    name={e.champion}
+                    icon={getIcon(e.champion)}
+                    to={buildProChampionUrl({ slug: e.slug, year })}
+                  />
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">{nf.format(e.presence_games)}</td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {e.presence_rate === null || e.presence_rate === undefined ? "—" : `${e.presence_rate}%`}
@@ -473,6 +498,7 @@ function YearContent({
               showWinRate
               emptyMessage="No pick data imported yet."
               getIcon={getIcon}
+              year={data.year}
             />
             <TopList
               title="Top banned"
@@ -482,11 +508,13 @@ function YearContent({
               showWinRate={false}
               emptyMessage="No ban data imported yet."
               getIcon={getIcon}
+              year={data.year}
             />
             <PresenceList
               entries={data.top_presence}
               emptyMessage="No presence data imported yet."
               getIcon={getIcon}
+              year={data.year}
             />
           </div>
         )}

@@ -1,11 +1,12 @@
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Ban,
   CalendarRange,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -13,10 +14,12 @@ import {
   ExternalLink,
   Hourglass,
   Info,
+  Link2,
   Loader2,
   RefreshCw,
   Swords,
   Trophy,
+  X,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
@@ -29,6 +32,13 @@ import {
   type ProChampionImportJob,
   type ProChampionYearlyStats,
 } from "@/lib/league-docs/api";
+import {
+  buildProYearUrl,
+  isProChampionSection,
+  normalizeScopeName,
+  proScopeLabel,
+  type ProChampionSection,
+} from "@/lib/league-docs/pro-data-links";
 
 const GOLD = "#c9a84c";
 
@@ -47,6 +57,13 @@ function num(value: number | null | undefined): string {
 function dateOnly(value: string | null | undefined): string | null {
   if (!value) return null;
   return value.split(" ")[0] || null;
+}
+
+function gameYear(matchDate: string | null): number | null {
+  const d = dateOnly(matchDate);
+  if (!d) return null;
+  const y = Number(d.slice(0, 4));
+  return Number.isInteger(y) ? y : null;
 }
 
 /**
@@ -73,12 +90,15 @@ function jobPresentation(job: ProChampionImportJob): { label: string; className:
   return { label: "Running", className: "border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c]" };
 }
 
-const SCOPE_LABELS: Record<string, string> = {
-  "all-imported": "All imported",
-  major: "Major leagues",
-  international: "International",
-  all: "All imported",
-};
+const JUMP_SECTIONS: { id: ProChampionSection; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "rows-by-year", label: "Rows by year" },
+  { id: "yearly-stats", label: "Yearly stats" },
+  { id: "scoped-stats", label: "Scoped stats" },
+  { id: "import-status", label: "Import status" },
+  { id: "recent-games", label: "Recent games" },
+  { id: "data-quality", label: "Data quality" },
+];
 
 function SectionHeading({ label, title }: { label: string; title: string }) {
   return (
@@ -108,6 +128,44 @@ function EmptyNote({ message }: { message: string }) {
     <div className="rounded-xl border border-dashed border-border bg-card/40 p-6 text-center text-xs text-muted-foreground">
       {message}
     </div>
+  );
+}
+
+function FilterNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card/60 p-3" role="note">
+      <Info className="h-4 w-4 mt-0.5 shrink-0" style={{ color: GOLD }} aria-hidden />
+      <p className="text-xs text-muted-foreground">{children}</p>
+    </div>
+  );
+}
+
+/** Small pill-style toggle used for the year and scope view controls. */
+function ViewToggle({
+  active,
+  onClick,
+  children,
+  ariaLabel,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={ariaLabel}
+      className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/40 ${
+        active
+          ? "border-[#c9a84c]/60 bg-[#c9a84c]/15 text-[#c9a84c]"
+          : "border-border bg-black/30 text-muted-foreground hover:border-[#c9a84c]/40 hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -151,7 +209,7 @@ function StatsTable({ rows, showScope }: { rows: ProChampionYearlyStats[]; showS
             <tr key={`${s.year}-${s.scope_name ?? i}`} className="border-b border-border/60 last:border-0">
               <td className="px-3 py-2 font-bold text-foreground">
                 <Link
-                  to={`/lol/docs/pro/years/${s.year}`}
+                  to={buildProYearUrl(s.year)}
                   className="hover:text-[#c9a84c] underline decoration-[#c9a84c]/30 underline-offset-2 transition-colors"
                 >
                   {s.year}
@@ -160,7 +218,7 @@ function StatsTable({ rows, showScope }: { rows: ProChampionYearlyStats[]; showS
               {showScope && (
                 <td className="px-3 py-2">
                   <span className="rounded border border-teal-500/30 bg-teal-500/5 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300 whitespace-nowrap">
-                    {SCOPE_LABELS[s.scope_name ?? ""] ?? s.scope_name ?? "—"}
+                    {proScopeLabel(s.scope_name)}
                   </span>
                 </td>
               )}
@@ -279,6 +337,62 @@ export default function LeagueDocsProChampionDetail() {
   );
 }
 
+/** Scroll to the URL hash once, after data has rendered. Never re-yanks on later scrolls. */
+function useInitialHashScroll(ready: boolean) {
+  const { hash } = useLocation();
+  const done = useRef(false);
+  useEffect(() => {
+    if (!ready || done.current) return;
+    const id = hash.replace(/^#/, "");
+    if (!id || !isProChampionSection(id)) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    done.current = true;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }, [ready, hash]);
+}
+
+function CopyLinkButton() {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  useEffect(() => {
+    if (state === "idle") return;
+    const t = setTimeout(() => setState("idle"), 2000);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={copy}
+      aria-label="Copy link to this view"
+      className="border-[#c9a84c]/30 text-muted-foreground hover:text-[#c9a84c] hover:bg-[#c9a84c]/10"
+    >
+      {state === "copied" ? (
+        <>
+          <Check className="h-3.5 w-3.5 mr-1.5 text-teal-300" aria-hidden /> Link copied
+        </>
+      ) : state === "failed" ? (
+        "Couldn't copy — use the address bar"
+      ) : (
+        <>
+          <Link2 className="h-3.5 w-3.5 mr-1.5" aria-hidden /> Copy link to this view
+        </>
+      )}
+    </Button>
+  );
+}
+
 function ChampionContent({
   data,
   icon,
@@ -288,6 +402,46 @@ function ChampionContent({
   icon: string | undefined;
   neighbors: { prev: { champion: string; slug: string } | null; next: { champion: string; slug: string } | null };
 }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ---- Year focus (view filter, not a data claim). Malformed or
+  // unrepresented values never refetch — they just show a notice.
+  const yearParam = searchParams.get("year");
+  const yearRequested = yearParam !== null && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null;
+  const yearValid = yearRequested !== null && data.years_with_data.includes(yearRequested);
+  const focusYear = yearValid ? yearRequested : null;
+
+  // ---- Scope focus, matched against scopes actually returned (normalizing
+  // the backend's "all" ↔ "all-imported" alias for matching only).
+  const availableScopes = useMemo(() => {
+    const seen: string[] = [];
+    for (const s of data.scoped_stats) {
+      const n = normalizeScopeName(s.scope_name);
+      if (n && !seen.includes(n)) seen.push(n);
+    }
+    return seen.sort();
+  }, [data]);
+  const scopeParam = searchParams.get("scope");
+  const scopeRequested = normalizeScopeName(scopeParam);
+  const scopeValid = scopeRequested !== null && availableScopes.includes(scopeRequested);
+  const focusScope = scopeValid ? scopeRequested : null;
+
+  const setViewParams = (next: { year?: number | null; scope?: string | null }) => {
+    const params = new URLSearchParams(searchParams);
+    if ("year" in next) {
+      if (next.year === null || next.year === undefined) params.delete("year");
+      else params.set("year", String(next.year));
+    }
+    if ("scope" in next) {
+      if (!next.scope) params.delete("scope");
+      else params.set("scope", next.scope);
+    }
+    // Replace: filter tweaks shouldn't pile up in browser history.
+    setSearchParams(params, { replace: true });
+  };
+
+  useInitialHashScroll(true);
+
   const totals = useMemo(() => {
     const picks = data.rows_by_year.reduce((s, r) => s + (r.pick_rows || 0), 0);
     const bans = data.rows_by_year.reduce((s, r) => s + (r.ban_rows || 0), 0);
@@ -311,6 +465,30 @@ function ChampionContent({
   const years = data.years_with_data;
   const firstYear = years.length ? years[0] : null;
   const lastYear = years.length ? years[years.length - 1] : null;
+
+  // ---- Focused views (all derived client-side from the same response).
+  const yearlyStatsShown = focusYear
+    ? data.yearly_stats.filter((s) => s.year === focusYear)
+    : data.yearly_stats;
+  const scopedStatsShown = data.scoped_stats.filter(
+    (s) =>
+      (!focusYear || s.year === focusYear) &&
+      (!focusScope || normalizeScopeName(s.scope_name) === focusScope),
+  );
+  const importJobsShown = focusYear
+    ? data.import_jobs.filter((j) => j.year === focusYear)
+    : data.import_jobs;
+  const recentGamesShown = focusYear
+    ? data.recent_games.filter((g) => gameYear(g.match_date) === focusYear)
+    : data.recent_games;
+
+  const filtersActive = yearParam !== null || scopeParam !== null;
+  const activeSummary = [
+    focusYear ? `Viewing ${focusYear} data` : null,
+    focusScope ? `${proScopeLabel(focusScope)} scope` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
@@ -338,6 +516,25 @@ function ChampionContent({
         </div>
       </div>
 
+      {/* Jump navigation + copy link */}
+      <nav aria-label="Page sections" className="rounded-xl border border-border bg-card/60 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Jump to</span>
+          {JUMP_SECTIONS.map((s) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              className="rounded-md border border-border bg-black/30 px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-[#c9a84c]/40 hover:text-[#c9a84c] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/40"
+            >
+              {s.label}
+            </a>
+          ))}
+          <span className="ml-auto">
+            <CopyLinkButton />
+          </span>
+        </div>
+      </nav>
+
       {importOngoing && (
         <div className="flex items-start gap-2.5 rounded-xl border border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4" role="note">
           <Loader2 className="h-4 w-4 mt-0.5 shrink-0" style={{ color: GOLD }} aria-hidden />
@@ -349,12 +546,59 @@ function ChampionContent({
         </div>
       )}
 
+      {/* Year focus control + active-filter summary */}
+      <div className="rounded-xl border border-border bg-card/60 p-3 space-y-2.5">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Focus a year">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Year view</span>
+          <ViewToggle active={focusYear === null} onClick={() => setViewParams({ year: null })}>
+            All years
+          </ViewToggle>
+          {years.map((y) => (
+            <ViewToggle
+              key={y}
+              active={focusYear === y}
+              onClick={() => setViewParams({ year: y })}
+              ariaLabel={`Focus on ${y} data`}
+            >
+              {y}
+            </ViewToggle>
+          ))}
+          {filtersActive && (
+            <span className="ml-auto flex items-center gap-2">
+              {activeSummary && (
+                <span className="text-[11px] font-semibold" style={{ color: GOLD }}>
+                  {activeSummary}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setViewParams({ year: null, scope: null })}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-black/30 px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-[#c9a84c]/40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/40"
+              >
+                <X className="h-3 w-3" aria-hidden /> Clear filters
+              </button>
+            </span>
+          )}
+        </div>
+        {yearRequested !== null && !yearValid && (
+          <FilterNotice>
+            No imported rows are available for {data.champion} in {yearRequested}. Showing all
+            years instead — only {years.join(", ") || "none"} have imported data.
+          </FilterNotice>
+        )}
+        {yearParam !== null && yearRequested === null && (
+          <FilterNotice>
+            The requested year isn't a valid four-digit year, so all years are shown.
+          </FilterNotice>
+        )}
+      </div>
+
       {/* Overview */}
-      <section aria-label="Overview">
+      <section id="overview" aria-label="Overview" className="scroll-mt-24">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Imported rows" value={nf.format(totals.rows)} Icon={Database} />
-          <StatCard label="Pick rows" value={nf.format(totals.picks)} Icon={Swords} />
-          <StatCard label="Ban rows" value={nf.format(totals.bans)} Icon={Ban} />
+          <StatCard label="Imported rows (all years)" value={nf.format(totals.rows)} Icon={Database} />
+          <StatCard label="Pick rows (all years)" value={nf.format(totals.picks)} Icon={Swords} />
+          <StatCard label="Ban rows (all years)" value={nf.format(totals.bans)} Icon={Ban} />
           <StatCard
             label="Years with data"
             value={
@@ -370,38 +614,23 @@ function ChampionContent({
         <div className="mt-3 rounded-xl border border-border bg-card/60 p-4">
           <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs">
             <MetaStat
-              label="Rows without patch"
+              label="Rows without patch (all years)"
               value={`${nf.format(totals.patchNull)}${totals.rows ? ` (${((totals.patchNull / totals.rows) * 100).toFixed(1)}%)` : ""}`}
             />
             <MetaStat label="Latest imported match" value={totals.latest ?? "Not available"} />
             <MetaStat label="Scoped stat rows" value={String(data.scoped_stats.length)} />
           </dl>
+          {focusYear && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Overview totals always cover all imported years — the {focusYear} view below focuses
+              the per-year sections.
+            </p>
+          )}
         </div>
       </section>
 
-      {/* Years with data */}
-      <section>
-        <SectionHeading label="Coverage" title="Years with imported data" />
-        {years.length === 0 ? (
-          <EmptyNote message="No games have been imported for this champion yet." />
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {years.map((y) => (
-                <Button key={y} asChild variant="outline" size="sm" className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
-                  <Link to={`/lol/docs/pro/years/${y}`}>{y}</Link>
-                </Button>
-              ))}
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Only the years listed have imported rows — gaps between them don't have data yet.
-            </p>
-          </>
-        )}
-      </section>
-
       {/* Rows by year */}
-      <section>
+      <section id="rows-by-year" className="scroll-mt-24">
         <SectionHeading label="Rows" title="Imported rows by year" />
         {data.rows_by_year.length === 0 ? (
           <EmptyNote message="No imported rows to break down yet." />
@@ -417,6 +646,7 @@ function ChampionContent({
                   <th scope="col" className="px-3 py-2.5 font-bold text-right" title="Rows with no recorded patch">No patch</th>
                   <th scope="col" className="px-3 py-2.5 font-bold text-right">Match dates</th>
                   <th scope="col" className="px-3 py-2.5 font-bold">Import status</th>
+                  <th scope="col" className="px-3 py-2.5 font-bold text-right"><span className="sr-only">Focus</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -424,11 +654,17 @@ function ChampionContent({
                   const job = jobsByYear.get(r.year);
                   const jp = job ? jobPresentation(job) : null;
                   const patchPct = r.game_rows ? ` (${((r.patch_null_rows / r.game_rows) * 100).toFixed(0)}%)` : "";
+                  const isFocused = focusYear === r.year;
                   return (
-                    <tr key={r.year} className="border-b border-border/60 last:border-0">
+                    <tr
+                      key={r.year}
+                      className={`border-b border-border/60 last:border-0 ${
+                        isFocused ? "bg-[#c9a84c]/10" : focusYear ? "opacity-50" : ""
+                      }`}
+                    >
                       <td className="px-3 py-2 font-bold text-foreground">
                         <Link
-                          to={`/lol/docs/pro/years/${r.year}`}
+                          to={buildProYearUrl(r.year)}
                           className="hover:text-[#c9a84c] underline decoration-[#c9a84c]/30 underline-offset-2 transition-colors"
                         >
                           {r.year}
@@ -452,6 +688,16 @@ function ChampionContent({
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setViewParams({ year: isFocused ? null : r.year })}
+                          aria-label={isFocused ? `Stop focusing on ${r.year}` : `Focus page on ${r.year}`}
+                          className="rounded border border-border bg-black/30 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground hover:border-[#c9a84c]/40 hover:text-[#c9a84c] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/40 whitespace-nowrap"
+                        >
+                          {isFocused ? "Unfocus" : "Focus"}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -462,13 +708,17 @@ function ChampionContent({
       </section>
 
       {/* Yearly stats */}
-      <section>
-        <SectionHeading label="Stats" title="Yearly stats" />
+      <section id="yearly-stats" className="scroll-mt-24">
+        <SectionHeading label="Stats" title={focusYear ? `Yearly stats — ${focusYear}` : "Yearly stats"} />
         {data.yearly_stats.length === 0 ? (
           <EmptyNote message="Yearly stats haven't been computed for this champion yet — they're built after a year's import settles." />
+        ) : yearlyStatsShown.length === 0 ? (
+          <EmptyNote
+            message={`${data.champion} has imported rows in ${focusYear}, but yearly stats haven't been computed for that year yet.`}
+          />
         ) : (
           <>
-            <StatsTable rows={data.yearly_stats} showScope={false} />
+            <StatsTable rows={yearlyStatsShown} showScope={false} />
             <p className="mt-2 text-[11px] text-muted-foreground">
               Rates are relative to the imported games for each year, and years still importing will
               shift. Missing values show as “—” rather than zero.
@@ -478,7 +728,7 @@ function ChampionContent({
       </section>
 
       {/* Scoped stats */}
-      <section>
+      <section id="scoped-stats" className="scroll-mt-24">
         <SectionHeading label="Scopes" title="Scoped stats" />
         <p className="mb-3 text-xs text-muted-foreground max-w-3xl">
           Scopes are alternative views over the same imported rows — filtered by competition tier —
@@ -487,22 +737,62 @@ function ChampionContent({
             Pro Data coverage page
           </Link>.
         </p>
+        {availableScopes.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Focus a scope">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Scope view</span>
+            <ViewToggle active={focusScope === null} onClick={() => setViewParams({ scope: null })}>
+              All scopes
+            </ViewToggle>
+            {availableScopes.map((s) => (
+              <ViewToggle
+                key={s}
+                active={focusScope === s}
+                onClick={() => setViewParams({ scope: s })}
+                ariaLabel={`Focus on ${proScopeLabel(s)} scope`}
+              >
+                {proScopeLabel(s)}
+              </ViewToggle>
+            ))}
+          </div>
+        )}
+        {scopeParam !== null && !scopeValid && (
+          <div className="mb-3">
+            <FilterNotice>
+              That scope isn't available for {data.champion}
+              {availableScopes.length ? ` — available scopes: ${availableScopes.map(proScopeLabel).join(", ")}` : ""}.
+              Showing all scopes.
+            </FilterNotice>
+          </div>
+        )}
         {data.scoped_stats.length === 0 ? (
           <EmptyNote message="Scoped stats haven't been built for this champion yet — they arrive once a year's import is complete." />
+        ) : scopedStatsShown.length === 0 ? (
+          <EmptyNote
+            message={
+              focusYear
+                ? `No scoped stats exist for ${focusYear}${focusScope ? ` in the ${proScopeLabel(focusScope)} scope` : ""} yet — they're built once a year's import is complete.`
+                : `No scoped-stat rows match the ${proScopeLabel(focusScope)} scope for this champion yet.`
+            }
+          />
         ) : (
-          <StatsTable rows={data.scoped_stats} showScope />
+          <StatsTable rows={scopedStatsShown} showScope />
         )}
       </section>
 
       {/* Import status by year */}
-      <section>
-        <SectionHeading label="Import" title="Import status by year" />
+      <section id="import-status" className="scroll-mt-24">
+        <SectionHeading
+          label="Import"
+          title={focusYear ? `Import status — ${focusYear}` : "Import status by year"}
+        />
         {data.import_jobs.length === 0 ? (
           <EmptyNote message="No import queue entries for this champion." />
+        ) : importJobsShown.length === 0 ? (
+          <EmptyNote message={`No import queue entry exists for ${focusYear}.`} />
         ) : (
           <div className="rounded-xl border border-border bg-card/60 p-4">
             <ul className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-              {data.import_jobs.map((j) => {
+              {importJobsShown.map((j) => {
                 const jp = jobPresentation(j);
                 return (
                   <li key={j.year} className="rounded-lg border border-border/60 bg-black/30 p-2 text-center">
@@ -528,10 +818,17 @@ function ChampionContent({
       </section>
 
       {/* Recent games */}
-      <section>
-        <SectionHeading label="Sources" title="Recent imported games" />
+      <section id="recent-games" className="scroll-mt-24">
+        <SectionHeading
+          label="Sources"
+          title={focusYear ? `Recent imported games — ${focusYear}` : "Recent imported games"}
+        />
         {data.recent_games.length === 0 ? (
           <EmptyNote message="No imported pick games to show yet." />
+        ) : recentGamesShown.length === 0 ? (
+          <EmptyNote
+            message={`No recent imported games from ${focusYear} appear in the latest returned game sample — the sample only covers the ${data.recent_games.length} most recent imported pick games.`}
+          />
         ) : (
           <>
             <div className="overflow-x-auto rounded-xl border border-border bg-card/60">
@@ -550,7 +847,7 @@ function ChampionContent({
                   </tr>
                 </thead>
                 <tbody>
-                  {data.recent_games.map((g, i) => (
+                  {recentGamesShown.map((g, i) => (
                     <tr key={`${g.game_id ?? i}`} className="border-b border-border/60 last:border-0">
                       <td className="px-3 py-2 tabular-nums whitespace-nowrap">{dateOnly(g.match_date) ?? "—"}</td>
                       <td className="px-3 py-2">{g.tournament ?? g.league ?? "—"}</td>
@@ -590,15 +887,17 @@ function ChampionContent({
               </table>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              The {data.recent_games.length} most recent imported pick games. Source links open the
-              external page the data was imported from.
+              {focusYear
+                ? `Games from ${focusYear} within the ${data.recent_games.length} most recent imported pick games.`
+                : `The ${data.recent_games.length} most recent imported pick games.`}{" "}
+              Source links open the external page the data was imported from.
             </p>
           </>
         )}
       </section>
 
       {/* Caveats */}
-      <section>
+      <section id="data-quality" className="scroll-mt-24">
         <SectionHeading label="Trust" title="Data quality and caveats" />
         <div className="rounded-xl border border-border bg-card/60 p-5 space-y-3">
           <CaveatRow Icon={Hourglass} tone="gold">

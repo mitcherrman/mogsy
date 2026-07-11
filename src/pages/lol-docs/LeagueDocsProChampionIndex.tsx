@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useProChampions } from "@/hooks/useProChampions";
 import { useChampionAssets, getChampionIcon } from "@/hooks/useChampionAssets";
 import type { ProChampionIndexEntry } from "@/lib/league-docs/api";
+import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
 
 const GOLD = "#c9a84c";
 
@@ -283,7 +284,7 @@ export default function LeagueDocsProChampionIndex() {
                             </td>
                             <td className="px-4 py-2 text-right">
                               <Link
-                                to={`/lol/docs/pro/champions/${c.slug}`}
+                                to={buildProChampionUrl({ slug: c.slug })}
                                 aria-label={`View ${c.champion} pro data details`}
                                 className="inline-flex items-center gap-1 rounded border border-[#c9a84c]/40 bg-black/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
                               >
@@ -322,7 +323,7 @@ export default function LeagueDocsProChampionIndex() {
                           <MobileStat label="Total" value={nf.format(totalRows(c))} />
                         </dl>
                         <Link
-                          to={`/lol/docs/pro/champions/${c.slug}`}
+                          to={buildProChampionUrl({ slug: c.slug })}
                           aria-label={`View ${c.champion} pro data details`}
                           className="mt-2.5 flex items-center justify-center rounded-md border border-[#c9a84c]/40 bg-black/30 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors"
                         >
