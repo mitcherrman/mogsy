@@ -195,7 +195,7 @@ export default function LolHub() {
         )}
 
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-8">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             <img src={lolIcon} alt="" aria-hidden className="absolute -right-10 -top-10 w-80 h-80 object-contain blur-2xl" />
           </div>
@@ -224,7 +224,7 @@ export default function LolHub() {
         </div>
 
         {/* Hextech Zipper — desktop only */}
-        <div className="mt-12 hidden md:flex flex-col gap-8 relative">
+        <div className="mt-10 hidden md:flex flex-col gap-5 relative">
           {ZIPPER_FEATURES.map((f, i) => {
             const widthCls = f.flagship ? "w-[78%]" : "w-[72%]";
             const alignCls = f.side === "right" ? "self-end" : "self-start";
@@ -313,7 +313,8 @@ export default function LolHub() {
           </div>
         </div>
 
-        {/* News / Blog */}
+        {/* News / Blog — hidden entirely when there are no League posts */}
+        {(isLoading || posts.length > 0) && (
         <div className="mt-8">
           <div className="flex items-end justify-between mb-3">
             <div>
@@ -333,10 +334,6 @@ export default function LolHub() {
 
           {isLoading ? (
             <div className="py-10 text-center text-muted-foreground text-sm">Loading…</div>
-          ) : posts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center text-sm text-muted-foreground">
-              No League of Legends posts yet. Check back soon for patch breakdowns, tier lists and drama recaps.
-            </div>
           ) : (
             <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {posts.map((p) => (
@@ -345,6 +342,7 @@ export default function LolHub() {
             </div>
           )}
         </div>
+        )}
       </div>
       <LolPopoutStyleToggle value={popoutStyle} onChange={setPopoutStyle} />
     </div>

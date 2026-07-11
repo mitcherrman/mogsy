@@ -55,7 +55,7 @@ export default function HexZipperCard({
     "polygon(28px 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%, 0 28px)";
 
   const isRight = side === "right";
-  const heightCls = flagship ? "min-h-[240px]" : "min-h-[170px]";
+  const heightCls = flagship ? "min-h-[210px]" : "min-h-[140px]";
   const titleCls = flagship ? "text-3xl md:text-4xl" : "text-xl md:text-2xl";
   const iconSize = flagship ? "h-14 w-14" : "h-10 w-10";
   const iconBox = flagship ? "p-5" : "p-3.5";
