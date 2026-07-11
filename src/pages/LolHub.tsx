@@ -5,8 +5,8 @@ import SEOHead from "@/components/SEOHead";
 import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
-import lolIcon from "@/assets/lol-icon.png";
 import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/components/lol/HexZipperCard";
+import HexTrainingHero from "@/components/lol/HexTrainingHero";
 import { useChampionAssets, getChampionCutout, getChampionSplash, getChampionLoading } from "@/hooks/useChampionAssets";
 import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
 import { supabase } from "@/integrations/supabase/client";
@@ -194,34 +194,11 @@ export default function LolHub() {
           </div>
         )}
 
-        {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-8">
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <img src={lolIcon} alt="" aria-hidden className="absolute -right-10 -top-10 w-80 h-80 object-contain blur-2xl" />
-          </div>
-          <div className="relative flex items-center gap-4">
-            <img src={lolIcon} alt="League of Legends" className="h-16 w-16 md:h-20 md:w-20 rounded-xl shadow-lg" />
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">Mogsy x LoL</div>
-              <h1 className="text-2xl md:text-4xl font-bold text-foreground">League of Legends Quiz &amp; Training</h1>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-xl">
-                Mogsy is a League of Legends learning game. Play LoL quizzes about champions, items,
-                abilities, builds, objectives, patch changes and esports history — one question at a
-                time — and test damage math in the Combat Lab simulator.
-              </p>
-              <button
-                onClick={() => {
-                  trackFunnelEvent("lol_start_quiz_clicked", { cta: "hero" });
-                  navigate("/quiz");
-                }}
-                className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
-              >
-                Start Quiz — No Account Needed
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Hero — Hextech Training Chamber */}
+        <HexTrainingHero
+          assets={championAssets}
+          onStartQuiz={() => trackFunnelEvent("lol_start_quiz_clicked", { cta: "hero" })}
+        />
 
         {/* Hextech Zipper — desktop only */}
         <div className="mt-10 hidden md:flex flex-col gap-5 relative">

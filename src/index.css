@@ -679,3 +679,53 @@ html.high-contrast * { text-shadow: none !important; }
 .group:hover > .hex-popout {
   transform: var(--hex-popout-hover) translateY(-12px);
 }
+
+/* LoL hub Hextech training hero */
+@keyframes hero-champ-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.015); }
+}
+.hero-champ-float { animation: hero-champ-float 8s ease-in-out infinite; will-change: transform; }
+
+@keyframes hero-glow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+.hero-glow-pulse { animation: hero-glow-pulse 5s ease-in-out infinite; }
+
+@keyframes hero-ring-spin { to { transform: rotate(360deg); } }
+.hero-ring-spin { animation: hero-ring-spin 40s linear infinite; }
+.hero-ring-spin-reverse { animation: hero-ring-spin 55s linear infinite reverse; }
+
+@keyframes hero-mode-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.hero-mode-in { animation: hero-mode-in 0.45s ease-out both; }
+
+@keyframes hero-particle-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 0.7; }
+  100% { transform: translateY(-160px); opacity: 0; }
+}
+.hero-particle { animation: hero-particle-rise 7s linear infinite; }
+
+.hero-hexgrid {
+  background-image:
+    linear-gradient(30deg, rgba(10, 200, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(150deg, rgba(10, 200, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 200, 255, 0.05) 1px, transparent 1px);
+  background-size: 42px 72px, 42px 72px, 42px 72px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-champ-float,
+  .hero-glow-pulse,
+  .hero-ring-spin,
+  .hero-ring-spin-reverse,
+  .hero-mode-in,
+  .hero-particle {
+    animation: none !important;
+  }
+  .hero-particle { opacity: 0; }
+}
