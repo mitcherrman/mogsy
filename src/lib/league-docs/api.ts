@@ -104,6 +104,58 @@ export async function getProCoverage(): Promise<ProCoverageResponse> {
   };
 }
 
+/** HTTP error carrying its status so callers can branch (e.g. 404 → "untracked year"). */
+export class ApiStatusError extends Error {
+  status: number;
+  constructor(status: number, statusText: string) {
+    super(`API ${status}: ${statusText}`);
+    this.name = "ApiStatusError";
+    this.status = status;
+  }
+}
+
+export type ProTopChampion = {
+  champion: string;
+  slug: string;
+  count: number;
+  /** Present for picked champions only. */
+  wins?: number | null;
+  win_rate?: number | null;
+};
+
+export type ProPresenceChampion = {
+  champion: string;
+  slug: string;
+  presence_games: number;
+  /** Percent of the year's distinct games this champion was picked or banned in. */
+  presence_rate: number | null;
+};
+
+export type ProYearDetail = ProYearSummary & {
+  ok?: boolean;
+  total_champions: number;
+  top_picked: ProTopChampion[];
+  top_banned: ProTopChampion[];
+  top_presence: ProPresenceChampion[];
+};
+
+/** Fetch one year of esports coverage detail. Throws ApiStatusError(404) for untracked years. */
+export async function getProYear(year: number): Promise<ProYearDetail> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/pro/years/${year}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new ApiStatusError(res.status, res.statusText);
+  const data = (await res.json()) as ProYearDetail;
+  return {
+    ...data,
+    top_picked: Array.isArray(data?.top_picked) ? data.top_picked : [],
+    top_banned: Array.isArray(data?.top_banned) ? data.top_banned : [],
+    top_presence: Array.isArray(data?.top_presence) ? data.top_presence : [],
+    caveats: Array.isArray(data?.caveats) ? data.caveats : [],
+    scoped_stats: data?.scoped_stats ?? {},
+  };
+}
+
 /**
  * URL slug for a champion name: "Aurelion Sol" → "aurelion-sol",
  * "Kai'Sa" → "kaisa", "Nunu & Willump" → "nunu-willump".

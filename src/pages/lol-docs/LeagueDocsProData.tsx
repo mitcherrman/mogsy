@@ -133,7 +133,14 @@ function YearRows({ year }: { year: ProYearSummary }) {
     year.data.patch_null_pct === null ? "—" : `${year.data.patch_null_pct}%`;
   return (
     <tr className="border-b border-border/60 last:border-0 hover:bg-[#c9a84c]/5 transition-colors">
-      <td className="px-3 py-2.5 font-bold text-foreground">{year.year}</td>
+      <td className="px-3 py-2.5">
+        <Link
+          to={`/lol/docs/pro/years/${year.year}`}
+          className="font-bold text-foreground hover:text-[#c9a84c] underline decoration-[#c9a84c]/30 underline-offset-2 transition-colors"
+        >
+          {year.year}
+        </Link>
+      </td>
       <td className="px-3 py-2.5"><StatusBadge status={year.coverage_status} /></td>
       <td className="px-3 py-2.5 text-right tabular-nums">{nf.format(year.data.game_rows)}</td>
       <td className="px-3 py-2.5 text-right tabular-nums">{nf.format(year.data.pick_rows)}</td>
@@ -158,7 +165,12 @@ function YearCard({ year }: { year: ProYearSummary }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-lg font-bold text-foreground">{year.year}</span>
+        <Link
+          to={`/lol/docs/pro/years/${year.year}`}
+          className="text-lg font-bold text-foreground hover:text-[#c9a84c] underline decoration-[#c9a84c]/30 underline-offset-2 transition-colors"
+        >
+          {year.year}
+        </Link>
         <StatusBadge status={year.coverage_status} />
       </div>
       <p className="mt-1 text-[11px] text-muted-foreground">{cfg.hint}</p>
@@ -356,28 +368,24 @@ export default function LeagueDocsProData() {
               </div>
             </section>
 
-            {/* Year detail CTAs (route not built yet — honest placeholders) */}
+            {/* Year detail CTAs */}
             <section>
               <SectionHeading label="Details" title="Year deep dives" />
               <div className="rounded-xl border border-border bg-card/60 p-4">
                 <p className="text-xs text-muted-foreground">
-                  Per-year detail pages — top picks, top bans, and presence leaders — are coming
-                  next. They'll live at <span className="font-mono text-foreground/80">/lol/docs/pro/years</span>.
+                  Per-year detail pages show top picks, top bans, presence leaders, and each year's
+                  data-quality caveats. Any year in the table above is browsable.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {detailYears.map((y) => (
                     <Button
                       key={y.year}
+                      asChild
                       variant="outline"
                       size="sm"
-                      disabled
-                      title="Year detail pages are coming next"
-                      className="border-[#c9a84c]/30 text-muted-foreground"
+                      className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
                     >
-                      View {y.year} details
-                      <span className="ml-1.5 rounded border border-[#c9a84c]/30 bg-[#c9a84c]/5 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-[#c9a84c]">
-                        Soon
-                      </span>
+                      <Link to={`/lol/docs/pro/years/${y.year}`}>View {y.year} details</Link>
                     </Button>
                   ))}
                 </div>
