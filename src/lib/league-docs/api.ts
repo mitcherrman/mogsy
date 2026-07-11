@@ -269,6 +269,120 @@ export async function getProChampion(slug: string): Promise<ProChampionDetail> {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Champion documentation — GET /api/docs/champions/{slug}
+// ---------------------------------------------------------------------------
+
+export type DocChampionIdentity = {
+  name: string;
+  slug: string;
+  id: number | null;
+  title: string | null;
+  resource_type: string | null;
+  release_date: string | null;
+};
+
+export type DocChampionStats = {
+  hp: number | null;
+  hp_per_level: number | null;
+  hp5: number | null;
+  hp5_per_level: number | null;
+  mp: number | null;
+  mp_per_level: number | null;
+  mp5: number | null;
+  mp5_per_level: number | null;
+  ad: number | null;
+  ad_per_level: number | null;
+  attack_speed: number | null;
+  attack_speed_ratio: number | null;
+  /** Percent growth per level (League attack-speed growth is percentage-based). */
+  attack_speed_per_level: number | null;
+  armor: number | null;
+  armor_per_level: number | null;
+  magic_resist: number | null;
+  magic_resist_per_level: number | null;
+  move_speed: number | null;
+  attack_range: number | null;
+};
+
+export type DocRankValues = {
+  raw: string;
+  by_rank: number[] | null;
+};
+
+export type DocFormula = {
+  type: string;
+  label: string;
+  raw: string;
+  normalized: string;
+  unresolved_tokens: string[];
+  /** Trust only when unresolved_tokens is empty — otherwise the formula is symbolic. */
+  resolved_value: number | null;
+};
+
+export type DocAbility = {
+  slot: "P" | "Q" | "W" | "E" | "R";
+  name: string | null;
+  description: string | null;
+  cooldown: DocRankValues | null;
+  cost: DocRankValues | null;
+  range: DocRankValues | null;
+  ranks: number | null;
+  source_id: number | null;
+  formulas: DocFormula[];
+};
+
+export type DocMeta = {
+  patch: string | null;
+  source: string | null;
+  last_updated: string | null;
+  last_verified: string | null;
+  verification_status: "verified" | "unverified" | "unknown" | string;
+};
+
+export type ChampionDoc = {
+  ok?: boolean;
+  champion: DocChampionIdentity;
+  stats: DocChampionStats | null;
+  abilities: DocAbility[];
+  meta: DocMeta;
+};
+
+/**
+ * Fetch the combined champion documentation (identity + stats + abilities +
+ * trust metadata). Throws ApiStatusError so callers can branch on 404
+ * (unknown champion) vs. generic failure; backend error detail is preserved.
+ */
+export async function getChampionDoc(slug: string): Promise<ChampionDoc> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/champions/${encodeURIComponent(slug)}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch {
+      // non-JSON error body — keep statusText
+    }
+    throw new ApiStatusError(res.status, detail);
+  }
+  const data = (await res.json()) as ChampionDoc;
+  return {
+    ...data,
+    abilities: Array.isArray(data?.abilities)
+      ? data.abilities.map((a) => ({ ...a, formulas: Array.isArray(a?.formulas) ? a.formulas : [] }))
+      : [],
+    meta: data?.meta ?? {
+      patch: null,
+      source: null,
+      last_updated: null,
+      last_verified: null,
+      verification_status: "unknown",
+    },
+  };
+}
+
 /**
  * URL slug for a champion name: "Aurelion Sol" → "aurelion-sol",
  * "Kai'Sa" → "kaisa", "Nunu & Willump" → "nunu-willump".
@@ -307,11 +421,18 @@ export function statAtLevel(base: number, perLevel: number, level: number): numb
 }
 
 /**
- * Attack speed grows by a PERCENT of the champion's attack-speed ratio.
- * The public endpoint does not expose the ratio, so this assumes ratio ≈ base
- * attack speed (true for most champions) — matching the engine's formula shape:
- * AS(level) = ratio × (1 + growth% × multiplier / 100).
+ * Attack speed grows by a PERCENT bonus applied to the champion's attack-speed
+ * RATIO, added on top of base attack speed (standard League formula):
+ * AS(level) = base + ratio × (growth% × multiplier) / 100.
+ * When the ratio is unavailable it falls back to base attack speed — the
+ * pre-ratio approximation, exact for champions whose ratio equals their base.
  */
-export function attackSpeedAtLevel(baseAs: number, asPerLevelPercent: number, level: number): number {
-  return baseAs * (1 + (asPerLevelPercent * riotLevelMultiplier(level)) / 100);
+export function attackSpeedAtLevel(
+  baseAs: number,
+  asPerLevelPercent: number,
+  level: number,
+  ratio?: number | null,
+): number {
+  const scaleBase = ratio ?? baseAs;
+  return baseAs + (scaleBase * (asPerLevelPercent * riotLevelMultiplier(level))) / 100;
 }

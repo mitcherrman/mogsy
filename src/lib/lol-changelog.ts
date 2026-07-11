@@ -56,6 +56,28 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-07-11T00:00:00Z",
+    title: "League Docs champion pages: abilities, formulas, and real trust metadata",
+    type: "feature",
+    scopes: ["docs"],
+    summary:
+      "Champion detail pages at /lol/docs/champions/:slug now load the combined public docs API (GET /api/docs/champions/{slug}): real ability cards (Passive/Q/W/E/R with per-rank cooldown, cost, and range), symbolic scaling formulas with highlighted unresolved variables, a fuller stat table (HP/mana regen growth, attack-speed ratio), and an honest trust panel showing data patch, source, last-updated, last-verified, and verification status. Level projection now applies attack-speed growth to the champion's attack-speed ratio.",
+    details: [
+      "New useChampionDoc hook + getChampionDoc typed fetch in the League Docs API layer; 404s render a champion-not-found page (no retry), other failures get a retry button.",
+      "Ability cards are stacked and mobile-friendly; synthesized passives show a restrained 'not yet available' note instead of fabricated data.",
+      "Formulas render normalized text with symbolic tokens visually highlighted, raw source values behind a disclosure, and constants labeled only when no unresolved tokens remain.",
+      "Stat table marks non-scaling stats as 'fixed' and hides mana rows for manaless champions; metadata placeholders replaced by API-reported values with honest fallbacks.",
+      "Landing and champion index pages continue to use the lighter /api/meta/champion-stats list endpoint.",
+    ],
+    files: [
+      "src/pages/lol-docs/LeagueDocsChampionDetail.tsx",
+      "src/lib/league-docs/api.ts",
+      "src/hooks/useChampionDoc.ts",
+      "src/lib/lol-changelog.ts",
+    ],
+    routes: ["/lol/docs/champions/:slug"],
+  },
+  {
     timestamp: "2026-07-10T00:00:00Z",
     title: "League Docs repositioned as public knowledge base; dev changelog moved",
     type: "feature",
