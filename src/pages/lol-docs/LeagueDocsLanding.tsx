@@ -10,6 +10,7 @@ import {
   Search as SearchIcon,
   ShieldCheck,
   Swords,
+  Trophy,
   Users,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -44,6 +45,12 @@ const CATEGORIES: Category[] = [
     title: "Mechanics",
     description: "Armor, penetration, ability haste, on-hit effects, and more.",
     Icon: BookOpen,
+  },
+  {
+    title: "Pro Data",
+    description: "Esports data coverage: what pro-play data Mogsy has imported, year by year.",
+    Icon: Trophy,
+    to: "/lol/docs/pro",
   },
   {
     title: "Patch Changes",
@@ -160,7 +167,7 @@ export default function LeagueDocsLanding() {
         {/* Browse categories */}
         <section>
           <SectionHeading label="Browse" title="Explore the library" />
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 gap-3">
             {CATEGORIES.map((cat) =>
               cat.to ? (
                 <Link

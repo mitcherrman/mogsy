@@ -44,6 +44,66 @@ export async function fetchChampionBaseStats(): Promise<ChampionBaseStats[]> {
   return rows.filter((r) => typeof r?.champion_name === "string" && r.champion_name.trim());
 }
 
+// ---------------------------------------------------------------------------
+// Pro data (esports) coverage — GET /api/docs/pro/coverage
+// ---------------------------------------------------------------------------
+
+export type ProCoverageStatus = "complete" | "in_progress" | "pending" | "partial" | "no_data";
+
+export type ProYearJobs = {
+  total: number;
+  done: number;
+  pending: number;
+  failed: number;
+  skipped_not_released: number;
+  /** Running / stale / unexpected job states that keep a year open. */
+  other: number;
+};
+
+export type ProYearData = {
+  game_rows: number;
+  pick_rows: number;
+  ban_rows: number;
+  unique_champions: number;
+  min_match_date: string | null;
+  max_match_date: string | null;
+  patch_null_rows: number;
+  /** Percent of rows with no patch recorded; null when the year has no rows. */
+  patch_null_pct: number | null;
+};
+
+export type ProYearSummary = {
+  year: number;
+  coverage_status: ProCoverageStatus;
+  jobs: ProYearJobs;
+  data: ProYearData;
+  /** Scope name → scoped-stat row count (empty until a year's scopes are built). */
+  scoped_stats: Record<string, number>;
+  /** Backend-authored data-quality caveats for this year. */
+  caveats: string[];
+};
+
+export type ProCoverageResponse = {
+  ok?: boolean;
+  total_champions: number;
+  scope_definitions: Record<string, string>;
+  years: ProYearSummary[];
+};
+
+/** Fetch esports data coverage by year (public, read-only endpoint). */
+export async function getProCoverage(): Promise<ProCoverageResponse> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/pro/coverage`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  const data = (await res.json()) as ProCoverageResponse;
+  return {
+    ...data,
+    years: Array.isArray(data?.years) ? data.years : [],
+    scope_definitions: data?.scope_definitions ?? {},
+  };
+}
+
 /**
  * URL slug for a champion name: "Aurelion Sol" → "aurelion-sol",
  * "Kai'Sa" → "kaisa", "Nunu & Willump" → "nunu-willump".
