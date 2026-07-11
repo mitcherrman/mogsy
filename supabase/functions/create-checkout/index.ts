@@ -25,7 +25,20 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
 
     const body = await req.json();
-    const { priceId, mode, quantity, couponId, gift } = body;
+    const { priceId, mode, quantity, couponId, gift, successPath, cancelPath } = body;
+
+    // Optional caller-provided return paths. Internal paths only: must start
+    // with a single "/" (no protocol-relative "//host" or backslash tricks),
+    // so Stripe can never redirect to an external site. Defaults keep the
+    // legacy Shop behavior for existing callers.
+    const sanitizePath = (p: unknown): string | null => {
+      if (typeof p !== "string" || p.length === 0 || p.length > 200) return null;
+      if (!p.startsWith("/") || p.startsWith("//")) return null;
+      if (p.includes("\\") || /[\r\n\t]/.test(p)) return null;
+      return p;
+    };
+    const safeSuccessPath = sanitizePath(successPath) || "/shop?success=true";
+    const safeCancelPath = sanitizePath(cancelPath) || "/shop?canceled=true";
 
     // Input validation
     if (!priceId || typeof priceId !== 'string' || !priceId.startsWith('price_')) {
@@ -70,8 +83,8 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: safeQuantity }],
       mode: mode || "payment",
-      success_url: `${origin}/shop?success=true`,
-      cancel_url: `${origin}/shop?canceled=true`,
+      success_url: `${origin}${safeSuccessPath}`,
+      cancel_url: `${origin}${safeCancelPath}`,
       // Lets the stripe-webhook function map events back to the Supabase user
       client_reference_id: user.id,
       metadata: { supabase_user_id: user.id },
