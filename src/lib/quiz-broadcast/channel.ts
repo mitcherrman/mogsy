@@ -81,7 +81,16 @@ export function createPublisher() {
   return {
     post(snapshot: EngineSnapshot) {
       persist(snapshot);
-      ch.postMessage({ kind: "snapshot", snapshot, ts: Date.now() } satisfies Message);
+      // postMessage can throw (DataCloneError on an uncloneable payload,
+      // InvalidStateError on a closed channel). This runs inside the engine's
+      // snapshot fan-out — a throw here must never propagate back into the
+      // state machine, so swallow it. The engine already guards listeners too;
+      // this is belt-and-suspenders at the exact historical throw site.
+      try {
+        ch.postMessage({ kind: "snapshot", snapshot, ts: Date.now() } satisfies Message);
+      } catch {
+        /* channel closed or payload not structured-cloneable — best effort */
+      }
     },
     onRequest(fn: () => void) {
       const handler = (e: MessageEvent<Message>) => {
