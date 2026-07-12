@@ -23,6 +23,7 @@ import QuizProfileCard from "@/components/quiz/QuizProfileCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
+import ProDataSourceLink from "@/components/quiz/ProDataSourceLink";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import {
   getDailyChallenge,
@@ -1406,6 +1407,9 @@ export default function Quiz() {
                         {answerResult.explanation && (
                           <p className="text-xs opacity-80 leading-relaxed">{answerResult.explanation}</p>
                         )}
+                        {/* Post-answer only: renders itself when the question carries
+                            valid pro-data source metadata, otherwise nothing. */}
+                        <ProDataSourceLink metadata={currentQuestion?.metadata} />
                       </div>
 
                       {/* XP reward */}

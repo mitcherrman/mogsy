@@ -77,3 +77,75 @@ export function buildProChampionUrl({
 export function buildProYearUrl(year: number): string {
   return `/lol/docs/pro/years/${year}`;
 }
+
+/**
+ * Structured "view source data" reference stored on a quiz question's
+ * metadata (question.metadata.pro_data_source). Typed inputs only — never a
+ * fully constructed URL and never an arbitrary external URL — so the
+ * destination is always built through buildProChampionUrl().
+ */
+export type ProDataSource = {
+  championSlug: string;
+  year?: number;
+  scope?: string;
+  section?: ProChampionSection;
+};
+
+// Same shape/bounds the champion + year pages treat as plausible.
+const SLUG_PATTERN = /^[a-z0-9'’.&-]{1,40}$/i;
+
+/** A recognized, supported scope (post-normalization of the all/all-imported alias). */
+export function isSupportedScope(scope: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PRO_SCOPE_LABELS, scope);
+}
+
+/**
+ * Parse + validate raw metadata into a ProDataSource. Fails CLOSED: if
+ * pro_data_source exists but ANY supplied field is invalid, the whole
+ * reference is rejected (returns null) so a malformed citation never silently
+ * widens or redirects to a broader link — the caller then renders no source
+ * link and the quiz continues normally. Absent optional fields remain valid.
+ */
+export function parseProDataSource(raw: unknown): ProDataSource | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+
+  const slugValue = obj.champion_slug;
+  if (typeof slugValue !== "string") return null;
+  const championSlug = slugValue.trim();
+  if (!championSlug || !SLUG_PATTERN.test(championSlug)) return null;
+
+  const source: ProDataSource = { championSlug };
+
+  // Optional fields: absent is fine; supplied-but-invalid rejects the whole
+  // reference rather than dropping the field and widening the citation.
+  if (obj.year !== undefined && obj.year !== null) {
+    const year = typeof obj.year === "number" ? obj.year : Number(obj.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) return null;
+    source.year = year;
+  }
+
+  if (obj.scope !== undefined && obj.scope !== null) {
+    if (typeof obj.scope !== "string") return null;
+    const scope = normalizeScopeName(obj.scope);
+    if (!scope || !isSupportedScope(scope)) return null;
+    source.scope = scope;
+  }
+
+  if (obj.section !== undefined && obj.section !== null) {
+    if (typeof obj.section !== "string" || !isProChampionSection(obj.section)) return null;
+    source.section = obj.section;
+  }
+
+  return source;
+}
+
+/** Build the destination URL for a parsed ProDataSource via the typed helper. */
+export function proDataSourceUrl(source: ProDataSource): string {
+  return buildProChampionUrl({
+    slug: source.championSlug,
+    year: source.year,
+    scope: source.scope,
+    section: source.section,
+  });
+}

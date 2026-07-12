@@ -4,6 +4,8 @@ import {
   buildProYearUrl,
   isProChampionSection,
   normalizeScopeName,
+  parseProDataSource,
+  proDataSourceUrl,
   proScopeLabel,
 } from "./pro-data-links";
 
@@ -69,5 +71,68 @@ describe("sections and year URLs", () => {
 
   it("builds year URLs", () => {
     expect(buildProYearUrl(2011)).toBe("/lol/docs/pro/years/2011");
+  });
+});
+
+describe("parseProDataSource", () => {
+  it("accepts champion-only metadata", () => {
+    expect(parseProDataSource({ champion_slug: "akali" })).toEqual({ championSlug: "akali" });
+  });
+
+  it("accepts champion + year", () => {
+    expect(parseProDataSource({ champion_slug: "akali", year: 2011 })).toEqual({
+      championSlug: "akali",
+      year: 2011,
+    });
+  });
+
+  it("accepts champion + year + scope + section, normalizing scope + all alias", () => {
+    expect(
+      parseProDataSource({ champion_slug: "akali", year: 2026, scope: "Major", section: "scoped-stats" }),
+    ).toEqual({ championSlug: "akali", year: 2026, scope: "major", section: "scoped-stats" });
+    // "all" normalizes to the recognized "all-imported" scope.
+    expect(parseProDataSource({ champion_slug: "akali", scope: "all" })).toEqual({
+      championSlug: "akali",
+      scope: "all-imported",
+    });
+  });
+
+  it("returns null for missing/empty/non-object metadata or malformed slug", () => {
+    expect(parseProDataSource(undefined)).toBeNull();
+    expect(parseProDataSource(null)).toBeNull();
+    expect(parseProDataSource("akali")).toBeNull();
+    expect(parseProDataSource({})).toBeNull();
+    expect(parseProDataSource({ champion_slug: "" })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "not a slug!" })).toBeNull();
+  });
+
+  it("fails closed when a supplied optional field is invalid (no widening)", () => {
+    // Invalid year → whole reference rejected, not silently dropped.
+    expect(parseProDataSource({ champion_slug: "akali", year: 1998 })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "akali", year: 2101 })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "akali", year: 2011.5 })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "akali", year: "nope" })).toBeNull();
+    // Invalid section → null even though champion + year are fine.
+    expect(parseProDataSource({ champion_slug: "akali", year: 2011, section: "hack" })).toBeNull();
+    // Unrecognized / empty / non-string scope → null.
+    expect(parseProDataSource({ champion_slug: "akali", scope: "challenger" })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "akali", scope: "" })).toBeNull();
+    expect(parseProDataSource({ champion_slug: "akali", scope: 5 })).toBeNull();
+  });
+
+  it("derives the same URL as buildProChampionUrl", () => {
+    const source = parseProDataSource({
+      champion_slug: "akali",
+      year: 2026,
+      scope: "major",
+      section: "scoped-stats",
+    });
+    expect(source).not.toBeNull();
+    expect(proDataSourceUrl(source!)).toBe(
+      buildProChampionUrl({ slug: "akali", year: 2026, scope: "major", section: "scoped-stats" }),
+    );
+    expect(proDataSourceUrl(source!)).toBe(
+      "/lol/docs/pro/champions/akali?year=2026&scope=major#scoped-stats",
+    );
   });
 });
