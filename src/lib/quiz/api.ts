@@ -416,6 +416,178 @@ export type PlaylistResponse = {
   questions: QuizQuestion[];
 };
 
+// ---------------------------------------------------------------------------
+// Quiz Builder (Pro Esports) — admin candidate generation, drafts, promotion.
+// All endpoints under /api/quiz/admin/builder/* and use the same adminRequest
+// wrapper (X-Admin-Key) as the review console.
+// ---------------------------------------------------------------------------
+
+export type QuizBuilderCoverageStatus =
+  | "complete" | "partial" | "in_progress" | "unavailable" | "unknown";
+
+export type QuizBuilderCorrectAnswer = { type: string; value: string };
+
+/** Evidence rows are backend-shaped stat objects (champion/picks/bans/…). */
+export type QuizBuilderEvidenceRow = Record<string, string | number | null>;
+
+export type QuizBuilderTemplateMeta = {
+  template_id: string;
+  label: string;
+  default_difficulty: number;
+  stat_column: string;
+};
+
+export type QuizBuilderScopeMeta = { scope_name: string; label: string };
+
+export type QuizBuilderYearMeta = {
+  year: number;
+  scopes: string[];
+  coverage_status: QuizBuilderCoverageStatus;
+  production_ready: boolean;
+  champions_with_stats: number;
+  job_counts: Record<string, number>;
+  notes: string[];
+};
+
+export type QuizBuilderMeta = {
+  source_types: string[];
+  templates: QuizBuilderTemplateMeta[];
+  scopes: QuizBuilderScopeMeta[];
+  years: QuizBuilderYearMeta[];
+  difficulties: number[];
+  max_candidate_count: number;
+};
+
+export type QuizBuilderGenerateRequest = {
+  source_type?: string;
+  template_id: string;
+  year: number;
+  scope_name: string;
+  candidate_count: number;
+  difficulty?: number;
+};
+
+export type QuizBuilderCandidate = {
+  template_id: string;
+  source_type: string;
+  question_text: string;
+  format: string;
+  choices: string[];
+  correct_answer: QuizBuilderCorrectAnswer;
+  explanation: string;
+  difficulty: number;
+  year: number;
+  scope_name: string;
+  scope_label: string;
+  coverage_status: QuizBuilderCoverageStatus;
+  production_ready: boolean;
+  coverage_warnings: string[];
+  evidence: QuizBuilderEvidenceRow[];
+  source_tables: string[];
+  generation_params: Record<string, unknown>;
+  warnings: string[];
+};
+
+export type QuizBuilderGenerateResponse = {
+  candidates: QuizBuilderCandidate[];
+  warnings: string[];
+};
+
+export type QuizBuilderDraftStatus = "draft" | "rejected" | "sent_to_review";
+
+/** POST /drafts body — mirrors a candidate; server owns key/status/timestamps. */
+export type QuizBuilderDraftCreate = {
+  source_type: string;
+  template_id: string;
+  year: number;
+  scope_name: string;
+  question_text: string;
+  question_format?: string;
+  choices: string[];
+  correct_answer: QuizBuilderCorrectAnswer;
+  explanation?: string | null;
+  evidence?: QuizBuilderEvidenceRow[];
+  generation_params?: Record<string, unknown> | null;
+  source_tables?: string[] | null;
+  difficulty: number;
+  answer_certainty?: string;
+  coverage_status?: string | null;
+  created_by?: string | null;
+};
+
+/** PATCH /drafts/{id} body — only editable fields; immutable fields omitted. */
+export type QuizBuilderDraftUpdate = {
+  question_text?: string;
+  choices?: string[];
+  correct_answer?: QuizBuilderCorrectAnswer;
+  explanation?: string | null;
+  difficulty?: number;
+  evidence?: QuizBuilderEvidenceRow[];
+  generation_params?: Record<string, unknown>;
+  coverage_warning?: string | null;
+  status?: QuizBuilderDraftStatus;
+  rejection_reason?: string | null;
+  updated_by?: string | null;
+};
+
+export type QuizBuilderDraft = {
+  id: number;
+  question_key: string;
+  source_type: string;
+  template_id: string;
+  year: number;
+  scope_name: string;
+  question_text: string;
+  question_format: string;
+  choices: string[];
+  correct_answer: QuizBuilderCorrectAnswer;
+  explanation: string | null;
+  evidence: QuizBuilderEvidenceRow[];
+  generation_params: Record<string, unknown>;
+  source_tables: string[];
+  difficulty: number;
+  answer_certainty: string;
+  coverage_status: QuizBuilderCoverageStatus;
+  coverage_warning: string | null;
+  status: QuizBuilderDraftStatus;
+  rejection_reason: string | null;
+  promoted_question_id: number | null;
+  sent_to_review_at: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type QuizBuilderDraftListFilters = {
+  status?: string;
+  year?: number;
+  scope_name?: string;
+  template_id?: string;
+  source_type?: string;
+  coverage_status?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type QuizBuilderDraftListResponse = {
+  items: QuizBuilderDraft[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type QuizBuilderPromotionResponse = {
+  draft_id: number;
+  promoted_question_id: number;
+  draft_status: string;
+  review_status: string;
+  is_active: boolean;
+  sent_to_review_at: string | null;
+  reviewer_path: string;
+};
+
 export const quizApi = {
   baseUrl: API_BASE_URL,
   sets: () => request<{ sets: QuizSet[] }>("/api/quiz/sets"),
@@ -564,5 +736,49 @@ export const quizApi = {
   getReviewPackQuestions: (packKey: string) =>
     adminRequest<ReviewPackQuestionsResponse>(
       `/api/quiz/admin/review/packs/${encodeURIComponent(packKey)}/questions`,
+    ),
+
+  // ---------------------------------------------------------------------------
+  // Quiz Builder (Pro Esports)
+  // ---------------------------------------------------------------------------
+  getQuizBuilderMeta: () =>
+    adminRequest<QuizBuilderMeta>("/api/quiz/admin/builder/meta"),
+  generateQuizBuilderCandidates: (req: QuizBuilderGenerateRequest) =>
+    adminRequest<QuizBuilderGenerateResponse>("/api/quiz/admin/builder/generate", {
+      method: "POST",
+      body: JSON.stringify({ source_type: "pro_esports", ...req }),
+    }),
+  createQuizBuilderDraft: (payload: QuizBuilderDraftCreate) =>
+    adminRequest<QuizBuilderDraft>("/api/quiz/admin/builder/drafts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  listQuizBuilderDrafts: (filters: QuizBuilderDraftListFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.set("status", filters.status);
+    if (filters.year !== undefined) params.set("year", String(filters.year));
+    if (filters.scope_name) params.set("scope_name", filters.scope_name);
+    if (filters.template_id) params.set("template_id", filters.template_id);
+    if (filters.source_type) params.set("source_type", filters.source_type);
+    if (filters.coverage_status) params.set("coverage_status", filters.coverage_status);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.limit !== undefined) params.set("limit", String(filters.limit));
+    if (filters.offset !== undefined) params.set("offset", String(filters.offset));
+    const qs = params.toString();
+    return adminRequest<QuizBuilderDraftListResponse>(
+      `/api/quiz/admin/builder/drafts${qs ? `?${qs}` : ""}`,
+    );
+  },
+  getQuizBuilderDraft: (id: number) =>
+    adminRequest<QuizBuilderDraft>(`/api/quiz/admin/builder/drafts/${id}`),
+  updateQuizBuilderDraft: (id: number, patch: QuizBuilderDraftUpdate) =>
+    adminRequest<QuizBuilderDraft>(`/api/quiz/admin/builder/drafts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  sendQuizBuilderDraftToReview: (id: number) =>
+    adminRequest<QuizBuilderPromotionResponse>(
+      `/api/quiz/admin/builder/drafts/${id}/send-to-review`,
+      { method: "POST" },
     ),
 };
