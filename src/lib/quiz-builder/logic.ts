@@ -14,6 +14,29 @@ import type {
   QuizBuilderDraftCreate,
   QuizBuilderMeta,
 } from "@/lib/quiz/api";
+import {
+  isProChampionSection,
+  isSupportedScope,
+  isValidChampionSlug,
+  normalizeScopeName,
+  parseProDataSource,
+  proDataSourceUrl,
+  PRO_CHAMPION_SECTIONS,
+  type ProChampionSection,
+} from "@/lib/league-docs/pro-data-links";
+
+/**
+ * Raw form inputs for the optional League Docs Pro Data source. Kept as
+ * strings so the editor can show per-field validation; assembled into the
+ * canonical snake_case metadata only at save time (validateProSource).
+ */
+export type EditableProSource = {
+  enabled: boolean;
+  championSlug: string;
+  year: string;
+  scope: "" | "all-imported" | "major" | "international";
+  section: "" | ProChampionSection;
+};
 
 export type EditableQuestion = {
   question_text: string;
@@ -21,7 +44,115 @@ export type EditableQuestion = {
   correctAnswer: string;
   explanation: string;
   difficulty: number;
+  proSource: EditableProSource;
 };
+
+export const EMPTY_PRO_SOURCE: EditableProSource = {
+  enabled: false,
+  championSlug: "",
+  year: "",
+  scope: "",
+  section: "",
+};
+
+export const PRO_SOURCE_SECTION_OPTIONS: { value: ProChampionSection; label: string }[] =
+  PRO_CHAMPION_SECTIONS.map((value) => ({
+    value,
+    label: value
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" "),
+  }));
+
+export const PRO_SOURCE_SCOPE_OPTIONS: { value: "all-imported" | "major" | "international"; label: string }[] = [
+  { value: "all-imported", label: "All imported" },
+  { value: "major", label: "Major leagues" },
+  { value: "international", label: "International" },
+];
+
+/**
+ * Hydrate the editor's source sub-state from a stored draft's pro_data_source
+ * (snake_case, or null). `invalid` is true when a value is present but does
+ * not pass the shared parser — the editor warns and requires correction
+ * rather than silently overwriting or widening it.
+ */
+export function proSourceFromMetadata(
+  meta: Record<string, unknown> | null | undefined,
+): { edit: EditableProSource; invalid: boolean } {
+  if (!meta || typeof meta !== "object") return { edit: { ...EMPTY_PRO_SOURCE }, invalid: false };
+  const obj = meta as Record<string, unknown>;
+  const rawSlug = typeof obj.champion_slug === "string" ? obj.champion_slug : "";
+  const rawYear = obj.year === undefined || obj.year === null ? "" : String(obj.year);
+  const normScope = normalizeScopeName(typeof obj.scope === "string" ? obj.scope : null);
+  const scope = normScope && isSupportedScope(normScope) ? (normScope as EditableProSource["scope"]) : "";
+  const section =
+    typeof obj.section === "string" && isProChampionSection(obj.section) ? obj.section : "";
+  const edit: EditableProSource = {
+    enabled: true,
+    championSlug: rawSlug,
+    year: rawYear,
+    scope,
+    section,
+  };
+  return { edit, invalid: parseProDataSource(obj) === null };
+}
+
+export type ProSourceResult =
+  | { ok: true; metadata: Record<string, unknown> | null }
+  | { ok: false; errors: string[] };
+
+/**
+ * Validate the source sub-state and produce canonical snake_case metadata
+ * (or null when disabled). Fails closed: any supplied-but-invalid field is an
+ * error, and parseProDataSource is the final gate so the builder never emits
+ * metadata the public quiz would reject.
+ */
+export function validateProSource(edit: EditableProSource): ProSourceResult {
+  if (!edit.enabled) return { ok: true, metadata: null };
+
+  const errors: string[] = [];
+  const slug = edit.championSlug.trim();
+  if (!slug) errors.push("Champion slug is required.");
+  else if (!isValidChampionSlug(slug)) errors.push("Champion slug is not a valid slug.");
+
+  const source: Record<string, unknown> = { champion_slug: slug };
+
+  const yearText = edit.year.trim();
+  if (yearText) {
+    const year = Number(yearText);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      errors.push("Year must be a whole number from 2000 to 2100.");
+    } else {
+      source.year = year;
+    }
+  }
+
+  if (edit.scope) {
+    if (!isSupportedScope(edit.scope)) errors.push("Scope is not supported.");
+    else source.scope = edit.scope;
+  }
+
+  if (edit.section) {
+    if (!isProChampionSection(edit.section)) errors.push("Section is not valid.");
+    else source.section = edit.section;
+  }
+
+  if (errors.length) return { ok: false, errors };
+
+  // Final gate: the shared parser must accept the assembled object.
+  if (parseProDataSource(source) === null) {
+    return { ok: false, errors: ["Pro Data source metadata is invalid."] };
+  }
+  return { ok: true, metadata: source };
+}
+
+/** Destination preview URL for the current source sub-state, or null if invalid/disabled. */
+export function proSourcePreviewUrl(edit: EditableProSource): string | null {
+  const result = validateProSource(edit);
+  if (!result.ok || !result.metadata) return null;
+  const parsed = parseProDataSource(result.metadata);
+  return parsed ? proDataSourceUrl(parsed) : null;
+}
 
 export type AnswerValidation = {
   ok: boolean;
@@ -62,10 +193,13 @@ export function validateEditableQuestion(q: EditableQuestion): AnswerValidation 
     errors.push("Difficulty must be between 1 and 5.");
   }
 
+  const proSource = validateProSource(q.proSource);
+  if (!proSource.ok) errors.push(...proSource.errors);
+
   return { ok: errors.length === 0, errors };
 }
 
-/** Seed an editable question from a generated candidate. */
+/** Seed an editable question from a generated candidate (no source metadata yet). */
 export function candidateToEditable(c: QuizBuilderCandidate): EditableQuestion {
   return {
     question_text: c.question_text,
@@ -73,6 +207,7 @@ export function candidateToEditable(c: QuizBuilderCandidate): EditableQuestion {
     correctAnswer: c.correct_answer.value,
     explanation: c.explanation ?? "",
     difficulty: c.difficulty,
+    proSource: { ...EMPTY_PRO_SOURCE },
   };
 }
 
@@ -85,7 +220,8 @@ export function buildDraftCreatePayload(
   candidate: QuizBuilderCandidate,
   edited: EditableQuestion,
 ): QuizBuilderDraftCreate {
-  return {
+  const proSource = validateProSource(edited.proSource);
+  const payload: QuizBuilderDraftCreate = {
     source_type: candidate.source_type,
     template_id: candidate.template_id,
     year: candidate.year,
@@ -101,6 +237,25 @@ export function buildDraftCreatePayload(
     difficulty: edited.difficulty,
     coverage_status: candidate.coverage_status,
   };
+  // Only attach when valid + enabled; validation blocks save otherwise.
+  if (proSource.ok && proSource.metadata) payload.pro_data_source = proSource.metadata;
+  return payload;
+}
+
+/**
+ * Build the PATCH body for an existing draft's source metadata. Returns the
+ * key to include: an object to set/replace, or explicit null to clear (only
+ * when it was previously set), or {} to omit when nothing changed.
+ */
+export function buildProSourceUpdate(
+  edited: EditableProSource,
+  hadSource: boolean,
+): { pro_data_source?: Record<string, unknown> | null } {
+  const result = validateProSource(edited);
+  if (result.ok && result.metadata) return { pro_data_source: result.metadata };
+  // Disabled/empty: clear it server-side only if the draft previously had one.
+  if (result.ok && hadSource) return { pro_data_source: null };
+  return {};
 }
 
 export const COVERAGE_META: Record<

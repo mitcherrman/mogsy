@@ -30,7 +30,9 @@ import { QuizDraftList } from "@/components/admin/quiz-builder/QuizDraftList";
 import {
   pickGenerateDefaults,
   buildDraftCreatePayload,
+  buildProSourceUpdate,
   candidateToEditable,
+  proSourceFromMetadata,
   validateEditableQuestion,
   builderErrorMessage,
   isUnsafePromotion,
@@ -180,6 +182,7 @@ export default function QuizBuilderPro() {
       correctAnswer: draft.correct_answer.value,
       explanation: draft.explanation ?? "",
       difficulty: draft.difficulty,
+      proSource: proSourceFromMetadata(draft.pro_data_source).edit,
     });
   };
 
@@ -191,6 +194,8 @@ export default function QuizBuilderPro() {
         correct_answer: { type: editDraft!.correct_answer.type, value: value.correctAnswer.trim() },
         explanation: value.explanation.trim() || null,
         difficulty: value.difficulty,
+        // Set/replace, clear (null) if it previously had one, or omit.
+        ...buildProSourceUpdate(value.proSource, editDraft!.pro_data_source != null),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["quiz-builder", "drafts"] });

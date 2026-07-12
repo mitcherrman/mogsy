@@ -3,13 +3,20 @@ import {
   validateEditableQuestion,
   candidateToEditable,
   buildDraftCreatePayload,
+  buildProSourceUpdate,
+  validateProSource,
+  proSourceFromMetadata,
+  proSourcePreviewUrl,
   isProductionReady,
   pickGenerateDefaults,
   parseApiError,
   builderErrorMessage,
   isUnsafePromotion,
+  EMPTY_PRO_SOURCE,
   type EditableQuestion,
+  type EditableProSource,
 } from "@/lib/quiz-builder/logic";
+import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
 import type { QuizBuilderCandidate, QuizBuilderMeta } from "@/lib/quiz/api";
 
 const candidate: QuizBuilderCandidate = {
@@ -39,7 +46,12 @@ const validEdit: EditableQuestion = {
   correctAnswer: "Ahri",
   explanation: "because",
   difficulty: 2,
+  proSource: { ...EMPTY_PRO_SOURCE },
 };
+
+function proSource(overrides: Partial<EditableProSource>): EditableProSource {
+  return { ...EMPTY_PRO_SOURCE, enabled: true, ...overrides };
+}
 
 describe("validateEditableQuestion", () => {
   it("accepts a valid question", () => {
@@ -98,6 +110,7 @@ describe("candidateToEditable + buildDraftCreatePayload", () => {
       correctAnswer: " Ahri ",
       explanation: "  ",
       difficulty: 4,
+      proSource: { ...EMPTY_PRO_SOURCE },
     };
     const payload = buildDraftCreatePayload(candidate, edited);
     expect(payload.question_text).toBe("Reworded question?");
@@ -109,6 +122,112 @@ describe("candidateToEditable + buildDraftCreatePayload", () => {
     expect(payload.evidence).toBe(candidate.evidence);
     expect(payload.coverage_status).toBe("complete");
     expect(payload.source_tables).toEqual(["esports_champion_scoped_stats"]);
+  });
+
+  it("seeds an editable candidate with a disabled source and omits it from the payload", () => {
+    const e = candidateToEditable(candidate);
+    expect(e.proSource).toEqual(EMPTY_PRO_SOURCE);
+    expect(buildDraftCreatePayload(candidate, e).pro_data_source).toBeUndefined();
+  });
+
+  it("attaches valid source metadata to the payload", () => {
+    const edited = { ...candidateToEditable(candidate), proSource: proSource({ championSlug: "akali", year: "2011", scope: "major", section: "yearly-stats" }) };
+    expect(buildDraftCreatePayload(candidate, edited).pro_data_source).toEqual({
+      champion_slug: "akali", year: 2011, scope: "major", section: "yearly-stats",
+    });
+  });
+});
+
+describe("validateProSource", () => {
+  it("disabled → no metadata, always ok", () => {
+    expect(validateProSource(EMPTY_PRO_SOURCE)).toEqual({ ok: true, metadata: null });
+  });
+
+  it("champion-only is valid", () => {
+    expect(validateProSource(proSource({ championSlug: "akali" }))).toEqual({
+      ok: true, metadata: { champion_slug: "akali" },
+    });
+  });
+
+  it("full metadata is valid and trims the slug", () => {
+    expect(validateProSource(proSource({ championSlug: "  akali ", year: "2026", scope: "major", section: "scoped-stats" }))).toEqual({
+      ok: true, metadata: { champion_slug: "akali", year: 2026, scope: "major", section: "scoped-stats" },
+    });
+  });
+
+  it("blocks a missing slug", () => {
+    const r = validateProSource(proSource({ championSlug: "  " }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.some((e) => /required/i.test(e))).toBe(true);
+  });
+
+  it("blocks a malformed slug", () => {
+    expect(validateProSource(proSource({ championSlug: "not a slug!" })).ok).toBe(false);
+  });
+
+  it("blocks an out-of-range/non-integer year", () => {
+    expect(validateProSource(proSource({ championSlug: "akali", year: "1999" })).ok).toBe(false);
+    expect(validateProSource(proSource({ championSlug: "akali", year: "20x" })).ok).toBe(false);
+  });
+
+  it("enabled source blocks the whole question save", () => {
+    const bad = { ...validEdit, proSource: proSource({ championSlug: "" }) };
+    expect(validateEditableQuestion(bad).ok).toBe(false);
+  });
+});
+
+describe("proSourceFromMetadata (hydration)", () => {
+  it("absent metadata → disabled", () => {
+    expect(proSourceFromMetadata(null)).toEqual({ edit: EMPTY_PRO_SOURCE, invalid: false });
+  });
+
+  it("valid metadata hydrates all fields + enables", () => {
+    const { edit, invalid } = proSourceFromMetadata({ champion_slug: "akali", year: 2011, scope: "major", section: "yearly-stats" });
+    expect(invalid).toBe(false);
+    expect(edit).toEqual({ enabled: true, championSlug: "akali", year: "2011", scope: "major", section: "yearly-stats" });
+  });
+
+  it("malformed metadata enables but flags invalid (no silent overwrite)", () => {
+    const { edit, invalid } = proSourceFromMetadata({ champion_slug: "akali", scope: "challenger" });
+    expect(edit.enabled).toBe(true);
+    expect(edit.championSlug).toBe("akali");
+    expect(edit.scope).toBe(""); // unsupported scope not carried into the select
+    expect(invalid).toBe(true);
+  });
+});
+
+describe("buildProSourceUpdate", () => {
+  it("emits an object when valid + enabled", () => {
+    expect(buildProSourceUpdate(proSource({ championSlug: "akali" }), false)).toEqual({
+      pro_data_source: { champion_slug: "akali" },
+    });
+  });
+
+  it("clears (null) when disabled but a source previously existed", () => {
+    expect(buildProSourceUpdate(EMPTY_PRO_SOURCE, true)).toEqual({ pro_data_source: null });
+  });
+
+  it("omits the key when disabled and none existed", () => {
+    expect(buildProSourceUpdate(EMPTY_PRO_SOURCE, false)).toEqual({});
+  });
+
+  it("omits the key when the source is invalid (no partial write)", () => {
+    expect(buildProSourceUpdate(proSource({ championSlug: "bad slug!" }), false)).toEqual({});
+  });
+});
+
+describe("proSourcePreviewUrl", () => {
+  it("matches buildProChampionUrl for valid input", () => {
+    const edit = proSource({ championSlug: "akali", year: "2011", scope: "major", section: "yearly-stats" });
+    expect(proSourcePreviewUrl(edit)).toBe(
+      buildProChampionUrl({ slug: "akali", year: 2011, scope: "major", section: "yearly-stats" }),
+    );
+    expect(proSourcePreviewUrl(edit)).toBe("/lol/docs/pro/champions/akali?year=2011&scope=major#yearly-stats");
+  });
+
+  it("null when invalid or disabled", () => {
+    expect(proSourcePreviewUrl(proSource({ championSlug: "" }))).toBeNull();
+    expect(proSourcePreviewUrl(EMPTY_PRO_SOURCE)).toBeNull();
   });
 });
 

@@ -94,6 +94,11 @@ export type ProDataSource = {
 // Same shape/bounds the champion + year pages treat as plausible.
 const SLUG_PATTERN = /^[a-z0-9'’.&-]{1,40}$/i;
 
+/** True when `slug` is a plausible champion slug (trimmed, matches the pattern). */
+export function isValidChampionSlug(slug: string): boolean {
+  return SLUG_PATTERN.test(slug.trim());
+}
+
 /** A recognized, supported scope (post-normalization of the all/all-imported alias). */
 export function isSupportedScope(scope: string): boolean {
   return Object.prototype.hasOwnProperty.call(PRO_SCOPE_LABELS, scope);
@@ -113,7 +118,7 @@ export function parseProDataSource(raw: unknown): ProDataSource | null {
   const slugValue = obj.champion_slug;
   if (typeof slugValue !== "string") return null;
   const championSlug = slugValue.trim();
-  if (!championSlug || !SLUG_PATTERN.test(championSlug)) return null;
+  if (!championSlug || !isValidChampionSlug(championSlug)) return null;
 
   const source: ProDataSource = { championSlug };
 

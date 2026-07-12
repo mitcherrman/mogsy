@@ -512,6 +512,8 @@ export type QuizBuilderDraftCreate = {
   difficulty: number;
   answer_certainty?: string;
   coverage_status?: string | null;
+  /** Optional League Docs Pro Data source ({champion_slug, year?, scope?, section?}). */
+  pro_data_source?: Record<string, unknown> | null;
   created_by?: string | null;
 };
 
@@ -527,6 +529,8 @@ export type QuizBuilderDraftUpdate = {
   coverage_warning?: string | null;
   status?: QuizBuilderDraftStatus;
   rejection_reason?: string | null;
+  /** Object to set/replace, explicit null to clear, omit to leave untouched. */
+  pro_data_source?: Record<string, unknown> | null;
   updated_by?: string | null;
 };
 
@@ -549,6 +553,7 @@ export type QuizBuilderDraft = {
   answer_certainty: string;
   coverage_status: QuizBuilderCoverageStatus;
   coverage_warning: string | null;
+  pro_data_source: Record<string, unknown> | null;
   status: QuizBuilderDraftStatus;
   rejection_reason: string | null;
   promoted_question_id: number | null;
