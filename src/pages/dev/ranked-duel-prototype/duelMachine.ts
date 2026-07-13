@@ -72,8 +72,12 @@ export interface PlayerProgression {
   selectedAbilityId: string | null;
   /** Pick explicitly confirmed; can no longer change. */
   confirmed: boolean;
-  /** The class ultimate unlocked automatically this stop (Level 3). */
-  ultimateUnlocked: boolean;
+  /**
+   * The final (unchosen) normal ability unlocked automatically this stop
+   * (Level 3, the current max). No ultimate exists yet — the "Future"
+   * ultimate slot never unlocks in this prototype.
+   */
+  finalAbilityUnlocked: boolean;
 }
 
 /** Prototype mock result — frontend fixture data, not a production schema. */
@@ -294,7 +298,7 @@ const startNextQuestion = (state: DuelState): DuelState => ({
  * Progression check run once per round, after reveal. Detects each level
  * transition exactly once via the round result's levelBefore/levelAfter pair
  * (no repeated triggers, no skipped levels — a hypothetical 1→3 jump would
- * surface both the choice and the ultimate in one stop).
+ * surface both the choice and the final-normal unlock in one stop).
  */
 const buildProgression = (
   state: DuelState,
@@ -312,7 +316,7 @@ const buildProgression = (
       needsChoice,
       selectedAbilityId: null,
       confirmed: false,
-      ultimateUnlocked: crossed3,
+      finalAbilityUnlocked: crossed3,
     };
     if (needsChoice || crossed3) any = true;
   }
@@ -379,15 +383,18 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
       if (state.phase !== "question") return state;
       const me = state.roundPlayers[action.player];
       if (me.abilityLocked) return state;
-      // Only abilities this player has actually unlocked (starter, confirmed
-      // Level 2 pick, ultimate at max level) are selectable in a round.
+      // Only abilities this player has actually unlocked are selectable in a
+      // round: the starting active ability, the confirmed Level 2 pick, and — from
+      // Level 3 — both normals (the final one unlocked automatically). The
+      // "Future" ultimate slot is never selectable.
       if (action.abilityId !== null) {
         const match = state.players![action.player];
         const cls = getDuelClass(match.classId);
         const usable =
-          action.abilityId === cls.starterAbility.id ||
+          action.abilityId === cls.startingAbility.id ||
           action.abilityId === match.chosenLevelTwoAbilityId ||
-          (match.level >= MAX_LEVEL && action.abilityId === cls.ultimate.id);
+          (match.level >= MAX_LEVEL &&
+            cls.levelTwoChoices.some((a) => a.id === action.abilityId));
         if (!usable) return state;
       }
       return {
@@ -436,7 +443,8 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
     case "CHOOSE_LEVEL_TWO": {
       // Guards: right phase, this player owes a choice, not yet confirmed,
       // and the ability is one of THIS player's class's two Level 2 options
-      // (ultimates and other classes' abilities are rejected).
+      // (starter abilities, future-ultimate slots, and other classes'
+      // abilities are rejected).
       if (state.phase !== "progression" || !state.progression) return state;
       const prog = state.progression[action.player];
       if (!prog.needsChoice || prog.confirmed) return state;

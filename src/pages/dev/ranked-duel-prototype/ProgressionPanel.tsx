@@ -1,8 +1,14 @@
 import { Dispatch } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Hourglass, Sparkles, Star } from "lucide-react";
-import { MOCK_PLAYERS, PlayerId, findClassAbility, getDuelClass } from "./fixtures";
+import { CheckCircle2, Hourglass, Sparkles, Unlock } from "lucide-react";
+import {
+  MOCK_PLAYERS,
+  PlayerId,
+  finalNormalAbility,
+  findClassAbility,
+  getDuelClass,
+} from "./fixtures";
 import {
   DuelAction,
   DuelState,
@@ -17,8 +23,8 @@ const PLAYER_IDS: PlayerId[] = ["p1", "p2"];
  * While any required Level 2 choice is unresolved, this panel shows only
  * NEUTRAL per-player statuses — the actual picks live in the operator
  * controls. Once every required choice is confirmed, all newly unlocked
- * abilities (Level 2 picks and Level 3 ultimates) reveal together, and only
- * then can the next round begin.
+ * abilities (Level 2 picks and Level 3 final-normal unlocks) reveal
+ * together, and only then can the next round begin.
  */
 export function ProgressionPanel({
   state,
@@ -85,6 +91,14 @@ export function ProgressionPanel({
               const prog = progression[p];
               const cls = getDuelClass(state.players![p].classId);
               const chosen = findClassAbility(cls, prog.selectedAbilityId);
+              // The final normal = the Level 2 option this player did NOT
+              // pick (committed earlier, or picked in this same stop).
+              const finalAbility = prog.finalAbilityUnlocked
+                ? finalNormalAbility(
+                    cls,
+                    state.players![p].chosenLevelTwoAbilityId ?? prog.selectedAbilityId,
+                  )
+                : undefined;
               return (
                 <div key={p} className="rounded-lg border p-3 space-y-2" data-testid={`progression-reveal-${p}`}>
                   <div className="flex items-center gap-2">
@@ -102,20 +116,21 @@ export function ProgressionPanel({
                       <p className="text-xs text-muted-foreground">{chosen.description}</p>
                     </div>
                   )}
-                  {prog.ultimateUnlocked && (
+                  {finalAbility && (
                     <div
-                      className="rounded-md border-2 border-amber-500/70 bg-amber-500/10 p-2"
-                      data-testid={`ultimate-unlock-${p}`}
+                      className="rounded-md border-2 border-violet-500/70 bg-violet-500/10 p-2"
+                      data-testid={`final-unlock-${p}`}
                     >
                       <div className="text-sm font-bold flex items-center gap-1.5">
-                        <Star className="h-4 w-4 text-amber-500" aria-hidden />
-                        {cls.ultimate.name}
-                        <Badge className="text-[10px] bg-amber-600 text-white hover:bg-amber-600">
-                          Ultimate
+                        <Unlock className="h-4 w-4 text-violet-400" aria-hidden />
+                        {finalAbility.name}
+                        <Badge className="text-[10px] bg-violet-600 text-white hover:bg-violet-600">
+                          Normal · Lv3
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Unlocked automatically at Level 3 — {cls.ultimate.description}
+                        Final normal ability — unlocked automatically at Level 3.{" "}
+                        {finalAbility.description}
                       </p>
                     </div>
                   )}

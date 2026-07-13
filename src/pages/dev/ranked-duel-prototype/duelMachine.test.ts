@@ -90,16 +90,28 @@ describe("setup and match start", () => {
     expect(s.players!.p2.xp).toBe(0);
   });
 
-  it("players start with only the starter ability usable", () => {
+  it("players start with only the starting active ability usable", () => {
     const s = start();
     expect(s.players!.p1.chosenLevelTwoAbilityId).toBeNull();
-    // Level 2 and ultimate abilities are rejected in the question phase.
+    // Normal abilities and the future-ultimate slot are rejected at level 1.
     let t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.levelTwoChoices[0].id });
     expect(t.roundPlayers.p1.selectedAbilityId).toBeNull();
-    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.ultimate.id });
+    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.futureUltimate.id });
     expect(t.roundPlayers.p1.selectedAbilityId).toBeNull();
-    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.starterAbility.id });
-    expect(t.roundPlayers.p1.selectedAbilityId).toBe(TANK.starterAbility.id);
+    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.startingAbility.id });
+    expect(t.roundPlayers.p1.selectedAbilityId).toBe(TANK.startingAbility.id);
+  });
+
+  it("classes have starter + two normals + future ultimate, with no passive terminology", () => {
+    for (const cls of [TANK, MAGE, getDuelClass("marksman")]) {
+      expect(cls.startingAbility.slot).toBe("starter_active");
+      expect(cls.startingAbility.unlockLevel).toBe(1);
+      expect(cls.levelTwoChoices).toHaveLength(2);
+      expect(cls.levelTwoChoices.every((a) => a.slot === "normal")).toBe(true);
+      expect(cls.futureUltimate.slot).toBe("future_ultimate");
+      expect(cls.futureUltimate.unlockLevel).toBeUndefined();
+      expect(JSON.stringify(cls)).not.toMatch(/passive/i);
+    }
   });
 });
 
@@ -164,7 +176,7 @@ describe("timer behavior", () => {
 
 describe("answer/ability interaction", () => {
   it("answering does not close the ability window; ability can change until locked", () => {
-    const starter = TANK.starterAbility.id;
+    const starter = TANK.startingAbility.id;
     let s = run(start(), { type: "SUBMIT_ANSWER", player: "p1", answerIndex: correct });
     s = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: starter });
     expect(s.roundPlayers.p1.selectedAbilityId).toBe(starter);
@@ -340,7 +352,7 @@ describe("level 2 progression stop", () => {
     expect(t).toBe(s);
   });
 
-  it("a player cannot choose another class's ability (or an ultimate)", () => {
+  it("a player cannot choose another class's ability (or the future-ultimate slot)", () => {
     const s = toSoloLevelTwo();
     let t = run(s, {
       type: "CHOOSE_LEVEL_TWO",
@@ -348,7 +360,7 @@ describe("level 2 progression stop", () => {
       abilityId: MAGE.levelTwoChoices[0].id, // p1 is tank
     });
     expect(t.progression!.p1.selectedAbilityId).toBeNull();
-    t = run(s, { type: "CHOOSE_LEVEL_TWO", player: "p1", abilityId: TANK.ultimate.id });
+    t = run(s, { type: "CHOOSE_LEVEL_TWO", player: "p1", abilityId: TANK.futureUltimate.id });
     expect(t.progression!.p1.selectedAbilityId).toBeNull();
   });
 
@@ -427,7 +439,7 @@ describe("level 2 progression stop", () => {
   });
 });
 
-describe("level 3 ultimate unlock", () => {
+describe("level 3 final normal ability unlock", () => {
   /**
    * Both-correct rounds give both players 20 XP each round; level 3 (100 XP)
    * lands on round 5. Tank vs Mage survives: faster (p1) deals 18/round to
@@ -450,33 +462,53 @@ describe("level 3 ultimate unlock", () => {
     return s; // progression stop for dual level 3
   };
 
-  it("reaching level 3 unlocks the ultimate automatically, with no choice", () => {
+  it("reaching level 3 unlocks the final normal ability automatically, with no choice", () => {
     const s = toLevelThree();
     expect(s.phase).toBe("progression");
-    expect(s.progression!.p1.ultimateUnlocked).toBe(true);
+    expect(s.progression!.p1.finalAbilityUnlocked).toBe(true);
     expect(s.progression!.p1.needsChoice).toBe(false);
     expect(s.progression!.p1.newLevel).toBe(3);
   });
 
-  it("simultaneous ultimate unlocks are presented in the same stop and ack together", () => {
+  it("simultaneous final unlocks are presented in the same stop and ack together", () => {
     let s = toLevelThree();
-    expect(s.progression!.p1.ultimateUnlocked).toBe(true);
-    expect(s.progression!.p2.ultimateUnlocked).toBe(true);
+    expect(s.progression!.p1.finalAbilityUnlocked).toBe(true);
+    expect(s.progression!.p2.finalAbilityUnlocked).toBe(true);
     // No choices owed → a single Continue acknowledges both.
     s = run(s, { type: "CONTINUE_AFTER_PROGRESSION" });
     expect(s.phase).toBe("question");
   });
 
-  it("the ultimate cannot be manually chosen as a level 2 option", () => {
+  it("neither the final unlock nor the future ultimate can be manually chosen", () => {
     const s = toLevelThree();
-    const t = run(s, { type: "CHOOSE_LEVEL_TWO", player: "p1", abilityId: TANK.ultimate.id });
+    // advance() picked levelTwoChoices[0], so [1] is the auto-unlocking final.
+    let t = run(s, { type: "CHOOSE_LEVEL_TWO", player: "p1", abilityId: TANK.levelTwoChoices[1].id });
+    expect(t).toBe(s); // no pending choice at level 3 — rejected
+    t = run(s, { type: "CHOOSE_LEVEL_TWO", player: "p1", abilityId: TANK.futureUltimate.id });
     expect(t).toBe(s);
   });
 
-  it("the ultimate becomes usable in the question phase at max level", () => {
-    let s = run(toLevelThree(), { type: "CONTINUE_AFTER_PROGRESSION" });
-    s = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.ultimate.id });
-    expect(s.roundPlayers.p1.selectedAbilityId).toBe(TANK.ultimate.id);
+  it("both normal abilities are usable at max level; the future ultimate never is", () => {
+    // Before level 3, the unchosen normal is still rejected.
+    let s = toLevelThree();
+    s = run(s, { type: "CONTINUE_AFTER_PROGRESSION" });
+    // advance() confirmed levelTwoChoices[0]; [1] unlocked automatically.
+    let t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.levelTwoChoices[1].id });
+    expect(t.roundPlayers.p1.selectedAbilityId).toBe(TANK.levelTwoChoices[1].id);
+    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.levelTwoChoices[0].id });
+    expect(t.roundPlayers.p1.selectedAbilityId).toBe(TANK.levelTwoChoices[0].id);
+    t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.futureUltimate.id });
+    expect(t.roundPlayers.p1.selectedAbilityId).toBeNull();
+  });
+
+  it("the unchosen normal stays unusable below level 3", () => {
+    // One both-correct round + L2 stop leaves players at level 2.
+    let s = playRound(startTanks(), 0, 0);
+    s = advance(s); // round 1: no level yet, straight to question
+    s = playRound(s, 0, 0);
+    s = advance(s); // level 2 stop: picks levelTwoChoices[0]
+    const t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.levelTwoChoices[1].id });
+    expect(t.roundPlayers.p1.selectedAbilityId).toBeNull();
   });
 });
 

@@ -46,26 +46,27 @@ function ClassPicker({
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 <li>
                   <Badge className="gap-1 text-[10px]">
-                    {cls.starterAbility.name} · Starter Lv1
+                    {cls.startingAbility.name} · Starter Lv1
                   </Badge>
                 </li>
                 {cls.levelTwoChoices.map((a) => (
                   <li key={a.id}>
                     <Badge variant="secondary" className="gap-1 text-[10px]">
                       <Lock className="h-2.5 w-2.5" aria-hidden />
-                      {a.name} · Lv2 choice
+                      {a.name} · Normal
                     </Badge>
                   </li>
                 ))}
                 <li>
                   <Badge variant="secondary" className="gap-1 text-[10px]">
                     <Lock className="h-2.5 w-2.5" aria-hidden />
-                    {cls.ultimate.name} · Ultimate Lv3
+                    {cls.futureUltimate.name} · Future
                   </Badge>
                 </li>
               </ul>
               <p className="text-[10px] text-muted-foreground mt-1.5">
-                Lv2: pick one of two. Lv3 (max): ultimate unlocks automatically. Mock concepts only.
+                Lv2: pick one of the two normals. Lv3 (max): the other normal unlocks
+                automatically. Ultimate: future, not implemented. Mock concepts only.
               </p>
             </button>
           );
@@ -86,9 +87,10 @@ export function SetupScreen({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-        <strong>Prototype:</strong> mock classes and abilities. Players start at Level&nbsp;1 with one
-        available ability; further abilities unlock at later levels. Ability effects are not
-        finalized — names below are UI placeholders, not balance decisions.
+        <strong>Prototype:</strong> mock classes and abilities. Players start at Level&nbsp;1 with
+        one starting active ability; further normal abilities unlock at Levels 2 and 3. Every
+        ability is an active ability, and ultimates are not implemented yet. Ability effects are
+        not finalized — names below are UI placeholders, not balance decisions.
       </div>
       <div className="flex flex-col md:flex-row gap-4">
         <ClassPicker player="p1" value={p1} onChange={setP1} />

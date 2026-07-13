@@ -10,15 +10,15 @@
 export type PlayerId = "p1" | "p2";
 export type DuelClassId = "tank" | "mage" | "marksman";
 
-export type AbilitySlot = "starter" | "normal" | "ultimate";
+export type AbilitySlot = "starter_active" | "normal" | "future_ultimate";
 
 export interface PrototypeAbility {
   id: string;
   name: string;
   /** Flavor only — abilities have no combat effect in this prototype. */
   description: string;
-  /** Level at which this mock ability slot unlocks. */
-  unlockLevel: number;
+  /** Level at which this slot unlocks. Absent for the future ultimate. */
+  unlockLevel?: number;
   slot: AbilitySlot;
   /** Optional prototype disclaimer shown on ability cards. */
   disclaimer?: string;
@@ -30,12 +30,19 @@ export interface DuelClass {
   identity: string;
   /** Presentation fixture only — demonstrates class HP differentiation. */
   startingHp: number;
-  /** Level 1: every player begins with exactly this ability. */
-  starterAbility: PrototypeAbility;
-  /** Level 2: the player picks exactly ONE of these two normal abilities. */
+  /** Level 1: every player begins with this starting normal active ability. */
+  startingAbility: PrototypeAbility;
+  /**
+   * The class's two normal abilities. Level 2: the player picks exactly ONE.
+   * Level 3 (current max): the unchosen one unlocks automatically — the
+   * "final normal ability" is derived, never manually selected.
+   */
   levelTwoChoices: [PrototypeAbility, PrototypeAbility];
-  /** Level 3 (prototype max): unlocks automatically, never manually chosen. */
-  ultimate: PrototypeAbility;
+  /**
+   * Ultimates are NOT implemented yet. This is a permanently locked "Future"
+   * display slot with no threshold, selection, effect, or unlock behavior.
+   */
+  futureUltimate: PrototypeAbility;
 }
 
 const MOCK_NOTE = "Prototype concept — no gameplay effect.";
@@ -46,12 +53,12 @@ export const DUEL_CLASSES: DuelClass[] = [
     name: "Tank",
     identity: "Durable frontliner. Wins long matches by outlasting mistakes.",
     startingHp: 120,
-    starterAbility: {
+    startingAbility: {
       id: "tank-starter",
       name: "Bulwark",
       description: "Brace behind your shield for a round.",
       unlockLevel: 1,
-      slot: "starter",
+      slot: "starter_active",
       disclaimer: MOCK_NOTE,
     },
     levelTwoChoices: [
@@ -72,12 +79,11 @@ export const DUEL_CLASSES: DuelClass[] = [
         disclaimer: MOCK_NOTE,
       },
     ],
-    ultimate: {
-      id: "tank-ult",
+    futureUltimate: {
+      id: "tank-future-ult",
       name: "Unbreakable",
       description: "Become immovable for a decisive moment.",
-      unlockLevel: 3,
-      slot: "ultimate",
+      slot: "future_ultimate",
       disclaimer: MOCK_NOTE,
     },
   },
@@ -86,12 +92,12 @@ export const DUEL_CLASSES: DuelClass[] = [
     name: "Mage",
     identity: "Burst caster. Punishes wrong answers with heavy damage swings.",
     startingHp: 90,
-    starterAbility: {
+    startingAbility: {
       id: "mage-starter",
       name: "Ignite Mind",
       description: "Sharpen your focus and amplify a round.",
       unlockLevel: 1,
-      slot: "starter",
+      slot: "starter_active",
       disclaimer: MOCK_NOTE,
     },
     levelTwoChoices: [
@@ -112,12 +118,11 @@ export const DUEL_CLASSES: DuelClass[] = [
         disclaimer: MOCK_NOTE,
       },
     ],
-    ultimate: {
-      id: "mage-ult",
+    futureUltimate: {
+      id: "mage-future-ult",
       name: "Arcane Surge",
       description: "Unleash stored power all at once.",
-      unlockLevel: 3,
-      slot: "ultimate",
+      slot: "future_ultimate",
       disclaimer: MOCK_NOTE,
     },
   },
@@ -126,12 +131,12 @@ export const DUEL_CLASSES: DuelClass[] = [
     name: "Marksman",
     identity: "Consistent damage. Rewards fast, accurate answer streaks.",
     startingHp: 95,
-    starterAbility: {
+    startingAbility: {
       id: "mm-starter",
       name: "Steady Aim",
       description: "Reward consistent, careful answers.",
       unlockLevel: 1,
-      slot: "starter",
+      slot: "starter_active",
       disclaimer: MOCK_NOTE,
     },
     levelTwoChoices: [
@@ -152,12 +157,11 @@ export const DUEL_CLASSES: DuelClass[] = [
         disclaimer: MOCK_NOTE,
       },
     ],
-    ultimate: {
-      id: "mm-ult",
+    futureUltimate: {
+      id: "mm-future-ult",
       name: "Headshot",
       description: "One decisive, unmissable strike.",
-      unlockLevel: 3,
-      slot: "ultimate",
+      slot: "future_ultimate",
       disclaimer: MOCK_NOTE,
     },
   },
@@ -166,11 +170,11 @@ export const DUEL_CLASSES: DuelClass[] = [
 export const getDuelClass = (id: DuelClassId): DuelClass =>
   DUEL_CLASSES.find((c) => c.id === id)!;
 
-/** All four ability definitions of a class, in unlock order. */
+/** All ability definitions of a class, in display order (incl. future slot). */
 export const allClassAbilities = (cls: DuelClass): PrototypeAbility[] => [
-  cls.starterAbility,
+  cls.startingAbility,
   ...cls.levelTwoChoices,
-  cls.ultimate,
+  cls.futureUltimate,
 ];
 
 export const findClassAbility = (
@@ -180,19 +184,35 @@ export const findClassAbility = (
   abilityId ? allClassAbilities(cls).find((a) => a.id === abilityId) : undefined;
 
 /**
- * Abilities a player can actually use in the question phase: the starter,
- * the confirmed Level 2 pick (the unchosen option stays unavailable for the
- * match), and the ultimate once Level 3 (prototype max) is reached.
+ * The "final normal ability": the Level 2 option the player did NOT choose.
+ * It unlocks automatically at Level 3 and is never manually selected.
+ */
+export const finalNormalAbility = (
+  cls: DuelClass,
+  chosenLevelTwoAbilityId: string | null,
+): PrototypeAbility | undefined =>
+  chosenLevelTwoAbilityId
+    ? cls.levelTwoChoices.find((a) => a.id !== chosenLevelTwoAbilityId)
+    : undefined;
+
+/**
+ * Abilities a player can actually use in the question phase: the starting
+ * ability, the confirmed Level 2 pick, and — from Level 3 (current max) —
+ * the automatically unlocked final normal ability, so BOTH normals are
+ * available. The future ultimate is never usable.
  */
 export const usableAbilities = (
   cls: DuelClass,
   level: number,
   chosenLevelTwoAbilityId: string | null,
 ): PrototypeAbility[] => {
-  const out: PrototypeAbility[] = [cls.starterAbility];
+  const out: PrototypeAbility[] = [cls.startingAbility];
   const chosen = cls.levelTwoChoices.find((a) => a.id === chosenLevelTwoAbilityId);
   if (chosen) out.push(chosen);
-  if (level >= MAX_LEVEL) out.push(cls.ultimate);
+  if (level >= MAX_LEVEL) {
+    const final = finalNormalAbility(cls, chosenLevelTwoAbilityId);
+    if (final) out.push(final);
+  }
   return out;
 };
 

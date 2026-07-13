@@ -6,13 +6,13 @@ import {
   Lock,
   Hourglass,
   CheckCircle2,
-  Star,
 } from "lucide-react";
 import {
   MOCK_PLAYERS,
   PlayerId,
   getDuelClass,
   findClassAbility,
+  finalNormalAbility,
   LEVEL_THRESHOLDS,
   MAX_LEVEL,
 } from "./fixtures";
@@ -67,6 +67,7 @@ export function PlayerPanel({
   const complete = isSubmissionComplete(round);
   const atMaxLevel = match.level >= MAX_LEVEL;
   const chosenL2 = findClassAbility(cls, match.chosenLevelTwoAbilityId);
+  const finalL3 = finalNormalAbility(cls, match.chosenLevelTwoAbilityId);
 
   return (
     <section
@@ -135,10 +136,10 @@ export function PlayerPanel({
         </div>
       </div>
 
-      {/* Compact ability summary: starter / chosen Lv2 / ultimate. */}
+      {/* Compact ability summary: starter / chosen Lv2 / auto Lv3 / future ult. */}
       <div className="flex flex-wrap gap-1.5" data-testid={`${player}-abilities`}>
         <Badge variant="outline" className="gap-1 text-[10px]">
-          {cls.starterAbility.name} · Starter
+          {cls.startingAbility.name} · Starter
         </Badge>
         {chosenL2 ? (
           <Badge variant="outline" className="gap-1 text-[10px]">
@@ -150,17 +151,21 @@ export function PlayerPanel({
             Lv2 choice
           </Badge>
         )}
-        {atMaxLevel ? (
-          <Badge className="gap-1 text-[10px] bg-amber-600 text-white hover:bg-amber-600">
-            <Star className="h-2.5 w-2.5" aria-hidden />
-            {cls.ultimate.name} · Ultimate
+        {atMaxLevel && finalL3 ? (
+          <Badge variant="outline" className="gap-1 text-[10px] border-violet-500/60">
+            {finalL3.name} · Lv3
           </Badge>
         ) : (
           <Badge variant="secondary" className="gap-1 text-[10px] text-muted-foreground">
             <Lock className="h-2.5 w-2.5" aria-hidden />
-            Ultimate · Lv3
+            Lv3 auto
           </Badge>
         )}
+        {/* Ultimates are not implemented — permanently locked "Future" slot. */}
+        <Badge variant="secondary" className="gap-1 text-[10px] text-muted-foreground">
+          <Lock className="h-2.5 w-2.5" aria-hidden />
+          {cls.futureUltimate.name} · Future
+        </Badge>
       </div>
 
       {/* Neutral hidden-information statuses only. */}

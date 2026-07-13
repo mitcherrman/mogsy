@@ -153,7 +153,7 @@ describe("RankedDuelPrototype component", () => {
     expect(within(screen.getByTestId("p2-abilities")).getByText(/frost ward/i)).toBeInTheDocument();
   });
 
-  it("PlayerPanel at max level shows no level 4 target and an unlocked ultimate", () => {
+  it("PlayerPanel at max level shows no level 4 target, both normals, and a locked Future slot", () => {
     const cls = getDuelClass("tank");
     render(
       <PlayerPanel
@@ -180,7 +180,13 @@ describe("RankedDuelPrototype component", () => {
     expect(screen.getByTestId("p1-xp-label")).toHaveTextContent("Max level (prototype)");
     expect(screen.queryByText(/lv ?4/i)).toBeNull();
     const abilities = within(screen.getByTestId("p1-abilities"));
-    expect(abilities.getByText(/unbreakable · ultimate/i)).toBeInTheDocument();
+    expect(abilities.getByText(/bulwark · starter/i)).toBeInTheDocument();
+    expect(abilities.queryByText(/passive/i)).toBeNull();
     expect(abilities.getByText(/taunt · lv2/i)).toBeInTheDocument();
+    // chosen = Taunt, so Shield Slam is the auto-unlocked final normal.
+    expect(abilities.getByText(/shield slam · lv3/i)).toBeInTheDocument();
+    // Ultimate stays a permanently locked "Future" slot.
+    expect(abilities.getByText(/unbreakable · future/i)).toBeInTheDocument();
+    expect(abilities.queryByText(/· ultimate/i)).toBeNull();
   });
 });

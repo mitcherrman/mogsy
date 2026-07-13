@@ -7,6 +7,7 @@ import {
   MockQuestion,
   PlayerId,
   PrototypeAbility,
+  finalNormalAbility,
   getDuelClass,
   usableAbilities,
   allClassAbilities,
@@ -92,10 +93,11 @@ function ProgressionControls({
   const cls = getDuelClass(match.classId);
 
   if (!prog.needsChoice) {
+    const finalAbility = finalNormalAbility(cls, match.chosenLevelTwoAbilityId);
     return (
       <p className="text-sm text-muted-foreground pt-3" data-testid={`${player}-progression-controls`}>
-        {prog.ultimateUnlocked
-          ? `${cls.ultimate.name} (Ultimate) unlocked automatically — no choice required.`
+        {prog.finalAbilityUnlocked && finalAbility
+          ? `${finalAbility.name} (final normal ability) unlocked automatically — no choice required.`
           : "No action needed for this player."}
       </p>
     );
@@ -171,10 +173,10 @@ function PlayerControls({
   const usable = usableAbilities(cls, match.level, match.chosenLevelTwoAbilityId);
   const usableIds = new Set(usable.map((a) => a.id));
   const lockedLabel = (a: PrototypeAbility): string => {
-    if (a.slot === "ultimate") return `Unlocks at level ${MAX_LEVEL}`;
+    if (a.slot === "future_ultimate") return "Future — not implemented";
     if (a.slot === "normal") {
       return match.chosenLevelTwoAbilityId
-        ? "Not chosen this match"
+        ? `Unlocks at level ${MAX_LEVEL}` // the unchosen normal, auto at Lv3
         : "Level 2 choice pending";
     }
     return "";
@@ -232,7 +234,9 @@ function PlayerControls({
                 }
               >
                 {!isUsable && <Lock className="h-3 w-3 mr-1" aria-hidden />}
-                {a.slot === "ultimate" && <Star className="h-3 w-3 mr-1 text-amber-500" aria-hidden />}
+                {a.slot === "future_ultimate" && (
+                  <Star className="h-3 w-3 mr-1 text-amber-500" aria-hidden />
+                )}
                 {a.name}
                 {!isUsable && (
                   <span className="ml-1 text-[10px]">{lockedLabel(a)}</span>
