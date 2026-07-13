@@ -42,9 +42,10 @@ export default function RankedDuelPrototype() {
       {state.phase === "setup" && (
         <SetupScreen onStart={(classes) => dispatch({ type: "START_MATCH", classes })} />
       )}
-      {(state.phase === "question" || state.phase === "awaiting_reveal" || state.phase === "reveal") && (
-        <DuelScreen state={state} dispatch={dispatch} />
-      )}
+      {(state.phase === "question" ||
+        state.phase === "awaiting_reveal" ||
+        state.phase === "reveal" ||
+        state.phase === "progression") && <DuelScreen state={state} dispatch={dispatch} />}
       {state.phase === "match_over" && <MatchOverScreen state={state} dispatch={dispatch} />}
     </main>
   );

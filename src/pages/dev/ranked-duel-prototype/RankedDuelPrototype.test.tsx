@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import RankedDuelPrototype from "./RankedDuelPrototype";
-import { MOCK_QUESTIONS, REVEAL_DELAY_MS } from "./fixtures";
+import { PlayerPanel } from "./PlayerPanel";
+import { MOCK_QUESTIONS, REVEAL_DELAY_MS, getDuelClass } from "./fixtures";
 
 // Fake timers keep the 1s tick loop and reveal delay deterministic.
 beforeEach(() => {
@@ -22,11 +23,28 @@ const wrongChoice = q0.choices[(q0.correctIndex + 1) % q0.choices.length];
 
 // Radix Tabs only mounts the active tab's content, so activate the player's
 // dev-controls tab before querying inside it.
-const controls = (p: "p1" | "p2") => {
+const activateTab = (p: "p1" | "p2") => {
   const trigger = screen.getByRole("tab", { name: new RegExp(`player ${p === "p1" ? 1 : 2}`, "i") });
   fireEvent.mouseDown(trigger);
   fireEvent.click(trigger);
+};
+const controls = (p: "p1" | "p2") => {
+  activateTab(p);
   return within(screen.getByTestId(`${p}-controls`));
+};
+
+const advanceReveal = () =>
+  act(() => {
+    vi.advanceTimersByTime(REVEAL_DELAY_MS);
+  });
+
+/** Submit the CORRECT answer for both players for the current question. */
+const bothCorrectRound = (questionIndex: number) => {
+  const q = MOCK_QUESTIONS[questionIndex];
+  const answer = q.choices[q.correctIndex];
+  fireEvent.click(controls("p1").getAllByRole("button", { name: new RegExp(answer) })[0]);
+  fireEvent.click(controls("p2").getAllByRole("button", { name: new RegExp(answer) })[0]);
+  advanceReveal();
 };
 
 describe("RankedDuelPrototype component", () => {
@@ -63,9 +81,7 @@ describe("RankedDuelPrototype component", () => {
 
     // Both answered -> awaiting_reveal immediately, then reveal after the delay.
     expect(screen.getByTestId("awaiting-reveal")).toBeInTheDocument();
-    act(() => {
-      vi.advanceTimersByTime(REVEAL_DELAY_MS);
-    });
+    advanceReveal();
 
     const reveal = screen.getByTestId("reveal-panel");
     const p1 = within(within(reveal).getByTestId("reveal-p1"));
@@ -89,11 +105,82 @@ describe("RankedDuelPrototype component", () => {
     act(() => {
       vi.advanceTimersByTime(15_000);
     });
-    act(() => {
-      vi.advanceTimersByTime(REVEAL_DELAY_MS);
-    });
+    advanceReveal();
     expect(
       within(screen.getByTestId("reveal-p2")).getAllByText(/timed out/i).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("dual level 2: choices stay hidden until both confirm, then reveal together", () => {
+    startMatch();
+    // Two both-correct rounds -> both players hit the level 2 threshold.
+    bothCorrectRound(0);
+    fireEvent.click(screen.getByRole("button", { name: /next round/i }));
+    bothCorrectRound(1);
+    fireEvent.click(screen.getByRole("button", { name: /next round/i }));
+
+    // Progression stop: neutral statuses only, no picks visible.
+    const panel = () => within(screen.getByTestId("progression-panel"));
+    expect(panel().getAllByText(/choosing ability/i).length).toBeGreaterThan(0);
+
+    // P1 chooses Taunt and confirms in the dev controls.
+    activateTab("p1");
+    const p1prog = within(screen.getByTestId("p1-progression-controls"));
+    fireEvent.click(p1prog.getByRole("button", { name: /taunt/i }));
+    fireEvent.click(p1prog.getByRole("button", { name: /confirm choice/i }));
+
+    // P1's exact pick is NOT exposed in the primary duel UI while P2 chooses.
+    expect(panel().queryByText(/taunt/i)).toBeNull();
+    expect(within(screen.getByTestId("p1-status")).getByText(/ability chosen/i)).toBeInTheDocument();
+    expect(within(screen.getByTestId("p1-abilities")).queryByText(/taunt/i)).toBeNull();
+    expect(within(screen.getByTestId("p2-status")).getByText(/choosing ability/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("progression-reveal")).toBeNull();
+
+    // P2 chooses Frost Ward and confirms -> shared reveal shows both picks.
+    activateTab("p2");
+    const p2prog = within(screen.getByTestId("p2-progression-controls"));
+    fireEvent.click(p2prog.getByRole("button", { name: /frost ward/i }));
+    fireEvent.click(p2prog.getByRole("button", { name: /confirm choice/i }));
+
+    const reveal = within(screen.getByTestId("progression-reveal"));
+    expect(reveal.getByText("Taunt")).toBeInTheDocument();
+    expect(reveal.getByText("Frost Ward")).toBeInTheDocument();
+
+    // Continue starts round 3 and the picks now appear in the panels.
+    fireEvent.click(screen.getByRole("button", { name: /continue to next round/i }));
+    expect(screen.getByTestId("question-prompt")).toBeInTheDocument();
+    expect(within(screen.getByTestId("p1-abilities")).getByText(/taunt/i)).toBeInTheDocument();
+    expect(within(screen.getByTestId("p2-abilities")).getByText(/frost ward/i)).toBeInTheDocument();
+  });
+
+  it("PlayerPanel at max level shows no level 4 target and an unlocked ultimate", () => {
+    const cls = getDuelClass("tank");
+    render(
+      <PlayerPanel
+        player="p1"
+        side="left"
+        match={{
+          classId: "tank",
+          hp: 100,
+          maxHp: cls.startingHp,
+          xp: 120,
+          level: 3,
+          chosenLevelTwoAbilityId: cls.levelTwoChoices[0].id,
+        }}
+        round={{
+          answerIndex: null,
+          answeredAtRemaining: null,
+          submissionOrder: null,
+          timedOut: false,
+          selectedAbilityId: null,
+          abilityLocked: false,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("p1-xp-label")).toHaveTextContent("Max level (prototype)");
+    expect(screen.queryByText(/lv ?4/i)).toBeNull();
+    const abilities = within(screen.getByTestId("p1-abilities"));
+    expect(abilities.getByText(/unbreakable · ultimate/i)).toBeInTheDocument();
+    expect(abilities.getByText(/taunt · lv2/i)).toBeInTheDocument();
   });
 });

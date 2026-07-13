@@ -1,8 +1,17 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock } from "lucide-react";
-import { MOCK_PLAYERS, MockQuestion, PlayerId, getDuelClass } from "./fixtures";
+import { Lock, Star } from "lucide-react";
+import {
+  MOCK_PLAYERS,
+  MockQuestion,
+  PlayerId,
+  PrototypeAbility,
+  getDuelClass,
+  usableAbilities,
+  allClassAbilities,
+  MAX_LEVEL,
+} from "./fixtures";
 import { DuelState, DuelAction, RoundPlayerState } from "./duelMachine";
 import { Dispatch } from "react";
 
@@ -12,7 +21,8 @@ const CHOICE_LABELS = ["A", "B", "C", "D"];
  * Same-screen developer controls. This is the ONLY place a player's actual
  * answer/ability choice is visible before reveal, and it is split into
  * per-player tabs so operating one player doesn't expose the other's picks
- * in the primary duel interface above.
+ * in the primary duel interface above. During a progression stop the tabs
+ * host each player's Level 2 ability choice cards.
  */
 export function OperatorPanel({
   state,
@@ -47,18 +57,95 @@ export function OperatorPanel({
         </TabsList>
         {(["p1", "p2"] as PlayerId[]).map((p) => (
           <TabsContent key={p} value={p}>
-            <PlayerControls
-              player={p}
-              state={state}
-              round={state.roundPlayers[p]}
-              question={question}
-              active={active}
-              dispatch={dispatch}
-            />
+            {state.phase === "progression" ? (
+              <ProgressionControls player={p} state={state} dispatch={dispatch} />
+            ) : (
+              <PlayerControls
+                player={p}
+                state={state}
+                round={state.roundPlayers[p]}
+                question={question}
+                active={active}
+                dispatch={dispatch}
+              />
+            )}
           </TabsContent>
         ))}
       </Tabs>
     </section>
+  );
+}
+
+/** Level 2 ability choice cards for one player during a progression stop. */
+function ProgressionControls({
+  player,
+  state,
+  dispatch,
+}: {
+  player: PlayerId;
+  state: DuelState;
+  dispatch: Dispatch<DuelAction>;
+}) {
+  const match = state.players?.[player];
+  const prog = state.progression?.[player];
+  if (!match || !prog) return null;
+  const cls = getDuelClass(match.classId);
+
+  if (!prog.needsChoice) {
+    return (
+      <p className="text-sm text-muted-foreground pt-3" data-testid={`${player}-progression-controls`}>
+        {prog.ultimateUnlocked
+          ? `${cls.ultimate.name} (Ultimate) unlocked automatically — no choice required.`
+          : "No action needed for this player."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 pt-2" data-testid={`${player}-progression-controls`}>
+      <div className="text-xs font-semibold">
+        Level 2 reached — choose ONE normal ability (permanent for this mock match)
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {cls.levelTwoChoices.map((a) => {
+          const selected = prog.selectedAbilityId === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              aria-pressed={selected}
+              disabled={prog.confirmed}
+              onClick={() => dispatch({ type: "CHOOSE_LEVEL_TWO", player, abilityId: a.id })}
+              className={`rounded-lg border-2 p-3 text-left transition-colors disabled:opacity-60 ${
+                selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                {a.name}
+                <Badge variant="outline" className="text-[10px]">Normal · Lv2</Badge>
+                {selected && <Badge className="ml-auto text-[10px]">Selected</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{a.description}</p>
+              {a.disclaimer && (
+                <p className="text-[10px] text-muted-foreground/70 mt-1">{a.disclaimer}</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <Button
+        size="sm"
+        disabled={prog.confirmed || prog.selectedAbilityId === null}
+        onClick={() => dispatch({ type: "CONFIRM_LEVEL_TWO", player })}
+      >
+        {prog.confirmed ? "Choice locked" : "Confirm choice"}
+      </Button>
+      {prog.confirmed && (
+        <p className="text-[11px] text-muted-foreground">
+          Locked in. The other option stays unavailable for the rest of this match.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -81,6 +168,17 @@ function PlayerControls({
   if (!match) return null;
   const cls = getDuelClass(match.classId);
   const answered = round.answerIndex !== null;
+  const usable = usableAbilities(cls, match.level, match.chosenLevelTwoAbilityId);
+  const usableIds = new Set(usable.map((a) => a.id));
+  const lockedLabel = (a: PrototypeAbility): string => {
+    if (a.slot === "ultimate") return `Unlocks at level ${MAX_LEVEL}`;
+    if (a.slot === "normal") {
+      return match.chosenLevelTwoAbilityId
+        ? "Not chosen this match"
+        : "Level 2 choice pending";
+    }
+    return "";
+  };
 
   return (
     <div className="space-y-3 pt-2" data-testid={`${player}-controls`}>
@@ -118,8 +216,8 @@ function PlayerControls({
           Ability (optional — change freely until locked or round ends)
         </div>
         <div className="flex flex-wrap gap-2">
-          {cls.abilities.map((a) => {
-            const unlocked = match.level >= a.unlockLevel;
+          {allClassAbilities(cls).map((a) => {
+            const isUsable = usableIds.has(a.id);
             const selected = round.selectedAbilityId === a.id;
             return (
               <Button
@@ -127,15 +225,18 @@ function PlayerControls({
                 type="button"
                 size="sm"
                 variant={selected ? "default" : "outline"}
-                disabled={!active || !unlocked || round.abilityLocked}
-                title={unlocked ? a.blurb : `Unlocks at level ${a.unlockLevel}`}
+                disabled={!active || !isUsable || round.abilityLocked}
+                title={isUsable ? a.description : lockedLabel(a)}
                 onClick={() =>
                   dispatch({ type: "SELECT_ABILITY", player, abilityId: selected ? null : a.id })
                 }
               >
-                {!unlocked && <Lock className="h-3 w-3 mr-1" aria-hidden />}
+                {!isUsable && <Lock className="h-3 w-3 mr-1" aria-hidden />}
+                {a.slot === "ultimate" && <Star className="h-3 w-3 mr-1 text-amber-500" aria-hidden />}
                 {a.name}
-                {!unlocked && <span className="ml-1 text-[10px]">Lv{a.unlockLevel}</span>}
+                {!isUsable && (
+                  <span className="ml-1 text-[10px]">{lockedLabel(a)}</span>
+                )}
               </Button>
             );
           })}

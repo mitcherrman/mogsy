@@ -7,11 +7,13 @@ import {
   MOCK_QUESTIONS,
   PlayerId,
   ROUND_SECONDS,
+  findClassAbility,
   getDuelClass,
 } from "./fixtures";
 import { DuelAction, DuelState, RoundResult } from "./duelMachine";
 import { PlayerPanel } from "./PlayerPanel";
 import { OperatorPanel } from "./OperatorPanel";
+import { ProgressionPanel } from "./ProgressionPanel";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -86,7 +88,7 @@ function RevealPanel({
         {(["p1", "p2"] as PlayerId[]).map((p) => {
           const rp = result.players[p];
           const cls = state.players ? getDuelClass(state.players[p].classId) : null;
-          const ability = cls?.abilities.find((a) => a.id === rp.abilityId);
+          const ability = cls ? findClassAbility(cls, rp.abilityId) : undefined;
           return (
             <div key={p} className="rounded-lg border p-3 space-y-1.5" data-testid={`reveal-${p}`}>
               <div className="flex items-center gap-2 flex-wrap">
@@ -170,7 +172,13 @@ export function DuelScreen({
       {/* Desktop: two opposing players around a central column. Mobile: stacked
           with HP/timer/question kept at the top of the reading order. */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,1.4fr)_1fr] gap-4 items-start">
-        <PlayerPanel player="p1" match={state.players.p1} round={state.roundPlayers.p1} side="left" />
+        <PlayerPanel
+          player="p1"
+          match={state.players.p1}
+          round={state.roundPlayers.p1}
+          side="left"
+          progression={state.phase === "progression" ? state.progression?.p1 : null}
+        />
 
         <div className="space-y-3 order-first lg:order-none">
           <div className="flex items-center justify-between">
@@ -179,7 +187,9 @@ export function DuelScreen({
             <Badge variant="outline" className="text-muted-foreground">Ranked 1v1 · Mock</Badge>
           </div>
 
-          {state.phase === "reveal" && state.lastResult ? (
+          {state.phase === "progression" ? (
+            <ProgressionPanel state={state} dispatch={dispatch} />
+          ) : state.phase === "reveal" && state.lastResult ? (
             <RevealPanel state={state} result={state.lastResult} dispatch={dispatch} />
           ) : (
             <div className="rounded-xl border bg-card p-4 space-y-3">
@@ -209,7 +219,13 @@ export function DuelScreen({
           )}
         </div>
 
-        <PlayerPanel player="p2" match={state.players.p2} round={state.roundPlayers.p2} side="right" />
+        <PlayerPanel
+          player="p2"
+          match={state.players.p2}
+          round={state.roundPlayers.p2}
+          side="right"
+          progression={state.phase === "progression" ? state.progression?.p2 : null}
+        />
       </div>
 
       <CombatLog log={state.log} />

@@ -4,13 +4,15 @@
 // This is frontend mock state only. The `RoundResult` shape below is
 // prototype-owned presentation data — it is NOT a proposed production API
 // contract, and the damage/XP logic is fixture-driven demonstration, not the
-// backend resolver's business logic.
+// backend resolver's business logic. Abilities never influence damage,
+// timing, HP, XP, or correctness.
 // ---------------------------------------------------------------------------
 
 import {
   DAMAGE,
   DuelClassId,
   FIRST_ANSWER_CUT_SECONDS,
+  MAX_LEVEL,
   MOCK_QUESTIONS,
   PlayerId,
   ROUND_SECONDS,
@@ -19,7 +21,13 @@ import {
   levelForXp,
 } from "./fixtures";
 
-export type DuelPhase = "setup" | "question" | "awaiting_reveal" | "reveal" | "match_over";
+export type DuelPhase =
+  | "setup"
+  | "question"
+  | "awaiting_reveal"
+  | "reveal"
+  | "progression"
+  | "match_over";
 
 export type AnswerOutcome = "correct" | "incorrect" | "timed_out";
 
@@ -42,6 +50,30 @@ export interface MatchPlayerState {
   maxHp: number;
   xp: number;
   level: number;
+  /**
+   * The Level 2 normal ability this player locked in, once the progression
+   * stop that granted it fully resolves. The unchosen option stays
+   * unavailable for the rest of the mock match.
+   */
+  chosenLevelTwoAbilityId: string | null;
+}
+
+/**
+ * Per-player state of the current `progression` phase stop. Exists only
+ * while phase === "progression"; committed to MatchPlayerState when the stop
+ * resolves so primary panels can't leak an in-progress choice.
+ */
+export interface PlayerProgression {
+  /** Level reached this round, or null if this player did not level. */
+  newLevel: number | null;
+  /** This player must pick one of the class's two Level 2 abilities. */
+  needsChoice: boolean;
+  /** Current (changeable) pick — hidden from primary panels until reveal. */
+  selectedAbilityId: string | null;
+  /** Pick explicitly confirmed; can no longer change. */
+  confirmed: boolean;
+  /** The class ultimate unlocked automatically this stop (Level 3). */
+  ultimateUnlocked: boolean;
 }
 
 /** Prototype mock result — frontend fixture data, not a production schema. */
@@ -53,6 +85,7 @@ export interface RoundResultPlayer {
   damageDealt: number;
   xpAwarded: number;
   hpAfter: number;
+  levelBefore: number;
   levelAfter: number;
   leveledUp: boolean;
 }
@@ -73,6 +106,8 @@ export interface DuelState {
   timerShortened: boolean;
   players: Record<PlayerId, MatchPlayerState> | null;
   roundPlayers: Record<PlayerId, RoundPlayerState>;
+  /** Non-null only while phase === "progression". */
+  progression: Record<PlayerId, PlayerProgression> | null;
   lastResult: RoundResult | null;
   log: RoundResult[];
   winner: PlayerId | null;
@@ -85,7 +120,10 @@ export type DuelAction =
   | { type: "LOCK_ABILITY"; player: PlayerId }
   | { type: "TICK" } // one whole second elapsed
   | { type: "RESOLVE" } // awaiting_reveal -> reveal (after deterministic delay)
-  | { type: "NEXT_ROUND" }
+  | { type: "NEXT_ROUND" } // reveal -> progression | question | match_over
+  | { type: "CHOOSE_LEVEL_TWO"; player: PlayerId; abilityId: string }
+  | { type: "CONFIRM_LEVEL_TWO"; player: PlayerId }
+  | { type: "CONTINUE_AFTER_PROGRESSION" } // acknowledged unlock reveal -> next question
   | { type: "RESTART_SAME_CLASSES" }
   | { type: "BACK_TO_SETUP" };
 
@@ -109,6 +147,7 @@ export const initialDuelState: DuelState = {
   round: 0,
   questionIndex: 0,
   players: null,
+  progression: null,
   lastResult: null,
   log: [],
   winner: null,
@@ -121,6 +160,11 @@ const other = (p: PlayerId): PlayerId => (p === "p1" ? "p2" : "p1");
 /** True once a player has both answered and locked an ability. */
 export const isSubmissionComplete = (rp: RoundPlayerState): boolean =>
   rp.answerIndex !== null && rp.abilityLocked;
+
+/** Every player who owes a Level 2 pick has confirmed it. */
+export const progressionChoicesComplete = (
+  progression: Record<PlayerId, PlayerProgression>,
+): boolean => PLAYER_IDS.every((p) => !progression[p].needsChoice || progression[p].confirmed);
 
 const outcomeFor = (rp: RoundPlayerState, correctIndex: number): AnswerOutcome => {
   if (rp.answerIndex === null) return "timed_out";
@@ -182,6 +226,7 @@ const resolveRound = (state: DuelState): DuelState => {
       damageDealt: damageBy(p),
       xpAwarded: xpBy(p),
       hpAfter,
+      levelBefore: players[p].level,
       levelAfter,
       leveledUp: levelAfter > players[p].level,
     };
@@ -235,12 +280,58 @@ const endQuestionPhase = (state: DuelState): DuelState => {
   return { ...state, roundPlayers, phase: "awaiting_reveal" };
 };
 
+/** Advance from a completed round (or progression stop) into the next question. */
+const startNextQuestion = (state: DuelState): DuelState => ({
+  ...state,
+  phase: "question",
+  progression: null,
+  round: state.round + 1,
+  questionIndex: (state.questionIndex + 1) % MOCK_QUESTIONS.length,
+  ...freshRound(),
+});
+
+/**
+ * Progression check run once per round, after reveal. Detects each level
+ * transition exactly once via the round result's levelBefore/levelAfter pair
+ * (no repeated triggers, no skipped levels — a hypothetical 1→3 jump would
+ * surface both the choice and the ultimate in one stop).
+ */
+const buildProgression = (
+  state: DuelState,
+): Record<PlayerId, PlayerProgression> | null => {
+  const result = state.lastResult!;
+  let any = false;
+  const progression = {} as Record<PlayerId, PlayerProgression>;
+  for (const p of PLAYER_IDS) {
+    const { levelBefore, levelAfter } = result.players[p];
+    const crossed2 = levelBefore < 2 && levelAfter >= 2;
+    const crossed3 = levelBefore < MAX_LEVEL && levelAfter >= MAX_LEVEL;
+    const needsChoice = crossed2 && state.players![p].chosenLevelTwoAbilityId === null;
+    progression[p] = {
+      newLevel: levelAfter > levelBefore ? levelAfter : null,
+      needsChoice,
+      selectedAbilityId: null,
+      confirmed: false,
+      ultimateUnlocked: crossed3,
+    };
+    if (needsChoice || crossed3) any = true;
+  }
+  return any ? progression : null;
+};
+
 export function duelReducer(state: DuelState, action: DuelAction): DuelState {
   switch (action.type) {
     case "START_MATCH": {
       const mk = (classId: DuelClassId): MatchPlayerState => {
         const cls = getDuelClass(classId);
-        return { classId, hp: cls.startingHp, maxHp: cls.startingHp, xp: 0, level: 1 };
+        return {
+          classId,
+          hp: cls.startingHp,
+          maxHp: cls.startingHp,
+          xp: 0,
+          level: 1,
+          chosenLevelTwoAbilityId: null,
+        };
       };
       return {
         ...initialDuelState,
@@ -288,6 +379,17 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
       if (state.phase !== "question") return state;
       const me = state.roundPlayers[action.player];
       if (me.abilityLocked) return state;
+      // Only abilities this player has actually unlocked (starter, confirmed
+      // Level 2 pick, ultimate at max level) are selectable in a round.
+      if (action.abilityId !== null) {
+        const match = state.players![action.player];
+        const cls = getDuelClass(match.classId);
+        const usable =
+          action.abilityId === cls.starterAbility.id ||
+          action.abilityId === match.chosenLevelTwoAbilityId ||
+          (match.level >= MAX_LEVEL && action.abilityId === cls.ultimate.id);
+        if (!usable) return state;
+      }
       return {
         ...state,
         roundPlayers: {
@@ -324,14 +426,61 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
 
     case "NEXT_ROUND": {
       if (state.phase !== "reveal") return state;
+      // Match end takes precedence over progression stops.
       if (state.winner !== null) return { ...state, phase: "match_over" };
+      const progression = buildProgression(state);
+      if (progression) return { ...state, phase: "progression", progression };
+      return startNextQuestion(state);
+    }
+
+    case "CHOOSE_LEVEL_TWO": {
+      // Guards: right phase, this player owes a choice, not yet confirmed,
+      // and the ability is one of THIS player's class's two Level 2 options
+      // (ultimates and other classes' abilities are rejected).
+      if (state.phase !== "progression" || !state.progression) return state;
+      const prog = state.progression[action.player];
+      if (!prog.needsChoice || prog.confirmed) return state;
+      const cls = getDuelClass(state.players![action.player].classId);
+      if (!cls.levelTwoChoices.some((a) => a.id === action.abilityId)) return state;
       return {
         ...state,
-        phase: "question",
-        round: state.round + 1,
-        questionIndex: (state.questionIndex + 1) % MOCK_QUESTIONS.length,
-        ...freshRound(),
+        progression: {
+          ...state.progression,
+          [action.player]: { ...prog, selectedAbilityId: action.abilityId },
+        },
       };
+    }
+
+    case "CONFIRM_LEVEL_TWO": {
+      if (state.phase !== "progression" || !state.progression) return state;
+      const prog = state.progression[action.player];
+      if (!prog.needsChoice || prog.confirmed || prog.selectedAbilityId === null) {
+        return state;
+      }
+      return {
+        ...state,
+        progression: {
+          ...state.progression,
+          [action.player]: { ...prog, confirmed: true },
+        },
+      };
+    }
+
+    case "CONTINUE_AFTER_PROGRESSION": {
+      // The shared unlock reveal must be acknowledged, and every required
+      // Level 2 choice resolved, before the next round can begin.
+      if (state.phase !== "progression" || !state.progression) return state;
+      if (!progressionChoicesComplete(state.progression)) return state;
+      // Commit confirmed picks to match state only now, so primary panels
+      // can't show a pick while the other player is still choosing.
+      const players = { ...state.players! };
+      for (const p of PLAYER_IDS) {
+        const prog = state.progression[p];
+        if (prog.needsChoice && prog.confirmed) {
+          players[p] = { ...players[p], chosenLevelTwoAbilityId: prog.selectedAbilityId };
+        }
+      }
+      return startNextQuestion({ ...state, players });
     }
 
     case "RESTART_SAME_CLASSES": {

@@ -44,15 +44,29 @@ function ClassPicker({
                 Starting HP: {cls.startingHp} (presentation fixture)
               </p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
-                {cls.abilities.map((a) => (
+                <li>
+                  <Badge className="gap-1 text-[10px]">
+                    {cls.starterAbility.name} · Starter Lv1
+                  </Badge>
+                </li>
+                {cls.levelTwoChoices.map((a) => (
                   <li key={a.id}>
-                    <Badge variant={a.unlockLevel === 1 ? "default" : "secondary"} className="gap-1 text-[10px]">
-                      {a.unlockLevel > 1 && <Lock className="h-2.5 w-2.5" aria-hidden />}
-                      {a.name} · Lv{a.unlockLevel}
+                    <Badge variant="secondary" className="gap-1 text-[10px]">
+                      <Lock className="h-2.5 w-2.5" aria-hidden />
+                      {a.name} · Lv2 choice
                     </Badge>
                   </li>
                 ))}
+                <li>
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <Lock className="h-2.5 w-2.5" aria-hidden />
+                    {cls.ultimate.name} · Ultimate Lv3
+                  </Badge>
+                </li>
               </ul>
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                Lv2: pick one of two. Lv3 (max): ultimate unlocks automatically. Mock concepts only.
+              </p>
             </button>
           );
         })}

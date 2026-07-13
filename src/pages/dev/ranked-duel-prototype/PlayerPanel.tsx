@@ -1,7 +1,27 @@
 import { Badge } from "@/components/ui/badge";
-import { Shield, Sparkles, Crosshair, Lock, Hourglass, CheckCircle2 } from "lucide-react";
-import { MOCK_PLAYERS, PlayerId, getDuelClass, LEVEL_THRESHOLDS } from "./fixtures";
-import { MatchPlayerState, RoundPlayerState, isSubmissionComplete } from "./duelMachine";
+import {
+  Shield,
+  Sparkles,
+  Crosshair,
+  Lock,
+  Hourglass,
+  CheckCircle2,
+  Star,
+} from "lucide-react";
+import {
+  MOCK_PLAYERS,
+  PlayerId,
+  getDuelClass,
+  findClassAbility,
+  LEVEL_THRESHOLDS,
+  MAX_LEVEL,
+} from "./fixtures";
+import {
+  MatchPlayerState,
+  PlayerProgression,
+  RoundPlayerState,
+  isSubmissionComplete,
+} from "./duelMachine";
 
 const CLASS_ICON = {
   tank: Shield,
@@ -10,8 +30,8 @@ const CLASS_ICON = {
 } as const;
 
 /**
- * XP progress toward the NEXT level, as a 0–100 percent. Returns 100 when the
- * player is at the top fixture threshold (ultimate tier stays "future").
+ * XP progress toward the NEXT level, as a 0–100 percent. Level 3 is the
+ * prototype max — at max the bar reads full and no further target is implied.
  */
 const xpProgress = (xp: number, level: number): number => {
   const cur = LEVEL_THRESHOLDS[level - 1] ?? 0;
@@ -22,18 +42,22 @@ const xpProgress = (xp: number, level: number): number => {
 
 /**
  * Player-facing duel panel. Deliberately shows only NEUTRAL round status —
- * never the actual answer choice or ability choice — until reveal.
+ * never the actual answer choice or ability choice — until reveal. During a
+ * progression stop it likewise shows only neutral choosing/ready states.
  */
 export function PlayerPanel({
   player,
   match,
   round,
   side,
+  progression,
 }: {
   player: PlayerId;
   match: MatchPlayerState;
   round: RoundPlayerState;
   side: "left" | "right";
+  /** Present only while a progression stop is unresolved. */
+  progression?: PlayerProgression | null;
 }) {
   const cls = getDuelClass(match.classId);
   const Icon = CLASS_ICON[match.classId];
@@ -41,6 +65,8 @@ export function PlayerPanel({
   const hpPct = Math.round((match.hp / match.maxHp) * 100);
   const answered = round.answerIndex !== null;
   const complete = isSubmissionComplete(round);
+  const atMaxLevel = match.level >= MAX_LEVEL;
+  const chosenL2 = findClassAbility(cls, match.chosenLevelTwoAbilityId);
 
   return (
     <section
@@ -97,7 +123,9 @@ export function PlayerPanel({
       <div>
         <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
           <span>XP</span>
-          <span className="tabular-nums">{match.xp} xp</span>
+          <span className="tabular-nums" data-testid={`${player}-xp-label`}>
+            {atMaxLevel ? `${match.xp} xp · Max level (prototype)` : `${match.xp} xp`}
+          </span>
         </div>
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div
@@ -107,9 +135,51 @@ export function PlayerPanel({
         </div>
       </div>
 
+      {/* Compact ability summary: starter / chosen Lv2 / ultimate. */}
+      <div className="flex flex-wrap gap-1.5" data-testid={`${player}-abilities`}>
+        <Badge variant="outline" className="gap-1 text-[10px]">
+          {cls.starterAbility.name} · Starter
+        </Badge>
+        {chosenL2 ? (
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            {chosenL2.name} · Lv2
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="gap-1 text-[10px] text-muted-foreground">
+            <Lock className="h-2.5 w-2.5" aria-hidden />
+            Lv2 choice
+          </Badge>
+        )}
+        {atMaxLevel ? (
+          <Badge className="gap-1 text-[10px] bg-amber-600 text-white hover:bg-amber-600">
+            <Star className="h-2.5 w-2.5" aria-hidden />
+            {cls.ultimate.name} · Ultimate
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="gap-1 text-[10px] text-muted-foreground">
+            <Lock className="h-2.5 w-2.5" aria-hidden />
+            Ultimate · Lv3
+          </Badge>
+        )}
+      </div>
+
       {/* Neutral hidden-information statuses only. */}
       <div className="flex flex-wrap gap-1.5" data-testid={`${player}-status`}>
-        {complete ? (
+        {progression ? (
+          progression.newLevel === null ? (
+            <Badge variant="secondary">Waiting</Badge>
+          ) : progression.needsChoice && !progression.confirmed ? (
+            <Badge variant="secondary" className="gap-1">
+              <Hourglass className="h-3 w-3" aria-hidden /> Choosing ability
+            </Badge>
+          ) : progression.needsChoice ? (
+            <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
+              <CheckCircle2 className="h-3 w-3" aria-hidden /> Ability chosen
+            </Badge>
+          ) : (
+            <Badge variant="secondary">Ready</Badge>
+          )
+        ) : complete ? (
           <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
             <CheckCircle2 className="h-3 w-3" aria-hidden /> Submission complete
           </Badge>
