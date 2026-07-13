@@ -15,6 +15,8 @@ import {
   XP,
   getDuelClass,
 } from "./fixtures";
+import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
+import { getScenario } from "./backend-adapter/backendSettlementFixtures";
 
 const run = (state: DuelState, ...actions: DuelAction[]): DuelState =>
   actions.reduce(duelReducer, state);
@@ -509,6 +511,71 @@ describe("level 3 final normal ability unlock", () => {
     s = advance(s); // level 2 stop: picks levelTwoChoices[0]
     const t = run(s, { type: "SELECT_ABILITY", player: "p1", abilityId: TANK.levelTwoChoices[1].id });
     expect(t.roundPlayers.p1.selectedAbilityId).toBeNull();
+  });
+});
+
+describe("backend settlement integration", () => {
+  const adapt = (key: string) => adaptBackendSettlement(getScenario(key)!.settlement);
+
+  it("applies authoritative HP/XP/levels from the settlement without recalculation", () => {
+    const s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("solo-correct") });
+    expect(s.phase).toBe("reveal");
+    expect(s.players!.p2.hp).toBe(60);
+    expect(s.players!.p1.hp).toBe(90); // fixture value, NOT the class fixture HP
+    expect(s.players!.p1.xp).toBe(20);
+    expect(s.lastResult!.players.p2.settlement!.baseDamage).toBe(30);
+  });
+
+  it("next round uses the single shared settlement timer, then falls back to the default", () => {
+    let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("timer-decreased") });
+    expect(s.lastResult!.sharedNextRoundDurationSeconds).toBe(18);
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.phase).toBe("question");
+    expect(s.timerRemaining).toBe(18);
+    expect(s.roundDurationSeconds).toBe(18);
+    // The following round (mock-resolved, both wrong so nobody levels)
+    // reverts to the baseline duration.
+    s = playRound(s, 1, 1);
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.timerRemaining).toBe(ROUND_SECONDS);
+    expect(s.roundDurationSeconds).toBe(ROUND_SECONDS);
+  });
+
+  it("timer increase settles into a longer shared next round", () => {
+    let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("timer-increased") });
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.timerRemaining).toBe(25);
+  });
+
+  it("introduces no per-player timer fields anywhere in state", () => {
+    const s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("timer-increased") });
+    const flat = JSON.stringify(s).toLowerCase();
+    expect(flat).not.toContain("player1nexttimer");
+    expect(flat).not.toContain("player2nexttimer");
+    expect(Object.keys(s.players!.p1).filter((k) => k.toLowerCase().includes("timer"))).toEqual([]);
+    expect(Object.keys(s.roundPlayers.p1).filter((k) => k.toLowerCase().includes("timer"))).toEqual([]);
+  });
+
+  it("takes match-over and winner from the settlement only", () => {
+    let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("match-over") });
+    expect(s.winner).toBe("p1");
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.phase).toBe("match_over");
+  });
+
+  it("a settlement level-up drives the existing progression stop", () => {
+    let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("level-up") });
+    expect(s.lastResult!.players.p1.leveledUp).toBe(true);
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.phase).toBe("progression");
+    expect(s.progression!.p1.needsChoice).toBe(true);
+    expect(s.progression!.p2.needsChoice).toBe(false);
+  });
+
+  it("is rejected outside the question/awaiting phases", () => {
+    const s = playRound(start(), 0, 1); // reveal phase
+    const t = run(s, { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("solo-correct") });
+    expect(t).toBe(s);
   });
 });
 

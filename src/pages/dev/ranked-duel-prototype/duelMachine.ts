@@ -20,6 +20,10 @@ import {
   getDuelClass,
   levelForXp,
 } from "./fixtures";
+import type {
+  AdaptedPlayerSettlement,
+  AdaptedSettlement,
+} from "./backend-adapter/adaptBackendSettlement";
 
 export type DuelPhase =
   | "setup"
@@ -92,6 +96,12 @@ export interface RoundResultPlayer {
   levelBefore: number;
   levelAfter: number;
   leveledUp: boolean;
+  /**
+   * Backend-settlement display detail (base/final damage, shields, charges,
+   * carryover). Present only for rounds resolved from backend-shaped
+   * settlement fixtures via the adapter; absent on mock-resolver rounds.
+   */
+  settlement?: AdaptedPlayerSettlement;
 }
 
 export interface RoundResult {
@@ -99,6 +109,9 @@ export interface RoundResult {
   questionIndex: number;
   players: Record<PlayerId, RoundResultPlayer>;
   summary: string;
+  /** Display-only: the shared timer the settlement set for the next round. */
+  sharedNextRoundDurationSeconds?: number;
+  sharedTimerDeltaSeconds?: number | null;
 }
 
 export interface DuelState {
@@ -106,6 +119,14 @@ export interface DuelState {
   round: number;
   questionIndex: number;
   timerRemaining: number;
+  /** Duration this round's SHARED timer started from (for display %). */
+  roundDurationSeconds: number;
+  /**
+   * The single shared duration the NEXT round will use. Defaults to
+   * ROUND_SECONDS; a backend settlement may override it (one value for both
+   * players — there are no per-player timers).
+   */
+  nextRoundDurationSeconds: number;
   /** The one-time 5s cut has been applied this round. */
   timerShortened: boolean;
   players: Record<PlayerId, MatchPlayerState> | null;
@@ -125,6 +146,7 @@ export type DuelAction =
   | { type: "TICK" } // one whole second elapsed
   | { type: "RESOLVE" } // awaiting_reveal -> reveal (after deterministic delay)
   | { type: "NEXT_ROUND" } // reveal -> progression | question | match_over
+  | { type: "APPLY_BACKEND_SETTLEMENT"; settlement: AdaptedSettlement }
   | { type: "CHOOSE_LEVEL_TWO"; player: PlayerId; abilityId: string }
   | { type: "CONFIRM_LEVEL_TWO"; player: PlayerId }
   | { type: "CONTINUE_AFTER_PROGRESSION" } // acknowledged unlock reveal -> next question
@@ -140,8 +162,10 @@ const emptyRoundPlayer = (): RoundPlayerState => ({
   abilityLocked: false,
 });
 
-const freshRound = () => ({
-  timerRemaining: ROUND_SECONDS,
+const freshRound = (durationSeconds: number = ROUND_SECONDS) => ({
+  timerRemaining: durationSeconds,
+  roundDurationSeconds: durationSeconds,
+  nextRoundDurationSeconds: ROUND_SECONDS,
   timerShortened: false,
   roundPlayers: { p1: emptyRoundPlayer(), p2: emptyRoundPlayer() },
 });
@@ -284,14 +308,18 @@ const endQuestionPhase = (state: DuelState): DuelState => {
   return { ...state, roundPlayers, phase: "awaiting_reveal" };
 };
 
-/** Advance from a completed round (or progression stop) into the next question. */
+/**
+ * Advance from a completed round (or progression stop) into the next
+ * question, applying the ONE shared next-round duration (which a backend
+ * settlement may have set). Subsequent rounds fall back to ROUND_SECONDS.
+ */
 const startNextQuestion = (state: DuelState): DuelState => ({
   ...state,
   phase: "question",
   progression: null,
   round: state.round + 1,
   questionIndex: (state.questionIndex + 1) % MOCK_QUESTIONS.length,
-  ...freshRound(),
+  ...freshRound(state.nextRoundDurationSeconds),
 });
 
 /**
@@ -430,6 +458,64 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
     case "RESOLVE":
       if (state.phase !== "awaiting_reveal") return state;
       return resolveRound(state);
+
+    case "APPLY_BACKEND_SETTLEMENT": {
+      // Fixture-driven resolution path: apply an ALREADY-RESOLVED backend
+      // settlement (mapped by the adapter) instead of the mock resolver.
+      // Every total below is authoritative pass-through — the reducer copies
+      // hp/xp/level/winner verbatim and never recomputes anything.
+      if (state.phase !== "question" && state.phase !== "awaiting_reveal") return state;
+      if (!state.players) return state;
+      const adapted = action.settlement;
+
+      const nextPlayers = { ...state.players };
+      const resultPlayers = {} as Record<PlayerId, RoundResultPlayer>;
+      for (const p of PLAYER_IDS) {
+        const s = adapted.players[p];
+        nextPlayers[p] = {
+          ...state.players[p],
+          hp: s.hpAfter,
+          xp: s.xpAfter,
+          level: s.levelAfter,
+        };
+        resultPlayers[p] = {
+          outcome: s.outcome,
+          // Operator-submitted answer (if any) is kept for question display;
+          // the settlement outcome is authoritative regardless.
+          answerIndex: state.roundPlayers[p].answerIndex,
+          abilityId: s.abilityId,
+          wasFaster: s.wasFaster,
+          damageDealt: adapted.players[p === "p1" ? "p2" : "p1"].finalDamage,
+          xpAwarded: s.xpAwarded,
+          hpAfter: s.hpAfter,
+          levelBefore: s.levelBefore,
+          levelAfter: s.levelAfter,
+          leveledUp: s.leveledUp,
+          settlement: s,
+        };
+      }
+
+      const result: RoundResult = {
+        round: state.round,
+        questionIndex: state.questionIndex,
+        players: resultPlayers,
+        summary: adapted.summary,
+        sharedNextRoundDurationSeconds: adapted.sharedNextRoundDurationSeconds,
+        sharedTimerDeltaSeconds: adapted.sharedTimerDeltaSeconds,
+      };
+
+      return {
+        ...state,
+        phase: "reveal",
+        players: nextPlayers,
+        lastResult: result,
+        log: [...state.log, result],
+        // Winner comes from the backend settlement only — never derived here.
+        winner: adapted.matchOver ? adapted.winner : null,
+        // ONE shared duration for both players' next round.
+        nextRoundDurationSeconds: adapted.sharedNextRoundDurationSeconds,
+      };
+    }
 
     case "NEXT_ROUND": {
       if (state.phase !== "reveal") return state;

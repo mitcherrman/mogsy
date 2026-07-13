@@ -14,7 +14,9 @@ import {
   MAX_LEVEL,
 } from "./fixtures";
 import { DuelState, DuelAction, RoundPlayerState } from "./duelMachine";
-import { Dispatch } from "react";
+import { Dispatch, useState } from "react";
+import { SETTLEMENT_SCENARIOS, getScenario } from "./backend-adapter/backendSettlementFixtures";
+import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -73,7 +75,63 @@ export function OperatorPanel({
           </TabsContent>
         ))}
       </Tabs>
+
+      {(state.phase === "question" || state.phase === "awaiting_reveal") && (
+        <SettlementScenarioPicker dispatch={dispatch} />
+      )}
     </section>
+  );
+}
+
+/**
+ * Dev-only picker that resolves the CURRENT round from a deterministic
+ * backend-shaped settlement fixture (mapped through the adapter) instead of
+ * the mock resolver. Proves the UI consumes already-resolved backend totals.
+ */
+function SettlementScenarioPicker({ dispatch }: { dispatch: Dispatch<DuelAction> }) {
+  const [key, setKey] = useState(SETTLEMENT_SCENARIOS[0].key);
+  return (
+    <div className="mt-3 border-t border-dashed border-amber-500/40 pt-3 flex flex-wrap items-center gap-2">
+      <Badge variant="outline" className="border-amber-500/60 text-amber-600 dark:text-amber-400">
+        BACKEND SETTLEMENT FIXTURES
+      </Badge>
+      <label className="sr-only" htmlFor="settlement-scenario">
+        Settlement scenario
+      </label>
+      <select
+        id="settlement-scenario"
+        data-testid="settlement-scenario-select"
+        className="h-8 rounded-md border bg-background px-2 text-xs max-w-full"
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+      >
+        {SETTLEMENT_SCENARIOS.map((s) => (
+          <option key={s.key} value={s.key}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        data-testid="apply-settlement"
+        onClick={() => {
+          const scenario = getScenario(key);
+          if (!scenario) return;
+          dispatch({
+            type: "APPLY_BACKEND_SETTLEMENT",
+            settlement: adaptBackendSettlement(scenario.settlement),
+          });
+        }}
+      >
+        Resolve round from fixture
+      </Button>
+      <span className="text-[11px] text-muted-foreground basis-full">
+        Applies an already-resolved backend-shaped settlement via the adapter — no combat math runs
+        in the frontend.
+      </span>
+    </div>
   );
 }
 

@@ -6,11 +6,10 @@ import {
   MOCK_PLAYERS,
   MOCK_QUESTIONS,
   PlayerId,
-  ROUND_SECONDS,
   findClassAbility,
   getDuelClass,
 } from "./fixtures";
-import { DuelAction, DuelState, RoundResult } from "./duelMachine";
+import { DuelAction, DuelState, RoundResult, RoundResultPlayer } from "./duelMachine";
 import { PlayerPanel } from "./PlayerPanel";
 import { OperatorPanel } from "./OperatorPanel";
 import { ProgressionPanel } from "./ProgressionPanel";
@@ -19,7 +18,8 @@ const CHOICE_LABELS = ["A", "B", "C", "D"];
 
 function SharedTimer({ state }: { state: DuelState }) {
   const running = state.phase === "question";
-  const pct = (state.timerRemaining / ROUND_SECONDS) * 100;
+  // One shared duration per round — a backend settlement may have set it.
+  const pct = (state.timerRemaining / state.roundDurationSeconds) * 100;
   const urgent = running && state.timerRemaining <= 5;
   return (
     <div className="flex flex-col items-center gap-1" data-testid="shared-timer">
@@ -70,6 +70,41 @@ function OutcomeBadge({ outcome }: { outcome: "correct" | "incorrect" | "timed_o
   );
 }
 
+/**
+ * Backend-settlement detail rows for one player. HP and FINAL damage are the
+ * prominent values; base damage / shield / reduction are secondary so the UI
+ * never implies base damage was actually dealt when modifiers reduced it.
+ * All numbers are authoritative backend pass-through.
+ */
+function SettlementDetail({ s }: { s: NonNullable<RoundResultPlayer["settlement"]> }) {
+  return (
+    <div className="rounded-md border bg-background/50 p-2 space-y-0.5 text-xs tabular-nums" data-testid="settlement-detail">
+      <div className="font-semibold text-sm">
+        HP {s.hpBefore} → {s.hpAfter}
+        <span className="ml-2 text-destructive">Final damage {s.finalDamage}</span>
+      </div>
+      <div className="text-muted-foreground">
+        Base damage {s.baseDamage}
+        {s.shieldAbsorbed > 0 && <span className="ml-2 text-sky-500">Shield absorbed {s.shieldAbsorbed}</span>}
+        {s.damageReduced > 0 && <span className="ml-2 text-emerald-500">Damage reduced {s.damageReduced}</span>}
+      </div>
+      <div className="text-muted-foreground">
+        XP {s.xpBefore} → {s.xpAfter} (+{s.xpAwarded})
+        {s.leveledUp && (
+          <Badge className="ml-2 bg-violet-600 text-white hover:bg-violet-600">
+            Level {s.levelBefore} → {s.levelAfter}
+          </Badge>
+        )}
+      </div>
+      {s.carryoverSummary && (
+        <div className="text-amber-600 dark:text-amber-400">
+          Combat Lab {s.carryoverStatus}: {s.carryoverSummary}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Simultaneous reveal: both players' answers and abilities shown together. */
 function RevealPanel({
   state,
@@ -109,16 +144,28 @@ function RevealPanel({
                 </strong>
               </p>
               <p className="text-sm">
-                Ability: <strong>{ability ? ability.name : "None"}</strong>
-              </p>
-              <div className="text-xs text-muted-foreground tabular-nums">
-                Dealt {rp.damageDealt} dmg · +{rp.xpAwarded} XP
-                {rp.leveledUp && (
-                  <Badge className="ml-2 bg-violet-600 text-white hover:bg-violet-600">
-                    Level up! Lv {rp.levelAfter}
-                  </Badge>
+                Ability:{" "}
+                <strong>{rp.settlement ? rp.settlement.abilityName : ability ? ability.name : "None"}</strong>
+                {rp.settlement && rp.settlement.chargesBefore !== null && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {" "}
+                    · charges {rp.settlement.chargesBefore} → {rp.settlement.chargesAfter}
+                    {rp.settlement.chargesConsumed > 0 && ` (−${rp.settlement.chargesConsumed})`}
+                  </span>
                 )}
-              </div>
+              </p>
+              {rp.settlement ? (
+                <SettlementDetail s={rp.settlement} />
+              ) : (
+                <div className="text-xs text-muted-foreground tabular-nums">
+                  Dealt {rp.damageDealt} dmg · +{rp.xpAwarded} XP
+                  {rp.leveledUp && (
+                    <Badge className="ml-2 bg-violet-600 text-white hover:bg-violet-600">
+                      Level up! Lv {rp.levelAfter}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -127,6 +174,21 @@ function RevealPanel({
         Correct answer: <strong>{question.choices[question.correctIndex]}</strong> —{" "}
         {question.explanation}
       </p>
+      {result.sharedNextRoundDurationSeconds !== undefined && (
+        <p
+          className="text-sm text-center font-medium tabular-nums"
+          data-testid="shared-next-timer"
+        >
+          Next round shared timer: {result.sharedNextRoundDurationSeconds}s
+          {result.sharedTimerDeltaSeconds != null && result.sharedTimerDeltaSeconds !== 0 && (
+            <span className="text-muted-foreground">
+              {" "}
+              ({result.sharedTimerDeltaSeconds > 0 ? "+" : ""}
+              {result.sharedTimerDeltaSeconds}s)
+            </span>
+          )}
+        </p>
+      )}
       <div className="text-center">
         <Button onClick={() => dispatch({ type: "NEXT_ROUND" })}>
           {state.winner ? "View match result" : "Next Round"}

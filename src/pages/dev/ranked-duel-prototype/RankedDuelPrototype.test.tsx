@@ -153,6 +153,35 @@ describe("RankedDuelPrototype component", () => {
     expect(within(screen.getByTestId("p2-abilities")).getByText(/frost ward/i)).toBeInTheDocument();
   });
 
+  it("renders backend settlement detail in the reveal (base/final/shield/reduction/timer)", () => {
+    startMatch();
+    fireEvent.change(screen.getByTestId("settlement-scenario-select"), {
+      target: { value: "shield-plus-reduction" },
+    });
+    fireEvent.click(screen.getByTestId("apply-settlement"));
+
+    const reveal = within(screen.getByTestId("reveal-panel"));
+    const p2 = within(within(reveal.getByTestId("reveal-p2")).getByTestId("settlement-detail"));
+    expect(p2.getByText(/base damage 30/i)).toBeInTheDocument();
+    expect(p2.getByText(/shield absorbed 8/i)).toBeInTheDocument();
+    expect(p2.getByText(/damage reduced 7/i)).toBeInTheDocument();
+    expect(p2.getByText(/final damage 15/i)).toBeInTheDocument();
+    expect(p2.getByText(/HP 90 → 75/i)).toBeInTheDocument();
+    expect(screen.getByTestId("shared-next-timer")).toHaveTextContent(
+      "Next round shared timer: 20s",
+    );
+  });
+
+  it("maps a no-active-ability settlement to a safe display value", () => {
+    startMatch();
+    fireEvent.change(screen.getByTestId("settlement-scenario-select"), {
+      target: { value: "no-ability" },
+    });
+    fireEvent.click(screen.getByTestId("apply-settlement"));
+    const p1 = within(screen.getByTestId("reveal-p1"));
+    expect(p1.getByText(/no active ability/i)).toBeInTheDocument();
+  });
+
   it("PlayerPanel at max level shows no level 4 target, both normals, and a locked Future slot", () => {
     const cls = getDuelClass("tank");
     render(
