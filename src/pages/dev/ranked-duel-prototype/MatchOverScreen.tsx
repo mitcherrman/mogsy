@@ -22,6 +22,11 @@ export function MatchOverScreen({
         <p className="text-sm text-muted-foreground">
           Match decided after {state.round} round{state.round === 1 ? "" : "s"}.
         </p>
+        {state.log.length > 0 && (
+          <p className="text-xs text-muted-foreground" data-testid="final-round-summary">
+            Final round: {state.log[state.log.length - 1].summary}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
@@ -45,10 +50,11 @@ export function MatchOverScreen({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 justify-center">
-        <Button onClick={() => dispatch({ type: "RESTART_SAME_CLASSES" })}>
-          Rematch (same classes)
+        {/* Primary next action: run it back with the same classes. */}
+        <Button size="lg" onClick={() => dispatch({ type: "RESTART_SAME_CLASSES" })}>
+          Rematch — same classes
         </Button>
-        <Button variant="outline" onClick={() => dispatch({ type: "BACK_TO_SETUP" })}>
+        <Button size="lg" variant="outline" onClick={() => dispatch({ type: "BACK_TO_SETUP" })}>
           Back to setup
         </Button>
       </div>

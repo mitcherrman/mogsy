@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Star } from "lucide-react";
+import { CheckCircle2, Lock, Star } from "lucide-react";
 import {
   MOCK_PLAYERS,
   MockQuestion,
@@ -164,8 +164,12 @@ function ProgressionControls({
   return (
     <div className="space-y-3 pt-2" data-testid={`${player}-progression-controls`}>
       <div className="text-xs font-semibold">
-        Level 2 reached — choose ONE normal ability (permanent for this mock match)
+        Level 2 reached — choose ONE normal ability
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-2">
+        Your pick is permanent for this match and stays hidden until everyone confirms. The other
+        option isn't lost — it unlocks automatically at Level 3.
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {cls.levelTwoChoices.map((a) => {
           const selected = prog.selectedAbilityId === a.id;
@@ -176,7 +180,7 @@ function ProgressionControls({
               aria-pressed={selected}
               disabled={prog.confirmed}
               onClick={() => dispatch({ type: "CHOOSE_LEVEL_TWO", player, abilityId: a.id })}
-              className={`rounded-lg border-2 p-3 text-left transition-colors disabled:opacity-60 ${
+              className={`rounded-lg border-2 p-3 text-left transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
               }`}
             >
@@ -273,9 +277,9 @@ function PlayerControls({
 
       <div>
         <div className="text-xs font-semibold mb-1.5">
-          Ability (optional — change freely until locked or round ends)
+          Active ability (optional — change freely until locked or round ends)
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Active ability choice">
           {allClassAbilities(cls).map((a) => {
             const isUsable = usableIds.has(a.id);
             const selected = round.selectedAbilityId === a.id;
@@ -285,6 +289,7 @@ function PlayerControls({
                 type="button"
                 size="sm"
                 variant={selected ? "default" : "outline"}
+                aria-pressed={selected}
                 disabled={!active || !isUsable || round.abilityLocked}
                 title={isUsable ? a.description : lockedLabel(a)}
                 onClick={() =>
@@ -292,28 +297,43 @@ function PlayerControls({
                 }
               >
                 {!isUsable && <Lock className="h-3 w-3 mr-1" aria-hidden />}
+                {selected && <CheckCircle2 className="h-3 w-3 mr-1" aria-hidden />}
                 {a.slot === "future_ultimate" && (
                   <Star className="h-3 w-3 mr-1 text-amber-500" aria-hidden />
                 )}
                 {a.name}
+                {a.slot === "starter_active" && isUsable && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">Starter · Lv1</span>
+                )}
                 {!isUsable && (
                   <span className="ml-1 text-[10px]">{lockedLabel(a)}</span>
                 )}
               </Button>
             );
           })}
+          {/* Locking with NO ability is a valid, deliberate choice. */}
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            disabled={!active || round.abilityLocked || round.selectedAbilityId === null}
+            disabled={!active || round.abilityLocked}
             onClick={() => dispatch({ type: "LOCK_ABILITY", player })}
           >
-            {round.abilityLocked ? "Ability locked" : "Lock ability"}
+            {round.abilityLocked ? (
+              <>
+                <Lock className="h-3 w-3 mr-1" aria-hidden />
+                Locked for this round
+              </>
+            ) : round.selectedAbilityId === null ? (
+              "Lock in: no ability"
+            ) : (
+              "Lock ability"
+            )}
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">
-          Prototype note: abilities are revealed at round end but have no combat effect yet.
+          Your choice stays hidden from the opponent and is revealed at round resolution. Locking
+          with no ability is allowed. Prototype note: abilities have no combat effect yet.
         </p>
       </div>
     </div>

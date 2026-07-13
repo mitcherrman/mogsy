@@ -48,7 +48,12 @@ export function ProgressionPanel({
       {!complete ? (
         <>
           {/* Neutral statuses only — picks stay hidden until the shared reveal. */}
-          <ul className="space-y-2" data-testid="progression-status-list">
+          <ul
+            className="space-y-2"
+            data-testid="progression-status-list"
+            role="status"
+            aria-label="Level-up choice progress"
+          >
             {leveledPlayers.map((p) => {
               const prog = progression[p];
               const cls = getDuelClass(state.players![p].classId);
@@ -138,6 +143,12 @@ export function ProgressionPanel({
               );
             })}
           </div>
+          {leveledPlayers.some((p) => progression[p].finalAbilityUnlocked) && (
+            <p className="text-[11px] text-center text-muted-foreground">
+              Level 3 is the current prototype maximum — both normal actives are now available.
+              The ultimate slot remains <strong>Future</strong> and is not implemented.
+            </p>
+          )}
           <div className="text-center">
             <Button onClick={() => dispatch({ type: "CONTINUE_AFTER_PROGRESSION" })}>
               Continue to next round

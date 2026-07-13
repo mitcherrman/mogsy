@@ -117,7 +117,11 @@ function RevealPanel({
 }) {
   const question = MOCK_QUESTIONS[result.questionIndex];
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3" data-testid="reveal-panel">
+    <div
+      className="rounded-xl border bg-card p-4 space-y-3"
+      data-testid="reveal-panel"
+      aria-live="polite"
+    >
       <h3 className="font-bold text-center">Round {result.round} — Reveal</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {(["p1", "p2"] as PlayerId[]).map((p) => {
@@ -145,7 +149,16 @@ function RevealPanel({
               </p>
               <p className="text-sm">
                 Ability:{" "}
-                <strong>{rp.settlement ? rp.settlement.abilityName : ability ? ability.name : "None"}</strong>
+                {(() => {
+                  const name = rp.settlement ? rp.settlement.abilityName : ability?.name;
+                  // "No ability" is a deliberate, valid choice — show it as
+                  // intentional text, never as missing data.
+                  return name && name !== "No active ability" ? (
+                    <strong>{name}</strong>
+                  ) : (
+                    <span className="italic text-muted-foreground">No active ability selected</span>
+                  );
+                })()}
                 {rp.settlement && rp.settlement.chargesBefore !== null && (
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {" "}
@@ -175,19 +188,22 @@ function RevealPanel({
         {question.explanation}
       </p>
       {result.sharedNextRoundDurationSeconds !== undefined && (
-        <p
-          className="text-sm text-center font-medium tabular-nums"
-          data-testid="shared-next-timer"
-        >
-          Next round shared timer: {result.sharedNextRoundDurationSeconds}s
-          {result.sharedTimerDeltaSeconds != null && result.sharedTimerDeltaSeconds !== 0 && (
+        <div className="text-center" data-testid="shared-next-timer">
+          <p className="text-sm font-medium tabular-nums">
+            Next round shared timer: {result.sharedNextRoundDurationSeconds}s
             <span className="text-muted-foreground">
-              {" "}
-              ({result.sharedTimerDeltaSeconds > 0 ? "+" : ""}
-              {result.sharedTimerDeltaSeconds}s)
+              {" — "}
+              {result.sharedTimerDeltaSeconds == null || result.sharedTimerDeltaSeconds === 0
+                ? "shared timer unchanged"
+                : result.sharedTimerDeltaSeconds > 0
+                  ? `shared timer increased by ${result.sharedTimerDeltaSeconds}s`
+                  : `shared timer reduced by ${-result.sharedTimerDeltaSeconds}s`}
             </span>
-          )}
-        </p>
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            One shared countdown — both players use the same timer.
+          </p>
+        </div>
       )}
       <div className="text-center">
         <Button onClick={() => dispatch({ type: "NEXT_ROUND" })}>
@@ -273,6 +289,7 @@ export function DuelScreen({
                 <p
                   className="text-center text-sm font-medium animate-pulse motion-reduce:animate-none"
                   data-testid="awaiting-reveal"
+                  role="status"
                 >
                   Resolving round…
                 </p>

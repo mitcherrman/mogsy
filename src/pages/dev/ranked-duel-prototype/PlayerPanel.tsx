@@ -97,10 +97,12 @@ export function PlayerPanel({
 
       {/* HP is the score: big, high-contrast bar. */}
       <div>
-        <div className="flex justify-between text-xs font-semibold mb-1">
-          <span>HP</span>
-          <span className="tabular-nums">
-            {match.hp} / {match.maxHp}
+        <div className="flex items-baseline justify-between mb-1">
+          <span className="text-xs font-semibold">HP</span>
+          {/* HP is the score — keep it the loudest number on the panel. */}
+          <span className="tabular-nums text-base font-bold leading-none">
+            {match.hp}
+            <span className="text-xs font-medium text-muted-foreground"> / {match.maxHp}</span>
           </span>
         </div>
         <div
@@ -138,8 +140,12 @@ export function PlayerPanel({
 
       {/* Compact ability summary: starter / chosen Lv2 / auto Lv3 / future ult. */}
       <div className="flex flex-wrap gap-1.5" data-testid={`${player}-abilities`}>
-        <Badge variant="outline" className="gap-1 text-[10px]">
-          {cls.startingAbility.name} · Starter
+        <Badge
+          variant="outline"
+          className="gap-1 text-[10px]"
+          title="Starter active ability — available from Level 1, lockable each round"
+        >
+          {cls.startingAbility.name} · Starter active
         </Badge>
         {chosenL2 ? (
           <Badge variant="outline" className="gap-1 text-[10px]">
@@ -168,8 +174,14 @@ export function PlayerPanel({
         </Badge>
       </div>
 
-      {/* Neutral hidden-information statuses only. */}
-      <div className="flex flex-wrap gap-1.5" data-testid={`${player}-status`}>
+      {/* Neutral hidden-information statuses only. Announced politely so
+          screen-reader users get lock/ready updates without focus moves. */}
+      <div
+        className="flex flex-wrap gap-1.5"
+        data-testid={`${player}-status`}
+        role="status"
+        aria-label={`${identity.name} round status`}
+      >
         {progression ? (
           progression.newLevel === null ? (
             <Badge variant="secondary">Waiting</Badge>

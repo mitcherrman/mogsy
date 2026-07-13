@@ -182,6 +182,61 @@ describe("RankedDuelPrototype component", () => {
     expect(p1.getByText(/no active ability/i)).toBeInTheDocument();
   });
 
+  it("setup marks the selected class accessibly (aria-pressed + Selected badge)", () => {
+    render(<RankedDuelPrototype />);
+    const pressed = screen
+      .getAllByRole("button", { pressed: true })
+      .filter((b) => b.textContent?.includes("Selected"));
+    expect(pressed.length).toBe(2); // one selected class per player
+    expect(screen.getAllByText(/starter active · lv1/i).length).toBeGreaterThan(0);
+  });
+
+  it("allows locking with no ability; the no-ability choice appears only at reveal", () => {
+    startMatch();
+    const p1 = controls("p1");
+    // Locking with nothing selected is a deliberate, valid choice.
+    fireEvent.click(p1.getByRole("button", { name: /lock in: no ability/i }));
+    expect(within(screen.getByTestId("p1-status")).getByText(/ability locked/i)).toBeInTheDocument();
+    // Pre-reveal, the PLAYER-FACING UI never says "no ability" anywhere
+    // (the dev operator controls are exempt — they operate the prototype).
+    const playerFacingHits = screen
+      .queryAllByText(/no active ability selected/i)
+      .filter((el) => !el.closest('[data-testid="operator-panel"]'));
+    expect(playerFacingHits).toHaveLength(0);
+
+    fireEvent.click(controls("p1").getAllByRole("button", { name: new RegExp(correctChoice) })[0]);
+    fireEvent.click(controls("p2").getAllByRole("button", { name: new RegExp(wrongChoice) })[0]);
+    advanceReveal();
+    expect(
+      within(screen.getByTestId("reveal-p1")).getByText(/no active ability selected/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows exactly one shared next-round timer message with reduce wording", () => {
+    startMatch();
+    fireEvent.change(screen.getByTestId("settlement-scenario-select"), {
+      target: { value: "timer-decreased" },
+    });
+    fireEvent.click(screen.getByTestId("apply-settlement"));
+    const timers = screen.getAllByTestId("shared-next-timer");
+    expect(timers).toHaveLength(1);
+    expect(timers[0]).toHaveTextContent("Next round shared timer: 18s");
+    expect(timers[0]).toHaveTextContent(/shared timer reduced by 2s/i);
+    expect(timers[0]).toHaveTextContent(/both players use the same timer/i);
+  });
+
+  it("match-over offers a clearly labeled same-classes rematch", () => {
+    startMatch();
+    fireEvent.change(screen.getByTestId("settlement-scenario-select"), {
+      target: { value: "match-over" },
+    });
+    fireEvent.click(screen.getByTestId("apply-settlement"));
+    fireEvent.click(screen.getByRole("button", { name: /view match result/i }));
+    expect(screen.getByRole("button", { name: /rematch — same classes/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /back to setup/i })).toBeInTheDocument();
+    expect(screen.getByTestId("final-round-summary")).toBeInTheDocument();
+  });
+
   it("PlayerPanel at max level shows no level 4 target, both normals, and a locked Future slot", () => {
     const cls = getDuelClass("tank");
     render(
