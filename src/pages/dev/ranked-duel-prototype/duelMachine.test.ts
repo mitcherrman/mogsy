@@ -16,7 +16,7 @@ import {
   getDuelClass,
 } from "./fixtures";
 import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
-import { getScenario } from "./backend-adapter/backendSettlementFixtures";
+import { FIXTURE_PLAYER_IDS, getScenario } from "./backend-adapter/backendSettlementFixtures";
 
 const run = (state: DuelState, ...actions: DuelAction[]): DuelState =>
   actions.reduce(duelReducer, state);
@@ -522,15 +522,17 @@ describe("level 3 final normal ability unlock", () => {
 });
 
 describe("backend settlement integration", () => {
-  const adapt = (key: string) => adaptBackendSettlement(getScenario(key)!.settlement);
+  const adapt = (key: string) =>
+    adaptBackendSettlement(getScenario(key)!.settlement, FIXTURE_PLAYER_IDS);
 
   it("applies authoritative HP/XP/levels from the settlement without recalculation", () => {
     const s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("solo-correct") });
     expect(s.phase).toBe("reveal");
     expect(s.players!.p2.hp).toBe(60);
     expect(s.players!.p1.hp).toBe(90); // fixture value, NOT the class fixture HP
-    expect(s.players!.p1.xp).toBe(20);
-    expect(s.lastResult!.players.p2.settlement!.baseDamage).toBe(30);
+    expect(s.players!.p1.xp).toBe(20); // total_xp_after pass-through
+    expect(s.lastResult!.players.p1.damageDealt).toBe(30); // final_damage_dealt
+    expect(s.lastResult!.players.p2.settlement!.finalDamageReceived).toBe(30);
   });
 
   it("next round uses the single shared settlement timer, then falls back to the default", () => {
@@ -566,8 +568,27 @@ describe("backend settlement integration", () => {
   it("takes match-over and winner from the settlement only", () => {
     let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("match-over") });
     expect(s.winner).toBe("p1");
+    expect(s.matchOver).toBe(true);
     s = run(s, { type: "NEXT_ROUND" });
     expect(s.phase).toBe("match_over");
+  });
+
+  it("supports a simultaneous-knockout draw: match over with NO winner", () => {
+    let s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapt("double-knockout") });
+    expect(s.matchOver).toBe(true);
+    expect(s.winner).toBeNull(); // never inferred from HP
+    s = run(s, { type: "NEXT_ROUND" });
+    expect(s.phase).toBe("match_over");
+  });
+
+  it("passes an exact fixture through adapter into the reducer with the historical snapshot intact", () => {
+    const adapted = adapt("charge-consumed");
+    const s = run(start(), { type: "APPLY_BACKEND_SETTLEMENT", settlement: adapted });
+    const detail = s.lastResult!.players.p1.settlement!;
+    // Immutable post-round remaining charges from the backend record.
+    expect(detail.remainingChargesAfterRound).toEqual({ "tank.fortify": 2, "tank.brace": 2 });
+    expect(detail.chargeConsumed).toBe(true);
+    expect(detail.consumedAbilityId).toBe("tank.brace");
   });
 
   it("a settlement level-up drives the existing progression stop", () => {

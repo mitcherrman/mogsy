@@ -136,6 +136,12 @@ export interface DuelState {
   lastResult: RoundResult | null;
   log: RoundResult[];
   winner: PlayerId | null;
+  /**
+   * Authoritative match-over flag. A backend settlement may end the match
+   * WITHOUT a winner (simultaneous_knockout draw), so this is tracked
+   * separately from `winner` and never inferred from HP.
+   */
+  matchOver: boolean;
 }
 
 export type DuelAction =
@@ -179,6 +185,7 @@ export const initialDuelState: DuelState = {
   lastResult: null,
   log: [],
   winner: null,
+  matchOver: false,
   ...freshRound(),
 };
 
@@ -291,6 +298,7 @@ const resolveRound = (state: DuelState): DuelState => {
     lastResult: result,
     log: [...state.log, result],
     winner,
+    matchOver: winner !== null,
   };
 };
 
@@ -477,7 +485,7 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
         nextPlayers[p] = {
           ...state.players[p],
           hp: s.hpAfter,
-          xp: s.xpAfter,
+          xp: s.totalXpAfter,
           level: s.levelAfter,
         };
         resultPlayers[p] = {
@@ -486,12 +494,14 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
           // the settlement outcome is authoritative regardless.
           answerIndex: state.roundPlayers[p].answerIndex,
           abilityId: s.abilityId,
-          wasFaster: s.wasFaster,
-          damageDealt: adapted.players[p === "p1" ? "p2" : "p1"].finalDamage,
-          xpAwarded: s.xpAwarded,
+          wasFaster: s.answeredFirst,
+          // Authoritative outgoing damage from the backend audit.
+          damageDealt: s.finalDamageDealt,
+          xpAwarded: s.xpGained,
           hpAfter: s.hpAfter,
           levelBefore: s.levelBefore,
           levelAfter: s.levelAfter,
+          // From the backend's explicit level-up events.
           leveledUp: s.leveledUp,
           settlement: s,
         };
@@ -512,8 +522,10 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
         players: nextPlayers,
         lastResult: result,
         log: [...state.log, result],
-        // Winner comes from the backend settlement only — never derived here.
-        winner: adapted.matchOver ? adapted.winner : null,
+        // Winner and match-over come from the backend settlement only —
+        // never derived here. A draw is matchOver with winner null.
+        winner: adapted.winner,
+        matchOver: adapted.matchOver,
         // ONE shared duration for both players' next round.
         nextRoundDurationSeconds: adapted.sharedNextRoundDurationSeconds,
       };
@@ -521,8 +533,11 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
 
     case "NEXT_ROUND": {
       if (state.phase !== "reveal") return state;
-      // Match end takes precedence over progression stops.
-      if (state.winner !== null) return { ...state, phase: "match_over" };
+      // Match end takes precedence over progression stops. A draw ends the
+      // match with no winner, so matchOver is checked in its own right.
+      if (state.matchOver || state.winner !== null) {
+        return { ...state, phase: "match_over" };
+      }
       const progression = buildProgression(state);
       if (progression) return { ...state, phase: "progression", progression };
       return startNextQuestion(state);

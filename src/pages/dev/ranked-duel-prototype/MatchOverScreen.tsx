@@ -11,14 +11,17 @@ export function MatchOverScreen({
   state: DuelState;
   dispatch: Dispatch<DuelAction>;
 }) {
-  if (!state.players || !state.winner) return null;
+  if (!state.players) return null;
+  // Backend rule: a simultaneous knockout ends the match with NO winner.
   const winner = state.winner;
 
   return (
     <div className="max-w-xl mx-auto space-y-4 text-center" data-testid="match-over">
       <div className="rounded-xl border-2 border-primary/50 bg-card p-6 space-y-2">
         <Trophy className="h-10 w-10 mx-auto text-amber-500" aria-hidden />
-        <h2 className="text-2xl font-bold">{MOCK_PLAYERS[winner].name} wins!</h2>
+        <h2 className="text-2xl font-bold">
+          {winner ? `${MOCK_PLAYERS[winner].name} wins!` : "Draw — simultaneous knockout"}
+        </h2>
         <p className="text-sm text-muted-foreground">
           Match decided after {state.round} round{state.round === 1 ? "" : "s"}.
         </p>

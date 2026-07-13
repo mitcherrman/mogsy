@@ -1,129 +1,213 @@
 // ---------------------------------------------------------------------------
-// Deterministic BACKEND-SHAPED settlement fixtures for the /dev/ranked-duel
-// prototype. Every number below is a final, already-resolved value standing
-// in for the backend's combat settlement output. The frontend never derives
-// any of these values — `mkPlayer` only merges literal overrides over
-// literal defaults (no formulas). Frontend-local; not a transport schema.
+// Deterministic fixtures shaped EXACTLY like the serialized output of the
+// backend's `project_resolved_round(match, combat_record)` at commit 3eaba46
+// (snake_case, enum value strings, ISO-8601 UTC timestamps, players sorted by
+// player_id). Every number is an already-resolved literal — the helpers below
+// only merge literal overrides over literal defaults and never calculate any
+// combat-domain value (damage, HP, XP, levels, charges, winner, timers,
+// carryover, streaks, or Combat Lab deltas).
+//
+// Frontend-local dev data; not a production transport contract.
 // ---------------------------------------------------------------------------
 
 import {
-  BackendPlayerSettlement,
-  BackendRoundSettlement,
+  BackendResolvedPlayer,
+  BackendResolvedRoundProjection,
 } from "./backendSettlementTypes";
 
-/** Baseline shared round length the prototype uses (mirrors ROUND_SECONDS). */
-const BASELINE_TIMER = { durationSeconds: 20, deltaSeconds: 0 };
+// Player ids follow the backend tests' convention (sorted: alice < bob).
+export const FIXTURE_P1_ID = "alice";
+export const FIXTURE_P2_ID = "bob";
 
-/** Literal defaults for a quiet, untouched player record. */
+/**
+ * The authoritative frontend association for these fixtures: which backend
+ * player_id the prototype presents as p1 and p2. Passed explicitly to the
+ * adapter — identity is never taken from the array's lexical sort order.
+ */
+export const FIXTURE_PLAYER_IDS = {
+  p1PlayerId: FIXTURE_P1_ID,
+  p2PlayerId: FIXTURE_P2_ID,
+} as const;
+
+const T = {
+  started: "2026-07-13T12:00:00+00:00",
+  originalDeadline: "2026-07-13T12:00:20+00:00",
+  finalDeadline: "2026-07-13T12:00:20+00:00",
+  submitEarly: "2026-07-13T12:00:04+00:00",
+  submitLate: "2026-07-13T12:00:09+00:00",
+};
+
+const ZERO_DAMAGE = {
+  base_damage_dealt: 0,
+  outgoing_bonus: 0,
+  final_damage_dealt: 0,
+  shield_absorbed: 0,
+  incoming_reduction: 0,
+  final_damage_received: 0,
+};
+
+/** Literal defaults for a quiet player record (merge only — no formulas). */
 const mkPlayer = (
-  overrides: Partial<BackendPlayerSettlement>,
-): BackendPlayerSettlement => ({
-  answerOutcome: "incorrect",
-  answerTimeMs: 9000,
-  relativeSpeed: "not_applicable",
-  hpBefore: 90,
-  baseIncomingDamage: 0,
-  shieldAbsorbed: 0,
-  damageReductionAmount: 0,
-  finalDamage: 0,
-  hpAfter: 90,
-  xpBefore: 0,
-  xpAwarded: 16,
-  xpAfter: 16,
-  levelBefore: 1,
-  levelAfter: 1,
-  selectedAbility: null,
-  chargesBefore: null,
-  chargesConsumed: 0,
-  chargesAfter: null,
-  combatLabCarryover: null,
+  playerId: string,
+  classId: string,
+  overrides: Partial<BackendResolvedPlayer>,
+): BackendResolvedPlayer => ({
+  player_id: playerId,
+  class_id: classId,
+  outcome: "incorrect",
+  submitted_at: T.submitLate,
+  answered_first: false,
+  timed_out: false,
+  selected_ability_id: null,
+  damage: { ...ZERO_DAMAGE },
+  hp_before: 90,
+  hp_after: 90,
+  reached_zero_hp: false,
+  xp_gained: 16,
+  total_xp_after: 16,
+  level_before: 1,
+  level_after: 1,
+  level_up_events: [],
+  charge_consumed: false,
+  consumed_ability_id: null,
+  remaining_charges: {},
+  carryover: { effects_gained: [], effects_consumed: [], consecutive_correct: 0 },
+  combat_lab_unlock_delta_seconds: 0,
   ...overrides,
 });
 
 const mk = (
-  roundId: string,
-  playerOne: Partial<BackendPlayerSettlement>,
-  playerTwo: Partial<BackendPlayerSettlement>,
-  rest?: Partial<Omit<BackendRoundSettlement, "players" | "roundId">>,
-): BackendRoundSettlement => ({
-  roundId,
-  matchId: "mock-match-001",
-  players: { playerOne: mkPlayer(playerOne), playerTwo: mkPlayer(playerTwo) },
-  sharedNextRoundTimer: BASELINE_TIMER,
-  matchOver: false,
-  winner: null,
+  roundNumber: number,
+  p1: Partial<BackendResolvedPlayer>,
+  p2: Partial<BackendResolvedPlayer>,
+  rest?: Partial<Omit<BackendResolvedRoundProjection, "players" | "round_number">>,
+): BackendResolvedRoundProjection => ({
+  match_id: "mock-match-001",
+  round_number: roundNumber,
+  question_id: "q-mock-1",
+  end_reason: "both_answered",
+  started_at: T.started,
+  original_deadline: T.originalDeadline,
+  final_deadline: T.finalDeadline,
+  pressure_applied: false,
+  players: [mkPlayer(FIXTURE_P1_ID, "tank", p1), mkPlayer(FIXTURE_P2_ID, "mage", p2)],
+  next_round_duration_seconds: 20,
+  next_round_duration_delta: 0,
+  match_over: false,
+  winner_id: null,
+  completion_reason: null,
   ...rest,
 });
+
+const CORRECT_FIRST: Partial<BackendResolvedPlayer> = {
+  outcome: "correct",
+  submitted_at: T.submitEarly,
+  answered_first: true,
+  xp_gained: 20,
+  total_xp_after: 20,
+};
 
 export interface SettlementScenario {
   key: string;
   label: string;
-  settlement: BackendRoundSettlement;
+  settlement: BackendResolvedRoundProjection;
 }
 
 export const SETTLEMENT_SCENARIOS: SettlementScenario[] = [
   {
     key: "solo-correct",
-    label: "Solo correct — full base damage, no modifiers",
+    label: "Sole correct — full damage, no modifiers",
     settlement: mk(
-      "r-solo-correct",
-      { answerOutcome: "correct", answerTimeMs: 4200, xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
     ),
   },
   {
     key: "both-correct-faster",
-    label: "Both correct — faster player deals reduced base damage",
+    label: "Both correct — faster player deals reduced damage",
     settlement: mk(
-      "r-both-correct",
-      { answerOutcome: "correct", answerTimeMs: 3100, relativeSpeed: "faster", xpAwarded: 20, xpAfter: 20 },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 18, final_damage_dealt: 18 } },
       {
-        answerOutcome: "correct",
-        answerTimeMs: 6400,
-        relativeSpeed: "slower",
-        xpAwarded: 20,
-        xpAfter: 20,
-        baseIncomingDamage: 18,
-        finalDamage: 18,
-        hpAfter: 72,
+        outcome: "correct",
+        answered_first: false,
+        xp_gained: 20,
+        total_xp_after: 20,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 18 },
+        hp_after: 72,
       },
     ),
   },
   {
     key: "both-incorrect-wash",
     label: "Both incorrect — wash",
-    settlement: mk("r-wash", {}, {}),
+    settlement: mk(1, {}, {}),
+  },
+  {
+    key: "timed-out",
+    label: "Player 2 timed out (deadline expired)",
+    settlement: mk(
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        outcome: "timeout",
+        submitted_at: null,
+        timed_out: true,
+        xp_gained: 14,
+        total_xp_after: 14,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 30 },
+        hp_after: 60,
+      },
+      { end_reason: "deadline_expired" },
+    ),
+  },
+  {
+    key: "no-ability",
+    label: "No active ability selected by either player",
+    settlement: mk(
+      1,
+      { ...CORRECT_FIRST, selected_ability_id: null, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      { selected_ability_id: null, damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+    ),
   },
   {
     key: "shield-absorb",
     label: "Shield absorbs part of incoming damage",
     settlement: mk(
-      "r-shield",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, shieldAbsorbed: 12, finalDamage: 18, hpAfter: 72 },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        selected_ability_id: "mage.overload",
+        damage: { ...ZERO_DAMAGE, shield_absorbed: 12, final_damage_received: 18 },
+        hp_after: 72,
+      },
     ),
   },
   {
     key: "damage-reduction",
-    label: "Damage reduction lowers final damage",
+    label: "Incoming reduction lowers final damage",
     settlement: mk(
-      "r-reduction",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, damageReductionAmount: 10, finalDamage: 20, hpAfter: 70 },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        damage: { ...ZERO_DAMAGE, incoming_reduction: 10, final_damage_received: 20 },
+        hp_after: 70,
+      },
     ),
   },
   {
     key: "shield-plus-reduction",
-    label: "Shield + damage reduction in one settlement",
+    label: "Shield + incoming reduction in one settlement",
     settlement: mk(
-      "r-shield-reduction",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
+      1,
       {
-        baseIncomingDamage: 30,
-        shieldAbsorbed: 8,
-        damageReductionAmount: 7,
-        finalDamage: 15,
-        hpAfter: 75,
+        ...CORRECT_FIRST,
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, outgoing_bonus: 5, final_damage_dealt: 35 },
+      },
+      {
+        damage: { ...ZERO_DAMAGE, shield_absorbed: 8, incoming_reduction: 7, final_damage_received: 20 },
+        hp_after: 70,
       },
     ),
   },
@@ -131,169 +215,235 @@ export const SETTLEMENT_SCENARIOS: SettlementScenario[] = [
     key: "charge-consumed",
     label: "Selected ability consumes a charge",
     settlement: mk(
-      "r-charge-consumed",
+      1,
       {
-        answerOutcome: "correct",
-        xpAwarded: 20,
-        xpAfter: 20,
-        selectedAbility: { abilityId: "tank.fortify", name: "Fortify" },
-        chargesBefore: 2,
-        chargesConsumed: 1,
-        chargesAfter: 1,
+        ...CORRECT_FIRST,
+        selected_ability_id: "tank.brace",
+        charge_consumed: true,
+        consumed_ability_id: "tank.brace",
+        // Immutable post-round snapshot as committed by the backend.
+        remaining_charges: { "tank.fortify": 2, "tank.brace": 2 },
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 },
       },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
     ),
   },
   {
     key: "charge-not-consumed",
     label: "Ability selected but no charge consumed",
     settlement: mk(
-      "r-charge-kept",
+      1,
       {
-        answerOutcome: "correct",
-        xpAwarded: 20,
-        xpAfter: 20,
-        selectedAbility: { abilityId: "marksman.suppressing_fire", name: "Suppressing Fire" },
-        chargesBefore: 1,
-        chargesConsumed: 0,
-        chargesAfter: 1,
+        ...CORRECT_FIRST,
+        selected_ability_id: "tank.fortify",
+        charge_consumed: false,
+        consumed_ability_id: null,
+        remaining_charges: { "tank.fortify": 2 },
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 },
       },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+    ),
+  },
+  {
+    key: "uncharged-policy",
+    label: "Edge: remaining charge null (uncharged use policy)",
+    settlement: mk(
+      1,
+      {
+        ...CORRECT_FIRST,
+        selected_ability_id: "tank.fortify",
+        remaining_charges: { "tank.fortify": null, "tank.brace": 3 },
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 },
+      },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+    ),
+  },
+  {
+    key: "carryover-gained",
+    label: "Carryover effect gained (banked for a later round)",
+    settlement: mk(
+      1,
+      {
+        ...CORRECT_FIRST,
+        selected_ability_id: "mage.arcane_charge",
+        carryover: {
+          effects_gained: ["mage.arcane_charge"],
+          effects_consumed: [],
+          consecutive_correct: 1,
+        },
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 },
+      },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+    ),
+  },
+  {
+    key: "carryover-consumed",
+    label: "Carryover effect consumed this round",
+    settlement: mk(
+      2,
+      {
+        ...CORRECT_FIRST,
+        carryover: {
+          effects_gained: [],
+          effects_consumed: ["mage.arcane_charge"],
+          consecutive_correct: 2,
+        },
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, outgoing_bonus: 5, final_damage_dealt: 35 },
+      },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 35 }, hp_after: 55 },
+    ),
+  },
+  {
+    key: "combat-lab-delta",
+    label: "Combat Lab unlock delta (data only, no damage change)",
+    settlement: mk(
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        selected_ability_id: "mage.insight",
+        combat_lab_unlock_delta_seconds: -5.0,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 30 },
+        hp_after: 60,
+      },
     ),
   },
   {
     key: "timer-increased",
     label: "Next-round shared timer increased (25s)",
     settlement: mk(
-      "r-timer-up",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
-      { sharedNextRoundTimer: { durationSeconds: 25, deltaSeconds: 5 } },
+      1,
+      { ...CORRECT_FIRST, selected_ability_id: "tank.fortify", damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+      { next_round_duration_seconds: 25, next_round_duration_delta: 5.0 },
     ),
   },
   {
     key: "timer-decreased",
     label: "Next-round shared timer decreased (18s)",
     settlement: mk(
-      "r-timer-down",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
-      { sharedNextRoundTimer: { durationSeconds: 18, deltaSeconds: -2 } },
-    ),
-  },
-  {
-    key: "carryover-created",
-    label: "Combat Lab carryover created",
-    settlement: mk(
-      "r-carryover-created",
-      {
-        answerOutcome: "correct",
-        xpAwarded: 20,
-        xpAfter: 20,
-        combatLabCarryover: {
-          key: "insight_unlock",
-          summary: "Insight: Combat Lab unlocks 5s earlier on the next eligible question",
-          status: "created",
-        },
-      },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
-    ),
-  },
-  {
-    key: "carryover-consumed",
-    label: "Combat Lab carryover consumed",
-    settlement: mk(
-      "r-carryover-consumed",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      {
-        baseIncomingDamage: 30,
-        finalDamage: 30,
-        hpAfter: 60,
-        combatLabCarryover: {
-          key: "insight_unlock",
-          summary: "Insight consumed: Combat Lab unlocked 5s earlier this question",
-          status: "consumed",
-        },
-      },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      { selected_ability_id: "marksman.tempo", damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
+      { next_round_duration_seconds: 18, next_round_duration_delta: -2.0 },
     ),
   },
   {
     key: "level-up",
-    label: "Level-up from XP award (Lv1 → Lv2)",
+    label: "Level-up from XP award (backend level-up event)",
     settlement: mk(
-      "r-level-up",
+      2,
       {
-        answerOutcome: "correct",
-        xpBefore: 20,
-        xpAwarded: 20,
-        xpAfter: 40,
-        levelBefore: 1,
-        levelAfter: 2,
+        ...CORRECT_FIRST,
+        xp_gained: 20,
+        total_xp_after: 40,
+        level_before: 1,
+        level_after: 2,
+        level_up_events: [
+          { previous_level: 1, new_level: 2, total_xp_after: 40, thresholds_crossed: [40] },
+        ],
       },
-      { xpBefore: 16, xpAwarded: 16, xpAfter: 32, baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
+      {
+        xp_gained: 16,
+        total_xp_after: 32,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 30 },
+        hp_after: 60,
+      },
     ),
   },
   {
     key: "match-over",
-    label: "Match over — Player 1 wins",
+    label: "Match over — knockout, Player 1 wins",
     settlement: mk(
-      "r-match-over",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { hpBefore: 30, baseIncomingDamage: 30, finalDamage: 30, hpAfter: 0 },
-      { matchOver: true, winner: "playerOne" },
+      3,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        hp_before: 30,
+        hp_after: 0,
+        reached_zero_hp: true,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 30 },
+      },
+      { match_over: true, winner_id: FIXTURE_P1_ID, completion_reason: "knockout" },
+    ),
+  },
+  {
+    key: "double-knockout",
+    label: "Match over — simultaneous knockout (draw, no winner)",
+    settlement: mk(
+      3,
+      {
+        ...CORRECT_FIRST,
+        hp_before: 10,
+        hp_after: 0,
+        reached_zero_hp: true,
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 18, final_damage_dealt: 18, final_damage_received: 18 },
+      },
+      {
+        outcome: "correct",
+        xp_gained: 20,
+        total_xp_after: 20,
+        hp_before: 15,
+        hp_after: 0,
+        reached_zero_hp: true,
+        damage: { ...ZERO_DAMAGE, base_damage_dealt: 18, final_damage_dealt: 18, final_damage_received: 18 },
+      },
+      { match_over: true, winner_id: null, completion_reason: "simultaneous_knockout" },
     ),
   },
   {
     key: "plain-round",
-    label: "Plain non-match-over round (no winner)",
+    label: "Plain non-terminal round (no winner)",
     settlement: mk(
-      "r-plain",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      { baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
-    ),
-  },
-  {
-    key: "timed-out",
-    label: "Player 2 timed out",
-    settlement: mk(
-      "r-timed-out",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20 },
-      {
-        answerOutcome: "timed_out",
-        answerTimeMs: null,
-        xpAwarded: 14,
-        xpAfter: 14,
-        baseIncomingDamage: 30,
-        finalDamage: 30,
-        hpAfter: 60,
-      },
-    ),
-  },
-  {
-    key: "no-ability",
-    label: "No active ability selected by either player",
-    settlement: mk(
-      "r-no-ability",
-      { answerOutcome: "correct", xpAwarded: 20, xpAfter: 20, selectedAbility: null },
-      { selectedAbility: null, baseIncomingDamage: 30, finalDamage: 30, hpAfter: 60 },
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      { damage: { ...ZERO_DAMAGE, final_damage_received: 30 }, hp_after: 60 },
     ),
   },
   {
     key: "zero-final-damage",
-    label: "Both players take zero final damage after modifiers",
+    label: "Both take zero final damage after modifiers",
     settlement: mk(
-      "r-zero-final",
-      { baseIncomingDamage: 18, shieldAbsorbed: 18, finalDamage: 0, answerOutcome: "correct", relativeSpeed: "slower", answerTimeMs: 7000, xpAwarded: 20, xpAfter: 20 },
+      1,
       {
-        answerOutcome: "correct",
-        relativeSpeed: "faster",
-        answerTimeMs: 2500,
-        xpAwarded: 20,
-        xpAfter: 20,
-        baseIncomingDamage: 30,
-        shieldAbsorbed: 20,
-        damageReductionAmount: 10,
-        finalDamage: 0,
+        ...CORRECT_FIRST,
+        answered_first: false,
+        damage: { ...ZERO_DAMAGE, shield_absorbed: 18, final_damage_received: 0 },
+      },
+      {
+        outcome: "correct",
+        answered_first: true,
+        submitted_at: T.submitEarly,
+        xp_gained: 20,
+        total_xp_after: 20,
+        damage: {
+          base_damage_dealt: 18,
+          outgoing_bonus: 0,
+          final_damage_dealt: 0,
+          shield_absorbed: 20,
+          incoming_reduction: 10,
+          final_damage_received: 0,
+        },
+      },
+    ),
+  },
+  {
+    key: "pressure-applied",
+    label: "Edge: pressure-shortened round (deadline moved up)",
+    settlement: mk(
+      1,
+      { ...CORRECT_FIRST, damage: { ...ZERO_DAMAGE, base_damage_dealt: 30, final_damage_dealt: 30 } },
+      {
+        outcome: "timeout",
+        submitted_at: null,
+        timed_out: true,
+        xp_gained: 14,
+        total_xp_after: 14,
+        damage: { ...ZERO_DAMAGE, final_damage_received: 30 },
+        hp_after: 60,
+      },
+      {
+        end_reason: "deadline_expired",
+        pressure_applied: true,
+        final_deadline: "2026-07-13T12:00:15+00:00",
       },
     ),
   },

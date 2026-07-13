@@ -162,11 +162,13 @@ describe("RankedDuelPrototype component", () => {
 
     const reveal = within(screen.getByTestId("reveal-panel"));
     const p2 = within(within(reveal.getByTestId("reveal-p2")).getByTestId("settlement-detail"));
-    expect(p2.getByText(/base damage 30/i)).toBeInTheDocument();
     expect(p2.getByText(/shield absorbed 8/i)).toBeInTheDocument();
     expect(p2.getByText(/damage reduced 7/i)).toBeInTheDocument();
-    expect(p2.getByText(/final damage 15/i)).toBeInTheDocument();
-    expect(p2.getByText(/HP 90 → 75/i)).toBeInTheDocument();
+    expect(p2.getByText(/final damage received 20/i)).toBeInTheDocument();
+    expect(p2.getByText(/HP 90 → 70/i)).toBeInTheDocument();
+    // Attacker side shows the dealt audit (base + bonus -> final) separately.
+    const p1 = within(within(reveal.getByTestId("reveal-p1")).getByTestId("settlement-detail"));
+    expect(p1.getByText(/base 30 \+5 bonus → final 35/i)).toBeInTheDocument();
     expect(screen.getByTestId("shared-next-timer")).toHaveTextContent(
       "Next round shared timer: 20s",
     );

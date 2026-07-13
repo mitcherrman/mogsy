@@ -15,7 +15,11 @@ import {
 } from "./fixtures";
 import { DuelState, DuelAction, RoundPlayerState } from "./duelMachine";
 import { Dispatch, useState } from "react";
-import { SETTLEMENT_SCENARIOS, getScenario } from "./backend-adapter/backendSettlementFixtures";
+import {
+  FIXTURE_PLAYER_IDS,
+  SETTLEMENT_SCENARIOS,
+  getScenario,
+} from "./backend-adapter/backendSettlementFixtures";
 import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
@@ -121,7 +125,8 @@ function SettlementScenarioPicker({ dispatch }: { dispatch: Dispatch<DuelAction>
           if (!scenario) return;
           dispatch({
             type: "APPLY_BACKEND_SETTLEMENT",
-            settlement: adaptBackendSettlement(scenario.settlement),
+            // Explicit id mapping — array order never decides p1/p2.
+            settlement: adaptBackendSettlement(scenario.settlement, FIXTURE_PLAYER_IDS),
           });
         }}
       >

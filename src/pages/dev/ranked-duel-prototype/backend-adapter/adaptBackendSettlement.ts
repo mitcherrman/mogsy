@@ -1,137 +1,208 @@
 // ---------------------------------------------------------------------------
-// Pure adapter: backend-shaped round settlement -> frontend display model.
+// Pure adapter: exact backend resolved-round projection -> frontend display
+// model.
 //
-// SHAPE TRANSLATION ONLY. The adapter renames fields, converts backend player
-// keys to the prototype's "p1"/"p2", normalizes optional values into
-// display-safe ones, and validates invariants. It never recomputes damage,
-// XP, levels, shields, reductions, charges, class effects, or the winner —
-// every number passes through exactly as the backend resolved it. The only
-// derivations are presentational comparisons (e.g. leveledUp = after > before)
-// and string formatting for log/badge display.
+// Input is the frontend-local mirror of `project_resolved_round` (backend
+// commit 3eaba46). SHAPE TRANSLATION ONLY: rename snake_case fields, map the
+// sorted player array onto the prototype's "p1"/"p2", convert backend enum
+// spellings ("timeout" -> "timed_out"), normalize nullable values into
+// display-safe ones, and validate invariants.
 //
-// Frontend-local to the /dev/ranked-duel prototype; to be replaced by (or
-// validated against) the real API contract when it lands.
+// The adapter NEVER calculates damage, HP, XP, XP-before, levels, winners,
+// charges, charge-before, answer timing, answer order ranks, timer durations,
+// carryover mechanics, or Combat Lab behavior. Every number passes through
+// exactly as the backend resolved it. Level-ups come from the backend's
+// explicit level_up_events, not numeric comparison.
 // ---------------------------------------------------------------------------
 
 import { PlayerId } from "../fixtures";
 import {
-  BackendPlayerKey,
-  BackendPlayerSettlement,
-  BackendRoundSettlement,
+  BackendCompletionReason,
+  BackendResolvedPlayer,
+  BackendResolvedRoundProjection,
+  BackendRoundEndReason,
 } from "./backendSettlementTypes";
 
 /**
- * Prototype-safe bound for the shared next-round timer delta (display
- * metadata). Values beyond ±10s would make the prototype's 20s baseline
- * unusable, so they're rejected as malformed fixture data.
+ * Prototype-safe bound for the raw shared timer delta (display metadata;
+ * the backend clamps the real duration — this only rejects absurd fixtures).
  */
 export const MAX_TIMER_DELTA_SECONDS = 10;
 /** Sanity ceiling for the authoritative shared duration. */
 export const MAX_TIMER_DURATION_SECONDS = 60;
 
+/**
+ * Explicit association between frontend player slots and backend player ids.
+ * The backend sorts `players` by player_id for deterministic serialization —
+ * array POSITION carries no side identity, so the caller (which knows which
+ * backend player it is presenting as p1/p2) must say so by id.
+ */
+export interface PlayerIdMapping {
+  p1PlayerId: string;
+  p2PlayerId: string;
+}
+
 export class SettlementAdapterError extends Error {
   constructor(message: string) {
-    super(`Invalid backend settlement fixture: ${message}`);
+    super(`Invalid backend resolved projection: ${message}`);
     this.name = "SettlementAdapterError";
   }
 }
 
 /** Display model consumed by the prototype UI (never raw backend shapes). */
 export interface AdaptedPlayerSettlement {
+  playerId: string;
   outcome: "correct" | "incorrect" | "timed_out";
-  wasFaster: boolean;
-  /** Display string, e.g. "3.1s" — null when timed out. */
-  answerTimeLabel: string | null;
+  /** Backend UTC ISO timestamp, passed through for display; null = none. */
+  submittedAt: string | null;
+  answeredFirst: boolean;
+  timedOut: boolean;
+  abilityId: string | null;
+  /** Display-safe: the ability id, or "No active ability" when null. */
+  abilityName: string;
+  // --- authoritative damage audit (directional) ---
+  baseDamageDealt: number;
+  outgoingBonus: number;
+  finalDamageDealt: number;
+  shieldAbsorbed: number;
+  incomingReduction: number;
+  finalDamageReceived: number;
   hpBefore: number;
   hpAfter: number;
-  baseDamage: number;
-  shieldAbsorbed: number;
-  damageReduced: number;
-  finalDamage: number;
-  xpBefore: number;
-  xpAwarded: number;
-  xpAfter: number;
+  reachedZeroHp: boolean;
+  // --- XP / level (no XP-before exists in the backend projection) ---
+  xpGained: number;
+  totalXpAfter: number;
   levelBefore: number;
   levelAfter: number;
+  /** From the backend's explicit events — never derived numerically. */
   leveledUp: boolean;
-  /** Always display-safe: "No active ability" when the backend sent null. */
-  abilityName: string;
-  abilityId: string | null;
-  /** Null when the ability system reported no charge pool. */
-  chargesBefore: number | null;
-  chargesConsumed: number;
-  chargesAfter: number | null;
-  /** e.g. "Stored burn consumed: +6 damage applied" — null when absent. */
-  carryoverSummary: string | null;
-  carryoverStatus: "created" | "consumed" | "updated" | null;
+  levelUpEvents: { previousLevel: number; newLevel: number; totalXpAfter: number; thresholdsCrossed: number[] }[];
+  // --- charges: consumption + IMMUTABLE post-round snapshot only ---
+  chargeConsumed: boolean;
+  consumedAbilityId: string | null;
+  /**
+   * Historical remaining charges AFTER this round, straight from the
+   * backend's commit-time snapshot. Immutable for this round; never
+   * reconstructed from or reconciled with live state. null = uncharged
+   * use policy. There is deliberately NO charges-before field.
+   */
+  remainingChargesAfterRound: Record<string, number | null>;
+  // --- carryover (gained/consumed kept separate) & streak ---
+  effectsGained: string[];
+  effectsConsumed: string[];
+  consecutiveCorrect: number;
+  /** Combat Lab timing data — kept separate from all damage fields. */
+  combatLabUnlockDeltaSeconds: number;
 }
 
 export interface AdaptedSettlement {
-  roundId: string;
+  matchId: string;
+  roundNumber: number;
+  questionId: string | null;
+  endReason: BackendRoundEndReason;
+  pressureApplied: boolean;
   players: Record<PlayerId, AdaptedPlayerSettlement>;
   /** THE single authoritative shared timer for the next round. */
   sharedNextRoundDurationSeconds: number;
-  /** Display metadata only; never used to compute the duration. */
-  sharedTimerDeltaSeconds: number | null;
+  /** Raw backend delta — display metadata only, never used to compute. */
+  sharedTimerDeltaSeconds: number;
   matchOver: boolean;
+  /** Null on non-terminal rounds AND on simultaneous-knockout draws. */
   winner: PlayerId | null;
+  completionReason: BackendCompletionReason | null;
   /** Compact combat-log line built from backend-resolved values. */
   summary: string;
 }
 
-const PLAYER_KEY_TO_ID: Record<BackendPlayerKey, PlayerId> = {
-  playerOne: "p1",
-  playerTwo: "p2",
-};
+const OUTCOMES = new Set(["correct", "incorrect", "timeout"]);
+const END_REASONS = new Set(["both_answered", "deadline_expired"]);
+const COMPLETION_REASONS = new Set(["knockout", "simultaneous_knockout"]);
 
-const nonNegative = (value: number, field: string): void => {
+const nonNegative = (value: unknown, field: string): void => {
   if (typeof value !== "number" || Number.isNaN(value) || value < 0) {
     throw new SettlementAdapterError(`${field} must be a nonnegative number (got ${value})`);
   }
 };
 
-const validatePlayer = (key: BackendPlayerKey, p: BackendPlayerSettlement): void => {
-  if (!p) throw new SettlementAdapterError(`missing settlement record for ${key}`);
-  nonNegative(p.hpBefore, `${key}.hpBefore`);
-  nonNegative(p.hpAfter, `${key}.hpAfter`);
-  nonNegative(p.baseIncomingDamage, `${key}.baseIncomingDamage`);
-  nonNegative(p.finalDamage, `${key}.finalDamage`);
-  nonNegative(p.shieldAbsorbed, `${key}.shieldAbsorbed`);
-  nonNegative(p.damageReductionAmount, `${key}.damageReductionAmount`);
-  nonNegative(p.xpBefore, `${key}.xpBefore`);
-  nonNegative(p.xpAwarded, `${key}.xpAwarded`);
-  nonNegative(p.xpAfter, `${key}.xpAfter`);
-  nonNegative(p.chargesConsumed, `${key}.chargesConsumed`);
-  if (p.chargesAfter !== null) nonNegative(p.chargesAfter, `${key}.chargesAfter`);
-  if (p.chargesBefore !== null) nonNegative(p.chargesBefore, `${key}.chargesBefore`);
-  if (p.levelBefore < 1 || p.levelAfter < 1) {
-    throw new SettlementAdapterError(`${key} levels must be >= 1`);
+const validatePlayer = (p: BackendResolvedPlayer, label: string): void => {
+  if (!p || typeof p.player_id !== "string" || p.player_id.length === 0) {
+    throw new SettlementAdapterError(`${label}: missing player projection`);
   }
+  if (!OUTCOMES.has(p.outcome)) {
+    throw new SettlementAdapterError(`${label}: unrecognized outcome "${p.outcome}"`);
+  }
+  if (typeof p.timed_out !== "boolean") {
+    throw new SettlementAdapterError(`${label}: timed_out must be an explicit boolean`);
+  }
+  if (!p.damage) throw new SettlementAdapterError(`${label}: damage audit missing`);
+  for (const f of [
+    "base_damage_dealt",
+    "outgoing_bonus",
+    "final_damage_dealt",
+    "shield_absorbed",
+    "incoming_reduction",
+    "final_damage_received",
+  ] as const) {
+    nonNegative(p.damage[f], `${label}.damage.${f}`);
+  }
+  nonNegative(p.hp_before, `${label}.hp_before`);
+  nonNegative(p.hp_after, `${label}.hp_after`);
+  nonNegative(p.xp_gained, `${label}.xp_gained`);
+  nonNegative(p.total_xp_after, `${label}.total_xp_after`);
+  if (p.level_before < 1 || p.level_after < 1) {
+    throw new SettlementAdapterError(`${label}: levels must be >= 1`);
+  }
+  if (p.charge_consumed && p.consumed_ability_id === null) {
+    throw new SettlementAdapterError(`${label}: charge_consumed without consumed_ability_id`);
+  }
+  for (const [abilityId, remaining] of Object.entries(p.remaining_charges ?? {})) {
+    if (remaining !== null) {
+      nonNegative(remaining, `${label}.remaining_charges.${abilityId}`);
+    }
+  }
+  if (!p.carryover || !Array.isArray(p.carryover.effects_gained) || !Array.isArray(p.carryover.effects_consumed)) {
+    throw new SettlementAdapterError(`${label}: carryover gained/consumed lists missing`);
+  }
+  nonNegative(p.carryover.consecutive_correct, `${label}.carryover.consecutive_correct`);
 };
 
-const adaptPlayer = (p: BackendPlayerSettlement): AdaptedPlayerSettlement => ({
-  outcome: p.answerOutcome,
-  wasFaster: p.relativeSpeed === "faster",
-  answerTimeLabel: p.answerTimeMs === null ? null : `${(p.answerTimeMs / 1000).toFixed(1)}s`,
-  hpBefore: p.hpBefore,
-  hpAfter: p.hpAfter,
-  baseDamage: p.baseIncomingDamage,
-  shieldAbsorbed: p.shieldAbsorbed,
-  damageReduced: p.damageReductionAmount,
-  finalDamage: p.finalDamage,
-  xpBefore: p.xpBefore,
-  xpAwarded: p.xpAwarded,
-  xpAfter: p.xpAfter,
-  levelBefore: p.levelBefore,
-  levelAfter: p.levelAfter,
-  leveledUp: p.levelAfter > p.levelBefore,
-  abilityName: p.selectedAbility?.name ?? "No active ability",
-  abilityId: p.selectedAbility?.abilityId ?? null,
-  chargesBefore: p.chargesBefore,
-  chargesConsumed: p.chargesConsumed,
-  chargesAfter: p.chargesAfter,
-  carryoverSummary: p.combatLabCarryover?.summary ?? null,
-  carryoverStatus: p.combatLabCarryover?.status ?? null,
+const adaptPlayer = (p: BackendResolvedPlayer): AdaptedPlayerSettlement => ({
+  playerId: p.player_id,
+  // Enum spelling conversion only ("timeout" -> frontend "timed_out").
+  outcome: p.outcome === "timeout" ? "timed_out" : p.outcome,
+  submittedAt: p.submitted_at,
+  answeredFirst: p.answered_first,
+  timedOut: p.timed_out,
+  abilityId: p.selected_ability_id,
+  abilityName: p.selected_ability_id ?? "No active ability",
+  baseDamageDealt: p.damage.base_damage_dealt,
+  outgoingBonus: p.damage.outgoing_bonus,
+  finalDamageDealt: p.damage.final_damage_dealt,
+  shieldAbsorbed: p.damage.shield_absorbed,
+  incomingReduction: p.damage.incoming_reduction,
+  finalDamageReceived: p.damage.final_damage_received,
+  hpBefore: p.hp_before,
+  hpAfter: p.hp_after,
+  reachedZeroHp: p.reached_zero_hp,
+  xpGained: p.xp_gained,
+  totalXpAfter: p.total_xp_after,
+  levelBefore: p.level_before,
+  levelAfter: p.level_after,
+  leveledUp: p.level_up_events.length > 0,
+  levelUpEvents: p.level_up_events.map((e) => ({
+    previousLevel: e.previous_level,
+    newLevel: e.new_level,
+    totalXpAfter: e.total_xp_after,
+    thresholdsCrossed: [...e.thresholds_crossed],
+  })),
+  chargeConsumed: p.charge_consumed,
+  consumedAbilityId: p.consumed_ability_id,
+  remainingChargesAfterRound: { ...p.remaining_charges },
+  effectsGained: [...p.carryover.effects_gained],
+  effectsConsumed: [...p.carryover.effects_consumed],
+  consecutiveCorrect: p.carryover.consecutive_correct,
+  combatLabUnlockDeltaSeconds: p.combat_lab_unlock_delta_seconds,
 });
 
 /** String formatting from backend-resolved values only — no combat math. */
@@ -139,69 +210,122 @@ const buildSummary = (players: Record<PlayerId, AdaptedPlayerSettlement>): strin
   const part = (id: PlayerId): string => {
     const p = players[id];
     const bits = [`${id} ${p.outcome.replace("_", " ")}`];
-    if (p.finalDamage > 0) bits.push(`took ${p.finalDamage} dmg`);
+    if (p.finalDamageReceived > 0) bits.push(`took ${p.finalDamageReceived} dmg`);
     if (p.shieldAbsorbed > 0) bits.push(`shield ${p.shieldAbsorbed}`);
-    if (p.damageReduced > 0) bits.push(`reduced ${p.damageReduced}`);
+    if (p.incomingReduction > 0) bits.push(`reduced ${p.incomingReduction}`);
     return bits.join(", ");
   };
   return `${part("p1")} · ${part("p2")}`;
 };
 
 /**
- * Map one backend-shaped settlement into the prototype display model.
- * Fails closed: throws SettlementAdapterError on malformed fixture data.
+ * Map one exact backend resolved projection into the prototype display
+ * model. Fails closed: throws SettlementAdapterError on malformed data.
  */
-export function adaptBackendSettlement(raw: BackendRoundSettlement): AdaptedSettlement {
-  if (!raw || !raw.players) throw new SettlementAdapterError("settlement or players missing");
-
-  for (const key of ["playerOne", "playerTwo"] as BackendPlayerKey[]) {
-    validatePlayer(key, raw.players[key]);
+export function adaptBackendSettlement(
+  raw: BackendResolvedRoundProjection,
+  ids: PlayerIdMapping,
+): AdaptedSettlement {
+  if (!raw) throw new SettlementAdapterError("projection missing");
+  if (!ids || !ids.p1PlayerId || !ids.p2PlayerId) {
+    throw new SettlementAdapterError("explicit p1/p2 player-id mapping is required");
   }
-  for (const key of Object.keys(raw.players)) {
-    if (key !== "playerOne" && key !== "playerTwo") {
-      throw new SettlementAdapterError(`unrecognized player key "${key}"`);
-    }
-  }
-
-  const timer = raw.sharedNextRoundTimer;
-  if (!timer || typeof timer.durationSeconds !== "number" || timer.durationSeconds <= 0) {
-    throw new SettlementAdapterError("sharedNextRoundTimer.durationSeconds must be positive");
-  }
-  if (timer.durationSeconds > MAX_TIMER_DURATION_SECONDS) {
+  if (ids.p1PlayerId === ids.p2PlayerId) {
     throw new SettlementAdapterError(
-      `shared duration ${timer.durationSeconds}s exceeds prototype ceiling of ${MAX_TIMER_DURATION_SECONDS}s`,
+      `p1 and p2 must map to distinct player ids (both "${ids.p1PlayerId}")`,
+    );
+  }
+  if (typeof raw.match_id !== "string" || raw.match_id.length === 0) {
+    throw new SettlementAdapterError("match_id must be a non-empty string");
+  }
+  if (!Number.isInteger(raw.round_number) || raw.round_number < 1) {
+    throw new SettlementAdapterError(`round_number must be a positive integer (got ${raw.round_number})`);
+  }
+  if (!END_REASONS.has(raw.end_reason)) {
+    throw new SettlementAdapterError(`unrecognized end_reason "${raw.end_reason}"`);
+  }
+  if (!Array.isArray(raw.players) || raw.players.length !== 2) {
+    throw new SettlementAdapterError(
+      `players must contain exactly two projections (got ${raw.players?.length ?? "none"})`,
+    );
+  }
+  if (raw.players[0]?.player_id === raw.players[1]?.player_id) {
+    throw new SettlementAdapterError(
+      `duplicate player_id "${raw.players[0]?.player_id}" in projection`,
+    );
+  }
+  // Identity is resolved by player_id, NEVER by array position — the
+  // backend's lexical sort is a serialization detail, not side identity.
+  const findPlayer = (playerId: string, slot: string): BackendResolvedPlayer => {
+    const found = raw.players.find((p) => p?.player_id === playerId);
+    if (!found) {
+      throw new SettlementAdapterError(
+        `expected ${slot} player_id "${playerId}" is missing from the projection`,
+      );
+    }
+    return found;
+  };
+  const rawP1 = findPlayer(ids.p1PlayerId, "p1");
+  const rawP2 = findPlayer(ids.p2PlayerId, "p2");
+  validatePlayer(rawP1, `player "${ids.p1PlayerId}"`);
+  validatePlayer(rawP2, `player "${ids.p2PlayerId}"`);
+
+  if (
+    typeof raw.next_round_duration_seconds !== "number" ||
+    raw.next_round_duration_seconds <= 0
+  ) {
+    throw new SettlementAdapterError("next_round_duration_seconds must be positive");
+  }
+  if (raw.next_round_duration_seconds > MAX_TIMER_DURATION_SECONDS) {
+    throw new SettlementAdapterError(
+      `shared duration ${raw.next_round_duration_seconds}s exceeds prototype ceiling of ${MAX_TIMER_DURATION_SECONDS}s`,
     );
   }
   if (
-    timer.deltaSeconds !== undefined &&
-    Math.abs(timer.deltaSeconds) > MAX_TIMER_DELTA_SECONDS
+    typeof raw.next_round_duration_delta !== "number" ||
+    Number.isNaN(raw.next_round_duration_delta) ||
+    Math.abs(raw.next_round_duration_delta) > MAX_TIMER_DELTA_SECONDS
   ) {
     throw new SettlementAdapterError(
-      `shared timer delta ${timer.deltaSeconds}s outside prototype-safe ±${MAX_TIMER_DELTA_SECONDS}s`,
+      `next_round_duration_delta outside prototype-safe ±${MAX_TIMER_DELTA_SECONDS}s`,
     );
   }
 
-  if (raw.winner !== null) {
-    if (!raw.matchOver) {
-      throw new SettlementAdapterError("winner set while matchOver is false");
+  if (raw.winner_id !== null) {
+    if (!raw.match_over) {
+      throw new SettlementAdapterError("winner_id set while match_over is false");
     }
-    if (raw.winner !== "playerOne" && raw.winner !== "playerTwo") {
-      throw new SettlementAdapterError(`unrecognized winner "${raw.winner}"`);
+    if (raw.winner_id !== ids.p1PlayerId && raw.winner_id !== ids.p2PlayerId) {
+      throw new SettlementAdapterError(`unrecognized winner_id "${raw.winner_id}"`);
     }
+  }
+  if (raw.completion_reason !== null && !COMPLETION_REASONS.has(raw.completion_reason)) {
+    throw new SettlementAdapterError(`unrecognized completion_reason "${raw.completion_reason}"`);
+  }
+  if (raw.match_over && raw.completion_reason === null) {
+    throw new SettlementAdapterError("match_over requires a completion_reason");
   }
 
   const players: Record<PlayerId, AdaptedPlayerSettlement> = {
-    p1: adaptPlayer(raw.players.playerOne),
-    p2: adaptPlayer(raw.players.playerTwo),
+    p1: adaptPlayer(rawP1),
+    p2: adaptPlayer(rawP2),
   };
+  // Winner resolves through the same explicit id association.
+  const winner: PlayerId | null =
+    raw.winner_id === null ? null : raw.winner_id === ids.p1PlayerId ? "p1" : "p2";
 
   return {
-    roundId: raw.roundId,
+    matchId: raw.match_id,
+    roundNumber: raw.round_number,
+    questionId: raw.question_id,
+    endReason: raw.end_reason,
+    pressureApplied: raw.pressure_applied,
     players,
-    sharedNextRoundDurationSeconds: timer.durationSeconds,
-    sharedTimerDeltaSeconds: timer.deltaSeconds ?? null,
-    matchOver: raw.matchOver,
-    winner: raw.winner === null ? null : PLAYER_KEY_TO_ID[raw.winner],
+    sharedNextRoundDurationSeconds: raw.next_round_duration_seconds,
+    sharedTimerDeltaSeconds: raw.next_round_duration_delta,
+    matchOver: raw.match_over,
+    winner,
+    completionReason: raw.completion_reason,
     summary: buildSummary(players),
   };
 }

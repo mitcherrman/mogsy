@@ -77,28 +77,65 @@ function OutcomeBadge({ outcome }: { outcome: "correct" | "incorrect" | "timed_o
  * All numbers are authoritative backend pass-through.
  */
 function SettlementDetail({ s }: { s: NonNullable<RoundResultPlayer["settlement"]> }) {
+  const remaining = Object.entries(s.remainingChargesAfterRound);
   return (
     <div className="rounded-md border bg-background/50 p-2 space-y-0.5 text-xs tabular-nums" data-testid="settlement-detail">
+      {/* Received side: HP + final damage received stay the loudest values. */}
       <div className="font-semibold text-sm">
         HP {s.hpBefore} → {s.hpAfter}
-        <span className="ml-2 text-destructive">Final damage {s.finalDamage}</span>
+        <span className="ml-2 text-destructive">Final damage received {s.finalDamageReceived}</span>
       </div>
+      {(s.shieldAbsorbed > 0 || s.incomingReduction > 0) && (
+        <div className="text-muted-foreground">
+          {s.shieldAbsorbed > 0 && <span className="text-sky-500">Shield absorbed {s.shieldAbsorbed}</span>}
+          {s.shieldAbsorbed > 0 && s.incomingReduction > 0 && " · "}
+          {s.incomingReduction > 0 && <span className="text-emerald-500">Damage reduced {s.incomingReduction}</span>}
+        </div>
+      )}
+      {/* Dealt side: never implies base damage landed when modifiers changed it. */}
+      {(s.baseDamageDealt > 0 || s.finalDamageDealt > 0) && (
+        <div className="text-muted-foreground">
+          Dealt: base {s.baseDamageDealt}
+          {s.outgoingBonus > 0 && ` +${s.outgoingBonus} bonus`}
+          {" → "}final {s.finalDamageDealt}
+        </div>
+      )}
       <div className="text-muted-foreground">
-        Base damage {s.baseDamage}
-        {s.shieldAbsorbed > 0 && <span className="ml-2 text-sky-500">Shield absorbed {s.shieldAbsorbed}</span>}
-        {s.damageReduced > 0 && <span className="ml-2 text-emerald-500">Damage reduced {s.damageReduced}</span>}
-      </div>
-      <div className="text-muted-foreground">
-        XP {s.xpBefore} → {s.xpAfter} (+{s.xpAwarded})
+        +{s.xpGained} XP · Total {s.totalXpAfter}
         {s.leveledUp && (
           <Badge className="ml-2 bg-violet-600 text-white hover:bg-violet-600">
             Level {s.levelBefore} → {s.levelAfter}
           </Badge>
         )}
       </div>
-      {s.carryoverSummary && (
+      {/* Historical charge snapshot: immutable post-round values from the
+          backend record — never reconciled with live state. */}
+      {(s.chargeConsumed || remaining.length > 0) && (
+        <div className="text-muted-foreground">
+          {s.chargeConsumed && <>Charge consumed: {s.consumedAbilityId} · </>}
+          {remaining.length > 0 && (
+            <>
+              Remaining after round:{" "}
+              {remaining.map(([id, n]) => `${id} ${n === null ? "—" : n}`).join(" · ")}
+            </>
+          )}
+        </div>
+      )}
+      {(s.effectsGained.length > 0 || s.effectsConsumed.length > 0) && (
+        <div className="text-muted-foreground">
+          {s.effectsGained.length > 0 && <>Carryover gained: {s.effectsGained.join(", ")}</>}
+          {s.effectsGained.length > 0 && s.effectsConsumed.length > 0 && " · "}
+          {s.effectsConsumed.length > 0 && <>Carryover consumed: {s.effectsConsumed.join(", ")}</>}
+        </div>
+      )}
+      {s.consecutiveCorrect > 0 && (
+        <div className="text-muted-foreground">Streak: {s.consecutiveCorrect} correct</div>
+      )}
+      {/* Combat Lab delta is timing DATA — its own row, never damage. */}
+      {s.combatLabUnlockDeltaSeconds !== 0 && (
         <div className="text-amber-600 dark:text-amber-400">
-          Combat Lab {s.carryoverStatus}: {s.carryoverSummary}
+          Combat Lab unlock: {s.combatLabUnlockDeltaSeconds > 0 ? "+" : ""}
+          {s.combatLabUnlockDeltaSeconds}s
         </div>
       )}
     </div>
@@ -159,11 +196,10 @@ function RevealPanel({
                     <span className="italic text-muted-foreground">No active ability selected</span>
                   );
                 })()}
-                {rp.settlement && rp.settlement.chargesBefore !== null && (
+                {rp.settlement?.chargeConsumed && (
                   <span className="text-xs text-muted-foreground tabular-nums">
                     {" "}
-                    · charges {rp.settlement.chargesBefore} → {rp.settlement.chargesAfter}
-                    {rp.settlement.chargesConsumed > 0 && ` (−${rp.settlement.chargesConsumed})`}
+                    · charge consumed
                   </span>
                 )}
               </p>
@@ -207,7 +243,7 @@ function RevealPanel({
       )}
       <div className="text-center">
         <Button onClick={() => dispatch({ type: "NEXT_ROUND" })}>
-          {state.winner ? "View match result" : "Next Round"}
+          {state.matchOver || state.winner ? "View match result" : "Next Round"}
         </Button>
       </div>
     </div>
