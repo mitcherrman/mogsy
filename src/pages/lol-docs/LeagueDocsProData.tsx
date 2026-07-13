@@ -1,14 +1,16 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { lazy, Suspense, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
   CircleDashed,
+  Compass,
   Database,
   Hourglass,
   Info,
+  LayoutList,
   Loader2,
   RefreshCw,
   Trophy,
@@ -18,6 +20,10 @@ import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { useProCoverage } from "@/hooks/useProCoverage";
 import type { ProCoverageStatus, ProYearSummary } from "@/lib/league-docs/api";
+
+const ProExplorer = lazy(() => import("@/pages/lol-docs/pro-explorer/ProExplorer"));
+
+type ProDataView = "overview" | "explorer";
 
 const GOLD = "#c9a84c";
 
@@ -208,6 +214,15 @@ export default function LeagueDocsProData() {
   // show the skeleton, not the "no data imported" empty state.
   const { data, isPending, isError, refetch, isRefetching } = useProCoverage();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view: ProDataView = searchParams.get("view") === "explorer" ? "explorer" : "overview";
+  const setView = (next: ProDataView) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "overview") params.delete("view");
+    else params.set("view", next);
+    setSearchParams(params, { replace: true });
+  };
+
   const years = useMemo(
     () => (data?.years ?? []).slice().sort((a, b) => b.year - a.year),
     [data],
@@ -284,7 +299,16 @@ export default function LeagueDocsProData() {
           </div>
         </div>
 
-        {isPending ? (
+        {/* View switcher: Overview | Explorer (state lives in ?view=) */}
+        <ViewSwitcher view={view} onSelect={setView} />
+
+        {view === "explorer" ? (
+          <Suspense
+            fallback={<div className="h-[360px] rounded-xl border border-border bg-card/40 animate-pulse" />}
+          >
+            <ProExplorer />
+          </Suspense>
+        ) : isPending ? (
           <div className="space-y-4" aria-busy="true" aria-label="Loading pro data coverage">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -466,6 +490,38 @@ export default function LeagueDocsProData() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function ViewSwitcher({
+  view,
+  onSelect,
+}: {
+  view: ProDataView;
+  onSelect: (view: ProDataView) => void;
+}) {
+  const tabs: { id: ProDataView; label: string; Icon: React.ElementType }[] = [
+    { id: "overview", label: "Overview", Icon: LayoutList },
+    { id: "explorer", label: "Explorer", Icon: Compass },
+  ];
+  return (
+    <div className="inline-flex rounded-lg border border-border bg-card/60 p-0.5" role="tablist" aria-label="Pro Data view">
+      {tabs.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={view === id}
+          onClick={() => onSelect(id)}
+          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+            view === id ? "bg-[#c9a84c]/15 text-[#c9a84c]" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
