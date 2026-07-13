@@ -91,6 +91,9 @@ const KnowledgeHealth = lazy(() => import("./pages/admin/knowledge/KnowledgeHeal
 const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/KnowledgeChampionDetail"));
 const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
 
+// Dev-only prototype — local mock state, not linked from any navigation.
+const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
+
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -217,6 +220,7 @@ const App = () => (
                   <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />
                   <Route path="/security" element={<Suspense fallback={<RouteFallback />}><Security /></Suspense>} />
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
+                  <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
