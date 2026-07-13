@@ -435,9 +435,11 @@ export function duelReducer(state: DuelState, action: DuelAction): DuelState {
     }
 
     case "LOCK_ABILITY": {
+      // Backend rule: choosing NO ability is a valid, lockable choice —
+      // locking must not require a selection.
       if (state.phase !== "question") return state;
       const me = state.roundPlayers[action.player];
-      if (me.abilityLocked || me.selectedAbilityId === null) return state;
+      if (me.abilityLocked) return state;
       return {
         ...state,
         roundPlayers: {

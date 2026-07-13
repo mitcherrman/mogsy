@@ -64,8 +64,8 @@ describe("adaptBackendSettlement — pass-through mapping", () => {
 
   it("maps the selected active ability", () => {
     const a = adaptBackendSettlement(fixture("charge-consumed"));
-    expect(a.players.p1.abilityName).toBe("Bulwark");
-    expect(a.players.p1.abilityId).toBe("tank-starter");
+    expect(a.players.p1.abilityName).toBe("Fortify");
+    expect(a.players.p1.abilityId).toBe("tank.fortify");
   });
 
   it("maps charge consumption (and non-consumption)", () => {
@@ -81,7 +81,7 @@ describe("adaptBackendSettlement — pass-through mapping", () => {
   it("maps Combat Lab carryover data", () => {
     const created = adaptBackendSettlement(fixture("carryover-created")).players.p1;
     expect(created.carryoverStatus).toBe("created");
-    expect(created.carryoverSummary).toContain("Stored burn");
+    expect(created.carryoverSummary).toContain("Combat Lab unlocks 5s earlier");
     const consumed = adaptBackendSettlement(fixture("carryover-consumed")).players.p2;
     expect(consumed.carryoverStatus).toBe("consumed");
   });
@@ -97,6 +97,15 @@ describe("adaptBackendSettlement — pass-through mapping", () => {
     const a = adaptBackendSettlement(fixture("plain-round"));
     expect(a.matchOver).toBe(false);
     expect(a.winner).toBeNull();
+  });
+
+  it("exposes no per-player next-round timer fields", () => {
+    // Backend contract: timer effects net into ONE shared duration.
+    const a = adaptBackendSettlement(fixture("timer-increased"));
+    expect(a.sharedNextRoundDurationSeconds).toBe(25);
+    for (const p of Object.values(a.players)) {
+      expect(JSON.stringify(p)).not.toMatch(/timer|duration/i);
+    }
   });
 
   it("produces exactly one shared next-round timer value", () => {

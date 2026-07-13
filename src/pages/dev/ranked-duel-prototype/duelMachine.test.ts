@@ -195,6 +195,13 @@ describe("answer/ability interaction", () => {
     expect(s.roundPlayers.p1.selectedAbilityId).toBe(starter);
   });
 
+  it("locking with NO ability selected is valid (backend rule)", () => {
+    let s = start();
+    s = run(s, { type: "LOCK_ABILITY", player: "p1" });
+    expect(s.roundPlayers.p1.abilityLocked).toBe(true);
+    expect(s.roundPlayers.p1.selectedAbilityId).toBeNull();
+  });
+
   it("answers are one-shot", () => {
     let s = run(start(), { type: "SUBMIT_ANSWER", player: "p1", answerIndex: correct });
     s = run(s, { type: "SUBMIT_ANSWER", player: "p1", answerIndex: wrong });

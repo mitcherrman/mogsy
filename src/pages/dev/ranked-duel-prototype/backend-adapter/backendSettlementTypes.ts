@@ -45,7 +45,11 @@ export interface BackendPlayerSettlement {
 
   // --- HP / damage (all resolved by the backend combat settlement) ---
   hpBefore: number;
-  /** Incoming damage before shields/reductions/class modifiers. */
+  /**
+   * Opponent's resolved outgoing damage BEFORE this player's shield and
+   * reduction are applied. Attacker-side class bonuses are already included
+   * by the backend; only defender-side mitigation follows.
+   */
   baseIncomingDamage: number;
   /** Portion of incoming damage absorbed by shields. */
   shieldAbsorbed: number;
