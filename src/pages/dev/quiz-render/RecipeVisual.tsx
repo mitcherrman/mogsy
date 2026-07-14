@@ -72,7 +72,18 @@ function ItemTile({
       </div>
       <span
         className="text-center text-[10px] leading-tight"
-        style={{ color: highlight ? "hsl(42 75% 66%)" : "hsl(42 30% 72%)", minHeight: 24 }}
+        style={{
+          color: highlight ? "hsl(42 75% 66%)" : "hsl(42 30% 72%)",
+          // FIXED two-line envelope (not minHeight): the label must occupy
+          // identical space whether it is empty (pre-reveal "?" slot) or
+          // holds a wrapped item name, so revealing never changes the row
+          // height — the screenshot question/correct pair must not reflow.
+          height: 26,
+          overflow: "hidden",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}
       >
         {iconUrl ? tile!.name : ""}
       </span>

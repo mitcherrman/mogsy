@@ -47,22 +47,15 @@ describe("QuizRenderPage — question state (no leakage)", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=question&format=square");
     expect(choiceStates(container)).toEqual(["idle", "idle", "idle"]);
-    // The result area is RESERVED with an invisible spacer so the card keeps
-    // one fixed height across states — any feedback markup must live inside
-    // the visibility:hidden placeholder, never painted.
-    container.querySelectorAll("[data-quiz-answer-feedback]").forEach((el) => {
-      const holder = el.closest("[data-quiz-result-placeholder]") as HTMLElement | null;
-      expect(holder).not.toBeNull();
-      expect(holder!.style.visibility).toBe("hidden");
-      expect(holder!.getAttribute("aria-hidden")).toBe("true");
-    });
+    // The reserved result area shows the quiet engagement panel pre-reveal —
+    // never real feedback, never any answer information.
+    expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    const placeholder = container.querySelector("[data-quiz-result-placeholder]");
+    expect(placeholder).not.toBeNull();
+    expect(placeholder!.textContent).toContain("Comment your answer!");
+    expect(screen.queryByText("Correct!")).toBeNull();
     expect(screen.queryByText(/Thornmail grants 70 armor/)).toBeNull();
-    // No visible check/x icons outside the hidden spacer.
-    container
-      .querySelectorAll("svg.lucide-circle-check-big, svg.lucide-check-circle-2")
-      .forEach((el) => {
-        expect(el.closest("[data-quiz-result-placeholder]")).not.toBeNull();
-      });
+    expect(container.querySelector("svg.lucide-circle-check-big, svg.lucide-check-circle-2")).toBeNull();
     // Answer order preserved exactly as provided.
     const labels = Array.from(container.querySelectorAll("[data-quiz-choice]")).map((b) =>
       b.textContent?.replace(/^[A-D]\./, "").trim(),
@@ -99,10 +92,9 @@ describe("QuizRenderPage — states", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=selected&format=square");
     expect(choiceStates(container)).toEqual(["selected", "idle", "idle"]);
-    // Only the hidden layout spacer may contain feedback markup.
-    container.querySelectorAll("[data-quiz-answer-feedback]").forEach((el) => {
-      expect(el.closest("[data-quiz-result-placeholder]")).not.toBeNull();
-    });
+    // Pre-reveal states carry the quiet placeholder, never real feedback.
+    expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    expect(container.querySelector("[data-quiz-result-placeholder]")).not.toBeNull();
   });
 
   it("selected: honors answerIndex override", () => {
@@ -189,34 +181,50 @@ describe("QuizRenderPage — content CTA", () => {
     expect(b.container.querySelector("[data-quiz-cta-qr]")!.outerHTML).toBe(questionQrHtml);
   });
 
-  it("places the CTA above the card and the QR below it, never combined", () => {
+  it("phone composition: CTA, card, QR + caption all inside the screen, in order", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
-    const stage = container.querySelector("[data-quiz-render-stage]")!;
-    const children = Array.from(stage.children).filter((el) => el.tagName !== "STYLE");
-    // Column order: CTA wrapper, card area, QR wrapper.
+    const phone = container.querySelector("[data-quiz-phone]")!;
+    expect(phone).not.toBeNull();
+    const phoneScreen = phone.querySelector("[data-quiz-phone-screen]")!;
+    expect(phoneScreen).not.toBeNull();
+    expect(phoneScreen.querySelector("[data-quiz-phone-island]")).not.toBeNull();
+    // Everything lives inside the phone screen.
+    for (const sel of ["[data-quiz-cta]", "[data-quiz-content-card]", "[data-quiz-cta-qr]", "[data-quiz-cta-scan]"]) {
+      expect(phoneScreen.querySelector(sel)).not.toBeNull();
+      expect(container.querySelectorAll(sel).length).toBe(1);
+    }
+    // Column order: CTA wrapper, card area, QR+caption wrapper.
+    const column = phoneScreen.querySelector(".flex.flex-col")!;
+    const children = Array.from(column.children);
     expect(children[0].querySelector("[data-quiz-cta]")).not.toBeNull();
     expect(children[1].querySelector("[data-quiz-content-card]")).not.toBeNull();
     expect(children[2].querySelector("[data-quiz-cta-qr]")).not.toBeNull();
-    // No combined panel: the QR never lives inside the CTA strip.
+    expect(children[2].querySelector("[data-quiz-cta-scan]")!.textContent).toBe("Scan to play");
+    // No combined panel; QR keeps its white quiet-zone tile.
     expect(container.querySelector("[data-quiz-cta] [data-quiz-cta-qr]")).toBeNull();
-    // QR keeps its white quiet-zone tile.
-    const qr = container.querySelector("[data-quiz-cta-qr]")!;
-    expect(qr.className).toContain("bg-white");
+    expect(container.querySelector("[data-quiz-cta-qr]")!.className).toContain("bg-white");
+    // Larger, clearly visible wordmark.
+    const wordmark = container.querySelector("[data-quiz-cta] img")!;
+    expect(wordmark.className).toContain("h-14");
   });
 
-  it("keeps the result area reserved so the card structure matches across states", () => {
+  it("keeps the result area reserved with a matching-box placeholder", () => {
     inject([fixture]);
     const a = renderHarness("?q=t1&state=question&format=mobile-social");
     expect(a.container.querySelector("[data-quiz-result-area]")).not.toBeNull();
-    expect(a.container.querySelector("[data-quiz-result-placeholder]")).not.toBeNull();
+    const placeholder = a.container.querySelector("[data-quiz-result-placeholder]")!;
+    // Identical box model to the feedback panel: same classes, one text line.
+    expect(placeholder.className).toContain("rounded-lg border p-4 text-sm");
+    expect(placeholder.textContent).toContain("Comment your answer!");
     cleanup();
     inject([fixture]);
     const b = renderHarness("?q=t1&state=correct&format=mobile-social");
     expect(b.container.querySelector("[data-quiz-result-area]")).not.toBeNull();
-    // Correct state shows the real feedback instead of the spacer.
+    // Correct state shows the real feedback instead of the placeholder.
     expect(b.container.querySelector("[data-quiz-result-placeholder]")).toBeNull();
-    expect(b.container.querySelector("[data-quiz-answer-feedback]")).not.toBeNull();
+    const feedback = b.container.querySelector("[data-quiz-answer-feedback]")!;
+    expect(feedback.className).toContain("rounded-lg border p-4 text-sm");
   });
 
   it("renders no CTA on audit formats", () => {
@@ -238,6 +246,22 @@ describe("QuizRenderPage — item-build recipe visual", () => {
     expect(recipe!.textContent).not.toContain("Dagger");
     expect(recipe!.innerHTML).not.toContain("1042.png");
     expect(recipe!.textContent).toContain("Blasting Wand");
+  });
+
+  it("reserves a fixed-height label under every tile so reveal never reflows", () => {
+    const tileLabels = (root: HTMLElement): HTMLElement[] =>
+      Array.from(root.querySelectorAll<HTMLElement>("[data-quiz-recipe] .gap-1 > span"));
+    inject([recipeFixture]);
+    const a = renderHarness("?q=build1&state=question&format=mobile-social");
+    const labelsQ = tileLabels(a.container);
+    expect(labelsQ.length).toBeGreaterThan(0);
+    labelsQ.forEach((label) => expect(label.style.height).toBe("26px"));
+    cleanup();
+    inject([recipeFixture]);
+    const b = renderHarness("?q=build1&state=correct&format=mobile-social");
+    const labelsC = tileLabels(b.container);
+    expect(labelsC.length).toBe(labelsQ.length);
+    labelsC.forEach((label) => expect(label.style.height).toBe("26px"));
   });
 
   it("fills the missing component in the correct state", () => {
@@ -352,6 +376,12 @@ describe("QuizRenderPage — invalid input", () => {
     inject([fixture]);
     const b = renderHarness("?q=nope&state=question&format=square");
     expect(b.container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/not found/);
+  });
+
+  it("rejects a malformed forced scale", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social&scale=99");
+    expect(container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/Invalid scale/);
   });
 
   it("rejects a malformed answerIndex", () => {

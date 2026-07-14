@@ -21,9 +21,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MotionGlobalConfig } from "framer-motion";
+import { MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
+import ProDataSourceLink from "@/components/quiz/ProDataSourceLink";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getFormat } from "@/lib/quiz-screenshot/formats";
 import { isRenderState, resolveAnswerPlan } from "@/lib/quiz-screenshot/states";
@@ -78,7 +80,11 @@ function ErrorPanel({ message }: { message: string }) {
  * the CTA footer — so no content ever clips or collides with the footer —
  * and only then stamps the ready attribute on the stage.
  */
-function useRenderReady(enabled: boolean, format: RenderFormat | undefined) {
+function useRenderReady(
+  enabled: boolean,
+  format: RenderFormat | undefined,
+  forcedScale?: number,
+) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const centerRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -104,12 +110,17 @@ function useRenderReady(enabled: boolean, format: RenderFormat | undefined) {
         ),
       );
       if (cancelled) return;
-      if (format.kind === "social" && centerRef.current && cardRef.current) {
+      if (forcedScale !== undefined && format.kind === "social") {
+        // State-independent envelope: the runner captures the question state
+        // first, reads the fitted scale, and FORCES the same scale onto every
+        // other state of the same question/format — the zoom is computed once
+        // per question, never independently per state.
+        setScale(forcedScale);
+      } else if (format.kind === "social" && centerRef.current && cardRef.current) {
         const availH = centerRef.current.clientHeight;
-        const availW = Math.min(
-          format.contentMaxWidth,
-          format.width - format.safeAreaPadding * 2,
-        );
+        // Width budget comes from the actual center area (the phone screen
+        // interior) — identical in both states by construction.
+        const availW = Math.min(format.contentMaxWidth, centerRef.current.clientWidth - 8);
         // Measured at zoom 1, then quantized UP to an 8px block: the question
         // and correct states of one question may differ by a pixel or two of
         // integer scrollHeight noise (reveal styling/subpixel rounding), and
@@ -133,7 +144,7 @@ function useRenderReady(enabled: boolean, format: RenderFormat | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, format]);
+  }, [enabled, format, forcedScale]);
   return { stageRef, centerRef, cardRef, scale };
 }
 
@@ -199,16 +210,28 @@ function QuestionCard({
         />
         {/* Result area is RESERVED in every state so the card keeps one fixed
             height and nothing reflows between the question and correct
-            captures. Pre-reveal it holds an invisible (visibility:hidden,
-            never painted) copy of the correct-state feedback box purely as a
-            spacer — it renders only the generic "Correct!" chrome plus the
-            same metadata-driven footer, so no answer content can leak. */}
+            captures. Pre-reveal it shows a quiet engagement panel with the
+            EXACT box model of the feedback panel (same classes, one text
+            line, same metadata footer) — visually subdued, and it carries no
+            answer information. */}
         <div data-quiz-result-area>
           {feedback ? (
             <QuizAnswerFeedback result={feedback} metadata={question.metadata} />
           ) : format.kind === "social" ? (
-            <div data-quiz-result-placeholder aria-hidden style={{ visibility: "hidden" }}>
-              <QuizAnswerFeedback result={{ is_correct: true }} metadata={question.metadata} />
+            <div
+              data-quiz-result-placeholder
+              className="rounded-lg border p-4 text-sm"
+              style={{
+                borderColor: "hsl(215 30% 34% / 0.55)",
+                background: "hsl(215 40% 12% / 0.55)",
+                color: "hsl(215 20% 72%)",
+              }}
+            >
+              <div className="flex items-center gap-2 font-semibold mb-1">
+                <MessageCircle className="h-4 w-4" />
+                Comment your answer!
+              </div>
+              <ProDataSourceLink metadata={question.metadata} />
             </div>
           ) : null}
         </div>
@@ -249,59 +272,161 @@ function FormatShell({
       </div>
     );
   }
-  // Social content shell: exact platform pixel size, safe-area padding, and
-  // a mobile-native card (~BASE_CONTENT_WIDTH px) zoomed up to fill the frame
-  // — text stays vector-crisp. Column layout, IDENTICAL in every state:
-  //
-  //   [compact CTA strip — mogsy.app]   (top, centered, above the card)
-  //   [quiz card, centered]
-  //   [small QR tile]                    (bottom, centered, below the card)
-  //
-  // The zoom factor is fitted at readiness time to both frame width and the
-  // height remaining between header and footer (see useRenderReady), so the
-  // card can never clip or collide with either. CSS zoom (Chromium) scales
-  // layout too, unlike transform:scale.
+  // Social content shell: a large premium (brand-neutral) smartphone
+  // dominates the frame — clean rounded body, flat top screen, and only a
+  // subtle dynamic-island pill as hardware detail. Every element — wordmark/
+  // CTA, quiz card, QR and its caption — lives INSIDE the phone screen. The
+  // phone shows its top and side bezels and runs off the bottom of the
+  // capture (the bottom hardware edge is deliberately cropped). Geometry is
+  // identical in every state; the zoom is fitted once per question and forced
+  // onto later states (see useRenderReady).
   const showCta = format.cta !== "none";
+  const phoneW = Math.round(format.width * 0.86);
+  const phoneTop = Math.round(format.height * 0.02);
+  const phoneLeft = Math.round((format.width - phoneW) / 2);
+  const bezel = 16;
+  const screenW = phoneW - bezel * 2;
+  const islandW = 128;
+  const islandH = 34;
+  const islandTop = 18;
+  const visibleScreenH = format.height - phoneTop - bezel;
+  const shellFill = "linear-gradient(180deg, #232a38 0%, #151b26 55%, #10151f 100%)";
   return (
     <div
       ref={stageRef}
       data-quiz-render-stage
       data-render-state={state}
       data-render-format={format.key}
-      className="overflow-hidden flex flex-col text-foreground"
+      data-render-scale={scale}
+      className="overflow-hidden relative text-foreground"
       style={{
         width: format.width,
         height: format.height,
-        padding: format.safeAreaPadding,
         background:
-          "radial-gradient(120% 90% at 50% 0%, #14213b 0%, #0a1022 55%, #060912 100%)",
+          "radial-gradient(130% 100% at 50% 0%, #0d1526 0%, #070b16 60%, #04070e 100%)",
       }}
     >
-      {/* Screenshot-only layout stabilizer: reveal styling nudges answer
-          buttons by sub-pixel amounts, which would make the question/correct
-          captures reflow. A fixed min-height floor (above every natural
-          single-line height) makes each row byte-identical across states.
-          Scoped to the harness stage — never touches the live quiz UI. */}
-      <style>{`[data-quiz-render-stage] [data-quiz-choice]{min-height:56px}`}</style>
-      {showCta && (
-        <div className="shrink-0 flex justify-center pb-3">
-          <QuizCtaTop />
-        </div>
-      )}
-      <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
+      {/* Screenshot-only stabilizers/overrides — scoped to the harness stage,
+          never touching live quiz UI:
+          1. fixed answer-row floor (reveal styling must not reflow rows)
+          2. vivid jade correct-state treatment (row, checkmark, feedback) */}
+      <style>{`
+        [data-quiz-render-stage] [data-quiz-choice]{min-height:56px}
+        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"]{
+          background:linear-gradient(180deg,hsl(160 84% 46%) 0%,hsl(163 88% 38%) 100%)!important;
+          border-color:hsl(158 95% 62%)!important;
+          color:hsl(168 95% 7%)!important;
+          box-shadow:0 0 22px hsl(160 90% 45% / 0.55), inset 0 1px 0 hsl(150 90% 75% / 0.55)!important;
+        }
+        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"] *{
+          color:hsl(168 95% 7%)!important;
+        }
+        [data-quiz-render-stage] [data-quiz-answer-feedback].text-green-400{
+          background:hsl(160 85% 45% / 0.16)!important;
+          border-color:hsl(159 90% 52% / 0.75)!important;
+          color:hsl(157 95% 58%)!important;
+          box-shadow:0 0 18px hsl(160 90% 45% / 0.25)!important;
+        }
+      `}</style>
+      <div
+        data-quiz-phone
+        className="absolute"
+        style={{
+          left: phoneLeft,
+          top: phoneTop,
+          width: phoneW,
+          // Extends far past the capture so the bottom hardware edge is
+          // always cropped out of the frame.
+          height: Math.round(format.height * 1.2),
+          borderRadius: `${bezel * 4}px ${bezel * 4}px 0 0`,
+          background: shellFill,
+          boxShadow:
+            "0 0 0 2px hsl(215 25% 40% / 0.35), 0 30px 80px -20px rgba(0,0,0,0.9), inset 0 1px 0 hsl(215 30% 60% / 0.35)",
+        }}
+      >
         <div
-          ref={cardRef}
-          data-quiz-content-card
-          style={{ width: BASE_CONTENT_WIDTH, zoom: scale, flexShrink: 0 }}
+          data-quiz-phone-screen
+          className="absolute overflow-hidden"
+          style={{
+            left: bezel,
+            right: bezel,
+            top: bezel,
+            bottom: 0,
+            borderRadius: `${bezel * 3}px ${bezel * 3}px 0 0`,
+            background:
+              "radial-gradient(120% 90% at 50% 0%, #14213b 0%, #0a1022 55%, #060912 100%)",
+          }}
         >
-          {children}
+          {/* Content column spans only the VISIBLE part of the screen so the
+              QR + caption sit near the lower edge of the capture. */}
+          <div
+            className="absolute left-0 right-0 top-0 flex flex-col"
+            style={{
+              height: visibleScreenH,
+              paddingTop: islandTop + islandH + 22,
+              paddingLeft: 26,
+              paddingRight: 26,
+              paddingBottom: 18,
+            }}
+          >
+            {showCta && (
+              <div className="shrink-0 flex justify-center pb-3">
+                <QuizCtaTop />
+              </div>
+            )}
+            <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
+              <div
+                ref={cardRef}
+                data-quiz-content-card
+                style={{ width: BASE_CONTENT_WIDTH, zoom: scale, flexShrink: 0 }}
+              >
+                {children}
+              </div>
+            </div>
+            {showCta && (
+              <div className="shrink-0 flex flex-col items-center gap-1.5 pt-3">
+                <QuizCtaQr />
+                <span
+                  data-quiz-cta-scan
+                  className="text-[13px] font-semibold tracking-wide"
+                  style={{ color: "hsl(42 45% 78%)" }}
+                >
+                  Scan to play
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Subtle dynamic-island pill — the only hardware detail on the
+              flat top screen. Sits clear of the content (no overlay). */}
+          <div
+            data-quiz-phone-island
+            className="absolute pointer-events-none"
+            aria-hidden
+            style={{
+              left: (screenW - islandW) / 2,
+              top: islandTop,
+              width: islandW,
+              height: islandH,
+              borderRadius: islandH / 2,
+              background: "#0b0f18",
+              boxShadow: "inset 0 0 0 1px hsl(215 25% 30% / 0.55)",
+              zIndex: 30,
+            }}
+          >
+            <div
+              className="absolute rounded-full"
+              style={{
+                right: 12,
+                top: islandH / 2 - 5,
+                width: 10,
+                height: 10,
+                background: "#141b28",
+                boxShadow: "inset 0 0 0 1.5px hsl(215 40% 38% / 0.7), inset 0 0 3px hsl(215 60% 30%)",
+              }}
+            />
+          </div>
         </div>
       </div>
-      {showCta && (
-        <div className="shrink-0 flex justify-center pt-3">
-          <QuizCtaQr />
-        </div>
-      )}
     </div>
   );
 }
@@ -343,6 +468,7 @@ export default function QuizRenderPage() {
   const stateParam = params.get("state") ?? "question";
   const formatParam = params.get("format") ?? "mobile-audit";
   const answerIndexParam = params.get("answerIndex");
+  const scaleParam = params.get("scale");
 
   const question = useMemo(
     () => questions?.find((q) => String(q.id) === qId) ?? null,
@@ -371,6 +497,14 @@ export default function QuizRenderPage() {
       error = `Invalid answerIndex "${answerIndexParam}".`;
     }
   }
+  let forcedScale: number | undefined;
+  if (!error && scaleParam !== null) {
+    forcedScale = Number(scaleParam);
+    if (!Number.isFinite(forcedScale) || forcedScale < 0.1 || forcedScale > 4) {
+      error = `Invalid scale "${scaleParam}".`;
+      forcedScale = undefined;
+    }
+  }
 
   // Plan errors (e.g. explanation state without explanation, malformed
   // question) surface as the same inert error panel rather than crashing.
@@ -390,7 +524,7 @@ export default function QuizRenderPage() {
     }
   }
 
-  const { stageRef, centerRef, cardRef, scale } = useRenderReady(!error, format);
+  const { stageRef, centerRef, cardRef, scale } = useRenderReady(!error, format, forcedScale);
 
   if (error) return <ErrorPanel message={error} />;
 

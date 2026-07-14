@@ -30,6 +30,11 @@ export type CaptureLayout = {
   card: LayoutRect | null;
   cta: LayoutRect | null;
   qr: LayoutRect | null;
+  phone: LayoutRect | null;
+  screen: LayoutRect | null;
+  island: LayoutRect | null;
+  scan: LayoutRect | null;
+  resultArea: LayoutRect | null;
 };
 
 export type CaptureResult = {
@@ -37,6 +42,8 @@ export type CaptureResult = {
   qa: CaptureQa;
   /** Geometry of the card/CTA/QR for cross-state layout-stability checks. */
   layout: CaptureLayout;
+  /** The zoom the harness actually rendered with (social formats). */
+  usedScale: number | null;
 };
 
 export async function launchBrowser(): Promise<Browser> {
@@ -60,12 +67,15 @@ type DomQa = {
   ctaAboveCard: boolean;
   qrBelowCard: boolean;
   qrInsideCtaPanel: boolean;
+  /** Phone-composition checks. */
+  phonePresent: boolean;
+  phoneBottomCropped: boolean;
+  allContentInsideScreen: boolean;
+  contentOutsideScreen: string[];
+  islandClearOfContent: boolean;
+  correctRowContrast: number | null;
   /** Layout geometry for cross-state stability checks (px, page space). */
-  layout: {
-    card: { x: number; y: number; w: number; h: number } | null;
-    cta: { x: number; y: number; w: number; h: number } | null;
-    qr: { x: number; y: number; w: number; h: number } | null;
-  };
+  layout: Record<string, { x: number; y: number; w: number; h: number } | null>;
 };
 
 async function runDomQa(page: Page): Promise<DomQa> {
@@ -155,23 +165,117 @@ async function runDomQa(page: Page): Promise<DomQa> {
       if (qrEl) qrBelowCard = qrEl.getBoundingClientRect().top >= cardR.bottom - 1;
     }
 
-    // NOTE: no named const-function here — tsx/esbuild keepNames would inject
-    // a `__name` helper that does not exist inside page.evaluate.
-    const layoutTargets: Array<Element | null> = [
-      card,
-      doc.querySelector("[data-quiz-cta]"),
-      doc.querySelector("[data-quiz-cta-qr]"),
+    // Phone-composition checks. Everything (CTA, card, QR, caption) must sit
+    // inside the phone screen; the phone's bottom hardware edge must be
+    // cropped out of the frame; the arched hood must overlap the CTA region
+    // and reach below the card's top edge at the sides (framing its corners)
+    // WITHOUT covering any card text (card padding keeps text clear).
+    const phoneEl = doc.querySelector("[data-quiz-phone]");
+    const screenEl = doc.querySelector("[data-quiz-phone-screen]");
+    const hoodEl = doc.querySelector("[data-quiz-phone-island]");
+    const scanEl = doc.querySelector("[data-quiz-cta-scan]");
+    const phonePresent = !!(phoneEl && screenEl && hoodEl);
+    let phoneBottomCropped = false;
+    let allContentInsideScreen = true;
+    const contentOutsideScreen: string[] = [];
+    let islandClearOfContent = true;
+    if (phonePresent && stageRect) {
+      const phoneR = phoneEl!.getBoundingClientRect();
+      phoneBottomCropped = phoneR.bottom >= stageRect.bottom + 8;
+      const screenR = screenEl!.getBoundingClientRect();
+      const named: Array<[string, Element | null]> = [
+        ["cta", ctaEl],
+        ["card", card],
+        ["qr", qrEl],
+        ["scan", scanEl],
+      ];
+      for (const [label, el] of named) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const inside =
+          r.left >= screenR.left - 1 &&
+          r.right <= screenR.right + 1 &&
+          r.top >= screenR.top - 1 &&
+          r.bottom <= stageRect.bottom + 1;
+        if (!inside) {
+          allContentInsideScreen = false;
+          contentOutsideScreen.push(label);
+        }
+      }
+      const islandR = hoodEl!.getBoundingClientRect();
+      // The island pill must sit clear of every content element — the frame
+      // supports the content, it never overlays it.
+      islandClearOfContent = true;
+      for (const [, el] of named) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const overlaps =
+          islandR.bottom > r.top + 1 && r.bottom > islandR.top + 1 &&
+          islandR.right > r.left + 1 && r.right > islandR.left + 1;
+        if (overlaps) islandClearOfContent = false;
+      }
+    }
+
+    // Jade correct-row contrast (correct state only): text vs row background.
+    let correctRowContrast: number | null = null;
+    const correctBtn = doc.querySelector<HTMLElement>(
+      '[data-quiz-choice][data-choice-state="correct"]',
+    );
+    if (correctBtn) {
+      // Straight-line WCAG contrast computation — no const-assigned helper
+      // functions (tsx/esbuild keepNames breaks those inside page.evaluate).
+      const cs = getComputedStyle(correctBtn);
+      const rgbRe = /rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/;
+      const fgMatch = cs.color.match(rgbRe);
+      let bgMatch = cs.backgroundColor.match(rgbRe);
+      if ((!bgMatch || cs.backgroundColor.includes("0, 0, 0, 0")) && cs.backgroundImage) {
+        bgMatch = cs.backgroundImage.match(rgbRe); // first gradient stop
+      }
+      if (fgMatch && bgMatch) {
+        const lums: number[] = [];
+        for (const m of [fgMatch, bgMatch]) {
+          const parts = [Number(m[1]), Number(m[2]), Number(m[3])];
+          const weights = [0.2126, 0.7152, 0.0722];
+          let lumTotal = 0;
+          for (let i = 0; i < 3; i++) {
+            const c = parts[i] / 255;
+            const lin = c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            lumTotal += weights[i] * lin;
+          }
+          lums.push(lumTotal);
+        }
+        const l1 = Math.max(lums[0], lums[1]);
+        const l2 = Math.min(lums[0], lums[1]);
+        correctRowContrast = Math.round(((l1 + 0.05) / (l2 + 0.05)) * 100) / 100;
+      }
+    }
+
+    // NOTE: no named const-function here at top level — tsx/esbuild keepNames
+    // helpers do not exist inside page.evaluate.
+    const layoutTargets: Array<[string, Element | null]> = [
+      ["card", card],
+      ["cta", ctaEl],
+      ["qr", qrEl],
+      ["phone", phoneEl],
+      ["screen", screenEl],
+      ["island", hoodEl],
+      ["scan", scanEl],
+      ["resultArea", doc.querySelector("[data-quiz-result-area]")],
     ];
-    const layoutRects = layoutTargets.map(function (el) {
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return {
-        x: Math.round(r.x),
-        y: Math.round(r.y),
-        w: Math.round(r.width),
-        h: Math.round(r.height),
-      };
-    });
+    const layout: Record<string, { x: number; y: number; w: number; h: number } | null> = {};
+    for (const [label, el] of layoutTargets) {
+      if (!el) {
+        layout[label] = null;
+      } else {
+        const r = el.getBoundingClientRect();
+        layout[label] = {
+          x: Math.round(r.x),
+          y: Math.round(r.y),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+        };
+      }
+    }
 
     return {
       ctaPresent,
@@ -188,11 +292,13 @@ async function runDomQa(page: Page): Promise<DomQa> {
       ctaAboveCard,
       qrBelowCard,
       qrInsideCtaPanel,
-      layout: {
-        card: layoutRects[0],
-        cta: layoutRects[1],
-        qr: layoutRects[2],
-      },
+      phonePresent,
+      phoneBottomCropped,
+      allContentInsideScreen,
+      contentOutsideScreen,
+      islandClearOfContent,
+      correctRowContrast,
+      layout,
     };
   });
 }
@@ -206,6 +312,9 @@ export async function captureOne(args: {
   answerIndex?: number;
   expectedSelectedIndex: number | null;
   expectExplanation: boolean;
+  /** Reuse the zoom fitted for an earlier state of the SAME question/format,
+      so every state renders with one state-independent scale. */
+  forcedScale?: number;
 }): Promise<CaptureResult> {
   const { browser, baseUrl, question, state, format } = args;
   const context = await browser.newContext({
@@ -249,6 +358,7 @@ export async function captureOne(args: {
       format: format.key,
     });
     if (args.answerIndex !== undefined) search.set("answerIndex", String(args.answerIndex));
+    if (args.forcedScale !== undefined) search.set("scale", String(args.forcedScale));
     await page.goto(`${baseUrl}/dev/quiz-render?${search}`, { waitUntil: "domcontentloaded" });
 
     const errorPanel = page.locator("[data-quiz-render-error]");
@@ -267,7 +377,7 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa, layout: { card: null, cta: null, qr: null } };
+      return { png, qa, layout: { card: null, cta: null, qr: null }, usedScale: null };
     }
     if (await errorPanel.count()) {
       const msg = (await errorPanel.textContent())?.trim().slice(0, 300) ?? "unknown harness error";
@@ -279,10 +389,16 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa, layout: { card: null, cta: null, qr: null } };
+      return { png, qa, layout: { card: null, cta: null, qr: null }, usedScale: null };
     }
 
     const dom = await runDomQa(page);
+    const scaleAttr = await page
+      .locator("[data-quiz-render-stage]")
+      .getAttribute("data-render-scale");
+    const usedScale = scaleAttr !== null && Number.isFinite(Number(scaleAttr))
+      ? Number(scaleAttr)
+      : null;
     qa.missingAssets.push(...dom.missingAssets);
     if (dom.missingAssets.length) {
       qa.failures.push({
@@ -388,6 +504,53 @@ export async function captureOne(args: {
           state,
         });
       }
+      // Phone-composition structure.
+      if (!dom.phonePresent) {
+        qa.failures.push({
+          severity: "failure",
+          code: "phone-frame",
+          message: "Phone frame/screen/island missing from the social composition",
+          format: format.key,
+          state,
+        });
+      } else {
+        if (!dom.phoneBottomCropped) {
+          qa.failures.push({
+            severity: "failure",
+            code: "phone-frame",
+            message: "Phone bottom edge is visible — it must run off the capture",
+            format: format.key,
+            state,
+          });
+        }
+        if (!dom.allContentInsideScreen) {
+          qa.failures.push({
+            severity: "failure",
+            code: "phone-frame",
+            message: `Content outside the phone screen: ${dom.contentOutsideScreen.join(", ")}`,
+            format: format.key,
+            state,
+          });
+        }
+        if (!dom.islandClearOfContent) {
+          qa.failures.push({
+            severity: "failure",
+            code: "phone-frame",
+            message: "Dynamic-island pill overlaps content (CTA/card/QR/caption)",
+            format: format.key,
+            state,
+          });
+        }
+      }
+      if (state !== "question" && dom.correctRowContrast !== null && dom.correctRowContrast < 4.5) {
+        qa.failures.push({
+          severity: "failure",
+          code: "contrast",
+          message: `Correct-row text contrast ${dom.correctRowContrast} is below 4.5:1`,
+          format: format.key,
+          state,
+        });
+      }
     }
 
     // ── Answer-state integrity checks ────────────────────────────────────
@@ -455,7 +618,7 @@ export async function captureOne(args: {
       format.kind === "social"
         ? await stage.screenshot()
         : await page.screenshot({ fullPage: false });
-    return { png, qa, layout: dom.layout };
+    return { png, qa, layout: dom.layout, usedScale };
   } finally {
     await context.close();
   }

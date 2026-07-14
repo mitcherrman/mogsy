@@ -222,6 +222,9 @@ async function main() {
       const missingAssets: string[] = [];
       // format key -> state -> geometry, for the cross-state stability gate.
       const layoutsByFormat = new Map<string, Map<string, CaptureLayout>>();
+      // One state-independent zoom per format: fitted on the FIRST captured
+      // state of this question, then forced onto every later state.
+      const scaleByFormat = new Map<string, number>();
 
       for (const state of config.states) {
         // Plan first: skip/reject before spending a browser navigation.
@@ -250,7 +253,7 @@ async function main() {
         for (const format of config.formats) {
           const file = screenshotFileName(format.key, state);
           try {
-            const { png, qa, layout } = await captureOne({
+            const { png, qa, layout, usedScale } = await captureOne({
               browser,
               baseUrl: server.baseUrl,
               question,
@@ -259,7 +262,11 @@ async function main() {
               answerIndex: config.answerIndex,
               expectedSelectedIndex: expected.selectedIndex,
               expectExplanation: expected.showExplanation,
+              forcedScale: scaleByFormat.get(format.key),
             });
+            if (!scaleByFormat.has(format.key) && usedScale !== null) {
+              scaleByFormat.set(format.key, usedScale);
+            }
             writeFileSync(join(qDir, file), png);
             const dims = pngDimensions(png);
             screenshots.push({ format: format.key, state, file, ...dims });
@@ -307,9 +314,9 @@ async function main() {
         const a = states.get("question");
         const b = states.get("correct");
         if (!a || !b) continue;
-        for (const part of ["card", "cta", "qr"] as const) {
-          const ra = a[part];
-          const rb = b[part];
+        for (const part of ["card", "cta", "qr", "phone", "screen", "island", "scan", "resultArea"] as const) {
+          const ra = a[part] ?? null;
+          const rb = b[part] ?? null;
           if (ra === null && rb === null) continue;
           const same =
             !!ra && !!rb &&
@@ -328,8 +335,11 @@ async function main() {
           }
         }
         console.log(
-          `  ◻ ${formatKey} layout parity — card ${JSON.stringify(a.card)} | ` +
-          `cta ${JSON.stringify(a.cta)} | qr ${JSON.stringify(a.qr)}`,
+          `  ◻ ${formatKey} layout parity — phone ${JSON.stringify(a.phone)} | ` +
+          `screen ${JSON.stringify(a.screen)} | island ${JSON.stringify(a.island)} | ` +
+          `cta ${JSON.stringify(a.cta)} | card ${JSON.stringify(a.card)} | ` +
+          `result ${JSON.stringify(a.resultArea)} | qr ${JSON.stringify(a.qr)} | ` +
+          `scan ${JSON.stringify(a.scan)}`,
         );
       }
 

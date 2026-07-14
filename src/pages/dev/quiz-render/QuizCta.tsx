@@ -33,16 +33,18 @@ export function buildQrSvgPath(text: string): { path: string; size: number } {
   return { path, size };
 }
 
-/** Compact centered CTA strip shown ABOVE the quiz card. */
+/** Compact centered CTA block shown ABOVE the quiz card, inside the phone
+ *  screen: a clearly visible Mogsy wordmark stacked over the CTA line. The
+ *  wording and hierarchy are unchanged; mogsy.app stays the emphasis. */
 export function QuizCtaTop() {
   return (
     <div
       data-quiz-cta
       data-quiz-cta-mode="top"
-      className="flex items-center justify-center gap-2.5 text-center"
+      className="flex flex-col items-center justify-center gap-1 text-center"
       style={{ color: "hsl(42 45% 80%)" }}
     >
-      <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-10 w-auto opacity-95" />
+      <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-14 w-auto opacity-95" />
       <span className="text-[17px] leading-tight">
         {CTA_TEXT}{" "}
         <span className="font-bold tracking-wide text-[19px]" style={{ color: "hsl(42 75% 62%)" }}>
