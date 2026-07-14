@@ -40,7 +40,7 @@ import {
 } from "../../src/lib/quiz-screenshot/cleanup";
 import { loadQuestions } from "./source";
 import { ensureServer } from "./server";
-import { captureOne, launchBrowser } from "./capture";
+import { captureOne, launchBrowser, type CaptureLayout } from "./capture";
 
 /** Read width/height straight from the PNG IHDR header. */
 export function pngDimensions(buf: Buffer): { width: number; height: number } {
@@ -220,6 +220,8 @@ async function main() {
       const pageErrors: string[] = [];
       const failedRequests: string[] = [];
       const missingAssets: string[] = [];
+      // format key -> state -> geometry, for the cross-state stability gate.
+      const layoutsByFormat = new Map<string, Map<string, CaptureLayout>>();
 
       for (const state of config.states) {
         // Plan first: skip/reject before spending a browser navigation.
@@ -248,7 +250,7 @@ async function main() {
         for (const format of config.formats) {
           const file = screenshotFileName(format.key, state);
           try {
-            const { png, qa } = await captureOne({
+            const { png, qa, layout } = await captureOne({
               browser,
               baseUrl: server.baseUrl,
               question,
@@ -262,6 +264,8 @@ async function main() {
             const dims = pngDimensions(png);
             screenshots.push({ format: format.key, state, file, ...dims });
             captureCount++;
+            if (!layoutsByFormat.has(format.key)) layoutsByFormat.set(format.key, new Map());
+            layoutsByFormat.get(format.key)!.set(state, layout);
 
             consoleErrors.push(...qa.consoleErrors);
             pageErrors.push(...qa.pageErrors);
@@ -294,6 +298,39 @@ async function main() {
             console.log(`  ✗ ${format.key} ${state}: ${msg.slice(0, 200)}`);
           }
         }
+      }
+
+      // Layout-stability gate: for social captures, the question and correct
+      // states must have IDENTICAL card, CTA, and QR geometry — the only
+      // allowed differences are inside the card (reveal/selection/result).
+      for (const [formatKey, states] of layoutsByFormat) {
+        const a = states.get("question");
+        const b = states.get("correct");
+        if (!a || !b) continue;
+        for (const part of ["card", "cta", "qr"] as const) {
+          const ra = a[part];
+          const rb = b[part];
+          if (ra === null && rb === null) continue;
+          const same =
+            !!ra && !!rb &&
+            Math.abs(ra.x - rb.x) <= 1 && Math.abs(ra.y - rb.y) <= 1 &&
+            Math.abs(ra.w - rb.w) <= 1 && Math.abs(ra.h - rb.h) <= 1;
+          if (!same) {
+            runFailures.push({
+              question_id: question.id,
+              format: formatKey,
+              state: "correct",
+              classification: "layout-shift",
+              message:
+                `${part} geometry differs between question and correct states: ` +
+                `${JSON.stringify(ra)} vs ${JSON.stringify(rb)}`,
+            });
+          }
+        }
+        console.log(
+          `  ◻ ${formatKey} layout parity — card ${JSON.stringify(a.card)} | ` +
+          `cta ${JSON.stringify(a.cta)} | qr ${JSON.stringify(a.qr)}`,
+        );
       }
 
       const metadata = buildQuestionMetadata({

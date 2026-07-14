@@ -22,7 +22,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MotionGlobalConfig } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
@@ -30,7 +29,7 @@ import { getFormat } from "@/lib/quiz-screenshot/formats";
 import { isRenderState, resolveAnswerPlan } from "@/lib/quiz-screenshot/states";
 import { SAMPLE_RENDER_QUESTIONS } from "@/lib/quiz-screenshot/fixtures";
 import { deriveRecipe } from "@/lib/quiz-screenshot/recipe";
-import QuizCta from "./QuizCta";
+import { QuizCtaQr, QuizCtaTop } from "./QuizCta";
 import RecipeVisual from "./RecipeVisual";
 import {
   QUIZ_RENDER_WINDOW_KEY,
@@ -111,13 +110,21 @@ function useRenderReady(enabled: boolean, format: RenderFormat | undefined) {
           format.contentMaxWidth,
           format.width - format.safeAreaPadding * 2,
         );
-        const cardH = cardRef.current.scrollHeight; // measured at zoom 1
+        // Measured at zoom 1, then quantized UP to an 8px block: the question
+        // and correct states of one question may differ by a pixel or two of
+        // integer scrollHeight noise (reveal styling/subpixel rounding), and
+        // the fitted zoom — and therefore every box position — must come out
+        // IDENTICAL for both captures. Quantizing the input absorbs that
+        // noise without changing the fit meaningfully.
+        const cardH = Math.ceil(cardRef.current.scrollHeight / 8) * 8;
         const fit = Math.min(
           format.contentScale,
           availW / BASE_CONTENT_WIDTH,
           cardH > 0 ? availH / cardH : format.contentScale,
         );
-        setScale(Math.max(0.5, fit));
+        // Quantize the scale itself too, so equal-block heights can never
+        // produce different zooms through float noise.
+        setScale(Math.max(0.5, Math.floor(fit * 200) / 200));
       }
       // Two frames so layout from the zoom/font/image swaps settles.
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -160,12 +167,9 @@ function QuestionCard({
 
   return (
     <Card className="bg-card/80 backdrop-blur-sm">
+      {/* Screenshot presentation: no category pill — the question text is the
+          topmost content of the card. */}
       <CardHeader className="pb-3">
-        {question.category && (
-          <Badge variant="outline" className="w-fit mb-2 text-xs capitalize">
-            {question.category.replace(/_/g, " ")}
-          </Badge>
-        )}
         <CardTitle className="text-base md:text-lg font-semibold leading-snug">
           {question.question_text}
         </CardTitle>
@@ -193,7 +197,21 @@ function QuestionCard({
             /* static render — selection is fixed by the state plan */
           }}
         />
-        {feedback && <QuizAnswerFeedback result={feedback} metadata={question.metadata} />}
+        {/* Result area is RESERVED in every state so the card keeps one fixed
+            height and nothing reflows between the question and correct
+            captures. Pre-reveal it holds an invisible (visibility:hidden,
+            never painted) copy of the correct-state feedback box purely as a
+            spacer — it renders only the generic "Correct!" chrome plus the
+            same metadata-driven footer, so no answer content can leak. */}
+        <div data-quiz-result-area>
+          {feedback ? (
+            <QuizAnswerFeedback result={feedback} metadata={question.metadata} />
+          ) : format.kind === "social" ? (
+            <div data-quiz-result-placeholder aria-hidden style={{ visibility: "hidden" }}>
+              <QuizAnswerFeedback result={{ is_correct: true }} metadata={question.metadata} />
+            </div>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
@@ -233,14 +251,17 @@ function FormatShell({
   }
   // Social content shell: exact platform pixel size, safe-area padding, and
   // a mobile-native card (~BASE_CONTENT_WIDTH px) zoomed up to fill the frame
-  // — text stays vector-crisp. Layout is a column: centered card block, then
-  // a fixed CTA footer. The zoom factor is fitted at readiness time to both
-  // frame width and remaining height (see useRenderReady), so the card can
-  // never clip or collide with the footer. CSS zoom (Chromium) scales layout
-  // too, unlike transform:scale.
-  const cta = format.cta;
-  // Subtler CTA on the unanswered hook, full treatment on reveals.
-  const ctaMode = cta === "none" ? null : state === "question" ? "compact" : cta;
+  // — text stays vector-crisp. Column layout, IDENTICAL in every state:
+  //
+  //   [compact CTA strip — mogsy.app]   (top, centered, above the card)
+  //   [quiz card, centered]
+  //   [small QR tile]                    (bottom, centered, below the card)
+  //
+  // The zoom factor is fitted at readiness time to both frame width and the
+  // height remaining between header and footer (see useRenderReady), so the
+  // card can never clip or collide with either. CSS zoom (Chromium) scales
+  // layout too, unlike transform:scale.
+  const showCta = format.cta !== "none";
   return (
     <div
       ref={stageRef}
@@ -256,6 +277,17 @@ function FormatShell({
           "radial-gradient(120% 90% at 50% 0%, #14213b 0%, #0a1022 55%, #060912 100%)",
       }}
     >
+      {/* Screenshot-only layout stabilizer: reveal styling nudges answer
+          buttons by sub-pixel amounts, which would make the question/correct
+          captures reflow. A fixed min-height floor (above every natural
+          single-line height) makes each row byte-identical across states.
+          Scoped to the harness stage — never touches the live quiz UI. */}
+      <style>{`[data-quiz-render-stage] [data-quiz-choice]{min-height:56px}`}</style>
+      {showCta && (
+        <div className="shrink-0 flex justify-center pb-3">
+          <QuizCtaTop />
+        </div>
+      )}
       <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
         <div
           ref={cardRef}
@@ -265,9 +297,9 @@ function FormatShell({
           {children}
         </div>
       </div>
-      {ctaMode && (
+      {showCta && (
         <div className="shrink-0 flex justify-center pt-3">
-          <QuizCta mode={ctaMode} />
+          <QuizCtaQr />
         </div>
       )}
     </div>

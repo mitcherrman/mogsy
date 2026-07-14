@@ -1,14 +1,16 @@
 /**
- * CTA footer for content screenshots: Mogsy wordmark, "Play more LoL quizzes
- * at mogsy.app", and a deterministic QR code pointing at the quiz landing
- * page. Rendered by the content shell OUTSIDE the answer area (fixed footer
- * strip), never overlapping the question card.
+ * CTA elements for content screenshots, rendered IDENTICALLY in the question
+ * and correct states:
  *
- * compact → single-line strip (question state / tight formats)
- * full    → wordmark + CTA text + QR block (reveal states)
+ *   QuizCtaTop — compact centered strip ABOVE the quiz card: wordmark +
+ *                "Play more LoL quizzes at mogsy.app" (mogsy.app prominent).
+ *   QuizCtaQr  — small standalone QR BELOW the quiz card: white tile with a
+ *                quiet zone, deterministic SVG encoding the quiz URL.
+ *
+ * There is deliberately NO combined bottom panel — text lives above the card,
+ * the QR below it, and neither ever sits inside the answer area.
  */
 import qrcodegen from "qrcode-generator";
-import type { CtaMode } from "@/lib/quiz-screenshot/types";
 
 /** Quiz acquisition target: the live quiz landing page (shorter than any
  *  campaign URL, more precise than the bare domain). */
@@ -31,7 +33,29 @@ export function buildQrSvgPath(text: string): { path: string; size: number } {
   return { path, size };
 }
 
-function QrBlock({ px }: { px: number }) {
+/** Compact centered CTA strip shown ABOVE the quiz card. */
+export function QuizCtaTop() {
+  return (
+    <div
+      data-quiz-cta
+      data-quiz-cta-mode="top"
+      className="flex items-center justify-center gap-2.5 text-center"
+      style={{ color: "hsl(42 45% 80%)" }}
+    >
+      <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-10 w-auto opacity-95" />
+      <span className="text-[17px] leading-tight">
+        {CTA_TEXT}{" "}
+        <span className="font-bold tracking-wide text-[19px]" style={{ color: "hsl(42 75% 62%)" }}>
+          {CTA_DOMAIN}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** Small standalone QR tile shown BELOW the quiz card. The white padding is
+ *  the scanability quiet zone (plus two quiet modules inside the viewBox). */
+export function QuizCtaQr({ px = 76 }: { px?: number }) {
   const { path, size } = buildQrSvgPath(CTA_URL);
   const quiet = 2; // quiet-zone modules around the code
   return (
@@ -50,48 +74,6 @@ function QrBlock({ px }: { px: number }) {
       >
         <path d={path} fill="#0a1022" />
       </svg>
-    </div>
-  );
-}
-
-export default function QuizCta({ mode }: { mode: Exclude<CtaMode, "none"> }) {
-  if (mode === "compact") {
-    return (
-      <div
-        data-quiz-cta
-        data-quiz-cta-mode="compact"
-        className="flex items-center justify-center gap-2.5 text-[13px]"
-        style={{ color: "hsl(42 45% 78%)" }}
-      >
-        <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-9 w-auto opacity-95" />
-        <span className="opacity-80 text-[15px]">{CTA_TEXT}</span>
-        <span className="font-bold tracking-wide text-[16px]" style={{ color: "hsl(42 75% 62%)" }}>
-          {CTA_DOMAIN}
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div
-      data-quiz-cta
-      data-quiz-cta-mode="full"
-      className="flex items-center justify-center gap-4 rounded-xl border px-5 py-3.5"
-      style={{
-        borderColor: "hsl(188 75% 38% / 0.5)",
-        background: "hsl(213 55% 8% / 0.92)",
-        boxShadow: "inset 0 0 0 1px hsl(215 55% 5%), 0 6px 24px -10px hsl(215 80% 2% / 0.8)",
-      }}
-    >
-      <QrBlock px={84} />
-      <div className="flex flex-col items-start gap-1.5">
-        <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-12 w-auto" />
-        <div className="text-[16px] leading-tight" style={{ color: "hsl(42 45% 80%)" }}>
-          {CTA_TEXT}{" "}
-          <span className="font-bold tracking-wide" style={{ color: "hsl(42 75% 62%)" }}>
-            {CTA_DOMAIN}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

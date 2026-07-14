@@ -43,20 +43,41 @@ afterEach(() => {
 });
 
 describe("QuizRenderPage — question state (no leakage)", () => {
-  it("shows no selection, no reveal styling, no explanation, no feedback", () => {
+  it("shows no selection, no reveal styling, no explanation, no visible feedback", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=question&format=square");
     expect(choiceStates(container)).toEqual(["idle", "idle", "idle"]);
-    expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    // The result area is RESERVED with an invisible spacer so the card keeps
+    // one fixed height across states — any feedback markup must live inside
+    // the visibility:hidden placeholder, never painted.
+    container.querySelectorAll("[data-quiz-answer-feedback]").forEach((el) => {
+      const holder = el.closest("[data-quiz-result-placeholder]") as HTMLElement | null;
+      expect(holder).not.toBeNull();
+      expect(holder!.style.visibility).toBe("hidden");
+      expect(holder!.getAttribute("aria-hidden")).toBe("true");
+    });
     expect(screen.queryByText(/Thornmail grants 70 armor/)).toBeNull();
-    expect(screen.queryByText("Correct!")).toBeNull();
-    // No visible check/x icons anywhere in the unanswered render.
-    expect(container.querySelector("svg.lucide-circle-check-big, svg.lucide-check-circle-2")).toBeNull();
+    // No visible check/x icons outside the hidden spacer.
+    container
+      .querySelectorAll("svg.lucide-circle-check-big, svg.lucide-check-circle-2")
+      .forEach((el) => {
+        expect(el.closest("[data-quiz-result-placeholder]")).not.toBeNull();
+      });
     // Answer order preserved exactly as provided.
     const labels = Array.from(container.querySelectorAll("[data-quiz-choice]")).map((b) =>
       b.textContent?.replace(/^[A-D]\./, "").trim(),
     );
     expect(labels).toEqual(["Sunfire Aegis", "Thornmail", "Dead Man's Plate"]);
+  });
+
+  it("renders no category pill — the question text is the topmost card content", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=square");
+    // fixture.category = "items": must not appear anywhere as a label.
+    expect(screen.queryByText(/^items$/i)).toBeNull();
+    const header = container.querySelector("[data-quiz-content-card] .pb-3, [data-quiz-content-card] h3")
+      ?? container.querySelector("h3");
+    expect(header?.textContent).toContain("Which item grants the most armor?");
   });
 
   it("stamps the render-ready marker on the stage", async () => {
@@ -78,7 +99,10 @@ describe("QuizRenderPage — states", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=selected&format=square");
     expect(choiceStates(container)).toEqual(["selected", "idle", "idle"]);
-    expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    // Only the hidden layout spacer may contain feedback markup.
+    container.querySelectorAll("[data-quiz-answer-feedback]").forEach((el) => {
+      expect(el.closest("[data-quiz-result-placeholder]")).not.toBeNull();
+    });
   });
 
   it("selected: honors answerIndex override", () => {
@@ -144,24 +168,55 @@ const recipeFixture: RenderQuestion = {
 };
 
 describe("QuizRenderPage — content CTA", () => {
-  it("shows a compact CTA with mogsy.app in the question state on content formats", () => {
+  it("renders an IDENTICAL top CTA and bottom QR in question and correct states", () => {
     inject([fixture]);
-    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
-    const cta = container.querySelector("[data-quiz-cta]");
-    expect(cta).not.toBeNull();
-    expect(cta!.getAttribute("data-quiz-cta-mode")).toBe("compact");
-    expect(cta!.textContent).toContain("mogsy.app");
+    const a = renderHarness("?q=t1&state=question&format=mobile-social");
+    const ctaQuestion = a.container.querySelector("[data-quiz-cta]");
+    expect(ctaQuestion).not.toBeNull();
+    expect(ctaQuestion!.getAttribute("data-quiz-cta-mode")).toBe("top");
+    expect(ctaQuestion!.textContent).toContain("mogsy.app");
+    const qrQuestion = a.container.querySelector("[data-quiz-cta-qr]");
+    expect(qrQuestion!.querySelector("svg path")).not.toBeNull();
     // CTA lives outside the card — never inside the answer grid.
-    expect(container.querySelector("[data-quiz-answer-options] [data-quiz-cta]")).toBeNull();
+    expect(a.container.querySelector("[data-quiz-answer-options] [data-quiz-cta]")).toBeNull();
+    const questionCtaHtml = ctaQuestion!.outerHTML;
+    const questionQrHtml = qrQuestion!.outerHTML;
+    cleanup();
+    inject([fixture]);
+    const b = renderHarness("?q=t1&state=correct&format=mobile-social");
+    // Byte-identical CTA + QR markup between the two screenshot states.
+    expect(b.container.querySelector("[data-quiz-cta]")!.outerHTML).toBe(questionCtaHtml);
+    expect(b.container.querySelector("[data-quiz-cta-qr]")!.outerHTML).toBe(questionQrHtml);
   });
 
-  it("shows the full CTA with QR code in the correct state", () => {
+  it("places the CTA above the card and the QR below it, never combined", () => {
     inject([fixture]);
-    const { container } = renderHarness("?q=t1&state=correct&format=mobile-social");
-    const cta = container.querySelector("[data-quiz-cta]");
-    expect(cta!.getAttribute("data-quiz-cta-mode")).toBe("full");
-    expect(container.querySelector("[data-quiz-cta-qr] svg path")).not.toBeNull();
-    expect(cta!.textContent).toContain("mogsy.app");
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    const stage = container.querySelector("[data-quiz-render-stage]")!;
+    const children = Array.from(stage.children).filter((el) => el.tagName !== "STYLE");
+    // Column order: CTA wrapper, card area, QR wrapper.
+    expect(children[0].querySelector("[data-quiz-cta]")).not.toBeNull();
+    expect(children[1].querySelector("[data-quiz-content-card]")).not.toBeNull();
+    expect(children[2].querySelector("[data-quiz-cta-qr]")).not.toBeNull();
+    // No combined panel: the QR never lives inside the CTA strip.
+    expect(container.querySelector("[data-quiz-cta] [data-quiz-cta-qr]")).toBeNull();
+    // QR keeps its white quiet-zone tile.
+    const qr = container.querySelector("[data-quiz-cta-qr]")!;
+    expect(qr.className).toContain("bg-white");
+  });
+
+  it("keeps the result area reserved so the card structure matches across states", () => {
+    inject([fixture]);
+    const a = renderHarness("?q=t1&state=question&format=mobile-social");
+    expect(a.container.querySelector("[data-quiz-result-area]")).not.toBeNull();
+    expect(a.container.querySelector("[data-quiz-result-placeholder]")).not.toBeNull();
+    cleanup();
+    inject([fixture]);
+    const b = renderHarness("?q=t1&state=correct&format=mobile-social");
+    expect(b.container.querySelector("[data-quiz-result-area]")).not.toBeNull();
+    // Correct state shows the real feedback instead of the spacer.
+    expect(b.container.querySelector("[data-quiz-result-placeholder]")).toBeNull();
+    expect(b.container.querySelector("[data-quiz-answer-feedback]")).not.toBeNull();
   });
 
   it("renders no CTA on audit formats", () => {

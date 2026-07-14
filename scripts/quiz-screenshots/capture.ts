@@ -25,9 +25,18 @@ export type CaptureQa = {
   failures: QaFinding[];
 };
 
+export type LayoutRect = { x: number; y: number; w: number; h: number };
+export type CaptureLayout = {
+  card: LayoutRect | null;
+  cta: LayoutRect | null;
+  qr: LayoutRect | null;
+};
+
 export type CaptureResult = {
   png: Buffer;
   qa: CaptureQa;
+  /** Geometry of the card/CTA/QR for cross-state layout-stability checks. */
+  layout: CaptureLayout;
 };
 
 export async function launchBrowser(): Promise<Browser> {
@@ -46,6 +55,17 @@ type DomQa = {
   visibleChoiceStates: string[];
   feedbackVisible: boolean;
   explanationText: string | null;
+  /** Structural CTA placement: text strip above the card, QR below it,
+      and never combined into one panel. */
+  ctaAboveCard: boolean;
+  qrBelowCard: boolean;
+  qrInsideCtaPanel: boolean;
+  /** Layout geometry for cross-state stability checks (px, page space). */
+  layout: {
+    card: { x: number; y: number; w: number; h: number } | null;
+    cta: { x: number; y: number; w: number; h: number } | null;
+    qr: { x: number; y: number; w: number; h: number } | null;
+  };
 };
 
 async function runDomQa(page: Page): Promise<DomQa> {
@@ -86,7 +106,18 @@ async function runDomQa(page: Page): Promise<DomQa> {
       });
     });
 
-    const feedback = doc.querySelector("[data-quiz-answer-feedback]");
+    // Feedback counts as VISIBLE only when it actually paints. The reserved
+    // result-area spacer (visibility:hidden inside [data-quiz-result-placeholder])
+    // keeps the card height identical across states and must not register as
+    // a pre-reveal leak — while any painted feedback still does.
+    const feedbackEls = Array.from(
+      doc.querySelectorAll<HTMLElement>("[data-quiz-answer-feedback]"),
+    );
+    const feedback = feedbackEls.find(
+      (el) =>
+        getComputedStyle(el).visibility !== "hidden" &&
+        !el.closest("[data-quiz-result-placeholder]"),
+    ) ?? null;
     const explanationText =
       feedback?.querySelector("p.text-xs.opacity-80")?.textContent ?? null;
     const ctaPresent = !!doc.querySelector("[data-quiz-cta]");
@@ -110,6 +141,38 @@ async function runDomQa(page: Page): Promise<DomQa> {
       }
     }
 
+    // Structural placement: the CTA text strip must sit fully ABOVE the card
+    // and the QR fully BELOW it; the QR must never live inside the CTA strip
+    // (no combined panel).
+    const ctaEl = doc.querySelector("[data-quiz-cta]");
+    const qrEl = doc.querySelector("[data-quiz-cta-qr]");
+    let ctaAboveCard = true;
+    let qrBelowCard = true;
+    const qrInsideCtaPanel = !!(ctaEl && qrEl && ctaEl.contains(qrEl));
+    if (card) {
+      const cardR = card.getBoundingClientRect();
+      if (ctaEl) ctaAboveCard = ctaEl.getBoundingClientRect().bottom <= cardR.top + 1;
+      if (qrEl) qrBelowCard = qrEl.getBoundingClientRect().top >= cardR.bottom - 1;
+    }
+
+    // NOTE: no named const-function here — tsx/esbuild keepNames would inject
+    // a `__name` helper that does not exist inside page.evaluate.
+    const layoutTargets: Array<Element | null> = [
+      card,
+      doc.querySelector("[data-quiz-cta]"),
+      doc.querySelector("[data-quiz-cta-qr]"),
+    ];
+    const layoutRects = layoutTargets.map(function (el) {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: Math.round(r.x),
+        y: Math.round(r.y),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+      };
+    });
+
     return {
       ctaPresent,
       ctaText,
@@ -122,6 +185,14 @@ async function runDomQa(page: Page): Promise<DomQa> {
       visibleChoiceStates,
       feedbackVisible: !!feedback,
       explanationText,
+      ctaAboveCard,
+      qrBelowCard,
+      qrInsideCtaPanel,
+      layout: {
+        card: layoutRects[0],
+        cta: layoutRects[1],
+        qr: layoutRects[2],
+      },
     };
   });
 }
@@ -196,7 +267,7 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa };
+      return { png, qa, layout: { card: null, cta: null, qr: null } };
     }
     if (await errorPanel.count()) {
       const msg = (await errorPanel.textContent())?.trim().slice(0, 300) ?? "unknown harness error";
@@ -208,7 +279,7 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa };
+      return { png, qa, layout: { card: null, cta: null, qr: null } };
     }
 
     const dom = await runDomQa(page);
@@ -288,6 +359,35 @@ export async function captureOne(args: {
           state,
         });
       }
+      // Required screenshot structure: CTA strip above the card, QR below
+      // it, and never combined into one panel.
+      if (!dom.ctaAboveCard) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-placement",
+          message: "CTA strip is not fully above the quiz card",
+          format: format.key,
+          state,
+        });
+      }
+      if (!dom.qrBelowCard) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-placement",
+          message: "QR code is not fully below the quiz card",
+          format: format.key,
+          state,
+        });
+      }
+      if (dom.qrInsideCtaPanel) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-placement",
+          message: "QR code is inside the CTA panel (combined panel is not allowed)",
+          format: format.key,
+          state,
+        });
+      }
     }
 
     // ── Answer-state integrity checks ────────────────────────────────────
@@ -355,7 +455,7 @@ export async function captureOne(args: {
       format.kind === "social"
         ? await stage.screenshot()
         : await page.screenshot({ fullPage: false });
-    return { png, qa };
+    return { png, qa, layout: dom.layout };
   } finally {
     await context.close();
   }
