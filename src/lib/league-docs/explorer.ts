@@ -36,10 +36,42 @@ export const RAW_SORTS = [
 export const DEFAULT_AGGREGATE_SORT = "presence";
 export const DEFAULT_RAW_SORT = "match_date";
 
+// Taxonomy allowlists — must match services/esports_taxonomy.py. Used to
+// sanitize hand-edited URLs before they reach the backend.
+export const LEAGUE_GROUP_IDS = [
+  "tier1", "major_regional", "challengers", "erl", "academy_amateur",
+  "international", "other",
+] as const;
+export const REGION_IDS = [
+  "emea", "korea", "china", "north_america", "brazil", "asia_pacific",
+  "international", "asia",
+] as const;
+export const FAMILY_IDS = ["first_stand", "msi", "worlds", "ewc", "other_international"] as const;
+export const SPLIT_IDS = ["spring", "summer", "winter", "split_1", "split_2", "none"] as const;
+export const STAGE_IDS = [
+  "regular_season", "playoffs", "play_in", "group_stage", "qualifier",
+  "promotion", "relegation", "main_event", "finals", "unknown",
+] as const;
+export const PRESET_IDS = [
+  "all-imported", "tier1", "major", "international", "erls", "challengers",
+  "amateur", "custom",
+] as const;
+/** Legacy Phase 1 scope values still honored in shared URLs. */
+export const LEGACY_SCOPE_IDS = ["all-imported", "major", "international"] as const;
+
 export type ExplorerFilters = {
   mode: ExplorerMode;
   year: number | null;
-  scope: string;
+  // Competition / event taxonomy selection (Phase 2)
+  competition_preset: string | null;
+  league_groups: string[];
+  leagues: string[];
+  regions: string[];
+  tournament_families: string[];
+  tournaments: string[];
+  splits: string[];
+  stages: string[];
+  // Single-value filters
   champion: string | null;
   tournament: string | null;
   team: string | null;
@@ -57,6 +89,23 @@ export type ExplorerFilters = {
   page_size: number;
 };
 
+/** Array-valued taxonomy filter keys (URL param name === filter key). */
+export const ARRAY_FILTER_KEYS = [
+  "league_groups", "leagues", "regions", "tournament_families",
+  "tournaments", "splits", "stages",
+] as const;
+type ArrayFilterKey = (typeof ARRAY_FILTER_KEYS)[number];
+
+const ARRAY_ALLOWED: Record<ArrayFilterKey, readonly string[] | null> = {
+  league_groups: LEAGUE_GROUP_IDS,
+  leagues: null, // league ids are open-ended; validated server-side
+  regions: REGION_IDS,
+  tournament_families: FAMILY_IDS,
+  tournaments: null, // composite keys; validated server-side
+  splits: SPLIT_IDS,
+  stages: STAGE_IDS,
+};
+
 export const DEFAULT_SCOPE = "all-imported";
 
 export function defaultSortForMode(mode: ExplorerMode): string {
@@ -67,7 +116,14 @@ export function defaultFilters(): ExplorerFilters {
   return {
     mode: "aggregate",
     year: null,
-    scope: DEFAULT_SCOPE,
+    competition_preset: null,
+    league_groups: [],
+    leagues: [],
+    regions: [],
+    tournament_families: [],
+    tournaments: [],
+    splits: [],
+    stages: [],
     champion: null,
     tournament: null,
     team: null,
@@ -147,10 +203,37 @@ export type ExplorerPagination = {
   total_pages: number;
 };
 
-export type ExplorerScopeOption = { name: string; label: string };
+export type ExplorerIdLabel = { id: string; label: string; games?: number | null };
+
+export type ExplorerLeagueOption = {
+  id: string;
+  label: string;
+  group: string;
+  region: string;
+  games: number;
+};
+
+export type ExplorerLeagueGroup = {
+  id: string;
+  label: string;
+  games: number;
+  leagues: ExplorerLeagueOption[];
+};
+
+export type ExplorerTournamentOption = {
+  id: string;
+  label: string | null;
+  league_id: string;
+  group: string;
+  region: string;
+  family: string | null;
+  split: string;
+  stage: string;
+  stage_confidence: string;
+  games: number;
+};
 
 export type ExplorerFilterOptions = {
-  scopes: ExplorerScopeOption[];
   years: number[];
   event_types: string[];
   results: string[];
@@ -158,8 +241,15 @@ export type ExplorerFilterOptions = {
   page_sizes: number[];
   roles: string[];
   patches: string[];
-  tournaments: string[];
   teams: string[];
+  presets: ExplorerIdLabel[];
+  league_groups: ExplorerLeagueGroup[];
+  tournament_families: ExplorerIdLabel[];
+  splits: ExplorerIdLabel[];
+  stages: ExplorerIdLabel[];
+  regions: ExplorerIdLabel[];
+  tournaments: ExplorerTournamentOption[];
+  unclassified: { stage_unknown_games: number; split_none_games: number };
 };
 
 export type ExplorerResponse = {
@@ -179,14 +269,17 @@ export type ExplorerResponse = {
 export function filtersToRequestParams(f: ExplorerFilters): URLSearchParams {
   const p = new URLSearchParams();
   p.set("mode", f.mode);
-  p.set("scope", f.scope);
   p.set("sort", f.sort);
   p.set("order", f.order);
   p.set("page", String(f.page));
   p.set("page_size", String(f.page_size));
   if (f.year !== null) p.set("year", String(f.year));
+  if (f.competition_preset) p.set("competition_preset", f.competition_preset);
   if (f.event_type !== "all") p.set("event_type", f.event_type);
   if (f.result !== "all") p.set("result", f.result);
+  for (const key of ARRAY_FILTER_KEYS) {
+    for (const v of f[key]) p.append(key, v);
+  }
   for (const key of ["champion", "tournament", "team", "player", "role", "patch", "side", "date_from", "date_to"] as const) {
     const val = f[key];
     if (val) p.set(key, String(val));
@@ -239,10 +332,36 @@ export function filtersFromSearch(sp: URLSearchParams): ExplorerFilters {
 
   const dateOk = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 
+  // Array taxonomy filters: keep only allowlisted values (open-ended lists pass through).
+  const arr = (key: ArrayFilterKey): string[] => {
+    const allowed = ARRAY_ALLOWED[key];
+    const raw = sp.getAll(key).map((v) => v.trim()).filter(Boolean);
+    const values = allowed ? raw.filter((v) => (allowed as readonly string[]).includes(v)) : raw;
+    return Array.from(new Set(values));
+  };
+
+  // Competition preset: explicit competition_preset wins; else a legacy scope
+  // value (Phase 1 URLs) is honored as an alias.
+  let competition_preset: string | null = null;
+  const presetParam = str("competition_preset");
+  if (presetParam && isOneOf(presetParam, PRESET_IDS)) {
+    competition_preset = presetParam;
+  } else {
+    const scopeParam = str("scope");
+    if (scopeParam && isOneOf(scopeParam, LEGACY_SCOPE_IDS)) competition_preset = scopeParam;
+  }
+
   return {
     mode,
     year,
-    scope: str("scope") ?? d.scope,
+    competition_preset,
+    league_groups: arr("league_groups"),
+    leagues: arr("leagues"),
+    regions: arr("regions"),
+    tournament_families: arr("tournament_families"),
+    tournaments: arr("tournaments"),
+    splits: arr("splits"),
+    stages: arr("stages"),
     champion: str("champion"),
     tournament: str("tournament"),
     team: str("team"),
@@ -262,19 +381,21 @@ export function filtersFromSearch(sp: URLSearchParams): ExplorerFilters {
 }
 
 const FILTER_PARAM_KEYS = [
-  "mode", "year", "scope", "champion", "tournament", "team", "player", "role",
-  "patch", "side", "event_type", "result", "date_from", "date_to", "sort",
-  "order", "page", "page_size",
+  "mode", "year", "scope", "competition_preset", "champion", "tournament",
+  "team", "player", "role", "patch", "side", "event_type", "result",
+  "date_from", "date_to", "sort", "order", "page", "page_size",
+  ...ARRAY_FILTER_KEYS,
 ] as const;
 
 /** Serialize filters back onto an existing URLSearchParams (preserving other
- * params like `view`). Default-valued filters are omitted to keep URLs short. */
+ * params like `view`). Default-valued filters are omitted to keep URLs short.
+ * Legacy `scope=` is dropped in favor of `competition_preset=` on write. */
 export function writeFiltersToSearch(f: ExplorerFilters, existing: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(existing);
   for (const key of FILTER_PARAM_KEYS) next.delete(key);
 
   if (f.mode !== "aggregate") next.set("mode", f.mode);
-  if (f.scope !== DEFAULT_SCOPE) next.set("scope", f.scope);
+  if (f.competition_preset) next.set("competition_preset", f.competition_preset);
   if (f.sort !== defaultSortForMode(f.mode)) next.set("sort", f.sort);
   if (f.order !== "desc") next.set("order", f.order);
   if (f.page !== 1) next.set("page", String(f.page));
@@ -282,10 +403,27 @@ export function writeFiltersToSearch(f: ExplorerFilters, existing: URLSearchPara
   if (f.year !== null) next.set("year", String(f.year));
   if (f.event_type !== "all") next.set("event_type", f.event_type);
   if (f.result !== "all") next.set("result", f.result);
+  for (const key of ARRAY_FILTER_KEYS) {
+    for (const v of f[key]) next.append(key, v);
+  }
   for (const key of ["champion", "tournament", "team", "player", "role", "patch", "side", "date_from", "date_to"] as const) {
     if (f[key]) next.set(key, String(f[key]));
   }
   return next;
+}
+
+/** Count of active (non-default) filters, for the summary chip. */
+export function activeFilterCount(f: ExplorerFilters): number {
+  let n = 0;
+  if (f.year !== null) n += 1;
+  if (f.competition_preset && f.competition_preset !== "all-imported") n += 1;
+  for (const key of ARRAY_FILTER_KEYS) n += f[key].length;
+  for (const key of ["champion", "tournament", "team", "player", "role", "patch", "side", "date_from", "date_to"] as const) {
+    if (f[key]) n += 1;
+  }
+  if (f.event_type !== "all") n += 1;
+  if (f.result !== "all") n += 1;
+  return n;
 }
 
 /** Stable React Query cache key for a filter set. */
