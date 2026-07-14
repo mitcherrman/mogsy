@@ -82,13 +82,31 @@ function deriveMissingComponent(
 
   const rawComponents = meta.known_component_icons;
   if (!Array.isArray(rawComponents) || rawComponents.length === 0) return null;
-  const row: RecipeTile[] = [];
+  const iconByName = new Map<string, string>();
   for (const c of rawComponents) {
     if (!c || typeof c !== "object") return null;
     const name = str((c as Record<string, unknown>).name);
     const cIcon = str((c as Record<string, unknown>).icon);
     if (!name || !cIcon) return null;
-    row.push({ name, icon: cIcon });
+    iconByName.set(name, cIcon);
+  }
+  // known_components carries recipe MULTIPLICITY (e.g. Navori's 2x Dagger —
+  // the same name appears once per copy) while the icon list is deduped by
+  // name. Build the row from the multiset so duplicate components render as
+  // duplicate tiles; fall back to icon-list order for legacy metadata
+  // without a known_components field.
+  const knownNames = Array.isArray(meta.known_components)
+    ? meta.known_components.filter((n): n is string => typeof n === "string")
+    : [];
+  const row: RecipeTile[] = [];
+  if (knownNames.length > 0) {
+    for (const name of knownNames) {
+      const cIcon = iconByName.get(name);
+      if (!cIcon) return null;
+      row.push({ name, icon: cIcon });
+    }
+  } else {
+    for (const [name, cIcon] of iconByName) row.push({ name, icon: cIcon });
   }
 
   const answerName = str(meta.missing_component_item_name);
@@ -124,7 +142,11 @@ function deriveComponentsOfItem(
     header: { name: itemName, icon },
     row: [],
     slotJoin: "bare",
-    missing: revealed ? { name: answerName, icon: itemIcon(answerId) } : null,
+    // Prefer the explicit wiki-backed icon shipped in metadata; the id
+    // convention path is a legacy fallback only.
+    missing: revealed
+      ? { name: answerName, icon: str(meta.component_item_icon) ?? itemIcon(answerId) }
+      : null,
   };
 }
 
@@ -148,7 +170,9 @@ function deriveBuildsInto(
     header: null,
     row: [{ name: sourceName, icon: sourceIcon }],
     slotJoin: "arrow",
-    missing: revealed ? { name: answerName, icon: itemIcon(answerId) } : null,
+    missing: revealed
+      ? { name: answerName, icon: str(meta.parent_item_icon) ?? itemIcon(answerId) }
+      : null,
   };
 }
 
@@ -167,12 +191,26 @@ function deriveFinalFromComponents(
   const subjectName = str(subject?.name);
   const subjectIcon = str(subject?.icon) ?? str(meta.asset_path);
 
+  // Explicit wiki-backed per-component icons (duplicates preserved by list
+  // order); legacy metadata without them falls back to subject-icon-only.
+  const iconEntries = Array.isArray(meta.recipe_component_icons)
+    ? (meta.recipe_component_icons as unknown[])
+    : [];
+  const iconByName = new Map<string, string>();
+  for (const entry of iconEntries) {
+    if (!entry || typeof entry !== "object") continue;
+    const name = str((entry as Record<string, unknown>).name);
+    const icon = str((entry as Record<string, unknown>).icon);
+    if (name && icon) iconByName.set(norm(name), icon);
+  }
+
   const row: RecipeTile[] = [];
   for (const n of names) {
     const name = str(n);
     if (!name) return null;
     const isSubject = subjectName !== undefined && norm(name) === norm(subjectName);
-    row.push({ name, icon: isSubject ? subjectIcon ?? null : null });
+    const icon = iconByName.get(norm(name)) ?? (isSubject ? subjectIcon ?? null : null);
+    row.push({ name, icon });
   }
 
   const answerName = str(meta.final_item_name);
@@ -185,7 +223,9 @@ function deriveFinalFromComponents(
     header: null,
     row,
     slotJoin: "arrow",
-    missing: revealed ? { name: answerName, icon: itemIcon(answerId) } : null,
+    missing: revealed
+      ? { name: answerName, icon: str(meta.final_item_icon) ?? itemIcon(answerId) }
+      : null,
   };
 }
 
