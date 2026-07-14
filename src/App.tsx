@@ -94,6 +94,11 @@ const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRun
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
 
+// Screenshot render harness — inert without locally injected data, not
+// linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
+// social-format captures contain no site chrome.
+const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage"));
+
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -225,6 +230,7 @@ const App = () => (
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
                 <Route path="/broadcast/live-view" element={<Suspense fallback={<RouteLoader />}><BroadcastLiveView /></Suspense>} />
+                <Route path="/dev/quiz-render" element={<Suspense fallback={<RouteLoader />}><QuizRenderPage /></Suspense>} />
                 <Route path="/:slug" element={<Suspense fallback={<RouteLoader />}><CustomLink /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

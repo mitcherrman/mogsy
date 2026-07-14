@@ -16,7 +16,8 @@
     "video:studio": "remotion studio",
     "video:prepare": "tsx scripts/prepare-quiz-video.ts",
     "video:render": "tsx scripts/render-quiz-video.ts",
-    "video:timestamps": "tsx scripts/render-quiz-video.ts --timestamps-only"
+    "video:timestamps": "tsx scripts/render-quiz-video.ts --timestamps-only",
+    "quiz:screenshots": "tsx scripts/quiz-screenshots/index.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -107,6 +108,7 @@
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
     "lovable-tagger": "^1.1.13",
+    "playwright": "^1.61.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "tsx": "4.20.6",

@@ -1,0 +1,38 @@
+{
+  "questions": [
+    {
+      "id": 900001,
+      "question_text": "Which item grants the highest flat armor in League of Legends?",
+      "format": "multiple_choice",
+      "category": "item_exact_stats",
+      "difficulty": 2,
+      "choices": ["Thornmail", "Dead Man's Plate", "Randuin's Omen", "Sunfire Aegis"],
+      "correct_answer": "Thornmail",
+      "explanation": "Thornmail grants 70 armor, the highest flat armor of any completed item, and reflects damage to attackers while applying Grievous Wounds."
+    },
+    {
+      "id": 900002,
+      "question_text": "How many members are on each team in a standard Summoner's Rift game?",
+      "format": "multiple_choice",
+      "category": "general",
+      "difficulty": 1,
+      "choices": ["3", "4", "5", "6"],
+      "correct_answer": "5"
+    },
+    {
+      "id": 900003,
+      "question_text": "A target has 200 armor and no other resistances. Considering only base armor mitigation, roughly what fraction of incoming physical damage is prevented?",
+      "format": "multiple_choice",
+      "category": "champion_ability_cooldowns",
+      "difficulty": 4,
+      "choices": [
+        "One quarter of the damage",
+        "One third of the damage",
+        "One half of the damage",
+        "Two thirds of the damage"
+      ],
+      "correct_answer": "Two thirds of the damage",
+      "explanation": "Damage reduction is armor / (100 + armor). With 200 armor that is 200 / 300 ≈ 66.7%, so about two thirds of the physical damage is mitigated."
+    }
+  ]
+}

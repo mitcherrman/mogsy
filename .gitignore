@@ -26,3 +26,6 @@ dist-ssr
 # Remotion video export output
 out
 .remotion
+
+# Quiz screenshot factory output (scripts/quiz-screenshots)
+quiz_content_exports
