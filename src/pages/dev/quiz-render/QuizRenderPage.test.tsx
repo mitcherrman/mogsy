@@ -194,6 +194,79 @@ describe("QuizRenderPage — item-build recipe visual", () => {
     expect(recipe.innerHTML).toContain("1042.png");
   });
 
+  it("builds_into: renders source → ? with an arrow and no spoiler in question state", () => {
+    const buildsInto: RenderQuestion = {
+      id: "bi1",
+      question_text: "What can Aether Wisp build into?",
+      choices: [
+        { label: "Imperial Mandate" },
+        { label: "Vigilant Wardstone" },
+        { label: "Last Whisper" },
+        { label: "Ardent Censer" },
+      ],
+      correct_index: 3,
+      image_path: "assets/items/3113.png",
+      metadata: {
+        component_item_id: 3113,
+        component_item_name: "Aether Wisp",
+        parent_item_id: 323504,
+        parent_item_name: "Ardent Censer",
+        asset_path: "assets/items/3113.png",
+      },
+    };
+    inject([buildsInto]);
+    const { container } = renderHarness("?q=bi1&state=question&format=mobile-social");
+    const recipe = container.querySelector("[data-quiz-recipe]")!;
+    expect(recipe.getAttribute("data-recipe-mode")).toBe("builds_into");
+    expect(recipe.querySelector('[data-recipe-join="arrow"]')).not.toBeNull();
+    expect(recipe.querySelector('[data-recipe-join="plus"]')).toBeNull();
+    expect(recipe.querySelector("[data-recipe-missing-slot]")).not.toBeNull();
+    expect(recipe.textContent).toContain("Aether Wisp");
+    expect(recipe.textContent).not.toContain("Ardent Censer");
+    expect(recipe.innerHTML).not.toContain("323504");
+    cleanup();
+    inject([buildsInto]);
+    const b = renderHarness("?q=bi1&state=correct&format=mobile-social");
+    const revealed = b.container.querySelector("[data-quiz-recipe]")!;
+    expect(revealed.querySelector("[data-recipe-missing-slot]")).toBeNull();
+    expect(revealed.textContent).toContain("Ardent Censer");
+  });
+
+  it("components_of_item: completed item + bare ? slot, spoiler-free in question state", () => {
+    const components: RenderQuestion = {
+      id: "co1",
+      question_text: "Which item is a component of Aether Wisp?",
+      choices: [
+        { label: "Bounty of Worlds" },
+        { label: "Dark Seal" },
+        { label: "Amplifying Tome" },
+        { label: "Boots" },
+      ],
+      correct_index: 2,
+      image_path: "assets/items/3113.png",
+      metadata: {
+        item_id: 3113,
+        item_name: "Aether Wisp",
+        component_item_id: 1052,
+        component_item_name: "Amplifying Tome",
+        asset_path: "assets/items/3113.png",
+      },
+    };
+    inject([components]);
+    const { container } = renderHarness("?q=co1&state=question&format=mobile-social");
+    const recipe = container.querySelector("[data-quiz-recipe]")!;
+    expect(recipe.getAttribute("data-recipe-mode")).toBe("components_of_item");
+    expect(recipe.querySelector("[data-recipe-join]")).toBeNull(); // bare slot
+    expect(recipe.querySelector("[data-recipe-missing-slot]")).not.toBeNull();
+    // "Amplifying Tome" appears only as answer choice C, never in the visual.
+    expect(recipe.textContent).not.toContain("Amplifying Tome");
+    expect(recipe.innerHTML).not.toContain("1052");
+    cleanup();
+    inject([components]);
+    const b = renderHarness("?q=co1&state=correct&format=mobile-social");
+    expect(b.container.querySelector("[data-quiz-recipe]")!.innerHTML).toContain("1052.png");
+  });
+
   it("falls back to the plain layout for non-build questions and audit formats", () => {
     inject([fixture]);
     const a = renderHarness("?q=t1&state=question&format=mobile-social");

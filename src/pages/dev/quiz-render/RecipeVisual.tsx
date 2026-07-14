@@ -1,15 +1,16 @@
 /**
- * Item-build recipe visual for content screenshots:
+ * Item-build recipe visual for content screenshots. Renders the normalized
+ * model from deriveRecipe():
  *
- *   [final item icon + name]
- *   [component] + [component] + [component] + [?]   (question state)
- *   [component] + [component] + [component] + [answer]  (reveal state)
+ *   [header item]                       (optional, e.g. the completed item)
+ *   [tile] + [tile] (+|→|·) [slot]      (relation row; slot is `?` until reveal)
  *
- * Icons are 64px sources — displayed at ≤96px so they stay sharp.
- * Data comes exclusively from deriveRecipe(), which never exposes the
- * missing component before reveal.
+ * Icons are 64px sources — displayed at ≤88px so they stay sharp. Tiles
+ * without a known icon render as name-only chips (never a fabricated image).
+ * Data comes exclusively from deriveRecipe(), which never exposes the answer
+ * before reveal.
  */
-import type { RecipeVisualData } from "@/lib/quiz-screenshot/recipe";
+import type { RecipeTile, RecipeVisualData } from "@/lib/quiz-screenshot/recipe";
 
 const GOLD_FRAME = {
   padding: 2,
@@ -18,18 +19,22 @@ const GOLD_FRAME = {
 } as const;
 
 function ItemTile({
-  icon,
-  label,
+  tile,
   size,
   highlight,
+  missingSlot,
+  resolveUrl,
 }: {
-  icon: string | null;
-  label: string | null;
+  /** Tile to render, or null for the unanswered `?` slot. */
+  tile: RecipeTile | null;
   size: number;
   highlight?: boolean;
+  missingSlot?: boolean;
+  resolveUrl: (path?: string) => string | undefined;
 }) {
+  const iconUrl = tile?.icon ? resolveUrl(tile.icon) : undefined;
   return (
-    <div className="flex flex-col items-center gap-1" style={{ width: size + 14 }}>
+    <div className="flex flex-col items-center gap-1" style={{ width: size + 18 }}>
       <div
         className="rounded-md"
         style={{
@@ -43,15 +48,24 @@ function ItemTile({
           className="overflow-hidden rounded-sm bg-[#0a0a14] flex items-center justify-center"
           style={{ width: size, height: size }}
         >
-          {icon ? (
-            <img src={icon} alt={label ?? "Item"} className="block" style={{ width: size, height: size }} />
-          ) : (
+          {iconUrl ? (
+            <img src={iconUrl} alt={tile!.name} className="block" style={{ width: size, height: size }} />
+          ) : missingSlot ? (
             <span
               data-recipe-missing-slot
               className="font-bold"
               style={{ color: "hsl(42 75% 62%)", fontSize: size * 0.5 }}
             >
               ?
+            </span>
+          ) : (
+            // Known component with no icon source: name-only chip.
+            <span
+              data-recipe-name-chip
+              className="px-1 text-center font-semibold leading-tight"
+              style={{ color: "hsl(42 55% 74%)", fontSize: 11 }}
+            >
+              {tile!.name}
             </span>
           )}
         </div>
@@ -60,9 +74,21 @@ function ItemTile({
         className="text-center text-[10px] leading-tight"
         style={{ color: highlight ? "hsl(42 75% 66%)" : "hsl(42 30% 72%)", minHeight: 24 }}
       >
-        {label ?? ""}
+        {iconUrl ? tile!.name : ""}
       </span>
     </div>
+  );
+}
+
+function Join({ symbol }: { symbol: "+" | "→" }) {
+  return (
+    <span
+      data-recipe-join={symbol === "+" ? "plus" : "arrow"}
+      className="mx-1 mt-4 text-lg font-bold"
+      style={{ color: "hsl(42 55% 60%)" }}
+    >
+      {symbol}
+    </span>
   );
 }
 
@@ -73,33 +99,30 @@ export default function RecipeVisual({
   recipe: RecipeVisualData;
   resolveUrl: (path?: string) => string | undefined;
 }) {
+  const slotTile = recipe.missing;
   return (
-    <div data-quiz-recipe className="flex flex-col items-center gap-2.5 py-1">
-      <ItemTile
-        icon={resolveUrl(recipe.itemIcon) ?? null}
-        label={recipe.itemName}
-        size={88}
-      />
+    <div
+      data-quiz-recipe
+      data-recipe-mode={recipe.mode}
+      className="flex flex-col items-center gap-2.5 py-1"
+    >
+      {recipe.header && <ItemTile tile={recipe.header} size={88} resolveUrl={resolveUrl} />}
       <div className="flex items-start justify-center gap-1 flex-wrap">
-        {recipe.components.map((c, i) => (
-          <div key={c.name} className="flex items-start">
-            {i > 0 && (
-              <span className="mx-1 mt-4 text-lg font-bold" style={{ color: "hsl(42 55% 60%)" }}>
-                +
-              </span>
-            )}
-            <ItemTile icon={resolveUrl(c.icon) ?? null} label={c.name} size={56} />
+        {recipe.row.map((tile, i) => (
+          <div key={`${tile.name}-${i}`} className="flex items-start">
+            {i > 0 && <Join symbol="+" />}
+            <ItemTile tile={tile} size={56} resolveUrl={resolveUrl} />
           </div>
         ))}
         <div className="flex items-start">
-          <span className="mx-1 mt-4 text-lg font-bold" style={{ color: "hsl(42 55% 60%)" }}>
-            +
-          </span>
+          {recipe.slotJoin === "plus" && <Join symbol="+" />}
+          {recipe.slotJoin === "arrow" && <Join symbol="→" />}
           <ItemTile
-            icon={recipe.missing ? resolveUrl(recipe.missing.icon) ?? null : null}
-            label={recipe.missing ? recipe.missing.name : null}
-            size={56}
-            highlight={!!recipe.missing}
+            tile={slotTile}
+            size={recipe.row.length === 0 ? 72 : 56}
+            highlight={!!slotTile}
+            missingSlot={!slotTile}
+            resolveUrl={resolveUrl}
           />
         </div>
       </div>

@@ -11,10 +11,9 @@ npm run quiz:screenshots -- --question-id 123
 ```
 
 Content formats include: a fit-to-frame mobile card (measured and zoomed at
-readiness time so nothing clips or collides), an **item-build recipe visual**
-(final item + component icons + a `?` slot that fills with the answer on
-reveal — driven by `item_build_path`/`missing_component` metadata, with a
-plain-icon fallback for anything else), and a **CTA footer** with the Mogsy
+readiness time so nothing clips or collides), **item-build recipe visuals**
+covering the whole build-question family (see table below), and a **CTA
+footer** with the Mogsy
 wordmark, "Play more LoL quizzes at mogsy.app", and a deterministic QR code
 encoding `https://mogsy.app/quiz` (compact strip on `question`, full QR block
 on reveals; never in the answer area). The spoiler fields of recipe metadata
@@ -111,6 +110,29 @@ to a production host.
 | `explanation` | Post-answer + explanation | Correct reveal + explanation text; questions without an explanation are **skipped with a recorded reason**, never fabricated |
 
 Answer order is never reshuffled — backend order is preserved exactly.
+
+## Item-build recipe visuals
+
+`deriveRecipe()` (src/lib/quiz-screenshot/recipe.ts) normalizes the item-build
+question family into one visual model, selected by metadata shape only:
+
+| Family / metadata shape | Visual (question → reveal) |
+|---|---|
+| `item_build_path` + `missing_component` (Item Build Paths) | `[final]` above `[c1] + [c2] + [c3] + [?]` → slot fills with the component |
+| untyped `item_*` + `component_item_*` (Item Components) | `[completed item]` above a bare `[?]` → slot fills with the component |
+| untyped `component_item_*` + `parent_item_*` (Item Builds Into) | `[source] → [?]` → arrow slot fills with the completed item |
+| `item_final_from_components` (Item Builds Into subset) | `[c1] + [c2] → [?]` (only the subject component has an icon; others are name chips) → slot fills with the final item |
+
+Guarantees: the answer-bearing metadata fields (`missing_component_*`,
+`component_item_name` for Components, `parent_item_*`, `final_item_*`) are
+read only to validate that they match the question's actual correct choice
+(fail-closed against stale/miscategorized data) and are never emitted before
+reveal — the question-state model contains no spoiler name, id, or icon.
+Anything malformed, contradictory, or unrecognized (including all other
+question types) falls back to the plain item-icon layout. Icons for revealed
+items derive from the backend's `assets/items/{id}.png` convention.
+Recipe visuals apply to content (social) formats only; audit formats keep the
+production-page layout.
 
 ## Formats
 
