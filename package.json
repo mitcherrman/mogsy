@@ -74,6 +74,7 @@
     "modern-gif": "^2.0.4",
     "next-themes": "^0.3.0",
     "postprocessing": "^6.36.4",
+    "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",

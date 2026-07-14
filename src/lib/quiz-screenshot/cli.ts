@@ -9,8 +9,11 @@ import { parseStates } from "./states";
 import { RENDER_STATES, type RenderState } from "./types";
 import type { RenderFormat } from "./types";
 
-export const DEFAULT_STATES: RenderState[] = [...RENDER_STATES];
-export const DEFAULT_FORMAT_KEYS = ["vertical", "square", "mobile-audit"];
+// Content-first defaults: a content run needs the unanswered hook + the
+// reveal, in the primary mobile-social format. All other states/formats
+// (including the audit modes) remain available via --states / --formats.
+export const DEFAULT_STATES: RenderState[] = ["question", "correct"];
+export const DEFAULT_FORMAT_KEYS = ["mobile-social"];
 export const DEFAULT_BATCH_LIMIT = 10;
 export const MAX_BATCH_LIMIT = 100;
 
@@ -182,7 +185,7 @@ Sources (exactly one):
   --fixture <file.json>         Local question dump (offline)
 
 Options:
-  --states <csv>                ${RENDER_STATES.join(",")} (default: all)
+  --states <csv>                ${RENDER_STATES.join(",")} (default: ${DEFAULT_STATES.join(",")})
   --formats <csv>               ${FORMAT_KEYS.join(",")} (default: ${DEFAULT_FORMAT_KEYS.join(",")})
   --answer-index <n>            Override deterministic selection for selected/incorrect
   --limit <n>                   Batch cap (default ${DEFAULT_BATCH_LIMIT}, max ${MAX_BATCH_LIMIT})

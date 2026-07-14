@@ -61,7 +61,10 @@ describe("QuizRenderPage — question state (no leakage)", () => {
 
   it("stamps the render-ready marker on the stage", async () => {
     inject([fixture]);
-    const { container } = renderHarness("?q=t1&state=question&format=vertical");
+    // Audit format: no CTA imagery — jsdom never fires img load events, so an
+    // image-free render is the only place jsdom can observe the marker.
+    // Image-bearing readiness is exercised by the real Playwright captures.
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-audit");
     await waitFor(() => {
       expect(
         container.querySelector('[data-quiz-render-stage][data-quiz-render-ready="true"]'),
@@ -111,6 +114,94 @@ describe("QuizRenderPage — states", () => {
     const { container } = renderHarness("?q=t2&state=explanation&format=square");
     expect(container.querySelector("[data-quiz-render-error]")).not.toBeNull();
     expect(container.querySelector("[data-quiz-render-stage]")).toBeNull();
+  });
+});
+
+const recipeFixture: RenderQuestion = {
+  id: "build1",
+  question_text: "Dusk and Dawn builds from Blasting Wand, Kindlegem, and Sheen. Which component completes the recipe?",
+  choices: [
+    { label: "Dagger" },
+    { label: "Recurve Bow" },
+    { label: "Needlessly Large Rod" },
+    { label: "Faerie Charm" },
+  ],
+  correct_index: 0,
+  image_path: "assets/items/222510.png",
+  metadata: {
+    question_type: "item_build_path",
+    recipe_type: "missing_component",
+    item_name: "Dusk and Dawn",
+    asset_path: "assets/items/222510.png",
+    known_component_icons: [
+      { name: "Blasting Wand", icon: "assets/items/221026.png" },
+      { name: "Kindlegem", icon: "assets/items/223067.png" },
+      { name: "Sheen", icon: "assets/items/223057.png" },
+    ],
+    missing_component_item_name: "Dagger",
+    missing_component_icon: "assets/items/1042.png",
+  },
+};
+
+describe("QuizRenderPage — content CTA", () => {
+  it("shows a compact CTA with mogsy.app in the question state on content formats", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    const cta = container.querySelector("[data-quiz-cta]");
+    expect(cta).not.toBeNull();
+    expect(cta!.getAttribute("data-quiz-cta-mode")).toBe("compact");
+    expect(cta!.textContent).toContain("mogsy.app");
+    // CTA lives outside the card — never inside the answer grid.
+    expect(container.querySelector("[data-quiz-answer-options] [data-quiz-cta]")).toBeNull();
+  });
+
+  it("shows the full CTA with QR code in the correct state", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=correct&format=mobile-social");
+    const cta = container.querySelector("[data-quiz-cta]");
+    expect(cta!.getAttribute("data-quiz-cta-mode")).toBe("full");
+    expect(container.querySelector("[data-quiz-cta-qr] svg path")).not.toBeNull();
+    expect(cta!.textContent).toContain("mogsy.app");
+  });
+
+  it("renders no CTA on audit formats", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-audit");
+    expect(container.querySelector("[data-quiz-cta]")).toBeNull();
+  });
+});
+
+describe("QuizRenderPage — item-build recipe visual", () => {
+  it("renders the recipe with a ? slot and no answer leakage in question state", () => {
+    inject([recipeFixture]);
+    const { container } = renderHarness("?q=build1&state=question&format=mobile-social");
+    const recipe = container.querySelector("[data-quiz-recipe]");
+    expect(recipe).not.toBeNull();
+    expect(recipe!.querySelector("[data-recipe-missing-slot]")?.textContent).toBe("?");
+    // The visual area must not name or show the missing component. ("Dagger"
+    // legitimately appears once — as answer choice A in the options grid.)
+    expect(recipe!.textContent).not.toContain("Dagger");
+    expect(recipe!.innerHTML).not.toContain("1042.png");
+    expect(recipe!.textContent).toContain("Blasting Wand");
+  });
+
+  it("fills the missing component in the correct state", () => {
+    inject([recipeFixture]);
+    const { container } = renderHarness("?q=build1&state=correct&format=mobile-social");
+    const recipe = container.querySelector("[data-quiz-recipe]")!;
+    expect(recipe.querySelector("[data-recipe-missing-slot]")).toBeNull();
+    expect(recipe.textContent).toContain("Dagger");
+    expect(recipe.innerHTML).toContain("1042.png");
+  });
+
+  it("falls back to the plain layout for non-build questions and audit formats", () => {
+    inject([fixture]);
+    const a = renderHarness("?q=t1&state=question&format=mobile-social");
+    expect(a.container.querySelector("[data-quiz-recipe]")).toBeNull();
+    cleanup();
+    inject([recipeFixture]);
+    const b = renderHarness("?q=build1&state=question&format=mobile-audit");
+    expect(b.container.querySelector("[data-quiz-recipe]")).toBeNull();
   });
 });
 

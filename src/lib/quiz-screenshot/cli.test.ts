@@ -7,11 +7,24 @@ import {
 import { RENDER_STATES } from "./types";
 
 describe("parseScreenshotCli", () => {
-  it("parses a single question id", () => {
+  it("parses a single question id with content-first defaults", () => {
     const c = parseScreenshotCli(["--question-id", "123"]);
     expect(c.source).toEqual({ mode: "question-id", ids: ["123"] });
-    expect(c.states).toEqual([...RENDER_STATES]);
+    // Content-first defaults: unanswered hook + reveal, mobile-social format.
+    expect(c.states).toEqual(["question", "correct"]);
+    expect(c.formats.map((f) => f.key)).toEqual(["mobile-social"]);
+    expect(c.formats[0].kind).toBe("social");
     expect(c.overwrite).toBe(false);
+  });
+
+  it("keeps every state and audit format reachable explicitly", () => {
+    const c = parseScreenshotCli([
+      "--question-id", "1",
+      "--states", RENDER_STATES.join(","),
+      "--formats", "mobile-audit,desktop-audit",
+    ]);
+    expect(c.states).toEqual([...RENDER_STATES]);
+    expect(c.formats.every((f) => f.kind === "audit")).toBe(true);
   });
 
   it("parses multiple ids and rejects duplicates", () => {

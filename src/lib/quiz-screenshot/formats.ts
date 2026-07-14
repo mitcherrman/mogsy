@@ -15,17 +15,24 @@ const F = (
   kind: RenderFormat["kind"],
   contentMaxWidth: number,
   safeAreaPadding: number,
+  contentScale: number,
+  cta: RenderFormat["cta"],
   description: string,
-): RenderFormat => ({ key, width, height, kind, contentMaxWidth, safeAreaPadding, description });
+): RenderFormat => ({
+  key, width, height, kind, contentMaxWidth, safeAreaPadding, contentScale, cta, description,
+});
 
 export const RENDER_FORMATS: readonly RenderFormat[] = [
-  F("vertical", 1080, 1920, "social", 880, 96, "TikTok / Shorts / Reels 9:16"),
-  F("portrait", 1080, 1350, "social", 880, 80, "Instagram feed portrait 4:5"),
-  F("square", 1080, 1080, "social", 880, 72, "Instagram / X square 1:1"),
-  F("landscape", 1200, 675, "social", 640, 48, "X / link-card landscape 16:9"),
-  F("broadcast", 1920, 1080, "social", 760, 64, "Broadcast overlay 16:9"),
-  F("mobile-audit", 390, 844, "audit", 390, 0, "iPhone-class responsive audit"),
-  F("desktop-audit", 1440, 900, "audit", 1440, 0, "Desktop responsive audit"),
+  // Primary content format: mobile-first 4:5 portrait — the strongest single
+  // static-post shape across X / Instagram / Facebook / Reddit.
+  F("mobile-social", 1080, 1350, "social", 960, 48, 2.15, "full", "Mobile-social portrait 4:5 (default content format)"),
+  F("vertical", 1080, 1920, "social", 960, 72, 2.25, "full", "TikTok / Shorts / Reels 9:16"),
+  F("portrait", 1080, 1350, "social", 920, 64, 2.05, "full", "Instagram feed portrait 4:5"),
+  F("square", 1080, 1080, "social", 920, 56, 1.9, "compact", "Instagram / X square 1:1"),
+  F("landscape", 1200, 675, "social", 680, 40, 1.35, "compact", "X / link-card landscape 16:9"),
+  F("broadcast", 1920, 1080, "social", 820, 56, 1.75, "compact", "Broadcast overlay 16:9"),
+  F("mobile-audit", 390, 844, "audit", 390, 0, 1, "none", "iPhone-class responsive audit"),
+  F("desktop-audit", 1440, 900, "audit", 1440, 0, 1, "none", "Desktop responsive audit"),
 ] as const;
 
 export const FORMAT_KEYS = RENDER_FORMATS.map((f) => f.key);

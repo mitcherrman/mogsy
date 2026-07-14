@@ -35,6 +35,10 @@ export async function launchBrowser(): Promise<Browser> {
 }
 
 type DomQa = {
+  ctaPresent: boolean;
+  ctaText: string;
+  cardClipped: boolean;
+  cardOverlapsCta: boolean;
   missingAssets: string[];
   horizontalScroll: boolean;
   clippedElements: string[];
@@ -85,8 +89,32 @@ async function runDomQa(page: Page): Promise<DomQa> {
     const feedback = doc.querySelector("[data-quiz-answer-feedback]");
     const explanationText =
       feedback?.querySelector("p.text-xs.opacity-80")?.textContent ?? null;
+    const ctaPresent = !!doc.querySelector("[data-quiz-cta]");
+    const ctaText = doc.querySelector("[data-quiz-cta]")?.textContent ?? "";
+
+    // Content card must sit fully inside the stage and clear of the CTA.
+    let cardClipped = false;
+    let cardOverlapsCta = false;
+    const card = doc.querySelector("[data-quiz-content-card]");
+    if (card && stageRect) {
+      const r = card.getBoundingClientRect();
+      cardClipped =
+        r.top < stageRect.top - 1 ||
+        r.bottom > stageRect.bottom + 1 ||
+        r.left < stageRect.left - 1 ||
+        r.right > stageRect.right + 1;
+      const cta = doc.querySelector("[data-quiz-cta]");
+      if (cta) {
+        const c = cta.getBoundingClientRect();
+        cardOverlapsCta = r.bottom > c.top + 1 && c.bottom > r.top + 1 && r.right > c.left + 1 && c.right > r.left + 1;
+      }
+    }
 
     return {
+      ctaPresent,
+      ctaText,
+      cardClipped,
+      cardOverlapsCta,
       missingAssets,
       horizontalScroll,
       clippedElements,
@@ -220,6 +248,46 @@ export async function captureOne(args: {
         format: format.key,
         state,
       });
+    }
+
+    if (dom.cardClipped) {
+      qa.failures.push({
+        severity: "failure",
+        code: "card-clipped",
+        message: "Content card extends outside the stage frame",
+        format: format.key,
+        state,
+      });
+    }
+    if (dom.cardOverlapsCta) {
+      qa.failures.push({
+        severity: "failure",
+        code: "cta-overlap",
+        message: "Content card overlaps the CTA footer",
+        format: format.key,
+        state,
+      });
+    }
+
+    // Content formats must carry the CTA with the visible mogsy.app link.
+    if (format.cta !== "none") {
+      if (!dom.ctaPresent) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-missing",
+          message: "Content format rendered without the CTA footer",
+          format: format.key,
+          state,
+        });
+      } else if (!dom.ctaText.includes("mogsy.app")) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-missing",
+          message: "CTA footer does not show the mogsy.app link text",
+          format: format.key,
+          state,
+        });
+      }
     }
 
     // ── Answer-state integrity checks ────────────────────────────────────

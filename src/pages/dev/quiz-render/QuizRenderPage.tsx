@@ -29,6 +29,9 @@ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getFormat } from "@/lib/quiz-screenshot/formats";
 import { isRenderState, resolveAnswerPlan } from "@/lib/quiz-screenshot/states";
 import { SAMPLE_RENDER_QUESTIONS } from "@/lib/quiz-screenshot/fixtures";
+import { deriveRecipe } from "@/lib/quiz-screenshot/recipe";
+import QuizCta from "./QuizCta";
+import RecipeVisual from "./RecipeVisual";
 import {
   QUIZ_RENDER_WINDOW_KEY,
   type AnswerPlan,
@@ -44,6 +47,9 @@ import {
 // restores the previous value on unmount.
 const PREV_SKIP_ANIMATIONS = MotionGlobalConfig.skipAnimations;
 MotionGlobalConfig.skipAnimations = true;
+
+/** Native mobile card width the content shell scales up from. */
+const BASE_CONTENT_WIDTH = 420;
 
 function readInjectedQuestions(): RenderQuestion[] | null {
   const injected = (window as unknown as Record<string, unknown>)[QUIZ_RENDER_WINDOW_KEY] as
@@ -67,11 +73,19 @@ function ErrorPanel({ message }: { message: string }) {
   );
 }
 
-/** Waits for fonts + images, then stamps the ready attribute on the stage. */
-function useRenderReady(enabled: boolean) {
+/**
+ * Waits for fonts + images, then (for social formats) measures the unscaled
+ * card and fits the zoom to BOTH the frame width and the height left over by
+ * the CTA footer — so no content ever clips or collides with the footer —
+ * and only then stamps the ready attribute on the stage.
+ */
+function useRenderReady(enabled: boolean, format: RenderFormat | undefined) {
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const centerRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !format) return;
     let cancelled = false;
     (async () => {
       try {
@@ -90,25 +104,46 @@ function useRenderReady(enabled: boolean) {
               }),
         ),
       );
-      // Two frames so layout from font/image swaps settles before capture.
+      if (cancelled) return;
+      if (format.kind === "social" && centerRef.current && cardRef.current) {
+        const availH = centerRef.current.clientHeight;
+        const availW = Math.min(
+          format.contentMaxWidth,
+          format.width - format.safeAreaPadding * 2,
+        );
+        const cardH = cardRef.current.scrollHeight; // measured at zoom 1
+        const fit = Math.min(
+          format.contentScale,
+          availW / BASE_CONTENT_WIDTH,
+          cardH > 0 ? availH / cardH : format.contentScale,
+        );
+        setScale(Math.max(0.5, fit));
+      }
+      // Two frames so layout from the zoom/font/image swaps settles.
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       if (!cancelled) stageRef.current?.setAttribute("data-quiz-render-ready", "true");
     })();
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
-  return stageRef;
+  }, [enabled, format]);
+  return { stageRef, centerRef, cardRef, scale };
 }
 
 function QuestionCard({
   question,
   plan,
+  format,
 }: {
   question: RenderQuestion;
   plan: AnswerPlan;
+  format: RenderFormat;
 }) {
   const { selectedIndex, revealed, isCorrectSelection, showExplanation } = plan;
+  // Item-build questions get a recipe layout in content (social) formats;
+  // audit formats keep the plain production-page visual. deriveRecipe never
+  // exposes the missing component before reveal.
+  const recipe = format.kind === "social" ? deriveRecipe(question, revealed) : null;
 
   const selectedAnswer = selectedIndex !== null ? question.choices[selectedIndex].label : null;
   const answerResult = revealed
@@ -136,11 +171,20 @@ function QuestionCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {mainVisual && (
-          <div className="rounded-lg overflow-hidden border border-border bg-black/20">
-            <img src={mainVisual} alt="Question visual" className="w-full max-h-56 object-contain" />
+        {recipe ? (
+          <RecipeVisual recipe={recipe} resolveUrl={resolveQuizAssetUrl} />
+        ) : mainVisual ? (
+          <div className="rounded-lg overflow-hidden border border-border bg-black/20 flex justify-center py-3">
+            {/* Item/icon sources are 64px — cap the display size so content
+                captures stay sharp instead of upscaling to a blurry hero. */}
+            <img
+              src={mainVisual}
+              alt="Question visual"
+              className="object-contain"
+              style={{ maxHeight: 96, maxWidth: "100%" }}
+            />
           </div>
-        )}
+        ) : null}
         <QuizAnswerOptions
           choices={question.choices}
           selectedAnswer={selectedAnswer}
@@ -159,11 +203,17 @@ function FormatShell({
   format,
   children,
   stageRef,
+  centerRef,
+  cardRef,
+  scale,
   state,
 }: {
   format: RenderFormat;
   children: React.ReactNode;
   stageRef: React.Ref<HTMLDivElement>;
+  centerRef: React.Ref<HTMLDivElement>;
+  cardRef: React.Ref<HTMLDivElement>;
+  scale: number;
   state: RenderState;
 }) {
   if (format.kind === "audit") {
@@ -181,15 +231,23 @@ function FormatShell({
       </div>
     );
   }
-  // Social composition shell: exact platform pixel size, safe-area padding,
-  // vertically centered content column, stable dark backdrop.
+  // Social content shell: exact platform pixel size, safe-area padding, and
+  // a mobile-native card (~BASE_CONTENT_WIDTH px) zoomed up to fill the frame
+  // — text stays vector-crisp. Layout is a column: centered card block, then
+  // a fixed CTA footer. The zoom factor is fitted at readiness time to both
+  // frame width and remaining height (see useRenderReady), so the card can
+  // never clip or collide with the footer. CSS zoom (Chromium) scales layout
+  // too, unlike transform:scale.
+  const cta = format.cta;
+  // Subtler CTA on the unanswered hook, full treatment on reveals.
+  const ctaMode = cta === "none" ? null : state === "question" ? "compact" : cta;
   return (
     <div
       ref={stageRef}
       data-quiz-render-stage
       data-render-state={state}
       data-render-format={format.key}
-      className="overflow-hidden flex items-center justify-center text-foreground"
+      className="overflow-hidden flex flex-col text-foreground"
       style={{
         width: format.width,
         height: format.height,
@@ -198,9 +256,20 @@ function FormatShell({
           "radial-gradient(120% 90% at 50% 0%, #14213b 0%, #0a1022 55%, #060912 100%)",
       }}
     >
-      <div className="w-full" style={{ maxWidth: format.contentMaxWidth }}>
-        {children}
+      <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
+        <div
+          ref={cardRef}
+          data-quiz-content-card
+          style={{ width: BASE_CONTENT_WIDTH, zoom: scale, flexShrink: 0 }}
+        >
+          {children}
+        </div>
       </div>
+      {ctaMode && (
+        <div className="shrink-0 flex justify-center pt-3">
+          <QuizCta mode={ctaMode} />
+        </div>
+      )}
     </div>
   );
 }
@@ -229,6 +298,13 @@ export default function QuizRenderPage() {
     const added = ["dark", "theme-lol"].filter((c) => !root.classList.contains(c));
     added.forEach((c) => root.classList.add(c));
     return () => added.forEach((c) => root.classList.remove(c));
+  }, []);
+
+  // Remove the index.html boot splash (#initial-shell): it is a fixed,
+  // viewport-centered Mogsy wordmark at z-index 9999 whose fade-out lingers
+  // in captures and overlaps answer rows.
+  useEffect(() => {
+    document.getElementById("initial-shell")?.remove();
   }, []);
 
   const qId = params.get("q") ?? "";
@@ -275,19 +351,26 @@ export default function QuizRenderPage() {
       if (planResult.kind === "skip") {
         error = `State "${stateParam}" skipped: ${planResult.reason}`;
       } else {
-        content = <QuestionCard question={question} plan={planResult.plan} />;
+        content = <QuestionCard question={question} plan={planResult.plan} format={format} />;
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
   }
 
-  const stageRef = useRenderReady(!error);
+  const { stageRef, centerRef, cardRef, scale } = useRenderReady(!error, format);
 
   if (error) return <ErrorPanel message={error} />;
 
   return (
-    <FormatShell format={format!} state={stateParam as RenderState} stageRef={stageRef}>
+    <FormatShell
+      format={format!}
+      state={stateParam as RenderState}
+      stageRef={stageRef}
+      centerRef={centerRef}
+      cardRef={cardRef}
+      scale={scale}
+    >
       {content}
     </FormatShell>
   );

@@ -44,6 +44,8 @@ export type RenderState = (typeof RENDER_STATES)[number];
 
 export type FormatKind = "social" | "audit";
 
+export type CtaMode = "full" | "compact" | "none";
+
 export type RenderFormat = {
   key: string;
   width: number;
@@ -53,6 +55,14 @@ export type RenderFormat = {
   contentMaxWidth: number;
   /** Safe-area padding in px (social shells keep content away from platform UI). */
   safeAreaPadding: number;
+  /**
+   * Content shell upscale factor: the card renders at a mobile-native width
+   * and is CSS-scaled by this factor so it fills the frame (text stays
+   * vector-crisp). 1 = no scaling (audit formats).
+   */
+  contentScale: number;
+  /** CTA footer treatment for this format ("none" on audit formats). */
+  cta: CtaMode;
   description: string;
 };
 

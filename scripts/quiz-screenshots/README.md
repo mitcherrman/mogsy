@@ -1,5 +1,25 @@
 # Quiz Screenshot Content Factory
 
+**Content-first:** the default run produces post-ready social images — states
+`question,correct` in the `mobile-social` format (1080×1350 portrait, suited
+to X / Instagram / Facebook / Reddit; use `vertical` for TikTok/Shorts 9:16).
+QA/audit formats remain available but are opt-in.
+
+```powershell
+# Default content run — question + correct reveal, mobile-social:
+npm run quiz:screenshots -- --question-id 123
+```
+
+Content formats include: a fit-to-frame mobile card (measured and zoomed at
+readiness time so nothing clips or collides), an **item-build recipe visual**
+(final item + component icons + a `?` slot that fills with the answer on
+reveal — driven by `item_build_path`/`missing_component` metadata, with a
+plain-icon fallback for anything else), and a **CTA footer** with the Mogsy
+wordmark, "Play more LoL quizzes at mogsy.app", and a deterministic QR code
+encoding `https://mogsy.app/quiz` (compact strip on `question`, full QR block
+on reveals; never in the answer area). The spoiler fields of recipe metadata
+are only read after reveal — the unanswered state cannot leak the answer.
+
 Deterministic, local-first screenshot production and visual QA for Mogsy's
 existing League quiz questions. Renders real quiz questions through the REAL
 production quiz UI (`QuizAnswerOptions` / `QuizAnswerFeedback`, extracted from
@@ -94,11 +114,13 @@ Answer order is never reshuffled — backend order is preserved exactly.
 
 ## Formats
 
-Social composition (safe-area shell around the real components):
-`vertical` 1080×1920 · `portrait` 1080×1350 · `square` 1080×1080 ·
-`landscape` 1200×675 · `broadcast` 1920×1080
+Content composition (fit-to-frame mobile card + CTA footer):
+`mobile-social` 1080×1350 (default) · `vertical` 1080×1920 ·
+`portrait` 1080×1350 · `square` 1080×1080 · `landscape` 1200×675 ·
+`broadcast` 1920×1080
 
-Responsive audit (real page flow at a device viewport):
+Responsive audit (real page flow at a device viewport, no CTA, no recipe
+composition — QA only, opt-in):
 `mobile-audit` 390×844 · `desktop-audit` 1440×900
 
 Deliberate difference: social formats capture the composition stage exactly at

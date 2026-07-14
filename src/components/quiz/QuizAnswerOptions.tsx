@@ -77,6 +77,12 @@ export default function QuizAnswerOptions({
           : isSelected
             ? "selected"
             : "idle";
+        // On gold/red (default/destructive) buttons the muted-grey letter is
+        // hard to read — inherit the button's foreground color instead.
+        const letterClass =
+          choiceState === "idle"
+            ? "text-muted-foreground"
+            : "text-current opacity-80";
 
         return (
           <motion.div
@@ -117,7 +123,7 @@ export default function QuizAnswerOptions({
                     />
                   </div>
                   <div className="flex items-center gap-1.5 w-full justify-center">
-                    <span className="text-xs text-muted-foreground font-bold">
+                    <span className={`text-xs font-bold ${letterClass}`}>
                       {String.fromCharCode(65 + idx)}.
                     </span>
                     <span className="text-center">{label}</span>
@@ -131,7 +137,7 @@ export default function QuizAnswerOptions({
                 </>
               ) : (
                 <>
-                  <span className="mr-2 shrink-0 text-xs text-muted-foreground font-bold">
+                  <span className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
                     {String.fromCharCode(65 + idx)}.
                   </span>
                   <span className="flex-1">{label}</span>

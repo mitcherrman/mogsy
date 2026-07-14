@@ -5,6 +5,7 @@ describe("format registry", () => {
   it("contains the required formats with exact dimensions", () => {
     const dims = Object.fromEntries(RENDER_FORMATS.map((f) => [f.key, [f.width, f.height]]));
     expect(dims).toEqual({
+      "mobile-social": [1080, 1350],
       vertical: [1080, 1920],
       portrait: [1080, 1350],
       square: [1080, 1080],
@@ -16,10 +17,23 @@ describe("format registry", () => {
   });
 
   it("classifies social vs audit", () => {
+    expect(getFormat("mobile-social")?.kind).toBe("social");
     expect(getFormat("vertical")?.kind).toBe("social");
     expect(getFormat("broadcast")?.kind).toBe("social");
     expect(getFormat("mobile-audit")?.kind).toBe("audit");
     expect(getFormat("desktop-audit")?.kind).toBe("audit");
+  });
+
+  it("gives content formats a CTA and upscale; audit formats neither", () => {
+    for (const f of RENDER_FORMATS) {
+      if (f.kind === "audit") {
+        expect(f.cta).toBe("none");
+        expect(f.contentScale).toBe(1);
+      } else {
+        expect(f.cta).not.toBe("none");
+        expect(f.contentScale).toBeGreaterThan(1);
+      }
+    }
   });
 });
 
