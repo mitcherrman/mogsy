@@ -64,12 +64,17 @@ export async function ensureServer(baseUrl?: string): Promise<ManagedServer> {
     stop: () =>
       new Promise<void>((resolveStop) => {
         proc.once("exit", () => resolveStop());
-        proc.kill();
-        // Windows: vite spawns children; taskkill the tree as a fallback.
+        // Windows: `npx vite` runs through a shell whose children survive
+        // proc.kill(), and their inherited stdio pipes keep this process
+        // alive. Kill the whole tree FIRST, then release our pipe ends.
         if (process.platform === "win32" && proc.pid) {
           spawn("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { shell: true });
         }
-        setTimeout(resolveStop, 3000);
+        proc.kill();
+        proc.stdout?.destroy();
+        proc.stderr?.destroy();
+        const timer = setTimeout(resolveStop, 3000);
+        timer.unref?.();
       }),
   };
 }

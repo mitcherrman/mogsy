@@ -168,8 +168,9 @@ implemented; current captures can never silently replace anything.
 - Question/choice images resolve against `VITE_COMBAT_API_URL`; without the
   backend running, image-bearing questions will record missing-asset failures
   (fixtures are imageless on purpose).
-- The admin review endpoint has no id filter, so `--question-id(s)` pages
-  through up to 1000 rows client-side; ids beyond that are reported missing.
+- `--question-id(s)` uses the direct read-only endpoint
+  `GET /api/quiz/admin/review/questions/{id}`; unknown ids are reported as
+  skipped with the backend's reason.
 - Pack/approved batch modes require the admin key; if unavailable, use
   `--fixture` with an exported dump (`prepare-quiz-video.ts --in`-style JSON
   works).

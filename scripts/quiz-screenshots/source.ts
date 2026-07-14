@@ -83,28 +83,32 @@ export async function loadQuestions(config: ScreenshotCliConfig): Promise<Loaded
   const adminKey = resolveAdminKey(config.adminKey);
 
   if (src.mode === "question-id") {
-    // The review endpoint has no id filter; page through bounded pages and
-    // pick out the requested ids client-side.
-    const wanted = new Set(src.ids.map(String));
-    const found = new Map<string, ScreenshotSourceQuestion>();
-    const MAX_PAGES = 10;
-    for (let page = 1; page <= MAX_PAGES && found.size < wanted.size; page++) {
-      const params = new URLSearchParams({ page: String(page), page_size: "100" });
-      const { questions, total } = await fetchReviewPage(api, adminKey, params);
-      if (!questions.length) break;
-      for (const q of questions) {
-        if (wanted.has(String(q.id))) found.set(String(q.id), q);
+    // Direct per-id read: GET /api/quiz/admin/review/questions/{id}
+    // → {ok: true, question} | {ok: false, error}. Read-only.
+    const rows: ScreenshotSourceQuestion[] = [];
+    const skipped: SkippedSource[] = [];
+    for (const id of src.ids) {
+      const url = `${api}/api/quiz/admin/review/questions/${encodeURIComponent(id)}`;
+      const res = await fetch(url, { headers: { "X-Admin-Key": adminKey } });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Quiz admin API ${res.status} for question ${id}: ${body || res.statusText}`);
       }
-      if (total !== undefined && page * 100 >= total) break;
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        question?: ScreenshotSourceQuestion;
+      };
+      if (!payload.ok || !payload.question) {
+        skipped.push({ id, reason: payload.error ?? "not found" });
+        continue;
+      }
+      rows.push(payload.question);
     }
-    const missing = [...wanted].filter((id) => !found.has(id));
-    // Preserve the requested order.
-    const rows = src.ids.map((id) => found.get(String(id))).filter(Boolean) as ScreenshotSourceQuestion[];
-    const { adapted, skipped } = adaptScreenshotQuestions(rows);
-    for (const id of missing) skipped.push({ id, reason: "not found in admin review listing" });
+    const { adapted, skipped: adaptSkipped } = adaptScreenshotQuestions(rows);
     return {
       questions: adapted,
-      skipped,
+      skipped: [...skipped, ...adaptSkipped],
       sourceDescription: `question-id ${src.ids.join(",")}`,
     };
   }
