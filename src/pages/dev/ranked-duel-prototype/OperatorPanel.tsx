@@ -15,12 +15,12 @@ import {
 } from "./fixtures";
 import { DuelState, DuelAction, RoundPlayerState } from "./duelMachine";
 import { Dispatch, useState } from "react";
+import { FIXTURE_PLAYER_IDS } from "./backend-adapter/backendSettlementFixtures";
 import {
-  FIXTURE_PLAYER_IDS,
-  SETTLEMENT_SCENARIOS,
-  getScenario,
-} from "./backend-adapter/backendSettlementFixtures";
-import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
+  RESOLVED_ENVELOPE_SCENARIOS,
+  getResolvedEnvelopeScenario,
+} from "./transport-adapter/rankedDuelEnvelopeFixtures";
+import { adaptResolvedRoundEnvelope } from "./transport-adapter/adaptResolvedRoundEnvelope";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -93,7 +93,7 @@ export function OperatorPanel({
  * the mock resolver. Proves the UI consumes already-resolved backend totals.
  */
 function SettlementScenarioPicker({ dispatch }: { dispatch: Dispatch<DuelAction> }) {
-  const [key, setKey] = useState(SETTLEMENT_SCENARIOS[0].key);
+  const [key, setKey] = useState(RESOLVED_ENVELOPE_SCENARIOS[0].key);
   return (
     <div className="mt-3 border-t border-dashed border-amber-500/40 pt-3 flex flex-wrap items-center gap-2">
       <Badge variant="outline" className="border-amber-500/60 text-amber-600 dark:text-amber-400">
@@ -109,7 +109,7 @@ function SettlementScenarioPicker({ dispatch }: { dispatch: Dispatch<DuelAction>
         value={key}
         onChange={(e) => setKey(e.target.value)}
       >
-        {SETTLEMENT_SCENARIOS.map((s) => (
+        {RESOLVED_ENVELOPE_SCENARIOS.map((s) => (
           <option key={s.key} value={s.key}>
             {s.label}
           </option>
@@ -121,20 +121,22 @@ function SettlementScenarioPicker({ dispatch }: { dispatch: Dispatch<DuelAction>
         variant="secondary"
         data-testid="apply-settlement"
         onClick={() => {
-          const scenario = getScenario(key);
+          const scenario = getResolvedEnvelopeScenario(key);
           if (!scenario) return;
           dispatch({
             type: "APPLY_BACKEND_SETTLEMENT",
-            // Explicit id mapping — array order never decides p1/p2.
-            settlement: adaptBackendSettlement(scenario.settlement, FIXTURE_PLAYER_IDS),
+            // Full read-endpoint envelope -> strict validation -> exact
+            // payload -> existing settlement adapter. Explicit id mapping —
+            // array order never decides p1/p2.
+            settlement: adaptResolvedRoundEnvelope(scenario.envelope, FIXTURE_PLAYER_IDS),
           });
         }}
       >
         Resolve round from fixture
       </Button>
       <span className="text-[11px] text-muted-foreground basis-full">
-        Applies an already-resolved backend-shaped settlement via the adapter — no combat math runs
-        in the frontend.
+        Applies a full resolved-round envelope (ranked_duel.resolved_round.v1) through strict
+        validation and the adapter — no combat math runs in the frontend.
       </span>
     </div>
   );
