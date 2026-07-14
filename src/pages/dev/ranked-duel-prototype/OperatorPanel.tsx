@@ -21,6 +21,7 @@ import {
   getResolvedEnvelopeScenario,
 } from "./transport-adapter/rankedDuelEnvelopeFixtures";
 import { adaptResolvedRoundEnvelope } from "./transport-adapter/adaptResolvedRoundEnvelope";
+import { ApiResolvedRoundLoader } from "./transport-client/ApiResolvedRoundLoader";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -81,7 +82,10 @@ export function OperatorPanel({
       </Tabs>
 
       {(state.phase === "question" || state.phase === "awaiting_reveal") && (
-        <SettlementScenarioPicker dispatch={dispatch} />
+        <>
+          <SettlementScenarioPicker dispatch={dispatch} />
+          <ApiResolvedRoundLoader dispatch={dispatch} />
+        </>
       )}
     </section>
   );
