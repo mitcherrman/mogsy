@@ -24,6 +24,7 @@ import { adaptResolvedRoundEnvelope } from "./transport-adapter/adaptResolvedRou
 import { ApiResolvedRoundLoader } from "./transport-client/ApiResolvedRoundLoader";
 import { ApiPublicRoundLoader } from "./transport-client/ApiPublicRoundLoader";
 import { ApiPrivatePlayerLoader } from "./transport-client/ApiPrivatePlayerLoader";
+import { ApiReadCompositionPanel } from "./read-composition/ApiReadCompositionPanel";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -90,6 +91,10 @@ export function OperatorPanel({
           {/* Read-only inspectors — public/private data never enters the reducer. */}
           <ApiPublicRoundLoader />
           <ApiPrivatePlayerLoader />
+          {/* Manual read composition: routes all three surfaces through the
+              composition reducer; settlements commit once via the existing
+              APPLY_BACKEND_SETTLEMENT. */}
+          <ApiReadCompositionPanel dispatch={dispatch} />
         </>
       )}
     </section>
