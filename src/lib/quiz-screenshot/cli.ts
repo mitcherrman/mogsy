@@ -18,6 +18,9 @@ export const DEFAULT_BATCH_LIMIT = 10;
 export const MAX_BATCH_LIMIT = 100;
 
 export type ScreenshotCliConfig = {
+  /** Report-only recovery mode: rebuild reports for this existing run id
+   *  (no capture, no server, no backend). When set, `source` is unused. */
+  finalizeRun?: string;
   source:
     | { mode: "question-id"; ids: string[] }
     | { mode: "pack"; packKey: string; limit: number }
@@ -36,6 +39,7 @@ export type ScreenshotCliConfig = {
 };
 
 const VALUE_FLAGS = new Set([
+  "--finalize-run",
   "--question-id",
   "--question-ids",
   "--pack",
@@ -71,6 +75,38 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
       continue;
     }
     throw new Error(`Unknown argument "${a}". See scripts/quiz-screenshots/README.md`);
+  }
+
+  // ── Report-only recovery mode ──────────────────────────────────────────
+  if (values.has("--finalize-run")) {
+    const runId = values.get("--finalize-run")!.trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9-_]{0,63}$/.test(runId)) {
+      throw new Error(
+        `Invalid --finalize-run id "${runId}" — use 1-64 letters, digits, hyphens, or underscores (no paths)`,
+      );
+    }
+    const allowed = new Set(["--finalize-run", "--out"]);
+    for (const flag of values.keys()) {
+      if (!allowed.has(flag)) {
+        throw new Error(`--finalize-run only accepts --out and --overwrite (got ${flag})`);
+      }
+    }
+    for (const flag of bools) {
+      if (flag !== "--overwrite") {
+        throw new Error(`--finalize-run only accepts --out and --overwrite (got ${flag})`);
+      }
+    }
+    const outRoot = values.get("--out") ?? DEFAULT_EXPORT_ROOT;
+    assertSafeExportRoot(outRoot);
+    return {
+      finalizeRun: runId,
+      source: { mode: "fixture", path: "(unused)", limit: DEFAULT_BATCH_LIMIT },
+      states: DEFAULT_STATES,
+      formats: parseFormats(DEFAULT_FORMAT_KEYS.join(",")),
+      outRoot,
+      overwrite: bools.has("--overwrite"),
+      allowRemote: false,
+    };
   }
 
   // ── Source selection: exactly one ──────────────────────────────────────
@@ -183,6 +219,10 @@ Sources (exactly one):
   --pack <pack_key>             One quiz pack (bounded by --limit)
   --approved                    Bounded batch of active questions (--limit, default ${DEFAULT_BATCH_LIMIT})
   --fixture <file.json>         Local question dump (offline)
+  --finalize-run <run-id>       Report-only recovery: rebuild summary.json,
+                                failures.json, index.html for an existing run
+                                (no capture, no server, no backend; only --out
+                                and --overwrite may accompany it)
 
 Options:
   --states <csv>                ${RENDER_STATES.join(",")} (default: ${DEFAULT_STATES.join(",")})

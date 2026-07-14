@@ -171,6 +171,36 @@ quiz_content_exports/
   and `src/` are rejected); cleaning only ever touches the run directory
   inside the export root.
 
+## Interruption recovery / report-only finalize
+
+Run-level reports are written **before** teardown, and the managed Vite tree
+is killed by tracked PID on success, failure, Ctrl+C, SIGTERM, and uncaught
+exceptions — the runner always returns control to the shell. If a run is ever
+interrupted anyway (crash, kill, power loss), the PNGs and per-question
+metadata are intact; rebuild the run-level reports without recapturing:
+
+```powershell
+npx tsx scripts/quiz-screenshots/index.ts --finalize-run <run-id> [--overwrite]
+```
+
+- No capture, no Vite server, no backend, no admin key.
+- Refuses run ids containing path separators/traversal, and refuses to
+  replace existing report files without `--overwrite`. PNGs are never touched.
+- **Partial-run honesty:** question directories with missing/unreadable
+  metadata are reported as `partial-question` failures, and screenshots
+  listed in metadata but missing on disk as `missing-screenshot` — never
+  counted as successful, never fabricated.
+- Idempotent: rerunning produces identical reports (modulo the
+  `finalized_at` timestamp).
+
+Verify no managed server is left behind:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5199 -State Listen -ErrorAction SilentlyContinue
+```
+
+(no output = port free).
+
 ## QA checks (per capture)
 
 Collected into metadata/failures: console errors, uncaught page errors,

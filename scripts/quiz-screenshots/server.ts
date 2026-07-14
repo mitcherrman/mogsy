@@ -63,18 +63,47 @@ export async function ensureServer(baseUrl?: string): Promise<ManagedServer> {
     baseUrl: url,
     stop: () =>
       new Promise<void>((resolveStop) => {
-        proc.once("exit", () => resolveStop());
+        // Guaranteed resolution: 'exit' event, taskkill completion, or the
+        // hard timeout — whichever comes first. The timeout is deliberately
+        // NOT unref'd: an unref'd fallback can leave this promise pending
+        // forever when the kill races fail (the large-run hang).
+        let done = false;
+        const hardTimeout = setTimeout(() => finish(), 5000);
+        const finish = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(hardTimeout);
+          resolveStop();
+        };
+        proc.once("exit", finish);
         // Windows: `npx vite` runs through a shell whose children survive
-        // proc.kill(), and their inherited stdio pipes keep this process
-        // alive. Kill the whole tree FIRST, then release our pipe ends.
+        // proc.kill(); kill the TRACKED pid's whole tree first (never a
+        // name-based kill), then the shell itself, then release our pipes.
         if (process.platform === "win32" && proc.pid) {
-          spawn("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { shell: true });
+          const tk = spawn(
+            "taskkill",
+            ["/pid", String(proc.pid), "/T", "/F"],
+            { shell: true, stdio: "ignore" },
+          );
+          const fallback = () => {
+            try {
+              proc.kill();
+            } catch {
+              /* already gone */
+            }
+            finish();
+          };
+          tk.once("exit", fallback);
+          tk.once("error", fallback);
+        } else {
+          try {
+            proc.kill();
+          } catch {
+            /* already gone */
+          }
         }
-        proc.kill();
         proc.stdout?.destroy();
         proc.stderr?.destroy();
-        const timer = setTimeout(resolveStop, 3000);
-        timer.unref?.();
       }),
   };
 }

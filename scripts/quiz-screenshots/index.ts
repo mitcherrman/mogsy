@@ -7,11 +7,17 @@
  *   npm run quiz:screenshots -- --approved --limit 20
  *   npm run quiz:screenshots -- --fixture src/lib/quiz-screenshot/fixture-dump.json
  *   npm run quiz:screenshots -- --question-id 123 --states question,correct --formats vertical,mobile-audit
+ *   npm run quiz:screenshots -- --finalize-run <run-id> [--overwrite]   # report-only recovery
  *
  * Read-only against the backend; writes only under the export root
  * (default quiz_content_exports/, gitignored). See README.md next to this file.
+ *
+ * Lifecycle guarantees: run-level reports are written BEFORE teardown, the
+ * managed Vite tree is killed by tracked PID on success/failure/signals, and
+ * the process always exits explicitly — a stuck teardown can no longer
+ * swallow the reports or hang the shell.
  */
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseScreenshotCli, CLI_USAGE, type ScreenshotCliConfig } from "../../src/lib/quiz-screenshot/cli";
 import { resolveAnswerPlan } from "../../src/lib/quiz-screenshot/states";
@@ -23,6 +29,15 @@ import {
   type QuestionMetadata,
 } from "../../src/lib/quiz-screenshot/metadata";
 import { buildContactSheet } from "../../src/lib/quiz-screenshot/contact-sheet";
+import {
+  finalizeRun,
+  type RunFailure,
+  type ScannedQuestionDir,
+} from "../../src/lib/quiz-screenshot/finalize";
+import {
+  createCleanupRegistry,
+  installSignalHandlers,
+} from "../../src/lib/quiz-screenshot/cleanup";
 import { loadQuestions } from "./source";
 import { ensureServer } from "./server";
 import { captureOne, launchBrowser } from "./capture";
@@ -35,14 +50,108 @@ export function pngDimensions(buf: Buffer): { width: number; height: number } {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
-type RunFailure = {
-  question_id: number | string | null;
-  format: string | null;
-  state: string | null;
-  classification: string;
-  message: string;
-  screenshot?: string;
-};
+/** Resolve + guard the run directory inside the export root. */
+function resolveRunDir(outRoot: string, runId: string): string {
+  const runDir = resolve(join(outRoot, "runs", runId));
+  const exportRootAbs = resolve(outRoot);
+  if (!runDir.startsWith(exportRootAbs)) {
+    throw new Error(`Run directory ${runDir} escapes the export root — refusing`);
+  }
+  return runDir;
+}
+
+/** Scan an existing run directory into the pure finalizer's input shape. */
+function scanRunDir(runDir: string): ScannedQuestionDir[] {
+  const scanned: ScannedQuestionDir[] = [];
+  for (const entry of readdirSync(runDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith("question_")) continue;
+    const qDir = join(runDir, entry.name);
+    const pngFiles = readdirSync(qDir).filter((f) => f.toLowerCase().endsWith(".png"));
+    let metadata: QuestionMetadata | null = null;
+    try {
+      const parsed = JSON.parse(readFileSync(join(qDir, "metadata.json"), "utf8"));
+      // Minimal structural sanity: reject shapes we can't report honestly.
+      if (parsed && typeof parsed === "object" && "stable_slug" in parsed && Array.isArray(parsed.screenshots)) {
+        metadata = parsed as QuestionMetadata;
+      }
+    } catch {
+      metadata = null;
+    }
+    scanned.push({ dirName: entry.name, metadata, pngFiles });
+  }
+  return scanned;
+}
+
+/**
+ * Write the three run-level reports. Each write is independent: one failure
+ * is reported and the others are still attempted. Returns true if all wrote.
+ */
+function writeReports(
+  runDir: string,
+  reports: { summary: unknown; failures: unknown; contactSheetHtml: string },
+): boolean {
+  let ok = true;
+  const attempt = (file: string, content: string) => {
+    try {
+      writeFileSync(join(runDir, file), content, "utf8");
+    } catch (err) {
+      ok = false;
+      console.error(`Failed to write ${file}: ${err instanceof Error ? err.message : err}`);
+    }
+  };
+  attempt("summary.json", JSON.stringify(reports.summary, null, 2));
+  attempt("failures.json", JSON.stringify(reports.failures, null, 2));
+  attempt("index.html", reports.contactSheetHtml);
+  return ok;
+}
+
+// ── Report-only recovery mode ────────────────────────────────────────────────
+
+function runFinalizeOnly(config: ScreenshotCliConfig): never {
+  const runId = config.finalizeRun!;
+  const runDir = resolveRunDir(config.outRoot, runId);
+  if (!existsSync(runDir)) {
+    console.error(`Run directory not found: ${runDir}`);
+    process.exit(1);
+  }
+  const existingReports = ["summary.json", "failures.json", "index.html"].filter((f) =>
+    existsSync(join(runDir, f)),
+  );
+  if (existingReports.length && !config.overwrite) {
+    console.error(
+      `Run already has report file(s): ${existingReports.join(", ")}\nPass --overwrite to regenerate them (PNGs are never touched).`,
+    );
+    process.exit(1);
+  }
+
+  const scanned = scanRunDir(runDir);
+  if (!scanned.length) {
+    console.error(`No question_* directories found in ${runDir} — nothing to finalize.`);
+    process.exit(1);
+  }
+
+  const reports = finalizeRun({
+    runId,
+    outputDir: runDir,
+    scanned,
+    generatedAt: new Date().toISOString(),
+  });
+  const allWrote = writeReports(runDir, {
+    summary: reports.summary,
+    failures: reports.failures,
+    contactSheetHtml: reports.contactSheetHtml,
+  });
+
+  console.log(`\n──────────────────────────────────────────`);
+  console.log(
+    `Finalized run ${runId}: ${scanned.length} question dir(s), ${reports.completeCount} complete, ${reports.partialCount} partial, ${reports.failures.length} failure(s)`,
+  );
+  console.log(`Output:        ${runDir}`);
+  console.log(`Contact sheet: ${join(runDir, "index.html")}`);
+  process.exit(!allWrote || reports.failures.length ? 1 : 0);
+}
+
+// ── Capture mode ─────────────────────────────────────────────────────────────
 
 async function main() {
   let config: ScreenshotCliConfig;
@@ -53,6 +162,11 @@ async function main() {
     console.error(CLI_USAGE);
     process.exit(2);
   }
+
+  if (config.finalizeRun) runFinalizeOnly(config);
+
+  const registry = createCleanupRegistry();
+  installSignalHandlers(registry, process, (m) => console.error(m));
 
   const startedAt = new Date();
   const { questions, skipped, sourceDescription } = await loadQuestions(config);
@@ -70,11 +184,7 @@ async function main() {
 
   // ── Run directory (refuses to overwrite unless asked) ──────────────────
   const runId = runDirName(config.runId, startedAt);
-  const runDir = resolve(join(config.outRoot, "runs", runId));
-  const exportRootAbs = resolve(config.outRoot);
-  if (!runDir.startsWith(exportRootAbs)) {
-    throw new Error(`Run directory ${runDir} escapes the export root — refusing`);
-  }
+  const runDir = resolveRunDir(config.outRoot, runId);
   if (existsSync(runDir)) {
     if (!config.overwrite) {
       console.error(`Run directory already exists: ${runDir}\nPass --overwrite to replace it.`);
@@ -85,12 +195,15 @@ async function main() {
   mkdirSync(runDir, { recursive: true });
 
   const server = await ensureServer(config.baseUrl);
+  registry.register("vite-server", () => server.stop());
   const browser = await launchBrowser();
+  registry.register("browser", () => browser.close());
 
   const allMetadata: QuestionMetadata[] = [];
   const runFailures: RunFailure[] = [];
   let captureCount = 0;
   let warningCount = 0;
+  let captureError: unknown = null;
 
   try {
     for (const question of questions) {
@@ -201,12 +314,16 @@ async function main() {
       writeFileSync(join(qDir, "metadata.json"), JSON.stringify(metadata, null, 2), "utf8");
       allMetadata.push(metadata);
     }
-  } finally {
-    await browser.close();
-    await server.stop();
+  } catch (err) {
+    // Unexpected loop-level error (per-capture errors are handled above).
+    captureError = err;
+    console.error(
+      `\nCapture aborted: ${err instanceof Error ? err.stack ?? err.message : err}`,
+    );
   }
 
-  // ── Run-level reports ───────────────────────────────────────────────────
+  // ── Run-level reports — written BEFORE teardown so a stuck teardown can
+  //    never swallow them. ─────────────────────────────────────────────────
   const finishedAt = new Date();
   const summary = {
     schema_version: 1,
@@ -220,15 +337,15 @@ async function main() {
     success_count: captureCount, // captures that produced a PNG
     failure_count: runFailures.length,
     warning_count: warningCount,
+    aborted: captureError ? String(captureError instanceof Error ? captureError.message : captureError) : null,
     output_dir: runDir,
     started_at: startedAt.toISOString(),
     finished_at: finishedAt.toISOString(),
   };
-  writeFileSync(join(runDir, "summary.json"), JSON.stringify(summary, null, 2), "utf8");
-  writeFileSync(join(runDir, "failures.json"), JSON.stringify(runFailures, null, 2), "utf8");
-  writeFileSync(
-    join(runDir, "index.html"),
-    buildContactSheet(
+  const reportsOk = writeReports(runDir, {
+    summary,
+    failures: runFailures,
+    contactSheetHtml: buildContactSheet(
       {
         runId,
         generatedAt: finishedAt.toISOString(),
@@ -242,17 +359,20 @@ async function main() {
       },
       allMetadata,
     ),
-    "utf8",
-  );
+  });
+
+  // ── Teardown (tracked processes only), then explicit exit ───────────────
+  await registry.runAll();
 
   console.log(`\n──────────────────────────────────────────`);
-  console.log(`Run ${runId}: ${captureCount} capture(s), ${runFailures.length} failure(s), ${warningCount} warning(s)`);
+  console.log(
+    `Run ${runId}: ${captureCount} capture(s), ${runFailures.length} failure(s), ${warningCount} warning(s)${captureError ? " — ABORTED EARLY" : ""}`,
+  );
   console.log(`Output:        ${runDir}`);
   console.log(`Contact sheet: ${join(runDir, "index.html")}`);
-  if (runFailures.length) {
-    console.log(`Failures:      ${join(runDir, "failures.json")}`);
-    process.exit(1);
-  }
+  if (runFailures.length) console.log(`Failures:      ${join(runDir, "failures.json")}`);
+
+  process.exit(captureError || !reportsOk || runFailures.length ? 1 : 0);
 }
 
 main().catch((err) => {

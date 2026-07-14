@@ -87,6 +87,23 @@ describe("parseScreenshotCli", () => {
     expect(remote.allowRemote).toBe(true);
   });
 
+  it("finalize-run: report-only mode with safe id and restricted flags", () => {
+    const c = parseScreenshotCli(["--finalize-run", "item-build-review-100"]);
+    expect(c.finalizeRun).toBe("item-build-review-100");
+    expect(c.overwrite).toBe(false);
+    const c2 = parseScreenshotCli(["--finalize-run", "run-1", "--overwrite", "--out", "quiz_content_exports"]);
+    expect(c2.overwrite).toBe(true);
+  });
+
+  it("finalize-run: rejects traversal ids and capture-source/server flags", () => {
+    expect(() => parseScreenshotCli(["--finalize-run", "../evil"])).toThrow(/Invalid --finalize-run/);
+    expect(() => parseScreenshotCli(["--finalize-run", "runs/other"])).toThrow(/Invalid --finalize-run/);
+    expect(() => parseScreenshotCli(["--finalize-run", "r1", "--question-id", "1"])).toThrow(/only accepts/);
+    expect(() => parseScreenshotCli(["--finalize-run", "r1", "--approved"])).toThrow(/only accepts/);
+    expect(() => parseScreenshotCli(["--finalize-run", "r1", "--base-url", "http://localhost:1"])).toThrow(/only accepts/);
+    expect(() => parseScreenshotCli(["--finalize-run", "r1", "--admin-key", "x"])).toThrow(/only accepts/);
+  });
+
   it("validates answer-index and run-id via downstream rules", () => {
     expect(() => parseScreenshotCli(["--question-id", "1", "--answer-index", "-1"])).toThrow();
     const c = parseScreenshotCli(["--question-id", "1", "--answer-index", "2", "--run-id", "smoke-1"]);
