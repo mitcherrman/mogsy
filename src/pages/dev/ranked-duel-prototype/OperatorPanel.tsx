@@ -23,6 +23,7 @@ import {
 import { adaptResolvedRoundEnvelope } from "./transport-adapter/adaptResolvedRoundEnvelope";
 import { ApiResolvedRoundLoader } from "./transport-client/ApiResolvedRoundLoader";
 import { ApiPublicRoundLoader } from "./transport-client/ApiPublicRoundLoader";
+import { ApiPrivatePlayerLoader } from "./transport-client/ApiPrivatePlayerLoader";
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -86,8 +87,9 @@ export function OperatorPanel({
         <>
           <SettlementScenarioPicker dispatch={dispatch} />
           <ApiResolvedRoundLoader dispatch={dispatch} />
-          {/* Read-only inspector — public data never enters the reducer. */}
+          {/* Read-only inspectors — public/private data never enters the reducer. */}
           <ApiPublicRoundLoader />
+          <ApiPrivatePlayerLoader />
         </>
       )}
     </section>
