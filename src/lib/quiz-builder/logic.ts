@@ -352,3 +352,19 @@ export function isUnsafePromotion(result: {
 }): boolean {
   return result.is_active === true || result.review_status !== "unreviewed";
 }
+
+// ---------------------------------------------------------------------------
+// Builder → unified-workspace Review deep linking.
+//
+// The reviewer is a tab inside the unified workspace (/admin/quiz-content).
+// After a promotion the Builder deep-links to the EXACT promoted question by
+// its backend id — identity is by id, never by matching question text.
+// ---------------------------------------------------------------------------
+
+/** The Review tab of the unified workspace (no specific question). */
+export const WORKSPACE_REVIEW_ROUTE = "/admin/quiz-content?tab=review";
+
+/** Deep link that opens the Review tab focused on one question by id. */
+export function reviewQuestionLink(questionId: number): string {
+  return `/admin/quiz-content?tab=review&questionId=${encodeURIComponent(questionId)}`;
+}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -400,6 +400,7 @@ function QuestionRow({
 }) {
   return (
     <div
+      data-question-id={q.id}
       className={`flex items-start gap-2 rounded-lg border px-2 py-2.5 transition-colors ${
         selected
           ? "border-primary/50 bg-primary/10"
@@ -469,7 +470,7 @@ function DetailPanel({
   const [note, setNote] = useState("");
   const [noteEditing, setNoteEditing] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["review-question", questionId],
     queryFn: () => quizApi.getReviewQuestion(questionId),
     staleTime: 30_000,
@@ -501,6 +502,25 @@ function DetailPanel({
     (payload: ReviewPatchPayload) => patch({ id: questionId, payload }),
     [questionId, patch],
   );
+
+  // Fail safely on an invalid / missing / deleted id (e.g. a stale deep link):
+  // don't spin forever — show a clear not-found state with a way out.
+  if (!isLoading && (isError || !q)) {
+    return (
+      <div
+        className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center"
+        data-testid="review-detail-not-found"
+      >
+        <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden />
+        <span className="text-xs text-muted-foreground">
+          Question #{questionId} was not found. It may have been deleted or the link is invalid.
+        </span>
+        <Button size="sm" variant="outline" className="mt-1 h-7 text-xs" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading || !q) {
     return (
@@ -886,10 +906,46 @@ function toQuizQuestion(q: ReviewQuestion): QuizQuestion {
   };
 }
 
-export default function AdminQuizReview() {
+export default function AdminQuizReview({
+  embedded = false,
+  selectedQuestionId,
+  onSelectQuestion,
+}: {
+  embedded?: boolean;
+  /**
+   * Controlled selection. When provided (the unified workspace passes it from
+   * the `?questionId=` URL param), it is the single source of truth for the
+   * open question, so deep links and browser Back/Forward drive selection.
+   * Omitted → the page owns selection internally (standalone usage/tests).
+   */
+  selectedQuestionId?: number | null;
+  onSelectQuestion?: (id: number | null) => void;
+} = {}) {
   const [filters, setFilters] = useState<ReviewFilters>({ page: 1, page_size: PAGE_SIZE });
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<number | null>(null);
+  const controlledSelection = selectedQuestionId !== undefined;
+  const selectedId = controlledSelection ? (selectedQuestionId ?? null) : internalSelectedId;
+  const setSelectedId = useCallback(
+    (id: number | null) => {
+      if (controlledSelection) onSelectQuestion?.(id);
+      else setInternalSelectedId(id);
+    },
+    [controlledSelection, onSelectQuestion],
+  );
+
+  // Scroll the selected row into view when selection changes (e.g. a deep link
+  // from the Builder, or Back/Forward). Identity is by ID only, never by text.
+  // If the id isn't on the current page/filter the detail still opens (the
+  // detail panel fetches by id), so no scroll target is required.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (selectedId == null) return;
+    const row = listRef.current?.querySelector<HTMLElement>(
+      `[data-question-id="${selectedId}"]`,
+    );
+    row?.scrollIntoView({ block: "nearest" });
+  }, [selectedId]);
 
   // Selection state: map preserves question data across page changes
   const [checkedQuestions, setCheckedQuestions] = useState<Map<number, ReviewQuestion>>(new Map());
@@ -967,35 +1023,52 @@ export default function AdminQuizReview() {
     });
   };
 
+  // Embedded in the unified admin workspace: the workspace owns SEOHead, the
+  // breadcrumb, and sizing, so the internal top bar collapses to just the live
+  // question count. Standalone, the full top bar and chrome are preserved.
+  const rootClass = embedded
+    ? "flex h-full min-h-0 flex-col overflow-hidden"
+    : "flex h-[calc(100vh-4rem)] flex-col overflow-hidden";
+
   if (authError) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-        <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
-        <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
-          <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Broadcast Studio
-          </Link>
-          <span className="text-muted-foreground/40">/</span>
-          <h1 className="text-sm font-semibold">Quiz Review Console</h1>
-        </div>
+      <div className={rootClass}>
+        {!embedded && (
+          <>
+            <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
+            <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
+              <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Broadcast Studio
+              </Link>
+              <span className="text-muted-foreground/40">/</span>
+              <h1 className="text-sm font-semibold">Quiz Review Console</h1>
+            </div>
+          </>
+        )}
         <AdminKeyPanel invalid={hasAdminKey} />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
+    <div className={rootClass}>
+      {!embedded && (
+        <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
+      )}
 
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Broadcast Studio
-          </Link>
-          <span className="text-muted-foreground/40">/</span>
+          {!embedded && (
+            <>
+              <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Broadcast Studio
+              </Link>
+              <span className="text-muted-foreground/40">/</span>
+            </>
+          )}
           <h1 className="text-sm font-semibold">Quiz Review Console</h1>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1068,7 +1141,7 @@ export default function AdminQuizReview() {
           )}
 
           {/* List */}
-          <div className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+          <div ref={listRef} className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
             {isLoading && (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

@@ -9,6 +9,7 @@ import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import { Suspense, type ReactElement } from "react";
@@ -73,8 +74,7 @@ const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
 const QuizBroadcastView = R.QuizBroadcastView.Component;
 const BroadcastLiveView = R.BroadcastLiveView.Component;
-const AdminQuizReview = R.AdminQuizReview.Component;
-const QuizBuilderPro = R.QuizBuilderPro.Component;
+const AdminQuizWorkspace = R.AdminQuizWorkspace.Component;
 const AdminVideoExport = R.AdminVideoExport.Component;
 const About = R.About.Component;
 const Privacy = R.Privacy.Component;
@@ -179,8 +179,13 @@ const App = () => (
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
-                  <Route path="/admin/quiz-review" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizReview /></Suspense></AdminRoute>} />
-                  <Route path="/admin/quiz-builder" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizBuilderPro /></Suspense></AdminRoute>} />
+                  <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
+                  {/* Legacy routes delegate into the unified workspace on the matching tab,
+                      preserving any incoming query params (filters, ids, packs, pagination). */}
+                  <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
+                  <Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="builder" />} />
+                  {/* Retain the earlier working name as a thin redirect so any bookmarks survive. */}
+                  <Route path="/admin/workspace" element={<Navigate to="/admin/quiz-content" replace />} />
                   <Route path="/admin/quiz-video-export" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense></AdminRoute>} />
                   <Route
                     path="/admin/knowledge"

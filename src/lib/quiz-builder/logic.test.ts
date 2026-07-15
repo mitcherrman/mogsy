@@ -12,6 +12,8 @@ import {
   parseApiError,
   builderErrorMessage,
   isUnsafePromotion,
+  reviewQuestionLink,
+  WORKSPACE_REVIEW_ROUTE,
   EMPTY_PRO_SOURCE,
   type EditableQuestion,
   type EditableProSource,
@@ -313,5 +315,21 @@ describe("isUnsafePromotion", () => {
   });
   it("flags a non-unreviewed status as unsafe", () => {
     expect(isUnsafePromotion({ is_active: false, review_status: "approved" })).toBe(true);
+  });
+  it("treats a freshly promoted (inactive + unreviewed) question as safe — promotion never approves", () => {
+    expect(isUnsafePromotion({ is_active: false, review_status: "unreviewed" })).toBe(false);
+  });
+});
+
+describe("reviewQuestionLink / WORKSPACE_REVIEW_ROUTE", () => {
+  it("deep-links to the unified workspace Review tab focused on a question id", () => {
+    expect(reviewQuestionLink(4213)).toBe("/admin/quiz-content?tab=review&questionId=4213");
+  });
+  it("carries the exact id (identity by id, not text)", () => {
+    expect(reviewQuestionLink(1)).toContain("questionId=1");
+    expect(reviewQuestionLink(999999)).toContain("questionId=999999");
+  });
+  it("the general reviewer route targets the workspace Review tab", () => {
+    expect(WORKSPACE_REVIEW_ROUTE).toBe("/admin/quiz-content?tab=review");
   });
 });

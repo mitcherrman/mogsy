@@ -36,10 +36,16 @@ import {
   validateEditableQuestion,
   builderErrorMessage,
   isUnsafePromotion,
+  reviewQuestionLink,
+  WORKSPACE_REVIEW_ROUTE,
   type EditableQuestion,
 } from "@/lib/quiz-builder/logic";
 
-const REVIEWER_ROUTE = "/admin/quiz-review";
+// The reviewer now lives as a tab inside the unified workspace. The general
+// link opens the Review tab; the promotion result deep-links to the exact
+// promoted question by ID (identity by ID, never by matching text). Both are
+// pure, unit-tested helpers in quiz-builder/logic.
+const REVIEWER_ROUTE = WORKSPACE_REVIEW_ROUTE;
 
 // ---------------------------------------------------------------------------
 // Admin key (shared session store with the reviewer / Knowledge Admin).
@@ -99,7 +105,7 @@ function Header() {
   );
 }
 
-export default function QuizBuilderPro() {
+export default function QuizBuilderPro({ embedded = false }: { embedded?: boolean } = {}) {
   const queryClient = useQueryClient();
   const adminKey = useAdminKey();
   const hasAdminKey = !!adminKey;
@@ -254,11 +260,20 @@ export default function QuizBuilderPro() {
   const closeSend = () => { setSendDraft(null); setSendResult(null); };
 
   // ------------------------------------------------------------------------
+  // When embedded in the unified admin workspace, the workspace owns the page
+  // chrome (SEOHead, breadcrumb, admin-key gate) and sizing — this page renders
+  // only its own content. Standalone, it keeps its full-page chrome.
+  const rootClass = embedded
+    ? "flex h-full min-h-0 flex-col overflow-hidden"
+    : "flex h-[calc(100vh-4rem)] flex-col overflow-hidden";
+
   if (authError) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-        <SEOHead title="Quiz Builder · Admin" description="Generate pro esports quiz candidates." path="/admin/quiz-builder" />
-        <Header />
+      <div className={rootClass}>
+        {!embedded && (
+          <SEOHead title="Quiz Builder · Admin" description="Generate pro esports quiz candidates." path="/admin/quiz-builder" />
+        )}
+        {!embedded && <Header />}
         <AdminKeyPanel invalid={hasAdminKey} />
       </div>
     );
@@ -267,9 +282,11 @@ export default function QuizBuilderPro() {
   const meta = metaQuery.data;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
-      <SEOHead title="Quiz Builder · Admin" description="Generate pro esports quiz candidates." path="/admin/quiz-builder" />
-      <Header />
+    <div className={rootClass}>
+      {!embedded && (
+        <SEOHead title="Quiz Builder · Admin" description="Generate pro esports quiz candidates." path="/admin/quiz-builder" />
+      )}
+      {!embedded && <Header />}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
         {metaQuery.isLoading || !meta || !form ? (
@@ -472,7 +489,9 @@ export default function QuizBuilderPro() {
               </DialogHeader>
               <DialogFooter>
                 <Button asChild size="sm" variant="outline" className="gap-1 text-xs">
-                  <Link to={REVIEWER_ROUTE}><ExternalLink className="h-3 w-3" /> Open reviewer</Link>
+                  <Link to={reviewQuestionLink(sendResult.promoted_question_id)} data-testid="builder-open-in-review-unsafe">
+                    <ExternalLink className="h-3 w-3" /> Open in Review
+                  </Link>
                 </Button>
                 <Button size="sm" variant="ghost" className="text-xs" onClick={closeSend}>Close</Button>
               </DialogFooter>
@@ -484,14 +503,17 @@ export default function QuizBuilderPro() {
                 <DialogDescription className="text-xs">The draft is now a reviewer question.</DialogDescription>
               </DialogHeader>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-[11px]">
-                <dt className="text-muted-foreground">Question ID</dt><dd className="font-medium">#{sendResult.promoted_question_id}</dd>
+                <dt className="text-muted-foreground">Question ID</dt>
+                <dd className="font-medium" data-testid="builder-promoted-question-id">#{sendResult.promoted_question_id}</dd>
                 <dt className="text-muted-foreground">Review status</dt><dd className="font-medium">{sendResult.review_status}</dd>
                 <dt className="text-muted-foreground">Active</dt><dd className="font-medium">{sendResult.is_active ? "yes" : "no"}</dd>
                 <dt className="text-muted-foreground">Sent at</dt><dd className="font-medium">{sendResult.sent_to_review_at?.slice(0, 16).replace("T", " ") ?? "—"}</dd>
               </dl>
               <DialogFooter>
                 <Button asChild size="sm" variant="outline" className="gap-1 text-xs">
-                  <Link to={REVIEWER_ROUTE}><ExternalLink className="h-3 w-3" /> Open in reviewer</Link>
+                  <Link to={reviewQuestionLink(sendResult.promoted_question_id)} data-testid="builder-open-in-review">
+                    <ExternalLink className="h-3 w-3" /> Open in Review
+                  </Link>
                 </Button>
                 <Button size="sm" className="text-xs" onClick={closeSend}>Done</Button>
               </DialogFooter>
