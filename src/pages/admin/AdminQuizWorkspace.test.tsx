@@ -29,6 +29,11 @@ vi.mock("./AdminQuizReview", () => ({
     </div>
   ),
 }));
+// The Ranked Duel panel fetches on mount and has its own dedicated test suite;
+// stub it here so the shell test stays about routing/tabs.
+vi.mock("@/components/admin/ranked-duel-review/RankedDuelReviewPanel", () => ({
+  RankedDuelReviewPanel: () => <div data-testid="ranked-duel-review-panel">ranked duel panel</div>,
+}));
 
 function LocationProbe() {
   const loc = useLocation();
@@ -134,13 +139,9 @@ describe("AdminQuizWorkspace shell (/admin/quiz-content)", () => {
       expect(loc()).not.toContain("questionId");
     });
 
-    it("shows the Ranked Duel boundary (blocker, no fake data) on ?tab=ranked-duel", () => {
+    it("mounts the Ranked Duel review workspace on ?tab=ranked-duel", () => {
       renderAt("/admin/quiz-content?tab=ranked-duel");
       expect(screen.getByTestId("ranked-duel-review-panel")).toBeTruthy();
-      expect(screen.getByTestId("ranked-duel-review-boundary").textContent).toContain(
-        "Backend endpoints not shipped yet",
-      );
-      expect(screen.getByTestId("ranked-duel-review-blocker").textContent).toContain("0 / 30");
     });
 
     it("falls back to the builder tab for an unknown ?tab= value", async () => {

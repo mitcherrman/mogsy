@@ -1,28 +1,22 @@
 // ---------------------------------------------------------------------------
-// Frontend types for the Ranked Duel candidate-review workflow.
+// Frontend types for the Ranked Duel candidate-review admin API.
 //
-// These MIRROR the committed backend review model in the League Combat
-// Simulator repo (`ranked_candidate_review/` — store.py / validator.py /
-// canonical.py / loader.py), which today is CLI-only. They are the frontend
-// half of a boundary whose HTTP endpoints DO NOT EXIST YET; see CONTRACT.md.
+// These mirror the LIVE, audited backend contract
+// (`ranked_candidate_review/ADMIN_API_CONTRACT.md`, endpoints under
+// `/api/admin/ranked-duel/questions`). The service is the single source of
+// truth; the frontend only reads what the UI consumes and tolerates unknown
+// additive fields.
 //
-// This is deliberately a SEPARATE data model from the normal quiz lifecycle
-// (`quiz_builder_drafts`, `quiz_questions`, packs). The unified admin
-// workspace shares presentation, never storage.
+// SEPARATE storage model from the normal quiz lifecycle — this never touches
+// quiz_builder_drafts / quiz_questions / packs. Correct answers/indices appear
+// ONLY in candidate detail (admin-only), never in list summaries.
 // ---------------------------------------------------------------------------
 
-/** review_schema_version the frontend is written against (backend: "1.0.0"). */
-export const RANKED_REVIEW_SCHEMA_VERSION = "1.0.0";
+/** Stored review decision (before staleness is derived). */
+export type ReviewDecision = "unreviewed" | "accepted" | "revised" | "rejected";
 
-/** Stored decisions (store.DECISIONS minus the "unreviewed" seed value). */
-export type RankedReviewDecision = "accepted" | "revised" | "rejected";
-
-/**
- * Status as DERIVED by the backend at read time (store.derived_status):
- * the stored decision, or a computed state when the source moved on. The
- * frontend never computes these — it renders whatever the backend derived.
- */
-export type RankedReviewStatus =
+/** Status derived by the backend (decision + staleness/orphan computation). */
+export type DerivedStatus =
   | "unreviewed"
   | "accepted"
   | "revised"
@@ -30,114 +24,174 @@ export type RankedReviewStatus =
   | "stale_source_changed"
   | "orphaned";
 
-/** A candidate answer (validator: correct_answer is {type, value}). */
-export interface RankedCandidateAnswer {
-  type: string;
-  value: string | number | null;
+/** Fields a revision patch may edit (ADMIN_API_CONTRACT §3). Nothing else. */
+export const EDITABLE_REVISION_FIELDS = [
+  "question_text",
+  "options",
+  "correct_answer",
+  "difficulty_target",
+  "distractor_derivations",
+  "review_note",
+] as const;
+
+/** Correct-index distribution, JSON-keyed "0".."3". */
+export type IndexDistribution = Record<string, number>;
+
+export interface ReviewStatus {
+  total_source_candidates: number;
+  unreviewed: number;
+  accepted: number;
+  revised: number;
+  rejected: number;
+  stale_source_changed: number;
+  invalid_revised_records: number;
+  exportable: number;
+  orphaned_review_records: number;
+  orphaned_ids: string[];
+  counts_by_family: Record<string, Record<string, number>>;
+  accepted_correct_index_distribution: IndexDistribution;
+  minimum_required_count: number;
+  all_indices_represented: boolean;
+  distribution_warning: boolean;
+  distribution_warning_detail: string | null;
+  structural_validation_ok: boolean;
+  structural_problems: string[];
+  external_alpha_ready: boolean;
+  external_alpha_blockers: string[];
 }
 
-/**
- * One source candidate. Field set follows loader REQUIRED_FIELDS + canonical
- * identity. Extra provenance/metadata fields are tolerated (additive) and
- * surfaced generically in the evidence view.
- */
-export interface RankedDuelCandidate {
-  /** canonical.candidate_id — "family:seed:formula". Stable identity. */
+/** One candidate summary row — deliberately WITHOUT any correct answer/index. */
+export interface CandidateSummary {
   candidate_id: string;
-  family: string;
-  question_text: string;
-  options: string[];
-  correct_answer: RankedCandidateAnswer;
-  seed?: string | number | null;
-  /** Additive provenance/evidence fields (scenario, inputs, difficulty, …). */
-  metadata?: Record<string, unknown>;
-  [extra: string]: unknown;
+  family: string | null;
+  difficulty: string | null;
+  prompt_summary: string;
+  decision: ReviewDecision;
+  derived_status: DerivedStatus;
+  stale: boolean;
+  exportable: boolean;
+  source_hash: string;
+  reviewed_at: string | null;
+  reviewer: string | null;
 }
 
-/** One append-only history entry (store.apply_decision entry shape). */
-export interface RankedReviewHistoryEntry {
-  decision: RankedReviewDecision;
-  reviewer: string;
-  reviewed_at: string;
-  notes: string;
-}
-
-/** Backend validator output for a revised candidate (validate_revision). */
-export interface RankedReviewValidation {
-  ok: boolean;
-  errors: string[];
-}
-
-/** The stored review record for one candidate (store.record shape). */
-export interface RankedReviewRecord {
-  review_schema_version: string;
-  candidate_id: string;
-  source_hash: string | null;
-  decision: RankedReviewDecision | "unreviewed";
+export interface ReviewRecordView {
+  decision: ReviewDecision;
   reviewer: string | null;
   reviewed_at: string | null;
   notes: string;
-  revised_candidate: RankedDuelCandidate | null;
-  validation: RankedReviewValidation | null;
-  history: RankedReviewHistoryEntry[];
+  revised_candidate: Record<string, unknown> | null;
+  source_hash: string | null;
+  history: Array<Record<string, unknown>>;
 }
 
-/** A candidate joined with its current derived review status, for the list. */
-export interface RankedDuelReviewItem {
-  candidate: RankedDuelCandidate;
-  /** Current source hash of this candidate (canonical.candidate_hash). */
+/** Full admin detail — the ONLY place the correct answer/index is exposed. */
+export interface CandidateDetail {
+  candidate_id: string;
   source_hash: string;
-  status: RankedReviewStatus;
-  record: RankedReviewRecord | null;
+  candidate_version: string | number | null;
+  family: string | null;
+  difficulty_target: string | null;
+  difficulty_features: unknown;
+  question_text: string | null;
+  options: string[];
+  correct_answer: string | number | null;
+  correct_answer_index: number | null;
+  scenario: unknown;
+  formula_id: string | null;
+  inputs: unknown;
+  calculation_steps: unknown;
+  distractor_derivations: unknown;
+  data_version: string | number | null;
+  plausibility_validation: unknown;
+  generation_safety: unknown;
+  derived_status: DerivedStatus;
+  review: ReviewRecordView;
+  validation_warnings: string[];
 }
 
-export interface RankedDuelReviewListResponse {
-  ok: boolean;
-  items: RankedDuelReviewItem[];
-  total: number;
-}
-
-/** Aggregate progress counts, one per derived status. */
-export interface RankedDuelReviewProgress {
-  ok: boolean;
-  total: number;
-  counts: Record<RankedReviewStatus, number>;
-}
-
-/**
- * A review decision the reviewer is submitting. `expected_source_hash` carries
- * the hash the UI last saw so the BACKEND can reject a stale write
- * (concurrent-modification detection — store.save); the frontend never writes
- * the review file itself.
- */
-export interface RankedDuelDecisionRequest {
-  decision: RankedReviewDecision;
+/** Result of an accept/reject/revise mutation. */
+export interface DecisionResult {
+  candidate_id: string;
+  decision: ReviewDecision;
   reviewer: string;
+  reviewed_at: string;
   notes: string;
-  /** Required by the backend when decision === "revised". */
-  revised_candidate?: RankedDuelCandidate;
-  expected_source_hash: string;
+  source_hash: string;
 }
 
-export interface RankedDuelDecisionResponse {
-  ok: boolean;
-  record: RankedReviewRecord;
+export interface ValidateReport {
+  source_candidates: number;
+  review_records: number;
+  stale: number;
+  stale_ids: string[];
+  problems: string[];
+  structural_valid: boolean;
+  export: {
+    present?: boolean;
+    status?: string;
+    accepted_count?: number;
+    alpha_ready?: boolean;
+    correct_index_distribution?: IndexDistribution;
+    diagnostics?: unknown;
+    [k: string]: unknown;
+  };
+  external_alpha_ready: boolean;
 }
 
-/** Result of validating/exporting the accepted bank (backend-owned write). */
-export interface RankedDuelExportResponse {
-  ok: boolean;
-  /** Number of accepted candidates written to the export. */
-  accepted_count: number;
-  /** Path the backend wrote (reports/ranked_candidates_accepted.json). */
+export interface ExportResult {
   export_path: string;
-  /** Blocking validation errors that prevented/qualified the export. */
-  errors: string[];
+  counts: {
+    exported: number;
+    accepted: number;
+    revised: number;
+    source_total: number;
+  };
+  excluded: {
+    unreviewed?: number;
+    rejected?: number;
+    stale?: number;
+    invalid_revised?: number;
+    [k: string]: number | undefined;
+  };
 }
 
-export interface RankedDuelReviewListParams {
-  status?: RankedReviewStatus;
-  scope?: string;
-  limit?: number;
-  offset?: number;
+export interface CandidateListParams {
+  decision?: ReviewDecision;
+  family?: string;
+  difficulty?: string;
+  stale?: boolean;
+  exportable?: boolean;
+  search?: string;
+}
+
+/** Editable-only patch for a revision (extra keys are rejected by backend). */
+export interface RevisionPatch {
+  question_text?: string;
+  options?: string[];
+  correct_answer?: unknown;
+  difficulty_target?: string;
+  distractor_derivations?: unknown;
+  review_note?: string;
+}
+
+export interface AcceptBody {
+  source_hash: string;
+  reviewer: string;
+  notes?: string;
+  overwrite?: boolean;
+}
+export interface RejectBody {
+  source_hash: string;
+  reviewer: string;
+  reason: string;
+  notes?: string;
+  overwrite?: boolean;
+}
+export interface ReviseBody {
+  source_hash: string;
+  reviewer: string;
+  patch: RevisionPatch;
+  notes?: string;
+  overwrite?: boolean;
 }

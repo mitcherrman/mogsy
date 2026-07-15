@@ -1,97 +1,44 @@
-# Ranked Duel candidate-review — backend HTTP contract (REQUIRED)
+# Ranked Duel candidate-review — frontend integration notes
 
-**Status: NOT IMPLEMENTED on the backend.** The review logic exists in the
-League Combat Simulator repo as a **CLI-only** module (`ranked_candidate_review/`
-— `loader.py`, `store.py`, `validator.py`, `canonical.py`, `cli.py`). This
-document is the contract the Mogsy frontend boundary
-(`src/lib/ranked-duel-review/`) is already written against. **Owner: Claude 1
-(backend) / Claude 3 (question system).**
+**Status: LIVE.** The backend admin API is implemented, audited (Claude 4 → GO),
+committed, and pushed. The authoritative contract lives in the backend repo at
+`ranked_candidate_review/ADMIN_API_CONTRACT.md`; this file is only the frontend
+integration summary. `src/lib/ranked-duel-review/api.ts` implements the client
+and `RankedDuelReviewPanel.tsx` the workspace.
 
-The frontend implements no fallback and fabricates no success: until these
-endpoints exist, the workspace's "Ranked Duel Review" tab shows a documented
-"not available yet" state (driven by HTTP 404/501 →
-`RankedDuelReviewUnavailableError`) with the current blocker (0 / 30 accepted).
+## Endpoints (all `X-Admin-Key`, base `/api/admin/ranked-duel/questions`)
 
-**Frontend runtime is READ-ONLY for now.** `src/lib/ranked-duel-review/api.ts`
-ships only the two GET probes (`list`, `progress`) so nothing in the browser
-can write a decision or trigger the export before the backend API exists. The
-write endpoints below (`decision`, `export`) are fully specified and typed
-(`./types`), and will be added to the client once the backend ships them.
+| Method | Path | Client |
+|---|---|---|
+| GET  | `/status` | `rankedReviewApi.status()` |
+| GET  | `/candidates` (`decision,family,difficulty,stale,exportable,search`) | `listCandidates()` |
+| GET  | `/candidates/{id}` | `getCandidate()` — the ONLY response exposing the correct answer/index |
+| POST | `/candidates/{id}/accept` | `accept()` |
+| POST | `/candidates/{id}/reject` (`reason` required) | `reject()` |
+| POST | `/candidates/{id}/revise` (editable-field `patch`) | `revise()` |
+| POST | `/validate` | `validate()` — read-only diagnostics |
+| POST | `/export` | `export()` — explicit atomic write of `ranked_candidates_accepted.json` |
 
-## Ground rules (must hold)
+## Invariants the frontend upholds
 
-- **Storage stays separate.** These endpoints wrap the existing review store
-  and `reports/ranked_candidates_accepted.json`. Do **not** fold Ranked Duel
-  candidates/decisions into `quiz_builder_drafts`, `quiz_questions`, or packs.
-- **Auth:** `X-Admin-Key` (the shared `KNOWLEDGE_ADMIN_KEY`), identical to the
-  quiz admin surface. 401/403 on missing/invalid.
-- **Backend owns all writes.** The frontend never writes review records or the
-  accepted-bank file. Every decision and the export are backend commands.
-- **Concurrency:** preserve `store.save()`'s concurrent-modification detection.
-  Decisions carry `expected_source_hash`; a mismatch returns **409**.
-- **Correctness stays private** where relevant, and the derived status
-  (`store.derived_status`) is computed by the backend, never by the frontend.
-- **Schema:** echo `review_schema_version` ("1.0.0").
+- Every mutation carries the candidate's `source_hash` (optimistic concurrency)
+  and a non-empty `reviewer`. Staleness is checked server-side **before** the
+  overwrite conflict; a `409 stale_candidate` prompts a reload, a
+  `409 decision_conflict` surfaces the overwrite toggle.
+- Replacing any non-`unreviewed` decision requires explicit `overwrite=true`.
+- Revision `patch` may contain ONLY: `question_text`, `options`,
+  `correct_answer`, `difficulty_target`, `distractor_derivations`,
+  `review_note` (server rejects anything else; a numeric correct-answer change
+  is fail-closed).
+- Reads never mutate; there is no bulk/auto acceptance; the correct answer/index
+  is shown only in candidate detail, never in list summaries.
+- Export is an explicit, confirmed action; the frontend never writes files.
 
-## Endpoints
+## Error mapping (`{detail:{error_code,message}}` → `ReviewApiError.kind`)
 
-All under base `/api/admin/ranked-duel/review`.
+`401/403 → auth` · `404 → not_found` · `400 → invalid_request` ·
+`409 stale_candidate → stale` · `409 decision_conflict → conflict` ·
+`422 invalid_revision → invalid_revision` · `5xx → server` (sanitized).
 
-### `GET /candidates`
-Query: `status?`, `scope?`, `limit?`, `offset?`.
-Returns candidates joined with current derived status:
-```json
-{
-  "ok": true,
-  "total": 123,
-  "items": [
-    {
-      "candidate": { "candidate_id": "family:seed:formula", "family": "...",
-        "question_text": "...", "options": ["..."],
-        "correct_answer": { "type": "text", "value": "..." },
-        "seed": "...", "metadata": { } },
-      "source_hash": "<sha256 canonical.candidate_hash>",
-      "status": "unreviewed|accepted|revised|rejected|stale_source_changed|orphaned",
-      "record": null
-    }
-  ]
-}
-```
-
-### `GET /progress`
-```json
-{ "ok": true, "total": 123,
-  "counts": { "unreviewed": 0, "accepted": 0, "revised": 0, "rejected": 0,
-              "stale_source_changed": 0, "orphaned": 0 } }
-```
-
-### `POST /candidates/{candidate_id}/decision`
-Body:
-```json
-{ "decision": "accepted|revised|rejected", "reviewer": "name",
-  "notes": "…", "revised_candidate": { }, "expected_source_hash": "<sha256>" }
-```
-Rules (from `store.apply_decision` / `validator.validate_revision`):
-- `reviewer` required and non-empty; `rejected` requires non-empty `notes`.
-- `revised` requires `revised_candidate`; backend runs `validate_revision`
-  (fail-closed answer-value consistency, `active_for_ranked` stays false) and
-  stores its `{ok, errors}` as `validation`.
-- `expected_source_hash` ≠ current source hash → **409** (stale).
-Returns `{ "ok": true, "record": { …store.record shape… } }`.
-
-### `POST /export`
-Validates the accepted set and writes
-`reports/ranked_candidates_accepted.json` (backend-owned, atomic).
-```json
-{ "ok": true, "accepted_count": 42,
-  "export_path": "reports/ranked_candidates_accepted.json", "errors": [] }
-```
-If blocking validation errors exist, return `ok: false` with `errors` and do
-not write.
-
-## Errors
-`{ "detail": { "error_code": "...", "message": "..." } }` or `{ "detail": "…" }`.
-- 401/403 → `RankedDuelReviewAuthError`
-- 404/501 → `RankedDuelReviewUnavailableError` (endpoint absent — current state)
-- 409 → `RankedDuelReviewConflictError` (stale source hash)
-- other non-2xx → `RankedDuelReviewError`
+Note: the shared admin dependency returns the repo-standard **403** on a
+missing/invalid key (the backend doc says 401); the client treats both as auth.

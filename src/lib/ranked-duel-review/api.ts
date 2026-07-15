@@ -1,167 +1,235 @@
 // ---------------------------------------------------------------------------
-// Frontend API client for the Ranked Duel candidate-review workflow.
+// Frontend HTTP client for the Ranked Duel candidate-review admin API
+// (backend "Add ranked candidate review admin API"). Eight endpoints under
+// /api/admin/ranked-duel/questions, all X-Admin-Key protected.
 //
-// BOUNDARY STATUS: the backend HTTP endpoints these methods call DO NOT EXIST
-// YET. The committed backend logic (`ranked_candidate_review/`) is CLI-only.
-// This client is the frontend half of the contract in CONTRACT.md, written so
-// the workspace can integrate the moment Claude 1 / Claude 3 ship the routes.
-//
-// It does NOT fabricate success and it NEVER writes review state or the
-// accepted-bank file from the browser: every mutation is a backend command,
-// and the export is a backend-owned file write. When the endpoints are absent
-// the client surfaces `RankedDuelReviewUnavailableError` (HTTP 404 / 501) so
-// the UI can show an honest "not available yet" state instead of fake data.
-//
-// Auth mirrors the quiz admin surface exactly: the shared session admin key
-// (KNOWLEDGE_ADMIN_KEY) sent as X-Admin-Key. Same secret, same store.
+// Every mutation is an explicit, single human action carrying the caller's
+// `source_hash` (optimistic concurrency) and `reviewer`. Reads never mutate.
+// Correct answers/indices are only ever read from get(); the client never
+// derives, recomputes, or bulk-acts on candidates. Backend errors arrive as
+// `{detail:{error_code,message}}` and are mapped to a typed error whose
+// `errorCode` the UI keys on (stale vs conflict vs invalid-revision, …).
 // ---------------------------------------------------------------------------
 
 import { getAdminKey } from "@/lib/knowledge-admin/key";
 import type {
-  RankedDuelReviewListParams,
-  RankedDuelReviewListResponse,
-  RankedDuelReviewProgress,
+  AcceptBody,
+  CandidateDetail,
+  CandidateListParams,
+  CandidateSummary,
+  DecisionResult,
+  ExportResult,
+  RejectBody,
+  ReviewStatus,
+  ReviseBody,
+  ValidateReport,
 } from "./types";
 
 const API_BASE_URL =
   (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
 
-/** Base path for every ranked-duel review endpoint (see CONTRACT.md). */
-export const RANKED_REVIEW_BASE = "/api/admin/ranked-duel/review";
+export const RANKED_REVIEW_BASE = "/api/admin/ranked-duel/questions";
 
-/** Admin key missing locally or rejected by the backend (401/403). */
-export class RankedDuelReviewAuthError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RankedDuelReviewAuthError";
-  }
-}
+/** Backend error_code values (ADMIN_API_CONTRACT §6). */
+export type ReviewErrorCode =
+  | "candidate_not_found"
+  | "invalid_request"
+  | "stale_candidate"
+  | "decision_conflict"
+  | "invalid_revision"
+  | "export_not_ready"
+  | "export_validation_failed"
+  | "malformed_source"
+  | "malformed_review_store"
+  | "storage_error"
+  | "internal_error"
+  | string;
 
-/**
- * The endpoint is not implemented on the backend yet (404 / 501). Distinct
- * from a network error: it means "this workflow's API has not shipped," which
- * the UI renders as a documented boundary state, never as an empty result.
- */
-export class RankedDuelReviewUnavailableError extends Error {
+export type ReviewApiErrorKind =
+  | "auth" // 401/403 missing/invalid admin key
+  | "not_found" // 404
+  | "invalid_request" // 400
+  | "stale" // 409 stale_candidate
+  | "conflict" // 409 decision_conflict
+  | "invalid_revision" // 422
+  | "server" // 5xx (sanitized)
+  | "network"
+  | "aborted"
+  | "unknown";
+
+/** One typed error for the whole surface. Never carries a stack trace to UI. */
+export class ReviewApiError extends Error {
+  readonly kind: ReviewApiErrorKind;
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly errorCode?: ReviewErrorCode;
+  constructor(
+    kind: ReviewApiErrorKind,
+    message: string,
+    opts: { status?: number; errorCode?: ReviewErrorCode } = {},
+  ) {
     super(message);
-    this.name = "RankedDuelReviewUnavailableError";
-    this.status = status;
+    this.name = "ReviewApiError";
+    this.kind = kind;
+    this.status = opts.status ?? 0;
+    this.errorCode = opts.errorCode;
   }
 }
 
-/** A stale write was rejected by the backend concurrency check (409). */
-export class RankedDuelReviewConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RankedDuelReviewConflictError";
-  }
-}
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Any other non-OK backend response. Never exposes raw internals to the UI. */
-export class RankedDuelReviewError extends Error {
-  readonly status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "RankedDuelReviewError";
-    this.status = status;
-  }
-}
-
-async function readDetail(res: Response): Promise<string> {
+async function readDetail(
+  res: Response,
+): Promise<{ errorCode?: ReviewErrorCode; message?: string }> {
   try {
-    const body: unknown = await res.clone().json();
-    const detail = (body as { detail?: unknown })?.detail;
-    if (typeof detail === "string") return detail;
-    if (detail && typeof detail === "object") {
-      const msg = (detail as { message?: unknown }).message;
-      if (typeof msg === "string") return msg;
+    const body: unknown = await res.json();
+    const detail = isRecord(body) ? body.detail : undefined;
+    if (typeof detail === "string") return { message: detail };
+    if (isRecord(detail)) {
+      return {
+        errorCode: typeof detail.error_code === "string" ? detail.error_code : undefined,
+        message: typeof detail.message === "string" ? detail.message : undefined,
+      };
     }
   } catch {
-    // fall through to text
+    // non-JSON error body
   }
-  try {
-    return await res.text();
-  } catch {
-    return res.statusText;
-  }
+  return {};
 }
 
-async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
+function classify(status: number, errorCode?: ReviewErrorCode): ReviewApiErrorKind {
+  if (status === 401 || status === 403) return "auth";
+  if (status === 404) return "not_found";
+  if (status === 400) return "invalid_request";
+  if (status === 409) return errorCode === "decision_conflict" ? "conflict" : "stale";
+  if (status === 422) return "invalid_revision";
+  if (status >= 500) return "server";
+  return "unknown";
+}
+
+interface RequestOptions {
+  method?: "GET" | "POST";
+  body?: unknown;
+  signal?: AbortSignal;
+}
+
+async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const key = getAdminKey();
-  if (!key) throw new RankedDuelReviewAuthError("Admin key not set");
+  if (!key) throw new ReviewApiError("auth", "Admin key not set");
+
+  const headers: Record<string, string> = { "X-Admin-Key": key };
+  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Admin-Key": key,
-        ...(init?.headers || {}),
-      },
+      method: opts.method ?? "GET",
+      headers,
+      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      signal: opts.signal,
     });
-  } catch {
-    // Network-level failure — cannot reach the backend at all.
-    throw new RankedDuelReviewError(0, "Could not reach the backend.");
+  } catch (err) {
+    if ((err as Error)?.name === "AbortError") {
+      throw new ReviewApiError("aborted", "Request was aborted");
+    }
+    throw new ReviewApiError("network", "Could not reach the backend.");
   }
 
   if (res.ok) return (await res.json()) as T;
 
-  const detail = await readDetail(res);
-  if (res.status === 401 || res.status === 403) {
-    throw new RankedDuelReviewAuthError(detail || "Invalid or missing admin key");
-  }
-  if (res.status === 404 || res.status === 501) {
-    throw new RankedDuelReviewUnavailableError(
-      res.status,
-      detail || "Ranked Duel review endpoints are not available on this backend yet.",
-    );
-  }
-  if (res.status === 409) {
-    throw new RankedDuelReviewConflictError(
-      detail || "This candidate changed since you loaded it. Reload and try again.",
-    );
-  }
-  throw new RankedDuelReviewError(res.status, detail || `Request failed (HTTP ${res.status})`);
+  const { errorCode, message } = await readDetail(res);
+  const kind = classify(res.status, errorCode);
+  throw new ReviewApiError(kind, message ?? `Request failed (HTTP ${res.status})`, {
+    status: res.status,
+    errorCode,
+  });
 }
 
-const buildQuery = (params: RankedDuelReviewListParams = {}): string => {
+const buildQuery = (params: CandidateListParams = {}): string => {
   const qs = new URLSearchParams();
-  if (params.status) qs.set("status", params.status);
-  if (params.scope) qs.set("scope", params.scope);
-  if (params.limit != null) qs.set("limit", String(params.limit));
-  if (params.offset != null) qs.set("offset", String(params.offset));
+  if (params.decision) qs.set("decision", params.decision);
+  if (params.family) qs.set("family", params.family);
+  if (params.difficulty) qs.set("difficulty", params.difficulty);
+  if (params.stale != null) qs.set("stale", String(params.stale));
+  if (params.exportable != null) qs.set("exportable", String(params.exportable));
+  if (params.search) qs.set("search", params.search);
   const s = qs.toString();
   return s ? `?${s}` : "";
 };
 
-/**
- * READ-ONLY runtime client. Deliberately narrow: only GET probes exist, so the
- * shipped frontend is INCAPABLE of writing a review decision or triggering the
- * export while the backend API is still absent. The write endpoints
- * (decide / export) are specified in CONTRACT.md and will be added here — with
- * their request/response types already modelled in ./types — once the backend
- * ships them. Until then there is no runtime path that can mutate review state.
- */
-export const rankedDuelReviewApi = {
-  /** GET candidates joined with their derived review status. */
-  list: (params?: RankedDuelReviewListParams) =>
-    adminRequest<RankedDuelReviewListResponse>(
-      `${RANKED_REVIEW_BASE}/candidates${buildQuery(params)}`,
+export const rankedReviewApi = {
+  // --- reads (never mutate) ---
+  status: (signal?: AbortSignal) =>
+    request<ReviewStatus>(`${RANKED_REVIEW_BASE}/status`, { signal }),
+
+  listCandidates: (params?: CandidateListParams, signal?: AbortSignal) =>
+    request<CandidateSummary[]>(`${RANKED_REVIEW_BASE}/candidates${buildQuery(params)}`, {
+      signal,
+    }),
+
+  getCandidate: (candidateId: string, signal?: AbortSignal) =>
+    request<CandidateDetail>(
+      `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}`,
+      { signal },
     ),
 
-  /** GET aggregate progress counts per derived status. */
-  progress: () =>
-    adminRequest<RankedDuelReviewProgress>(`${RANKED_REVIEW_BASE}/progress`),
+  // --- mutations (explicit human action; source_hash concurrency) ---
+  accept: (candidateId: string, body: AcceptBody) =>
+    request<DecisionResult>(
+      `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}/accept`,
+      { method: "POST", body },
+    ),
+
+  reject: (candidateId: string, body: RejectBody) =>
+    request<DecisionResult>(
+      `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}/reject`,
+      { method: "POST", body },
+    ),
+
+  revise: (candidateId: string, body: ReviseBody) =>
+    request<DecisionResult>(
+      `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}/revise`,
+      { method: "POST", body },
+    ),
+
+  // --- diagnostics + explicit export ---
+  validate: () => request<ValidateReport>(`${RANKED_REVIEW_BASE}/validate`, { method: "POST" }),
+
+  export: () => request<ExportResult>(`${RANKED_REVIEW_BASE}/export`, { method: "POST" }),
 };
 
-export const isRankedReviewUnavailable = (
-  err: unknown,
-): err is RankedDuelReviewUnavailableError =>
-  err instanceof RankedDuelReviewUnavailableError;
+/** Safe, user-facing text for any client error (no stacks, no internals). */
+export function describeReviewError(err: unknown): string {
+  if (err instanceof ReviewApiError) {
+    switch (err.kind) {
+      case "auth":
+        return err.message || "Admin key missing or invalid.";
+      case "not_found":
+        return "That candidate no longer exists.";
+      case "stale":
+        return "This candidate changed since you loaded it. Reload it before deciding.";
+      case "conflict":
+        return "This candidate already has a decision. Enable overwrite to replace it.";
+      case "invalid_revision":
+        return err.message || "The revision was rejected by validation.";
+      case "invalid_request":
+        return err.message || "The request was incomplete.";
+      case "server":
+        return err.message || "The backend reported an internal error.";
+      case "network":
+        return "Could not reach the backend (is it running?).";
+      case "aborted":
+        return "Request cancelled.";
+      default:
+        return err.message || "Something went wrong.";
+    }
+  }
+  return "Something went wrong.";
+}
 
-export const isRankedReviewAuthError = (
-  err: unknown,
-): err is RankedDuelReviewAuthError => err instanceof RankedDuelReviewAuthError;
+export const isAuthError = (e: unknown): e is ReviewApiError =>
+  e instanceof ReviewApiError && e.kind === "auth";
+export const isStaleError = (e: unknown): e is ReviewApiError =>
+  e instanceof ReviewApiError && e.kind === "stale";
+export const isConflictError = (e: unknown): e is ReviewApiError =>
+  e instanceof ReviewApiError && e.kind === "conflict";
