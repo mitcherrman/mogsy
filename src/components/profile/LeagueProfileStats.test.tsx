@@ -64,7 +64,8 @@ function setApi({
   history = [],
 }: {
   progress: QuizProgress;
-  categories?: Array<{ category: string; accuracy: number; attempts: number }>;
+  /** Mirrors the real backend payload, which uses `category_name`. */
+  categories?: Array<{ category_name: string; accuracy: number; attempts: number }>;
   history?: QuizHistoryEntry[];
 }) {
   mocks.getProgress.mockResolvedValue(progress);
@@ -81,12 +82,12 @@ function setApi({
   });
 }
 
-function renderStats() {
+function renderStats(props: { guest?: boolean } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <LeagueProfileStats userId="u1" config={DEFAULT_PROFILE_CONFIG} />
+        <LeagueProfileStats userId="u1" config={DEFAULT_PROFILE_CONFIG} guest={props.guest} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -104,15 +105,62 @@ describe("LeagueProfileStats — activity states", () => {
     renderStats();
     expect(await screen.findByText(/No quiz activity yet/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Start League Quiz/ })).toBeTruthy();
-    // At most two secondary suggestions.
     expect(screen.getByRole("link", { name: "Try Combat Lab" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Explore League Hub" })).toBeTruthy();
+  });
+
+  it("guest with zero activity gets one compact card, not two duplicate empty states", async () => {
+    setApi({ progress: { total_attempts: 0, accuracy: 0, current_streak: 0, best_streak: 0 } });
+    renderStats({ guest: true });
+    expect(await screen.findByText("Unranked")).toBeTruthy();
+    expect(screen.getByText(/Answer your first question to start ranking up on this device/)).toBeTruthy();
+    // Exactly one primary action; the full progress card + separate empty card are gone.
+    expect(screen.getAllByRole("link", { name: /Start League Quiz/ })).toHaveLength(1);
+    expect(screen.queryByText("League Quiz Progress")).toBeNull();
+    expect(screen.queryByText(/No quiz activity yet/)).toBeNull();
+    // At most two secondary actions (Combat Lab card counts as one destination).
+    expect(screen.getByRole("link", { name: "Try Combat Lab" })).toBeTruthy();
+  });
+
+  it("guest with real device-local activity keeps the truthful full progress view", async () => {
+    setApi({ progress: AGGREGATE_PROGRESS, history: [] });
+    renderStats({ guest: true });
+    expect(await screen.findByText("League Quiz Progress")).toBeTruthy();
+    expect(screen.getByText(/detailed history is not\s+available for earlier results/i)).toBeTruthy();
+  });
+
+  it("renders visible category names and a meaningful Best label from the real contract", async () => {
+    setApi({
+      progress: AGGREGATE_PROGRESS,
+      categories: [
+        { category_name: "champions", accuracy: 100, attempts: 15 },
+        { category_name: "items", accuracy: 50, attempts: 2 },
+        { category_name: "esports", accuracy: 0, attempts: 0 },
+      ],
+    });
+    renderStats();
+    // Names are visible in the cells (not tooltip-only), unplayed ones excluded.
+    expect(await screen.findByText("champions")).toBeTruthy();
+    expect(screen.getByText("items")).toBeTruthy();
+    expect(screen.queryByText("esports")).toBeNull();
+    expect(screen.getByText("15 answered")).toBeTruthy();
+    // Best label carries a real value, never an orphaned "Best:".
+    expect(screen.getByText(/Best: champions · 100%/)).toBeTruthy();
+  });
+
+  it("omits the Best label when no category has been played", async () => {
+    setApi({
+      progress: AGGREGATE_PROGRESS,
+      categories: [{ category_name: "esports", accuracy: 0, attempts: 0 }],
+    });
+    renderStats();
+    await screen.findByText("Answered");
+    expect(screen.queryByText(/Best:/)).toBeNull();
   });
 
   it("does NOT claim 'no quiz history' for a user with aggregate activity", async () => {
     setApi({
       progress: AGGREGATE_PROGRESS,
-      categories: [{ category: "items", accuracy: 70, attempts: 20 }],
+      categories: [{ category_name: "items", accuracy: 70, attempts: 20 }],
       history: [],
     });
     renderStats();

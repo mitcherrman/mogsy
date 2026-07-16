@@ -78,10 +78,18 @@ export function progressAttempts(progress?: QuizProgress | null): number {
 }
 
 export type QuizCategoryStat = {
-  category: string;
+  /** Some payloads use `category`; the progress endpoint returns `category_name`. */
+  category?: string;
+  category_name?: string;
   accuracy: number;
   attempts: number;
+  correct?: number;
 };
+
+/** Display label for a category stat, tolerant of both backend field names. */
+export function categoryLabel(stat: Pick<QuizCategoryStat, "category" | "category_name">): string {
+  return stat.category_name || stat.category || "Uncategorized";
+}
 
 export type QuizAchievement = {
   id?: string | number;

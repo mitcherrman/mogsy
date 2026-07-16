@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveProfileStats } from "./view-model";
+import { deriveProfileStats, pickBestCategory } from "./view-model";
 import type { QuizHistoryEntry, QuizProgress } from "@/lib/quiz/api";
 
 const HISTORY_ENTRY: QuizHistoryEntry = {
@@ -88,6 +88,15 @@ describe("deriveProfileStats", () => {
     expect(vm.rankName).toBe("Unranked");
   });
 
+  it("is tolerant of the backend's category_name field", () => {
+    const vm = deriveProfileStats(
+      { total_attempts: 0 },
+      [{ category_name: "champions", accuracy: 100, attempts: 15 }],
+      null,
+    );
+    expect(vm.totalQuestionsAnswered).toBe(15);
+  });
+
   it("extracts rank name from the backend's nested rank object", () => {
     const vm = deriveProfileStats(
       { total_attempts: 5, rank: { rank_name: "Bronze", small_icon_path: "assets/ranks/small/bronze.png" } },
@@ -96,5 +105,47 @@ describe("deriveProfileStats", () => {
     );
     expect(vm.rankName).toBe("Bronze");
     expect(vm.rankIconUrl).toContain("bronze");
+  });
+});
+
+describe("pickBestCategory", () => {
+  it("returns null when nothing has been answered", () => {
+    expect(pickBestCategory([])).toBeNull();
+    expect(pickBestCategory(null)).toBeNull();
+    // A 0-attempt category is never "best", even if others are worse.
+    expect(pickBestCategory([{ category_name: "items", accuracy: 0, attempts: 0 }])).toBeNull();
+  });
+
+  it("picks the highest accuracy among played categories", () => {
+    const best = pickBestCategory([
+      { category_name: "items", accuracy: 50, attempts: 2 },
+      { category_name: "champions", accuracy: 100, attempts: 15 },
+      { category_name: "cooldowns", accuracy: 0, attempts: 1 },
+    ]);
+    expect(best?.category_name).toBe("champions");
+  });
+
+  it("breaks accuracy ties by higher answered count", () => {
+    const best = pickBestCategory([
+      { category_name: "items", accuracy: 100, attempts: 3 },
+      { category_name: "champions", accuracy: 100, attempts: 15 },
+    ]);
+    expect(best?.category_name).toBe("champions");
+  });
+
+  it("keeps stable original ordering on full ties", () => {
+    const best = pickBestCategory([
+      { category_name: "items", accuracy: 100, attempts: 5 },
+      { category_name: "champions", accuracy: 100, attempts: 5 },
+    ]);
+    expect(best?.category_name).toBe("items");
+  });
+
+  it("ignores unplayed categories when picking best", () => {
+    const best = pickBestCategory([
+      { category_name: "esports", accuracy: 0, attempts: 0 },
+      { category_name: "items", accuracy: 40, attempts: 5 },
+    ]);
+    expect(best?.category_name).toBe("items");
   });
 });

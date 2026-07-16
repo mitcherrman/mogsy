@@ -164,28 +164,21 @@ export default function QuizProfileCard({
               </div>
               <div className="mt-1">
                 <Progress value={pct} className="h-2 transition-all" />
-                <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+                {/* One concise progress summary — no duplicated rank/percent wording. */}
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                   <span className="truncate">
-                    {hasProgress
-                      ? `${rankName}${nextRank ? ` → ${nextRank}` : ""}`
-                      : "Play your first question to rank up"}
+                    {!hasProgress
+                      ? "Play your first question to rank up"
+                      : nextRank
+                        ? `${Math.round(pct)}% to ${nextRank}`
+                        : rankName}
                   </span>
-                  <span className="shrink-0 font-mono">{fmtPct(pct)}</span>
+                  {hasProgress && nextRank && xpToNext > 0 && (
+                    <span className="shrink-0">
+                      <span className="font-semibold text-primary/90">{xpToNext.toLocaleString()} XP</span> left
+                    </span>
+                  )}
                 </div>
-                {nextRank && (xpToNext > 0 || hasProgress) && (
-                  <div className="mt-1 text-[10px] text-muted-foreground/80">
-                    {xpToNext > 0 ? (
-                      <>
-                        <span className="font-semibold text-primary/90">
-                          {xpToNext.toLocaleString()} XP
-                        </span>{" "}
-                        until {nextRank}
-                      </>
-                    ) : (
-                      <>Next: {nextRank}</>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
             {nextIconUrl && (

@@ -33,6 +33,28 @@ export interface ProfileStatsViewModel {
   activityState: ProfileActivityState;
 }
 
+/**
+ * Deterministic "best category" pick among categories that were actually
+ * played: higher accuracy wins, then higher answered count, then the stable
+ * original ordering. Returns null when nothing has been answered — a
+ * 0-attempt category is never "best" just because its accuracy defaults to 0.
+ */
+export function pickBestCategory(
+  categories: QuizCategoryStat[] | null | undefined,
+): QuizCategoryStat | null {
+  const played = (categories ?? []).filter((c) => (Number(c.attempts) || 0) > 0);
+  if (played.length === 0) return null;
+  return played.reduce((a, b) => {
+    if ((Number(b.accuracy) || 0) !== (Number(a.accuracy) || 0)) {
+      return (Number(b.accuracy) || 0) > (Number(a.accuracy) || 0) ? b : a;
+    }
+    if ((Number(b.attempts) || 0) !== (Number(a.attempts) || 0)) {
+      return (Number(b.attempts) || 0) > (Number(a.attempts) || 0) ? b : a;
+    }
+    return a; // stable: keep the earlier entry on full ties
+  });
+}
+
 function rankField(progress: QuizProgress | null | undefined, key: string): unknown {
   const rank = progress?.rank;
   if (rank && typeof rank === "object") return (rank as Record<string, unknown>)[key];

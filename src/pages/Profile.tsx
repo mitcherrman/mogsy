@@ -514,22 +514,26 @@ export default function Profile() {
 
           {isGuest ? (
             /* ---------- Guest: account-value panel (no editing UI) ---------- */
-            <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-card p-4 sm:p-6 mb-4 sm:mb-6 space-y-4">
+            /* Styled with the same League navy/cyan/gold language as the signed-in surfaces. */
+            <div className="rounded-2xl border border-[#0ac8ff]/30 bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#020610] p-4 sm:p-6 mb-4 sm:mb-6 space-y-4">
               <div className="flex items-start gap-3">
-                <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-secondary border border-border flex items-center justify-center">
-                  <User className="h-6 w-6 text-muted-foreground" />
+                <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-[#0ac8ff]/10 border border-[#0ac8ff]/30 flex items-center justify-center">
+                  <User className="h-6 w-6 text-[#8fdcff]" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base sm:text-lg font-bold text-foreground">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">
+                    Guest Session
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#f0e6d2]">
                     Sign in to build your League profile
                   </h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  <p className="text-xs sm:text-sm text-[#a09b8c] mt-0.5">
                     You're playing as a guest. Progress on this device is temporary
                     until you create an account.
                   </p>
                 </div>
               </div>
-              <ul className="grid gap-1.5 sm:grid-cols-2 text-xs sm:text-sm text-foreground/85">
+              <ul className="grid gap-1.5 sm:grid-cols-2 text-xs sm:text-sm text-[#f0e6d2]/85">
                 {[
                   "Save quiz progress, XP, and rank",
                   "Track streaks and category mastery",
@@ -538,7 +542,7 @@ export default function Profile() {
                   "Access quiz history and future Pro progress features",
                 ].map((benefit) => (
                   <li key={benefit} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#0ac8ff] shrink-0" />
                     {benefit}
                   </li>
                 ))}
@@ -549,12 +553,17 @@ export default function Profile() {
                     <LogIn className="mr-1.5 h-4 w-4" /> Sign in
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-[#0ac8ff]/40 bg-[#0ac8ff]/10 text-[#8fdcff] hover:bg-[#0ac8ff]/20 hover:text-[#cfe9f5]"
+                >
                   <Link to="/auth?mode=signup&returnTo=%2Fprofile">
                     <UserPlus className="mr-1.5 h-4 w-4" /> Create account
                   </Link>
                 </Button>
-                <Link to="/lol" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/lol" className="text-xs text-[#a09b8c] hover:text-[#f0e6d2] transition-colors">
                   Continue exploring as a guest
                 </Link>
               </div>
@@ -641,18 +650,22 @@ export default function Profile() {
             </div>
           )}
 
-          {/* League stats + customization panel */}
+          {/* League stats */}
           <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-            {!isGuest && (
-              <ProfileConfigPanel
-                config={config}
-                setOption={setOption}
-                resetConfig={resetConfig}
-                showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
-              />
-            )}
-            <LeagueProfileStats userId={statsUserId} config={config} />
+            <LeagueProfileStats userId={statsUserId} config={config} guest={isGuest} />
           </div>
+
+          {!isGuest && editMode && (
+          <div className="mb-4 sm:mb-6">
+            {/* Section visibility toggles live with the rest of profile editing. */}
+            <ProfileConfigPanel
+              config={config}
+              setOption={setOption}
+              resetConfig={resetConfig}
+              showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
+            />
+          </div>
+          )}
 
           {!isGuest && editMode && (
           <form id="profile-edit-form" aria-label="Edit profile" onSubmit={handleSave}>

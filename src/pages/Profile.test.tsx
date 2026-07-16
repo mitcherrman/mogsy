@@ -161,6 +161,20 @@ describe("Profile — signed in", () => {
     expect(screen.getByText(/31 answered/)).toBeTruthy();
   });
 
+  it("shows exactly one profile-edit entry control — no Customize Profile on the dashboard", async () => {
+    renderProfile();
+    await screen.findByText("RiftMaster");
+    expect(screen.queryByText("Customize Profile")).toBeNull();
+    const editEntries = screen.getAllByRole("button", { name: /Edit profile/i });
+    expect(editEntries).toHaveLength(1);
+  });
+
+  it("keeps the Customize Profile section controls available inside edit mode", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    expect(await screen.findByText("Customize Profile")).toBeTruthy();
+  });
+
   it("hides the edit form by default", async () => {
     renderProfile();
     await screen.findByText("RiftMaster");
