@@ -104,12 +104,14 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
               Train Your League Knowledge
             </h1>
 
-            {/* Training mode selectors */}
+            {/* Training mode selectors — desktop/tablet only; the mobile hub
+                list below the hero covers these destinations, so the tabs are
+                hidden under md to avoid duplicate nav and horizontal clipping. */}
             <div className="mt-1">
-              <div className="text-xs md:text-sm uppercase tracking-[0.25em] text-[#0ac8ff]/80 font-bold mb-2.5">
+              <div className="hidden md:block text-xs md:text-sm uppercase tracking-[0.25em] text-[#0ac8ff]/80 font-bold mb-2.5">
                 Choose Your Training
               </div>
-              <div className="flex gap-2.5 overflow-x-auto pb-1 -mb-1">
+              <div className="hidden md:flex flex-wrap gap-2.5">
                 {TRAINING_MODES.map((m) => {
                   const active = m.key === modeKey;
                   return (
@@ -133,8 +135,10 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                   );
                 })}
               </div>
-              {/* Mode description + destination link — re-keyed so it fades in on change */}
-              <div key={mode.key} className="hero-mode-in mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              {/* Mode description + destination link — re-keyed so it fades in
+                  on change. On mobile this is the hero's single primary action
+                  (default mode: quiz), so it stays visible without the tabs. */}
+              <div key={mode.key} className="hero-mode-in mt-1 md:mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <p className="text-sm md:text-base text-[#a09b8c]">{mode.description}</p>
                 <Link
                   to={mode.to}
@@ -151,7 +155,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
           </div>
 
           {/* ---------- Right: layered champion scene ---------- */}
-          <div className="relative min-h-[220px] md:min-h-0 overflow-hidden">
+          <div className="relative min-h-[180px] md:min-h-0 overflow-hidden">
             {/* Champion splash layers — all mounted, active one crossfades in */}
             {TRAINING_MODES.map((m) => {
               const url = getChampionSplash(assets, m.championName);

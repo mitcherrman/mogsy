@@ -7,6 +7,7 @@ import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/components/lol/HexZipperCard";
+import HexPanelLink from "@/components/lol/HexPanelLink";
 import HexTrainingHero from "@/components/lol/HexTrainingHero";
 import { useChampionAssets, getChampionCutout, getChampionSplash, getChampionLoading } from "@/hooks/useChampionAssets";
 import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
@@ -239,16 +240,17 @@ export default function LolHub() {
           })}
         </div>
 
-        {/* Mobile fallback — keep existing simple stacked tiles */}
-        <div className="mt-6 grid grid-cols-1 gap-4 md:hidden">
+        {/* Mobile fallback — clipped Hextech panels matching the hero's visual language */}
+        <div className="mt-5 grid grid-cols-1 gap-3 md:hidden">
           {ZIPPER_FEATURES.map((f) => (
-            <HubTile
+            <HexPanelLink
               key={f.to}
               to={f.to}
               title={f.title}
               description={f.description}
               Icon={f.Icon}
-              accent="from-[#1e3a5f]/90 to-[#0a1428]/90"
+              accent={f.flagship ? "gold" : "cyan"}
+              onClick={() => playUiSfx("sectionOpen")}
             />
           ))}
         </div>
@@ -280,23 +282,18 @@ export default function LolHub() {
               </Link>
             </div>
           </div>
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {SWIPE_GAME_CARDS.map((g) => (
-              <Link
+              <HexPanelLink
                 key={g.slug}
                 to={`/league-swipe/${g.slug}`}
+                title={g.title}
+                description={g.description}
+                Icon={g.Icon}
+                accent="gold"
+                compact
                 onClick={() => playUiSfx("sectionOpen")}
-                className="group rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f]/60 to-[#0a1428]/90 backdrop-blur-sm p-4 hover:border-[#c9a84c]/50 transition-all hover:scale-[1.01]"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="rounded-lg bg-black/40 border border-white/10 p-2">
-                    <g.Icon className="h-4 w-4 text-[#c9a84c]" />
-                  </div>
-                  <h3 className="text-sm font-bold text-foreground flex-1">{g.title}</h3>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-[#c9a84c] transition-all" />
-                </div>
-                <p className="text-xs text-muted-foreground">{g.description}</p>
-              </Link>
+              />
             ))}
           </div>
         </div>
@@ -334,40 +331,5 @@ export default function LolHub() {
       </div>
       <LolPopoutStyleToggle value={popoutStyle} onChange={setPopoutStyle} />
     </div>
-  );
-}
-
-function HubTile({
-  to,
-  title,
-  description,
-  Icon,
-  accent,
-}: {
-  to: string;
-  title: string;
-  description: string;
-  Icon: React.ElementType;
-  accent: string;
-}) {
-  return (
-    <Link
-      to={to}
-      onClick={() => playUiSfx("sectionOpen")}
-      className={`group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${accent} backdrop-blur-sm p-5 hover:border-primary/50 transition-all hover:scale-[1.01]`}
-    >
-      <div className="flex items-start gap-4">
-        <div className="rounded-lg bg-black/40 border border-white/10 p-3">
-          <Icon className="h-6 w-6 text-[#c9a84c]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base md:text-lg font-bold text-foreground">{title}</h3>
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        </div>
-      </div>
-    </Link>
   );
 }
