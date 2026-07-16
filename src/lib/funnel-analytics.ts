@@ -11,7 +11,13 @@ export type FunnelEventName =
   | "quiz_signup_clicked"
   | "quiz_guest_continue_clicked"
   | "auth_signup_viewed_from_quiz"
-  | "auth_signup_completed_from_quiz";
+  | "auth_signup_completed_from_quiz"
+  // Provider-neutral ad lifecycle (src/lib/ads/) — payload is placement/provider/reason only.
+  | "ad_slot_eligible"
+  | "ad_slot_rendered"
+  | "ad_slot_suppressed"
+  | "ad_slot_error"
+  | "house_ad_clicked";
 
 /**
  * Fire-and-forget funnel event. Never throws, never blocks gameplay —

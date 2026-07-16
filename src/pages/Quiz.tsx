@@ -24,6 +24,7 @@ import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
+import AdSlot from "@/components/ads/AdSlot";
 import {
   getDailyChallenge,
   getRankedState,
@@ -1381,7 +1382,8 @@ export default function Quiz() {
 
         {/* Final results */}
         {phase === "result" && isDailyChallenge.current && (
-          <DailyChallengeResult
+          <div className="space-y-4">
+            <DailyChallengeResult
             score={dailyChallenge.correct}
             total={dailyChallenge.target}
             dailyChallenge={dailyChallenge}
@@ -1392,7 +1394,9 @@ export default function Quiz() {
               dailyBonusXpEarned.current = 0;
               setPhase("sets");
             }}
-          />
+            />
+            <AdSlot placement="daily_challenge_results" isActiveQuizQuestion={phase !== "result"} />
+          </div>
         )}
 
         {phase === "result" && !isDailyChallenge.current && (
@@ -1447,6 +1451,7 @@ export default function Quiz() {
             </Card>
             <SessionBreakdown answers={sessionAnswers} />
             <SessionReviewList answers={sessionAnswers} />
+            <AdSlot placement="quiz_results" isActiveQuizQuestion={phase !== "result"} />
           </motion.div>
         )}
       </div>

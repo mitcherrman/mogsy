@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
+import AdSlot from "@/components/ads/AdSlot";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -407,6 +408,8 @@ function ChampionDocContent({
           </div>
         </div>
       </div>
+
+      <AdSlot placement="docs_inline" className="mt-4" />
 
       {/* Base stats + projection */}
       <section className="mt-4 rounded-xl border border-border bg-card/60 p-4 md:p-5">

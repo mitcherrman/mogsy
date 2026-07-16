@@ -4,6 +4,7 @@ import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, H
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
+import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import HexZipperCard, { type HexZipperSide, type HexPopoutStyle } from "@/components/lol/HexZipperCard";
 import HexTrainingHero from "@/components/lol/HexTrainingHero";
@@ -251,6 +252,8 @@ export default function LolHub() {
             />
           ))}
         </div>
+
+        <AdSlot placement="lol_hub_mid" className="mt-8" />
 
         {/* League Swipe Games */}
         <div className="mt-8">

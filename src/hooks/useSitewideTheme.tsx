@@ -17,6 +17,12 @@ interface SitewideThemeContextType {
   visualThemeId: string;
   isEnabled: boolean;
   isPro: boolean;
+  /**
+   * Pro entitlement with an explicit unresolved state, sourced from the same
+   * profiles query as isPro. "unknown" until the signed-in user's profile
+   * resolves; guests resolve to "free". Ads fail closed on "unknown".
+   */
+  proStatus: "unknown" | "pro" | "free";
   chosenFreeTheme: string | null;
   setActiveTheme: (id: string) => void;
   isCycleFading: boolean;
@@ -28,6 +34,7 @@ const SitewideThemeContext = createContext<SitewideThemeContextType>({
   visualThemeId: "default",
   isEnabled: false,
   isPro: false,
+  proStatus: "unknown",
   chosenFreeTheme: null,
   setActiveTheme: () => {},
   isCycleFading: false,
@@ -37,11 +44,17 @@ const cyclableThemes = profileThemes.filter((t) => t.id !== "cycle" && t.id !== 
 
 export function SitewideThemeProvider({ children }: { children: ReactNode }) {
   let authUser: ReturnType<typeof useAuth>["user"] = null;
-  try { authUser = useAuth().user; } catch {}
+  let authLoading = false;
+  try {
+    const auth = useAuth();
+    authUser = auth.user;
+    authLoading = auth.loading;
+  } catch {}
   const user = authUser;
   const [themeId, setThemeId] = useState(() => localStorage.getItem("mogsy-active-theme") || "default");
   const [isEnabled, setIsEnabled] = useState(true);
   const [isPro, setIsPro] = useState(false);
+  const [proStatus, setProStatus] = useState<"unknown" | "pro" | "free">("unknown");
   const [chosenFreeTheme, setChosenFreeTheme] = useState<string | null>(null);
 
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -86,7 +99,12 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // Signed out (auth resolved) = known free/guest; still resolving = unknown.
+      setProStatus(authLoading ? "unknown" : "free");
+      return;
+    }
+    setProStatus("unknown");
     supabase
       .from("profiles")
       .select("custom_theme, is_pro")
@@ -95,11 +113,13 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       .then(({ data }) => {
         if (data) {
           setIsPro(data.is_pro ?? false);
+          setProStatus(data.is_pro ? "pro" : "free");
           const stored = localStorage.getItem("mogsy-chosen-free-theme");
           if (stored) setChosenFreeTheme(stored);
         }
+        // On error/missing profile, stay "unknown" — ads fail closed.
       });
-  }, [user]);
+  }, [user, authLoading]);
 
   const isCycling = themeId === "cycle";
   const visualThemeId = isCycling
@@ -190,6 +210,7 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
         visualThemeId,
         isEnabled: hasCustomTheme,
         isPro,
+        proStatus,
         chosenFreeTheme,
         setActiveTheme,
         isCycleFading,

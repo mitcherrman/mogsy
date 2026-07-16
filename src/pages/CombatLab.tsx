@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import AdSlot from "@/components/ads/AdSlot";
 import {
   Swords,
   Zap,
@@ -1079,6 +1080,7 @@ export default function CombatLab() {
               {/* future graph panels (DPS over time, damage-source pie) slot in here */}
               <TimelineViewer events={result.timeline || []} />
               <FinalStatePanel state={result.final_state || {}} />
+              <AdSlot placement="combat_results" />
             </div>
           )}
 
