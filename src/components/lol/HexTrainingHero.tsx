@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowRight, BrainCircuit, Swords, Zap, Shield, Check } from "lucide-react";
 import {
   type ChampionManifest,
@@ -51,17 +51,17 @@ const HERO_CLIP =
 
 type Props = {
   assets: ChampionManifest | null | undefined;
-  /** Fired when the primary Start Quiz CTA is clicked (funnel tracking lives in the page). */
+  /** Fired when the quiz entry link is clicked (funnel tracking lives in the page). */
   onStartQuiz: () => void;
 };
 
 /**
- * "Hextech Training Chamber" hero for /lol. Left: fixed headline + CTAs +
- * training-mode selectors. Right: layered champion scene that crossfades as
- * the selected mode changes. Pure CSS animation; respects reduced motion.
+ * "Hextech Training Chamber" hero for /lol. Left: fixed headline + the
+ * training-mode selector as the primary interaction. Right: layered champion
+ * scene that crossfades as the selected mode changes. Pure CSS animation;
+ * respects reduced motion.
  */
 export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
-  const navigate = useNavigate();
   const [modeKey, setModeKey] = useState<TrainingModeKey>("quiz");
   const [failed, setFailed] = useState<Record<string, boolean>>({});
   const mode = TRAINING_MODES.find((m) => m.key === modeKey)!;
@@ -94,48 +94,22 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
         {/* Faint hex grid */}
         <div className="hero-hexgrid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
 
-        <div className="relative grid grid-cols-1 md:grid-cols-[1.05fr_1fr] md:min-h-[360px]">
-          {/* ---------- Left: copy + CTAs + mode selectors ---------- */}
-          <div className="relative z-10 flex flex-col justify-center gap-3 p-6 md:p-8">
+        <div className="relative grid grid-cols-1 md:grid-cols-[1.05fr_1fr] md:min-h-[260px]">
+          {/* ---------- Left: headline + mode selector (primary interaction) ---------- */}
+          <div className="relative z-10 flex flex-col justify-center gap-2 p-5 md:p-6">
             <div className="text-[10px] uppercase tracking-[0.3em] text-[#c9a84c] font-bold">
               Mogsy × LoL
             </div>
             <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-[#f0e6d2]">
               Train Your League Knowledge
             </h1>
-            <p className="text-xs md:text-sm text-[#a09b8c] max-w-xl">
-              Quiz mechanics, test builds, compare damage, and learn League one
-              decision at a time.
-            </p>
-
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => {
-                  playUiSfx("primaryAction");
-                  onStartQuiz();
-                  navigate("/quiz");
-                }}
-                className="hero-cta-gold inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-4 py-2.5 text-sm font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f] transition-colors"
-              >
-                Start Quiz
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <Link
-                to="/combat-lab"
-                onClick={() => playUiSfx("primaryAction")}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0ac8ff]/40 bg-[#0ac8ff]/10 px-4 py-2.5 text-sm font-bold text-[#8fdcff] hover:bg-[#0ac8ff]/20 hover:border-[#0ac8ff]/70 hover:-translate-y-0.5 hover:shadow-[0_4px_18px_rgba(10,200,255,0.35)] motion-reduce:hover:translate-y-0 transition-all duration-300"
-              >
-                Open Combat Lab
-              </Link>
-              <span className="text-[11px] text-muted-foreground">No account needed</span>
-            </div>
 
             {/* Training mode selectors */}
-            <div className="mt-3">
-              <div className="text-[10px] uppercase tracking-[0.25em] text-[#0ac8ff]/80 font-bold mb-2">
+            <div className="mt-1">
+              <div className="text-xs md:text-sm uppercase tracking-[0.25em] text-[#0ac8ff]/80 font-bold mb-2.5">
                 Choose Your Training
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 -mb-1">
+              <div className="flex gap-2.5 overflow-x-auto pb-1 -mb-1">
                 {TRAINING_MODES.map((m) => {
                   const active = m.key === modeKey;
                   return (
@@ -143,7 +117,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                       key={m.key}
                       onClick={() => setModeKey(m.key)}
                       aria-pressed={active}
-                      className={`shrink-0 inline-flex min-h-[40px] items-center gap-2 px-3.5 py-2 text-xs font-bold transition-colors border ${
+                      className={`shrink-0 inline-flex min-h-[52px] items-center gap-2.5 px-4 py-3 md:px-5 text-sm md:text-base font-bold transition-colors border ${
                         active
                           ? "hero-tab-active border-[#c9a84c]/80 bg-[#c9a84c]/15 text-[#f0d78c]"
                           : "border-white/10 bg-black/30 text-[#a09b8c] hover:border-[#0ac8ff]/40 hover:text-[#cfe9f5]"
@@ -153,20 +127,24 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
                           "polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)",
                       }}
                     >
-                      <m.Icon className={`h-3.5 w-3.5 ${active ? "text-[#c9a84c]" : "text-[#0ac8ff]/70"}`} />
+                      <m.Icon className={`h-5 w-5 ${active ? "text-[#c9a84c]" : "text-[#0ac8ff]/70"}`} />
                       {m.label}
                     </button>
                   );
                 })}
               </div>
               {/* Mode description + destination link — re-keyed so it fades in on change */}
-              <div key={mode.key} className="hero-mode-in mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <p className="text-xs text-[#a09b8c]">{mode.description}</p>
+              <div key={mode.key} className="hero-mode-in mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <p className="text-sm md:text-base text-[#a09b8c]">{mode.description}</p>
                 <Link
                   to={mode.to}
-                  className="text-xs font-semibold text-[#0ac8ff] hover:underline inline-flex items-center gap-1"
+                  onClick={() => {
+                    playUiSfx("primaryAction");
+                    if (mode.key === "quiz") onStartQuiz();
+                  }}
+                  className="text-sm md:text-base font-bold text-[#0ac8ff] hover:underline inline-flex items-center gap-1.5"
                 >
-                  Enter {mode.label} <ArrowRight className="h-3 w-3" />
+                  Enter {mode.label} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
