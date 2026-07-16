@@ -117,8 +117,11 @@ describe("LeagueProfileStats — activity states", () => {
     expect(screen.getAllByRole("link", { name: /Start League Quiz/ })).toHaveLength(1);
     expect(screen.queryByText("League Quiz Progress")).toBeNull();
     expect(screen.queryByText(/No quiz activity yet/)).toBeNull();
-    // At most two secondary actions (Combat Lab card counts as one destination).
-    expect(screen.getByRole("link", { name: "Try Combat Lab" })).toBeTruthy();
+    // No duplicate Combat Lab CTA in the Unranked row — the dedicated card below
+    // is the single Combat Lab destination.
+    expect(screen.queryByRole("link", { name: "Try Combat Lab" })).toBeNull();
+    const combatLinks = screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/combat-lab");
+    expect(combatLinks).toHaveLength(1);
   });
 
   it("guest with real device-local activity keeps the truthful full progress view", async () => {

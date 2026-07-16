@@ -175,16 +175,12 @@ export default function LeagueProfileStats({
               Answer your first question to start ranking up on this device.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Button asChild size="sm" variant="hero">
-              <Link to="/quiz">
-                Start League Quiz <ArrowRight className="ml-1 h-3.5 w-3.5" />
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="text-xs">
-              <Link to="/combat-lab">Try Combat Lab</Link>
-            </Button>
-          </div>
+          {/* Single primary action — the dedicated Combat Lab card below covers that destination. */}
+          <Button asChild size="sm" variant="hero" className="shrink-0 self-start sm:self-auto">
+            <Link to="/quiz">
+              Start League Quiz <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
         </div>
       )}
 
