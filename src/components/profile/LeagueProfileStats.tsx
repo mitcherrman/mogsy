@@ -1,31 +1,39 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { BrainCircuit, Swords, Trophy, FileText, Sparkles, FlaskConical, ArrowRight, Target } from "lucide-react";
+import { BrainCircuit, Trophy, FileText, Sparkles, FlaskConical, ArrowRight, Target, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import QuizProfileCard from "@/components/quiz/QuizProfileCard";
-import { quizApi, type QuizCategoryStat } from "@/lib/quiz/api";
+import { quizApi, type QuizCategoryStat, type QuizHistoryEntry } from "@/lib/quiz/api";
+import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { deriveProfileStats } from "@/lib/profile/view-model";
 import type { ProfileConfig } from "@/hooks/useProfileConfig";
 
-const QUICK_ACTIONS = [
-  { to: "/quiz", label: "Continue League Quiz", icon: BrainCircuit },
-  { to: "/combat-lab", label: "Open Combat Lab", icon: Swords },
-  { to: "/lol", label: "Explore League Hub", icon: Sparkles },
-  { to: "/lol/tier-list", label: "View Tier List", icon: Trophy },
+/** Lower-priority destinations, one compact row — no duplicates of the primary CTA. */
+const RESOURCE_LINKS = [
+  { to: "/lol", label: "League Hub", icon: Sparkles },
+  { to: "/lol/tier-list", label: "Tier List", icon: Trophy },
   { to: "/lol/docs", label: "League Docs", icon: FileText },
-];
-
-const EMPTY_STATE_CTAS = [
-  { to: "/quiz", label: "Start with the League Quiz" },
-  { to: "/combat-lab", label: "Try Combat Lab" },
-  { to: "/quiz", label: "Learn item build paths" },
-  { to: "/quiz", label: "Test champion cooldown knowledge" },
+  { to: "/lol/history", label: "Quiz History", icon: History },
 ];
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
   return `${Number(n).toFixed(Math.abs(n - Math.round(n)) < 0.05 ? 0 : 1)}%`;
+}
+
+function formatHistoryDate(iso?: string): string {
+  if (!iso) return "";
+  // Backend timestamps are UTC without a zone suffix.
+  const d = new Date(/Z|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso.replace(" ", "T")}Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function historyModeLabel(entry: QuizHistoryEntry): string {
+  if (entry.mode === "daily") return "Daily Challenge";
+  return entry.category ? `Quiz · ${entry.category}` : "Quiz";
 }
 
 function CategoryKnowledge({ categories }: { categories: QuizCategoryStat[] }) {
@@ -73,8 +81,9 @@ function CategoryKnowledge({ categories }: { categories: QuizCategoryStat[] }) {
 
 /**
  * League-focused stats block for the profile page: quiz rank/XP/streak,
- * category knowledge breakdown, Combat Lab card, and quick League CTAs.
- * All data comes from the existing quiz API — no schema changes.
+ * state-aware activity/history panel, category knowledge breakdown, a compact
+ * Combat Lab card, and one low-priority resources row. All data comes from
+ * the existing quiz API — no schema changes.
  */
 export default function LeagueProfileStats({ userId, config }: { userId: string; config: ProfileConfig }) {
   const { data: progress, isLoading: progressLoading, error: progressError } = useQuery({
@@ -95,14 +104,34 @@ export default function LeagueProfileStats({ userId, config }: { userId: string;
     enabled: config.showQuizProgress,
   });
 
+  // Stored session history (JWT-scoped to the current session). Failures fall
+  // back to `null`, which the view model treats as "no detailed history" —
+  // never as "no activity".
+  const { data: historyEntries } = useQuery({
+    queryKey: ["quiz-history", userId],
+    queryFn: async (): Promise<QuizHistoryEntry[] | null> => {
+      try {
+        const token = await ensureBackendAuthToken();
+        if (!token) return null;
+        const res = await quizApi.getHistory();
+        return res?.results ?? null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: config.showQuizProgress,
+  });
+
   const achievements =
     achievementsData?.achievements ??
     [...(achievementsData?.unlocked ?? []), ...(achievementsData?.locked ?? [])];
   const categories = categoriesData?.categories ?? [];
-  const hasQuizHistory = (progress?.attempts ?? 0) > 0;
+  const stats = deriveProfileStats(progress ?? null, categories, historyEntries ?? null);
+
+  const primaryQuizLabel = stats.hasAnyQuizActivity ? "Continue League Quiz" : "Start League Quiz";
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 sm:space-y-6">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 sm:space-y-4">
       {/* League Quiz Progress */}
       {config.showQuizProgress && (
         <div>
@@ -119,19 +148,87 @@ export default function LeagueProfileStats({ userId, config }: { userId: string;
         </div>
       )}
 
-      {/* Empty state — new League player */}
-      {config.showQuizProgress && !progressLoading && !hasQuizHistory && (
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center space-y-3">
-          <p className="text-sm text-foreground font-medium">
-            No quiz history yet — start building your League game knowledge.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {EMPTY_STATE_CTAS.map((cta) => (
-              <Button key={cta.label} asChild size="sm" variant="outline" className="text-xs">
-                <Link to={cta.to}>{cta.label}</Link>
-              </Button>
-            ))}
-          </div>
+      {/* Activity / history — state-aware, one primary action */}
+      {config.showQuizProgress && !progressLoading && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 sm:p-4 space-y-3">
+          {stats.activityState === "none" && (
+            <>
+              <p className="text-sm text-foreground font-medium text-center">
+                No quiz activity yet — answer your first question to start ranking up.
+              </p>
+              <div className="flex flex-wrap justify-center items-center gap-2">
+                <Button asChild size="sm" variant="hero">
+                  <Link to="/quiz">
+                    Start League Quiz <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="text-xs">
+                  <Link to="/combat-lab">Try Combat Lab</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="text-xs">
+                  <Link to="/lol">Explore League Hub</Link>
+                </Button>
+              </div>
+            </>
+          )}
+
+          {stats.activityState === "aggregate-only" && (
+            <>
+              <p className="text-sm text-foreground text-center">
+                Your overall quiz progress is saved, but detailed history is not
+                available for earlier results.
+              </p>
+              <div className="flex justify-center">
+                <Button asChild size="sm" variant="hero">
+                  <Link to="/quiz">
+                    {primaryQuizLabel} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </>
+          )}
+
+          {stats.activityState === "detailed" && (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                  <History className="h-4 w-4 text-primary" />
+                  Recent Activity
+                </h3>
+                <Link to="/lol/history" className="text-xs font-semibold text-primary hover:underline">
+                  View all
+                </Link>
+              </div>
+              <ul className="space-y-1.5">
+                {stats.recentHistory.slice(0, 3).map((h) => (
+                  <li
+                    key={h.session_id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground truncate">{historyModeLabel(h)}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {formatHistoryDate(h.completed_at || h.started_at || h.date)}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs font-bold text-foreground tabular-nums">
+                        {h.score}/{h.total_questions}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground tabular-nums">{fmtPct(h.accuracy)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-center">
+                <Button asChild size="sm" variant="hero">
+                  <Link to="/quiz">
+                    {primaryQuizLabel} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -143,16 +240,16 @@ export default function LeagueProfileStats({ userId, config }: { userId: string;
           <CategoryKnowledge categories={categories} />
         ))}
 
-      {/* Combat Lab */}
+      {/* Combat Lab — single compact card, value-focused copy */}
       {config.showCombatLab && (
-        <div className="rounded-2xl border border-border bg-card p-3 sm:p-5 flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-1.5">
               <FlaskConical className="h-4 w-4 text-emerald-400" />
               Combat Lab
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Simulate matchups and theorycraft builds. Saved combat setups are coming soon.
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Test champion builds and matchup scenarios.
             </p>
           </div>
           <Button asChild size="sm" variant="outline" className="shrink-0">
@@ -163,20 +260,22 @@ export default function LeagueProfileStats({ userId, config }: { userId: string;
         </div>
       )}
 
-      {/* Quick actions */}
+      {/* Compact resources row */}
       {config.showQuickActions && (
-        <div className="rounded-2xl border border-border bg-card p-3 sm:p-5">
-          <h3 className="text-sm sm:text-base font-bold text-foreground mb-3">What's next in Mogsy League</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {QUICK_ACTIONS.map(({ to, label, icon: Icon }) => (
-              <Button key={label} asChild variant="secondary" size="sm" className="justify-start text-xs">
-                <Link to={to}>
-                  <Icon className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                  {label}
-                </Link>
-              </Button>
-            ))}
-          </div>
+        <div className="rounded-2xl border border-border bg-card px-3 py-2.5 sm:px-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Explore
+          </span>
+          {RESOURCE_LINKS.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={label}
+              to={to}
+              className="inline-flex items-center gap-1 py-1 text-xs font-medium text-foreground/80 hover:text-primary transition-colors"
+            >
+              <Icon className="h-3.5 w-3.5 text-primary/70" />
+              {label}
+            </Link>
+          ))}
         </div>
       )}
     </motion.div>

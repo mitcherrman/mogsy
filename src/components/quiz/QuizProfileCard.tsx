@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
+import { progressAttempts, resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -51,7 +51,8 @@ export default function QuizProfileCard({
     return <Skeleton className="h-32 w-full rounded-xl" />;
   }
 
-  const hasProgress = !!progress && (progress.attempts ?? 0) > 0;
+  const answered = progressAttempts(progress);
+  const hasProgress = !!progress && answered > 0;
   // Backend may return `rank` / `next_rank` as nested objects instead of strings.
   const rankObj = (progress?.rank && typeof progress.rank === "object" ? progress.rank : null) as any;
   const nextRankObj = (progress?.next_rank && typeof progress.next_rank === "object" ? progress.next_rank : null) as any;
@@ -72,7 +73,7 @@ export default function QuizProfileCard({
     resolveQuizAssetUrl(rankObj?.icon_path) ||
     resolveQuizAssetUrl(rankObj?.small_icon_path) ||
     resolveQuizAssetUrl("assets/ranks/unranked.png");
-  const xp = progress?.xp ?? rankObj?.progress_xp ?? 0;
+  const xp = progress?.xp ?? progress?.total_xp ?? rankObj?.progress_xp ?? 0;
   const pct = Math.max(
     0,
     Math.min(100, Number(progress?.progress_percent ?? rankObj?.progress_percent ?? 0)),
@@ -211,7 +212,7 @@ export default function QuizProfileCard({
             <Stat icon={Flame} label="Streak" value={progress?.current_streak ?? 0} />
             <Stat icon={Trophy} label="Best" value={progress?.best_streak ?? 0} />
             <Stat icon={Target} label="Accuracy" value={fmtPct(progress?.accuracy)} />
-            <Stat icon={Shield} label="Answered" value={progress?.attempts ?? 0} />
+            <Stat icon={Shield} label="Answered" value={answered} />
           </div>
 
           {totalAch > 0 && (

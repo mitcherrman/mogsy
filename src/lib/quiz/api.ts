@@ -66,7 +66,16 @@ export type QuizProgress = {
   accuracy?: number;
   attempts?: number;
   correct?: number;
+  // The backend progress endpoint returns these names (see routes/quiz.py):
+  total_xp?: number;
+  total_attempts?: number;
+  correct_attempts?: number;
 };
+
+/** Answered-question total, tolerant of both `attempts` and the backend's `total_attempts`. */
+export function progressAttempts(progress?: QuizProgress | null): number {
+  return Number(progress?.attempts ?? progress?.total_attempts ?? 0) || 0;
+}
 
 export type QuizCategoryStat = {
   category: string;

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift, ShieldCheck } from "lucide-react";
+import { Plus, X, Crown, Zap, ArrowLeft, AlertCircle, CheckCircle2, MapPin, User, Instagram, Youtube, Twitch, Globe, Twitter, Star, Pencil, Palette, Lock, Heart, Search, Trash2, Settings, Gift, ShieldCheck, Flame, Target, Shield, LogIn, UserPlus } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,8 @@ import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
 import LeagueProfileStats from "@/components/profile/LeagueProfileStats";
 import ProfileConfigPanel from "@/components/profile/ProfileConfigPanel";
+import { quizApi } from "@/lib/quiz/api";
+import { deriveProfileStats } from "@/lib/profile/view-model";
 
 
 const frameOptions = [
@@ -52,6 +55,7 @@ export default function Profile() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState("default");
@@ -71,6 +75,18 @@ export default function Profile() {
   // mode. Only admin/dev users (moderator+) see the toggle to re-enable them;
   // the role check also guards against a stale localStorage value.
   const showLegacy = !LEAGUE_ONLY_MODE || (config.showLegacyMogsy && isModerator);
+  // Same guest convention as Quiz.tsx / Settings.tsx: anonymous Supabase
+  // sessions are real users but must not get persistent-profile editing UI.
+  const isGuest = !user || user.is_anonymous === true;
+  const statsUserId = user?.id || "anonymous";
+
+  // Same query key as LeagueProfileStats, so react-query dedupes the request.
+  const { data: quizProgress, isLoading: quizProgressLoading } = useQuery({
+    queryKey: ["quiz-progress", statsUserId],
+    queryFn: () => quizApi.getProgress(statsUserId),
+    enabled: !isGuest,
+  });
+  const headerStats = deriveProfileStats(quizProgress ?? null, null, null);
 
   // Load + listen for theme config so locks stay in sync with the FAB
   useEffect(() => {
@@ -401,8 +417,19 @@ export default function Profile() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Profile saved!" });
+      setEditMode(false);
     }
     setSaving(false);
+  };
+
+  /** Discard unsaved local edits: restore last persisted values, exit edit mode. */
+  const handleCancelEdit = async () => {
+    setNameError("");
+    setAgeWarning("");
+    setSocialErrors({});
+    setShowCityDropdown(false);
+    setEditMode(false);
+    await loadProfile();
   };
 
   if (loading) {
@@ -415,7 +442,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-dvh px-2 sm:px-4 py-4 sm:py-8">
-      <SEOHead title="My Profile — Mogsy League" description="Your Mogsy League of Legends profile. Track your League quiz progress, Combat Lab experiments, and Mogsy game knowledge." />
+      <SEOHead title="My Profile — Mogsy League" description="Your Mogsy League of Legends profile. Track quiz performance, category mastery, streaks, and Combat Lab activity." />
       <div className="container mx-auto max-w-4xl xl:max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
@@ -424,10 +451,14 @@ export default function Profile() {
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-3xl font-extrabold text-foreground truncate">Mogsy League Profile</h1>
-                <p className="hidden sm:block text-xs text-muted-foreground">
-                  Track your League quiz progress, Combat Lab experiments, and Mogsy game knowledge.
-                </p>
+                <h1 className={`font-extrabold text-foreground truncate ${isGuest ? "text-xl sm:text-3xl" : "text-sm sm:text-base text-muted-foreground"}`}>
+                  Mogsy League Profile
+                </h1>
+                {isGuest && (
+                  <p className="hidden sm:block text-xs text-muted-foreground">
+                    Track quiz performance, category mastery, streaks, and Combat Lab activity.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -463,7 +494,7 @@ export default function Profile() {
               >
                 <Settings className="h-4 w-4" />
               </Button>
-              {profileId && (
+              {profileId && !isGuest && (
                 <Button
                   type="button"
                   variant="outline"
@@ -481,18 +512,150 @@ export default function Profile() {
 
 
 
+          {isGuest ? (
+            /* ---------- Guest: account-value panel (no editing UI) ---------- */
+            <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-card p-4 sm:p-6 mb-4 sm:mb-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-secondary border border-border flex items-center justify-center">
+                  <User className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-foreground">
+                    Sign in to build your League profile
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                    You're playing as a guest. Progress on this device is temporary
+                    until you create an account.
+                  </p>
+                </div>
+              </div>
+              <ul className="grid gap-1.5 sm:grid-cols-2 text-xs sm:text-sm text-foreground/85">
+                {[
+                  "Save quiz progress, XP, and rank",
+                  "Track streaks and category mastery",
+                  "Keep a persistent League profile",
+                  "Save profile photos and customization",
+                  "Access quiz history and future Pro progress features",
+                ].map((benefit) => (
+                  <li key={benefit} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild variant="hero" size="sm">
+                  <Link to="/auth?returnTo=%2Fprofile">
+                    <LogIn className="mr-1.5 h-4 w-4" /> Sign in
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/auth?mode=signup&returnTo=%2Fprofile">
+                    <UserPlus className="mr-1.5 h-4 w-4" /> Create account
+                  </Link>
+                </Button>
+                <Link to="/lol" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Continue exploring as a guest
+                </Link>
+              </div>
+            </div>
+          ) : (
+            /* ---------- Signed in: player identity header ---------- */
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                  {photos.length > 0 ? (
+                    <img
+                      src={photos[0].url}
+                      alt={`${form.displayName || "Your"} profile photo`}
+                      className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full object-cover border-2 border-primary/50"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-full bg-secondary border border-border flex items-center justify-center">
+                      <User className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-2xl font-extrabold text-foreground truncate">
+                      {form.displayName || "Set your display name"}
+                    </h2>
+                    {form.statusMessage && (
+                      <p className="text-xs sm:text-sm text-muted-foreground italic truncate">
+                        "{form.statusMessage}"
+                      </p>
+                    )}
+                    {!quizProgressLoading && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                        {headerStats.rankIconUrl && (
+                          <img
+                            src={headerStats.rankIconUrl}
+                            alt=""
+                            aria-hidden
+                            className="h-4 w-4 object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        )}
+                        {headerStats.rankName}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Target className="h-3 w-3" aria-hidden /> {headerStats.accuracy}% accuracy
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Flame className="h-3 w-3" aria-hidden /> {headerStats.bestStreak} best streak
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Shield className="h-3 w-3" aria-hidden /> {headerStats.totalQuestionsAnswered} answered
+                      </span>
+                    </div>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant={editMode ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (editMode) {
+                      handleCancelEdit();
+                      return;
+                    }
+                    setEditMode(true);
+                    // Form renders below the dashboard — bring it into view.
+                    requestAnimationFrame(() => {
+                      document.getElementById("profile-edit-form")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+                    });
+                  }}
+                  aria-expanded={editMode}
+                  className="shrink-0 self-start sm:self-center"
+                >
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  {editMode ? "Close editor" : "Edit profile"}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* League stats + customization panel */}
-          <div className="space-y-4 sm:space-y-6 mb-4 sm:mb-6">
-            <ProfileConfigPanel
-              config={config}
-              setOption={setOption}
-              resetConfig={resetConfig}
-              showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
-            />
-            <LeagueProfileStats userId={user?.id || "anonymous"} config={config} />
+          <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+            {!isGuest && (
+              <ProfileConfigPanel
+                config={config}
+                setOption={setOption}
+                resetConfig={resetConfig}
+                showLegacyOption={!LEAGUE_ONLY_MODE || isModerator}
+              />
+            )}
+            <LeagueProfileStats userId={statsUserId} config={config} />
           </div>
 
-          <form onSubmit={handleSave}>
+          {!isGuest && editMode && (
+          <form id="profile-edit-form" aria-label="Edit profile" onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
               {/* Left sidebar: Exposure Boost (legacy Mogsy — hidden in League-only mode) */}
               {showLegacy && (
@@ -750,10 +913,15 @@ export default function Profile() {
                 {/* Favorites (legacy Mogsy — hidden in League-only mode) */}
                 {showLegacy && <FavoritesEditor profileId={profileId} />}
 
-                {/* Save button */}
-                <Button type="submit" variant="hero" size="lg" className="w-full" disabled={saving || hasFormErrors}>
-                  {saving ? "Saving…" : "Save Profile"}
-                </Button>
+                {/* Save / Cancel */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button type="submit" variant="hero" size="lg" className="flex-1" disabled={saving || hasFormErrors}>
+                    {saving ? "Saving…" : "Save Profile"}
+                  </Button>
+                  <Button type="button" variant="outline" size="lg" onClick={handleCancelEdit} disabled={saving}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
 
               {/* Right sidebar: Profile Frame (legacy) + Theme */}
@@ -884,6 +1052,7 @@ export default function Profile() {
               </div>
             </div>
           </form>
+          )}
         </motion.div>
       </div>
     </div>
