@@ -11,4 +11,4 @@ Disallow: /quiz/diagnostics
 Disallow: /combat-lab/diagnostics
 
 # DOMAIN CONFIG: Update domain below when changing domain
-Sitemap: https://mogsy.app/sitemap.xml
+Sitemap: https://mogzy.lol/sitemap.xml

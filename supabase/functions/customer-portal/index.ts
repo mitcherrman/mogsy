@@ -41,6 +41,8 @@ serve(async (req) => {
     }
 
     const allowedOrigins = [
+      "https://mogzy.lol",
+      "https://www.mogzy.lol",
       "https://mogsy.net",
       "https://www.mogsy.net",
       "https://mogsy.app",
@@ -52,7 +54,7 @@ serve(async (req) => {
     const requestOrigin = req.headers.get("origin") || "";
     const origin = allowedOrigins.includes(requestOrigin)
       ? requestOrigin
-      : "https://mogsy.net";
+      : "https://mogzy.lol";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
       return_url: `${origin}/shop`,

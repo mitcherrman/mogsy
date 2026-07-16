@@ -1,7 +1,7 @@
 // ─── DOMAIN CONFIG ───
-// When you purchase a custom domain, update SITE_DOMAIN here.
-// Then find-and-replace "mogsy.com" in: index.html, public/sitemap.xml, public/robots.txt
-export const SITE_DOMAIN = "mogsy.app";
+// When changing the domain, update SITE_DOMAIN here, then update index.html
+// and public/robots.txt, and regenerate public/sitemap.xml (do not hand-edit it).
+export const SITE_DOMAIN = "mogzy.lol";
 export const SITE_URL = `https://${SITE_DOMAIN}`;
 export const SITE_NAME = "Mogsy";
 

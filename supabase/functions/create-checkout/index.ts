@@ -65,6 +65,8 @@ serve(async (req) => {
 
     // Validate origin against allowlist to prevent open-redirect via Stripe success/cancel URLs
     const allowedOrigins = [
+      "https://mogzy.lol",
+      "https://www.mogzy.lol",
       "https://mogsy.net",
       "https://www.mogsy.net",
       "https://mogsy.app",
@@ -76,7 +78,7 @@ serve(async (req) => {
     const requestOrigin = req.headers.get("origin") || "";
     const origin = allowedOrigins.includes(requestOrigin)
       ? requestOrigin
-      : "https://mogsy.net";
+      : "https://mogzy.lol";
 
     const sessionConfig: any = {
       customer: customerId,
