@@ -19,14 +19,13 @@
 // on the right tab (bookmarks preserved).
 // ---------------------------------------------------------------------------
 
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, KeyRound, Loader2, Hammer, ListChecks, Swords, ExternalLink } from "lucide-react";
+import { ArrowLeft, Loader2, Hammer, ListChecks, Swords, ExternalLink } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
+import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { RankedDuelReviewPanel } from "@/components/admin/ranked-duel-review/RankedDuelReviewPanel";
 
 const QuizBuilderPro = lazy(() => import("./QuizBuilderPro"));
@@ -39,45 +38,6 @@ const DEFAULT_TAB: WorkspaceTab = "builder";
 const isWorkspaceTab = (value: string | null): value is WorkspaceTab =>
   value != null && (WORKSPACE_TABS as readonly string[]).includes(value);
 
-function useAdminKey(): string | null {
-  const [key, setKey] = useState<string | null>(getAdminKey);
-  useEffect(() => subscribeAdminKey(() => setKey(getAdminKey())), []);
-  return key;
-}
-
-function AdminKeyGate() {
-  const [value, setValue] = useState("");
-  const save = () => {
-    const v = value.trim();
-    if (v) setAdminKey(v);
-  };
-  return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-muted/20 p-5">
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-amber-400" aria-hidden />
-          <h2 className="text-sm font-semibold">Admin key required</h2>
-        </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Enter the X-Admin-Key (KNOWLEDGE_ADMIN_KEY) to open the workspace. Stored for this
-          browser session only, and shared across Quiz Builder, Quiz Review, and Knowledge Admin.
-        </p>
-        <Input
-          type="password"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && save()}
-          placeholder="X-Admin-Key"
-          aria-label="Admin key"
-        />
-        <Button size="sm" className="w-full" onClick={save} disabled={!value.trim()}>
-          Unlock workspace
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 const TAB_META: Record<WorkspaceTab, { label: string; icon: typeof Hammer }> = {
   builder: { label: "Quiz Builder", icon: Hammer },
   review: { label: "Quiz Review", icon: ListChecks },
@@ -85,7 +45,6 @@ const TAB_META: Record<WorkspaceTab, { label: string; icon: typeof Hammer }> = {
 };
 
 export default function AdminQuizWorkspace() {
-  const adminKey = useAdminKey();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeTab = useMemo<WorkspaceTab>(() => {
@@ -149,13 +108,11 @@ export default function AdminQuizWorkspace() {
         </Button>
       </div>
 
-      {!adminKey ? (
-        <AdminKeyGate />
-      ) : (
+      <AdminAuthGate>
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex h-full min-h-0 flex-1 flex-col"
         >
           <TabsList className="mx-4 mt-2 w-fit shrink-0 flex-wrap">
             {WORKSPACE_TABS.map((tab) => {
@@ -194,7 +151,7 @@ export default function AdminQuizWorkspace() {
             <RankedDuelReviewPanel />
           </TabsContent>
         </Tabs>
-      )}
+      </AdminAuthGate>
     </div>
   );
 }

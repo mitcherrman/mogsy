@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import AdminQuizWorkspace from "./AdminQuizWorkspace";
-import { setAdminKey, clearAdminKey } from "@/lib/knowledge-admin/key";
+
+// Account-bound authorization is exercised in AdminAuthGate/AdminAuthProvider
+// tests. Here we only care about routing/tabs, so the gate is a pass-through.
+vi.mock("@/components/admin/AdminAuthGate", () => ({
+  AdminAuthGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 // Stub the two heavy admin pages. The Review stub echoes its controlled
 // selection props so we can assert the workspace ↔ URL wiring.
@@ -64,28 +69,17 @@ const loc = () => screen.getByTestId("loc").textContent ?? "";
 
 afterEach(() => {
   cleanup();
-  clearAdminKey();
 });
 
 describe("AdminQuizWorkspace shell (/admin/quiz-content)", () => {
-  it("shows a single admin-key gate when no key is set, and no tabs", () => {
+  it("renders the three workspace tabs when authorized", () => {
     renderAt("/admin/quiz-content");
-    expect(screen.getByLabelText("Admin key")).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: /Quiz Builder/i })).toBeNull();
-  });
-
-  it("reveals the three tabs once a key is entered", () => {
-    renderAt("/admin/quiz-content");
-    fireEvent.change(screen.getByLabelText("Admin key"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: /Unlock workspace/i }));
     expect(screen.getByRole("tab", { name: /Quiz Builder/i })).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Quiz Review/i })).toBeTruthy();
     expect(screen.getByRole("tab", { name: /Ranked Duel Review/i })).toBeTruthy();
   });
 
-  describe("with an admin key", () => {
-    beforeEach(() => setAdminKey("secret"));
-
+  describe("routing", () => {
     it("defaults to the builder tab in embedded mode", async () => {
       renderAt("/admin/quiz-content");
       expect((await screen.findByTestId("stub-builder")).textContent).toContain("embedded=true");

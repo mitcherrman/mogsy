@@ -953,21 +953,25 @@ export default function AdminQuizReview({
   const queryClient = useQueryClient();
   const adminKey = useAdminKey();
   const hasAdminKey = !!adminKey;
+  // Embedded in the account-bound workspace: authorized by the shared gate via
+  // the Supabase session, so no local admin key is required. Standalone keeps
+  // the key gate.
+  const authorized = embedded || hasAdminKey;
 
-  // When the key is set or changed, refetch the review queries. The raw key is
-  // never a query key — invalidation is what ties cache freshness to the key.
+  // When authorization changes, refetch the review queries. The raw key is
+  // never a query key — invalidation is what ties cache freshness to auth.
   useEffect(() => {
-    if (!hasAdminKey) return;
+    if (!authorized) return;
     void queryClient.invalidateQueries({ queryKey: ["review-filter-options"] });
     void queryClient.invalidateQueries({ queryKey: ["review-questions"] });
     void queryClient.invalidateQueries({ queryKey: ["review-question"] });
-  }, [adminKey, hasAdminKey, queryClient]);
+  }, [adminKey, authorized, queryClient]);
 
   const { data: filterOptions } = useQuery({
     queryKey: ["review-filter-options"],
     queryFn: () => quizApi.getReviewFilterOptions(),
     staleTime: 5 * 60_000,
-    enabled: hasAdminKey,
+    enabled: authorized,
     retry: false,
   });
 
@@ -976,11 +980,11 @@ export default function AdminQuizReview({
     queryFn: () => quizApi.getReviewQuestions(filters),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
-    enabled: hasAdminKey,
+    enabled: authorized,
     retry: false,
   });
 
-  const authError = !hasAdminKey || isAuthError(error);
+  const authError = !authorized || isAuthError(error);
 
   const questions = data?.questions ?? [];
   const total = data?.total ?? 0;
@@ -1046,7 +1050,13 @@ export default function AdminQuizReview({
             </div>
           </>
         )}
-        <AdminKeyPanel invalid={hasAdminKey} />
+        {embedded ? (
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+            Admin authorization is required. Reload the workspace to re-check your session.
+          </div>
+        ) : (
+          <AdminKeyPanel invalid={hasAdminKey} />
+        )}
       </div>
     );
   }

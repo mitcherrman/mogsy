@@ -254,22 +254,22 @@ export class QuizAdminAuthError extends Error {
 }
 
 /**
- * Shared fetch path for every /api/quiz/admin/review/* endpoint. Reads the
- * session-scoped admin key (same store as Knowledge Admin — the backend uses
- * one shared secret) and attaches it as X-Admin-Key. Never used for public
- * quiz endpoints, so the secret is not sent where it isn't needed.
+ * Shared fetch path for every /api/quiz/admin/* endpoint. Account-bound: the
+ * base `request` already attaches the current Supabase bearer token (the normal
+ * browser admin path), so no admin key is required for a signed-in allowlisted
+ * owner. When an explicit fallback key is active it is additionally attached as
+ * X-Admin-Key (the backend authorizes on either path). Never used for public
+ * quiz endpoints, so credentials aren't sent where they aren't needed.
  */
 async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const key = getAdminKey();
-  if (!key) throw new QuizAdminAuthError("Admin key not set");
+  const key = getAdminKey(); // only present in explicit fallback mode
+  const headers = { ...(init?.headers || {}) } as Record<string, string>;
+  if (key) headers["X-Admin-Key"] = key;
   try {
-    return await request<T>(path, {
-      ...init,
-      headers: { ...(init?.headers || {}), "X-Admin-Key": key },
-    });
+    return await request<T>(path, { ...init, headers });
   } catch (e) {
     if (e instanceof Error && /\b403\b/.test(e.message)) {
-      throw new QuizAdminAuthError("Invalid admin key");
+      throw new QuizAdminAuthError("Not authorized for admin access");
     }
     throw e;
   }

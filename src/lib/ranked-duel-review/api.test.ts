@@ -8,6 +8,12 @@ import {
 } from "./api";
 import { setAdminKey, clearAdminKey } from "@/lib/knowledge-admin/key";
 
+// Account-bound bearer: mock the shared Supabase-session header source so we
+// can assert Authorization: Bearer without a real session.
+vi.mock("@/lib/backend-auth", () => ({
+  getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-access-token" }),
+}));
+
 const BASE = "http://127.0.0.1:8000";
 const ADMIN = "/api/admin/ranked-duel/questions";
 const ok = (body: unknown) =>
@@ -118,11 +124,20 @@ describe("rankedReviewApi — endpoints, methods, admin key", () => {
     expect(call(spy, 1).headers["X-Admin-Key"]).toBe("secret-admin");
   });
 
-  it("throws auth (no request) when the admin key is absent", async () => {
+  it("sends the Supabase bearer by default and no X-Admin-Key without a fallback", async () => {
     clearAdminKey();
-    const spy = stub(async () => ok({}));
-    await expect(rankedReviewApi.status()).rejects.toMatchObject({ kind: "auth" });
-    expect(spy).not.toHaveBeenCalled();
+    const spy = stub(async () => ok({ exportable: 0 }));
+    await rankedReviewApi.status();
+    expect(call(spy).headers["Authorization"]).toBe("Bearer test-access-token");
+    expect(call(spy).headers["X-Admin-Key"]).toBeUndefined();
+  });
+
+  it("adds X-Admin-Key as an explicit fallback alongside the bearer", async () => {
+    setAdminKey("fallback-key");
+    const spy = stub(async () => ok({ exportable: 0 }));
+    await rankedReviewApi.status();
+    expect(call(spy).headers["Authorization"]).toBe("Bearer test-access-token");
+    expect(call(spy).headers["X-Admin-Key"]).toBe("fallback-key");
   });
 });
 

@@ -7,7 +7,7 @@
  * If a page needs data not covered by the contract, it must render an
  * explicit "backend endpoint pending" placeholder rather than invent one.
  */
-import { getAdminKey } from "./key";
+import { buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import type {
   ApprovalResponse,
   HealthResponse,
@@ -40,9 +40,6 @@ async function request<T>(
   path: string,
   init: RequestInit & { query?: QueryLike } = {},
 ): Promise<T> {
-  const key = getAdminKey();
-  if (!key) throw new KnowledgeApiError(403, "Admin key not set");
-
   const url = new URL(`${BASE}${path}`);
   if (init.query) {
     for (const [k, v] of Object.entries(init.query)) {
@@ -51,8 +48,12 @@ async function request<T>(
     }
   }
 
+  // Account-bound: current Supabase bearer by default; explicit fallback key
+  // added only when active. Origin-guarded to the backend.
   const headers = new Headers(init.headers);
-  headers.set("X-Admin-Key", key);
+  for (const [k, v] of Object.entries(await buildAdminHeaders(url.toString()))) {
+    headers.set(k, v);
+  }
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }

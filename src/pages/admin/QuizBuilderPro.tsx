@@ -109,21 +109,25 @@ export default function QuizBuilderPro({ embedded = false }: { embedded?: boolea
   const queryClient = useQueryClient();
   const adminKey = useAdminKey();
   const hasAdminKey = !!adminKey;
+  // Embedded in the account-bound workspace: the shared AdminAuthGate already
+  // authorized the owner via their Supabase session, so requests use the bearer
+  // and no local admin key is required. Standalone, the key still gates.
+  const authorized = embedded || hasAdminKey;
 
   useEffect(() => {
-    if (!hasAdminKey) return;
+    if (!authorized) return;
     void queryClient.invalidateQueries({ queryKey: ["quiz-builder"] });
-  }, [adminKey, hasAdminKey, queryClient]);
+  }, [adminKey, authorized, queryClient]);
 
   const metaQuery = useQuery({
     queryKey: ["quiz-builder", "meta"],
     queryFn: () => quizApi.getQuizBuilderMeta(),
     staleTime: 5 * 60_000,
-    enabled: hasAdminKey,
+    enabled: authorized,
     retry: false,
   });
 
-  const authError = !hasAdminKey || metaQuery.error instanceof QuizAdminAuthError;
+  const authError = !authorized || metaQuery.error instanceof QuizAdminAuthError;
 
   // Generate form + results state -------------------------------------------
   const [form, setForm] = useState<GenerateFormState | null>(null);
@@ -274,7 +278,15 @@ export default function QuizBuilderPro({ embedded = false }: { embedded?: boolea
           <SEOHead title="Quiz Builder · Admin" description="Generate pro esports quiz candidates." path="/admin/quiz-builder" />
         )}
         {!embedded && <Header />}
-        <AdminKeyPanel invalid={hasAdminKey} />
+        {embedded ? (
+          // The shared workspace gate owns authorization; don't prompt for a
+          // key here. A real 403 mid-session surfaces as a recoverable notice.
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+            Admin authorization is required. Reload the workspace to re-check your session.
+          </div>
+        ) : (
+          <AdminKeyPanel invalid={hasAdminKey} />
+        )}
       </div>
     );
   }

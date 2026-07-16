@@ -11,7 +11,7 @@
 // `errorCode` the UI keys on (stale vs conflict vs invalid-revision, …).
 // ---------------------------------------------------------------------------
 
-import { getAdminKey } from "@/lib/knowledge-admin/key";
+import { buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
 import type {
   AcceptBody,
   CandidateDetail,
@@ -114,15 +114,16 @@ interface RequestOptions {
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const key = getAdminKey();
-  if (!key) throw new ReviewApiError("auth", "Admin key not set");
-
-  const headers: Record<string, string> = { "X-Admin-Key": key };
+  const url = `${API_BASE_URL}${path}`;
+  // Account-bound: bearer from the current Supabase session by default; the
+  // fallback admin key is attached only when explicitly active. Origin-guarded
+  // to the backend. No local key requirement — a signed-in owner is authorized.
+  const headers: Record<string, string> = await buildAdminHeaders(url);
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(url, {
       method: opts.method ?? "GET",
       headers,
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),

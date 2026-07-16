@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
+import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -139,6 +140,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <AuthQuerySyncBridge />
+      <AdminAuthProvider>
       <SitewideThemeProvider>
         <TooltipProvider>
           <Toaster />
@@ -242,6 +244,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </SitewideThemeProvider>
+      </AdminAuthProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
