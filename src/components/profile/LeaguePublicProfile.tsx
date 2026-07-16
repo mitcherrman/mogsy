@@ -9,11 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
+  categoryLabel,
+  progressAttempts,
   quizApi,
   resolveQuizAssetUrl,
   type QuizAchievement,
   type QuizCategoryStat,
 } from "@/lib/quiz/api";
+import { pickBestCategory } from "@/lib/profile/view-model";
 import { fetchMyRecentResults, type SwipeOwnResult } from "@/lib/league-swipe/api";
 import type { ProfileTheme } from "@/lib/profile-themes";
 
@@ -148,9 +151,8 @@ export default function LeaguePublicProfile({
   const categories: QuizCategoryStat[] = (categoriesData?.categories ?? []).filter(
     (c) => (c.attempts ?? 0) > 0,
   );
-  const best = categories.length
-    ? categories.reduce((a, b) => (b.accuracy > a.accuracy ? b : a))
-    : null;
+  // Same deterministic pick as the private profile (accuracy → attempts → stable order).
+  const best = pickBestCategory(categories);
   const worst = categories.length > 1
     ? categories.reduce((a, b) => (b.accuracy < a.accuracy ? b : a))
     : null;
@@ -165,7 +167,9 @@ export default function LeaguePublicProfile({
     resolveQuizAssetUrl(progress?.rank_icon) ||
     resolveQuizAssetUrl(rankObj?.icon_path) ||
     resolveQuizAssetUrl(rankObj?.small_icon_path);
-  const hasQuizHistory = (progress?.attempts ?? 0) > 0;
+  // Backend sends total_attempts; the tolerant helper reads either field.
+  const answered = progressAttempts(progress);
+  const hasQuizHistory = answered > 0;
   const loading = progressLoading || categoriesLoading;
 
   return (
@@ -192,7 +196,7 @@ export default function LeaguePublicProfile({
                   {rankName}
                 </div>
                 <div className={cn("text-xs", themeStyles.mutedColor || "text-muted-foreground")}>
-                  {(progress?.xp ?? 0).toLocaleString()} XP · {progress?.attempts ?? 0} answered
+                  {(progress?.xp ?? progress?.total_xp ?? 0).toLocaleString()} XP · {answered} answered
                 </div>
               </div>
             </div>
@@ -210,14 +214,14 @@ export default function LeaguePublicProfile({
               />
               <StatTile
                 label="Best Category"
-                value={best ? best.category : "—"}
+                value={best ? categoryLabel(best) : "—"}
                 sub={best ? fmtPct(best.accuracy) : undefined}
                 highlight="gold"
                 themeStyles={themeStyles}
               />
               <StatTile
                 label="Weakest Category"
-                value={worst ? worst.category : "—"}
+                value={worst ? categoryLabel(worst) : "—"}
                 sub={worst ? fmtPct(worst.accuracy) : undefined}
                 highlight="red"
                 themeStyles={themeStyles}
