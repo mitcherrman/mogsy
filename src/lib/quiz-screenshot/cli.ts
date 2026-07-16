@@ -8,6 +8,8 @@ import { parseFormats, FORMAT_KEYS } from "./formats";
 import { parseStates } from "./states";
 import { RENDER_STATES, type RenderState } from "./types";
 import type { RenderFormat } from "./types";
+import { POST_TYPES, isPostType, type PostType } from "./content-posts";
+import { DIFFICULTY_TIERS, isDifficultyTier, type DifficultyTier } from "./difficulty";
 
 // Content-first defaults: a content run needs the unanswered hook + the
 // reveal, in the primary mobile-social format. All other states/formats
@@ -28,6 +30,12 @@ export type ScreenshotCliConfig = {
     | { mode: "fixture"; path: string; limit: number };
   states: RenderState[];
   formats: RenderFormat[];
+  /** Carousel post type — expands into an ordered slide sequence per question.
+   *  When set, `states` is ignored (each post defines its own slide states). */
+  post?: PostType;
+  /** Run-level difficulty/rank override (iron|gold|diamond); else per-question
+   *  metadata.content_difficulty, else no badge. */
+  difficulty?: DifficultyTier;
   answerIndex?: number;
   outRoot: string;
   runId?: string;
@@ -47,6 +55,8 @@ const VALUE_FLAGS = new Set([
   "--limit",
   "--states",
   "--formats",
+  "--post",
+  "--difficulty",
   "--answer-index",
   "--out",
   "--run-id",
@@ -162,6 +172,31 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
     source = { mode: "fixture", path: values.get("--fixture")!, limit };
   }
 
+  // Carousel post type — defines its own slide sequence, so it is mutually
+  // exclusive with an explicit --states selection.
+  let post: PostType | undefined;
+  if (values.has("--post")) {
+    const raw = values.get("--post")!.trim();
+    if (!isPostType(raw)) {
+      throw new Error(`Unknown --post "${raw}". Valid post types: ${POST_TYPES.join(", ")}`);
+    }
+    if (values.has("--states")) {
+      throw new Error("--post defines its own slides — do not combine it with --states");
+    }
+    post = raw;
+  }
+
+  let difficulty: DifficultyTier | undefined;
+  if (values.has("--difficulty")) {
+    const raw = values.get("--difficulty")!.trim().toLowerCase();
+    if (!isDifficultyTier(raw)) {
+      throw new Error(
+        `Unknown --difficulty "${raw}". Valid tiers: ${DIFFICULTY_TIERS.join(", ")}`,
+      );
+    }
+    difficulty = raw;
+  }
+
   const states = values.has("--states")
     ? parseStates(values.get("--states")!)
     : DEFAULT_STATES;
@@ -200,6 +235,8 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
     source,
     states,
     formats,
+    post,
+    difficulty,
     answerIndex,
     outRoot,
     runId: values.get("--run-id"),
@@ -227,6 +264,8 @@ Sources (exactly one):
 Options:
   --states <csv>                ${RENDER_STATES.join(",")} (default: ${DEFAULT_STATES.join(",")})
   --formats <csv>               ${FORMAT_KEYS.join(",")} (default: ${DEFAULT_FORMAT_KEYS.join(",")})
+  --post <type>                 Carousel post: ${POST_TYPES.join(" | ")} (expands into ordered slides; not with --states)
+  --difficulty <tier>           Rank/difficulty badge: ${DIFFICULTY_TIERS.join(" | ")} (else per-question metadata)
   --answer-index <n>            Override deterministic selection for selected/incorrect
   --limit <n>                   Batch cap (default ${DEFAULT_BATCH_LIMIT}, max ${MAX_BATCH_LIMIT})
   --out <dir>                   Output root (default ${DEFAULT_EXPORT_ROOT}, relative, never public/ or src/)

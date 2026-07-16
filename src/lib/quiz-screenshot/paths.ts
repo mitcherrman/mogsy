@@ -29,6 +29,12 @@ export function screenshotFileName(formatKey: string, state: string): string {
   return `${safeSegment(formatKey)}_${safeSegment(state)}.png`;
 }
 
+/** Carousel slide filename: <format>_slide-NN_<slug>.png */
+export function slideFileName(formatKey: string, index: number, slug: string): string {
+  const nn = String(index).padStart(2, "0");
+  return `${safeSegment(formatKey)}_slide-${nn}_${safeSegment(slug)}.png`;
+}
+
 /** Run directory name from an explicit run id (validated) or a timestamp. */
 export function runDirName(runId: string | undefined, now: Date): string {
   if (runId !== undefined) {

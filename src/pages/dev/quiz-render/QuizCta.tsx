@@ -34,9 +34,26 @@ export function buildQrSvgPath(text: string): { path: string; size: number } {
 }
 
 /** Compact centered CTA block shown ABOVE the quiz card, inside the phone
- *  screen: a clearly visible Mogsy wordmark stacked over the CTA line. The
- *  wording and hierarchy are unchanged; mogsy.app stays the emphasis. */
-export function QuizCtaTop() {
+ *  screen.
+ *
+ *  variant "full"  — question/recap/answer slides: wordmark stacked over the
+ *                    "Play more LoL quizzes at mogsy.app" line (unchanged).
+ *  variant "brand" — end slides (app-cta/community): the small CTA line is
+ *                    dropped and the Mogsy wordmark is enlarged so the top of
+ *                    the phone reads brand-first. The slide body carries the
+ *                    play messaging instead. */
+export function QuizCtaTop({ variant = "full" }: { variant?: "full" | "brand" }) {
+  if (variant === "brand") {
+    return (
+      <div
+        data-quiz-cta
+        data-quiz-cta-mode="brand"
+        className="flex flex-col items-center justify-center text-center"
+      >
+        <img src="/mogsy-logo-text.png" alt="Mogsy" className="h-24 w-auto opacity-95" />
+      </div>
+    );
+  }
   return (
     <div
       data-quiz-cta

@@ -110,4 +110,36 @@ describe("parseScreenshotCli", () => {
     expect(c.answerIndex).toBe(2);
     expect(c.runId).toBe("smoke-1");
   });
+
+  it("parses --post carousel types and rejects unknown ones", () => {
+    expect(parseScreenshotCli(["--question-id", "1", "--post", "single-question"]).post).toBe(
+      "single-question",
+    );
+    expect(parseScreenshotCli(["--question-id", "1", "--post", "answer-reveal"]).post).toBe(
+      "answer-reveal",
+    );
+    expect(() => parseScreenshotCli(["--question-id", "1", "--post", "carousel"])).toThrow(/Unknown --post/);
+  });
+
+  it("--post is mutually exclusive with --states", () => {
+    expect(() =>
+      parseScreenshotCli(["--question-id", "1", "--post", "single-question", "--states", "question"]),
+    ).toThrow(/do not combine it with --states/);
+  });
+
+  it("parses --difficulty tiers (case-insensitive) and rejects unknown tiers", () => {
+    expect(parseScreenshotCli(["--question-id", "1", "--difficulty", "GOLD"]).difficulty).toBe("gold");
+    expect(parseScreenshotCli(["--question-id", "1", "--difficulty", "diamond"]).difficulty).toBe(
+      "diamond",
+    );
+    expect(() => parseScreenshotCli(["--question-id", "1", "--difficulty", "silver"])).toThrow(
+      /Unknown --difficulty/,
+    );
+  });
+
+  it("post + difficulty compose on a normal source", () => {
+    const c = parseScreenshotCli(["--question-id", "1", "--post", "answer-reveal", "--difficulty", "iron"]);
+    expect(c.post).toBe("answer-reveal");
+    expect(c.difficulty).toBe("iron");
+  });
 });

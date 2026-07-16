@@ -53,6 +53,8 @@ export async function launchBrowser(): Promise<Browser> {
 type DomQa = {
   ctaPresent: boolean;
   ctaText: string;
+  /** The CTA strip contains a successfully-loaded Mogsy wordmark image. */
+  ctaHasLogo: boolean;
   cardClipped: boolean;
   cardOverlapsCta: boolean;
   missingAssets: string[];
@@ -132,6 +134,12 @@ async function runDomQa(page: Page): Promise<DomQa> {
       feedback?.querySelector("p.text-xs.opacity-80")?.textContent ?? null;
     const ctaPresent = !!doc.querySelector("[data-quiz-cta]");
     const ctaText = doc.querySelector("[data-quiz-cta]")?.textContent ?? "";
+    let ctaHasLogo = false;
+    doc.querySelectorAll<HTMLImageElement>("[data-quiz-cta] img").forEach((img) => {
+      if (img.src.includes("mogsy-logo") && img.complete && img.naturalWidth > 0) {
+        ctaHasLogo = true;
+      }
+    });
 
     // Content card must sit fully inside the stage and clear of the CTA.
     let cardClipped = false;
@@ -280,6 +288,7 @@ async function runDomQa(page: Page): Promise<DomQa> {
     return {
       ctaPresent,
       ctaText,
+      ctaHasLogo,
       cardClipped,
       cardOverlapsCta,
       missingAssets,
@@ -315,8 +324,14 @@ export async function captureOne(args: {
   /** Reuse the zoom fitted for an earlier state of the SAME question/format,
       so every state renders with one state-independent scale. */
   forcedScale?: number;
+  /** Carousel slide kind (quiz|recap|app-cta|community). Default "quiz".
+      Answer-integrity QA only applies to the quiz card. */
+  slide?: string;
+  /** Difficulty/rank badge tier (iron|gold|diamond) to render on the slide. */
+  difficulty?: string;
 }): Promise<CaptureResult> {
   const { browser, baseUrl, question, state, format } = args;
+  const slideKind = args.slide ?? "quiz";
   const context = await browser.newContext({
     viewport: { width: format.width, height: format.height },
     deviceScaleFactor: 1,
@@ -359,6 +374,8 @@ export async function captureOne(args: {
     });
     if (args.answerIndex !== undefined) search.set("answerIndex", String(args.answerIndex));
     if (args.forcedScale !== undefined) search.set("scale", String(args.forcedScale));
+    if (slideKind !== "quiz") search.set("slide", slideKind);
+    if (args.difficulty) search.set("difficulty", args.difficulty);
     await page.goto(`${baseUrl}/dev/quiz-render?${search}`, { waitUntil: "domcontentloaded" });
 
     const errorPanel = page.locator("[data-quiz-render-error]");
@@ -456,7 +473,12 @@ export async function captureOne(args: {
       });
     }
 
-    // Content formats must carry the CTA with the visible mogsy.app link.
+    // Content formats must carry the top CTA. Quiz-family slides require the
+    // visible mogsy.app link text; end slides (app-cta/community) use the
+    // brand-led variant — larger wordmark, no small line — so there the gate
+    // requires a successfully-loaded Mogsy logo instead (the play messaging
+    // lives in the slide body, and the QR still encodes the quiz URL).
+    const endSlide = slideKind === "app-cta" || slideKind === "community";
     if (format.cta !== "none") {
       if (!dom.ctaPresent) {
         qa.failures.push({
@@ -466,7 +488,15 @@ export async function captureOne(args: {
           format: format.key,
           state,
         });
-      } else if (!dom.ctaText.includes("mogsy.app")) {
+      } else if (endSlide && !dom.ctaHasLogo) {
+        qa.failures.push({
+          severity: "failure",
+          code: "cta-missing",
+          message: "End-slide brand CTA is missing a loaded Mogsy wordmark",
+          format: format.key,
+          state,
+        });
+      } else if (!endSlide && !dom.ctaText.includes("mogsy.app")) {
         qa.failures.push({
           severity: "failure",
           code: "cta-missing",
@@ -542,7 +572,8 @@ export async function captureOne(args: {
           });
         }
       }
-      if (state !== "question" && dom.correctRowContrast !== null && dom.correctRowContrast < 4.5) {
+      if (slideKind === "quiz" && state !== "question" &&
+          dom.correctRowContrast !== null && dom.correctRowContrast < 4.5) {
         qa.failures.push({
           severity: "failure",
           code: "contrast",
@@ -553,9 +584,14 @@ export async function captureOne(args: {
       }
     }
 
-    // ── Answer-state integrity checks ────────────────────────────────────
+    // ── Answer-state integrity checks (quiz card only) ───────────────────
+    // Non-quiz slides (recap/app-cta/community) have no answer grid, so these
+    // checks do not apply. Recap re-shows the question in the unanswered
+    // composition, so it is treated like the question state for leakage.
     const states = dom.visibleChoiceStates;
-    if (state === "question") {
+    if (slideKind === "app-cta" || slideKind === "community") {
+      // No answer grid to validate; phone-frame/CTA checks above still ran.
+    } else if (state === "question" || slideKind === "recap") {
       if (states.some((s) => s !== "idle")) {
         qa.failures.push({
           severity: "failure",

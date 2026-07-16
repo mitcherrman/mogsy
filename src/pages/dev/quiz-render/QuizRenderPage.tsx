@@ -31,8 +31,15 @@ import { getFormat } from "@/lib/quiz-screenshot/formats";
 import { isRenderState, resolveAnswerPlan } from "@/lib/quiz-screenshot/states";
 import { SAMPLE_RENDER_QUESTIONS } from "@/lib/quiz-screenshot/fixtures";
 import { deriveRecipe } from "@/lib/quiz-screenshot/recipe";
+import {
+  resolveDifficulty,
+  type DifficultyInfo,
+} from "@/lib/quiz-screenshot/difficulty";
+import { isSlideKind, type SlideKind } from "@/lib/quiz-screenshot/content-posts";
 import { QuizCtaQr, QuizCtaTop } from "./QuizCta";
 import RecipeVisual from "./RecipeVisual";
+import DifficultyBadge from "./DifficultyBadge";
+import { AppCtaSlide, CommunitySlide } from "./ContentSlides";
 import {
   QUIZ_RENDER_WINDOW_KEY,
   type AnswerPlan,
@@ -158,10 +165,16 @@ function QuestionCard({
   question,
   plan,
   format,
+  variant = "quiz",
+  difficulty,
 }: {
   question: RenderQuestion;
   plan: AnswerPlan;
   format: RenderFormat;
+  /** "quiz" = normal question/answer card; "recap" = suspense bridge slide
+   *  (same composition, swipe banner instead of the comment CTA). */
+  variant?: "quiz" | "recap";
+  difficulty?: DifficultyInfo | null;
 }) {
   const { selectedIndex, revealed, isCorrectSelection, showExplanation } = plan;
   // Item-build questions get a recipe layout in content (social) formats;
@@ -183,9 +196,10 @@ function QuestionCard({
   const mainVisual = resolveQuizAssetUrl(question.image_path);
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm">
+    <Card className="relative bg-card/80 backdrop-blur-sm">
       {/* Screenshot presentation: no category pill — the question text is the
-          topmost content of the card. */}
+          topmost content of the card. The rank emblem lives above answer A
+          (below), so the title keeps its full width and is never reflowed. */}
       <CardHeader className="pb-3">
         <CardTitle className="text-base md:text-lg font-semibold leading-snug">
           {question.question_text}
@@ -206,6 +220,21 @@ function QuestionCard({
             />
           </div>
         ) : null}
+        {/* Rank emblem lane: a dedicated fixed-height row of its own between
+            the recipe/visual area and answer A. Deterministic reservation —
+            the lane height is a constant, present in every state of the same
+            question, so parity holds. The emblem never overlaps the question
+            text and never shifts it (full-width title above, left-aligned
+            emblem here). Emblem only — no words, no border, no chrome. */}
+        {difficulty ? (
+          <div
+            data-quiz-difficulty-lane
+            className="flex items-center justify-start"
+            style={{ height: 64 }}
+          >
+            <DifficultyBadge info={difficulty} resolveUrl={resolveQuizAssetUrl} size={60} />
+          </div>
+        ) : null}
         <QuizAnswerOptions
           choices={question.choices}
           selectedAnswer={selectedAnswer}
@@ -223,21 +252,57 @@ function QuestionCard({
         <div data-quiz-result-area>
           {feedback ? (
             <QuizAnswerFeedback result={feedback} metadata={question.metadata} />
+          ) : format.kind === "social" && variant === "recap" ? (
+            // Suspense bridge slide: prompts the swipe, reveals nothing.
+            <div
+              data-quiz-recap-cta
+              className="rounded-lg border p-4 text-sm"
+              style={{
+                borderColor: "hsl(43 60% 44% / 0.6)",
+                background: "hsl(43 60% 16% / 0.35)",
+                color: "hsl(43 55% 78%)",
+              }}
+            >
+              <div className="flex items-center justify-center gap-2 font-extrabold">
+                <div className="flex origin-center scale-[1.2] items-center gap-2">
+                  <span className="tracking-tight text-amber-100 drop-shadow-[0_0_10px_rgba(251,191,36,0.45)]">
+                    Ready for the answer? Swipe right →
+                  </span>
+                </div>
+              </div>
+            </div>
           ) : format.kind === "social" ? (
+            // Question slide: a bold, flashy comment action prompt — NOT a
+            // boxed result panel. The outer container keeps the feedback
+            // panel's exact box model (rounded-lg border p-4 text-sm + the
+            // metadata footer) so the reserved height matches the correct
+            // state byte-for-byte, but its border/fill are transparent so it
+            // reads as a floating action prompt rather than a textbox bubble.
+            // The prompt is enlarged with transform:scale (no layout height
+            // change), preserving the ≤1px cross-state parity.
             <div
               data-quiz-result-placeholder
               className="rounded-lg border p-4 text-sm"
-              style={{
-                borderColor: "hsl(215 30% 34% / 0.55)",
-                background: "hsl(215 40% 12% / 0.55)",
-                color: "hsl(215 20% 72%)",
-              }}
+              style={{ borderColor: "transparent", background: "transparent" }}
             >
               <div className="flex items-center justify-center gap-2 font-extrabold mb-1">
-                <div className="flex origin-center scale-[1.25] items-center gap-2">
-                  <MessageCircle className="h-4 w-4 text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]" />
-                  <span className="tracking-tight text-cyan-100 drop-shadow-[0_0_10px_rgba(34,211,238,0.45)]">
-                    Comment your answer!
+                <div className="flex origin-center scale-[1.45] items-center gap-2.5">
+                  <MessageCircle
+                    className="h-4 w-4 text-cyan-300"
+                    style={{ filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))" }}
+                  />
+                  <span
+                    className="uppercase tracking-tight"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(92deg, hsl(190 95% 72%), hsl(196 92% 62%) 45%, hsl(43 92% 66%))",
+                      WebkitBackgroundClip: "text",
+                      backgroundClip: "text",
+                      color: "transparent",
+                      filter: "drop-shadow(0 0 12px rgba(34,211,238,0.5))",
+                    }}
+                  >
+                    Comment A, B, C, or D
                   </span>
                 </div>
               </div>
@@ -258,6 +323,7 @@ function FormatShell({
   cardRef,
   scale,
   state,
+  slide,
 }: {
   format: RenderFormat;
   children: React.ReactNode;
@@ -266,7 +332,11 @@ function FormatShell({
   cardRef: React.Ref<HTMLDivElement>;
   scale: number;
   state: RenderState;
+  slide: SlideKind;
 }) {
+  // End slides (app-cta/community) drop the small "Play more…" line in favor
+  // of a larger, brand-led wordmark; quiz-family slides keep the full strip.
+  const isEndSlide = slide === "app-cta" || slide === "community";
   if (format.kind === "audit") {
     // Responsive audit: normal page flow at the device viewport, same
     // container rhythm as the live quiz page.
@@ -335,6 +405,12 @@ function FormatShell({
         }
         [data-quiz-render-stage] [data-quiz-content-card] .pt-0{
           padding-top:0;
+        }
+        /* Question prompt reads centered and intentional in content captures.
+           Text alignment only — the card, recipe cluster, and answer grid are
+           untouched, so geometry/parity are unaffected. */
+        [data-quiz-render-stage] [data-quiz-content-card] h3{
+          text-align:center;
         }
         [data-quiz-render-stage] [data-quiz-content-card] .space-y-4 > * + *{
           margin-top:8px;
@@ -520,7 +596,7 @@ function FormatShell({
           >
             {showCta && (
               <div className="shrink-0 flex justify-center pb-2">
-                <QuizCtaTop />
+                <QuizCtaTop variant={isEndSlide ? "brand" : "full"} />
               </div>
             )}
             <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
@@ -618,6 +694,8 @@ export default function QuizRenderPage() {
   const formatParam = params.get("format") ?? "mobile-audit";
   const answerIndexParam = params.get("answerIndex");
   const scaleParam = params.get("scale");
+  const slideParam = params.get("slide") ?? "quiz";
+  const difficultyParam = params.get("difficulty");
 
   const question = useMemo(
     () => questions?.find((q) => String(q.id) === qId) ?? null,
@@ -626,12 +704,19 @@ export default function QuizRenderPage() {
 
   const format = getFormat(formatParam);
   const validState = isRenderState(stateParam);
+  const validSlide = isSlideKind(slideParam);
+  // Difficulty precedence: explicit param, else per-question injected metadata.
+  const difficulty: DifficultyInfo | null =
+    resolveDifficulty(difficultyParam) ??
+    resolveDifficulty(question?.metadata?.content_difficulty);
 
   let error: string | null = null;
   let answerIndex: number | undefined;
   if (!questions) {
     error =
       "No render data. This internal harness only displays question data injected by the local screenshot runner.";
+  } else if (!validSlide) {
+    error = `Unknown slide "${slideParam}".`;
   } else if (!validState) {
     error = `Unknown state "${stateParam}".`;
   } else if (!format) {
@@ -640,6 +725,8 @@ export default function QuizRenderPage() {
     error = "Missing ?q=<question id>.";
   } else if (!question) {
     error = `Question "${qId}" not found in render data.`;
+  } else if (difficultyParam !== null && !difficulty) {
+    error = `Unknown difficulty "${difficultyParam}" (use iron, gold, or diamond).`;
   } else if (answerIndexParam !== null) {
     answerIndex = Number(answerIndexParam);
     if (!Number.isInteger(answerIndex) || answerIndex < 0) {
@@ -655,18 +742,34 @@ export default function QuizRenderPage() {
     }
   }
 
-  // Plan errors (e.g. explanation state without explanation, malformed
-  // question) surface as the same inert error panel rather than crashing.
-  // A "skip" is only reachable by direct manual navigation — the runner
-  // plans skips before navigating — and is never rendered as fabricated text.
+  // Build the slide composition. Non-quiz slides (app-cta/community) are
+  // standalone content cards; quiz/recap slides render the real question
+  // composition (recap forces the unanswered state, revealing nothing).
+  const slide = slideParam as SlideKind;
   let content: React.ReactNode = null;
-  if (!error && question && format && validState) {
+  if (!error && question && format && validState && validSlide) {
     try {
-      const planResult = resolveAnswerPlan(question, stateParam, answerIndex);
-      if (planResult.kind === "skip") {
-        error = `State "${stateParam}" skipped: ${planResult.reason}`;
+      if (slide === "app-cta") {
+        content = <AppCtaSlide />;
+      } else if (slide === "community") {
+        content = <CommunitySlide question={question} />;
       } else {
-        content = <QuestionCard question={question} plan={planResult.plan} format={format} />;
+        // quiz + recap: recap is always the unanswered composition.
+        const effectiveState = slide === "recap" ? "question" : stateParam;
+        const planResult = resolveAnswerPlan(question, effectiveState, answerIndex);
+        if (planResult.kind === "skip") {
+          error = `State "${effectiveState}" skipped: ${planResult.reason}`;
+        } else {
+          content = (
+            <QuestionCard
+              question={question}
+              plan={planResult.plan}
+              format={format}
+              variant={slide === "recap" ? "recap" : "quiz"}
+              difficulty={difficulty}
+            />
+          );
+        }
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -681,6 +784,7 @@ export default function QuizRenderPage() {
     <FormatShell
       format={format!}
       state={stateParam as RenderState}
+      slide={slide}
       stageRef={stageRef}
       centerRef={centerRef}
       cardRef={cardRef}

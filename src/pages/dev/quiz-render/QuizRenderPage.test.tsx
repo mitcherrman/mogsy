@@ -52,7 +52,7 @@ describe("QuizRenderPage — question state (no leakage)", () => {
     expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
     const placeholder = container.querySelector("[data-quiz-result-placeholder]");
     expect(placeholder).not.toBeNull();
-    expect(placeholder!.textContent).toContain("Comment your answer!");
+    expect(placeholder!.textContent).toContain("Comment A, B, C, or D");
     expect(screen.queryByText("Correct!")).toBeNull();
     expect(screen.queryByText(/Thornmail grants 70 armor/)).toBeNull();
     expect(container.querySelector("svg.lucide-circle-check-big, svg.lucide-check-circle-2")).toBeNull();
@@ -216,7 +216,7 @@ describe("QuizRenderPage — content CTA", () => {
     const placeholder = a.container.querySelector("[data-quiz-result-placeholder]")!;
     // Identical box model to the feedback panel: same classes, one text line.
     expect(placeholder.className).toContain("rounded-lg border p-4 text-sm");
-    expect(placeholder.textContent).toContain("Comment your answer!");
+    expect(placeholder.textContent).toContain("Comment A, B, C, or D");
     cleanup();
     inject([fixture]);
     const b = renderHarness("?q=t1&state=correct&format=mobile-social");
@@ -225,6 +225,15 @@ describe("QuizRenderPage — content CTA", () => {
     expect(b.container.querySelector("[data-quiz-result-placeholder]")).toBeNull();
     const feedback = b.container.querySelector("[data-quiz-answer-feedback]")!;
     expect(feedback.className).toContain("rounded-lg border p-4 text-sm");
+  });
+
+  it("centers the question prompt in social captures (harness CSS only)", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    const stageCss = Array.from(container.querySelectorAll("style"))
+      .map((s) => s.textContent ?? "")
+      .join("\n");
+    expect(stageCss).toMatch(/\[data-quiz-content-card\] h3\{\s*text-align:center;/);
   });
 
   it("renders no CTA on audit formats", () => {
@@ -354,6 +363,177 @@ describe("QuizRenderPage — item-build recipe visual", () => {
     inject([recipeFixture]);
     const b = renderHarness("?q=build1&state=question&format=mobile-audit");
     expect(b.container.querySelector("[data-quiz-recipe]")).toBeNull();
+  });
+});
+
+describe("QuizRenderPage — content slides + difficulty", () => {
+  it("renders the difficulty signal as an emblem-only image (no words/chrome)", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social&difficulty=gold");
+    const badge = container.querySelector("[data-quiz-difficulty]");
+    expect(badge).not.toBeNull();
+    // Emblem only: the marked element IS the img, with no rank/difficulty text.
+    expect(badge!.tagName).toBe("IMG");
+    expect(badge!.getAttribute("data-difficulty-tier")).toBe("gold");
+    expect(badge!.getAttribute("src")).toContain("assets/ranks/large/gold.png");
+    expect(badge!.textContent?.trim()).toBe("");
+    // The emblem lives in its own fixed-height lane between the visual area
+    // and answer A — in flow, deterministic height, never overlapping text.
+    const lane = badge!.closest("[data-quiz-difficulty-lane]") as HTMLElement | null;
+    expect(lane).not.toBeNull();
+    expect(lane!.style.height).toBe("64px");
+    const options = container.querySelector("[data-quiz-answer-options]")!;
+    expect(
+      lane!.compareDocumentPosition(options) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(options.contains(lane!)).toBe(false);
+    // The question title keeps its full width (no reserved padding for a badge).
+    const title = container.querySelector("[data-quiz-content-card] h3") as HTMLElement | null;
+    expect(title?.getAttribute("style") ?? "").not.toMatch(/padding-right/);
+  });
+
+  it("renders no emblem lane when there is no difficulty", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    expect(container.querySelector("[data-quiz-difficulty-lane]")).toBeNull();
+  });
+
+  it("uses per-question metadata difficulty when no param is given", () => {
+    inject([{ ...fixture, id: "d1", metadata: { content_difficulty: "diamond" } }]);
+    const { container } = renderHarness("?q=d1&state=question&format=mobile-social");
+    expect(
+      container.querySelector("[data-quiz-difficulty]")!.getAttribute("data-difficulty-tier"),
+    ).toBe("diamond");
+  });
+
+  it("shows no badge when neither param nor metadata provides one", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    expect(container.querySelector("[data-quiz-difficulty]")).toBeNull();
+  });
+
+  it("rejects an unknown difficulty rather than guessing", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social&difficulty=silver");
+    expect(container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/Unknown difficulty/);
+  });
+
+  it("app-cta slide: competitive copy, text-led PLAY AT hierarchy, socials", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=app-cta&format=mobile-social");
+    const slide = container.querySelector('[data-content-slide="app-cta"]')!;
+    expect(slide).not.toBeNull();
+    expect(container.querySelector("[data-quiz-choice]")).toBeNull();
+    // Competitive headline + supporting copy.
+    expect(slide.textContent).toContain("Think you know League?");
+    expect(slide.textContent).toContain("Prove it.");
+    expect(slide.textContent).toContain("Challenge others to test your knowledge at");
+    // Text-led CTA: a single dominant mogsy.app line — no "Play at" line,
+    // no button box.
+    const playCta = slide.querySelector("[data-play-cta]") as HTMLElement;
+    expect(playCta).not.toBeNull();
+    expect(playCta.textContent!.trim()).toBe("mogsy.app");
+    expect(slide.textContent).not.toMatch(/play at/i);
+    expect(playCta.className).not.toContain("rounded"); // no button chrome
+    expect(playCta.getAttribute("style") ?? "").not.toMatch(/background:/);
+    // Descender fix: the gradient-clipped line must not use a tight line box.
+    const domain = playCta.querySelector("span") as HTMLElement;
+    expect(domain.className).not.toContain("leading-none");
+    expect(domain.style.lineHeight).toBe("1.25");
+    // Socials on every end slide.
+    expect(slide.querySelector("[data-social-links]")).not.toBeNull();
+    // Still inside the phone shell with its QR + scan caption.
+    expect(container.querySelector("[data-quiz-cta-qr]")).not.toBeNull();
+    expect(container.querySelector("[data-quiz-cta-scan]")).not.toBeNull();
+  });
+
+  it("end slides use the larger brand-led top wordmark; quiz slides keep the full strip", () => {
+    for (const slide of ["app-cta", "community"]) {
+      cleanup();
+      inject([fixture]);
+      const { container } = renderHarness(`?q=t1&slide=${slide}&format=mobile-social`);
+      const cta = container.querySelector("[data-quiz-cta]")!;
+      expect(cta.getAttribute("data-quiz-cta-mode")).toBe("brand");
+      // The small top line is gone; only the enlarged wordmark remains.
+      expect(cta.textContent).not.toContain("Play more LoL quizzes");
+      expect(cta.querySelector("img")!.className).toContain("h-24");
+    }
+    cleanup();
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    const cta = container.querySelector("[data-quiz-cta]")!;
+    expect(cta.getAttribute("data-quiz-cta-mode")).toBe("top");
+    expect(cta.textContent).toContain("mogsy.app");
+  });
+
+  it("recap slide re-shows the question, reveals nothing, prompts the swipe", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=recap&state=correct&format=mobile-social&difficulty=iron");
+    // recap forces the unanswered composition even if state=correct is passed.
+    expect(choiceStates(container)).toEqual(["idle", "idle", "idle"]);
+    expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
+    expect(container.querySelector("[data-quiz-recap-cta]")?.textContent).toMatch(/Swipe right/);
+    // Difficulty still shown on recap.
+    expect(container.querySelector("[data-quiz-difficulty]")).not.toBeNull();
+  });
+
+  it("community slide: hero + updated copy + social links, no answers", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=community&format=mobile-social");
+    const slide = container.querySelector('[data-content-slide="community"]')!;
+    expect(slide).not.toBeNull();
+    // Hero art dominates the top.
+    expect(slide.querySelector("[data-hero-mascot]")).not.toBeNull();
+    // Competitive "stack up" copy — exact concise lines.
+    expect(slide.textContent).toContain("See how your answers");
+    expect(slide.textContent).toContain("stack up");
+    expect(slide.textContent).toContain("Check the comments and compare answers");
+    expect(slide.textContent).toContain("Think they’re wrong?");
+    expect(slide.textContent).not.toContain("Let them know");
+    // Social links row: neutral platform list, no invented handle/URL.
+    const social = slide.querySelector("[data-social-links]")!;
+    expect(social).not.toBeNull();
+    expect(social.textContent).toMatch(/Follow Mogsy on/);
+    ["TikTok", "Instagram", "YouTube", "Twitch"].forEach((p) =>
+      expect(social.textContent).toContain(p),
+    );
+    // Consistent icon treatment: every platform entry carries an svg glyph
+    // (TikTok uses a minimal inline SVG — lucide has no TikTok icon).
+    const platformEntries = Array.from(social.querySelectorAll(".flex.items-center.gap-1"));
+    expect(platformEntries.length).toBe(4);
+    platformEntries.forEach((entry) => expect(entry.querySelector("svg")).not.toBeNull());
+    expect(social.textContent).not.toMatch(/@/); // no @handle
+    expect(container.querySelector("[data-quiz-choice]")).toBeNull();
+  });
+
+  it("end slides lead with the real hero PNG — no fabricated placeholder", () => {
+    for (const slide of ["app-cta", "community"]) {
+      cleanup();
+      inject([fixture]);
+      const { container } = renderHarness(`?q=t1&slide=${slide}&format=mobile-social`);
+      const hero = container.querySelector(`[data-content-slide="${slide}"] [data-hero-mascot]`);
+      expect(hero).not.toBeNull();
+      // Real supplied artwork, rendered as an <img> (participates in QA).
+      expect(hero!.tagName).toBe("IMG");
+      expect(hero!.getAttribute("src")).toBe("/content/blitz-thinking.png");
+      expect(hero!.className).toContain("object-contain");
+      // The fabricated inline SVG placeholder must be gone.
+      expect(container.querySelector("[data-hero-placeholder]")).toBeNull();
+    }
+  });
+
+  it("question slide uses the direct 'Comment A, B, C, or D' CTA", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    expect(container.querySelector("[data-quiz-result-placeholder]")?.textContent).toContain(
+      "Comment A, B, C, or D",
+    );
+  });
+
+  it("rejects an unknown slide kind", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=banner&format=mobile-social");
+    expect(container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/Unknown slide/);
   });
 });
 

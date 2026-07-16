@@ -111,6 +111,55 @@ to a production host.
 
 Answer order is never reshuffled — backend order is preserved exactly.
 
+## Content posts (carousels)
+
+`--post <type>` expands each question into an ordered carousel of slides
+(one PNG per slide, named `<format>_slide-NN_<slug>.png`). It replaces
+`--states` (they are mutually exclusive). Every slide uses the same premium
+phone composition; only the card contents change.
+
+| Post type | Slides |
+|---|---|
+| `single-question` | `slide-01` question (engagement) → `slide-02` app-CTA (“Think you know League? Prove it.” → “Challenge others to test your knowledge at” → dominant “mogsy.app” + socials + QR) |
+| `answer-reveal` | `slide-01` recap (question re-shown, **no answer**, “Swipe right →”) → `slide-02` answer (jade correct reveal) → `slide-03` community (“See how your answers stack up” + socials) |
+
+The question slide's engagement CTA is **“Comment A, B, C, or D”**.
+
+End slides (app-cta/community) are brand-led: the top strip drops the small
+“Play more LoL quizzes at mogsy.app” line in favor of a larger Mogsy wordmark
+(`QuizCtaTop variant="brand"`), lead with the real hero art
+(`public/content/blitz-thinking.png`), and close with the neutral socials row
+(“Follow Mogsy on TikTok · Instagram · YouTube · Twitch” — no invented
+handles). The app-CTA slide's play CTA is text-led (no button box). Post
+frame-parity gates the CTA geometry within each slide family (quiz-style vs
+end-style); phone/screen/island/QR/scan stay identical across all slides.
+
+```powershell
+# Single-question post (2 slides)
+npm run quiz:screenshots -- --question-id 123 --post single-question
+
+# Answer-reveal post (3 slides)
+npm run quiz:screenshots -- --question-id 123 --post answer-reveal
+```
+
+## Difficulty / rank badge
+
+`--difficulty <iron|gold|diamond>` renders the League rank **emblem only** (no
+words, no border) on the quiz + recap + answer slides — Iron = Easy, Gold =
+Medium, Diamond = Hard. It sits in its own fixed-height lane (deterministic,
+64px, left-aligned) between the recipe/visual area and answer A, so it never
+overlaps or shifts the question text and parity holds across states. Precedence: `--difficulty` (run-level) → per-question
+`metadata.content_difficulty` → none. Emblems are the real rank PNGs served by
+the combat backend at `assets/ranks/large/<tier>.png` (same origin as item
+icons — no copying).
+
+```powershell
+npm run quiz:screenshots -- --question-id 123 --post single-question --difficulty gold
+```
+
+There is no implicit/random difficulty — a tier is only shown when deliberately
+chosen (flag or metadata).
+
 ## Item-build recipe visuals
 
 `deriveRecipe()` (src/lib/quiz-screenshot/recipe.ts) normalizes the item-build

@@ -5,6 +5,7 @@ import {
   runDirName,
   safeSegment,
   screenshotFileName,
+  slideFileName,
 } from "./paths";
 
 describe("questionSlug", () => {
@@ -24,6 +25,18 @@ describe("screenshotFileName", () => {
   it("includes format and state", () => {
     expect(screenshotFileName("vertical", "question")).toBe("vertical_question.png");
     expect(screenshotFileName("mobile-audit", "correct")).toBe("mobile-audit_correct.png");
+  });
+});
+
+describe("slideFileName", () => {
+  it("zero-pads the slide index and includes the slug", () => {
+    expect(slideFileName("mobile-social", 1, "question")).toBe("mobile-social_slide-01_question.png");
+    expect(slideFileName("mobile-social", 2, "app-cta")).toBe("mobile-social_slide-02_app-cta.png");
+    expect(slideFileName("mobile-social", 3, "community")).toBe("mobile-social_slide-03_community.png");
+  });
+  it("keeps carousel slides ordered lexicographically", () => {
+    const names = [1, 2, 3].map((i) => slideFileName("mobile-social", i, "s"));
+    expect([...names].sort()).toEqual(names);
   });
 });
 

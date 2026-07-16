@@ -21,7 +21,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join, resolve } from "node:path";
 import { parseScreenshotCli, CLI_USAGE, type ScreenshotCliConfig } from "../../src/lib/quiz-screenshot/cli";
 import { resolveAnswerPlan } from "../../src/lib/quiz-screenshot/states";
-import { questionSlug, runDirName, screenshotFileName } from "../../src/lib/quiz-screenshot/paths";
+import { questionSlug, runDirName, screenshotFileName, slideFileName } from "../../src/lib/quiz-screenshot/paths";
+import { expandPost, type SlideKind } from "../../src/lib/quiz-screenshot/content-posts";
+import { resolveQuestionDifficulty } from "../../src/lib/quiz-screenshot/difficulty";
+import type { RenderState, RenderQuestion } from "../../src/lib/quiz-screenshot/types";
 import {
   buildQuestionMetadata,
   type CaptureRecord,
@@ -41,6 +44,42 @@ import {
 import { loadQuestions } from "./source";
 import { ensureServer } from "./server";
 import { captureOne, launchBrowser, type CaptureLayout } from "./capture";
+
+/** One capture within a question: a classic state OR a carousel slide. */
+type CaptureJob = {
+  slide: SlideKind;
+  state: RenderState;
+  /** Short key for logging/metadata (state name or slide slug). */
+  slug: string;
+  /** Whether to render the difficulty badge on this capture. */
+  showDifficulty: boolean;
+  /** Output filename within the question directory, per format. */
+  fileFor: (formatKey: string) => string;
+};
+
+/**
+ * Expand a question into its capture jobs. Post mode → the ordered carousel
+ * slides; classic mode → one quiz job per requested state (unchanged).
+ */
+function buildJobs(config: ScreenshotCliConfig, question: RenderQuestion): CaptureJob[] {
+  const hasDifficulty = !!resolveQuestionDifficulty(question.metadata, config.difficulty);
+  if (config.post) {
+    return expandPost(config.post).map((s) => ({
+      slide: s.slideKind,
+      state: s.state,
+      slug: s.slug,
+      showDifficulty: s.showDifficulty && hasDifficulty,
+      fileFor: (formatKey: string) => slideFileName(formatKey, s.index, s.slug),
+    }));
+  }
+  return config.states.map((state) => ({
+    slide: "quiz" as SlideKind,
+    state,
+    slug: state,
+    showDifficulty: hasDifficulty,
+    fileFor: (formatKey: string) => screenshotFileName(formatKey, state),
+  }));
+}
 
 /** Read width/height straight from the PNG IHDR header. */
 export function pngDimensions(buf: Buffer): { width: number; height: number } {
@@ -178,8 +217,17 @@ async function main() {
     console.error("No usable questions — nothing to capture.");
     process.exit(1);
   }
+  // What each question expands into: post slides, or classic states.
+  const requestedSlugs = config.post
+    ? expandPost(config.post).map((s) => s.slug)
+    : config.states;
   console.log(`Rendering ${questions.length} question(s) from ${sourceDescription}`);
-  console.log(`States: ${config.states.join(", ")}`);
+  if (config.post) {
+    console.log(`Post: ${config.post} → slides: ${requestedSlugs.join(", ")}`);
+  } else {
+    console.log(`States: ${config.states.join(", ")}`);
+  }
+  if (config.difficulty) console.log(`Difficulty override: ${config.difficulty}`);
   console.log(`Formats: ${config.formats.map((f) => f.key).join(", ")}`);
 
   // ── Run directory (refuses to overwrite unless asked) ──────────────────
@@ -220,59 +268,76 @@ async function main() {
       const pageErrors: string[] = [];
       const failedRequests: string[] = [];
       const missingAssets: string[] = [];
-      // format key -> state -> geometry, for the cross-state stability gate.
+      // format key -> job slug -> geometry, for the stability gates.
       const layoutsByFormat = new Map<string, Map<string, CaptureLayout>>();
-      // One state-independent zoom per format: fitted on the FIRST captured
-      // state of this question, then forced onto every later state.
+      // One state-independent zoom per (format, quiz-state) so the classic
+      // question/correct pair renders with one scale. Post slides differ in
+      // content and are fitted independently.
       const scaleByFormat = new Map<string, number>();
 
-      for (const state of config.states) {
-        // Plan first: skip/reject before spending a browser navigation.
-        let expected: { selectedIndex: number | null; showExplanation: boolean };
-        try {
-          const plan = resolveAnswerPlan(question, state, config.answerIndex);
-          if (plan.kind === "skip") {
-            statesSkipped.push({ state, reason: plan.reason });
-            console.log(`  ~ ${state}: skipped (${plan.reason})`);
+      const difficultyInfo = resolveQuestionDifficulty(question.metadata, config.difficulty);
+      const jobs = buildJobs(config, question);
+
+      for (const job of jobs) {
+        // Plan quiz/recap slides (recap forces the unanswered state); the
+        // standalone content slides carry no answer plan.
+        let expected: { selectedIndex: number | null; showExplanation: boolean } = {
+          selectedIndex: null,
+          showExplanation: false,
+        };
+        if (job.slide === "quiz" || job.slide === "recap") {
+          const planState: RenderState = job.slide === "recap" ? "question" : job.state;
+          try {
+            const plan = resolveAnswerPlan(question, planState, config.answerIndex);
+            if (plan.kind === "skip") {
+              statesSkipped.push({ state: job.slug, reason: plan.reason });
+              console.log(`  ~ ${job.slug}: skipped (${plan.reason})`);
+              continue;
+            }
+            expected = plan.plan;
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            runFailures.push({
+              question_id: question.id,
+              format: null,
+              state: job.slug,
+              classification: "invalid-state-for-question",
+              message: msg,
+            });
+            console.log(`  ✗ ${job.slug}: ${msg}`);
             continue;
           }
-          expected = plan.plan;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          runFailures.push({
-            question_id: question.id,
-            format: null,
-            state,
-            classification: "invalid-state-for-question",
-            message: msg,
-          });
-          console.log(`  ✗ ${state}: ${msg}`);
-          continue;
         }
 
         for (const format of config.formats) {
-          const file = screenshotFileName(format.key, state);
+          const file = job.fileFor(format.key);
+          // Reuse the fitted zoom only for quiz slides of the SAME format, so
+          // the classic question/correct pair stays pixel-stable.
+          const scaleKey = format.key;
+          const reuseScale = job.slide === "quiz" ? scaleByFormat.get(scaleKey) : undefined;
           try {
             const { png, qa, layout, usedScale } = await captureOne({
               browser,
               baseUrl: server.baseUrl,
               question,
-              state,
+              state: job.state,
               format,
               answerIndex: config.answerIndex,
               expectedSelectedIndex: expected.selectedIndex,
               expectExplanation: expected.showExplanation,
-              forcedScale: scaleByFormat.get(format.key),
+              forcedScale: reuseScale,
+              slide: job.slide,
+              difficulty: job.showDifficulty ? difficultyInfo?.tier : undefined,
             });
-            if (!scaleByFormat.has(format.key) && usedScale !== null) {
-              scaleByFormat.set(format.key, usedScale);
+            if (job.slide === "quiz" && !scaleByFormat.has(scaleKey) && usedScale !== null) {
+              scaleByFormat.set(scaleKey, usedScale);
             }
             writeFileSync(join(qDir, file), png);
             const dims = pngDimensions(png);
-            screenshots.push({ format: format.key, state, file, ...dims });
+            screenshots.push({ format: format.key, state: job.slug, file, ...dims });
             captureCount++;
             if (!layoutsByFormat.has(format.key)) layoutsByFormat.set(format.key, new Map());
-            layoutsByFormat.get(format.key)!.set(state, layout);
+            layoutsByFormat.get(format.key)!.set(job.slug, layout);
 
             consoleErrors.push(...qa.consoleErrors);
             pageErrors.push(...qa.pageErrors);
@@ -285,68 +350,93 @@ async function main() {
               runFailures.push({
                 question_id: question.id,
                 format: format.key,
-                state,
+                state: job.slug,
                 classification: f.code,
                 message: f.message,
                 screenshot: `${slug}/${file}`,
               });
             }
             const flag = qa.failures.length ? "✗" : qa.warnings.length ? "!" : "✓";
-            console.log(`  ${flag} ${format.key} ${state} (${dims.width}×${dims.height})`);
+            console.log(`  ${flag} ${format.key} ${job.slug} (${dims.width}×${dims.height})`);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             runFailures.push({
               question_id: question.id,
               format: format.key,
-              state,
+              state: job.slug,
               classification: "capture-error",
               message: msg.slice(0, 500),
             });
-            console.log(`  ✗ ${format.key} ${state}: ${msg.slice(0, 200)}`);
+            console.log(`  ✗ ${format.key} ${job.slug}: ${msg.slice(0, 200)}`);
           }
         }
       }
 
-      // Layout-stability gate: for social captures, the question and correct
-      // states must have IDENTICAL card, CTA, and QR geometry — the only
-      // allowed differences are inside the card (reveal/selection/result).
-      for (const [formatKey, states] of layoutsByFormat) {
-        const a = states.get("question");
-        const b = states.get("correct");
-        if (!a || !b) continue;
-        for (const part of ["card", "cta", "qr", "phone", "screen", "island", "scan", "resultArea"] as const) {
-          const ra = a[part] ?? null;
-          const rb = b[part] ?? null;
-          if (ra === null && rb === null) continue;
-          const same =
-            !!ra && !!rb &&
-            Math.abs(ra.x - rb.x) <= 1 && Math.abs(ra.y - rb.y) <= 1 &&
-            Math.abs(ra.w - rb.w) <= 1 && Math.abs(ra.h - rb.h) <= 1;
-          if (!same) {
-            runFailures.push({
-              question_id: question.id,
-              format: formatKey,
-              state: "correct",
-              classification: "layout-shift",
-              message:
-                `${part} geometry differs between question and correct states: ` +
-                `${JSON.stringify(ra)} vs ${JSON.stringify(rb)}`,
-            });
+      // Geometry-stability gates.
+      for (const [formatKey, byJob] of layoutsByFormat) {
+        const cmp = (a: CaptureLayout, b: CaptureLayout, parts: readonly string[], label: string) => {
+          for (const part of parts) {
+            const ra = (a as Record<string, CaptureLayout[keyof CaptureLayout]>)[part] ?? null;
+            const rb = (b as Record<string, CaptureLayout[keyof CaptureLayout]>)[part] ?? null;
+            if (ra === null && rb === null) continue;
+            const same =
+              !!ra && !!rb &&
+              Math.abs(ra.x - rb.x) <= 1 && Math.abs(ra.y - rb.y) <= 1 &&
+              Math.abs(ra.w - rb.w) <= 1 && Math.abs(ra.h - rb.h) <= 1;
+            if (!same) {
+              runFailures.push({
+                question_id: question.id,
+                format: formatKey,
+                state: label,
+                classification: "layout-shift",
+                message: `${part} geometry differs (${label}): ${JSON.stringify(ra)} vs ${JSON.stringify(rb)}`,
+              });
+            }
+          }
+        };
+
+        if (config.post) {
+          // Carousel: the phone frame chrome (deterministic per format) must
+          // be identical across every slide; card/result vary with content.
+          // The top CTA has two deliberate variants — full strip on
+          // quiz-family slides, larger brand wordmark on end slides — so CTA
+          // geometry is gated WITHIN each family, not across them.
+          const isEnd = (s: string) => s === "app-cta" || s === "community";
+          const entries = [...byJob.entries()];
+          const [firstSlug, first] = entries[0] ?? [];
+          const ctaRefByFamily = new Map<string, CaptureLayout>();
+          if (firstSlug && first) ctaRefByFamily.set(isEnd(firstSlug) ? "end" : "quiz", first);
+          for (let i = 1; i < entries.length; i++) {
+            const [slugB, layoutB] = entries[i];
+            if (first) cmp(first, layoutB, ["phone", "screen", "island", "qr", "scan"], `frame:${slugB}`);
+            const family = isEnd(slugB) ? "end" : "quiz";
+            const ctaRef = ctaRefByFamily.get(family);
+            if (ctaRef) cmp(ctaRef, layoutB, ["cta"], `cta:${slugB}`);
+            else ctaRefByFamily.set(family, layoutB);
+          }
+          console.log(`  ◻ ${formatKey} post frame parity across ${entries.length} slide(s)`);
+        } else {
+          // Classic: the question and correct states of the SAME card must be
+          // pixel-identical everywhere (≤1px) — the core anti-drift guarantee.
+          const a = byJob.get("question");
+          const b = byJob.get("correct");
+          if (a && b) {
+            cmp(a, b, ["card", "cta", "qr", "phone", "screen", "island", "scan", "resultArea"], "correct");
+            console.log(
+              `  ◻ ${formatKey} layout parity — phone ${JSON.stringify(a.phone)} | ` +
+              `screen ${JSON.stringify(a.screen)} | island ${JSON.stringify(a.island)} | ` +
+              `cta ${JSON.stringify(a.cta)} | card ${JSON.stringify(a.card)} | ` +
+              `result ${JSON.stringify(a.resultArea)} | qr ${JSON.stringify(a.qr)} | ` +
+              `scan ${JSON.stringify(a.scan)}`,
+            );
           }
         }
-        console.log(
-          `  ◻ ${formatKey} layout parity — phone ${JSON.stringify(a.phone)} | ` +
-          `screen ${JSON.stringify(a.screen)} | island ${JSON.stringify(a.island)} | ` +
-          `cta ${JSON.stringify(a.cta)} | card ${JSON.stringify(a.card)} | ` +
-          `result ${JSON.stringify(a.resultArea)} | qr ${JSON.stringify(a.qr)} | ` +
-          `scan ${JSON.stringify(a.scan)}`,
-        );
       }
 
       const metadata = buildQuestionMetadata({
         question,
         sourceMode: config.source.mode,
-        statesRequested: config.states,
+        statesRequested: requestedSlugs,
         formatsRequested: config.formats.map((f) => f.key),
         screenshots,
         statesSkipped,
@@ -376,7 +466,9 @@ async function main() {
     schema_version: 1,
     run_id: runId,
     source: sourceDescription,
-    states_requested: config.states,
+    post: config.post ?? null,
+    difficulty: config.difficulty ?? null,
+    states_requested: requestedSlugs,
     formats_requested: config.formats.map((f) => f.key),
     question_count: questions.length,
     questions_skipped_at_load: skipped,
@@ -397,7 +489,7 @@ async function main() {
         runId,
         generatedAt: finishedAt.toISOString(),
         sourceDescription,
-        statesRequested: config.states,
+        statesRequested: requestedSlugs,
         formatsRequested: config.formats.map((f) => f.key),
         totalQuestions: questions.length,
         captureCount,
