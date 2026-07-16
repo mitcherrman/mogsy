@@ -10,14 +10,26 @@
  *   app-cta    — a clean "play in the app" call-to-action slide
  *   recap      — a suspense/bridge slide that re-shows the question, no answer
  *   community  — a discussion/comments follow-up slide
+ *   opening    — multi-question challenge intro ("TEST YOUR LEAGUE KNOWLEDGE")
+ *   summary    — challenge answer blueprint (numbered rows of correct answers)
+ *   ending     — challenge outro ("HOW DID YOU DO?" + app/socials/QR)
  *
  * Post types:
  *   single-question — [quiz:question] + [app-cta]
  *   answer-reveal   — [recap] + [quiz:correct] + [community]
+ *   (multi-question challenges are expanded by ./challenge.ts)
  */
 import type { RenderState } from "./types";
 
-export const SLIDE_KINDS = ["quiz", "app-cta", "recap", "community"] as const;
+export const SLIDE_KINDS = [
+  "quiz",
+  "app-cta",
+  "recap",
+  "community",
+  "opening",
+  "summary",
+  "ending",
+] as const;
 export type SlideKind = (typeof SLIDE_KINDS)[number];
 
 export const POST_TYPES = ["single-question", "answer-reveal"] as const;

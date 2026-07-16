@@ -14,8 +14,8 @@ Content formats include: a fit-to-frame mobile card (measured and zoomed at
 readiness time so nothing clips or collides), **item-build recipe visuals**
 covering the whole build-question family (see table below), and a **CTA
 footer** with the Mogsy
-wordmark, "Play more LoL quizzes at mogsy.app", and a deterministic QR code
-encoding `https://mogsy.app/quiz` (compact strip on `question`, full QR block
+wordmark, "Play more LoL quizzes at mogzy.lol", and a deterministic QR code
+encoding `https://mogzy.lol/quiz` (compact strip on `question`, full QR block
 on reveals; never in the answer area). The spoiler fields of recipe metadata
 are only read after reveal — the unanswered state cannot leak the answer.
 
@@ -120,13 +120,13 @@ phone composition; only the card contents change.
 
 | Post type | Slides |
 |---|---|
-| `single-question` | `slide-01` question (engagement) → `slide-02` app-CTA (“Think you know League? Prove it.” → “Challenge others to test your knowledge at” → dominant “mogsy.app” + socials + QR) |
+| `single-question` | `slide-01` question (engagement) → `slide-02` app-CTA (“Think you know League? Prove it.” → “Challenge others to test your knowledge at” → dominant “mogzy.lol” + socials + QR) |
 | `answer-reveal` | `slide-01` recap (question re-shown, **no answer**, “Swipe right →”) → `slide-02` answer (jade correct reveal) → `slide-03` community (“See how your answers stack up” + socials) |
 
 The question slide's engagement CTA is **“Comment A, B, C, or D”**.
 
 End slides (app-cta/community) are brand-led: the top strip drops the small
-“Play more LoL quizzes at mogsy.app” line in favor of a larger Mogsy wordmark
+“Play more LoL quizzes at mogzy.lol” line in favor of a larger Mogsy wordmark
 (`QuizCtaTop variant="brand"`), lead with the real hero art
 (`public/content/blitz-thinking.png`), and close with the neutral socials row
 (“Follow Mogsy on TikTok · Instagram · YouTube · Twitch” — no invented
@@ -141,6 +141,20 @@ npm run quiz:screenshots -- --question-id 123 --post single-question
 # Answer-reveal post (3 slides)
 npm run quiz:screenshots -- --question-id 123 --post answer-reveal
 ```
+
+## Shared generation service + Content Studio
+
+The capture engine lives in `scripts/quiz-screenshots/generate.ts`
+(`runGeneration` / `runDailyPackage`); this CLI is a thin wrapper over it.
+The local **Content Post Studio** (`npm run content-studio`, UI at
+`/dev/content-studio` — see `scripts/content-studio/README.md`) calls the
+same service in-process and adds **multi-question challenge** carousels
+(opening → N question slides with "QUESTION i OF n / LOCK IN YOUR ANSWER" →
+paginated "TODAY'S ANSWERS" blueprint → ending) and coordinated
+**daily packages**. Every new run also writes a structured `manifest.json`
+(mode, ordered questions, per-slide semantics/files/difficulty, copy
+variants, counts) alongside the existing reports; older runs without
+manifests remain readable.
 
 ## Difficulty / rank badge
 

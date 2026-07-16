@@ -166,7 +166,7 @@ describe("QuizRenderPage — content CTA", () => {
     const ctaQuestion = a.container.querySelector("[data-quiz-cta]");
     expect(ctaQuestion).not.toBeNull();
     expect(ctaQuestion!.getAttribute("data-quiz-cta-mode")).toBe("top");
-    expect(ctaQuestion!.textContent).toContain("mogsy.app");
+    expect(ctaQuestion!.textContent).toContain("mogzy.lol");
     const qrQuestion = a.container.querySelector("[data-quiz-cta-qr]");
     expect(qrQuestion!.querySelector("svg path")).not.toBeNull();
     // CTA lives outside the card — never inside the answer grid.
@@ -428,11 +428,11 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     expect(slide.textContent).toContain("Think you know League?");
     expect(slide.textContent).toContain("Prove it.");
     expect(slide.textContent).toContain("Challenge others to test your knowledge at");
-    // Text-led CTA: a single dominant mogsy.app line — no "Play at" line,
+    // Text-led CTA: a single dominant mogzy.lol line — no "Play at" line,
     // no button box.
     const playCta = slide.querySelector("[data-play-cta]") as HTMLElement;
     expect(playCta).not.toBeNull();
-    expect(playCta.textContent!.trim()).toBe("mogsy.app");
+    expect(playCta.textContent!.trim()).toBe("mogzy.lol");
     expect(slide.textContent).not.toMatch(/play at/i);
     expect(playCta.className).not.toContain("rounded"); // no button chrome
     expect(playCta.getAttribute("style") ?? "").not.toMatch(/background:/);
@@ -463,7 +463,7 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
     const cta = container.querySelector("[data-quiz-cta]")!;
     expect(cta.getAttribute("data-quiz-cta-mode")).toBe("top");
-    expect(cta.textContent).toContain("mogsy.app");
+    expect(cta.textContent).toContain("mogzy.lol");
   });
 
   it("recap slide re-shows the question, reveals nothing, prompts the swipe", () => {
@@ -534,6 +534,134 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&slide=banner&format=mobile-social");
     expect(container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/Unknown slide/);
+  });
+});
+
+describe("QuizRenderPage — multi-question challenge slides", () => {
+  const second: RenderQuestion = {
+    id: "t9",
+    question_text: "Which item grants ability haste?",
+    choices: [{ label: "Kindlegem" }, { label: "Ruby Crystal" }],
+    correct_index: 0,
+    category: "items",
+  };
+
+  it("opening slide: approved copy, hero, no answer information", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=opening&format=mobile-social");
+    const slide = container.querySelector('[data-content-slide="opening"]')!;
+    expect(slide).not.toBeNull();
+    expect(slide.textContent).toMatch(/Test your/i);
+    expect(slide.textContent).toMatch(/League knowledge/i);
+    expect(slide.textContent).toContain("How many can you get right?");
+    expect(slide.textContent).toContain("Keep score. No searching.");
+    expect(slide.textContent).toContain("Swipe to begin →");
+    expect(slide.querySelector("[data-hero-mascot]")).not.toBeNull();
+    expect(container.querySelector("[data-quiz-choice]")).toBeNull();
+    expect(slide.textContent).not.toContain("Thornmail");
+    // Brand-led top area like the other end slides.
+    expect(container.querySelector("[data-quiz-cta]")!.getAttribute("data-quiz-cta-mode")).toBe("brand");
+  });
+
+  it("ending slide: score prompt + app push + socials", () => {
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&slide=ending&format=mobile-social");
+    const slide = container.querySelector('[data-content-slide="ending"]')!;
+    expect(slide.textContent).toMatch(/How did you do\?/i);
+    expect(slide.textContent).toContain("Comment your score below.");
+    expect(slide.textContent).toContain("Challenge other players at");
+    expect(slide.querySelector("[data-play-cta]")!.textContent).toContain("mogzy.lol");
+    expect(slide.querySelector("[data-hero-mascot]")).not.toBeNull();
+    expect(slide.querySelector("[data-social-links]")).not.toBeNull();
+    expect(slide.textContent).not.toMatch(/@/);
+  });
+
+  it("summary slide: numbered rows with the actual correct answers", () => {
+    inject([fixture, second]);
+    const { container } = renderHarness(
+      "?q=t1&slide=summary&format=mobile-social&qids=t1,t9&sumStart=0&sumPage=1&sumPages=1",
+    );
+    const slide = container.querySelector('[data-content-slide="summary"]')!;
+    expect(slide.textContent).toContain("TODAY'S ANSWERS");
+    const rows = slide.querySelectorAll("[data-summary-row]");
+    expect(rows.length).toBe(2);
+    // fixture: correct_index 1 → "B" / Thornmail; second: 0 → "A" / Kindlegem.
+    expect(rows[0].querySelector("[data-summary-letter]")!.textContent).toBe("B");
+    expect(rows[0].textContent).toContain("Thornmail");
+    expect(rows[1].querySelector("[data-summary-letter]")!.textContent).toBe("A");
+    expect(rows[1].textContent).toContain("Kindlegem");
+    // Rows are fixed-height for consistent blueprint rhythm.
+    rows.forEach((r) => expect((r as HTMLElement).style.height).toBe("64px"));
+    // No pagination line for a single page.
+    expect(slide.querySelector("[data-summary-page]")).toBeNull();
+  });
+
+  it("summary slide shows pagination and offset numbering on later pages", () => {
+    inject([fixture, second]);
+    const { container } = renderHarness(
+      "?q=t1&slide=summary&format=mobile-social&qids=t9&sumStart=6&sumPage=2&sumPages=2",
+    );
+    const slide = container.querySelector('[data-content-slide="summary"]')!;
+    expect(slide.querySelector("[data-summary-page]")!.textContent).toMatch(/2 of 2/);
+    expect(slide.querySelector("[data-summary-row] span")!.textContent).toBe("7");
+  });
+
+  it("summary slide errors on unknown qids rather than fabricating rows", () => {
+    inject([fixture]);
+    const { container } = renderHarness(
+      "?q=t1&slide=summary&format=mobile-social&qids=t1,missing",
+    );
+    expect(container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/not found/);
+  });
+
+  it("challenge question slide: progress + lock-in instead of the comment CTA", () => {
+    inject([fixture]);
+    const { container } = renderHarness(
+      "?q=t1&state=question&format=mobile-social&progress=2of5&difficulty=gold",
+    );
+    const cta = container.querySelector("[data-quiz-challenge-cta]")!;
+    expect(cta).not.toBeNull();
+    expect(cta.textContent).toMatch(/Question 2 of 5/i);
+    expect(cta.textContent).toMatch(/Lock in your answer/i);
+    // No comment prompt on challenge question slides.
+    expect(container.textContent).not.toContain("Comment A, B, C, or D");
+    // Progress element present for QA/tests.
+    expect(container.querySelector("[data-challenge-progress]")).not.toBeNull();
+    // Still no leakage.
+    expect(choiceStates(container)).toEqual(["idle", "idle", "idle"]);
+    expect(container.querySelector("[data-quiz-difficulty]")).not.toBeNull();
+  });
+
+  it("renders approved repeat-opener and mid-CTA copy variants", () => {
+    inject([fixture]);
+    const a = renderHarness(
+      "?q=t1&state=question&format=mobile-social&progress=1of5&repeat=1",
+    );
+    expect(a.container.querySelector("[data-challenge-repeat]")!.textContent).toBe(
+      "Already answered this one? Keep your original answer.",
+    );
+    cleanup();
+    inject([fixture]);
+    const b = renderHarness(
+      "?q=t1&state=question&format=mobile-social&progress=3of5&mid=3",
+    );
+    expect(b.container.querySelector("[data-challenge-mid-cta]")!.textContent).toBe(
+      "Halfway there. Lock in your score.",
+    );
+  });
+
+  it("rejects malformed progress and unknown copy variants", () => {
+    inject([fixture]);
+    const a = renderHarness("?q=t1&state=question&format=mobile-social&progress=9of5");
+    expect(a.container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/progress/);
+    cleanup();
+    inject([fixture]);
+    const b = renderHarness("?q=t1&state=question&format=mobile-social&progress=1of5&repeat=9");
+    expect(b.container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/repeat/);
+    cleanup();
+    inject([fixture]);
+    const c = renderHarness("?q=t1&state=question&format=mobile-social&repeat=1");
+    expect(c.container.querySelector("[data-quiz-render-error]")?.textContent).toMatch(/progress/);
   });
 });
 

@@ -36,10 +36,22 @@ import {
   type DifficultyInfo,
 } from "@/lib/quiz-screenshot/difficulty";
 import { isSlideKind, type SlideKind } from "@/lib/quiz-screenshot/content-posts";
+import {
+  isMidCtaVariantId,
+  isRepeatVariantId,
+  midCtaCopy,
+  repeatCopy,
+} from "@/lib/quiz-screenshot/challenge";
 import { QuizCtaQr, QuizCtaTop } from "./QuizCta";
 import RecipeVisual from "./RecipeVisual";
 import DifficultyBadge from "./DifficultyBadge";
-import { AppCtaSlide, CommunitySlide } from "./ContentSlides";
+import {
+  AnswerSummarySlide,
+  AppCtaSlide,
+  ChallengeEndingSlide,
+  ChallengeOpeningSlide,
+  CommunitySlide,
+} from "./ContentSlides";
 import {
   QUIZ_RENDER_WINDOW_KEY,
   type AnswerPlan,
@@ -161,12 +173,21 @@ function useRenderReady(
   return { stageRef, centerRef, cardRef, scale };
 }
 
+/** Per-slide challenge presentation (multi-question posts). */
+type ChallengeSlideInfo = {
+  number: number;
+  total: number;
+  repeat?: { line1: string; line2: string };
+  midCta?: string;
+};
+
 function QuestionCard({
   question,
   plan,
   format,
   variant = "quiz",
   difficulty,
+  challenge,
 }: {
   question: RenderQuestion;
   plan: AnswerPlan;
@@ -175,6 +196,10 @@ function QuestionCard({
    *  (same composition, swipe banner instead of the comment CTA). */
   variant?: "quiz" | "recap";
   difficulty?: DifficultyInfo | null;
+  /** When set, this is a challenge question slide: the reserved result area
+   *  shows progress + "LOCK IN YOUR ANSWER" instead of the comment CTA
+   *  (viewers keep score — we do not ask for a comment per question). */
+  challenge?: ChallengeSlideInfo | null;
 }) {
   const { selectedIndex, revealed, isCorrectSelection, showExplanation } = plan;
   // Item-build questions get a recipe layout in content (social) formats;
@@ -271,6 +296,56 @@ function QuestionCard({
                 </div>
               </div>
             </div>
+          ) : format.kind === "social" && challenge ? (
+            // Challenge question slide: visible progress + lock-in prompt.
+            // Same transparent box model as the other placeholders. Optional
+            // one-line repeat/mid-CTA copy sits below without stealing the
+            // question hierarchy.
+            <div
+              data-quiz-challenge-cta
+              className="rounded-lg border p-4 text-sm"
+              style={{ borderColor: "transparent", background: "transparent" }}
+            >
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  data-challenge-progress
+                  className="text-xs font-extrabold uppercase"
+                  style={{ letterSpacing: "0.3em", color: "hsl(197 65% 66%)" }}
+                >
+                  Question {challenge.number} of {challenge.total}
+                </span>
+                <span
+                  className="text-base font-extrabold uppercase tracking-tight"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(92deg, hsl(190 95% 72%), hsl(196 92% 62%) 45%, hsl(43 92% 66%))",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    color: "transparent",
+                    filter: "drop-shadow(0 0 12px rgba(34,211,238,0.5))",
+                  }}
+                >
+                  Lock in your answer
+                </span>
+                {challenge.repeat ? (
+                  <span
+                    data-challenge-repeat
+                    className="text-xs font-bold"
+                    style={{ color: "hsl(43 60% 74%)" }}
+                  >
+                    {challenge.repeat.line1} {challenge.repeat.line2}
+                  </span>
+                ) : challenge.midCta ? (
+                  <span
+                    data-challenge-mid-cta
+                    className="text-xs font-bold"
+                    style={{ color: "hsl(43 60% 74%)" }}
+                  >
+                    {challenge.midCta}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           ) : format.kind === "social" ? (
             // Question slide: a bold, flashy comment action prompt — NOT a
             // boxed result panel. The outer container keeps the feedback
@@ -334,9 +409,15 @@ function FormatShell({
   state: RenderState;
   slide: SlideKind;
 }) {
-  // End slides (app-cta/community) drop the small "Play more…" line in favor
-  // of a larger, brand-led wordmark; quiz-family slides keep the full strip.
-  const isEndSlide = slide === "app-cta" || slide === "community";
+  // End-style slides (app-cta/community + challenge opening/summary/ending)
+  // drop the small "Play more…" line in favor of a larger, brand-led
+  // wordmark; quiz-family slides keep the full strip.
+  const isEndSlide =
+    slide === "app-cta" ||
+    slide === "community" ||
+    slide === "opening" ||
+    slide === "summary" ||
+    slide === "ending";
   if (format.kind === "audit") {
     // Responsive audit: normal page flow at the device viewport, same
     // container rhythm as the live quiz page.
@@ -696,6 +777,15 @@ export default function QuizRenderPage() {
   const scaleParam = params.get("scale");
   const slideParam = params.get("slide") ?? "quiz";
   const difficultyParam = params.get("difficulty");
+  // Challenge params (multi-question posts): progress + optional copy.
+  const progressParam = params.get("progress"); // "<number>of<total>"
+  const repeatParam = params.get("repeat"); // repeat copy variant id
+  const midParam = params.get("mid"); // mid-CTA variant id
+  // Summary params: ordered question ids on this page + pagination.
+  const qidsParam = params.get("qids");
+  const sumStartParam = params.get("sumStart");
+  const sumPageParam = params.get("sumPage");
+  const sumPagesParam = params.get("sumPages");
 
   const question = useMemo(
     () => questions?.find((q) => String(q.id) === qId) ?? null,
@@ -753,6 +843,40 @@ export default function QuizRenderPage() {
         content = <AppCtaSlide />;
       } else if (slide === "community") {
         content = <CommunitySlide question={question} />;
+      } else if (slide === "opening") {
+        content = <ChallengeOpeningSlide />;
+      } else if (slide === "ending") {
+        content = <ChallengeEndingSlide />;
+      } else if (slide === "summary") {
+        // Answer blueprint: qids lists THIS page's question ids in challenge
+        // order; sumStart is the 0-based global offset for row numbering.
+        if (!qidsParam) throw new Error("summary slide requires ?qids=<id,id,...>");
+        const ids = qidsParam.split(",").map((s) => s.trim()).filter(Boolean);
+        if (!ids.length) throw new Error("summary slide got an empty qids list");
+        const rows = ids.map((id) => {
+          const found = questions?.find((qq) => String(qq.id) === id);
+          if (!found) throw new Error(`summary question "${id}" not found in render data`);
+          return found;
+        });
+        const sumStart = sumStartParam !== null ? Number(sumStartParam) : 0;
+        const sumPage = sumPageParam !== null ? Number(sumPageParam) : 1;
+        const sumPages = sumPagesParam !== null ? Number(sumPagesParam) : 1;
+        for (const [name, v] of [
+          ["sumStart", sumStart],
+          ["sumPage", sumPage],
+          ["sumPages", sumPages],
+        ] as const) {
+          if (!Number.isInteger(v) || v < 0) throw new Error(`Invalid ${name} "${v}"`);
+        }
+        content = (
+          <AnswerSummarySlide
+            questions={rows}
+            startIndex={sumStart}
+            page={sumPage}
+            pageCount={sumPages}
+            resolveUrl={resolveQuizAssetUrl}
+          />
+        );
       } else {
         // quiz + recap: recap is always the unanswered composition.
         const effectiveState = slide === "recap" ? "question" : stateParam;
@@ -760,6 +884,28 @@ export default function QuizRenderPage() {
         if (planResult.kind === "skip") {
           error = `State "${effectiveState}" skipped: ${planResult.reason}`;
         } else {
+          // Challenge presentation (progress + optional approved copy).
+          let challenge: ChallengeSlideInfo | null = null;
+          if (progressParam !== null) {
+            const m = /^([1-9]\d?)of([1-9]\d?)$/.exec(progressParam);
+            if (!m) throw new Error(`Invalid progress "${progressParam}" (use <n>of<total>)`);
+            const number = Number(m[1]);
+            const total = Number(m[2]);
+            if (number > total) throw new Error(`Invalid progress "${progressParam}"`);
+            challenge = { number, total };
+            if (repeatParam !== null) {
+              const rv = Number(repeatParam);
+              if (!isRepeatVariantId(rv)) throw new Error(`Unknown repeat variant "${repeatParam}"`);
+              challenge.repeat = repeatCopy(rv);
+            }
+            if (midParam !== null) {
+              const mv = Number(midParam);
+              if (!isMidCtaVariantId(mv)) throw new Error(`Unknown mid-CTA variant "${midParam}"`);
+              challenge.midCta = midCtaCopy(mv).text;
+            }
+          } else if (repeatParam !== null || midParam !== null) {
+            throw new Error("repeat/mid params require a progress param");
+          }
           content = (
             <QuestionCard
               question={question}
@@ -767,6 +913,7 @@ export default function QuizRenderPage() {
               format={format}
               variant={slide === "recap" ? "recap" : "quiz"}
               difficulty={difficulty}
+              challenge={challenge}
             />
           );
         }

@@ -3,7 +3,8 @@
  * and correct states:
  *
  *   QuizCtaTop — compact centered strip ABOVE the quiz card: wordmark +
- *                "Play more LoL quizzes at mogsy.app" (mogsy.app prominent).
+ *                "Play more LoL quizzes at <site domain>" (domain prominent,
+ *                derived from src/lib/site-config.ts).
  *   QuizCtaQr  — small standalone QR BELOW the quiz card: white tile with a
  *                quiet zone, deterministic SVG encoding the quiz URL.
  *
@@ -11,12 +12,14 @@
  * the QR below it, and neither ever sits inside the answer area.
  */
 import qrcodegen from "qrcode-generator";
+import { SITE_DOMAIN, SITE_URL } from "@/lib/site-config";
 
 /** Quiz acquisition target: the live quiz landing page (shorter than any
- *  campaign URL, more precise than the bare domain). */
-export const CTA_URL = "https://mogsy.app/quiz";
+ *  campaign URL, more precise than the bare domain). Derived from the central
+ *  site config so a domain change propagates automatically. */
+export const CTA_URL = `${SITE_URL}/quiz`;
 export const CTA_TEXT = "Play more LoL quizzes at";
-export const CTA_DOMAIN = "mogsy.app";
+export const CTA_DOMAIN = SITE_DOMAIN;
 
 /** Deterministic QR as an SVG path (module grid → one path, crisp at any size). */
 export function buildQrSvgPath(text: string): { path: string; size: number } {
@@ -37,7 +40,7 @@ export function buildQrSvgPath(text: string): { path: string; size: number } {
  *  screen.
  *
  *  variant "full"  — question/recap/answer slides: wordmark stacked over the
- *                    "Play more LoL quizzes at mogsy.app" line (unchanged).
+ *                    "Play more LoL quizzes at <site domain>" line (unchanged).
  *  variant "brand" — end slides (app-cta/community): the small CTA line is
  *                    dropped and the Mogsy wordmark is enlarged so the top of
  *                    the phone reads brand-first. The slide body carries the

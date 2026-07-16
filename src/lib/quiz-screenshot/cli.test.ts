@@ -75,7 +75,7 @@ describe("parseScreenshotCli", () => {
 
   it("defaults to local capture: rejects non-localhost base-url without --allow-remote", () => {
     expect(() =>
-      parseScreenshotCli(["--question-id", "1", "--base-url", "https://mogsy.app"]),
+      parseScreenshotCli(["--question-id", "1", "--base-url", "https://mogzy.lol"]),
     ).toThrow(/not local/);
     const ok = parseScreenshotCli(["--question-id", "1", "--base-url", "http://localhost:8080"]);
     expect(ok.baseUrl).toBe("http://localhost:8080");

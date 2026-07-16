@@ -324,11 +324,19 @@ export async function captureOne(args: {
   /** Reuse the zoom fitted for an earlier state of the SAME question/format,
       so every state renders with one state-independent scale. */
   forcedScale?: number;
-  /** Carousel slide kind (quiz|recap|app-cta|community). Default "quiz".
-      Answer-integrity QA only applies to the quiz card. */
+  /** Carousel slide kind (quiz|recap|app-cta|community|opening|summary|
+      ending). Default "quiz". Answer-integrity QA only applies to the quiz
+      card. */
   slide?: string;
   /** Difficulty/rank badge tier (iron|gold|diamond) to render on the slide. */
   difficulty?: string;
+  /** Full ordered question list to inject (multi-question slides read more
+      than the primary question — e.g. the answer summary). Defaults to just
+      the primary question. */
+  injectQuestions?: RenderQuestion[];
+  /** Additional harness query params (progress/repeat/mid/qids/sum*). Keys
+      and values are appended via URLSearchParams — never shell-interpolated. */
+  extraParams?: Record<string, string>;
 }): Promise<CaptureResult> {
   const { browser, baseUrl, question, state, format } = args;
   const slideKind = args.slide ?? "quiz";
@@ -353,7 +361,7 @@ export async function captureOne(args: {
       ({ key, questions }) => {
         (window as unknown as Record<string, unknown>)[key] = { questions };
       },
-      { key: QUIZ_RENDER_WINDOW_KEY, questions: [question] },
+      { key: QUIZ_RENDER_WINDOW_KEY, questions: args.injectQuestions ?? [question] },
     );
     const page = await context.newPage();
     page.on("console", (msg) => {
@@ -376,6 +384,7 @@ export async function captureOne(args: {
     if (args.forcedScale !== undefined) search.set("scale", String(args.forcedScale));
     if (slideKind !== "quiz") search.set("slide", slideKind);
     if (args.difficulty) search.set("difficulty", args.difficulty);
+    for (const [k, v] of Object.entries(args.extraParams ?? {})) search.set(k, v);
     await page.goto(`${baseUrl}/dev/quiz-render?${search}`, { waitUntil: "domcontentloaded" });
 
     const errorPanel = page.locator("[data-quiz-render-error]");
@@ -474,11 +483,16 @@ export async function captureOne(args: {
     }
 
     // Content formats must carry the top CTA. Quiz-family slides require the
-    // visible mogsy.app link text; end slides (app-cta/community) use the
+    // visible mogzy.lol link text; end slides (app-cta/community) use the
     // brand-led variant — larger wordmark, no small line — so there the gate
     // requires a successfully-loaded Mogsy logo instead (the play messaging
     // lives in the slide body, and the QR still encodes the quiz URL).
-    const endSlide = slideKind === "app-cta" || slideKind === "community";
+    const endSlide =
+      slideKind === "app-cta" ||
+      slideKind === "community" ||
+      slideKind === "opening" ||
+      slideKind === "summary" ||
+      slideKind === "ending";
     if (format.cta !== "none") {
       if (!dom.ctaPresent) {
         qa.failures.push({
@@ -496,11 +510,11 @@ export async function captureOne(args: {
           format: format.key,
           state,
         });
-      } else if (!endSlide && !dom.ctaText.includes("mogsy.app")) {
+      } else if (!endSlide && !dom.ctaText.includes("mogzy.lol")) {
         qa.failures.push({
           severity: "failure",
           code: "cta-missing",
-          message: "CTA footer does not show the mogsy.app link text",
+          message: "CTA footer does not show the mogzy.lol link text",
           format: format.key,
           state,
         });
@@ -589,8 +603,10 @@ export async function captureOne(args: {
     // checks do not apply. Recap re-shows the question in the unanswered
     // composition, so it is treated like the question state for leakage.
     const states = dom.visibleChoiceStates;
-    if (slideKind === "app-cta" || slideKind === "community") {
+    if (endSlide) {
       // No answer grid to validate; phone-frame/CTA checks above still ran.
+      // (The summary slide deliberately shows correct answers — that is its
+      // purpose, and it renders no [data-quiz-choice] grid.)
     } else if (state === "question" || slideKind === "recap") {
       if (states.some((s) => s !== "idle")) {
         qa.failures.push({
@@ -611,7 +627,10 @@ export async function captureOne(args: {
         });
       }
     }
-    if ((state === "correct" || state === "incorrect" || state === "explanation") &&
+    // Reveal/selection integrity applies only to real quiz slides — non-quiz
+    // slides carry a "state" for labeling but render no answer grid.
+    if (slideKind === "quiz" &&
+        (state === "correct" || state === "incorrect" || state === "explanation") &&
         !states.includes("correct")) {
       qa.failures.push({
         severity: "failure",
@@ -621,7 +640,7 @@ export async function captureOne(args: {
         state,
       });
     }
-    if (state === "incorrect" && !states.includes("incorrect-selected")) {
+    if (slideKind === "quiz" && state === "incorrect" && !states.includes("incorrect-selected")) {
       qa.failures.push({
         severity: "failure",
         code: "missing-reveal",
@@ -630,7 +649,7 @@ export async function captureOne(args: {
         state,
       });
     }
-    if (state === "selected" && !states.includes("selected")) {
+    if (slideKind === "quiz" && state === "selected" && !states.includes("selected")) {
       qa.failures.push({
         severity: "failure",
         code: "missing-selection",

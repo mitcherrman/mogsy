@@ -17,7 +17,8 @@
     "video:prepare": "tsx scripts/prepare-quiz-video.ts",
     "video:render": "tsx scripts/render-quiz-video.ts",
     "video:timestamps": "tsx scripts/render-quiz-video.ts --timestamps-only",
-    "quiz:screenshots": "tsx scripts/quiz-screenshots/index.ts"
+    "quiz:screenshots": "tsx scripts/quiz-screenshots/index.ts",
+    "content-studio": "tsx scripts/content-studio/server.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
