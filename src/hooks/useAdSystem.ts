@@ -17,7 +17,10 @@ interface AdSystemState {
 }
 
 export function useAdSystem(placement: string = "swipe"): AdSystemState {
-  const [adMode, setAdMode] = useState<AdMode>("popup");
+  // Fail closed: ads are OFF until an explicit, valid, enabled settings row
+  // loads. Missing row, malformed value, query error, or loading state all
+  // leave ads disabled.
+  const [adMode, setAdMode] = useState<AdMode>("off");
   const [adSource, setAdSource] = useState<AdSource>("custom");
   const [adsenseClientId, setAdsenseClientId] = useState("");
   const [adsenseSlot, setAdsenseSlot] = useState("");
@@ -32,25 +35,25 @@ export function useAdSystem(placement: string = "swipe"): AdSystemState {
       .select("key, value")
       .eq("key", "global_ads_enabled")
       .single()
-      .then(({ data }) => {
-        if (data) {
-          const val = data.value as any;
-          const globalEnabled = val?.global_enabled ?? val?.enabled ?? true;
-          if (!globalEnabled) {
-            setAdMode("off");
-            return;
-          }
-          // Global AdSense client ID
-          if (val?.adsense_client_id) setAdsenseClientId(val.adsense_client_id);
+      .then(({ data, error }) => {
+        // Missing row, query error, or malformed value: stay off (fail closed).
+        if (error || !data) return;
+        const val = data.value as any;
+        if (!val || typeof val !== "object") return;
+        const globalEnabled = val.global_enabled ?? val.enabled ?? false;
+        if (!globalEnabled) return;
+        // Global AdSense client ID
+        if (val.adsense_client_id) setAdsenseClientId(val.adsense_client_id);
 
-          const placementConfig = val?.placements?.[placement];
-          if (placementConfig) {
-            setAdMode(placementConfig.ad_mode || "popup");
-            setAdSource(placementConfig.ad_source || "custom");
-            setFrequency(placementConfig.frequency || 10);
-            if (placementConfig.adsense_slot) setAdsenseSlot(placementConfig.adsense_slot);
-            if (!placementConfig.enabled) setAdMode("off");
-          }
+        const placementConfig = val.placements?.[placement];
+        if (placementConfig) {
+          setAdSource(placementConfig.ad_source || "custom");
+          setFrequency(placementConfig.frequency || 10);
+          if (placementConfig.adsense_slot) setAdsenseSlot(placementConfig.adsense_slot);
+          setAdMode(placementConfig.enabled ? placementConfig.ad_mode || "popup" : "off");
+        } else {
+          // Globally enabled with no per-placement config: legacy default.
+          setAdMode("popup");
         }
       });
 

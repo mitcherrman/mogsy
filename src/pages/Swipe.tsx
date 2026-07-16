@@ -29,6 +29,7 @@ import { getTierFromElo } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdSystem } from "@/hooks/useAdSystem";
+import { useLegacyAdGate } from "@/lib/ads/useLegacyAdGate";
 
 interface SwipeProfile {
   id: string;
@@ -61,6 +62,7 @@ export default function Swipe() {
   const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
   const [showAdsenseInSwipe, setShowAdsenseInSwipe] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [isStaffQa, setIsStaffQa] = useState(false);
   const [lastMatch, setLastMatch] = useState<{ winner: SwipeProfile; loser: SwipeProfile; prevWinnerElo: number; prevLoserElo: number } | null>(null);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [myRewinds, setMyRewinds] = useState(0);
@@ -83,6 +85,10 @@ export default function Swipe() {
   const [readyDelay, setReadyDelay] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
+  // Centralized ad policy: route/Pro/entitlement-loading/consent/flag checks.
+  // Fail-closed while a signed-in user's Pro status is unresolved.
+  const adGate = useLegacyAdGate("swipe", { staffQa: isStaffQa });
+  const canShowAds = adGate.allowCustom || adGate.allowGoogle;
   const [showMatchCount, setShowMatchCount] = useState(true);
 
   // Lock scroll on mobile to prevent any scrolling past game area
@@ -143,11 +149,13 @@ export default function Swipe() {
         .single();
       if (myProfile) {
         setMyProfileId(myProfile.id);
-        // Admins/moderators always see ads (for QA/verification)
+        // Staff QA is an explicit override in the ad gate now — we no longer
+        // falsify isPro for admins/moderators.
         const { data: roles } = await supabase
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
-        setIsPro(!!myProfile.is_pro && !isStaff);
+        setIsStaffQa(isStaff);
+        setIsPro(!!myProfile.is_pro);
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);
@@ -299,9 +307,9 @@ export default function Swipe() {
           if (gauntletChampion && winner.id === gauntletChampion.id) return prev + 1;
           return 1;
         });
-        const adType = shouldShowAd(newCount, isPro);
+        const adType = canShowAds ? shouldShowAd(newCount, false) : false;
         if (adType === "in_swipe") {
-          if (adSource === "adsense" || adSource === "hybrid") {
+          if ((adSource === "adsense" || adSource === "hybrid") && adGate.allowGoogle) {
             setShowAdsenseInSwipe(true);
           } else {
             const creative = getRandomCreative();
@@ -317,9 +325,9 @@ export default function Swipe() {
           setPair(winnerWasLeft ? [winner, challenger] : [challenger, winner]);
         }
       } else {
-        const adType = shouldShowAd(newCount, isPro);
+        const adType = canShowAds ? shouldShowAd(newCount, false) : false;
         if (adType === "in_swipe") {
-          if (adSource === "adsense" || adSource === "hybrid") {
+          if ((adSource === "adsense" || adSource === "hybrid") && adGate.allowGoogle) {
             setShowAdsenseInSwipe(true);
           } else {
             const creative = getRandomCreative();
@@ -343,7 +351,7 @@ export default function Swipe() {
       setSliceWinner(null);
       resetTimer();
     },
-    [pair, profiles, globalLeagueId, matchCount, isPro, myProfileId, myShields, gauntletMode, gauntletChampion]
+    [pair, profiles, globalLeagueId, matchCount, canShowAds, adGate.allowGoogle, adSource, shouldShowAd, getRandomCreative, myProfileId, myShields, gauntletMode, gauntletChampion]
   );
 
   const handleChoose = useCallback(
@@ -425,7 +433,7 @@ export default function Swipe() {
     <>
       {showAd && (
         <SwipeAd
-          isPro={isPro}
+          isPro={!canShowAds}
           adsenseSlot={adSource !== "custom" ? adsenseSlot : undefined}
           adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
           onClose={() => {

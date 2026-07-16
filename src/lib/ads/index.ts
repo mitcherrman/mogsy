@@ -11,3 +11,15 @@ export { getAdsConfig, type AdsConfig } from "./config";
 export { pickHouseAd, type HouseAdCreative } from "./houseAds";
 export { emitAdEvent, setAdEventSink, type AdLifecycleEvent } from "./analytics";
 export { getConsentState, type ConsentState } from "./consent";
+export {
+  ensureGoogleAdsScript,
+  getAdsensePublisherId,
+  getGoogleLoaderState,
+  type GoogleLoaderState,
+} from "./googleLoader";
+export {
+  useLegacyAdGate,
+  resolveLegacyAdGate,
+  type LegacyAdGateDecision,
+  type LegacyAdGateOverrides,
+} from "./useLegacyAdGate";

@@ -21,7 +21,11 @@ export type AdPlacement =
   | "docs_inline"
   | "docs_sidebar"
   | "profile_history"
-  | "broadcast_below";
+  | "broadcast_below"
+  // Typed targets for the legacy compatibility gate (useLegacyAdGate) —
+  // rendered by the pre-existing Swipe/blog surfaces, not by <AdSlot>.
+  | "swipe_interstitial"
+  | "blog_inline";
 
 export type AdSurface =
   | "hub"
@@ -30,7 +34,9 @@ export type AdSurface =
   | "combat"
   | "docs"
   | "profile"
-  | "broadcast";
+  | "broadcast"
+  | "swipe"
+  | "blog";
 
 export interface AdPlacementMeta {
   /** Human-readable name for admin/docs/analytics. */
@@ -145,6 +151,25 @@ export const AD_PLACEMENTS: Record<AdPlacement, AdPlacementMeta> = {
     devPlaceholder: true,
     notes:
       "Public viewer only. Never in Broadcast Studio or OBS-rendered views. Not mounted yet.",
+  },
+  swipe_interstitial: {
+    label: "Swipe game — interstitial between matches",
+    surface: "swipe",
+    minHeight: 0,
+    allowHouse: true,
+    allowThirdParty: true,
+    devPlaceholder: false,
+    notes:
+      "Legacy surface: frequency, mode, and creatives come from app_settings/ad_creatives via useAdSystem; layout is owned by SwipeAd/SwipeAdCard. Policy-gated via useLegacyAdGate.",
+  },
+  blog_inline: {
+    label: "Blog post — author-placed inline unit",
+    surface: "blog",
+    minHeight: 100,
+    allowHouse: false,
+    allowThirdParty: true,
+    devPlaceholder: true,
+    notes: "Legacy surface: rendered by the blog adsense block via GatedAdBanner.",
   },
 };
 

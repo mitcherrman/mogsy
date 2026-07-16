@@ -35,6 +35,7 @@ import SwipeInventoryButton from "@/components/SwipeInventoryButton";
 import { useLeagueAnimationRules, getAnimationOverride } from "@/hooks/useLeagueAnimationRules";
 import { toast } from "sonner";
 import { useAdSystem } from "@/hooks/useAdSystem";
+import { useLegacyAdGate } from "@/lib/ads/useLegacyAdGate";
 
 interface PresetItem {
   id: string;
@@ -133,6 +134,7 @@ export default function SwipePreset() {
   const [showInSwipeAd, setShowInSwipeAd] = useState<AdCreative | null>(null);
   const [showAdsenseInSwipe, setShowAdsenseInSwipe] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [isStaffQa, setIsStaffQa] = useState(false);
   const [finished, setFinished] = useState(false);
   const [showElo, setShowElo] = useState(true);
   const [showRank, setShowRank] = useState(true);
@@ -154,6 +156,10 @@ export default function SwipePreset() {
   const { rules: animRules } = useLeagueAnimationRules(leagueId);
   const [effectiveAnim, setEffectiveAnim] = useState(swipeAnimation);
   const { shouldShowAd, getRandomCreative, adSource, adsenseClientId, adsenseSlot } = useAdSystem("swipe");
+  // Centralized ad policy: route/Pro/entitlement-loading/consent/flag checks.
+  // Fail-closed while a signed-in user's Pro status is unresolved.
+  const adGate = useLegacyAdGate("swipe", { staffQa: isStaffQa });
+  const canShowAds = adGate.allowCustom || adGate.allowGoogle;
   const [readyDelay, setReadyDelay] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [showMatchCount, setShowMatchCount] = useState(true);
@@ -293,11 +299,13 @@ export default function SwipePreset() {
       const { data: profile } = await supabase
         .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
-        // Admins/moderators always see ads (for QA/verification)
+        // Staff QA is an explicit override in the ad gate now — we no longer
+        // falsify isPro for admins/moderators.
         const { data: roles } = await supabase
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
-        if (profile.is_pro && !isStaff) setIsPro(true);
+        setIsStaffQa(isStaff);
+        if (profile.is_pro) setIsPro(true);
         setMyProfileId(profile.id);
         setMyRewinds(profile.rewinds ?? 0);
         setMyShields(profile.elo_shields ?? 0);
@@ -558,9 +566,9 @@ export default function SwipePreset() {
         const challenger = getGauntletChallenger(updatedWinner);
         const winnerWasLeft = pair[0].id === winner.id;
         setGauntletPair(winnerWasLeft ? [updatedWinner, challenger] : [challenger, updatedWinner]);
-        const adType = shouldShowAd(newCount, isPro);
+        const adType = canShowAds ? shouldShowAd(newCount, false) : false;
         if (adType === "in_swipe") {
-          if (adSource === "adsense" || adSource === "hybrid") {
+          if ((adSource === "adsense" || adSource === "hybrid") && adGate.allowGoogle) {
             setShowAdsenseInSwipe(true);
           } else {
             const creative = getRandomCreative();
@@ -574,9 +582,9 @@ export default function SwipePreset() {
         if (nextIndex >= matchups.length) {
           setFinished(true);
         } else {
-          const adType = shouldShowAd(newCount, isPro);
+          const adType = canShowAds ? shouldShowAd(newCount, false) : false;
           if (adType === "in_swipe") {
-            if (adSource === "adsense" || adSource === "hybrid") {
+            if ((adSource === "adsense" || adSource === "hybrid") && adGate.allowGoogle) {
               setShowAdsenseInSwipe(true);
             } else {
               const creative = getRandomCreative();
@@ -594,7 +602,7 @@ export default function SwipePreset() {
       setSliceWinner(null);
       resetTimer();
     },
-    [pair, items, leagueId, matchCount, isPro, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
+    [pair, items, leagueId, matchCount, canShowAds, adGate.allowGoogle, adSource, shouldShowAd, getRandomCreative, currentIndex, matchups.length, itemImages, gauntletMode, gauntletChampion]
   );
 
   const trackImageClicks = useCallback((currentPair: PresetItem[]) => {
@@ -759,7 +767,7 @@ export default function SwipePreset() {
     <>
       {showAd && (
         <SwipeAd
-          isPro={isPro}
+          isPro={!canShowAds}
           adsenseSlot={adSource !== "custom" ? adsenseSlot : undefined}
           adsenseClientId={adSource !== "custom" ? adsenseClientId : undefined}
           onClose={() => {

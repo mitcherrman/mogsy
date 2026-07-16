@@ -5,8 +5,9 @@
  * kill switch — when false (or unset) no ad code renders anything anywhere,
  * regardless of the other flags.
  *
- * No flag here enables any Google/AdSense network call; a third-party
- * provider does not exist yet (see providers boundary in AdSlot.tsx).
+ * No flag here can enable a Google/AdSense network call on its own: the
+ * script loader (googleLoader.ts) additionally requires explicitly granted
+ * consent and a third-party-eligible policy decision.
  */
 
 export interface AdsConfig {

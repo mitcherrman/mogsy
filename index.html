@@ -66,13 +66,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
-    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
     <link rel="preconnect" href="https://kewgjwrzpzpeltwidvuc.supabase.co" crossorigin />
 
-    <!-- Google AdSense — load on every page so the publisher script is discoverable -->
+    <!-- Google AdSense account verification. The publisher ID below is the
+         site's real, legitimate AdSense identity and the single deployed
+         source of truth read by src/lib/ads/googleLoader.ts. The ad script
+         itself is NO LONGER loaded here — it is injected on demand by the
+         consent-aware loader, and only when policy allows. -->
     <meta name="google-adsense-account" content="ca-pub-9823769047605421" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9823769047605421"
-            crossorigin="anonymous"></script>
 
     <!-- Preload LCP image so browser discovers it immediately -->
     <link rel="preload" as="image" href="/mogsy-logo-text.png" fetchpriority="high" imagesizes="112px" />

@@ -3,7 +3,7 @@ import ItemCardBlock from "./data-blocks/ItemCardBlock";
 import ProfileCardBlock from "./data-blocks/ProfileCardBlock";
 import LeaderboardBlock from "./data-blocks/LeaderboardBlock";
 import ChartBlock from "./data-blocks/ChartBlock";
-import AdBanner from "@/components/AdBanner";
+import GatedAdBanner from "@/components/ads/GatedAdBanner";
 import { sanitizeRichText, sanitizeEmbed } from "@/lib/sanitize-html";
 import { safeHref } from "@/lib/safe-url";
 
@@ -109,18 +109,18 @@ export default function BlockRenderer({ block }: { block: BlogBlock }) {
     case "adsense": {
       const layout = p.layout ?? "rectangle";
       const heightPx = p.height ?? (layout === "horizontal" ? 120 : layout === "leaderboard" ? 100 : 280);
+      // Policy-gated: Pro/entitlement/consent/flag suppression is centralized in
+      // GatedAdBanner, which renders nothing (no layout gap) when suppressed.
+      // The author-supplied clientId is intentionally ignored — the publisher
+      // identity comes from the single controlled source in googleLoader.
       return (
-        <div className={`my-6 ${cls}`} style={css}>
-          <p className="text-[10px] uppercase tracking-widest blog-muted text-center mb-1.5">Advertisement</p>
-          <div style={{ minHeight: heightPx }} className="rounded-xl overflow-hidden">
-            <AdBanner
-              slot={p.slot || ""}
-              format={layout === "horizontal" || layout === "leaderboard" ? "horizontal" : "rectangle"}
-              clientId={p.clientId || undefined}
-              className="w-full"
-            />
-          </div>
-        </div>
+        <GatedAdBanner
+          slot={p.slot || ""}
+          format={layout === "horizontal" || layout === "leaderboard" ? "horizontal" : "rectangle"}
+          minHeight={heightPx}
+          className={cls}
+          style={css}
+        />
       );
     }
     default:
