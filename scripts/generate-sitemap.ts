@@ -4,6 +4,15 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { loadEnv } from "vite";
+
+// This script runs under tsx (predev/prebuild), which does not auto-load .env
+// files the way Vite does. Load them with Vite's own loadEnv so dev/build get
+// the same variables as the app; real environment variables take precedence.
+const fileEnv = loadEnv(process.env.NODE_ENV ?? "production", process.cwd(), "");
+for (const [key, value] of Object.entries(fileEnv)) {
+  if (process.env[key] === undefined) process.env[key] = value;
+}
 
 const BASE_URL = "https://mogzy.lol";
 
@@ -251,6 +260,17 @@ function renderSitemap(entries: SitemapEntry[]): string {
 }
 
 async function main() {
+  const missing = [
+    !SUPABASE_ANON_KEY && "VITE_SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY)",
+    !COMBAT_API_URL && "VITE_COMBAT_API_URL",
+  ].filter(Boolean);
+  if (missing.length) {
+    console.warn(
+      `[sitemap] WARNING: missing ${missing.join(", ")} — the sitemap will be ` +
+        `written WITHOUT its dynamic entries (champion docs, blog posts, profiles, links). ` +
+        `Set them in .env or the environment before publishing this sitemap.`,
+    );
+  }
   const dynamic = await fetchDynamicEntries();
   const all = [...staticEntries, ...dynamic];
   writeFileSync(resolve("public/sitemap.xml"), renderSitemap(all));
