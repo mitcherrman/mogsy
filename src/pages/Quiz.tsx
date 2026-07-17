@@ -16,10 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, resolveQuizAssetUrl, type DailyChallengeQuestion } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl, type DailyChallengeQuestion } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
-import QuizProfileCard from "@/components/quiz/QuizProfileCard";
+import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
@@ -207,6 +208,33 @@ export default function Quiz() {
   const [achievementsLoading, setAchievementsLoading] = useState(true);
   const [achievementsError, setAchievementsError] = useState<string | null>(null);
 
+  // Recent quiz-session history for the compact results card. Best-effort:
+  // the history endpoint is JWT-only, so a backend auth token is ensured
+  // first (guest-friendly, same flow as /lol/history). Failures never block
+  // the hub.
+  const [recentHistory, setRecentHistory] = useState<QuizHistoryResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const loadRecentHistory = useCallback(async () => {
+    setHistoryError(null);
+    try {
+      const token = await ensureBackendAuthToken();
+      if (!token) {
+        setHistoryError("sign-in required");
+        setRecentHistory(null);
+        return;
+      }
+      const data = await quizApi.getHistory();
+      setRecentHistory(data);
+    } catch (err: any) {
+      setHistoryError(err?.message || "History unavailable.");
+      setRecentHistory(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   // Daily challenge — initialised from localStorage for instant render, then synced from backend.
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
     getDailyChallenge(),
@@ -386,6 +414,11 @@ export default function Quiz() {
   useEffect(() => {
     loadDailyChallenge();
   }, [loadDailyChallenge]);
+
+  useEffect(() => {
+    setHistoryLoading(true);
+    loadRecentHistory();
+  }, [loadRecentHistory]);
 
   // Ensure anonymous session and load gate config on mount.
   useEffect(() => {
@@ -718,7 +751,9 @@ export default function Quiz() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground">League Quiz</h1>
-              <p className="text-xs text-muted-foreground">Test your League of Legends knowledge</p>
+              <p className="text-xs text-muted-foreground">
+                Compete, practice, and prove your League knowledge
+              </p>
             </div>
           </div>
           <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex [@media(max-height:480px)]:!hidden gap-1 text-xs">
@@ -729,70 +764,12 @@ export default function Quiz() {
           </Button>
         </div>
 
-        {/* Gameplay-first home: Daily Challenge → Quiz Modes → Ranked → Progression → expandable details. */}
+        {/* Compete-first home: Ranked hero → Daily Challenge + Current
+            Progress → practice categories → expandable details. */}
         {phase === "sets" && (
           <>
-            {/* 1. Daily Challenge hero (primary retention CTA). */}
-            <div className="mb-3">
-              <QuizDailyChallengeCard
-                state={dailyChallenge}
-                disabled={setsLoading}
-                onPlay={handlePlayDailyChallenge}
-              />
-            </div>
-
-            {/* 2. Quiz Mode Cards — playable content right under the hero. */}
-            <div className="mb-3">
-              <AnimatePresence mode="wait">
-                {setsLoading ? (
-                  <motion.div
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                  >
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-28 w-full rounded-lg" />
-                    ))}
-                  </motion.div>
-                ) : sets.length === 0 ? (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center"
-                  >
-                    <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No quiz sets available right now.</p>
-                    <Button onClick={handleRetry} variant="ghost" className="mt-3">
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="sets"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                  >
-                    {sets.map((set) => (
-                      <QuizModeCard
-                        key={set.id}
-                        set={set}
-                        categoryStats={categoryStats}
-                        onSelect={() => handleSelectSet(set)}
-                      />
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* 3. Ranked queue — secondary competitive CTA, below practice modes. */}
-            <div className="mb-3">
+            {/* 1. Ranked Quiz hero — the primary experience. */}
+            <div className="mb-3" data-testid="hub-ranked-section">
               <QuizRankedQueueCard
                 progress={userProgress}
                 ranked={getRankedState(userProgress?.attempts ?? 0)}
@@ -803,19 +780,83 @@ export default function Quiz() {
               />
             </div>
 
-            {/* 4. Compact Progression Dashboard. */}
-            <div className="mb-3">
-              <QuizProfileCard
-                progress={userProgress}
-                loading={progressLoading}
-                error={progressError}
-                recentXpGain={recentXpGain}
-                achievements={achievements}
-                onViewAchievements={() => setAchievementsOpen(true)}
+            {/* 2. Daily Challenge + Recent Quiz Results — equal-priority pair:
+                what to do today, and how recent sessions went. (Ranked status
+                itself lives in the hero above — not repeated here.) */}
+            <div
+              className="mb-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
+              data-testid="hub-daily-history-row"
+            >
+              <QuizDailyChallengeCard
+                state={dailyChallenge}
+                disabled={setsLoading}
+                onPlay={handlePlayDailyChallenge}
+              />
+              <QuizRecentResultsCard
+                history={recentHistory}
+                loading={historyLoading}
+                error={historyError}
+                onPlayRanked={() => {
+                  if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
+                }}
               />
             </div>
 
-            {/* 5. Collapsible Knowledge Breakdown. */}
+            {/* 3. Practice categories — train topics before the next match. */}
+            <div className="mb-3" data-testid="hub-practice-section">
+              <div className="mb-2 mt-1">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                  Practice Your Knowledge
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Train specific topics before your next ranked match.
+                </p>
+              </div>
+              {/* Plain conditional swap (no AnimatePresence mode="wait"):
+                  under prefers-reduced-motion the skeleton's exit animation
+                  never completed, so reduced-motion users never saw the
+                  category grid at all. The entrance fade is kept; there is no
+                  exit-gated handoff left to get stuck. */}
+              {setsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-28 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : sets.length === 0 ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center"
+                >
+                  <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No quiz sets available right now.</p>
+                  <Button onClick={handleRetry} variant="ghost" className="mt-3">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="sets"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  {sets.map((set) => (
+                    <QuizModeCard
+                      key={set.id}
+                      set={set}
+                      categoryStats={categoryStats}
+                      onSelect={() => handleSelectSet(set)}
+                    />
+                  ))}
+                </motion.div>
+              )}
+            </div>
+
+            {/* 4. Collapsible Knowledge Breakdown. */}
             <Collapsible className="mb-3">
               <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
                 <div className="flex items-center gap-2">
@@ -851,7 +892,7 @@ export default function Quiz() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* 6. Collapsible Achievements grid. */}
+            {/* 5. Collapsible Achievements grid. */}
             <Collapsible
               open={achievementsOpen}
               onOpenChange={setAchievementsOpen}
@@ -1716,14 +1757,10 @@ function QuizModeCard({
                 </div>
               </div>
             </div>
-            {attempts === 0 ? (
-              <Badge
-                variant="outline"
-                className="shrink-0 border-emerald-400/40 bg-emerald-400/10 text-[10px] font-bold uppercase tracking-wider text-emerald-300"
-              >
-                New
-              </Badge>
-            ) : (
+            {/* No per-card "New" badge — with most categories unplayed it
+                appeared on nearly every card and meant nothing. Played counts
+                remain the only per-card status marker. */}
+            {attempts > 0 && (
               <Badge variant="secondary" className="shrink-0 text-[10px] tabular-nums">
                 {attempts} played
               </Badge>
@@ -1747,7 +1784,7 @@ function QuizModeCard({
               </div>
             ) : (
               <div className="min-w-0 flex-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                No mastery yet
+                Not started
               </div>
             )}
             <div className="flex shrink-0 items-center text-xs font-semibold text-primary">
