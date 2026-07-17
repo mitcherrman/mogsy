@@ -74,9 +74,11 @@ export default function LolHistory() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
+      {/* Per-user page: empty for crawlers/guests, so keep it out of the index. */}
       <SEOHead
-        title="Quiz History — Mogsy LoL"
+        title="Quiz History — Mogzy LoL"
         description="Your recent League of Legends quiz results: scores, accuracy, and streak-building history."
+        noindex
       />
 
       <div className="mb-6 flex items-center gap-3">

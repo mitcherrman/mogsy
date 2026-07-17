@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
+import DataSourcesNotice from "@/components/lol/DataSourcesNotice";
 import { Button } from "@/components/ui/button";
 import { useProYear, isPlausibleProYear } from "@/hooks/useProYear";
 import { useProCoverage } from "@/hooks/useProCoverage";
@@ -327,7 +328,13 @@ export default function LeagueDocsProYear() {
   if (year === null) {
     return (
       <PageShell year={yearLabel || "Invalid year"}>
-        <SEOHead title="Pro Data — League Docs | Mogsy" description="Year-by-year professional League of Legends data coverage." path="/lol/docs/pro" />
+        {/* Invalid year param: a not-found state, not the Pro Data landing —
+            distinct title, no landing canonical, and noindex (SPA soft-404). */}
+        <SEOHead
+          title="Pro Data year not found — League Docs | Mogzy"
+          description="This pro data year doesn't exist. Browse year-by-year professional League of Legends coverage instead."
+          noindex
+        />
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-10 text-center">
           <p className="text-sm font-semibold text-foreground">That doesn't look like a year.</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -344,10 +351,15 @@ export default function LeagueDocsProYear() {
   return (
     <PageShell year={String(year)}>
       <SEOHead
-        title={`${year} Pro Data — League Docs | Mogsy`}
+        title={
+          notFound
+            ? `${year} Pro Data unavailable — League Docs | Mogzy`
+            : `${year} Pro Data — League Docs | Mogzy`
+        }
         description={`Imported professional League of Legends esports coverage for ${year}: top picked, banned, and presence champions, win rates, and data completeness.`}
         path={`/lol/docs/pro/years/${year}`}
         keywords={`lol esports ${year}, league pro play ${year}, ${year} pick ban stats`}
+        noindex={notFound}
       />
 
       {isPending ? (
@@ -370,7 +382,7 @@ export default function LeagueDocsProYear() {
             No tracked pro data exists for {year}.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Mogsy's esports import covers 2011 onward — this year isn't in the queue or the dataset.
+            Mogzy's esports import covers 2011 onward — this year isn't in the queue or the dataset.
           </p>
           <Button asChild variant="outline" size="sm" className="mt-4 border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
             <Link to="/lol/docs/pro">Browse pro data coverage</Link>
@@ -393,7 +405,13 @@ export default function LeagueDocsProYear() {
           </Button>
         </div>
       ) : (
-        <YearContent data={data} neighbors={neighbors} getIcon={getIcon} />
+        <>
+          <YearContent data={data} neighbors={neighbors} getIcon={getIcon} />
+          <DataSourcesNotice
+            leaguepedia
+            freshness={`Figures for ${year} reflect Mogzy's most recent import run for that season.`}
+          />
+        </>
       )}
     </PageShell>
   );
@@ -431,7 +449,7 @@ function YearContent({
             </div>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
               Imported professional League/esports coverage for {data.year}. Numbers reflect what
-              Mogsy has imported — not a claim that every {data.year} pro match ever played is
+              Mogzy has imported — not a claim that every {data.year} pro match ever played is
               represented.
             </p>
           </div>

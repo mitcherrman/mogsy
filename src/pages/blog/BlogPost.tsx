@@ -6,6 +6,7 @@ import BlogThemeWrapper from "@/components/blog/BlogThemeWrapper";
 import BlogRenderer from "@/components/blog/BlogRenderer";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import SEOHead from "@/components/SEOHead";
+import { isLeagueBlogPost } from "@/lib/blog/league-content";
 import BlogShareButtons from "@/components/blog/BlogShareButtons";
 import SwipeComments from "@/components/SwipeComments";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,18 +87,21 @@ export default function BlogPost() {
   return (
     <div className="min-h-dvh bg-background">
       <SEOHead
-        title={post.seo_title || `${post.title} — Mogsy`}
-        description={post.seo_description || post.subtitle || `${post.title} on Mogsy.`}
+        title={post.seo_title || `${post.title} — Mogzy`}
+        description={post.seo_description || post.subtitle || `${post.title} on Mogzy.`}
         path={canonicalPath}
         image={heroImage}
         type="article"
         keywords={(post.tags ?? []).join(", ") || undefined}
+        // League-first review surface: legacy off-topic posts stay reachable
+        // but are not indexed (same rule as the sitemap generator).
+        noindex={!isLeagueBlogPost(post)}
         article={{
           publishedTime: post.published_at,
           modifiedTime: post.updated_at,
           section: post.category || post.tags?.[0] || null,
           tags: post.tags ?? [],
-          author: "Mogsy",
+          author: "Mogzy",
         }}
         jsonLd={[articleLd, breadcrumbLd]}
       />

@@ -14,7 +14,11 @@ interface ChampionEntry {
   note?: string;
 }
 
-const PATCH_LABEL = "Patch 14.10";
+// Honest freshness labeling: the rankings below were compiled on this patch.
+// Do NOT bump this to a newer patch number without actually re-validating the
+// rankings — the label must reflect the data, not the calendar.
+const COMPILED_PATCH = "Patch 14.10";
+const FRESHNESS_LABEL = `Compiled on ${COMPILED_PATCH} · reviewed periodically`;
 
 const TIER_DATA: Record<Role, ChampionEntry[]> = {
   Top: [
@@ -96,7 +100,7 @@ export default function LolTierList() {
   const itemListLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `League of Legends Tier List — ${role} (${PATCH_LABEL})`,
+    name: `League of Legends Tier List — ${role} (compiled on ${COMPILED_PATCH})`,
     itemListOrder: "https://schema.org/ItemListOrderDescending",
     numberOfItems: TIER_DATA[role].length,
     itemListElement: TIER_DATA[role].map((c, i) => ({
@@ -119,8 +123,8 @@ export default function LolTierList() {
   return (
     <div>
       <SEOHead
-        title={`League of Legends Tier List ${PATCH_LABEL} — Best Champions by Role | Mogsy`}
-        description={`The Mogsy LoL tier list ranks the best League of Legends champions for ${PATCH_LABEL} across Top, Jungle, Mid, ADC and Support. Updated meta picks with notes.`}
+        title={"League of Legends Tier List — Best Champions by Role | Mogzy"}
+        description={`The Mogzy LoL tier list ranks the best League of Legends champions across Top, Jungle, Mid, ADC and Support — compiled on ${COMPILED_PATCH}, with per-champion notes.`}
         path="/lol/tier-list"
         keywords="league of legends tier list, lol tier list, best lol champions, lol meta, lol patch tier list, top lane tier list, jungle tier list, mid tier list, adc tier list, support tier list"
         jsonLd={[itemListLd, breadcrumbLd]}
@@ -144,11 +148,11 @@ export default function LolTierList() {
               <Trophy className="h-8 w-8 text-[#c9a84c]" />
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">{PATCH_LABEL} · Meta Rankings</div>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">{FRESHNESS_LABEL}</div>
               <h1 className="text-2xl md:text-4xl font-bold text-foreground">League of Legends Tier List</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
                 The best champions to climb with this patch, ranked across all five roles. Curated from
-                pro-play data, high-elo win rates and the Mogsy community.
+                pro-play data, high-elo win rates and the Mogzy community.
               </p>
             </div>
           </div>
@@ -212,18 +216,18 @@ export default function LolTierList() {
         {/* Methodology / SEO body */}
         <section className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2 rounded-xl border border-border bg-card/70 backdrop-blur-sm p-5">
-            <h2 className="text-lg font-bold text-foreground mb-2">How the Mogsy LoL tier list works</h2>
+            <h2 className="text-lg font-bold text-foreground mb-2">How the Mogzy LoL tier list works</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               This tier list ranks the {totalChampions} most-played League of Legends champions across the
-              five roles for {PATCH_LABEL}. Rankings blend high-elo win rates, pro-play presence and the
-              community votes powering the Mogsy ranking platform. Champions are graded from <b>S+</b>
+              five roles. Rankings were compiled on {COMPILED_PATCH} and are reviewed periodically —
+              they blend high-elo win rates, pro-play presence and the
+              community votes powering the Mogzy ranking platform. Champions are graded from <b>S+</b>
               {" "}(must-pick / ban) down to <b>C</b> (niche or off-meta), and each entry includes a quick
               note on how the champion fits into the current meta.
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed mt-3">
               Want to test a build against this meta? Use the <Link to="/combat-lab" className="text-[#c9a84c] hover:underline">Combat Lab</Link>
-              {" "}to simulate matchups, or jump into <Link to="/swipe" className="text-[#c9a84c] hover:underline">Swipe</Link>
-              {" "}to vote on the next iteration of this list.
+              {" "}to simulate matchups, or test your knowledge in the <Link to="/quiz" className="text-[#c9a84c] hover:underline">League Quiz</Link>.
             </p>
           </div>
 
@@ -254,7 +258,7 @@ export default function LolTierList() {
           <div className="space-y-3 text-sm">
             <div>
               <h3 className="font-semibold text-foreground">What patch is this LoL tier list for?</h3>
-              <p className="text-muted-foreground">{PATCH_LABEL}. We refresh rankings every major patch.</p>
+              <p className="text-muted-foreground">The rankings were last compiled on {COMPILED_PATCH}. They are reviewed periodically rather than every patch, so treat tier placements as a stable role-fit guide, not a live meta snapshot.</p>
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Who is the best champion right now?</h3>
@@ -266,7 +270,7 @@ export default function LolTierList() {
             <div>
               <h3 className="font-semibold text-foreground">How do you rank champions?</h3>
               <p className="text-muted-foreground">
-                We combine high-elo win rates, pro-play presence and head-to-head votes from the Mogsy
+                We combine high-elo win rates, pro-play presence and head-to-head votes from the Mogzy
                 community to grade champions from S+ down to C.
               </p>
             </div>

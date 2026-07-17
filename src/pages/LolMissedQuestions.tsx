@@ -108,9 +108,11 @@ export default function LolMissedQuestions() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
+      {/* Per-user page: empty for crawlers/guests, so keep it out of the index. */}
       <SEOHead
-        title="Missed Question Bank — Mogsy LoL"
+        title="Missed Question Bank — Mogzy LoL"
         description="Review every League of Legends quiz question you missed and practice your weak spots."
+        noindex
       />
 
       <div className="mb-6 flex items-center gap-3">

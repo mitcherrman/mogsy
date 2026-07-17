@@ -12,13 +12,22 @@ const NotFound = () => {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
-      <SEOHead title="Page not found — Mogsy" description="The page you’re looking for doesn’t exist on Mogsy." />
-      <img src={mogsyIcon} alt="Mogsy" className="h-16 w-16 rounded-2xl" />
-      <h1 className="text-4xl font-bold text-foreground">404</h1>
-      <p className="text-xl text-muted-foreground">Oops! Page not found</p>
-      <Link to="/" className="text-primary font-semibold hover:underline">
-        Return to Home
-      </Link>
+      {/* SPA host serves HTTP 200, so noindex marks this as a true not-found
+          for crawlers and keeps soft-404s out of the index. */}
+      <SEOHead
+        title="Page not found — Mogzy"
+        description="The page you’re looking for doesn’t exist on Mogzy."
+        noindex
+      />
+      <img src={mogsyIcon} alt="Mogzy" className="h-16 w-16 rounded-2xl" />
+      <h1 className="text-4xl font-bold text-foreground">Page not found</h1>
+      <p className="text-xl text-muted-foreground">That page doesn’t exist (404).</p>
+      <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-semibold">
+        <Link to="/lol" className="text-primary hover:underline">League hub</Link>
+        <Link to="/quiz" className="text-primary hover:underline">Quiz</Link>
+        <Link to="/lol/docs" className="text-primary hover:underline">League Docs</Link>
+        <Link to="/combat-lab" className="text-primary hover:underline">Combat Lab</Link>
+      </div>
     </div>
   );
 };

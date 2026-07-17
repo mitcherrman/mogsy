@@ -6,11 +6,17 @@ import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { Link } from "react-router-dom";
 import { getBlogTheme } from "@/lib/blog/themes";
+import { isLeagueBlogPost } from "@/lib/blog/league-content";
 
 export default function BlogIndex() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState<string | undefined>(undefined);
-  const { data: posts = [], isLoading } = useBlogList({ limit: 40, search: search || undefined, tag });
+  const { data: fetchedPosts = [], isLoading } = useBlogList({ limit: 40, search: search || undefined, tag });
+  // League-first surface: League posts lead the index (and the rotating hero);
+  // legacy off-topic posts stay reachable below rather than being deleted.
+  const posts = [...fetchedPosts].sort(
+    (a, b) => Number(isLeagueBlogPost(b)) - Number(isLeagueBlogPost(a)),
+  );
   // Stable tag list — derived from a tiny tags-only query so categories don't
   // disappear/jump when the user selects a tag or types a search.
   const { data: tagData = [] } = useBlogTags();
@@ -34,10 +40,10 @@ export default function BlogIndex() {
   return (
     <div className="min-h-dvh bg-background">
       <SEOHead
-        title="Mogsy Blog — Rankings, Tier Lists & Pop Culture Deep Dives"
-        description="Anime tier lists, video game rankings, movie debates and Marvel hot takes — explore community-ranked stories from Mogsy."
+        title="Mogzy Blog — League of Legends Articles, Tier Lists & Rankings"
+        description="League of Legends articles, tier lists, and community rankings from Mogzy — plus archived community deep dives."
         path="/blog"
-        keywords="anime tier list, video game rankings, movie tier list, marvel ranking, pop culture, mogsy"
+        keywords="league of legends blog, lol tier list, lol rankings, mogzy"
         jsonLd={[
           {
             "@context": "https://schema.org",

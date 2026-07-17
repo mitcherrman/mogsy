@@ -1,14 +1,18 @@
 User-agent: *
 Allow: /
-# Private / utility routes â€” not useful in search results
+# Private / utility routes — not useful in search results
 Disallow: /admin
 Disallow: /admin/
 Disallow: /moderator
 Disallow: /secret-room
 Disallow: /reset-password
+Disallow: /auth
+Disallow: /settings
 Disallow: /broadcast/
+Disallow: /dev/
 Disallow: /quiz/diagnostics
 Disallow: /combat-lab/diagnostics
+Disallow: /lol/dev-changelog
 
 # DOMAIN CONFIG: canonical origin is https://mogzy.lol (see src/lib/site-config.ts)
 Sitemap: https://mogzy.lol/sitemap.xml

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import AdSlot from "@/components/ads/AdSlot";
+import DataSourcesNotice from "@/components/lol/DataSourcesNotice";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -295,12 +296,12 @@ export default function LeagueDocsChampionDetail() {
         title={
           champion
             ? `${champion.name} — Stats & Abilities | League Docs`
-            : "Champion — League Docs | Mogsy"
+            : "Champion — League Docs | Mogzy"
         }
         description={
           champion
             ? `${champion.name}${champion.title ? `, ${champion.title}` : ""} — base stats, per-level growth, level projections, and ability cooldowns, costs, and ranges.`
-            : "League of Legends champion reference page on Mogsy League Docs."
+            : "League of Legends champion reference page on Mogzy League Docs."
         }
         path={`/lol/docs/champions/${slug}`}
       />
@@ -489,7 +490,7 @@ function ChampionDocContent({
             <p className="mt-3 flex items-start gap-1.5 text-[11px] text-muted-foreground">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
-                Base-stat projection only, using League's stat-growth curve — the same one Mogsy's
+                Base-stat projection only, using League's stat-growth curve — the same one Mogzy's
                 combat engine uses. Attack-speed growth is a percent bonus applied to the champion's
                 attack-speed ratio. Items, runes, buffs, and champion-specific passives are not
                 included.
@@ -573,6 +574,8 @@ function ChampionDocContent({
           ))}
         </div>
       </section>
+
+      <DataSourcesNotice freshness="Stored values are refreshed by Mogzy's data pipeline; each page reports its own patch and last-verified dates above." />
     </>
   );
 }

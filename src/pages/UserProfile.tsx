@@ -514,12 +514,16 @@ export default function UserProfile() {
   return (
     <div className="min-h-dvh relative" style={theme.styles.pageBg ? { background: theme.styles.pageBg } : undefined}>
       <ThemeOverlay themeId={theme.id} />
+      {/* Thin-profile rule: bot-generated and unnamed profiles are templated
+          near-duplicates at scale — keep them out of the index. Named human
+          profiles with real public stats stay indexable. */}
       <SEOHead
-        title={`${profile.display_name || "User"} — Mogsy`}
+        noindex={!!profile.is_bot || !profile.display_name}
+        title={`${profile.display_name || "User"} — Mogzy`}
         description={
           LEAGUE_ONLY_MODE
-            ? `View ${profile.display_name}'s Mogsy League profile. League quiz, Combat Lab and game knowledge. ${profile.status_message || ""}`
-            : `View ${profile.display_name}'s profile on Mogsy. ${profile.status_message || ""}`
+            ? `View ${profile.display_name}'s Mogzy League profile. League quiz, Combat Lab and game knowledge. ${profile.status_message || ""}`
+            : `View ${profile.display_name}'s profile on Mogzy. ${profile.status_message || ""}`
         }
         image={profile.avatar_url || undefined}
         jsonLd={{

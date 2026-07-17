@@ -19,6 +19,7 @@ import {
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { useProCoverage } from "@/hooks/useProCoverage";
+import DataSourcesNotice from "@/components/lol/DataSourcesNotice";
 import type { ProCoverageStatus, ProYearSummary } from "@/lib/league-docs/api";
 
 const ProExplorer = lazy(() => import("@/pages/lol-docs/pro-explorer/ProExplorer"));
@@ -264,8 +265,8 @@ export default function LeagueDocsProData() {
   return (
     <div>
       <SEOHead
-        title="Pro Data — Esports Data Coverage — League Docs | Mogsy"
-        description="See exactly what professional League of Legends esports data Mogsy has imported: coverage by year, champions with data, pick and ban rows, and known data caveats."
+        title="Pro Data — Esports Data Coverage — League Docs | Mogzy"
+        description="See exactly what professional League of Legends esports data Mogzy has imported: coverage by year, champions with data, pick and ban rows, and known data caveats."
         path="/lol/docs/pro"
         keywords="league of legends esports data, lol pro play stats, esports data coverage, leaguepedia data"
       />
@@ -290,7 +291,7 @@ export default function LeagueDocsProData() {
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">Pro Data</h1>
               <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
-                Mogsy's imported professional League dataset and its coverage, year by year. This
+                Mogzy's imported professional League dataset and its coverage, year by year. This
                 page shows exactly what pro-play data exists here today — not a complete esports
                 wiki. Historical years are being imported incrementally, and incomplete years are
                 marked as such.
@@ -354,7 +355,7 @@ export default function LeagueDocsProData() {
             <section>
               <SectionHeading label="Coverage" title="Data by year" />
               <p className="mb-3 text-xs text-muted-foreground max-w-3xl">
-                Each year reflects the current state of Mogsy's import queue.
+                Each year reflects the current state of Mogzy's import queue.
                 "Waiting for import" years are queued, not broken. "In progress"
                 years will change as more champions are processed.
               </p>
@@ -462,7 +463,7 @@ export default function LeagueDocsProData() {
                 <div className="flex items-start gap-2.5">
                   <Info className="h-4 w-4 mt-0.5 shrink-0" style={{ color: GOLD }} aria-hidden />
                   <p className="text-xs text-muted-foreground">
-                    This page shows what Mogsy has imported — coverage of the import, not a claim
+                    This page shows what Mogzy has imported — coverage of the import, not a claim
                     that every historical pro match ever played is represented. Years marked
                     "waiting for import" are queued and will fill in over time.
                   </p>
@@ -487,6 +488,11 @@ export default function LeagueDocsProData() {
                 </div>
               </div>
             </section>
+
+            <DataSourcesNotice
+              leaguepedia
+              freshness="Coverage reflects Mogzy's most recent import run; per-year status and caveats above are generated from the import audit itself."
+            />
           </>
         )}
       </div>

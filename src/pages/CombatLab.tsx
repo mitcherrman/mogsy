@@ -704,18 +704,18 @@ export default function CombatLab() {
   return (
     <div className="px-4 md:px-0 py-4 md:py-5 2xl:w-[120%] 2xl:-ml-[10%]">
       <SEOHead
-        title="Mogsy Combat Lab | League of Legends Damage Simulator"
-        description="Test League of Legends champion damage, items, abilities, runes, and combat scenarios in the Mogsy Combat Lab damage simulator. Free, in-browser, no account needed."
+        title="Mogzy Combat Lab | League of Legends Damage Simulator"
+        description="Test League of Legends champion damage, items, abilities, runes, and combat scenarios in the Mogzy Combat Lab damage simulator. Free, in-browser, no account needed."
         path="/combat-lab"
         keywords="league of legends damage simulator, lol damage calculator, champion damage, combat lab, lol builds, league of legends training tool"
       />
 
       {/* Header */}
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary/80 m-0">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary/80 m-0">
           <Swords className="h-3.5 w-3.5" />
           Combat Lab
-        </h1>
+        </div>
         <div className="flex items-center gap-2">
           {/* Mobile: developer chrome collapses to a small connection dot.
               Desktop (and Dev Mode on mobile) keeps the full controls. */}
@@ -755,6 +755,20 @@ export default function CombatLab() {
           </div>
         </div>
       </header>
+
+      {/* Page intro: real H1 + one-line explainer so the page reads as a
+          documented tool, not a bare form. Full methodology lives below the
+          workspace. */}
+      <section className="mb-4 max-w-3xl">
+        <h1 className="text-xl md:text-2xl font-bold text-foreground">
+          Combat Lab: League of Legends damage simulator
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Build a champion loadout — level, items, runes, and abilities — and simulate combat
+          against a configurable target to see exactly where the damage comes from. Free and
+          in-browser; no account needed.
+        </p>
+      </section>
 
       <Tabs defaultValue="sandbox" className="w-full">
         {/* Rotation Simulator hidden in Phase 2A — Interactive Sandbox is the primary experience.
@@ -1115,19 +1129,61 @@ export default function CombatLab() {
         </TabsContent>
       </Tabs>
 
-      {/* Visible explanatory copy — the page should read as a tool with a
-          purpose, not a bare app shell. Sits below the workspace so the
-          simulator itself fits the first screen on desktop. */}
-      <p className="mt-6 mb-4 max-w-3xl text-sm text-muted-foreground">
-        The Combat Lab is a free League of Legends damage simulator. Pick a champion, set levels,
-        items, and runes, then run abilities and combos against a configurable target to see exact
-        damage numbers — a training tool for theorycrafting builds, learning trade timings, and
-        checking patch-to-patch damage changes.
-      </p>
-      <p className="lg:hidden mb-4 max-w-3xl text-xs text-muted-foreground/70">
-        On mobile, the Attacker, Combat, and Defender panels stack vertically — scroll down to see
-        each section. For the full side-by-side view, try a larger screen.
-      </p>
+      {/* About / methodology — visible, crawlable publisher content below the
+          workspace so the simulator itself still fits the first screen. */}
+      <section className="mt-8 mb-4 max-w-3xl space-y-5 text-sm text-muted-foreground" data-combat-lab-about>
+        <div>
+          <h2 className="text-base font-bold text-foreground">What Combat Lab is</h2>
+          <p className="mt-1">
+            Combat Lab is a free League of Legends damage simulator. Pick a champion, set levels,
+            items, and runes, then run abilities and combos against a configurable target to see
+            exact damage numbers — a training tool for theorycrafting builds, learning trade
+            timings, and checking patch-to-patch damage changes.
+          </p>
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-foreground">What you can simulate</h2>
+          <p className="mt-1">
+            Champion loadouts (level, item builds, runes, summoner spells), ability and auto-attack
+            sequences, and a defender with adjustable resistances and health. Results break down
+            physical, magic, and true damage per action, with a timeline of the exchange and the
+            final state of both sides.
+          </p>
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-foreground">Example uses</h2>
+          <p className="mt-1">
+            Compare two item builds at a specific level spike, check whether a combo kills a target
+            through a given armor value, or quantify how much damage a patch change added or
+            removed. Pair it with{" "}
+            <Link to="/lol/docs" className="text-primary hover:underline">League Docs</Link> for
+            ability details, the{" "}
+            <Link to="/quiz" className="text-primary hover:underline">Quiz</Link> to test what
+            you've learned, and{" "}
+            <Link to="/lol/docs/pro" className="text-primary hover:underline">Pro Data</Link> for
+            how champions perform in professional play.
+          </p>
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-foreground">Limitations and how to read results</h2>
+          <p className="mt-1">
+            Outcomes are modeled estimates from Mogzy's own combat engine, not official Riot Games
+            calculations. The model covers the mechanics listed in the simulator; niche interactions
+            and live-server timing nuances may differ, so treat results as close approximations for
+            comparing options rather than frame-perfect predictions. Simulation coverage grows over
+            time — anything not selectable in the tool isn't modeled yet.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/80">
+            Mogzy is an unofficial fan project. Mogzy isn't endorsed by Riot Games and doesn't
+            reflect the views or opinions of Riot Games or anyone officially involved in producing
+            or managing League of Legends.
+          </p>
+        </div>
+        <p className="lg:hidden text-xs text-muted-foreground/70">
+          On mobile, the Attacker, Combat, and Defender panels stack vertically — scroll down to see
+          each section. For the full side-by-side view, try a larger screen.
+        </p>
+      </section>
 
       {/* Metadata counts are a developer indicator — desktop or Dev Mode only */}
       <div className={devMode ? undefined : "hidden lg:block"}>
