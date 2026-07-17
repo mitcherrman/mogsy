@@ -45,6 +45,37 @@ function explorerPayload() {
   };
 }
 
+function linkCoveragePayload() {
+  return {
+    ok: true,
+    schema_version: 1,
+    projection_status: "healthy",
+    queried_at: "2026-07-17T00:00:00Z",
+    active_links: 1150,
+    deactivated_links: 0,
+    eligible_source_games: 1203,
+    linked_games: 1150,
+    known_unlinked_games: 53,
+    missing_or_inconsistent_games: 0,
+    outside_validated_scope_games: 6266,
+    coverage_rate: 0.955943,
+    league_breakdown: [
+      {
+        league: "LCK", league_name: "LoL Champions Korea",
+        source_games: 349, linked_games: 349, known_unlinked_games: 0, coverage_rate: 1.0,
+      },
+    ],
+    tournament_breakdown: [
+      {
+        league: "LCS", tournament: "LCS 2026 Lock-In",
+        source_games: 59, linked_games: 37, unlinked_games: 22,
+      },
+    ],
+    known_residual_acknowledged: true,
+    problems: [],
+  };
+}
+
 function jsonResponse(body: unknown) {
   return { ok: true, status: 200, statusText: "OK", json: async () => body } as Response;
 }
@@ -54,6 +85,7 @@ beforeEach(() => {
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("/api/docs/pro/link-coverage")) return jsonResponse(linkCoveragePayload());
       if (url.includes("/api/docs/pro/coverage")) return jsonResponse(coveragePayload());
       if (url.includes("/api/docs/pro/champions")) return jsonResponse({ ok: true, champions: [] });
       if (url.includes("/api/docs/pro/explorer")) return jsonResponse(explorerPayload());
@@ -92,6 +124,16 @@ describe("LeagueDocsProData view switcher", () => {
     expect(overviewTab).toHaveAttribute("aria-selected", "true");
     // Overview content renders once coverage loads.
     expect(await screen.findByText("Data by year")).toBeInTheDocument();
+  });
+
+  it("renders the Source verification section on the overview", async () => {
+    renderPage();
+    expect(
+      await screen.findByRole("heading", { name: "Source verification" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/1,150 of 1,203 eligible games cross-verified/),
+    ).toBeInTheDocument();
   });
 
   it("switches to Explorer, updates the URL, and renders the explorer", async () => {

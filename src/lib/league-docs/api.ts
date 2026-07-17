@@ -156,6 +156,80 @@ export async function getProYear(year: number): Promise<ProYearDetail> {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Pro data canonical link coverage — GET /api/docs/pro/link-coverage
+// ---------------------------------------------------------------------------
+
+/**
+ * Highest link-coverage schema version this frontend understands. A response
+ * reporting a known numeric version above this must be treated as unsupported
+ * (quiet unavailable state), never crashed on.
+ */
+export const PRO_LINK_COVERAGE_SUPPORTED_SCHEMA_VERSION = 1;
+
+/** Backend may add statuses; unknown values get degraded-style treatment. */
+export type ProLinkProjectionStatus = "healthy" | "degraded" | "unavailable";
+
+export type ProLinkLeagueBreakdown = {
+  league: string;
+  league_name: string;
+  source_games: number;
+  linked_games: number;
+  known_unlinked_games: number;
+  coverage_rate: number | null;
+};
+
+/** Only tournaments with residual (single-source) games appear here. */
+export type ProLinkTournamentBreakdown = {
+  league: string;
+  tournament: string;
+  source_games: number;
+  linked_games: number;
+  unlinked_games: number;
+};
+
+export type ProLinkCoverageResponse = {
+  ok?: boolean;
+  schema_version: number | null;
+  projection_status: ProLinkProjectionStatus | string;
+  /** UTC ISO-8601 timestamp of when the backend computed the response. */
+  queried_at: string;
+  active_links: number;
+  deactivated_links: number;
+  eligible_source_games: number;
+  linked_games: number;
+  known_unlinked_games: number;
+  missing_or_inconsistent_games: number;
+  outside_validated_scope_games: number;
+  /** linked/eligible fraction (0–1); null when links are unavailable. */
+  coverage_rate: number | null;
+  league_breakdown: ProLinkLeagueBreakdown[];
+  tournament_breakdown: ProLinkTournamentBreakdown[];
+  known_residual_acknowledged: boolean;
+  problems: string[];
+};
+
+/**
+ * Fetch cross-source link coverage (public endpoint). Never pass
+ * `strict_links=true` from the browser — strict mode is an operational probe
+ * that 503s on drift and is not a user-facing product state.
+ */
+export async function getProLinkCoverage(): Promise<ProLinkCoverageResponse> {
+  const res = await fetch(`${COMBAT_API_BASE_URL}/api/docs/pro/link-coverage`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new ApiStatusError(res.status, res.statusText);
+  const data = (await res.json()) as ProLinkCoverageResponse;
+  return {
+    ...data,
+    league_breakdown: Array.isArray(data?.league_breakdown) ? data.league_breakdown : [],
+    tournament_breakdown: Array.isArray(data?.tournament_breakdown)
+      ? data.tournament_breakdown
+      : [],
+    problems: Array.isArray(data?.problems) ? data.problems : [],
+  };
+}
+
 export type ProChampionIndexEntry = {
   champion: string;
   slug: string;

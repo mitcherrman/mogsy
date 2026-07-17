@@ -20,6 +20,7 @@ import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { useProCoverage } from "@/hooks/useProCoverage";
 import DataSourcesNotice from "@/components/lol/DataSourcesNotice";
+import ProLinkCoverageSection from "@/components/lol-docs/ProLinkCoverageSection";
 import type { ProCoverageStatus, ProYearSummary } from "@/lib/league-docs/api";
 
 const ProExplorer = lazy(() => import("@/pages/lol-docs/pro-explorer/ProExplorer"));
@@ -350,6 +351,9 @@ export default function LeagueDocsProData() {
                 <SummaryCard label="Latest match" value={summary.latestMatch} Icon={CalendarClock} />
               </div>
             </section>
+
+            {/* Cross-source verification (independent request; own states) */}
+            <ProLinkCoverageSection />
 
             {/* Coverage by year */}
             <section>
