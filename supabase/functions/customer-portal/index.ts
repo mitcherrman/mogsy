@@ -40,11 +40,17 @@ serve(async (req) => {
       });
     }
 
+    // Canonical production origin: https://mogzy.lol. Historical domains stay
+    // allowlisted only as legacy redirect origins; localhost/lovable are dev/preview.
     const allowedOrigins = [
+      "https://mogzy.lol",
+      "https://www.mogzy.lol",
+      // legacy (redirect-only) origins
       "https://mogsy.net",
       "https://www.mogsy.net",
       "https://mogsy.app",
       "https://www.mogsy.app",
+      // dev / preview
       "https://mogsy.lovable.app",
       "http://localhost:3000",
       "http://localhost:5173",
@@ -52,7 +58,7 @@ serve(async (req) => {
     const requestOrigin = req.headers.get("origin") || "";
     const origin = allowedOrigins.includes(requestOrigin)
       ? requestOrigin
-      : "https://mogsy.net";
+      : "https://mogzy.lol";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
       return_url: `${origin}/shop`,
