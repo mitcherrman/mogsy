@@ -10,10 +10,13 @@ export function InstructionPanel({
   step,
   onBegin,
   onContinue,
+  continueDisabled = false,
 }: {
   step: TutorialStepDefinition;
   onBegin: () => void;
   onContinue: () => void;
+  /** Blocks advancement until the step's required action is done. */
+  continueDisabled?: boolean;
 }) {
   const showBegin = step.permittedEvents.includes("BEGIN_TRAINING");
   const showContinue = step.permittedEvents.includes("CONTINUE");
@@ -34,7 +37,7 @@ export function InstructionPanel({
         </Button>
       )}
       {showContinue && (
-        <Button onClick={onContinue} data-testid="continue-step">
+        <Button onClick={onContinue} disabled={continueDisabled} data-testid="continue-step">
           Continue
         </Button>
       )}

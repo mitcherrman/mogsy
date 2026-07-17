@@ -66,10 +66,19 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Answer",
     title: "Pick your answer",
     body:
-      "Choose an answer (and optionally an ability), then lock it in. Until you confirm, you can still change your mind.",
-    announcement: "Answer selection. Choose an answer, then lock it in.",
+      "Choose an answer. No ability is selected — that lesson comes later. When you're ready, Lock it in and confirm. Until you confirm, you can change your mind. Take your time: training never fails you for reading.",
+    announcement:
+      "Answer selection. Choose an answer, lock it in, then confirm.",
     timerMode: "running",
-    permittedEvents: ["SELECT_ANSWER", "SELECT_ABILITY", "LOCK_SUBMISSION", "RESTART"],
+    permittedEvents: [
+      "SELECT_ANSWER",
+      "SELECT_ABILITY",
+      "LOCK_SUBMISSION",
+      "EDIT_SUBMISSION",
+      "CONFIRM_LOCK",
+      "TICK",
+      "RESTART",
+    ],
     allowBack: true,
   },
   answer_locked: {
@@ -77,7 +86,7 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Locked",
     title: "Locked in",
     body:
-      "Your submission is final for the round. Your opponent only sees that you've locked — never what you picked — until the reveal.",
+      "Your submission is final for the round: the answer can't change and can't be sent twice. Your answer is hidden until reveal — the Golem only sees that you've locked, never what you picked. It has now locked its own answer too.",
     announcement: "Submission locked. Choices stay hidden until the reveal.",
     timerMode: "paused",
     permittedEvents: NAV,
@@ -107,22 +116,33 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
   },
   both_correct_demo: {
     id: "both_correct_demo",
-    label: "Speed",
-    title: "Both correct — speed wins",
+    label: "Both hit",
+    title: "Both correct — both deal damage",
     body:
-      "When both players answer correctly, the faster answer deals reduced damage and the slower one deals none. Speed matters, not just accuracy.",
-    announcement: "Both correct. The faster answer deals the damage.",
-    timerMode: "simulated",
-    permittedEvents: NAV,
+      "This round the Golem answers first: watch the shared timer drop by 5 seconds the moment it locks in. Answer correctly and confirm — when both players are correct, both deal damage.",
+    announcement:
+      "Round two. The Golem will answer first and cut the shared timer by five seconds. Answer correctly and lock in.",
+    timerMode: "running",
+    permittedEvents: [
+      "SELECT_ANSWER",
+      "SELECT_ABILITY",
+      "LOCK_SUBMISSION",
+      "EDIT_SUBMISSION",
+      "CONFIRM_LOCK",
+      "CONTINUE",
+      "TICK",
+      "RESTART",
+    ],
     allowBack: false,
   },
   failure_demo: {
     id: "failure_demo",
-    label: "Miss",
+    label: "Timeout",
     title: "Misses and timeouts",
     body:
-      "If both players miss — or time runs out — the round is a wash: no damage either way. We'll fast-forward the timer so you can see a timeout without the wait.",
-    announcement: "Misses and timeouts. A round both players fail is a wash.",
+      "If time runs out — or both players miss — the round is a wash: no damage either way, and both still earn XP. Use the button below to fast-forward the timer; you never have to sit through a real 30 seconds in training.",
+    announcement:
+      "Timeouts. Press Demonstrate timeout to fast-forward the timer and see a no-damage round.",
     timerMode: "simulated",
     permittedEvents: ["SIMULATE_TIMEOUT", "CONTINUE", "RESTART"],
     allowBack: false,
@@ -130,10 +150,11 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
   xp_intro: {
     id: "xp_intro",
     label: "XP",
-    title: "XP builds every round",
+    title: "XP builds every round — you just hit Level 2",
     body:
-      "Every round earns XP — more for correct answers, some even on a miss. XP fills the quiet bar under your HP and levels you up. HP is the score; XP is progression.",
-    announcement: "XP. Every round earns experience toward your next level.",
+      "Every round earns XP: 12 for a correct answer, 9 for a wrong one, 8 even on a timeout. XP fills the quiet bar under your HP and unlocks abilities — it does NOT decide who's winning; HP does. Your 32 XP just crossed the 30 threshold: Level 2 reached.",
+    announcement:
+      "XP explained. You crossed thirty XP and reached Level two.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: true,

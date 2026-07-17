@@ -1,23 +1,47 @@
 // ---------------------------------------------------------------------------
-// /dev/ranked-tutorial — isolated Ranked TUTORIAL prototype (Phase E2.2).
+// /dev/ranked-tutorial — isolated Ranked TUTORIAL prototype (Phase E2.3).
 //
 // A deterministic, scripted Training Match that teaches Ranked mechanics.
 // Fully local: no auth, no API calls, no ads, no persistence, no production
 // Ranked state. Intentionally not linked from any navigation or the sitemap.
 // ---------------------------------------------------------------------------
 
-import { useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 import { initialTutorialState, tutorialReducer, visibleState } from "./tutorialMachine";
+import { ROUND_SECONDS } from "./fixtures";
 import { InstructionPanel } from "./components/InstructionPanel";
 import { TutorialProgress } from "./components/TutorialProgress";
 import { TrainingMatchShell } from "./components/TrainingMatchShell";
+import { AnswerRoundPanel } from "./components/AnswerRoundPanel";
 
 export default function RankedTutorialPage() {
   const [state, dispatch] = useReducer(tutorialReducer, undefined, initialTutorialState);
   const view = visibleState(state);
+  const instructionRef = useRef<HTMLDivElement>(null);
+
+  // Reducer-driven countdown: the interval only emits TICK events; all
+  // timer semantics (pressure cut, warning, floor) live in the machine.
+  const timerRunning = view.timer.running;
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = setInterval(() => dispatch({ type: "TICK" }), 1000);
+    return () => clearInterval(id);
+  }, [timerRunning]);
+
+  // Move focus to the instruction area after each major step transition so
+  // keyboard and screen-reader users land on the new explanation.
+  const stepId = state.stepId;
+  useEffect(() => {
+    instructionRef.current?.focus();
+  }, [stepId]);
+
+  const roundInteractive =
+    stepId === "answer_selection" ||
+    stepId === "both_correct_demo" ||
+    stepId === "failure_demo";
 
   return (
     <main className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -38,22 +62,53 @@ export default function RankedTutorialPage() {
 
       <TutorialProgress currentStepId={state.stepId} />
 
+      {/* Dynamic announcements (lock, reveal, damage, XP, level, timer
+          warnings). Separate from the per-step instruction live region. */}
+      <div aria-live="polite" className="sr-only" data-testid="event-live">
+        {view.lastAnnouncement}
+      </div>
+
       <TrainingMatchShell
         player={view.player}
         opponent={view.opponent}
         timerMode={view.timerMode}
-        timerSeconds={view.timerSeconds}
+        timer={view.timer}
+        roundSeconds={ROUND_SECONDS}
       >
-        <InstructionPanel
-          step={view.step}
-          onBegin={() => dispatch({ type: "BEGIN_TRAINING" })}
-          onContinue={() => dispatch({ type: "CONTINUE" })}
-        />
+        <div ref={instructionRef} tabIndex={-1} className="outline-none space-y-4">
+          <InstructionPanel
+            step={view.step}
+            onBegin={() => dispatch({ type: "BEGIN_TRAINING" })}
+            onContinue={() => dispatch({ type: "CONTINUE" })}
+            continueDisabled={
+              (stepId === "both_correct_demo" || stepId === "failure_demo") &&
+              view.round?.phase !== "revealed" &&
+              view.round?.phase !== "locked"
+            }
+          />
+          {stepId === "failure_demo" && view.round?.phase !== "revealed" && (
+            <Button
+              variant="secondary"
+              onClick={() => dispatch({ type: "SIMULATE_TIMEOUT" })}
+              data-testid="simulate-timeout"
+            >
+              Demonstrate timeout
+            </Button>
+          )}
+          {view.round && (
+            <AnswerRoundPanel
+              round={view.round}
+              interactive={roundInteractive}
+              dispatch={dispatch}
+            />
+          )}
+        </div>
       </TrainingMatchShell>
 
       <p className="text-[11px] text-muted-foreground">
         Development prototype. Nothing in this tutorial is saved and nothing
-        affects Ranked rating, history, or progression.
+        affects Ranked rating, history, or progression. Training damage
+        numbers are demonstrations, not Ranked balance.
       </p>
     </main>
   );

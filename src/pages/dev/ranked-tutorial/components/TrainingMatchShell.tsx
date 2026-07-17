@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Shield, Timer } from "lucide-react";
-import { TutorialCombatant, TutorialTimerMode } from "../types";
-import { xpProgressPct } from "../tutorialMachine";
+import { TimerState, TutorialCombatant, TutorialTimerMode } from "../types";
+import { nextLevelThreshold, xpProgressPct } from "../tutorialMachine";
 import { TUTORIAL_OPPONENT, TUTORIAL_PLAYER } from "../fixtures";
 
 /**
@@ -82,7 +82,9 @@ function CombatantPanel({
         <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
           <span id={`${side}-xp-label`}>XP</span>
           <span className="tabular-nums" data-testid={`${side}-xp-value`}>
-            {combatant.xp} xp
+            {nextLevelThreshold(combatant.level) === null
+              ? `${combatant.xp} xp · max level`
+              : `${combatant.xp} xp · next level at ${nextLevelThreshold(combatant.level)}`}
           </span>
         </div>
         <div
@@ -99,24 +101,51 @@ function CombatantPanel({
   );
 }
 
-/** Frozen/simulated shared-timer display. Never a live backend deadline. */
+/**
+ * Controlled tutorial timer display. Reducer-owned countdown — this
+ * component only renders TimerState; it never resolves anything. The
+ * ticking digits are deliberately aria-live="off" (warnings are announced
+ * through the page's live region instead, never per-second ticks).
+ */
 function TutorialTimer({
   mode,
-  seconds,
+  timer,
+  roundSeconds,
 }: {
   mode: TutorialTimerMode;
-  seconds: number;
+  timer: TimerState;
+  roundSeconds: number;
 }) {
+  const urgent = timer.running && timer.remaining <= 5;
+  const pct = Math.max(0, Math.min(100, (timer.remaining / roundSeconds) * 100));
   return (
     <div className="flex flex-col items-center gap-1" data-testid="tutorial-timer">
-      <div className="flex items-center gap-2 text-2xl font-bold tabular-nums" aria-live="off">
+      <div
+        className={`flex items-center gap-2 text-2xl font-bold tabular-nums ${
+          urgent ? "text-destructive" : ""
+        }`}
+        aria-live="off"
+      >
         <Timer className="h-5 w-5" aria-hidden />
-        <span data-testid="timer-seconds">{seconds}s</span>
+        <span data-testid="timer-seconds">{timer.remaining}s</span>
       </div>
       <div className="w-40 h-2 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full bg-primary" style={{ width: "100%" }} />
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ease-linear motion-reduce:transition-none ${
+            urgent ? "bg-destructive" : "bg-primary"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      {mode === "paused" && (
+      {timer.pressureCutApplied && timer.running && (
+        <span
+          className="text-[11px] text-amber-600 dark:text-amber-400 font-medium"
+          data-testid="timer-cut-note"
+        >
+          −5s: first answer is in
+        </span>
+      )}
+      {!timer.running && mode !== "running" && (
         <span className="text-[11px] text-muted-foreground" data-testid="timer-paused-note">
           Timer paused for training
         </span>
@@ -134,20 +163,22 @@ export function TrainingMatchShell({
   player,
   opponent,
   timerMode,
-  timerSeconds,
+  timer,
+  roundSeconds,
   children,
 }: {
   player: TutorialCombatant;
   opponent: TutorialCombatant;
   timerMode: TutorialTimerMode;
-  timerSeconds: number;
+  timer: TimerState;
+  roundSeconds: number;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
         <div className="order-first md:order-none md:col-start-2 flex justify-center pt-2">
-          <TutorialTimer mode={timerMode} seconds={timerSeconds} />
+          <TutorialTimer mode={timerMode} timer={timer} roundSeconds={roundSeconds} />
         </div>
         <div className="md:col-start-1 md:row-start-1">
           <CombatantPanel identity={TUTORIAL_PLAYER} combatant={player} side="player" />

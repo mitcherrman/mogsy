@@ -10,15 +10,17 @@
 //    - Charges: duel_class_engine.py _init_charges (+ armed-use commitment
 //      rule in duel_modifier_engine.py)
 //    - Timer: duel_round_engine.py DuelConfig (round_duration_seconds=30,
-//      pressure_shorten_seconds=5, applied once per round)
-//    - XP/levels: duel_round_engine.py (12/9/8), duel_match_engine.py
-//      MatchConfig.level_thresholds=(0, 30, 66), level 3 max
+//      pressure_shorten_seconds=5, applied once per round on the FIRST
+//      answer from either player)
+//    - XP/levels: duel_round_engine.py (correct 12 / incorrect 9 / timeout
+//      8), duel_match_engine.py MatchConfig.level_thresholds=(0, 30, 66),
+//      level 3 max
 //    - Tank starting HP: duel_combat_integration.py
 //      DEFAULT_CLASS_STARTING_HP (Tank 170)
 //
 //  TUTORIAL-AUTHORED — identities, questions, scripted opponent behavior,
-//  and instructional pacing. These are training-room props, deliberately
-//  easy, and are NOT Ranked balance constants or production question data.
+//  resolved round outcomes, and instructional pacing. Training-room props,
+//  deliberately easy, NOT Ranked balance constants or production content.
 //
 // The backend labels several of the verified numbers "provisional balance
 // fixtures" — if balance changes upstream, this file must be re-verified.
@@ -81,15 +83,20 @@ export const XP = { correct: 12, incorrect: 9, timedOut: 8 } as const;
 export const LEVEL_THRESHOLDS = [0, 30, 66] as const;
 export const MAX_LEVEL = LEVEL_THRESHOLDS.length; // 3
 
+/** Level derived from total XP using the verified thresholds. */
+export const levelForXp = (xp: number): number => {
+  let level = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return level;
+};
+
 /** Tank starting HP (production default arm). */
 export const TANK_STARTING_HP = 170;
 
 // --- TUTORIAL-AUTHORED: identities -------------------------------------------
 
-/**
- * Training-room identities. The opponent is an openly scripted training
- * dummy — copy should never present it as a real matched player.
- */
 export const TUTORIAL_PLAYER = { name: "You", tag: "Tank in training" } as const;
 export const TUTORIAL_OPPONENT = {
   name: "Training Golem",
@@ -102,93 +109,175 @@ export const TUTORIAL_OPPONENT = {
 export interface TutorialQuestion {
   prompt: string;
   choices: string[];
-  /** Authored answer key. NEVER copied into visible machine state. */
-  correctIndex: number;
 }
 
+// NOTE: answer keys deliberately live in the round fixtures below (authored
+// data folded in only at coaching/reveal time), never on the question object
+// that reaches visible state.
 export const TUTORIAL_QUESTIONS: TutorialQuestion[] = [
   {
     prompt: "How many players fight on each team on Summoner's Rift?",
     choices: ["Three", "Five", "Seven", "Ten"],
-    correctIndex: 1,
-  },
-  {
-    prompt: "What color is the enemy Nexus explosion when you win?",
-    choices: ["It never explodes", "Blue only", "It explodes — you win!", "Grey"],
-    correctIndex: 2,
   },
   {
     prompt: "Which lane runs through the middle of the map?",
     choices: ["Top lane", "Mid lane", "Bot lane", "The jungle"],
-    correctIndex: 1,
   },
   {
     prompt: "What do you earn by defeating minions?",
     choices: ["Gold", "Real money", "Nothing", "Skins"],
-    correctIndex: 0,
-  },
-  {
-    prompt: "Which of these is a Tank's job in a team fight?",
-    choices: ["Hide in base", "Soak damage up front", "Farm jungle only", "AFK"],
-    correctIndex: 1,
   },
 ];
 
-// --- TUTORIAL-AUTHORED: opponent script ----------------------------------------
-// Deterministic plan for the Training Golem, keyed by demo round. Kept out of
-// TutorialState — the machine folds a scripted result in only at reveal time.
-
-export interface OpponentScriptEntry {
-  /** Index into TUTORIAL_QUESTIONS. */
-  questionIndex: number;
-  answerIndex: number;
-  correct: boolean;
-  /** Seconds remaining on the shared timer when the Golem "answers". */
-  answersAtRemaining: number;
-  abilityId: string | null;
-}
-
-export const OPPONENT_SCRIPT: Record<string, OpponentScriptEntry> = {
-  // Golem answers wrong so the player's first correct answer deals damage.
-  damage_intro: {
-    questionIndex: 0,
-    answerIndex: 0,
-    correct: false,
-    answersAtRemaining: 12,
-    abilityId: null,
-  },
-  // Golem answers fast and correct to demonstrate the −5s cut + speed rule.
-  both_correct_demo: {
-    questionIndex: 2,
-    answerIndex: 1,
-    correct: true,
-    answersAtRemaining: 24,
-    abilityId: null,
-  },
-  // Golem also fails, demonstrating the both-miss wash.
-  failure_demo: {
-    questionIndex: 3,
-    answerIndex: 2,
-    correct: false,
-    answersAtRemaining: 6,
-    abilityId: null,
-  },
-  // Final round: Golem misses, the player lands the winning hit.
-  victory_round: {
-    questionIndex: 4,
-    answerIndex: 0,
-    correct: false,
-    answersAtRemaining: 10,
-    abilityId: null,
-  },
-};
-
-// --- TUTORIAL-SCALED demo values ------------------------------------------------
-// Damage numbers shown in demos are TUTORIAL-SCALED illustrations (the real
-// damage formula is backend-owned and not reproduced here). Instructional
-// copy must present them as training numbers, not Ranked balance.
+// --- TUTORIAL-SCALED demo damage -------------------------------------------------
+// Demonstration numbers only — the real damage formula is backend-owned and
+// is NOT reproduced here. Copy must present these as training values.
 export const TUTORIAL_DEMO_DAMAGE = {
   soloCorrect: 40,
-  bothCorrectFaster: 20,
+  bothCorrect: 20,
   wash: 0,
 } as const;
+
+// --- TUTORIAL-AUTHORED: resolved round fixtures ----------------------------------
+// The machine APPLIES these — it never computes combat results. XP awards use
+// the verified authoritative values; damage is tutorial-scaled.
+
+export type TutorialRoundId = "A" | "B" | "C";
+
+export interface ResolvedRoundFixture {
+  roundId: TutorialRoundId;
+  questionIndex: number;
+  /** Authored answer the coaching guides the player to lock. */
+  playerAnswer: number;
+  /** Scripted Golem behavior. null answer = timeout. */
+  opponentAnswer: number | null;
+  playerCorrect: boolean;
+  opponentCorrect: boolean;
+  playerTimedOut: boolean;
+  opponentTimedOut: boolean;
+  /** Tutorial-scaled damage each side DEALS. */
+  playerDamage: number;
+  opponentDamage: number;
+  playerHpBefore: number;
+  playerHpAfter: number;
+  opponentHpBefore: number;
+  opponentHpAfter: number;
+  playerXpBefore: number;
+  playerXpAwarded: number;
+  playerXpAfter: number;
+  opponentXpBefore: number;
+  opponentXpAwarded: number;
+  opponentXpAfter: number;
+  playerLevelBefore: number;
+  playerLevelAfter: number;
+  timerStart: number;
+  /** Seconds remaining when the Golem submits (null = it never answers). */
+  opponentAnsweredAt: number | null;
+  pressureCutApplied: boolean;
+  abilityId: string | null;
+  chargeConsumed: boolean;
+  /** One-sentence result explanation, announced at reveal. */
+  resultCopy: string;
+}
+
+export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
+  // Round A — player correct, Golem wrong. Teaches lock, hidden info,
+  // simultaneous reveal, and solo-correct damage.
+  A: {
+    roundId: "A",
+    questionIndex: 0,
+    playerAnswer: 1, // "Five"
+    opponentAnswer: 0, // "Three" — scripted wrong
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_DEMO_DAMAGE.soloCorrect,
+    opponentDamage: 0,
+    playerHpBefore: 170,
+    playerHpAfter: 170,
+    opponentHpBefore: 170,
+    opponentHpAfter: 130,
+    playerXpBefore: 0,
+    playerXpAwarded: XP.correct, // 12
+    playerXpAfter: 12,
+    opponentXpBefore: 0,
+    opponentXpAwarded: XP.incorrect, // 9
+    opponentXpAfter: 9,
+    playerLevelBefore: 1,
+    playerLevelAfter: 1,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null, // Golem locks only after you confirm in Round A
+    pressureCutApplied: false,
+    abilityId: null,
+    chargeConsumed: false,
+    resultCopy:
+      "You were correct, so you dealt damage. The Golem missed and dealt none. (Training damage numbers are demonstrations, not Ranked balance.)",
+  },
+  // Round B — both correct; Golem answers first, triggering the −5s cut.
+  B: {
+    roundId: "B",
+    questionIndex: 1,
+    playerAnswer: 1, // "Mid lane"
+    opponentAnswer: 1,
+    playerCorrect: true,
+    opponentCorrect: true,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_DEMO_DAMAGE.bothCorrect,
+    opponentDamage: TUTORIAL_DEMO_DAMAGE.bothCorrect,
+    playerHpBefore: 170,
+    playerHpAfter: 150,
+    opponentHpBefore: 130,
+    opponentHpAfter: 110,
+    playerXpBefore: 12,
+    playerXpAwarded: XP.correct, // 12
+    playerXpAfter: 24,
+    opponentXpBefore: 9,
+    opponentXpAwarded: XP.correct, // 12
+    opponentXpAfter: 21,
+    playerLevelBefore: 1,
+    playerLevelAfter: 1,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: 24, // Golem submits at 24s remaining → cut to 19s
+    pressureCutApplied: true,
+    abilityId: null,
+    chargeConsumed: false,
+    resultCopy:
+      "Both players were correct, so both dealt damage. Answering first doesn't stop your opponent's hit — it pressures their timer.",
+  },
+  // Round C — BOTH TIMEOUT (documented pattern choice): the clearest
+  // demonstration of the timer running out plus the no-damage rule, with no
+  // unrelated wrong-answer complexity.
+  C: {
+    roundId: "C",
+    questionIndex: 2,
+    playerAnswer: -1, // no submission — timeout
+    opponentAnswer: null,
+    playerCorrect: false,
+    opponentCorrect: false,
+    playerTimedOut: true,
+    opponentTimedOut: true,
+    playerDamage: TUTORIAL_DEMO_DAMAGE.wash,
+    opponentDamage: TUTORIAL_DEMO_DAMAGE.wash,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 110,
+    opponentHpAfter: 110,
+    playerXpBefore: 24,
+    playerXpAwarded: XP.timedOut, // 8
+    playerXpAfter: 32, // crosses the Level 2 threshold of 30
+    opponentXpBefore: 21,
+    opponentXpAwarded: XP.timedOut, // 8
+    opponentXpAfter: 29, // still Level 1 — useful contrast
+    playerLevelBefore: 1,
+    playerLevelAfter: 2, // derived: 32 >= 30
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: null,
+    chargeConsumed: false,
+    resultCopy:
+      "Time ran out for both players: no damage either way, and both still earned XP. Failing a round is never the end.",
+  },
+};
