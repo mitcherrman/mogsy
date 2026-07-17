@@ -209,6 +209,16 @@ export type QuizHistoryResponse = {
   limited: boolean;
   free_limit: number;
   upsell_message: string | null;
+  // "error" when the backend could not determine entitlement; history then
+  // degrades to the Free limit with no upsell.
+  entitlement_status?: "ok" | "error";
+};
+
+export type EntitlementResponse = {
+  ok: boolean;
+  user_id: string;
+  is_pro: boolean;
+  pro_lookup_configured: boolean;
 };
 
 export type DailyChallengeSubmitResult = QuizAnswerResult & {
@@ -713,6 +723,8 @@ export const quizApi = {
     request<{ ok: boolean }>(`/api/quiz/sessions/${sessionId}/complete`, { method: "POST" }),
   /** Completed quiz sessions for the signed-in (or anonymous) user. Free = last 10, Pro = all. */
   getHistory: () => request<QuizHistoryResponse>("/api/quiz/history"),
+  /** Authoritative backend Pro entitlement for the signed-in user (JWT-scoped). */
+  getEntitlement: () => request<EntitlementResponse>("/api/quiz/entitlement"),
   /** Missed Question Bank. Free users get a locked/upsell state; Pro users get the data. */
   getMissedQuestions: (params?: { limit?: number; offset?: number }) =>
     request<MissedQuestionsResponse>(

@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { quizApi } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   startLolProCheckout,
@@ -109,13 +110,23 @@ export default function LolPro() {
   useEffect(() => {
     if (authLoading || !user || user.is_anonymous) return;
     let cancelled = false;
-    supabase
-      .from("profiles")
-      .select("is_pro")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setIsPro(!!data?.is_pro);
+    // The backend entitlement is what actually gates history and the missed
+    // bank, so the banner uses the same interpretation. The direct profile
+    // read remains only as a display fallback when the lookup is unavailable.
+    quizApi
+      .getEntitlement()
+      .then((res) => {
+        if (!cancelled) setIsPro(!!res.is_pro);
+      })
+      .catch(() => {
+        supabase
+          .from("profiles")
+          .select("is_pro")
+          .eq("user_id", user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (!cancelled) setIsPro(!!data?.is_pro);
+          });
       });
     return () => { cancelled = true; };
   }, [authLoading, user]);
