@@ -54,6 +54,10 @@ export type TutorialEvent =
   /** Final explicit confirmation — the authoritative lock moment. */
   | { type: "CONFIRM_LOCK" }
   | { type: "SIMULATE_TIMEOUT" }
+  /** Queue education: run the deterministic matchmaking simulation. */
+  | { type: "SIMULATE_MATCHMAKING" }
+  /** Recovery education: run the deterministic disconnect+restore simulation. */
+  | { type: "SIMULATE_DISCONNECT" }
   /** Level 2: select one of the two options (changeable until confirmed). */
   | { type: "CHOOSE_LEVEL_TWO"; abilityId: string }
   /** Level 2: permanent confirmation. Duplicates are rejected. */
@@ -153,6 +157,9 @@ export interface TutorialState {
   chosenLevelTwoAbilityId: string | null;
   /** True once the victory fixture has resolved the Golem to 0 HP. */
   matchOver: boolean;
+  /** Educational simulations — purely visual, never networked. */
+  queueSimulationDone: boolean;
+  recoverySimulationDone: boolean;
   /**
    * Most recent dynamic announcement for the page's aria-live region
    * (lock, opponent submission, pressure cut, reveal, XP, level-up).

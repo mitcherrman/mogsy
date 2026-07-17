@@ -33,9 +33,8 @@ export const STEP_ORDER: readonly TutorialStepId[] = [
 const NAV = ["CONTINUE", "RESTART"] as const;
 
 /**
- * Full authored table. E2.2 renders welcome/timer_intro interactively; the
- * later steps' copy and permitted events are defined now so the machine and
- * progress indicator are complete, and their interactive UIs land in E2.3.
+ * Full authored table: copy, announcements, permitted events, and timer
+ * mode for every step of the complete tutorial, welcome through complete.
  */
 export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
   welcome: {
@@ -272,30 +271,33 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Queue",
     title: "How real matches start",
     body:
-      "In real Ranked you'll enter a queue and get matched with another player. This screen is a simulation — no queue is running right now.",
-    announcement: "The queue. Real Ranked matches you against another player.",
+      "Queueing searches for another player. A real match begins only after matchmaking succeeds — until then you're not in a match. This tutorial does not enter the live queue, and the Training Golem is a scripted teacher, not a bot opponent: a real opponent sees the same questions and timer you do.",
+    announcement:
+      "The queue. Queueing searches for another player; a real match begins only after matchmaking succeeds. This tutorial does not enter the live queue.",
     timerMode: "paused",
-    permittedEvents: NAV,
+    permittedEvents: ["SIMULATE_MATCHMAKING", "CONTINUE", "RESTART"],
     allowBack: true,
   },
   reconnect_explanation: {
     id: "reconnect_explanation",
-    label: "Reconnect",
-    title: "If you disconnect",
+    label: "Recovery",
+    title: "If your connection drops",
     body:
-      "Drop mid-match and you can rejoin — the match state lives on the server, so you resume where things stand. This is a simulation; nothing is connected.",
-    announcement: "Reconnecting. Real matches can be resumed after a disconnect.",
+      "An active match is server-authoritative. If your connection drops, Ranked attempts to restore the active match: locked answers stay locked, and refreshing never grants a free restart. Recovery should return you to the server-authoritative state. This panel demonstrates the intended recovery behavior — it is a local simulation, nothing is connected.",
+    announcement:
+      "Recovery. If your connection drops, Ranked attempts to restore the active match. Locked answers stay locked.",
     timerMode: "paused",
-    permittedEvents: NAV,
+    permittedEvents: ["SIMULATE_DISCONNECT", "CONTINUE", "RESTART"],
     allowBack: true,
   },
   ads_pro_explanation: {
     id: "ads_pro_explanation",
-    label: "Pro",
+    label: "Ads & Pro",
     title: "Ads and Pro",
     body:
-      "Free players may see ads between matches; Pro removes them and adds perks. This is purely informational — nothing here shows ads or changes your account.",
-    announcement: "Ads and Pro. Informational only; nothing changes on your account.",
+      "Free players may see ads around Ranked. Ads should not cover active timed gameplay. Ad behavior is part of alpha testing, and Pro removes ads. This is purely informational — nothing here shows a live ad or touches your account.",
+    announcement:
+      "Ads and Pro. Free players may see ads around Ranked; Pro removes them. Informational only.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: true,
@@ -303,10 +305,11 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
   complete: {
     id: "complete",
     label: "Done",
-    title: "Training complete",
+    title: "Tutorial complete",
     body:
-      "You've finished Ranked training. Nothing was saved and nothing counted — replay any time, or head back to the Quiz hub when you're ready for the real thing.",
-    announcement: "Training complete. You can replay the tutorial any time.",
+      "You've finished Ranked training. Nothing was saved and nothing counted toward rating, history, or progression — practice again any time, or head to the Ranked area when you're ready.",
+    announcement:
+      "Tutorial complete. Nothing was saved. You can practice again or return to the Ranked area.",
     timerMode: "paused",
     permittedEvents: ["RESTART"],
     allowBack: false,

@@ -1,6 +1,16 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import RankedTutorialPage from "./RankedTutorialPage";
+
+// The completion panel renders an ordinary route Link, so tests mount the
+// page inside a memory router. No navigation is ever triggered by tests.
+const renderPage = () =>
+  render(
+    <MemoryRouter initialEntries={["/dev/ranked-tutorial"]}>
+      <RankedTutorialPage />
+    </MemoryRouter>,
+  );
 
 // Isolation guards: the tutorial must never touch the network or storage.
 const fetchSpy = vi.fn(() => {
@@ -54,7 +64,7 @@ const lockConfirm = () => {
 /** Renders and plays the entire training match to the match-over panel. */
 const completeFullMatch = (choice: "tank.brace" | "tank.barrier" = "tank.brace") => {
   vi.useFakeTimers();
-  render(<RankedTutorialPage />);
+  renderPage();
   throughRoundA();
   act(() => {
     vi.advanceTimersByTime(7000);
@@ -98,7 +108,7 @@ const completeFullMatch = (choice: "tank.brace" | "tank.barrier" = "tank.brace")
 
 describe("RankedTutorialPage — shell", () => {
   it("renders the Training Match shell on the welcome step", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     expect(screen.getByRole("heading", { name: "Training Match" })).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "Training Golem panel" }),
@@ -108,7 +118,7 @@ describe("RankedTutorialPage — shell", () => {
   });
 
   it("labels HP and XP separately with next-level threshold", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     const meters = screen.getAllByRole("meter");
     expect(meters).toHaveLength(2);
     expect(meters[0]).toHaveAttribute("aria-valuenow", "170");
@@ -120,7 +130,7 @@ describe("RankedTutorialPage — shell", () => {
 
 describe("answer interaction", () => {
   it("answer buttons are keyboard-operable native buttons with aria-pressed", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     const btn = screen.getByTestId("answer-1");
     expect(btn.tagName).toBe("BUTTON");
@@ -133,7 +143,7 @@ describe("answer interaction", () => {
   });
 
   it("selecting an answer does not silently submit — lock and confirm required", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     fireEvent.click(screen.getByTestId("answer-1"));
     // Still selecting: no locked banner, no review, no reveal.
@@ -147,7 +157,7 @@ describe("answer interaction", () => {
   });
 
   it("controls are disabled after lock", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     fireEvent.click(screen.getByTestId("answer-1"));
     fireEvent.click(screen.getByTestId("lock-submission"));
@@ -158,7 +168,7 @@ describe("answer interaction", () => {
   });
 
   it("opponent answer is absent before reveal; both appear together at reveal", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     fireEvent.click(screen.getByTestId("answer-1"));
     fireEvent.click(screen.getByTestId("lock-submission"));
@@ -174,7 +184,7 @@ describe("answer interaction", () => {
   });
 
   it("HP and XP changes are communicated in text after Round A", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     fireEvent.click(screen.getByTestId("answer-1"));
     fireEvent.click(screen.getByTestId("lock-submission"));
@@ -192,7 +202,7 @@ describe("answer interaction", () => {
 describe("Round B — pressure cut", () => {
   it("shows and announces the one-time −5s cut when the Golem answers first", () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000); // 30 → 24, then the trigger tick → 19
@@ -210,7 +220,7 @@ describe("Round B — pressure cut", () => {
 
   it("completes with both-correct copy after lock, confirm, and reveal", () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000);
@@ -230,7 +240,7 @@ describe("Round B — pressure cut", () => {
 describe("Round C — timeout demonstration", () => {
   const toRoundC = () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000);
@@ -273,7 +283,7 @@ describe("Round C — timeout demonstration", () => {
 
 describe("accessibility and isolation", () => {
   it("moves focus to the instruction area after a step transition", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     begin();
     const live = screen.getByTestId("instruction-live");
     // The focus wrapper contains the instruction panel.
@@ -281,7 +291,7 @@ describe("accessibility and isolation", () => {
   });
 
   it("restart works from mid-round and resets everything", () => {
-    render(<RankedTutorialPage />);
+    renderPage();
     toRoundA();
     fireEvent.click(screen.getByTestId("answer-1"));
     fireEvent.click(screen.getByTestId("lock-submission"));
@@ -302,7 +312,7 @@ describe("accessibility and isolation", () => {
 
   it("legacy partial-flow isolation check", () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000);
@@ -324,7 +334,7 @@ describe("accessibility and isolation", () => {
 describe("Fortify and commitment (page)", () => {
   const toRoundD = () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000);
@@ -412,7 +422,7 @@ describe("Level 2 choice and Level 3 unlock (page)", () => {
 
   it("Brace branch: confirm shows summary and locked alternative", () => {
     vi.useFakeTimers();
-    render(<RankedTutorialPage />);
+    renderPage();
     throughRoundA();
     act(() => {
       vi.advanceTimersByTime(7000);
@@ -469,5 +479,139 @@ describe("victory and match over (page)", () => {
     expect(meters[1]).toHaveAttribute("aria-valuenow", "0");
     // Level 3 and the auto-unlock were announced during the run.
     expect(screen.getByTestId("match-over-panel")).toHaveTextContent("Level 3");
+  });
+});
+
+// --- E2.5: education panels and completion -------------------------------------
+
+/** From match_over to the completion panel. */
+const throughEducation = () => {
+  cont(); // → queue_explanation
+  fireEvent.click(screen.getByTestId("simulate-matchmaking"));
+  cont(); // → reconnect_explanation
+  fireEvent.click(screen.getByTestId("simulate-disconnect"));
+  cont(); // → ads_pro_explanation
+  cont(); // → complete
+};
+
+describe("queue simulation (page)", () => {
+  it("runs deterministically, moves focus to the result, and never queues", () => {
+    completeFullMatch();
+    cont(); // → queue_explanation
+    const sim = screen.getByTestId("queue-simulation");
+    expect(sim).toHaveTextContent("Not a live queue");
+    expect(sim).toHaveTextContent("Ready");
+    expect(sim).toHaveTextContent("Match ready");
+    fireEvent.click(screen.getByTestId("simulate-matchmaking"));
+    const result = screen.getByTestId("queue-sim-result");
+    expect(result).toHaveTextContent("no real queue was entered");
+    expect(result).toHaveTextContent("Nothing starts automatically");
+    expect(result).toHaveFocus();
+    expect(screen.getByTestId("event-live")).toHaveTextContent(
+      /Queue simulation complete/,
+    );
+    // The simulate button is gone — duplicate runs impossible from the UI.
+    expect(screen.queryByTestId("simulate-matchmaking")).toBeNull();
+    // Still on the queue step: no automatic transition into Ranked.
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Queue");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("recovery simulation (page)", () => {
+  it("shows interruption/restore stages with a preserved state snapshot", () => {
+    completeFullMatch();
+    cont();
+    fireEvent.click(screen.getByTestId("simulate-matchmaking"));
+    cont(); // → reconnect_explanation
+    const sim = screen.getByTestId("recovery-simulation");
+    expect(sim).toHaveTextContent("Local demonstration of intended behavior");
+    expect(sim).toHaveTextContent("Connection interrupted");
+    fireEvent.click(screen.getByTestId("simulate-disconnect"));
+    const result = screen.getByTestId("recovery-sim-result");
+    expect(result).toHaveFocus();
+    // Identical before/after snapshot: HP 150, 89 XP, Level 3, Fortify 1.
+    const snap = "HP 150 · 89 XP · Level 3 · Fortify 1 charge · last answer locked";
+    expect(screen.getByTestId("recovery-before")).toHaveTextContent(snap);
+    expect(screen.getByTestId("recovery-after")).toHaveTextContent(snap);
+    expect(screen.getByTestId("recovery-before")).toHaveTextContent(
+      "tutorial label — real matches use a server-side match record",
+    );
+    expect(result).toHaveTextContent("locked answers stay locked");
+    expect(screen.getByTestId("event-live")).toHaveTextContent(
+      /Recovery simulation complete/,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(localSet).not.toHaveBeenCalled();
+    expect(sessionSet).not.toHaveBeenCalled();
+  });
+});
+
+describe("ads and Pro education (page)", () => {
+  it("renders the four required meanings and a clearly fake ad area", () => {
+    completeFullMatch();
+    cont();
+    fireEvent.click(screen.getByTestId("simulate-matchmaking"));
+    cont();
+    fireEvent.click(screen.getByTestId("simulate-disconnect"));
+    cont(); // → ads_pro_explanation
+    const facts = screen.getByTestId("ads-pro-facts");
+    expect(facts).toHaveTextContent("Free players may see ads around Ranked.");
+    expect(facts).toHaveTextContent("Ads should not cover active timed gameplay.");
+    expect(facts).toHaveTextContent("Ad behavior is part of alpha testing.");
+    expect(facts).toHaveTextContent("Pro removes ads.");
+    expect(screen.getByTestId("ad-placeholder")).toHaveTextContent(
+      "Example ad area — not a live ad",
+    );
+    // No purchase CTA anywhere.
+    expect(screen.queryByText(/upgrade|buy|subscribe/i)).toBeNull();
+  });
+});
+
+describe("completion (page)", () => {
+  it("reaches Tutorial Complete with focus on the heading and both controls", () => {
+    completeFullMatch();
+    throughEducation();
+    const heading = within(screen.getByTestId("tutorial-complete-panel")).getByRole(
+      "heading",
+      { name: "Tutorial complete" },
+    );
+    expect(heading).toHaveFocus();
+    expect(screen.getByTestId("tutorial-complete-panel")).toHaveTextContent(
+      "Charges are limited and committed when the round resolves.",
+    );
+    // Return to Ranked: ordinary link to /quiz, never auto-queues.
+    const link = screen.getByTestId("return-to-ranked");
+    expect(link.tagName).toBe("A");
+    expect(link).toHaveAttribute("href", "/quiz");
+    expect(link).toHaveTextContent("Return to Ranked");
+    expect(screen.getByTestId("tutorial-complete-panel")).toHaveTextContent(
+      "It does not automatically queue you.",
+    );
+  });
+
+  it("Practice Again fully resets through the canonical restart", () => {
+    completeFullMatch("tank.barrier");
+    throughEducation();
+    fireEvent.click(screen.getByTestId("practice-again"));
+    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+    expect(screen.getByTestId("player-xp-value")).toHaveTextContent("0 xp");
+    const meters = screen.getAllByRole("meter");
+    expect(meters[0]).toHaveAttribute("aria-valuenow", "170");
+    expect(meters[1]).toHaveAttribute("aria-valuenow", "170");
+    // Simulation state did not survive the restart.
+    expect(screen.queryByTestId("queue-sim-result")).toBeNull();
+    expect(screen.queryByTestId("recovery-sim-result")).toBeNull();
+  });
+
+  it("full flow stays isolated end to end (both branches reach completion)", () => {
+    completeFullMatch("tank.brace");
+    throughEducation();
+    expect(screen.getByTestId("tutorial-complete-panel")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("practice-again"));
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(localSet).not.toHaveBeenCalled();
+    expect(sessionSet).not.toHaveBeenCalled();
   });
 });

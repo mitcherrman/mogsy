@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /dev/ranked-tutorial — isolated Ranked TUTORIAL prototype (Phase E2.3).
+// /dev/ranked-tutorial — isolated Ranked TUTORIAL prototype.
 //
 // A deterministic, scripted Training Match that teaches Ranked mechanics.
 // Fully local: no auth, no API calls, no ads, no persistence, no production
@@ -18,6 +18,10 @@ import { AnswerRoundPanel } from "./components/AnswerRoundPanel";
 import { AbilityPanel } from "./components/AbilityPanel";
 import { LevelTwoChoicePanel } from "./components/LevelTwoChoicePanel";
 import { MatchOverPanel } from "./components/MatchOverPanel";
+import { QueueSimulationPanel } from "./components/QueueSimulationPanel";
+import { RecoverySimulationPanel } from "./components/RecoverySimulationPanel";
+import { AdsProEducationPanel } from "./components/AdsProEducationPanel";
+import { TutorialCompletePanel } from "./components/TutorialCompletePanel";
 
 export default function RankedTutorialPage() {
   const [state, dispatch] = useReducer(tutorialReducer, undefined, initialTutorialState);
@@ -37,6 +41,8 @@ export default function RankedTutorialPage() {
   // keyboard and screen-reader users land on the new explanation.
   const stepId = state.stepId;
   useEffect(() => {
+    // The completion panel moves focus to its own heading instead.
+    if (stepId === "complete") return;
     instructionRef.current?.focus();
   }, [stepId]);
 
@@ -121,6 +127,19 @@ export default function RankedTutorialPage() {
               dispatch={dispatch}
             />
           )}
+          {stepId === "queue_explanation" && (
+            <QueueSimulationPanel done={view.queueSimulationDone} dispatch={dispatch} />
+          )}
+          {stepId === "reconnect_explanation" && (
+            <RecoverySimulationPanel
+              done={view.recoverySimulationDone}
+              player={view.player}
+              fortifyCharges={view.charges["tank.fortify"] ?? 0}
+              dispatch={dispatch}
+            />
+          )}
+          {stepId === "ads_pro_explanation" && <AdsProEducationPanel />}
+          {stepId === "complete" && <TutorialCompletePanel dispatch={dispatch} />}
           {stepId === "match_over" ? (
             <MatchOverPanel
               player={view.player}
@@ -130,7 +149,11 @@ export default function RankedTutorialPage() {
             />
           ) : (
             view.round &&
-            stepId !== "level_two_choice" && (
+            stepId !== "level_two_choice" &&
+            stepId !== "queue_explanation" &&
+            stepId !== "reconnect_explanation" &&
+            stepId !== "ads_pro_explanation" &&
+            stepId !== "complete" && (
               <AnswerRoundPanel
                 round={view.round}
                 interactive={roundInteractive}

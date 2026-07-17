@@ -665,3 +665,93 @@ describe("victory round and match over", () => {
     expect(s.player.level).toBe(3);
   });
 });
+
+// --- E2.5: education simulations and completion -----------------------------------
+
+const toQueue = () => reduceAll([{ type: "CONTINUE" }], throughVictory());
+
+const throughEducation = () =>
+  reduceAll(
+    [
+      { type: "SIMULATE_MATCHMAKING" },
+      { type: "CONTINUE" }, // → reconnect_explanation
+      { type: "SIMULATE_DISCONNECT" },
+      { type: "CONTINUE" }, // → ads_pro_explanation
+      { type: "CONTINUE" }, // → complete
+    ],
+    toQueue(),
+  );
+
+describe("queue and recovery simulations (machine)", () => {
+  it("queue simulation runs only in queue_explanation", () => {
+    const early = toAnswerSelection();
+    expect(tutorialReducer(early, { type: "SIMULATE_MATCHMAKING" })).toBe(early);
+    const q = toQueue();
+    expect(q.stepId).toBe("queue_explanation");
+    const done = tutorialReducer(q, { type: "SIMULATE_MATCHMAKING" });
+    expect(done.queueSimulationDone).toBe(true);
+    // Duplicate rejected; identical state object returned.
+    expect(tutorialReducer(done, { type: "SIMULATE_MATCHMAKING" })).toBe(done);
+  });
+
+  it("recovery simulation runs only in reconnect_explanation and preserves state", () => {
+    const q = toQueue();
+    expect(tutorialReducer(q, { type: "SIMULATE_DISCONNECT" })).toBe(q);
+    const r = reduceAll(
+      [{ type: "SIMULATE_MATCHMAKING" }, { type: "CONTINUE" }],
+      q,
+    );
+    expect(r.stepId).toBe("reconnect_explanation");
+    const done = tutorialReducer(r, { type: "SIMULATE_DISCONNECT" });
+    expect(done.recoverySimulationDone).toBe(true);
+    // Simulation never leaks into combat state.
+    expect(done.player).toEqual(r.player);
+    expect(done.opponent).toEqual(r.opponent);
+    expect(done.charges).toEqual(r.charges);
+    expect(done.round).toBe(r.round);
+    // Duplicate restore rejected.
+    expect(tutorialReducer(done, { type: "SIMULATE_DISCONNECT" })).toBe(done);
+  });
+
+  it("simulations announce completion", () => {
+    expect(
+      tutorialReducer(toQueue(), { type: "SIMULATE_MATCHMAKING" }).lastAnnouncement,
+    ).toMatch(/Queue simulation complete/);
+  });
+});
+
+describe("completion (machine)", () => {
+  it("completion only follows the full prior sequence", () => {
+    const s = throughEducation();
+    expect(s.stepId).toBe("complete");
+    expect(s.player.xp).toBe(89);
+    expect(s.matchOver).toBe(true);
+    // Only RESTART is permitted at complete.
+    expect(tutorialReducer(s, { type: "CONTINUE" })).toBe(s);
+    expect(tutorialReducer(s, { type: "SIMULATE_MATCHMAKING" })).toBe(s);
+  });
+
+  it("Practice Again (RESTART) from complete restores the exact initial state", () => {
+    const s = tutorialReducer(throughEducation(), { type: "RESTART" });
+    expect(s).toEqual(initialTutorialState());
+    expect(s.queueSimulationDone).toBe(false);
+    expect(s.recoverySimulationDone).toBe(false);
+  });
+
+  it("both Level 2 branches reach completion", () => {
+    for (const choice of ["tank.brace", "tank.barrier"] as const) {
+      const end = reduceAll(
+        [
+          { type: "CONTINUE" },
+          { type: "SIMULATE_MATCHMAKING" },
+          { type: "CONTINUE" },
+          { type: "SIMULATE_DISCONNECT" },
+          { type: "CONTINUE" },
+          { type: "CONTINUE" },
+        ],
+        throughVictory(choice),
+      );
+      expect(end.stepId).toBe("complete");
+    }
+  });
+});

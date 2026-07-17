@@ -2,12 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Lock, Zap } from "lucide-react";
 import { RoundState, TutorialEvent } from "../types";
-import {
-  TANK_LEVEL_TWO_OPTIONS,
-  TANK_STARTER,
-  TutorialAbility,
-  tankLevelThreeUnlock,
-} from "../fixtures";
+import { TANK_LEVEL_TWO_OPTIONS, TANK_STARTER, TutorialAbility } from "../fixtures";
 
 const ALL_ABILITIES: TutorialAbility[] = [TANK_STARTER, ...TANK_LEVEL_TWO_OPTIONS];
 

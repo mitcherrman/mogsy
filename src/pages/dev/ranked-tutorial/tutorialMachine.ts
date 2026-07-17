@@ -74,6 +74,8 @@ export const initialTutorialState = (): TutorialState => ({
   pendingLevelTwoChoiceId: null,
   chosenLevelTwoAbilityId: null,
   matchOver: false,
+  queueSimulationDone: false,
+  recoverySimulationDone: false,
   lastAnnouncement: null,
 });
 
@@ -437,6 +439,33 @@ export const tutorialReducer = (
       return applyFixture(timedOut, TUTORIAL_ROUNDS.C);
     }
 
+    case "SIMULATE_MATCHMAKING": {
+      // Deterministic, purely visual: the whole Ready → Searching →
+      // Opponent found → Match ready sequence completes in one transition.
+      // Never calls matchmaking; duplicates are rejected.
+      if (state.stepId !== "queue_explanation" || state.queueSimulationDone) return state;
+      return {
+        ...state,
+        queueSimulationDone: true,
+        lastAnnouncement:
+          "Queue simulation complete: Ready, Searching, Opponent found, Match ready. No real queue was entered.",
+      };
+    }
+
+    case "SIMULATE_DISCONNECT": {
+      // Deterministic, purely visual: Connected → Connection interrupted →
+      // Recovering match → State restored, in one transition. No transport,
+      // no reload, no storage; duplicates are rejected.
+      if (state.stepId !== "reconnect_explanation" || state.recoverySimulationDone)
+        return state;
+      return {
+        ...state,
+        recoverySimulationDone: true,
+        lastAnnouncement:
+          "Recovery simulation complete: connection interrupted, match recovered, state restored. HP, XP, abilities, and locked answers were preserved.",
+      };
+    }
+
     case "CHOOSE_LEVEL_TWO": {
       if (state.stepId !== "level_two_choice" || state.chosenLevelTwoAbilityId) return state;
       const option = TANK_LEVEL_TWO_OPTIONS.find((a) => a.id === event.abilityId);
@@ -491,6 +520,8 @@ export interface TutorialVisibleState {
   pendingLevelTwoChoiceId: string | null;
   chosenLevelTwoAbilityId: string | null;
   matchOver: boolean;
+  queueSimulationDone: boolean;
+  recoverySimulationDone: boolean;
   lastAnnouncement: string | null;
   isComplete: boolean;
 }
@@ -511,6 +542,8 @@ export const visibleState = (state: TutorialState): TutorialVisibleState => {
     pendingLevelTwoChoiceId: state.pendingLevelTwoChoiceId,
     chosenLevelTwoAbilityId: state.chosenLevelTwoAbilityId,
     matchOver: state.matchOver,
+    queueSimulationDone: state.queueSimulationDone,
+    recoverySimulationDone: state.recoverySimulationDone,
     lastAnnouncement: state.lastAnnouncement,
     isComplete: state.stepId === "complete",
   };

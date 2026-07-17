@@ -106,7 +106,7 @@ export function AnswerRoundPanel({
             <Button
               key={choice}
               variant={isSelected ? "default" : "outline"}
-              className="justify-start gap-2 h-auto py-2 whitespace-normal text-left"
+              className="justify-start gap-2 h-auto min-h-[44px] py-2 whitespace-normal text-left"
               aria-pressed={isSelected}
               disabled={!selecting}
               onClick={() => dispatch({ type: "SELECT_ANSWER", answerIndex: i })}
