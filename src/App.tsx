@@ -106,6 +106,10 @@ const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/D
 // Quiz hub only links here when the backend reports the mode enabled).
 const QuizDailyScoreAttack = lazy(() => import("./pages/QuizDailyScoreAttack"));
 
+// Dev-only Ranked TUTORIAL prototype — scripted local training match,
+// no auth/API/persistence, not linked from any navigation.
+const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
+
 // Screenshot render harness — inert without locally injected data, not
 // linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
 // social-format captures contain no site chrome.
@@ -251,6 +255,7 @@ const App = () => (
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
+                  <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
