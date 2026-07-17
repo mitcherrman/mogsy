@@ -95,6 +95,10 @@ const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRun
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
 
+// Dev-only prototype — Daily Score Attack against the feature-flagged
+// backend; not linked from any navigation.
+const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/DailyScoreAttackPage"));
+
 // Screenshot render harness — inert without locally injected data, not
 // linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
 // social-format captures contain no site chrome.
@@ -237,6 +241,7 @@ const App = () => (
                   <Route path="/security" element={<Suspense fallback={<RouteFallback />}><Security /></Suspense>} />
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
+                  <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />
