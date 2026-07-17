@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Play, User, Diamond, ChevronRight, Users, Palette, Flame } from "lucide-react";
+import { Home, Play, User, Diamond, ChevronRight, Users, Palette, Flame, Shield } from "lucide-react";
 import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,8 @@ import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
+import { ADMIN_DIRECTORY_PATH } from "@/lib/admin/admin-directory";
 import { playUiSfx } from "@/lib/ui-sfx";
 
 const baseNavItems = [
@@ -53,6 +55,10 @@ export default function Navbar({ themeId }: { themeId?: string }) {
   const location = useLocation();
   const { user } = useAuth();
   const { settings } = useAppSettings();
+  // Backend-verified admin authorization only; never inferred from the user
+  // object, roles, or storage. The link is navigation convenience — the
+  // /admin/directory route keeps its own independent guards.
+  const { isAuthorized: isAdminAuthorized } = useAdminAuth();
   const [navRevealed, setNavRevealed] = useState(false);
 
   const navItems = LEAGUE_ONLY_MODE
@@ -156,6 +162,22 @@ export default function Navbar({ themeId }: { themeId?: string }) {
                 );
               })}
             </div>
+
+            {/* Admin directory — exists in the DOM only after backend-verified
+                authorization resolves positively; no placeholder or reserved slot. */}
+            {isAdminAuthorized === true && (
+              <Link
+                to={ADMIN_DIRECTORY_PATH}
+                aria-label="Admin"
+                title="Admin"
+                onClick={() => playUiSfx("navClick")}
+                className="flex items-center gap-1 px-1.5 sm:px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="navbar-admin-link"
+              >
+                <Shield className="h-4 w-4" aria-hidden />
+                <span className="hidden md:inline text-xs">Admin</span>
+              </Link>
+            )}
 
             {/* Notification bell */}
             <UserNotificationBell />
