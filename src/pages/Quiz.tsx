@@ -24,6 +24,11 @@ import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
+// Daily Score Attack hub entry: shown instead of the legacy Daily card only
+// when the backend reports the new mode enabled (server feature flag).
+import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
+import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
+import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import AdSlot from "@/components/ads/AdSlot";
 import {
@@ -175,6 +180,21 @@ export default function Quiz() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const userId = user?.id || "anonymous";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const today = await fetchScoreAttackToday();
+        if (!cancelled && today.enabled) setScoreAttackToday(today);
+        if (!cancelled && !today.enabled) trackFunnelEvent("dsa_legacy_fallback", { reason: "disabled" });
+      } catch {
+        // Feature disabled or unavailable: keep the legacy Daily experience.
+        if (!cancelled) trackFunnelEvent("dsa_legacy_fallback", { reason: "unavailable" });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const isAnonymous = !user || user.is_anonymous === true;
   const [phase, setPhase] = useState<QuizPhase>("sets");
   const [achievementsOpen, setAchievementsOpen] = useState(false);
@@ -236,6 +256,9 @@ export default function Quiz() {
   }, []);
 
   // Daily challenge — initialised from localStorage for instant render, then synced from backend.
+  // null = unknown/disabled -> legacy Daily card stays primary. Populated
+  // only from the server /today projection; never from local date math.
+  const [scoreAttackToday, setScoreAttackToday] = useState<DsaToday | null>(null);
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
     getDailyChallenge(),
   );
@@ -787,11 +810,19 @@ export default function Quiz() {
               className="mb-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
               data-testid="hub-daily-history-row"
             >
-              <QuizDailyChallengeCard
-                state={dailyChallenge}
-                disabled={setsLoading}
-                onPlay={handlePlayDailyChallenge}
-              />
+              {scoreAttackToday ? (
+                <QuizScoreAttackCard
+                  today={scoreAttackToday}
+                  hasAccount={!isAnonymous}
+                  onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
+                />
+              ) : (
+                <QuizDailyChallengeCard
+                  state={dailyChallenge}
+                  disabled={setsLoading}
+                  onPlay={handlePlayDailyChallenge}
+                />
+              )}
               <QuizRecentResultsCard
                 history={recentHistory}
                 loading={historyLoading}

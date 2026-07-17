@@ -32,6 +32,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import DailyScoreAttackPage from "./DailyScoreAttackPage";
+import { DsaApiError } from "./dailyScoreAttackClient";
 import {
   activeRunFixture,
   historyFixture,
@@ -46,6 +47,8 @@ beforeEach(() => {
   sessionMock.user = { is_anonymous: false };
   clientMocks.fetchToday.mockResolvedValue(todayFixture);
   clientMocks.fetchHistory.mockResolvedValue(historyFixture);
+  // Default: no resumable practice run on initial load.
+  clientMocks.fetchCurrentRun.mockRejectedValue(new DsaApiError("NO_RUN", 404, "none"));
 });
 
 async function startIntoQuestion() {

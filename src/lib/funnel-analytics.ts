@@ -17,7 +17,20 @@ export type FunnelEventName =
   | "ad_slot_rendered"
   | "ad_slot_suppressed"
   | "ad_slot_error"
-  | "house_ad_clicked";
+  | "house_ad_clicked"
+  // Daily Score Attack (production) — no question/answer content, ever.
+  | "dsa_entry_viewed"
+  | "dsa_official_cta_clicked"
+  | "dsa_signin_gate_shown"
+  | "dsa_official_started"
+  | "dsa_official_resumed"
+  | "dsa_practice_started"
+  | "dsa_answer_resolved"
+  | "dsa_run_expired"
+  | "dsa_run_completed"
+  | "dsa_results_viewed"
+  | "dsa_practice_replay_clicked"
+  | "dsa_legacy_fallback";
 
 /**
  * Fire-and-forget funnel event. Never throws, never blocks gameplay —

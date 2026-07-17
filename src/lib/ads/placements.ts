@@ -15,6 +15,8 @@ export type AdPlacement =
   | "quiz_selection_lower"
   | "quiz_results"
   | "daily_challenge_results"
+  | "daily_score_attack_entry"
+  | "daily_score_attack_results"
   | "ranked_queue"
   | "ranked_results"
   | "combat_results"
@@ -87,6 +89,24 @@ export const AD_PLACEMENTS: Record<AdPlacement, AdPlacementMeta> = {
     allowHouse: true,
     allowThirdParty: true,
     devPlaceholder: true,
+  },
+  daily_score_attack_entry: {
+    label: "Daily Score Attack — pre-start entry surface",
+    surface: "quiz",
+    minHeight: 100,
+    allowHouse: true,
+    allowThirdParty: true,
+    devPlaceholder: true,
+    notes: "Never rendered during countdown, active questions, reveal, or reconnects.",
+  },
+  daily_score_attack_results: {
+    label: "Daily Score Attack results — below settled outcome",
+    surface: "quiz",
+    minHeight: 120,
+    allowHouse: true,
+    allowThirdParty: true,
+    devPlaceholder: true,
+    notes: "Mounts only after the results screen has fully settled.",
   },
   ranked_queue: {
     label: "Ranked queue — outside queue controls",

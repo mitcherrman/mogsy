@@ -110,6 +110,9 @@ export type DsaToday = {
   } | null;
   auth_required_for_official: boolean;
   practice_available: boolean;
+  /** Legacy Daily Challenge already completed (bonus paid) today; the DSA
+   * official run stays playable but earns no second bonus or streak. */
+  legacy_completed_today?: boolean;
 };
 
 export type DsaHistory = {

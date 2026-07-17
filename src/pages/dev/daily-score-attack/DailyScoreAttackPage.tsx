@@ -7,6 +7,8 @@
  */
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import AdSlot from "@/components/ads/AdSlot";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import {
   DsaApiError,
   fetchCurrentRun,
@@ -61,7 +63,13 @@ async function resolveSession(): Promise<DsaSession> {
   }
 }
 
-export default function DailyScoreAttackPage() {
+type PageProps = {
+  /** Production surface: no prototype banner, entry/results ads, analytics.
+   * The dev route (/dev/daily-score-attack) renders with the default. */
+  production?: boolean;
+};
+
+export default function DailyScoreAttackPage({ production = false }: PageProps) {
   const [state, dispatch] = useReducer(dsaReducer, INITIAL_STATE);
   const reducedMotion = usePrefersReducedMotion();
   const [announcement, setAnnouncement] = useState("");
@@ -74,6 +82,17 @@ export default function DailyScoreAttackPage() {
   const send = useCallback((action: DsaAction) => dispatch(action), []);
 
   const announce = useCallback((message: string) => setAnnouncement(message), []);
+
+  // Production analytics only; the dev prototype stays silent. Payloads
+  // carry no question, choice, or answer content.
+  const track = useCallback(
+    (event: Parameters<typeof trackFunnelEvent>[0], payload?: Record<string, unknown>) => {
+      if (!production) return;
+      if (payload === undefined) trackFunnelEvent(event);
+      else trackFunnelEvent(event, payload);
+    },
+    [production],
+  );
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -149,6 +168,7 @@ export default function DailyScoreAttackPage() {
       try {
         const results = await fetchResults(runId);
         send({ type: "RESULTS_LOADED", results });
+        track("dsa_results_viewed", { official });
         announce(official ? "Official run finished" : "Practice run finished");
         if (official) {
           try {
@@ -206,6 +226,16 @@ export default function DailyScoreAttackPage() {
         if (meta.enabled && meta.official_run?.status === "active" && session === "account") {
           const run = await fetchCurrentRun(true, controller.signal);
           send({ type: "RUN_SYNCED", run });
+        } else if (meta.enabled && session !== "none") {
+          // Resume an in-progress practice run across refreshes too. Only
+          // an ACTIVE run is adopted — terminal practice runs must not
+          // hijack the entry screen with stale results.
+          try {
+            const practice = await fetchCurrentRun(false, controller.signal);
+            if (practice.status === "active") send({ type: "RUN_SYNCED", run: practice });
+          } catch (error) {
+            if (!(error instanceof DsaApiError && error.code === "NO_RUN")) throw error;
+          }
         }
       } catch (error) {
         if (error instanceof DsaApiError && error.code === "FEATURE_DISABLED") {
@@ -237,6 +267,11 @@ export default function DailyScoreAttackPage() {
         const run =
           state.intent === "official" ? await startOfficialRun() : await startPracticeRun();
         send({ type: "RUN_STARTED", run });
+        if (state.intent === "official") {
+          track(run.resumed ? "dsa_official_resumed" : "dsa_official_started");
+        } else {
+          track("dsa_practice_started");
+        }
         if (run.status !== "active") {
           void loadTerminalResults(run.run_id, run.official);
         } else if (run.resumed) {
@@ -268,6 +303,9 @@ export default function DailyScoreAttackPage() {
   // Terminal phases fetch results.
   useEffect(() => {
     if ((state.phase === "expired" || state.phase === "completed") && state.run) {
+      track(state.phase === "expired" ? "dsa_run_expired" : "dsa_run_completed", {
+        official: state.run.official,
+      });
       void loadTerminalResults(state.run.run_id, state.run.official);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -286,6 +324,10 @@ export default function DailyScoreAttackPage() {
 
   useEffect(() => {
     if (state.phase === "reconnecting" && !recoveryInFlight.current) void resync();
+    if (state.phase === "ready" || state.phase === "signed-out-entry") {
+      track("dsa_entry_viewed", { session: state.session });
+    }
+    if (state.phase === "signed-out-entry") track("dsa_signin_gate_shown");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase]);
 
@@ -297,6 +339,11 @@ export default function DailyScoreAttackPage() {
       try {
         const resolution = await submitAnswer(current.run.run_id, current.run.sequence, index);
         send({ type: "RESOLUTION_RECEIVED", resolution });
+        track("dsa_answer_resolved", {
+          sequence: resolution.sequence,
+          is_correct: resolution.is_correct,
+          official: resolution.run.official,
+        });
         announce(
           resolution.is_correct
             ? `Correct. Plus ${resolution.awarded_score} points. Combo ${resolution.combo_after}.`
@@ -325,6 +372,7 @@ export default function DailyScoreAttackPage() {
   }, [send, announce, handleError, loadTerminalResults]);
 
   const startOfficial = useCallback(() => {
+    track("dsa_official_cta_clicked");
     const official = stateRef.current.meta?.official_run;
     if (official && official.status !== "active") {
       void loadTerminalResults(official.run_id, true);
@@ -333,10 +381,12 @@ export default function DailyScoreAttackPage() {
     send({ type: "START_REQUESTED", intent: "official" });
   }, [send, loadTerminalResults]);
 
-  const startPractice = useCallback(
-    () => send({ type: "START_REQUESTED", intent: "practice" }),
-    [send],
-  );
+  const startPractice = useCallback(() => {
+    if (stateRef.current.phase === "official-results" || stateRef.current.phase === "practice-results") {
+      track("dsa_practice_replay_clicked");
+    }
+    send({ type: "START_REQUESTED", intent: "practice" });
+  }, [send, track]);
 
   const inGame =
     state.phase === "active-question" ||
@@ -348,9 +398,11 @@ export default function DailyScoreAttackPage() {
     <main className="min-h-screen bg-background pb-10 pt-4 text-foreground">
       <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-between px-3">
         <h1 className="text-base font-bold">Daily Score Attack</h1>
-        <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
-          dev prototype
-        </span>
+        {!production && (
+          <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+            dev prototype
+          </span>
+        )}
       </div>
       <p className="sr-only" role="status" aria-live="polite" data-testid="dsa-live-region">
         {announcement}
@@ -374,12 +426,19 @@ export default function DailyScoreAttackPage() {
       )}
 
       {(state.phase === "ready" || state.phase === "signed-out-entry") && state.meta && (
-        <DailyScoreAttackEntry
-          meta={state.meta}
-          session={state.phase === "signed-out-entry" ? "none" : state.session}
-          onStartOfficial={startOfficial}
-          onStartPractice={startPractice}
-        />
+        <>
+          <DailyScoreAttackEntry
+            meta={state.meta}
+            session={state.phase === "signed-out-entry" ? "none" : state.session}
+            onStartOfficial={startOfficial}
+            onStartPractice={startPractice}
+          />
+          {production && (
+            <div className="mx-auto mt-4 w-full max-w-xl px-3">
+              <AdSlot placement="daily_score_attack_entry" isActiveQuizQuestion={false} />
+            </div>
+          )}
+        </>
       )}
 
       {state.phase === "pre-run-countdown" && (
@@ -419,12 +478,19 @@ export default function DailyScoreAttackPage() {
 
       {(state.phase === "official-results" || state.phase === "practice-results") &&
         state.results && (
-          <DailyScoreAttackResults
-            results={state.results}
-            history={state.history}
-            practiceAllowed={state.session !== "none" || !state.results.official}
-            onPracticeAgain={startPractice}
-          />
+          <>
+            <DailyScoreAttackResults
+              results={state.results}
+              history={state.history}
+              practiceAllowed={state.session !== "none" || !state.results.official}
+              onPracticeAgain={startPractice}
+            />
+            {production && (
+              <div className="mx-auto mt-4 w-full max-w-xl px-3">
+                <AdSlot placement="daily_score_attack_results" isActiveQuizQuestion={false} />
+              </div>
+            )}
+          </>
         )}
 
       {state.phase === "recoverable-error" && (

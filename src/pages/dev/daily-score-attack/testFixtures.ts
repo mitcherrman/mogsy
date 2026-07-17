@@ -20,6 +20,8 @@ export const todayFixture: DsaToday = {
   official_run: null,
   auth_required_for_official: true,
   practice_available: true,
+  legacy_completed_today: false,
+  daily_streak: 0,
 };
 
 export function activeRunFixture(overrides: Partial<DsaRun> = {}): DsaRun {

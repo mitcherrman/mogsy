@@ -99,6 +99,10 @@ const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype
 // backend; not linked from any navigation.
 const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/DailyScoreAttackPage"));
 
+// Production Daily Score Attack surface (feature-flagged server-side; the
+// Quiz hub only links here when the backend reports the mode enabled).
+const QuizDailyScoreAttack = lazy(() => import("./pages/QuizDailyScoreAttack"));
+
 // Screenshot render harness — inert without locally injected data, not
 // linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
 // social-format captures contain no site chrome.
@@ -217,6 +221,7 @@ const App = () => (
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
+                  <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
