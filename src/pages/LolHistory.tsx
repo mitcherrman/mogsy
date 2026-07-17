@@ -55,7 +55,14 @@ export default function LolHistory() {
           return;
         }
         const data = await quizApi.getHistory();
-        if (!cancelled) setHistory(data);
+        if (!cancelled) {
+          // A non-ok payload is a backend failure, never "no history yet".
+          if (data.ok === false) {
+            setError("Could not load quiz history.");
+          } else {
+            setHistory(data);
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : "";

@@ -74,8 +74,14 @@ export default function LolMissedQuestions() {
         }
         const res = await quizApi.getMissedQuestions({ limit: PAGE_SIZE, offset: 0 });
         if (!cancelled) {
-          setData(res);
-          setItems(res.results);
+          // A non-ok payload is a backend failure — never show the paywall
+          // or an empty bank for it.
+          if (res.ok === false) {
+            setError("Could not load missed questions.");
+          } else {
+            setData(res);
+            setItems(res.results);
+          }
         }
       } catch (err) {
         if (!cancelled) {
