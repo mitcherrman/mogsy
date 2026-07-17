@@ -96,11 +96,11 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
 
         <div className="relative grid grid-cols-1 md:grid-cols-[1.05fr_1fr] md:min-h-[260px]">
           {/* ---------- Left: headline + mode selector (primary interaction) ---------- */}
-          <div className="relative z-10 flex flex-col justify-center gap-2 p-5 md:p-6">
+          <div className="relative z-10 flex flex-col justify-center gap-1.5 md:gap-2 p-4 md:p-6">
             <div className="text-[10px] uppercase tracking-[0.3em] text-[#c9a84c] font-bold">
               Mogsy × LoL
             </div>
-            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-[#f0e6d2]">
+            <h1 className="text-xl sm:text-2xl md:text-4xl font-extrabold tracking-tight text-[#f0e6d2]">
               Train Your League Knowledge
             </h1>
 
@@ -155,7 +155,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
           </div>
 
           {/* ---------- Right: layered champion scene ---------- */}
-          <div className="relative min-h-[180px] md:min-h-0 overflow-hidden">
+          <div className="relative min-h-[120px] md:min-h-0 overflow-hidden">
             {/* Champion splash layers — all mounted, active one crossfades in */}
             {TRAINING_MODES.map((m) => {
               const url = getChampionSplash(assets, m.championName);
@@ -240,7 +240,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
             </div>
 
             {/* Floating mini-panel — re-keyed per mode for fade/slide-in */}
-            <div key={mode.key} className="hero-mode-in absolute left-4 bottom-4 md:left-6 md:bottom-6 z-10">
+            <div key={mode.key} className="hero-mode-in absolute left-3 bottom-3 md:left-6 md:bottom-6 z-10">
               {/* Drift lives on an inner wrapper so it composes with the mode-in transform */}
               <div className="hero-panel-drift">
                 <ModePanel modeKey={mode.key} />
@@ -255,7 +255,7 @@ export default function HexTrainingHero({ assets, onStartQuiz }: Props) {
 
 /** Compact supporting visual for the selected training mode. */
 function ModePanel({ modeKey }: { modeKey: TrainingModeKey }) {
-  const frame = "border border-[#0ac8ff]/30 bg-[#050d1c]/85 backdrop-blur-sm px-3.5 py-2.5";
+  const frame = "border border-[#0ac8ff]/30 bg-[#050d1c]/85 backdrop-blur-sm px-3 py-2 md:px-3.5 md:py-2.5";
   const clip = {
     clipPath:
       "polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)",

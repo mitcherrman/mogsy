@@ -58,8 +58,8 @@ export default function QuizRankedQueueCard({
               "radial-gradient(80% 60% at 0% 100%, rgba(80,170,220,0.12) 0%, transparent 60%)",
           }}
         />
-        <CardContent className="relative p-4">
-          <div className="flex items-start gap-4">
+        <CardContent className="relative p-3 sm:p-4">
+          <div className="flex items-start gap-3 sm:gap-4">
             <div
               className="relative shrink-0 rounded-full"
               style={{
@@ -71,24 +71,26 @@ export default function QuizRankedQueueCard({
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(80,170,220,0.6)]"
+                  className="h-14 w-14 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_18px_rgba(80,170,220,0.6)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10">
-                  <Shield className="h-10 w-10 text-cyan-200" />
+                <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10">
+                  <Shield className="h-8 w-8 sm:h-10 sm:w-10 text-cyan-200" />
                 </div>
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
+              {/* flex-wrap: on narrow widths the badge drops to its own row
+                  instead of ellipsizing the primary title. */}
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                 <div className="min-w-0">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
                     Featured · Ranked
                   </div>
-                  <h3 className="truncate text-lg font-bold tracking-tight text-foreground">
+                  <h3 className="text-lg font-bold tracking-tight text-foreground">
                     {ranked.isPlaced ? rankName : "Placement Series"}
                   </h3>
                 </div>
@@ -123,7 +125,7 @@ export default function QuizRankedQueueCard({
                 </p>
               )}
 
-              <div className="mt-3 grid grid-cols-2 gap-1.5">
+              <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5">
                 <div className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1">
                   <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-300/90">
                     <TrendingUp className="h-2.5 w-2.5" />
@@ -148,7 +150,7 @@ export default function QuizRankedQueueCard({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-end">
+          <div className="mt-2 sm:mt-3 flex items-center justify-end">
             <Button
               size="sm"
               onClick={onPlay}

@@ -180,22 +180,26 @@ export default function LolHub() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Anonymous sign-up nudge banner */}
         {isAnonymous && !nudgeDismissed && (
-          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 px-4 py-2.5 text-sm">
-            <span className="flex-1 min-w-[12rem] text-[#f5e9c8]/90">
-              Sign up to save your XP, streaks, and progress across Mogzy League.
+          <div className="relative mb-3 sm:mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 py-2 pl-3 pr-10 sm:px-4 sm:py-2.5 text-sm">
+            <span className="flex-1 min-w-[9rem] text-xs sm:text-sm text-[#f5e9c8]/90">
+              {/* Concise on mobile; full pitch from sm up. */}
+              <span className="sm:hidden">Save XP and streaks across devices.</span>
+              <span className="hidden sm:inline">
+                Sign up to save your XP, streaks, and progress across Mogzy League.
+              </span>
             </span>
             <button
               onClick={() => {
                 playUiSfx("primaryAction");
                 navigate("/auth?mode=signup&returnTo=/lol");
               }}
-              className="shrink-0 inline-flex min-h-[40px] items-center rounded-md bg-[#c9a84c]/20 px-3 py-2 text-sm font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
+              className="shrink-0 inline-flex min-h-[32px] sm:min-h-[40px] items-center rounded-md bg-[#c9a84c]/20 px-2.5 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
             >
               Sign up free
             </button>
             <button
               onClick={() => setNudgeDismissed(true)}
-              className="shrink-0 -m-1 p-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-0 top-0 p-2.5 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" />

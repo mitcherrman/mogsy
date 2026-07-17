@@ -921,7 +921,7 @@ export default function Quiz() {
             transition={{ duration: 0.25 }}
             className="space-y-4 [@media(max-height:480px)]:space-y-2"
           >
-            <div className="sticky top-0 z-20 -mx-4 space-y-2 bg-background/90 px-4 py-2 backdrop-blur-sm">
+            <div className="sticky top-[var(--app-header-h)] z-20 -mx-4 space-y-2 bg-background/90 px-4 py-2 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
               {(() => {
                 const style = getCategoryStyle(currentQuestion.category);
@@ -1689,11 +1689,11 @@ function QuizModeCard({
             .replace(/border-[^\s]+/g, "")
             .replace(/bg-([a-z]+-\d+)\/\d+/, "bg-$1/70")}`}
         />
-        <CardHeader className="pb-2 pt-3">
+        <CardHeader className="pb-1.5 pt-2.5 sm:pb-2 sm:pt-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${style.className} shadow-[inset_0_0_8px_rgba(255,255,255,0.05)]`}
+                className={`flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-lg border ${style.className} shadow-[inset_0_0_8px_rgba(255,255,255,0.05)]`}
               >
                 <Icon className="h-5 w-5" />
               </div>
@@ -1733,22 +1733,26 @@ function QuizModeCard({
             {set.description}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-1.5 pt-0 pb-3">
-          {mastery !== null ? (
-            <div className="space-y-0.5">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span className="uppercase tracking-wider">Mastery</span>
-                <span className="font-mono font-semibold text-foreground/80">{mastery}%</span>
+        <CardContent className="pt-0 pb-2.5 sm:pb-3">
+          {/* Mastery and the Start affordance share one row — the whole card is
+              the click target, so this label is a cue, not a separate button. */}
+          <div className="flex items-center gap-3">
+            {mastery !== null ? (
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span className="uppercase tracking-wider">Mastery</span>
+                  <span className="font-mono font-semibold text-foreground/80">{mastery}%</span>
+                </div>
+                <Progress value={mastery} className="h-1.5" />
               </div>
-              <Progress value={mastery} className="h-1.5" />
+            ) : (
+              <div className="min-w-0 flex-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                No mastery yet
+              </div>
+            )}
+            <div className="flex shrink-0 items-center text-xs font-semibold text-primary">
+              Start quiz <ArrowRight className="ml-1 h-3 w-3" />
             </div>
-          ) : (
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-              No mastery yet
-            </div>
-          )}
-          <div className="flex items-center justify-end text-xs font-semibold text-primary">
-            Start quiz <ArrowRight className="ml-1 h-3 w-3" />
           </div>
         </CardContent>
       </Card>

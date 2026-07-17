@@ -105,9 +105,9 @@ export default function Navbar({ themeId }: { themeId?: string }) {
         className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl"
         style={hasTheme ? { background: themeId === "light" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.6)", backdropFilter: "blur(20px)", borderColor: themeId === "light" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.1)" } : undefined}
       >
-        <div className="container mx-auto flex h-14 items-center px-4 gap-1">
+        <div className="container mx-auto flex h-[var(--app-header-h)] items-center px-4 gap-1">
           <Link to="/" className="flex items-center shrink-0">
-            <img src={mogsyLogo} alt="Mogsy" className="h-10 sm:h-12 -ml-2 sm:ml-0" />
+            <img src={mogsyLogo} alt="Mogsy" className="h-9 sm:h-12 -ml-2 sm:ml-0" />
           </Link>
 
           <Link

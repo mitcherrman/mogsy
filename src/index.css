@@ -5,6 +5,12 @@
 
 @layer base {
   :root {
+    /* Shared layout tokens: fixed header height (mobile → sm+) and the
+       clearance the fixed mobile bottom nav needs (bar + safe area + buffer).
+       Every sticky/offset consumer reads these instead of magic numbers. */
+    --app-header-h: 3rem;
+    --bottom-nav-clearance: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+
     --background: 209 40% 96%;
     --foreground: 222 47% 11%;
 
@@ -772,4 +778,19 @@ html.high-contrast * { text-shadow: none !important; }
   .hero-particle { opacity: 0; }
   .hero-diamond { transform: rotate(45deg); }
   .hero-cta-gold::after { display: none; }
+}
+
+/* Shared layout tokens — sm+ overrides (see :root above). */
+@media (min-width: 640px) {
+  :root {
+    --app-header-h: 3.5rem;
+    /* Bottom nav is sm:hidden — no clearance needed from sm up. */
+    --bottom-nav-clearance: 0px;
+  }
+}
+
+/* Single place that reserves space for the fixed mobile bottom nav
+   (applied once on the app shell — never per page). */
+.pb-bottom-nav {
+  padding-bottom: var(--bottom-nav-clearance);
 }

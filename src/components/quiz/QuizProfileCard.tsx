@@ -119,7 +119,7 @@ export default function QuizProfileCard({
       transition={{ duration: 0.25 }}
     >
       <Card className="bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-sm border-primary/20">
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-3 sm:p-4 space-y-2.5 sm:space-y-3">
           <div className="flex items-center gap-4">
             <motion.div
               key={`rank-${rankName}`}
@@ -132,7 +132,7 @@ export default function QuizProfileCard({
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
+                  className="h-20 w-20 md:h-28 md:w-28 object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}

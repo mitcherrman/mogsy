@@ -515,7 +515,7 @@ export default function Profile() {
           {isGuest ? (
             /* ---------- Guest: account-value panel (no editing UI) ---------- */
             /* Styled with the same League navy/cyan/gold language as the signed-in surfaces. */
-            <div className="rounded-2xl border border-[#0ac8ff]/30 bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#020610] p-4 sm:p-6 mb-4 sm:mb-6 space-y-4">
+            <div className="rounded-2xl border border-[#0ac8ff]/30 bg-gradient-to-br from-[#0a1428] via-[#091428] to-[#020610] p-3.5 sm:p-6 mb-4 sm:mb-6 space-y-3 sm:space-y-4">
               <div className="flex items-start gap-3">
                 <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-[#0ac8ff]/10 border border-[#0ac8ff]/30 flex items-center justify-center">
                   <User className="h-6 w-6 text-[#8fdcff]" />
@@ -535,11 +535,9 @@ export default function Profile() {
               </div>
               <ul className="grid gap-1.5 sm:grid-cols-2 text-xs sm:text-sm text-[#f0e6d2]/85">
                 {[
-                  "Save quiz progress, XP, and rank",
+                  "Save XP, rank, and progress",
                   "Track streaks and category mastery",
-                  "Keep a persistent League profile",
-                  "Save profile photos and customization",
-                  "Access quiz history and future Pro progress features",
+                  "Customize your League profile",
                 ].map((benefit) => (
                   <li key={benefit} className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5 text-[#0ac8ff] shrink-0" />
@@ -652,6 +650,11 @@ export default function Profile() {
 
           {/* League stats */}
           <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+            {isGuest && (
+              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#a09b8c]">
+                Temporary guest progress
+              </div>
+            )}
             <LeagueProfileStats userId={statsUserId} config={config} guest={isGuest} />
           </div>
 

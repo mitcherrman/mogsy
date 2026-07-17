@@ -70,7 +70,7 @@ export default function Layout() {
 
   return (
     <div
-      className="min-h-dvh relative animate-page-fade-in"
+      className="min-h-dvh relative animate-page-fade-in pb-bottom-nav"
       style={{ background: "#0a0a1a" }}
     >
       {/* Stage: paints the app background only behind the centered column,
@@ -99,7 +99,23 @@ export default function Layout() {
       <Navbar themeId={themingActive ? visualThemeId : (isLolSection ? "lol" : undefined)} />
       {themingActive && <ThemeOverlay themeId={visualThemeId} />}
       {isLolSection && <HextechAmbience />}
-      <main className="pt-14 pb-16 sm:pb-0 relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
+      {/* Bottom-nav clearance lives once on the shell (.pb-bottom-nav above) so
+          the footer clears the fixed bar too — never re-apply it per page. */}
+      <main className="pt-[var(--app-header-h)] relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
+        {isLolSection && pathname !== "/lol" && (
+          /* Mobile: back control in normal flow so it reserves space and never
+             overlays cards. Desktop keeps the floating pill (see below). */
+          <div className="md:hidden px-4 pt-2">
+            <Link
+              to="/lol"
+              aria-label="Back to League hub"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              League Hub
+            </Link>
+          </div>
+        )}
         <Suspense fallback={<RouteLoader />}>
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
@@ -111,7 +127,7 @@ export default function Layout() {
         <Link
           to="/lol"
           aria-label="Back to League hub"
-          className="fixed top-16 left-3 md:left-4 z-[55] inline-flex items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] backdrop-blur-md shadow-lg hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
+          className="hidden md:inline-flex fixed top-[calc(var(--app-header-h)+0.5rem)] left-4 z-[55] items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] backdrop-blur-md shadow-lg hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           League Hub

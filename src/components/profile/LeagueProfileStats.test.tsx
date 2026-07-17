@@ -148,6 +148,9 @@ describe("LeagueProfileStats — activity states", () => {
     expect(screen.getByText("15 answered")).toBeTruthy();
     // Best label carries a real value, never an orphaned "Best:".
     expect(screen.getByText(/Best: champions · 100%/)).toBeTruthy();
+    // Mobile stacked variant renders the full, untruncated summary text.
+    expect(screen.getByText("Best category")).toBeTruthy();
+    expect(screen.getByText("champions · 100%")).toBeTruthy();
   });
 
   it("omits the Best label when no category has been played", async () => {

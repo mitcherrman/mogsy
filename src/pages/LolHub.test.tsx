@@ -11,10 +11,11 @@ import LolHub from "./LolHub";
 
 const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
+  authUser: { id: "u1", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({ user: { id: "u1", is_anonymous: false }, loading: false }),
+  useAuth: () => ({ user: mocks.authUser, loading: false }),
 }));
 vi.mock("@/hooks/blog/useBlogPosts", () => ({
   useBlogList: () => ({ data: [], isLoading: false }),
@@ -64,7 +65,10 @@ function renderHub() {
   );
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.authUser = { id: "u1", is_anonymous: false };
+});
 afterEach(cleanup);
 
 const HUB_DESTINATIONS = [
@@ -113,6 +117,15 @@ describe("LolHub — navigation structure", () => {
     expect(tabRow.className).toContain("md:flex");
     // No second set of mode tabs was introduced anywhere.
     expect(container.querySelectorAll('button[aria-pressed]')).toHaveLength(3);
+  });
+
+  it("shows the guest signup banner with concise mobile copy and a dismiss control", () => {
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    renderHub();
+    // Both responsive variants render in jsdom; assert the concise one exists.
+    expect(screen.getByText("Save XP and streaks across devices.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign up free" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeTruthy();
   });
 
   it("fires the landing funnel event and keeps the ad slot mounted", () => {

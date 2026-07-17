@@ -48,12 +48,22 @@ function CategoryKnowledge({ categories }: { categories: QuizCategoryStat[] }) {
           <Target className="h-4 w-4 text-primary" />
           Game Knowledge by Category
         </h3>
+        {/* Desktop: compact inline summary. Mobile gets the stacked block below
+            instead — a prominent summary must never ellipsize. */}
         {best && (
-          <span className="text-[11px] uppercase tracking-wider text-[#c9a84c] font-semibold truncate">
+          <span className="hidden sm:inline text-[11px] uppercase tracking-wider text-[#c9a84c] font-semibold">
             Best: {categoryLabel(best)} · {fmtPct(best.accuracy)}
           </span>
         )}
       </div>
+      {best && (
+        <div className="sm:hidden mb-2.5">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Best category</div>
+          <div className="text-sm font-bold text-[#c9a84c] capitalize">
+            {categoryLabel(best)} · {fmtPct(best.accuracy)}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {played
           .slice()

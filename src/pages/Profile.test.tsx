@@ -4,7 +4,7 @@
  * edit mode (save/cancel) that preserves the existing form + theme selector.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Profile from "./Profile";
@@ -146,6 +146,21 @@ describe("Profile — signed out (guest / anonymous session)", () => {
   it("does not imply guest progress is a stored profile", async () => {
     renderProfile();
     expect(await screen.findByText(/Progress on this device is temporary/)).toBeTruthy();
+    // Guest stats section carries an explicit device-local label.
+    expect(screen.getByText(/Temporary guest progress/i)).toBeTruthy();
+  });
+
+  it("shows exactly three account benefits", async () => {
+    renderProfile();
+    await screen.findByText(/Sign in to build your League profile/);
+    const list = screen.getByRole("list");
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items.map((li) => li.textContent)).toEqual([
+      "Save XP, rank, and progress",
+      "Track streaks and category mastery",
+      "Customize your League profile",
+    ]);
   });
 });
 
