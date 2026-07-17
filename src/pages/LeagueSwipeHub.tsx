@@ -18,13 +18,13 @@ export default function LeagueSwipeHub() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <SEOHead
-        title="League Swipe | Quick LoL Opinion & Knowledge Duels | Mogsy"
+        title="League Swipe | Quick LoL Opinion & Knowledge Duels | Mogzy"
         description="Fast head-to-head League of Legends games: vote your favorite champions, call out the most annoying ones, and duel over stats and item costs."
         path="/league-swipe"
       />
 
       <div className="mb-6">
-        <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">Mogsy League</div>
+        <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">Mogzy League</div>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">League Swipe</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-xl">
           Two options. One tap. Vote your opinions or test your knowledge, then see how the

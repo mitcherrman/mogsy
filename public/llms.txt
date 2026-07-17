@@ -1,14 +1,31 @@
-# Mogsy
+# Mogzy
 
-> Mogsy is a head-to-head voting and ranking platform. Swipe to vote, climb Aura leaderboards, and compete in user-created leagues.
+> Mogzy (https://mogzy.lol) is a League of Legends knowledge platform: quizzes, a
+> Daily Challenge, the Combat Lab damage simulator, League Docs reference pages,
+> and pro-play data exploration. Mogzy is an unofficial fan project and isn't
+> endorsed by Riot Games.
 
 ## Pages
 
-- [Home](/home): Main hub with friends, recent matchups, and featured leagues.
-- [Play](/play): Discover game modes, collections, and competitive leagues.
-- [Swipe](/swipe): Pick a league and start voting head-to-head.
-- [Collections](/presets): Curated preset leagues built by the Mogsy team.
-- [Compete](/swipe-leagues): User-created leagues for community competition.
-- [Aura Check](/elo-check): Look up Aura ratings and rankings for any item.
-- [Shop](/shop): Power-ups, cosmetics, and Mogsy Pro subscription.
-- [Sign in](/auth): Create an account or sign in to save progress.
+- [League Hub](/lol): Main hub linking every League of Legends feature.
+- [Quiz](/quiz): League of Legends quiz with categories, difficulty progression, and a Daily Challenge. Playable as a guest.
+- [Combat Lab](/combat-lab): Damage and combat simulator — model champion loadouts, item builds, and duels.
+- [League Docs](/lol/docs): Champion reference — base stats, growth curves, and abilities, with patch/source provenance.
+- [Champion Index](/lol/docs/champions): Browse every documented champion.
+- [Pro Data](/lol/docs/pro): Pro-play picks, bans, and presence by year, with scope and data-quality notes.
+- [Tier List](/lol/tier-list): Curated champion tier list with methodology and FAQ.
+- [Blog](/blog): Articles and rankings.
+
+## Policies
+
+- [About](/about)
+- [Privacy](/privacy)
+- [Terms](/terms)
+- [Security](/security)
+- [Contact](/contact)
+
+## Notes
+
+- Legacy routes from the earlier general "Mogsy" ranking product (/home, /play,
+  /swipe, /shop, and similar) redirect to /lol while the site runs in
+  League-only mode.

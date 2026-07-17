@@ -40,7 +40,7 @@ export default function LeagueSwipeStats() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <SEOHead
-        title="League Swipe Stats | Community Rankings & Accuracy | Mogsy"
+        title="League Swipe Stats | Community Rankings & Accuracy | Mogzy"
         description="Community stats for League Swipe: top-rated champions, knowledge accuracy, most contested matchups, and biggest blowouts."
         path="/league-swipe/stats"
       />

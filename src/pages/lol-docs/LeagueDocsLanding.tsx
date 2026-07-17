@@ -48,7 +48,7 @@ const CATEGORIES: Category[] = [
   },
   {
     title: "Pro Data",
-    description: "Esports data coverage: what pro-play data Mogsy has imported, year by year.",
+    description: "Esports data coverage: what pro-play data Mogzy has imported, year by year.",
     Icon: Trophy,
     to: "/lol/docs/pro",
   },
@@ -83,14 +83,14 @@ export default function LeagueDocsLanding() {
   return (
     <div>
       <SEOHead
-        title="League Docs — League of Legends Knowledge Base | Mogsy"
+        title="League Docs — League of Legends Knowledge Base | Mogzy"
         description="Browse structured League of Legends reference data: champion base stats and growth, items, mechanics, and patch changes. Every page shows its data patch and source."
         path="/lol/docs"
         keywords="league of legends wiki, lol champion stats, champion base stats, lol knowledge base, league docs"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "League Docs — Mogsy",
+          name: "League Docs — Mogzy",
           url: `${SITE_URL}/lol/docs`,
           description:
             "Structured League of Legends knowledge base: champions, items, mechanics, and patch changes.",
@@ -101,7 +101,7 @@ export default function LeagueDocsLanding() {
         {/* Hero + search */}
         <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-10">
           <div className="text-[10px] uppercase tracking-[0.25em] font-bold" style={{ color: GOLD }}>
-            Mogsy x LoL · Knowledge Base
+            Mogzy x LoL · Knowledge Base
           </div>
           <h1 className="mt-1 text-3xl md:text-4xl font-bold text-foreground">League Docs</h1>
           <p className="mt-1 text-sm md:text-base font-semibold" style={{ color: GOLD }}>
@@ -257,7 +257,7 @@ export default function LeagueDocsLanding() {
           )}
         </section>
 
-        {/* Mogsy integrations + data trust */}
+        {/* Mogzy integrations + data trust */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-xl border border-border bg-card/60 p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -265,7 +265,7 @@ export default function LeagueDocsLanding() {
               <h2 className="text-sm font-bold text-foreground">Built to connect</h2>
             </div>
             <p className="text-xs text-muted-foreground">
-              League Docs is part of Mogsy, so reference pages will progressively link into the rest
+              League Docs is part of Mogzy, so reference pages will progressively link into the rest
               of the toolkit — quiz yourself on a champion you're reading about, or open a build in
               the damage simulator. Those contextual actions arrive section by section; in the
               meantime both tools are a click away.
@@ -292,7 +292,7 @@ export default function LeagueDocsLanding() {
             </div>
             <p className="text-xs text-muted-foreground">
               Every League Docs data page states where its numbers come from: the data patch, the
-              source, and when it was last updated or verified. Values come from Mogsy's structured
+              source, and when it was last updated or verified. Values come from Mogzy's structured
               League database and may lag the very latest patch — when a page can't state its patch
               yet, it says so instead of guessing.
             </p>

@@ -71,7 +71,7 @@ export default function Profile() {
   const [isModerator, setIsModerator] = useState(false);
   const cityRef = useRef<HTMLDivElement>(null);
   const { config, setOption, resetConfig } = useProfileConfig();
-  // Legacy Mogsy modules (boost/frames/favorites) are hidden in League-only
+  // Legacy Mogzy modules (boost/frames/favorites) are hidden in League-only
   // mode. Only admin/dev users (moderator+) see the toggle to re-enable them;
   // the role check also guards against a stale localStorage value.
   const showLegacy = !LEAGUE_ONLY_MODE || (config.showLegacyMogsy && isModerator);
@@ -442,7 +442,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-dvh px-2 sm:px-4 py-4 sm:py-8">
-      <SEOHead title="My Profile — Mogsy League" description="Your Mogsy League of Legends profile. Track quiz performance, category mastery, streaks, and Combat Lab activity." />
+      <SEOHead title="My Profile — Mogzy League" description="Your Mogzy League of Legends profile. Track quiz performance, category mastery, streaks, and Combat Lab activity." />
       <div className="container mx-auto max-w-4xl xl:max-w-5xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
@@ -452,7 +452,7 @@ export default function Profile() {
               </Button>
               <div className="min-w-0">
                 <h1 className={`font-extrabold text-foreground truncate ${isGuest ? "text-xl sm:text-3xl" : "text-sm sm:text-base text-muted-foreground"}`}>
-                  Mogsy League Profile
+                  Mogzy League Profile
                 </h1>
                 {isGuest && (
                   <p className="hidden sm:block text-xs text-muted-foreground">
@@ -670,7 +670,7 @@ export default function Profile() {
           {!isGuest && editMode && (
           <form id="profile-edit-form" aria-label="Edit profile" onSubmit={handleSave}>
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-              {/* Left sidebar: Exposure Boost (legacy Mogsy — hidden in League-only mode) */}
+              {/* Left sidebar: Exposure Boost (legacy Mogzy — hidden in League-only mode) */}
               {showLegacy && (
               <div className="lg:w-56 shrink-0 order-2 lg:order-1">
                 <div className="sticky top-20 rounded-2xl border border-border bg-card p-3 sm:p-4 space-y-3">
@@ -923,7 +923,7 @@ export default function Profile() {
                 </div>
                 )}
 
-                {/* Favorites (legacy Mogsy — hidden in League-only mode) */}
+                {/* Favorites (legacy Mogzy — hidden in League-only mode) */}
                 {showLegacy && <FavoritesEditor profileId={profileId} />}
 
                 {/* Save / Cancel */}

@@ -108,8 +108,8 @@ export default function LeagueDocsProChampionIndex() {
   return (
     <div>
       <SEOHead
-        title="Pro Data by Champion — League Docs | Mogsy"
-        description="Browse which League of Legends champions have imported professional esports data in Mogsy: year spans, pick rows, and ban rows per champion."
+        title="Pro Data by Champion — League Docs | Mogzy"
+        description="Browse which League of Legends champions have imported professional esports data in Mogzy: year spans, pick rows, and ban rows per champion."
         path="/lol/docs/pro/champions"
         keywords="lol esports champion stats, league pro play by champion, champion pick ban data"
       />
@@ -140,7 +140,7 @@ export default function LeagueDocsProChampionIndex() {
               <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
                 Imported professional League/esports coverage grouped by champion: which champions
                 have data, across which years, and how many pick and ban rows each one has. Counts
-                reflect what's in Mogsy's database — not a claim that every historical match is
+                reflect what's in Mogzy's database — not a claim that every historical match is
                 represented.
               </p>
             </div>

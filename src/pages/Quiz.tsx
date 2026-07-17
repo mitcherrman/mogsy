@@ -695,7 +695,7 @@ export default function Quiz() {
       )}
 
       <SEOHead
-        title="Mogsy League Quiz — Test Your LoL Knowledge"
+        title="Mogzy League Quiz — Test Your LoL Knowledge"
         description="Play the League of Legends quiz: champion abilities, item builds, cooldowns, objectives, patch changes, and esports trivia. Daily challenges, streaks, and ranks — start free, no account needed."
         path="/quiz"
         keywords="league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, lol daily challenge, league learning game"
@@ -703,7 +703,7 @@ export default function Quiz() {
           {
             "@context": "https://schema.org",
             "@type": "WebPage",
-            name: "Mogsy League Quiz",
+            name: "Mogzy League Quiz",
             url: `${SITE_URL}/quiz`,
           },
         ]}

@@ -530,7 +530,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
         <li><strong>Sounds</strong> — per-animation SFX, shop sounds, UI feedback via <Tag>useAnimationSound</Tag> / <Tag>useShopSound</Tag>.</li>
         <li><strong>Z-index hierarchy</strong> — z-[70] cards · z-60 global · z-50 fixed nav · z-40 mobile action bar · z-30 bleeds.</li>
         <li><strong>Apple-like language</strong> — <Tag>rounded-xl</Tag> / <Tag>rounded-2xl</Tag>, subtle shadows, generous spacing, minimal chrome.</li>
-        <li><strong>SEO</strong> — <Tag>SEOHead</Tag> on every page with dynamic title, meta, OG tags. Primary domain <Tag>mogsy.net</Tag>.</li>
+        <li><strong>SEO</strong> — <Tag>SEOHead</Tag> on every page with dynamic title, meta, OG tags. Primary domain <Tag>mogzy.lol</Tag> (legacy: mogsy.net / mogsy.app redirect).</li>
       </UL>
     ),
   },

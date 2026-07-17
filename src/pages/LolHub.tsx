@@ -158,7 +158,7 @@ export default function LolHub() {
     <div>
       {showWelcome && <LolWelcomeIntro />}
       <SEOHead
-        title="Mogsy LoL Quiz | League of Legends Trivia and Training"
+        title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
         path="/lol"
         keywords="league of legends quiz, lol quiz, league trivia, champion quiz, item quiz, ability quiz, esports trivia, league learning game, league of legends training tool, combat lab, lol tier list"
@@ -166,7 +166,7 @@ export default function LolHub() {
           {
             "@context": "https://schema.org",
             "@type": "WebApplication",
-            name: "Mogsy LoL Quiz",
+            name: "Mogzy LoL Quiz",
             url: `${SITE_URL}/lol`,
             applicationCategory: "GameApplication",
             operatingSystem: "Web",
@@ -182,7 +182,7 @@ export default function LolHub() {
         {isAnonymous && !nudgeDismissed && (
           <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/8 px-4 py-2.5 text-sm">
             <span className="flex-1 min-w-[12rem] text-[#f5e9c8]/90">
-              Sign up to save your XP, streaks, and progress across Mogsy League.
+              Sign up to save your XP, streaks, and progress across Mogzy League.
             </span>
             <button
               onClick={() => {

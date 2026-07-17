@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export default function Privacy() {
   return (
     <LegalLayout
-      title={`Privacy Policy — ${SITE_NAME}`}
+      title={`Privacy Policy â€” ${SITE_NAME}`}
       description={`How ${SITE_NAME} collects, uses, retains, and protects your personal information.`}
       path="/privacy"
       heading="Privacy Policy"
@@ -14,7 +14,7 @@ export default function Privacy() {
       keywords="privacy policy, data protection, mogsy privacy, gdpr"
     >
       <Section title="Information we collect">
-        <p>We collect the minimum information needed to operate Mogsy:</p>
+        <p>We collect the minimum information needed to operate Mogzy:</p>
         <p className="font-medium text-foreground">Account information</p>
         <Bullets
           items={[
@@ -58,7 +58,7 @@ export default function Privacy() {
 
       <Section title="Cookies and local storage">
         <p>
-          Mogsy uses cookies and local browser storage to keep you signed in,
+          Mogzy uses cookies and local browser storage to keep you signed in,
           remember your theme and preferences, and measure aggregate usage of
           the platform. Third-party services (such as advertising and analytics
           providers) may set their own cookies subject to their own policies.
@@ -69,11 +69,11 @@ export default function Privacy() {
 
       <Section title="Advertising">
         <p>
-          Mogsy may display advertising, including ads served by Google AdSense.
+          Mogzy may display advertising, including ads served by Google AdSense.
           Advertising partners may use cookies or similar technologies to serve
           ads based on your prior visits to this or other websites. Google's use
           of advertising cookies enables it and its partners to serve ads based
-          on your visits to Mogsy and/or other sites on the internet. You may
+          on your visits to Mogzy and/or other sites on the internet. You may
           opt out of personalized advertising by visiting{" "}
           <a
             href="https://www.google.com/settings/ads"
@@ -101,11 +101,11 @@ export default function Privacy() {
       <Section title="Your rights">
         <Bullets
           items={[
-            "Access — request a copy of the personal data we hold about you",
-            "Correction — update inaccurate or incomplete information",
-            "Deletion — request removal of your account and associated data",
-            "Objection — opt out of certain processing where applicable",
-            "Portability — receive your data in a portable format",
+            "Access â€” request a copy of the personal data we hold about you",
+            "Correction â€” update inaccurate or incomplete information",
+            "Deletion â€” request removal of your account and associated data",
+            "Objection â€” opt out of certain processing where applicable",
+            "Portability â€” receive your data in a portable format",
           ]}
         />
         <p>
@@ -119,7 +119,7 @@ export default function Privacy() {
 
       <Section title="Children">
         <p>
-          Mogsy is not intended for users under the age of 13. If we learn that
+          Mogzy is not intended for users under the age of 13. If we learn that
           a child under 13 has created an account, we will remove the account
           and associated data.
         </p>

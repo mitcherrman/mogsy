@@ -208,7 +208,7 @@ export default function LeagueSwipeGame() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <SEOHead
-        title={`${game.title} | League Swipe | Mogsy LoL`}
+        title={`${game.title} | League Swipe | Mogzy LoL`}
         description={game.description}
         path={`/league-swipe/${game.slug}`}
       />

@@ -8,12 +8,12 @@ export default function About() {
       description={`${SITE_NAME} is a community platform for ranking games, quizzes, competitions, and gaming content — including League of Legends tools.`}
       path="/about"
       heading={`About ${SITE_NAME}`}
-      intro="Mogsy is a community-driven platform built around competition, ranking, and gaming culture."
+      intro="Mogzy is a community-driven platform built around competition, ranking, and gaming culture."
       keywords="mogsy, ranking games, gaming community, league of legends tools, quiz games"
     >
-      <Section title="What Mogsy is">
+      <Section title="What Mogzy is">
         <p>
-          Mogsy brings gamers together through interactive ranking games, quizzes,
+          Mogzy brings gamers together through interactive ranking games, quizzes,
           live competitions, and curated gaming content. Players can compare opinions,
           climb leaderboards, and test their knowledge in a friendly, competitive space.
         </p>
@@ -35,7 +35,7 @@ export default function About() {
           online communities.”
         </p>
         <p>
-          Every feature on Mogsy is designed to celebrate gaming culture while
+          Every feature on Mogzy is designed to celebrate gaming culture while
           giving players new ways to express their opinions, sharpen their
           knowledge, and connect with others.
         </p>

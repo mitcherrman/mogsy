@@ -1,9 +1,16 @@
 // ─── DOMAIN CONFIG ───
-// When you purchase a custom domain, update SITE_DOMAIN here.
-// Then find-and-replace "mogsy.com" in: index.html, public/sitemap.xml, public/robots.txt
-export const SITE_DOMAIN = "mogsy.app";
+// Canonical public origin. When changing domains, also update: index.html
+// (title/OG/JSON-LD), public/robots.txt, and the Supabase checkout /
+// customer-portal origin allowlists. scripts/generate-sitemap.ts reads this
+// file. Historical domains (mogsy.app, mogsy.net) remain only as redirects
+// and checkout-allowlist entries — they are no longer canonical.
+export const SITE_DOMAIN = "mogzy.lol";
 export const SITE_URL = `https://${SITE_DOMAIN}`;
-export const SITE_NAME = "Mogsy";
+export const SITE_NAME = "Mogzy";
+
+// Working support inbox. Still hosted on the legacy mogsy.app domain until a
+// support@mogzy.lol alias is configured — see docs/advertising.md owner tasks.
+export const SUPPORT_EMAIL = "support@mogsy.app";
 
 // ─── LEAGUE-ONLY PUBLIC MODE ───
 // Temporary: public users only see the League of Legends experience

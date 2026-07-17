@@ -25,7 +25,7 @@ export default function LeagueDocsChampionIndex() {
   return (
     <div>
       <SEOHead
-        title="Champions — League Docs | Mogsy"
+        title="Champions — League Docs | Mogzy"
         description="Alphabetical index of every League of Legends champion with base stats and per-level growth. Search and open any champion's reference page."
         path="/lol/docs/champions"
         keywords="league of legends champions list, lol champion base stats, champion index"

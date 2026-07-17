@@ -71,7 +71,7 @@ export default function Contact() {
         <ContactCard icon={LifeBuoy} title="Support" body="Account, billing, or technical issues with the platform." />
         <ContactCard icon={Mail} title="General inquiries" body="Press, partnerships, or anything else." />
         <ContactCard icon={Bug} title="Bug reports" body="Spotted something broken? Tell us how to reproduce it." />
-        <ContactCard icon={MessageSquare} title="Community feedback" body="Ideas, requests, and feedback to make Mogsy better." />
+        <ContactCard icon={MessageSquare} title="Community feedback" body="Ideas, requests, and feedback to make Mogzy better." />
       </div>
 
       <Section title="Send us a message">
@@ -109,8 +109,8 @@ export default function Contact() {
           Prefer email? Reach us directly at{" "}
           <a href="mailto:support@mogsy.app" className="text-primary underline-offset-4 hover:underline">
             support@mogsy.app
-          </a>
-          . For vulnerabilities, see our{" "}
+          </a>{" "}
+          (our support inbox — currently hosted on our legacy mogsy.app domain). For vulnerabilities, see our{" "}
           <Link to="/security" className="text-primary underline-offset-4 hover:underline">
             security page
           </Link>

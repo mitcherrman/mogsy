@@ -260,7 +260,7 @@ export default function LeagueDocsProChampionDetail() {
     return (
       <div>
         <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-          <SEOHead title="Pro Data by Champion — League Docs | Mogsy" description="Imported professional League of Legends data by champion." path="/lol/docs/pro/champions" />
+          <SEOHead title="Pro Data by Champion — League Docs | Mogzy" description="Imported professional League of Legends data by champion." path="/lol/docs/pro/champions" />
           <Breadcrumb current="Invalid champion" />
           <div className="rounded-xl border border-dashed border-border bg-card/40 p-10 text-center">
             <p className="text-sm font-semibold text-foreground">That doesn't look like a champion.</p>
@@ -280,7 +280,7 @@ export default function LeagueDocsProChampionDetail() {
     <div>
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
         <SEOHead
-          title={`${data?.champion ?? slug} Pro Data — League Docs | Mogsy`}
+          title={`${data?.champion ?? slug} Pro Data — League Docs | Mogzy`}
           description={`Imported professional League of Legends esports data for ${data?.champion ?? slug}: rows by year, yearly and scoped stats, import status, and recent games with sources.`}
           path={`/lol/docs/pro/champions/${slug}`}
           keywords={`${data?.champion ?? slug} pro play, ${data?.champion ?? slug} esports stats, lol pro data`}
@@ -508,7 +508,7 @@ function ChampionContent({
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">{data.champion} Pro Data</h1>
             <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
-              Mogsy's imported professional League/esports rows for {data.champion} — coverage,
+              Mogzy's imported professional League/esports rows for {data.champion} — coverage,
               stats, import status, and sources. Imported coverage doesn't guarantee every
               historical match is represented, and historical imports may still be in progress.
             </p>
@@ -910,7 +910,7 @@ function ChampionContent({
           </CaveatRow>
           <CaveatRow Icon={Info} tone="gold">
             Year coverage can be sparse — only the years listed above have imported rows. Imported
-            coverage is a view of Mogsy's database, not a claim that every historical pro match is
+            coverage is a view of Mogzy's database, not a claim that every historical pro match is
             represented. Source links are provided for inspection where available.
           </CaveatRow>
         </div>

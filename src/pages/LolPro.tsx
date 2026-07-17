@@ -122,7 +122,7 @@ export default function LolPro() {
 
   const handleUpgrade = async () => {
     if (!checkoutAvailable) {
-      toast.info("Mogsy Pro checkout is coming soon.");
+      toast.info("Mogzy Pro checkout is coming soon.");
       return;
     }
     if (isAnonymous) {
@@ -143,8 +143,8 @@ export default function LolPro() {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <SEOHead
-        title="Mogsy Pro — Practice Smarter at League"
-        description="Track your full quiz history, review missed questions, train weak spots, and unlock Matchup Cards with Mogsy Pro."
+        title="Mogzy Pro — Practice Smarter at League"
+        description="Track your full quiz history, review missed questions, train weak spots, and unlock Matchup Cards with Mogzy Pro."
       />
 
       <div className="mb-8 flex items-center gap-3">
@@ -152,7 +152,7 @@ export default function LolPro() {
           <Link to="/lol"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <Crown className="h-6 w-6" style={{ color: GOLD }} />
-        <h1 className="text-2xl font-bold">Mogsy Pro</h1>
+        <h1 className="text-2xl font-bold">Mogzy Pro</h1>
       </div>
 
       {showSuccess && !isPro && (
@@ -178,7 +178,7 @@ export default function LolPro() {
           Track your progress. Review your mistakes. Practice smarter.
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
-          Mogsy Pro helps serious League players practice smarter. Track your full quiz
+          Mogzy Pro helps serious League players practice smarter. Track your full quiz
           history, review missed questions, train weak spots, and unlock Matchup Cards
           by completing curated quiz sets.
         </p>
@@ -206,7 +206,7 @@ export default function LolPro() {
                 style={{ background: `linear-gradient(90deg, ${GOLD}, #a8862f)` }}
               >
                 <Crown className="mr-2 h-4 w-4" />
-                {checkingOut ? "Opening checkout…" : "Upgrade to Mogsy Pro"}
+                {checkingOut ? "Opening checkout…" : "Upgrade to Mogzy Pro"}
               </Button>
               <Button asChild size="lg" variant="ghost" className="text-[#c8d4e6] hover:text-white">
                 <Link to="/quiz">Keep playing free</Link>
@@ -214,7 +214,7 @@ export default function LolPro() {
             </div>
             {!checkoutAvailable && (
               <p className="mt-3 text-xs" style={{ color: GOLD }}>
-                Mogsy Pro checkout is coming soon.
+                Mogzy Pro checkout is coming soon.
               </p>
             )}
           </>

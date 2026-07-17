@@ -220,7 +220,7 @@ export default function Auth() {
   if (mode === "confirm-sent" || mode === "reset-sent") {
     return (
       <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
-        <SEOHead title="Check Your Email — Mogsy" description="Confirm your email to finish signing up for Mogsy." />
+        <SEOHead title="Check Your Email — Mogzy" description="Confirm your email to finish signing up for Mogzy." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -276,7 +276,7 @@ export default function Auth() {
   if (mode === "forgot") {
     return (
       <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
-        <SEOHead title="Reset Password — Mogsy" description="Reset your Mogsy password." />
+        <SEOHead title="Reset Password — Mogzy" description="Reset your Mogzy password." />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -284,7 +284,7 @@ export default function Auth() {
         >
           <div className="mb-6 text-center">
             <Link to="/" className="inline-block mb-4">
-              <img src={mogsyLogo} alt="Mogsy" className="h-12 mx-auto" />
+              <img src={mogsyLogo} alt="Mogzy" className="h-12 mx-auto" />
             </Link>
             <h2 className="text-xl font-bold text-foreground">Reset your password</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -324,8 +324,8 @@ export default function Auth() {
   return (
     <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
       <SEOHead
-        title={mode === "signup" ? "Sign Up — Mogsy" : "Sign In — Mogsy"}
-        description="Sign in or create your Mogsy account. Start voting, competing, and climbing the leaderboard."
+        title={mode === "signup" ? "Sign Up — Mogzy" : "Sign In — Mogzy"}
+        description="Sign in or create your Mogzy account. Start voting, competing, and climbing the leaderboard."
       />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -334,7 +334,7 @@ export default function Auth() {
       >
         <div className="mb-6 text-center">
           <Link to="/" className="inline-block mb-4">
-            <img src={mogsyLogo} alt="Mogsy" className="h-14 mx-auto" />
+            <img src={mogsyLogo} alt="Mogzy" className="h-14 mx-auto" />
           </Link>
           {isAnonymous && showLinkFlow ? (
             <>
@@ -475,7 +475,7 @@ export default function Auth() {
         {!showLinkFlow && (
           <p className="mt-5 text-center text-xs text-muted-foreground">
             {mode === "signin" ? (
-              <>New to Mogsy?{" "}
+              <>New to Mogzy?{" "}
                 <button onClick={() => setMode("signup")} className="text-primary font-semibold hover:underline">
                   Create an account
                 </button>
