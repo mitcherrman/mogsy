@@ -52,13 +52,13 @@ export const TANK_LEVEL_TWO_OPTIONS: readonly [TutorialAbility, TutorialAbility]
     id: "tank.brace",
     name: "Brace",
     description:
-      "Reduce incoming damage this round if you answer incorrectly while your opponent answers correctly.",
+      "If the Tank answers incorrectly while the opponent answers correctly, reduce the incoming damage.",
     charges: 3,
   },
   {
     id: "tank.barrier",
     name: "Barrier",
-    description: "Raise a one-time shield that persists until it absorbs damage.",
+    description: "Gain a shield that protects against one future damage instance.",
     charges: 1,
   },
 ];
@@ -127,6 +127,26 @@ export const TUTORIAL_QUESTIONS: TutorialQuestion[] = [
     prompt: "What do you earn by defeating minions?",
     choices: ["Gold", "Real money", "Nothing", "Skins"],
   },
+  {
+    prompt: "What does a Tank do best?",
+    choices: ["Soak damage up front", "Snipe from afar", "Heal allies only", "Steal camps"],
+  },
+  {
+    prompt: "Where does Baron Nashor live?",
+    choices: ["The shop", "The river pit", "Bot lane", "The fountain"],
+  },
+  {
+    prompt: "What color is your own team's Nexus crystal aura?",
+    choices: ["Blue", "Red hostile", "Invisible", "Rainbow"],
+  },
+  {
+    prompt: "Which of these ends the game?",
+    choices: ["Destroying the enemy Nexus", "Reaching level 18", "Buying six items", "Killing Baron"],
+  },
+  {
+    prompt: "One last one: what wins a Ranked duel?",
+    choices: ["Reducing your opponent's HP to zero", "Typing fastest", "Owning more skins", "Luck only"],
+  },
 ];
 
 // --- TUTORIAL-SCALED demo damage -------------------------------------------------
@@ -138,11 +158,16 @@ export const TUTORIAL_DEMO_DAMAGE = {
   wash: 0,
 } as const;
 
+/** Lighter drill damage so the Golem survives until the victory round. */
+export const TUTORIAL_PROGRESS_DAMAGE = 20;
+/** Authored final hit that lands the Golem on exactly 0 HP. */
+export const TUTORIAL_VICTORY_DAMAGE = 30;
+
 // --- TUTORIAL-AUTHORED: resolved round fixtures ----------------------------------
 // The machine APPLIES these — it never computes combat results. XP awards use
 // the verified authoritative values; damage is tutorial-scaled.
 
-export type TutorialRoundId = "A" | "B" | "C";
+export type TutorialRoundId = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
 
 export interface ResolvedRoundFixture {
   roundId: TutorialRoundId;
@@ -171,11 +196,26 @@ export interface ResolvedRoundFixture {
   playerLevelBefore: number;
   playerLevelAfter: number;
   timerStart: number;
-  /** Seconds remaining when the Golem submits (null = it never answers). */
+  /**
+   * Seconds remaining when the Golem submits (null = it never answers).
+   * Equal to timerStart means "instantly, before the first tick elapses".
+   */
   opponentAnsweredAt: number | null;
   pressureCutApplied: boolean;
+  /** Authored ability the coaching guides the player to arm (null = none). */
   abilityId: string | null;
+  /** Victory round: the player may arm any available ability instead. */
+  allowAnyAbility?: boolean;
   chargeConsumed: boolean;
+  /** Charges of the authored ability before/after resolution (null = n/a). */
+  chargesBefore: number | null;
+  chargesAfter: number | null;
+  /** Whether the armed ability's trigger condition was met. */
+  effectTriggered: boolean;
+  /** Player-facing effect explanation shown at reveal (null = no ability). */
+  effectSummary: string | null;
+  /** Authored NEXT-round duration after this round's ability resolution. */
+  nextRoundDurationAfterAbility: number;
   /** One-sentence result explanation, announced at reveal. */
   resultCopy: string;
 }
@@ -211,6 +251,11 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     pressureCutApplied: false,
     abilityId: null,
     chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
     resultCopy:
       "You were correct, so you dealt damage. The Golem missed and dealt none. (Training damage numbers are demonstrations, not Ranked balance.)",
   },
@@ -243,6 +288,11 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     pressureCutApplied: true,
     abilityId: null,
     chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
     resultCopy:
       "Both players were correct, so both dealt damage. Answering first doesn't stop your opponent's hit — it pressures their timer.",
   },
@@ -277,7 +327,206 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     pressureCutApplied: false,
     abilityId: null,
     chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
     resultCopy:
       "Time ran out for both players: no damage either way, and both still earned XP. Failing a round is never the end.",
+  },
+  // Round D — successful Fortify demonstration. Player arms Fortify, answers
+  // correctly: one charge committed (3→2), effect triggers, next question
+  // starts at 35 seconds.
+  D: {
+    roundId: "D",
+    questionIndex: 3,
+    playerAnswer: 0, // "Soak damage up front"
+    opponentAnswer: 1, // scripted wrong
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_DEMO_DAMAGE.soloCorrect,
+    opponentDamage: 0,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 110,
+    opponentHpAfter: 70,
+    playerXpBefore: 32,
+    playerXpAwarded: XP.correct, // 12 → 44
+    playerXpAfter: 44,
+    opponentXpBefore: 29,
+    opponentXpAwarded: XP.incorrect, // 9 → 38
+    opponentXpAfter: 38,
+    playerLevelBefore: 2,
+    playerLevelAfter: 2,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: "tank.fortify",
+    chargeConsumed: true,
+    chargesBefore: 3,
+    chargesAfter: 2,
+    effectTriggered: true,
+    effectSummary:
+      "You armed Fortify, so one charge was committed. You answered correctly, so Fortify activated. Your next question gains five seconds.",
+    nextRoundDurationAfterAbility: ROUND_SECONDS + 5, // 35
+    resultCopy:
+      "You armed Fortify and answered correctly: one charge was consumed when the round resolved, and Fortify activated — your NEXT question starts with five extra seconds.",
+  },
+  // Round E — armed-use commitment demonstration. A deliberately guided
+  // wrong answer with Fortify armed: the charge is still consumed (2→1),
+  // but the effect does not trigger. Starts at 35s from Round D's bonus;
+  // the Golem answers instantly, cutting the shared timer to 30.
+  E: {
+    roundId: "E",
+    questionIndex: 4,
+    playerAnswer: 0, // "The shop" — deliberately wrong, guided demonstration
+    opponentAnswer: 0, // scripted wrong too — a wash round
+    playerCorrect: false,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_DEMO_DAMAGE.wash,
+    opponentDamage: TUTORIAL_DEMO_DAMAGE.wash,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 70,
+    opponentHpAfter: 70,
+    playerXpBefore: 44,
+    playerXpAwarded: XP.incorrect, // 9 → 53
+    playerXpAfter: 53,
+    opponentXpBefore: 38,
+    opponentXpAwarded: XP.incorrect, // 9 → 47
+    opponentXpAfter: 47,
+    playerLevelBefore: 2,
+    playerLevelAfter: 2,
+    timerStart: ROUND_SECONDS + 5, // 35 — Fortify's next-question bonus
+    opponentAnsweredAt: ROUND_SECONDS + 5, // instantly → one-time cut to 30
+    pressureCutApplied: true,
+    abilityId: "tank.fortify",
+    chargeConsumed: true,
+    chargesBefore: 2,
+    chargesAfter: 1,
+    effectTriggered: false,
+    effectSummary:
+      "An armed ability is committed when the round resolves. This answer was incorrect, so Fortify did not activate. The charge was still consumed.",
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
+    resultCopy:
+      "This was a controlled demonstration: the guided wrong answer meant Fortify did not activate — but the armed charge was still consumed. Commitment happens at resolution, hit or miss.",
+  },
+  // Rounds F & G — progress drill toward Level 3 (no ability, charges kept).
+  // F lands on 65 XP: still one point BELOW the 66 threshold.
+  F: {
+    roundId: "F",
+    questionIndex: 5,
+    playerAnswer: 0, // "Blue"
+    opponentAnswer: 1,
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_PROGRESS_DAMAGE,
+    opponentDamage: 0,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 70,
+    opponentHpAfter: 50,
+    playerXpBefore: 53,
+    playerXpAwarded: XP.correct, // 12 → 65 (< 66: not Level 3 yet)
+    playerXpAfter: 65,
+    opponentXpBefore: 47,
+    opponentXpAwarded: XP.incorrect, // 9 → 56
+    opponentXpAfter: 56,
+    playerLevelBefore: 2,
+    playerLevelAfter: 2,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: null,
+    chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
+    resultCopy:
+      "Correct — 65 XP. Level 3 needs 66, so not yet: one more round. No ability was armed, so no charge was spent.",
+  },
+  // G crosses 66 → Level 3, auto-unlocking the unchosen Level 2 ability.
+  G: {
+    roundId: "G",
+    questionIndex: 6,
+    playerAnswer: 0, // "Destroying the enemy Nexus"
+    opponentAnswer: 3,
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_PROGRESS_DAMAGE,
+    opponentDamage: 0,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 50,
+    opponentHpAfter: 30,
+    playerXpBefore: 65,
+    playerXpAwarded: XP.correct, // 12 → 77 (crosses 66: Level 3)
+    playerXpAfter: 77,
+    opponentXpBefore: 56,
+    opponentXpAwarded: XP.incorrect, // 9 → 65
+    opponentXpAfter: 65,
+    playerLevelBefore: 2,
+    playerLevelAfter: 3,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: null,
+    chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
+    resultCopy:
+      "77 XP crosses the 66 threshold: Level 3! Your final normal ability unlocked automatically — no choice this time.",
+  },
+  // Round H — victory. Authored final damage lands the Golem on exactly 0.
+  H: {
+    roundId: "H",
+    questionIndex: 7,
+    playerAnswer: 0, // "Reducing your opponent's HP to zero"
+    opponentAnswer: 3,
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: TUTORIAL_VICTORY_DAMAGE,
+    opponentDamage: 0,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 30,
+    opponentHpAfter: 0,
+    playerXpBefore: 77,
+    playerXpAwarded: XP.correct, // 12 → 89
+    playerXpAfter: 89,
+    opponentXpBefore: 65,
+    opponentXpAwarded: XP.incorrect, // 9 → 74
+    opponentXpAfter: 74,
+    playerLevelBefore: 3,
+    playerLevelAfter: 3,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: null,
+    allowAnyAbility: true,
+    chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
+    resultCopy:
+      "Correct! Your final hit reduces the Training Golem to 0 HP. Zero HP ends the match — victory!",
   },
 };

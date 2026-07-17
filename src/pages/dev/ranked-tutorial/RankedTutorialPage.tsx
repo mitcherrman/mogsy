@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 import { initialTutorialState, tutorialReducer, visibleState } from "./tutorialMachine";
-import { ROUND_SECONDS } from "./fixtures";
 import { InstructionPanel } from "./components/InstructionPanel";
 import { TutorialProgress } from "./components/TutorialProgress";
 import { TrainingMatchShell } from "./components/TrainingMatchShell";
 import { AnswerRoundPanel } from "./components/AnswerRoundPanel";
+import { AbilityPanel } from "./components/AbilityPanel";
+import { LevelTwoChoicePanel } from "./components/LevelTwoChoicePanel";
+import { MatchOverPanel } from "./components/MatchOverPanel";
 
 export default function RankedTutorialPage() {
   const [state, dispatch] = useReducer(tutorialReducer, undefined, initialTutorialState);
@@ -41,7 +43,25 @@ export default function RankedTutorialPage() {
   const roundInteractive =
     stepId === "answer_selection" ||
     stepId === "both_correct_demo" ||
-    stepId === "failure_demo";
+    stepId === "failure_demo" ||
+    stepId === "starter_ability_intro" ||
+    stepId === "ability_resolution" ||
+    stepId === "level_three_unlock" ||
+    stepId === "victory_round";
+
+  // From the Fortify lesson onward, the dedicated AbilityPanel owns arming.
+  const abilityPanelActive =
+    stepId === "starter_ability_intro" ||
+    stepId === "ability_resolution" ||
+    stepId === "level_two_choice" ||
+    stepId === "level_three_unlock" ||
+    stepId === "victory_round" ||
+    stepId === "match_over";
+
+  const armedChargesBefore =
+    view.round?.playerAbilityId != null
+      ? view.charges[view.round.playerAbilityId] ?? null
+      : null;
 
   return (
     <main className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -73,7 +93,6 @@ export default function RankedTutorialPage() {
         opponent={view.opponent}
         timerMode={view.timerMode}
         timer={view.timer}
-        roundSeconds={ROUND_SECONDS}
       >
         <div ref={instructionRef} tabIndex={-1} className="outline-none space-y-4">
           <InstructionPanel
@@ -95,8 +114,38 @@ export default function RankedTutorialPage() {
               Demonstrate timeout
             </Button>
           )}
-          {view.round && (
-            <AnswerRoundPanel
+          {stepId === "level_two_choice" && (
+            <LevelTwoChoicePanel
+              pendingId={view.pendingLevelTwoChoiceId}
+              chosenId={view.chosenLevelTwoAbilityId}
+              dispatch={dispatch}
+            />
+          )}
+          {stepId === "match_over" ? (
+            <MatchOverPanel
+              player={view.player}
+              opponent={view.opponent}
+              charges={view.charges}
+              unlockedIds={view.unlockedAbilityIds}
+            />
+          ) : (
+            view.round &&
+            stepId !== "level_two_choice" && (
+              <AnswerRoundPanel
+                round={view.round}
+                interactive={roundInteractive}
+                dispatch={dispatch}
+                hideAbilitySelector={abilityPanelActive}
+                chargesBeforeResolution={armedChargesBefore}
+              />
+            )
+          )}
+          {abilityPanelActive && stepId !== "match_over" && (
+            <AbilityPanel
+              charges={view.charges}
+              unlockedIds={view.unlockedAbilityIds}
+              chosenLevelTwoAbilityId={view.chosenLevelTwoAbilityId}
+              playerLevel={view.player.level}
               round={view.round}
               interactive={roundInteractive}
               dispatch={dispatch}

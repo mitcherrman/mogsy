@@ -24,6 +24,7 @@ export type TutorialStepId =
   | "level_two_choice"
   | "level_three_unlock"
   | "victory_round"
+  | "match_over"
   | "queue_explanation"
   | "reconnect_explanation"
   | "ads_pro_explanation"
@@ -53,8 +54,9 @@ export type TutorialEvent =
   /** Final explicit confirmation — the authoritative lock moment. */
   | { type: "CONFIRM_LOCK" }
   | { type: "SIMULATE_TIMEOUT" }
-  // --- E2.4+ (typed, permitted per-step, not yet handled) ---
+  /** Level 2: select one of the two options (changeable until confirmed). */
   | { type: "CHOOSE_LEVEL_TWO"; abilityId: string }
+  /** Level 2: permanent confirmation. Duplicates are rejected. */
   | { type: "CONFIRM_LEVEL_TWO" };
 
 export type TutorialEventType = TutorialEvent["type"];
@@ -94,6 +96,15 @@ export interface RevealedRoundResult {
   playerXpAwarded: number;
   opponentXpAwarded: number;
   playerLeveledUpTo: number | null;
+  /** Ability facts revealed with the answers (null id = no ability). */
+  revealedAbilityId: string | null;
+  chargeConsumed: boolean;
+  chargesBefore: number | null;
+  chargesAfter: number | null;
+  effectTriggered: boolean;
+  effectSummary: string | null;
+  /** Ability the player's Level 3 threshold-crossing auto-unlocked, if any. */
+  levelThreeAutoUnlockedAbilityId: string | null;
   resultCopy: string;
 }
 
@@ -105,8 +116,8 @@ export interface RoundState {
   /** Player's pending picks. Frozen once phase reaches "locked". */
   playerAnswerIndex: number | null;
   playerAbilityId: string | null;
-  /** True when the player picked a non-authored answer and hit review. */
-  coachNudge: boolean;
+  /** Coaching flag: review found a non-authored answer or ability pick. */
+  coachNudge: "answer" | "ability" | null;
   opponentStatus: OpponentStatus;
   /** Set in the same transition that flips phase to "revealed". */
   result: RevealedRoundResult | null;
@@ -115,6 +126,8 @@ export interface RoundState {
 /** Shared-timer scratch. Reducer-owned; the page only dispatches TICKs. */
 export interface TimerState {
   remaining: number;
+  /** This round's authored start duration (30, or 35 with Fortify's bonus). */
+  duration: number;
   running: boolean;
   pressureCutApplied: boolean;
   warningAnnounced: boolean;
@@ -132,6 +145,14 @@ export interface TutorialState {
   opponent: TutorialCombatant;
   round: RoundState | null;
   timer: TimerState;
+  /** Remaining charges per ability id (player side; Golem never arms one). */
+  charges: Record<string, number>;
+  /** Pending Level 2 pick — changeable until CONFIRM_LEVEL_TWO. */
+  pendingLevelTwoChoiceId: string | null;
+  /** Confirmed, permanent Level 2 choice. */
+  chosenLevelTwoAbilityId: string | null;
+  /** True once the victory fixture has resolved the Golem to 0 HP. */
+  matchOver: boolean;
   /**
    * Most recent dynamic announcement for the page's aria-live region
    * (lock, opponent submission, pressure cut, reveal, XP, level-up).

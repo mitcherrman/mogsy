@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   initialTutorialState,
   tutorialReducer,
+  unlockedAbilityIds,
   visibleState,
 } from "./tutorialMachine";
 import { STEPS, STEP_ORDER } from "./tutorialSteps";
@@ -34,7 +35,7 @@ const ticks = (n: number): TutorialEvent[] => Array(n).fill({ type: "TICK" });
 const throughRoundB = () =>
   reduceAll(
     [
-      ...ticks(6), // 30 → 24: Golem submits, pressure cut → 19
+      ...ticks(7), // 30 → 24, then the trigger tick: Golem submits, cut → 19
       { type: "SELECT_ANSWER", answerIndex: 1 },
       { type: "LOCK_SUBMISSION" },
       { type: "CONFIRM_LOCK" },
@@ -46,6 +47,62 @@ const throughRoundB = () =>
 
 const throughRoundC = () =>
   reduceAll([{ type: "SIMULATE_TIMEOUT" }, { type: "CONTINUE" }], throughRoundB());
+
+/** xp_intro → starter_ability_intro with Round D live. */
+const toRoundD = () => reduceAll([{ type: "CONTINUE" }], throughRoundC());
+
+const throughRoundD = () =>
+  reduceAll(
+    [
+      { type: "SELECT_ANSWER", answerIndex: 0 },
+      { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
+      { type: "LOCK_SUBMISSION" },
+      { type: "CONFIRM_LOCK" },
+      { type: "CONTINUE" }, // reveal D (charge 3→2, effect triggered)
+      { type: "CONTINUE" }, // → ability_resolution (Round E at 35s)
+    ],
+    toRoundD(),
+  );
+
+const throughRoundE = () =>
+  reduceAll(
+    [
+      { type: "TICK" }, // Golem answers instantly: 35 → 30
+      { type: "SELECT_ANSWER", answerIndex: 0 }, // guided wrong answer
+      { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
+      { type: "LOCK_SUBMISSION" },
+      { type: "CONFIRM_LOCK" },
+      { type: "CONTINUE" }, // reveal E (charge 2→1, no effect)
+      { type: "CONTINUE" }, // → level_two_choice
+    ],
+    throughRoundD(),
+  );
+
+const throughLevelTwo = (choice: "tank.brace" | "tank.barrier" = "tank.brace") =>
+  reduceAll(
+    [
+      { type: "CHOOSE_LEVEL_TWO", abilityId: choice },
+      { type: "CONFIRM_LEVEL_TWO" },
+      { type: "CONTINUE" }, // → level_three_unlock (Round F)
+    ],
+    throughRoundE(),
+  );
+
+const drillRound: TutorialEvent[] = [
+  { type: "SELECT_ANSWER", answerIndex: 0 },
+  { type: "LOCK_SUBMISSION" },
+  { type: "CONFIRM_LOCK" },
+  { type: "CONTINUE" }, // reveal
+];
+
+const throughLevelThree = (choice: "tank.brace" | "tank.barrier" = "tank.brace") =>
+  reduceAll(
+    [...drillRound, { type: "CONTINUE" }, ...drillRound, { type: "CONTINUE" }],
+    throughLevelTwo(choice),
+  ); // F reveal → G start → G reveal → victory_round
+
+const throughVictory = (choice: "tank.brace" | "tank.barrier" = "tank.brace") =>
+  reduceAll([...drillRound, { type: "CONTINUE" }], throughLevelThree(choice));
 
 // --- Foundation ---------------------------------------------------------------
 
@@ -123,7 +180,7 @@ describe("answer selection and lock", () => {
       [{ type: "SELECT_ANSWER", answerIndex: 0 }, { type: "LOCK_SUBMISSION" }],
       toAnswerSelection(),
     );
-    expect(s.round?.coachNudge).toBe(true);
+    expect(s.round?.coachNudge).toBe("answer");
     expect(tutorialReducer(s, { type: "CONFIRM_LOCK" })).toBe(s);
     // EDIT_SUBMISSION returns to selection for another pick.
     s = tutorialReducer(s, { type: "EDIT_SUBMISSION" });
@@ -216,11 +273,11 @@ describe("Round A — player correct, opponent wrong", () => {
 
 describe("Round B — both correct with pressure cut", () => {
   it("Golem submits at 24s and the timer is cut by exactly 5, once", () => {
-    let s = reduceAll(ticks(5), throughRoundA());
-    expect(s.timer.remaining).toBe(25);
+    let s = reduceAll(ticks(6), throughRoundA());
+    expect(s.timer.remaining).toBe(24);
     expect(s.round?.opponentStatus).toBe("thinking");
     expect(s.timer.pressureCutApplied).toBe(false);
-    s = tutorialReducer(s, { type: "TICK" }); // 24 → golem submits → 19
+    s = tutorialReducer(s, { type: "TICK" }); // trigger tick: submit → 19
     expect(s.round?.opponentStatus).toBe("submitted");
     expect(s.timer.pressureCutApplied).toBe(true);
     expect(s.timer.remaining).toBe(19);
@@ -337,9 +394,274 @@ describe("timer and restart", () => {
       throughRoundB(),
       tutorialReducer(throughRoundB(), { type: "SIMULATE_TIMEOUT" }),
       throughRoundC(),
+      throughRoundD(),
+      throughRoundE(),
+      throughLevelTwo(),
+      throughLevelThree(),
+      throughVictory(),
     ];
     for (const s of checkpoints) {
-      expect(tutorialReducer(s, { type: "RESTART" })).toEqual(initialTutorialState());
+      const r = tutorialReducer(s, { type: "RESTART" });
+      expect(r).toEqual(initialTutorialState());
+      // Full reset: HP 170, XP 0, Level 1, Fortify 3, Brace 3, Barrier 1,
+      // no Level 2 choice, no Fortify bonus, no match-over.
+      expect(r.player).toEqual({ hp: 170, maxHp: 170, xp: 0, level: 1 });
+      expect(r.charges).toEqual({ "tank.fortify": 3, "tank.brace": 3, "tank.barrier": 1 });
+      expect(r.chosenLevelTwoAbilityId).toBeNull();
+      expect(r.timer.duration).toBe(30);
+      expect(r.matchOver).toBe(false);
     }
+  });
+});
+
+// --- Abilities (Rounds D & E) ---------------------------------------------------
+
+describe("Fortify demonstration (Round D)", () => {
+  it("Fortify starts unlocked with 3 charges; Brace and Barrier locked", () => {
+    const s = initialTutorialState();
+    expect(unlockedAbilityIds(s)).toEqual(["tank.fortify"]);
+    expect(s.charges["tank.fortify"]).toBe(3);
+    expect(s.charges["tank.brace"]).toBe(3);
+    expect(s.charges["tank.barrier"]).toBe(1);
+  });
+
+  it("locked abilities cannot be armed", () => {
+    const s = reduceAll(
+      [{ type: "SELECT_ABILITY", abilityId: "tank.brace" }],
+      toRoundD(),
+    );
+    expect(s.round?.playerAbilityId).toBeNull();
+  });
+
+  it("selecting Fortify does not consume a charge before resolution", () => {
+    const s = reduceAll(
+      [
+        { type: "SELECT_ANSWER", answerIndex: 0 },
+        { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
+        { type: "LOCK_SUBMISSION" },
+      ],
+      toRoundD(),
+    );
+    expect(s.charges["tank.fortify"]).toBe(3);
+    // Ability changeable before confirmation via edit.
+    const edited = tutorialReducer(s, { type: "EDIT_SUBMISSION" });
+    expect(
+      tutorialReducer(edited, { type: "SELECT_ABILITY", abilityId: null }).round
+        ?.playerAbilityId,
+    ).toBeNull();
+  });
+
+  it("locking without Fortify in Round D triggers the ability coach nudge", () => {
+    const s = reduceAll(
+      [{ type: "SELECT_ANSWER", answerIndex: 0 }, { type: "LOCK_SUBMISSION" }],
+      toRoundD(),
+    );
+    expect(s.round?.coachNudge).toBe("ability");
+    expect(tutorialReducer(s, { type: "CONFIRM_LOCK" })).toBe(s);
+  });
+
+  it("resolution consumes exactly one charge and triggers the effect", () => {
+    const s = throughRoundD();
+    expect(s.charges["tank.fortify"]).toBe(2);
+    expect(s.stepId).toBe("ability_resolution");
+    // Fixture facts, applied not recomputed.
+    const f = TUTORIAL_ROUNDS.D;
+    expect(f.chargesBefore).toBe(3);
+    expect(f.chargesAfter).toBe(2);
+    expect(f.effectTriggered).toBe(true);
+    expect(f.nextRoundDurationAfterAbility).toBe(35);
+    expect(s.player.xp).toBe(44);
+  });
+
+  it("the ability stays hidden before reveal", () => {
+    const locked = reduceAll(
+      [
+        { type: "SELECT_ANSWER", answerIndex: 0 },
+        { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
+        { type: "LOCK_SUBMISSION" },
+        { type: "CONFIRM_LOCK" },
+      ],
+      toRoundD(),
+    );
+    expect(locked.round?.result).toBeNull();
+    const visible = JSON.stringify(visibleState(locked));
+    expect(visible).not.toMatch(/revealedAbilityId/);
+    expect(visible).not.toMatch(/effectTriggered/);
+  });
+});
+
+describe("commitment rule (Round E)", () => {
+  it("next round starts at 35 seconds from Fortify's bonus", () => {
+    const s = throughRoundD();
+    expect(s.timer.remaining).toBe(35);
+    expect(s.timer.duration).toBe(35);
+  });
+
+  it("the Golem's instant answer cuts 35 to 30 exactly once", () => {
+    let s = tutorialReducer(throughRoundD(), { type: "TICK" });
+    expect(s.round?.opponentStatus).toBe("submitted");
+    expect(s.timer.remaining).toBe(30);
+    expect(s.timer.pressureCutApplied).toBe(true);
+    s = tutorialReducer(s, { type: "TICK" });
+    expect(s.timer.remaining).toBe(29); // no second cut
+  });
+
+  it("guided incorrect answer still consumes the armed charge, no effect", () => {
+    const s = throughRoundE();
+    expect(s.charges["tank.fortify"]).toBe(1); // 2 → 1
+    expect(s.player.xp).toBe(53); // incorrect XP 9 applied
+    const f = TUTORIAL_ROUNDS.E;
+    expect(f.effectTriggered).toBe(false);
+    expect(f.chargeConsumed).toBe(true);
+    expect(f.nextRoundDurationAfterAbility).toBe(30);
+  });
+
+  it("no-ability rounds consume no charges", () => {
+    const s = throughLevelThree(); // F and G both run with no ability
+    expect(s.charges["tank.fortify"]).toBe(1);
+    expect(s.charges["tank.brace"]).toBe(3);
+    expect(s.charges["tank.barrier"]).toBe(1);
+  });
+});
+
+// --- Level 2 choice ---------------------------------------------------------------
+
+describe("Level 2 permanent choice", () => {
+  it("cannot advance without choosing and confirming", () => {
+    const s = throughRoundE();
+    expect(s.stepId).toBe("level_two_choice");
+    expect(tutorialReducer(s, { type: "CONTINUE" })).toBe(s);
+    expect(tutorialReducer(s, { type: "CONFIRM_LEVEL_TWO" })).toBe(s); // nothing pending
+  });
+
+  it("both options selectable and changeable before confirmation", () => {
+    let s = tutorialReducer(throughRoundE(), {
+      type: "CHOOSE_LEVEL_TWO",
+      abilityId: "tank.brace",
+    });
+    expect(s.pendingLevelTwoChoiceId).toBe("tank.brace");
+    s = tutorialReducer(s, { type: "CHOOSE_LEVEL_TWO", abilityId: "tank.barrier" });
+    expect(s.pendingLevelTwoChoiceId).toBe("tank.barrier");
+  });
+
+  it("confirmation is permanent: change and duplicates rejected", () => {
+    const s = reduceAll(
+      [
+        { type: "CHOOSE_LEVEL_TWO", abilityId: "tank.brace" },
+        { type: "CONFIRM_LEVEL_TWO" },
+      ],
+      throughRoundE(),
+    );
+    expect(s.chosenLevelTwoAbilityId).toBe("tank.brace");
+    expect(tutorialReducer(s, { type: "CHOOSE_LEVEL_TWO", abilityId: "tank.barrier" })).toBe(s);
+    expect(tutorialReducer(s, { type: "CONFIRM_LEVEL_TWO" })).toBe(s);
+  });
+
+  it("chosen ability unlocks; alternative stays locked until Level 3", () => {
+    const s = throughLevelTwo("tank.brace");
+    expect(unlockedAbilityIds(s)).toEqual(["tank.fortify", "tank.brace"]);
+    expect(unlockedAbilityIds(s)).not.toContain("tank.barrier");
+  });
+});
+
+// --- Level 3 ------------------------------------------------------------------------
+
+describe("Level 3 automatic unlock", () => {
+  it("65 XP after Round F is below the 66 threshold — still Level 2", () => {
+    const s = reduceAll([...drillRound], throughLevelTwo());
+    expect(s.player.xp).toBe(65);
+    expect(s.player.level).toBe(2);
+    expect(s.round?.result?.playerLeveledUpTo).toBeNull();
+  });
+
+  it("Round G crosses 66 → derived Level 3, no second choice dialog", () => {
+    const s = throughLevelThree("tank.brace");
+    expect(s.player.xp).toBe(77);
+    expect(s.player.level).toBe(3);
+    expect(s.player.level).toBe(levelForXp(s.player.xp));
+    expect(s.stepId).toBe("victory_round");
+    // Original choice retained; no pending choice reopened.
+    expect(s.chosenLevelTwoAbilityId).toBe("tank.brace");
+    expect(s.pendingLevelTwoChoiceId).toBeNull();
+  });
+
+  it("Brace branch auto-unlocks Barrier; Barrier branch auto-unlocks Brace", () => {
+    const brace = throughLevelThree("tank.brace");
+    expect(unlockedAbilityIds(brace)).toEqual([
+      "tank.fortify",
+      "tank.brace",
+      "tank.barrier",
+    ]);
+    const barrier = throughLevelThree("tank.barrier");
+    expect(unlockedAbilityIds(barrier)).toEqual([
+      "tank.fortify",
+      "tank.barrier",
+      "tank.brace",
+    ]);
+    // No ultimate anywhere.
+    expect(JSON.stringify(unlockedAbilityIds(barrier))).not.toMatch(/ult/i);
+  });
+
+  it("the G reveal carries the auto-unlock announcement", () => {
+    const s = reduceAll(
+      [...drillRound, { type: "CONTINUE" }, ...drillRound],
+      throughLevelTwo("tank.brace"),
+    );
+    expect(s.round?.result?.levelThreeAutoUnlockedAbilityId).toBe("tank.barrier");
+    expect(s.lastAnnouncement).toMatch(/final normal ability unlocked automatically/);
+  });
+});
+
+// --- Victory & match over -----------------------------------------------------------
+
+describe("victory round and match over", () => {
+  it("requires explicit lock; opponent hidden before reveal", () => {
+    const s = throughLevelThree();
+    expect(s.stepId).toBe("victory_round");
+    expect(tutorialReducer(s, { type: "CONTINUE" })).toBe(s); // no skipping
+    const locked = reduceAll(
+      [
+        { type: "SELECT_ANSWER", answerIndex: 0 },
+        { type: "LOCK_SUBMISSION" },
+        { type: "CONFIRM_LOCK" },
+      ],
+      s,
+    );
+    expect(locked.round?.result).toBeNull();
+    expect(locked.matchOver).toBe(false); // only after resolution
+  });
+
+  it("resolved fixture brings the Golem to exactly 0 HP and sets match over", () => {
+    const s = reduceAll([...drillRound], throughLevelThree());
+    expect(s.opponent.hp).toBe(0);
+    expect(s.matchOver).toBe(true);
+    expect(s.lastAnnouncement).toMatch(/zero HP. Victory!/);
+    // Never negative.
+    expect(s.opponent.hp).toBeGreaterThanOrEqual(0);
+  });
+
+  it("the player may arm an available ability in the victory round", () => {
+    const s = reduceAll(
+      [
+        { type: "SELECT_ANSWER", answerIndex: 0 },
+        { type: "SELECT_ABILITY", abilityId: "tank.brace" },
+        { type: "LOCK_SUBMISSION" }, // allowAnyAbility: no nudge
+        { type: "CONFIRM_LOCK" },
+        { type: "CONTINUE" },
+      ],
+      throughLevelThree("tank.brace"),
+    );
+    expect(s.round?.coachNudge).toBeNull();
+    expect(s.charges["tank.brace"]).toBe(2); // commitment rule applied once
+    expect(s.opponent.hp).toBe(0);
+  });
+
+  it("CONTINUE after the victory reveal enters match_over", () => {
+    const s = throughVictory();
+    expect(s.stepId).toBe("match_over");
+    expect(s.matchOver).toBe(true);
+    expect(s.player.hp).toBe(150);
+    expect(s.player.xp).toBe(89);
+    expect(s.player.level).toBe(3);
   });
 });

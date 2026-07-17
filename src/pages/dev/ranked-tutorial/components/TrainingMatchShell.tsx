@@ -107,17 +107,10 @@ function CombatantPanel({
  * ticking digits are deliberately aria-live="off" (warnings are announced
  * through the page's live region instead, never per-second ticks).
  */
-function TutorialTimer({
-  mode,
-  timer,
-  roundSeconds,
-}: {
-  mode: TutorialTimerMode;
-  timer: TimerState;
-  roundSeconds: number;
-}) {
+function TutorialTimer({ mode, timer }: { mode: TutorialTimerMode; timer: TimerState }) {
   const urgent = timer.running && timer.remaining <= 5;
-  const pct = Math.max(0, Math.min(100, (timer.remaining / roundSeconds) * 100));
+  const pct = Math.max(0, Math.min(100, (timer.remaining / timer.duration) * 100));
+  const fortifyBonus = timer.duration > 30;
   return (
     <div className="flex flex-col items-center gap-1" data-testid="tutorial-timer">
       <div
@@ -137,6 +130,14 @@ function TutorialTimer({
           style={{ width: `${pct}%` }}
         />
       </div>
+      {fortifyBonus && (
+        <span
+          className="text-[11px] text-sky-600 dark:text-sky-400 font-medium"
+          data-testid="timer-fortify-note"
+        >
+          +5s: Fortify bonus ({timer.duration}s start)
+        </span>
+      )}
       {timer.pressureCutApplied && timer.running && (
         <span
           className="text-[11px] text-amber-600 dark:text-amber-400 font-medium"
@@ -164,21 +165,19 @@ export function TrainingMatchShell({
   opponent,
   timerMode,
   timer,
-  roundSeconds,
   children,
 }: {
   player: TutorialCombatant;
   opponent: TutorialCombatant;
   timerMode: TutorialTimerMode;
   timer: TimerState;
-  roundSeconds: number;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-start">
         <div className="order-first md:order-none md:col-start-2 flex justify-center pt-2">
-          <TutorialTimer mode={timerMode} timer={timer} roundSeconds={roundSeconds} />
+          <TutorialTimer mode={timerMode} timer={timer} />
         </div>
         <div className="md:col-start-1 md:row-start-1">
           <CombatantPanel identity={TUTORIAL_PLAYER} combatant={player} side="player" />

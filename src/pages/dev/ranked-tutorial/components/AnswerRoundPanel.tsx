@@ -1,9 +1,20 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Hourglass, Lock, X } from "lucide-react";
-import { RoundState } from "../types";
-import { TUTORIAL_OPPONENT, TUTORIAL_PLAYER, TUTORIAL_QUESTIONS } from "../fixtures";
-import { TutorialEvent } from "../types";
+import { Check, Hourglass, Lock, X, Zap } from "lucide-react";
+import { RoundState, TutorialEvent } from "../types";
+import {
+  TANK_LEVEL_TWO_OPTIONS,
+  TANK_STARTER,
+  TUTORIAL_OPPONENT,
+  TUTORIAL_PLAYER,
+  TUTORIAL_QUESTIONS,
+} from "../fixtures";
+
+const abilityName = (id: string | null): string => {
+  if (id === null) return "None";
+  const all = [TANK_STARTER, ...TANK_LEVEL_TWO_OPTIONS];
+  return all.find((a) => a.id === id)?.name ?? id;
+};
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 
@@ -45,11 +56,17 @@ export function AnswerRoundPanel({
   round,
   interactive,
   dispatch,
+  hideAbilitySelector = false,
+  chargesBeforeResolution = null,
 }: {
   round: RoundState;
   /** False while an explanation step is showing a resolved round. */
   interactive: boolean;
   dispatch: (event: TutorialEvent) => void;
+  /** True once the dedicated AbilityPanel owns arming (ability rounds). */
+  hideAbilitySelector?: boolean;
+  /** Remaining charges of the currently armed ability, for the review. */
+  chargesBeforeResolution?: number | null;
 }) {
   const question = TUTORIAL_QUESTIONS[round.questionIndex];
   const selecting = interactive && round.phase === "selecting";
@@ -112,23 +129,26 @@ export function AnswerRoundPanel({
         })}
       </div>
 
-      {/* Ability selector — this phase teaches only the no-ability path. */}
-      <div className="flex items-center gap-2" data-testid="ability-selector">
-        <span className="text-xs font-semibold text-muted-foreground">Ability:</span>
-        <Button
-          variant={round.playerAbilityId === null ? "secondary" : "outline"}
-          size="sm"
-          aria-pressed={round.playerAbilityId === null}
-          disabled={!selecting}
-          onClick={() => dispatch({ type: "SELECT_ABILITY", abilityId: null })}
-          data-testid="ability-none"
-        >
-          No ability
-        </Button>
-        <span className="text-[11px] text-muted-foreground">
-          Abilities are taught after Level 2.
-        </span>
-      </div>
+      {/* Inline no-ability selector for the early rounds; the dedicated
+          AbilityPanel takes over once abilities are being taught. */}
+      {!hideAbilitySelector && (
+        <div className="flex items-center gap-2" data-testid="ability-selector">
+          <span className="text-xs font-semibold text-muted-foreground">Ability:</span>
+          <Button
+            variant={round.playerAbilityId === null ? "secondary" : "outline"}
+            size="sm"
+            aria-pressed={round.playerAbilityId === null}
+            disabled={!selecting}
+            onClick={() => dispatch({ type: "SELECT_ABILITY", abilityId: null })}
+            data-testid="ability-none"
+          >
+            No ability
+          </Button>
+          <span className="text-[11px] text-muted-foreground">
+            Abilities are taught later in training.
+          </span>
+        </div>
+      )}
 
       {/* Selection → review → confirm flow. */}
       {selecting && (
@@ -154,12 +174,25 @@ export function AnswerRoundPanel({
                 ? question.choices[round.playerAnswerIndex]
                 : "—"}
             </span>
-            {" · "}Ability: <span className="font-medium">None</span>
+            {" · "}Ability:{" "}
+            <span className="font-medium">{abilityName(round.playerAbilityId)}</span>
+            {round.playerAbilityId !== null && chargesBeforeResolution !== null && (
+              <span className="text-muted-foreground">
+                {" "}
+                · Charges before resolution: {chargesBeforeResolution}
+              </span>
+            )}
           </div>
-          {round.coachNudge && (
+          {round.coachNudge === "answer" && (
             <p className="text-sm text-amber-600 dark:text-amber-400" data-testid="coach-nudge">
               Training tip: that answer won't land this lesson — go back and
               pick again before locking in.
+            </p>
+          )}
+          {round.coachNudge === "ability" && (
+            <p className="text-sm text-amber-600 dark:text-amber-400" data-testid="coach-nudge">
+              Training tip: this lesson needs a different ability setup — go
+              back and adjust before locking in.
             </p>
           )}
           <div className="flex gap-2">
@@ -261,6 +294,33 @@ export function AnswerRoundPanel({
               </div>
             </div>
           </div>
+          {result.revealedAbilityId !== null && (
+            <div
+              className="rounded-md border bg-background/50 p-2 space-y-1 text-sm"
+              data-testid="ability-reveal"
+            >
+              <div className="flex items-center gap-1.5 font-semibold">
+                <Zap className="h-3.5 w-3.5" aria-hidden />
+                Ability revealed: {abilityName(result.revealedAbilityId)}
+              </div>
+              <div className="text-xs text-muted-foreground tabular-nums">
+                Charge consumed at resolution: {result.chargesBefore} →{" "}
+                {result.chargesAfter}
+              </div>
+              <Badge
+                variant={result.effectTriggered ? "default" : "secondary"}
+                className="text-[10px]"
+                data-testid="effect-status"
+              >
+                {result.effectTriggered ? "Effect triggered" : "Effect did not trigger"}
+              </Badge>
+              {result.effectSummary && (
+                <p className="text-xs" data-testid="effect-summary">
+                  {result.effectSummary}
+                </p>
+              )}
+            </div>
+          )}
           {result.playerLeveledUpTo && (
             <Badge
               className="bg-violet-600 text-white hover:bg-violet-600"
@@ -268,6 +328,12 @@ export function AnswerRoundPanel({
             >
               Level {result.playerLeveledUpTo} reached!
             </Badge>
+          )}
+          {result.levelThreeAutoUnlockedAbilityId && (
+            <p className="text-sm font-medium" data-testid="level-three-unlock-note">
+              Your final normal ability unlocked automatically:{" "}
+              {abilityName(result.levelThreeAutoUnlockedAbilityId)}.
+            </p>
           )}
           <p className="text-sm" data-testid="result-copy">
             {result.resultCopy}
