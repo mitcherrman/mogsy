@@ -92,6 +92,9 @@ const KnowledgeHealth = lazy(() => import("./pages/admin/knowledge/KnowledgeHeal
 const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/KnowledgeChampionDetail"));
 const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
 
+// Admin Directory — private grouped index of admin destinations (E3).
+const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
+
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
 
@@ -192,6 +195,7 @@ const App = () => (
                   <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
+                  <Route path="/admin/directory" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDirectory /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
