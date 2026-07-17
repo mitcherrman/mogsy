@@ -13,7 +13,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { getAdsConfig, type AdsConfig } from "./config";
-import { getConsentState, type ConsentState } from "./consent";
+import { useConsentState, type ConsentState } from "./consent";
 import { resolveAdPolicy, type AdSuppressionReason, type ProStatus } from "./policy";
 import type { AdPlacement } from "./placements";
 
@@ -125,13 +125,15 @@ export function useLegacyAdGate(
   const { user } = useAuth();
   const { proStatus } = useSitewideTheme();
   const isSignedIn = !!user && !(user as { is_anonymous?: boolean }).is_anonymous;
+  // Reactive: consent changes mid-session recompute the gate immediately.
+  const consent = useConsentState();
 
   return resolveLegacyAdGate({
     legacyKey,
     route: location.pathname,
     proStatus,
     isSignedIn,
-    consent: getConsentState(),
+    consent,
     config: getAdsConfig(),
     overrides,
   });

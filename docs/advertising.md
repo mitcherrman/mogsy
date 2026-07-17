@@ -48,6 +48,54 @@ Because no CMP exists, **production Google rendering is unreachable**: the
 consent gate cannot return `"granted"` until a CMP is integrated in
 `consent.ts`.
 
+## Reactive consent store (`src/lib/ads/consent.ts`)
+
+Consent is a small reactive store (`unknown | granted | denied`, safe default
+`unknown`, no localStorage):
+- `useConsentState()` (useSyncExternalStore) — AdSlot, `useLegacyAdGate`, and
+  `GatedAdBanner` all use it, so a mid-session grant, denial, or **withdrawal
+  recomputes eligibility immediately**. Withdrawal suppresses all future unit
+  renders and script loads; already-served Google iframes are not forcibly
+  destroyed from our code (Google's tags respond to the CMP signal — manual
+  iframe teardown is unsafe and unnecessary).
+- `setConsentStateFromCmp()` — trusted entry point, to be called ONLY by a
+  real CMP adapter (or tests). `resetConsentForTests()` for tests.
+- `connectCmpAdapter(adapter)` — the documented wiring point for **Google
+  Privacy & Messaging** (the recommended CMP, configured in the AdSense
+  dashboard). The exact Google callback API must be taken from current Google
+  documentation when wiring; it is deliberately not guessed in code. House
+  ads remain independent of consent; Pro stays ad-free regardless of consent.
+
+## Production-host recognition (`src/lib/ads/adHosts.ts`)
+
+Google units run live only on `mogzy.lol` / `www.mogzy.lol`
+(`isProductionAdHost`, used by `AdBanner`). Historical domains (mogsy.app,
+mogsy.net), previews, and localhost always get `data-adtest="on"` — no live
+traffic. Host recognition alone enables nothing: flags, consent, and policy
+still gate every unit.
+
+## Canonical domain
+
+The canonical public origin is **`https://mogzy.lol`** (`src/lib/site-config.ts`
+`SITE_URL`; index.html metadata, robots, and the sitemap generator all derive
+from or match it). `mogsy.app` / `mogsy.net` are legacy redirect origins only
+(kept in the Stripe checkout/customer-portal allowlists). The support inbox is
+still `support@mogsy.app` until a `support@mogzy.lol` alias exists.
+
+## ads.txt
+
+`public/ads.txt` carries the real publisher line
+(`google.com, pub-9823769047605421, DIRECT, f08c47fec0942fa0`) and is copied
+verbatim to the site root by Vite. After deploying to the canonical domain,
+verify externally:
+
+```bash
+curl.exe -i https://mogzy.lol/ads.txt
+```
+
+Do not treat it as live until that check returns the line with HTTP 200 on
+the apex domain (and `www` redirects to apex).
+
 ## Legacy compatibility gate (`src/lib/ads/useLegacyAdGate.ts`)
 
 Maps legacy placement keys to typed registry placements
@@ -204,14 +252,23 @@ Nothing else in product pages should need to change.
    in Phase A to avoid churn).
 5. Migrate the Swipe interstitial UI onto the shared component model.
 
-## CMP requirement + re-review checklist (process, not code)
+## Remaining owner actions (dashboard/DNS — not repository work)
 
-- Integrate a CMP and wire its advertising-consent signal into
-  `src/lib/ads/consent.ts` — until then Google units cannot render anywhere.
-- Settle the canonical domain (`mogzy.lol` vs `mogsy.app` in `index.html`
-  metadata and `AdBanner`'s prod-host regex) before resubmitting.
-- Add `ads.txt` at the canonical domain root.
-- Re-verify the privacy policy's advertising section.
-- Resubmit the (existing) AdSense account for site approval; validate with
-  `data-adtest` test mode; do not enable Auto ads.
-- Invalid-traffic safeguards and Core Web Vitals monitoring after approval.
+1. Point `mogzy.lol` DNS at the hosting provider and deploy `main` there;
+   verify apex loads and `www.mogzy.lol` redirects to apex.
+2. Set deployment env vars so the build's sitemap includes dynamic pages:
+   `VITE_COMBAT_API_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (champion docs,
+   pro-data years, League blog posts are omitted with a warning otherwise).
+3. Verify `https://mogzy.lol/ads.txt`, `/robots.txt`, and `/sitemap.xml`
+   externally after deploy (`curl.exe -i https://mogzy.lol/ads.txt`).
+4. Add a Google Search Console property for `mogzy.lol` (the existing
+   `google-site-verification` meta belongs to the old property) and run URL
+   Inspection on /lol, /quiz, /combat-lab, /lol/docs, /privacy.
+5. In AdSense: add `mogzy.lol` as a site (meta tag + ads.txt verify
+   ownership), configure **Privacy & Messaging** (GDPR + US state messages),
+   keep Auto ads OFF, then request review. Wire the CMP callback into
+   `connectCmpAdapter` before enabling any serving.
+6. Configure a `support@mogzy.lol` alias, then update
+   `SUPPORT_EMAIL`/Contact page.
+7. After approval: enable flags deliberately, validate with `data-adtest`,
+   monitor invalid traffic and Core Web Vitals.

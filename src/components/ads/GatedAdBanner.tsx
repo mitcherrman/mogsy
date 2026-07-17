@@ -14,7 +14,7 @@ import AdBanner from "@/components/AdBanner";
 import { cn } from "@/lib/utils";
 import { useLegacyAdGate } from "@/lib/ads/useLegacyAdGate";
 import { getAdsConfig } from "@/lib/ads/config";
-import { getConsentState } from "@/lib/ads/consent";
+import { useConsentState } from "@/lib/ads/consent";
 import { ensureGoogleAdsScript, getAdsensePublisherId } from "@/lib/ads/googleLoader";
 
 interface GatedAdBannerProps {
@@ -34,6 +34,7 @@ export default function GatedAdBanner({
 }: GatedAdBannerProps) {
   const gate = useLegacyAdGate("blog");
   const config = getAdsConfig();
+  const consent = useConsentState();
 
   // AdSense slots are numeric; anything else is author misconfiguration.
   const slotValid = /^\d+$/.test(slot);
@@ -43,11 +44,11 @@ export default function GatedAdBanner({
     if (!canRenderGoogle) return;
     void ensureGoogleAdsScript({
       config,
-      consent: getConsentState(),
+      consent,
       policyEligible: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRenderGoogle, slot]);
+  }, [canRenderGoogle, slot, consent]);
 
   if (canRenderGoogle) {
     const publisherId = getAdsensePublisherId();

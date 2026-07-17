@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isProductionAdHost } from "@/lib/ads/adHosts";
 
 interface AdBannerProps {
   slot: string;
@@ -22,10 +23,11 @@ export default function AdBanner({ slot, format = "auto", className = "", client
 
   const client = clientId || "ca-pub-9823769047605421";
 
-  // Detect dev/preview hosts — Google requires data-adtest="on" outside approved domains
+  // Detect dev/preview hosts — Google requires data-adtest="on" outside approved domains.
+  // Centralized in adHosts.ts: only the canonical mogzy.lol (apex + www) is production.
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   const search = typeof window !== "undefined" ? window.location.search : "";
-  const isProdHost = /(^|\.)mogsy\.(net|app)$/i.test(host);
+  const isProdHost = isProductionAdHost(host);
   const forceTest = /[?&]adtest=on\b/.test(search);
   const adTest = !isProdHost || forceTest;
 

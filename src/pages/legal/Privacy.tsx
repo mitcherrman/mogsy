@@ -5,12 +5,12 @@ import { Link } from "react-router-dom";
 export default function Privacy() {
   return (
     <LegalLayout
-      title={`Privacy Policy â€” ${SITE_NAME}`}
+      title={`Privacy Policy — ${SITE_NAME}`}
       description={`How ${SITE_NAME} collects, uses, retains, and protects your personal information.`}
       path="/privacy"
       heading="Privacy Policy"
       intro={`This policy explains how ${SITE_NAME} handles your information when you use our platform.`}
-      updated="2026-07-10"
+      updated="2026-07-16"
       keywords="privacy policy, data protection, mogsy privacy, gdpr"
     >
       <Section title="Information we collect">
@@ -56,6 +56,17 @@ export default function Privacy() {
         <p>We do not sell your personal information.</p>
       </Section>
 
+      <Section title="Service providers">
+        <p>We rely on a small number of infrastructure providers to run {SITE_NAME}:</p>
+        <Bullets
+          items={[
+            "Supabase — hosts our database and authentication; account and gameplay data described above is stored there",
+            "Stripe — processes payments for Pro subscriptions and purchases; we never see or store full card numbers",
+            "Google AdSense — may serve advertising to eligible free users (see Advertising below)",
+          ]}
+        />
+      </Section>
+
       <Section title="Cookies and local storage">
         <p>
           Mogzy uses cookies and local browser storage to keep you signed in,
@@ -86,6 +97,25 @@ export default function Privacy() {
           . Where required, we show non-personalized ads or request consent
           before personalized ads are served.
         </p>
+        <p>
+          Advertising is currently limited: third-party Google advertising
+          remains disabled until a consent-management platform is in place and
+          the site is approved to serve ads. When enabled, ads may be shown to
+          eligible free users after consent; subscribers to {SITE_NAME} Pro do
+          not receive third-party advertising.
+        </p>
+        <p>
+          <span className="font-medium text-foreground">Your advertising choices.</span>{" "}
+          Where consent is required (including in the EEA, UK, and
+          Switzerland), we will ask before personalized ads are served, and you
+          will be able to change or withdraw that choice at any time through
+          the same privacy controls. Residents of US states with applicable
+          privacy laws (such as California) may opt out of "sharing" of
+          personal information for cross-context behavioral advertising; until
+          dedicated controls are available you can exercise these choices via
+          the Google Ads Settings link above, your browser or device settings,
+          or by contacting us.
+        </p>
       </Section>
 
       <Section title="Data retention">
@@ -101,11 +131,11 @@ export default function Privacy() {
       <Section title="Your rights">
         <Bullets
           items={[
-            "Access â€” request a copy of the personal data we hold about you",
-            "Correction â€” update inaccurate or incomplete information",
-            "Deletion â€” request removal of your account and associated data",
-            "Objection â€” opt out of certain processing where applicable",
-            "Portability â€” receive your data in a portable format",
+            "Access — request a copy of the personal data we hold about you",
+            "Correction — update inaccurate or incomplete information",
+            "Deletion — request removal of your account and associated data",
+            "Objection — opt out of certain processing where applicable",
+            "Portability — receive your data in a portable format",
           ]}
         />
         <p>

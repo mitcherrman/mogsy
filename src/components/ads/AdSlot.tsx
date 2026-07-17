@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { AD_PLACEMENTS, isKnownPlacement, type AdPlacement } from "@/lib/ads/placements";
 import { resolveAdPolicy, type AdPolicyDecision } from "@/lib/ads/policy";
 import { getAdsConfig } from "@/lib/ads/config";
-import { getConsentState } from "@/lib/ads/consent";
+import { useConsentState } from "@/lib/ads/consent";
 import { pickHouseAd } from "@/lib/ads/houseAds";
 import { emitAdEvent, emitDecision } from "@/lib/ads/analytics";
 
@@ -45,6 +45,9 @@ function AdSlotInner({
   const { user } = useAuth();
   const isSignedIn = !!user && !(user as { is_anonymous?: boolean }).is_anonymous;
   const { proStatus } = useSitewideTheme();
+  // Reactive: mid-session consent changes (grant/deny/withdraw) recompute
+  // eligibility immediately.
+  const consent = useConsentState();
 
   const decision: AdPolicyDecision = resolveAdPolicy({
     placement,
@@ -54,7 +57,7 @@ function AdSlotInner({
     isActiveQuizQuestion,
     isActiveRankedMatch,
     isRankedRecoveryState,
-    consent: getConsentState(), // "unknown" until a CMP lands — third-party structurally off
+    consent, // "unknown" until a CMP lands — third-party structurally off
     config: getAdsConfig(),
   });
 

@@ -10,7 +10,17 @@ export {
 export { getAdsConfig, type AdsConfig } from "./config";
 export { pickHouseAd, type HouseAdCreative } from "./houseAds";
 export { emitAdEvent, setAdEventSink, type AdLifecycleEvent } from "./analytics";
-export { getConsentState, type ConsentState } from "./consent";
+export {
+  getConsentState,
+  useConsentState,
+  subscribeConsent,
+  setConsentStateFromCmp,
+  resetConsentForTests,
+  connectCmpAdapter,
+  type CmpAdapter,
+  type ConsentState,
+} from "./consent";
+export { isProductionAdHost } from "./adHosts";
 export {
   ensureGoogleAdsScript,
   getAdsensePublisherId,
