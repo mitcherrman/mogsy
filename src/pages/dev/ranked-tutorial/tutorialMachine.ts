@@ -346,10 +346,25 @@ export const tutorialReducer = (
     }
 
     case "SELECT_ANSWER": {
-      if (!round || round.phase !== "selecting") return state;
+      // Canonical flow: the answer is changeable while selecting AND while
+      // reviewing (entering review submits nothing). A change during review
+      // recomputes the coach nudge against the authored guidance.
+      if (!round || !fixture) return state;
+      if (round.phase !== "selecting" && round.phase !== "reviewing") return state;
+      const answerNudge =
+        round.phase === "reviewing" && event.answerIndex !== fixture.playerAnswer;
+      const abilityNudge =
+        round.phase === "reviewing" &&
+        !answerNudge &&
+        !fixture.allowAnyAbility &&
+        round.playerAbilityId !== fixture.abilityId;
       return {
         ...state,
-        round: { ...round, playerAnswerIndex: event.answerIndex, coachNudge: null },
+        round: {
+          ...round,
+          playerAnswerIndex: event.answerIndex,
+          coachNudge: answerNudge ? "answer" : abilityNudge ? "ability" : null,
+        },
       };
     }
 
@@ -549,14 +564,5 @@ export const visibleState = (state: TutorialState): TutorialVisibleState => {
   };
 };
 
-/** XP progress toward the next level as 0–100 (mirrors the Ranked panel). */
-export const xpProgressPct = (xp: number, level: number): number => {
-  const cur = LEVEL_THRESHOLDS[level - 1] ?? 0;
-  const next = LEVEL_THRESHOLDS[level];
-  if (next === undefined || level >= MAX_LEVEL) return 100;
-  return Math.min(100, Math.round(((xp - cur) / (next - cur)) * 100));
-};
-
-/** Next-level threshold for display, or null at max level. */
-export const nextLevelThreshold = (level: number): number | null =>
-  level >= MAX_LEVEL ? null : LEVEL_THRESHOLDS[level];
+// (XP progress/threshold display math now lives in the canonical
+// ExperienceMeter via CombatantView thresholds — see adapters.ts.)

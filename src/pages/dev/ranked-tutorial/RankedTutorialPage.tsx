@@ -1,27 +1,41 @@
 // ---------------------------------------------------------------------------
-// /dev/ranked-tutorial — isolated Ranked TUTORIAL prototype.
+// /dev/ranked-tutorial — Ranked TUTORIAL on the canonical Ranked arena.
 //
-// A deterministic, scripted Training Match that teaches Ranked mechanics.
-// Fully local: no auth, no API calls, no ads, no persistence, no production
-// Ranked state. Intentionally not linked from any navigation or the sitemap.
+// The tutorial director (tutorialMachine + tutorialSteps + fixtures) drives
+// the SHARED arena components through neutral view contracts and
+// InteractionPermissions — the same game board real Ranked uses, with
+// tutorial-controlled permissions, scripted content, and instruction.
+// Fully local: no auth, no API calls, no ads, no persistence.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useReducer, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
+import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
+import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { initialTutorialState, tutorialReducer, visibleState } from "./tutorialMachine";
+import {
+  abilityViewsFromTutorial,
+  combatantViewsFromTutorial,
+  permissionsFromTutorial,
+  timerViewFromTutorial,
+} from "./adapters";
+import { TANK_LEVEL_TWO_OPTIONS, TANK_STARTER } from "./fixtures";
 import { InstructionPanel } from "./components/InstructionPanel";
 import { TutorialProgress } from "./components/TutorialProgress";
 import { TrainingMatchShell } from "./components/TrainingMatchShell";
-import { AnswerRoundPanel } from "./components/AnswerRoundPanel";
-import { AbilityPanel } from "./components/AbilityPanel";
-import { LevelTwoChoicePanel } from "./components/LevelTwoChoicePanel";
-import { MatchOverPanel } from "./components/MatchOverPanel";
+import { TutorialRoundArea } from "./components/TutorialRoundArea";
 import { QueueSimulationPanel } from "./components/QueueSimulationPanel";
 import { RecoverySimulationPanel } from "./components/RecoverySimulationPanel";
 import { AdsProEducationPanel } from "./components/AdsProEducationPanel";
 import { TutorialCompletePanel } from "./components/TutorialCompletePanel";
+
+const COACH_NOTES: Record<string, string> = {
+  answer: "Training tip: that answer won't land this lesson — Edit and pick again.",
+  ability: "Training tip: this lesson needs a different ability setup — Edit before locking.",
+};
 
 export default function RankedTutorialPage() {
   const [state, dispatch] = useReducer(tutorialReducer, undefined, initialTutorialState);
@@ -55,19 +69,26 @@ export default function RankedTutorialPage() {
     stepId === "level_three_unlock" ||
     stepId === "victory_round";
 
-  // From the Fortify lesson onward, the dedicated AbilityPanel owns arming.
-  const abilityPanelActive =
+  // From the Fortify lesson onward, the full ability tray is in play.
+  const abilityTrayActive =
     stepId === "starter_ability_intro" ||
     stepId === "ability_resolution" ||
-    stepId === "level_two_choice" ||
     stepId === "level_three_unlock" ||
-    stepId === "victory_round" ||
-    stepId === "match_over";
+    stepId === "victory_round";
 
-  const armedChargesBefore =
-    view.round?.playerAbilityId != null
-      ? view.charges[view.round.playerAbilityId] ?? null
-      : null;
+  const combatants = combatantViewsFromTutorial(state);
+  const timer = timerViewFromTutorial(state);
+  const permissions = permissionsFromTutorial(state, roundInteractive);
+  const coachNote = view.round?.coachNudge ? COACH_NOTES[view.round.coachNudge] : null;
+
+  const showRoundArea =
+    view.round !== null &&
+    stepId !== "level_two_choice" &&
+    stepId !== "match_over" &&
+    stepId !== "queue_explanation" &&
+    stepId !== "reconnect_explanation" &&
+    stepId !== "ads_pro_explanation" &&
+    stepId !== "complete";
 
   return (
     <main className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -95,10 +116,9 @@ export default function RankedTutorialPage() {
       </div>
 
       <TrainingMatchShell
-        player={view.player}
-        opponent={view.opponent}
-        timerMode={view.timerMode}
-        timer={view.timer}
+        player={combatants.player}
+        opponent={combatants.opponent}
+        timer={timer}
       >
         <div ref={instructionRef} tabIndex={-1} className="outline-none space-y-4">
           <InstructionPanel
@@ -106,7 +126,12 @@ export default function RankedTutorialPage() {
             onBegin={() => dispatch({ type: "BEGIN_TRAINING" })}
             onContinue={() => dispatch({ type: "CONTINUE" })}
             continueDisabled={
-              (stepId === "both_correct_demo" || stepId === "failure_demo") &&
+              (stepId === "both_correct_demo" ||
+                stepId === "failure_demo" ||
+                stepId === "starter_ability_intro" ||
+                stepId === "ability_resolution" ||
+                stepId === "level_three_unlock" ||
+                stepId === "victory_round") &&
               view.round?.phase !== "revealed" &&
               view.round?.phase !== "locked"
             }
@@ -120,13 +145,35 @@ export default function RankedTutorialPage() {
               Demonstrate timeout
             </Button>
           )}
+
           {stepId === "level_two_choice" && (
-            <LevelTwoChoicePanel
-              pendingId={view.pendingLevelTwoChoiceId}
-              chosenId={view.chosenLevelTwoAbilityId}
-              dispatch={dispatch}
+            <LevelUpPanel
+              event={{
+                kind: "level2-choice",
+                options: TANK_LEVEL_TWO_OPTIONS.map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  description: a.description,
+                })),
+                pendingOptionId: view.pendingLevelTwoChoiceId,
+                confirmedOptionId: view.chosenLevelTwoAbilityId,
+              }}
+              permissions={
+                view.chosenLevelTwoAbilityId
+                  ? NO_INTERACTIONS
+                  : {
+                      ...NO_INTERACTIONS,
+                      canSelectAbility: true,
+                      canConfirmSubmission: view.pendingLevelTwoChoiceId !== null,
+                    }
+              }
+              onSelectOption={(optionId) =>
+                dispatch({ type: "CHOOSE_LEVEL_TWO", abilityId: optionId })
+              }
+              onConfirmOption={() => dispatch({ type: "CONFIRM_LEVEL_TWO" })}
             />
           )}
+
           {stepId === "queue_explanation" && (
             <QueueSimulationPanel done={view.queueSimulationDone} dispatch={dispatch} />
           )}
@@ -134,43 +181,49 @@ export default function RankedTutorialPage() {
             <RecoverySimulationPanel
               done={view.recoverySimulationDone}
               player={view.player}
-              fortifyCharges={view.charges["tank.fortify"] ?? 0}
+              fortifyCharges={view.charges[TANK_STARTER.id] ?? 0}
               dispatch={dispatch}
             />
           )}
           {stepId === "ads_pro_explanation" && <AdsProEducationPanel />}
           {stepId === "complete" && <TutorialCompletePanel dispatch={dispatch} />}
-          {stepId === "match_over" ? (
-            <MatchOverPanel
-              player={view.player}
-              opponent={view.opponent}
-              charges={view.charges}
-              unlockedIds={view.unlockedAbilityIds}
+
+          {stepId === "match_over" && (
+            <MatchOverFrame
+              result="victory"
+              player={combatants.player}
+              opponent={combatants.opponent}
+              heading="Victory!"
+              subheading="Training match complete — the Golem is at 0 HP."
+              summary={
+                <div className="space-y-2" data-testid="match-over-summary-content">
+                  <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
+                    <li>Correct answers deal damage.</li>
+                    <li>Both players may deal damage in the same round.</li>
+                    <li>XP unlocks abilities — HP decides the winner.</li>
+                    <li>Ability charges are limited; armed means committed.</li>
+                    <li>Zero HP ends the match.</li>
+                  </ul>
+                  <p className="text-sm font-medium" data-testid="no-mutation-note">
+                    This training match did not affect your rating, history, or
+                    permanent progression.
+                  </p>
+                </div>
+              }
+              primaryAction={{
+                label: "Continue",
+                onClick: () => dispatch({ type: "CONTINUE" }),
+              }}
             />
-          ) : (
-            view.round &&
-            stepId !== "level_two_choice" &&
-            stepId !== "queue_explanation" &&
-            stepId !== "reconnect_explanation" &&
-            stepId !== "ads_pro_explanation" &&
-            stepId !== "complete" && (
-              <AnswerRoundPanel
-                round={view.round}
-                interactive={roundInteractive}
-                dispatch={dispatch}
-                hideAbilitySelector={abilityPanelActive}
-                chargesBeforeResolution={armedChargesBefore}
-              />
-            )
           )}
-          {abilityPanelActive && stepId !== "match_over" && (
-            <AbilityPanel
-              charges={view.charges}
-              unlockedIds={view.unlockedAbilityIds}
-              chosenLevelTwoAbilityId={view.chosenLevelTwoAbilityId}
-              playerLevel={view.player.level}
+
+          {showRoundArea && view.round && (
+            <TutorialRoundArea
               round={view.round}
-              interactive={roundInteractive}
+              abilities={abilityViewsFromTutorial(state)}
+              showAbilityTray={abilityTrayActive}
+              permissions={permissions}
+              coachNote={coachNote}
               dispatch={dispatch}
             />
           )}
