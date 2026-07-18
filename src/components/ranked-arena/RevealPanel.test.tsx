@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import { adaptBackendSettlement } from "@/pages/dev/ranked-duel-prototype/backend-adapter/adaptBackendSettlement";
+import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
   FIXTURE_PLAYER_IDS,
   getScenario,
   SETTLEMENT_SCENARIOS,
-} from "@/pages/dev/ranked-duel-prototype/backend-adapter/backendSettlementFixtures";
+} from "@/lib/ranked-core/backend/backendSettlementFixtures";
 import { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import { RevealPanel } from "./RevealPanel";
 

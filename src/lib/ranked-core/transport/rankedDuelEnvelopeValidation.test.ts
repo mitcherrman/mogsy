@@ -13,11 +13,11 @@ import {
   getResolvedEnvelopeScenario,
 } from "./rankedDuelEnvelopeFixtures";
 import { adaptResolvedRoundEnvelope } from "./adaptResolvedRoundEnvelope";
-import { adaptBackendSettlement } from "../backend-adapter/adaptBackendSettlement";
+import { adaptBackendSettlement } from "../backend/adaptBackendSettlement";
 import {
   FIXTURE_PLAYER_IDS,
   getScenario,
-} from "../backend-adapter/backendSettlementFixtures";
+} from "../backend/backendSettlementFixtures";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 

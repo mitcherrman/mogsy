@@ -17,7 +17,13 @@
 import type {
   AdaptedSettlement,
   AdaptedPlayerSettlement,
-} from "@/pages/dev/ranked-duel-prototype/backend-adapter/adaptBackendSettlement";
+} from "./backend/adaptBackendSettlement";
+
+/**
+ * Frontend-stable settlement slot: p1 = the viewer/owner, p2 = the other
+ * player. Slots are an explicit id mapping, never array position.
+ */
+export type PlayerSlot = "p1" | "p2";
 
 /** Which side of the arena a combatant renders on. Never a mode flag. */
 export type CombatantSide = "player" | "opponent";

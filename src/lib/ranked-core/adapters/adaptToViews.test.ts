@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { adaptPublicRound } from "@/pages/dev/ranked-duel-prototype/transport-adapter/adaptPublicRound";
-import { adaptPrivatePlayer } from "@/pages/dev/ranked-duel-prototype/transport-adapter/adaptPrivatePlayer";
+import { adaptPublicRound } from "@/lib/ranked-core/transport/adaptPublicRound";
+import { adaptPrivatePlayer } from "@/lib/ranked-core/transport/adaptPrivatePlayer";
 import {
   FIXTURE_OWNER_ID,
   getPrivateEnvelopeScenario,
   getPublicEnvelopeScenario,
   PUBLIC_ENVELOPE_SCENARIOS,
-} from "@/pages/dev/ranked-duel-prototype/transport-adapter/rankedDuelEnvelopeFixtures";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 import {
   abilityViewsFromPrivatePlayer,
   combatantViewsFromPublicRound,
