@@ -119,6 +119,10 @@ const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage
 // server (npm run content-studio). Inert without it; not linked anywhere.
 const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentStudioPage"));
 
+// League of Legends Glossary — public reference module. Lazy so the
+// definitions bundle only loads when the page is visited.
+const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
+
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -248,6 +252,7 @@ const App = () => (
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
                   <Route path="/lol/pro" element={<Suspense fallback={<RouteFallback />}><LolPro /></Suspense>} />
+                  <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
                   <Route path="/privacy" element={<Suspense fallback={<RouteFallback />}><Privacy /></Suspense>} />
                   <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />
