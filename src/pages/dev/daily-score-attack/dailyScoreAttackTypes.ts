@@ -19,7 +19,10 @@ export type DsaQuestion = {
   choices: DsaChoice[];
   difficulty_label: "easy" | "medium" | "hard";
   category: string | null;
-  image_path: string | null;
+  /** True when the question has media. The raw (answer-bearing) asset path is
+   * never sent; media is fetched from the opaque, auth-scoped image_url. */
+  has_image: boolean;
+  image_url: string | null;
 };
 
 export type DsaRunStatus = "active" | "completed" | "expired";

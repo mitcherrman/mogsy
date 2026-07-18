@@ -51,6 +51,27 @@ describe("readRun", () => {
     expect(() => readRun(run)).toThrow(DsaParseError);
   });
 
+  it("rejects a raw (answer-bearing) image_path", () => {
+    const run = activeRunFixture();
+    (run.question as Record<string, unknown>).image_path =
+      "assets/champions/Aatrox/passive.png";
+    expect(() => readRun(run)).toThrow(DsaParseError);
+  });
+
+  it("accepts an opaque image_url with has_image", () => {
+    const run = activeRunFixture();
+    (run.question as Record<string, unknown>).has_image = true;
+    (run.question as Record<string, unknown>).image_url =
+      "/api/daily-score-attack/runs/r1/questions/1/image";
+    const parsed = readRun(run);
+    expect(parsed.question?.has_image).toBe(true);
+    expect(parsed.question?.image_url).toBe(
+      "/api/daily-score-attack/runs/r1/questions/1/image",
+    );
+    // No champion/entity name in the reference.
+    expect(parsed.question?.image_url).not.toMatch(/champion|Aatrox|\.png/i);
+  });
+
   it("rejects malformed timestamps", () => {
     expect(() => readRun(activeRunFixture({ expires_at: "2026-07-17 12:00" }))).toThrow(
       DsaParseError,

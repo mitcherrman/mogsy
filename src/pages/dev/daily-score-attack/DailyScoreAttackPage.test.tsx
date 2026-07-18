@@ -10,6 +10,7 @@ const clientMocks = vi.hoisted(() => ({
   finalizeRun: vi.fn(),
   fetchResults: vi.fn(),
   fetchHistory: vi.fn(),
+  fetchQuestionImageObjectUrl: vi.fn(),
 }));
 
 const sessionMock = vi.hoisted(() => ({
@@ -92,6 +93,47 @@ describe("DailyScoreAttackPage", () => {
     expect(clientMocks.submitAnswer).toHaveBeenCalledWith("run-1", 1, 0);
     // No opponent-style UI anywhere in the game surface.
     expect(screen.queryByText(/\bHP\b|opponent|MMR|class|ability/i)).not.toBeInTheDocument();
+  });
+
+  it("renders question media from an opaque blob URL, never the raw path", async () => {
+    const withImage = activeRunFixture();
+    withImage.question = {
+      ...withImage.question!,
+      has_image: true,
+      image_url: "/api/daily-score-attack/runs/run-1/questions/1/image",
+    };
+    clientMocks.startOfficialRun.mockResolvedValue(withImage);
+    clientMocks.fetchQuestionImageObjectUrl.mockResolvedValue("blob:mock-object-url");
+    await startIntoQuestion();
+
+    const img = await screen.findByTestId("dsa-question-media");
+    expect(img).toHaveAttribute("src", "blob:mock-object-url");
+    expect(img).toHaveAttribute("alt", "Question image");
+    // The fetch used the opaque endpoint; the DOM src is a blob (no champion name).
+    expect(clientMocks.fetchQuestionImageObjectUrl).toHaveBeenCalledWith(
+      "/api/daily-score-attack/runs/run-1/questions/1/image",
+      expect.anything(),
+    );
+    expect(document.body.innerHTML).not.toMatch(/champions\/|Aatrox|\.png/i);
+  });
+
+  it("degrades gracefully when question media fails to load", async () => {
+    const withImage = activeRunFixture();
+    withImage.question = {
+      ...withImage.question!,
+      has_image: true,
+      image_url: "/api/daily-score-attack/runs/run-1/questions/1/image",
+    };
+    clientMocks.startOfficialRun.mockResolvedValue(withImage);
+    clientMocks.fetchQuestionImageObjectUrl.mockRejectedValue(new Error("media 500"));
+    await startIntoQuestion();
+
+    expect(await screen.findByTestId("dsa-question-media-error")).toHaveTextContent(
+      "Question image unavailable",
+    );
+    // The question and answer grid remain usable despite the media failure.
+    expect(screen.getByTestId("dsa-question-text")).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(4);
   });
 
   it("locks controls while submitting and shows no local correctness", async () => {

@@ -54,6 +54,9 @@ function readQuestion(raw: unknown): DsaQuestion {
   const q = raw as Record<string, unknown>;
   if ("correct_index" in q) fail("active question must not expose correct_index");
   if ("explanation" in q) fail("active question must not expose explanation");
+  // The raw asset path can embed the answer (e.g. a champion name); the server
+  // must only ever send the opaque image_url. Reject the raw path outright.
+  if ("image_path" in q) fail("active question must not expose image_path");
   const sequence = requireNonNegativeInt(q.sequence, "question.sequence");
   if (sequence < 1 || sequence > 30) fail("question.sequence out of range");
   if (!Array.isArray(q.choices) || q.choices.length < 2) {
@@ -69,7 +72,8 @@ function readQuestion(raw: unknown): DsaQuestion {
     choices: q.choices as DsaQuestion["choices"],
     difficulty_label: (q.difficulty_label as DsaQuestion["difficulty_label"]) ?? "easy",
     category: (q.category as string | null) ?? null,
-    image_path: (q.image_path as string | null) ?? null,
+    has_image: q.has_image === true,
+    image_url: typeof q.image_url === "string" ? q.image_url : null,
   };
 }
 

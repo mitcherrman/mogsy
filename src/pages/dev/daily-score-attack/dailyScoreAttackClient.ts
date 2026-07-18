@@ -185,3 +185,30 @@ export function fetchHistory(signal?: AbortSignal): Promise<DsaHistory> {
     requireIdentity: true, signal,
   });
 }
+
+/**
+ * Fetch a question's media from the opaque, auth-scoped endpoint and return an
+ * object URL. The endpoint requires the run's bearer token (so an <img src>
+ * can't be used directly); fetching as a blob keeps the answer-neutral request
+ * URL and yields a `blob:` DOM src that carries no champion/entity name.
+ * Caller must revoke the returned URL. `imageUrl` is the server-issued opaque
+ * path (e.g. /api/daily-score-attack/runs/{id}/questions/{n}/image).
+ */
+export async function fetchQuestionImageObjectUrl(
+  imageUrl: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const token = await ensureBackendAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let response: Response;
+  try {
+    response = await fetch(`${DSA_API_BASE}${imageUrl}`, { headers, signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new DsaApiError("NETWORK", 0, "question media request failed");
+  }
+  if (!response.ok) throw await toApiError(response);
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
