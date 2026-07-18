@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const clientMocks = vi.hoisted(() => ({
   fetchToday: vi.fn(),
@@ -91,8 +91,10 @@ describe("DailyScoreAttackPage", () => {
     expect(reveal).toHaveTextContent("Correct!");
     expect(screen.getByTestId("dsa-reveal-score")).toHaveTextContent("+200");
     expect(clientMocks.submitAnswer).toHaveBeenCalledWith("run-1", 1, 0);
-    // No opponent-style UI anywhere in the game surface.
-    expect(screen.queryByText(/\bHP\b|opponent|MMR|class|ability/i)).not.toBeInTheDocument();
+    // No opponent-style combat UI anywhere in the game surface. (The reveal now
+    // holds the answered question, whose quiz text legitimately contains words
+    // like "Ability"/"class" — so this guards the combat-panel tokens only.)
+    expect(screen.queryByText(/\bHP\b|opponent|\bMMR\b/i)).not.toBeInTheDocument();
   });
 
   it("renders question media from an opaque blob URL, never the raw path", async () => {
@@ -188,5 +190,278 @@ describe("DailyScoreAttackPage", () => {
       "No XP",
     );
     expect(screen.getByTestId("dsa-results-badge")).toHaveTextContent(/practice/i);
+  });
+});
+
+// The player-facing Time Trial reveal must hold the resolved question for exactly
+// TIME_TRIAL_RESULT_HOLD_MS (900 ms) before advancing, while the authoritative
+// 90s run timer keeps counting. These drive the page on fake timers to prove the
+// precise hold boundary and its cancellation guarantees.
+describe("Time Trial 900ms result hold", () => {
+  const HOLD_MS = 900;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  // Advance fake timers and flush the resolved microtasks (network mocks) inside act.
+  async function tick(ms: number) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  }
+
+  // Drive from mount through the cosmetic countdown into the first active question.
+  async function driveToQuestion(startTestId: string) {
+    render(<DailyScoreAttackPage />);
+    await tick(0); // flush metadata/session/current-run load
+    fireEvent.click(screen.getByTestId(startTestId));
+    await tick(2400); // 3 cosmetic countdown ticks at 800ms
+    await tick(0); // flush the run-creation request
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Ability Power?",
+    );
+  }
+
+  async function submitFirstAnswer() {
+    fireEvent.click(screen.getAllByRole("radio")[0]);
+    await tick(0); // flush submitAnswer → RESOLUTION_RECEIVED
+    expect(screen.getByTestId("dsa-reveal")).toBeInTheDocument();
+  }
+
+  // The correct-choice button carries data-choice-state="correct".
+  function correctChoice(): Element | null {
+    return document.querySelector('[data-choice-state="correct"]');
+  }
+  function choiceTexts(): string[] {
+    // Strip the sr-only " (correct answer)" suffix the correct choice carries.
+    return screen
+      .getAllByRole("radio")
+      .map((el) => (el.textContent ?? "").replace(" (correct answer)", ""));
+  }
+
+  it("holds the answered question and correct answer visible for 900ms (official)", async () => {
+    clientMocks.startOfficialRun.mockResolvedValue(activeRunFixture());
+    clientMocks.submitAnswer.mockResolvedValue(resolutionFixture()); // correct, index 0
+    await driveToQuestion("dsa-start-official");
+    // Sanity: choose the (correct) first answer of the answered question.
+    await submitFirstAnswer();
+
+    // Immediately after resolution the ANSWERED question stays rendered with its
+    // ORIGINAL choices, correct/incorrect styling shows, the server-indicated
+    // correct answer is highlighted, controls lock, and the NEXT question's text
+    // and choices are NOT rendered.
+    expect(screen.getByTestId("dsa-reveal")).toHaveTextContent("Correct!");
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Ability Power?",
+    );
+    expect(choiceTexts()).toEqual([
+      "Rabadon's Deathcap",
+      "Infinity Edge",
+      "Warmog's Armor",
+      "Trinity Force",
+    ]);
+    expect(correctChoice()).toHaveTextContent("Rabadon's Deathcap");
+    for (const option of screen.getAllByRole("radio")) expect(option).toBeDisabled();
+    expect(screen.queryByText("Which item grants Attack Damage?")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Rod of Ages/)).not.toBeInTheDocument();
+
+    // At 899ms the answered question and its correct highlight remain, controls
+    // stay locked, and the next question is still not rendered.
+    await tick(HOLD_MS - 1);
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Ability Power?",
+    );
+    expect(correctChoice()).toHaveTextContent("Rabadon's Deathcap");
+    for (const option of screen.getAllByRole("radio")) expect(option).toBeDisabled();
+    expect(screen.queryByText("Which item grants Attack Damage?")).not.toBeInTheDocument();
+
+    // At/after 900ms the next authoritative question appears exactly once
+    // (+50ms transition settle); the reveal clears and controls unlock.
+    await tick(1);
+    await tick(50);
+    expect(screen.queryByTestId("dsa-reveal")).not.toBeInTheDocument();
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Attack Damage?",
+    );
+    expect(choiceTexts()).toEqual([
+      "Rod of Ages",
+      "Infinity Edge",
+      "Sunfire Aegis",
+      "Rylai's",
+    ]);
+    for (const option of screen.getAllByRole("radio")) expect(option).not.toBeDisabled();
+  });
+
+  it("highlights the server correct answer and marks the wrong selection during the hold", async () => {
+    clientMocks.startOfficialRun.mockResolvedValue(activeRunFixture());
+    // Wrong pick at index 1; server says correct is index 0.
+    clientMocks.submitAnswer.mockResolvedValue(
+      resolutionFixture({ is_correct: false, selected_index: 1, correct_index: 0, awarded_score: 0, combo_after: 0 }),
+    );
+    await driveToQuestion("dsa-start-official");
+    fireEvent.click(screen.getAllByRole("radio")[1]);
+    await tick(0);
+
+    expect(screen.getByTestId("dsa-reveal")).toHaveTextContent("Incorrect");
+    const options = screen.getAllByRole("radio");
+    expect(options[0]).toHaveAttribute("data-choice-state", "correct"); // server correct
+    expect(options[0]).toHaveTextContent("Rabadon's Deathcap");
+    expect(options[1]).toHaveAttribute("data-choice-state", "incorrect-selected"); // my pick
+    // Highlight persists across the hold.
+    await tick(HOLD_MS - 1);
+    expect(screen.getAllByRole("radio")[0]).toHaveAttribute("data-choice-state", "correct");
+  });
+
+  it("uses the same 900ms answered-question hold for practice runs", async () => {
+    sessionMock.user = { is_anonymous: true };
+    clientMocks.startPracticeRun.mockResolvedValue(activeRunFixture({ official: false }));
+    // Default resolution advances the run to the distinct next question (seq 2).
+    clientMocks.submitAnswer.mockResolvedValue(resolutionFixture());
+    await driveToQuestion("dsa-start-practice");
+    await submitFirstAnswer();
+
+    await tick(HOLD_MS - 1);
+    expect(screen.getByTestId("dsa-reveal")).toBeInTheDocument();
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Ability Power?",
+    );
+    expect(correctChoice()).toHaveTextContent("Rabadon's Deathcap");
+    await tick(1 + 50);
+    expect(screen.queryByTestId("dsa-reveal")).not.toBeInTheDocument();
+    expect(screen.getByTestId("dsa-question-text")).toHaveTextContent(
+      "Which item grants Attack Damage?",
+    );
+  });
+
+  it("shows the answered question's media during the hold, then the next question's", async () => {
+    const answeredImg = "/api/daily-score-attack/runs/run-1/questions/1/image";
+    const nextImg = "/api/daily-score-attack/runs/run-1/questions/2/image";
+    const answeredRun = activeRunFixture();
+    answeredRun.question = { ...answeredRun.question!, has_image: true, image_url: answeredImg };
+    const nextRun = activeRunFixture({ sequence: 2 });
+    nextRun.question = {
+      sequence: 2,
+      question_id: 102,
+      question_text: "Which item grants Attack Damage?",
+      choices: ["Rod of Ages", "Infinity Edge", "Sunfire Aegis", "Rylai's"],
+      difficulty_label: "medium",
+      category: "Items",
+      has_image: true,
+      image_url: nextImg,
+    };
+    clientMocks.startOfficialRun.mockResolvedValue(answeredRun);
+    clientMocks.submitAnswer.mockResolvedValue(resolutionFixture({ run: nextRun }));
+    // Distinct blob per source path; track revokes.
+    clientMocks.fetchQuestionImageObjectUrl.mockImplementation((url: string) =>
+      Promise.resolve(`blob:${url}`),
+    );
+    if (typeof URL.revokeObjectURL !== "function") {
+      (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = () => {};
+    }
+    const revokeSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    await driveToQuestion("dsa-start-official");
+    await tick(0); // flush the active question's media fetch
+    expect(screen.getByTestId("dsa-question-media")).toHaveAttribute("src", `blob:${answeredImg}`);
+
+    await submitFirstAnswer();
+    // During the hold the ANSWERED image is still shown; the next image has not
+    // been requested and the answered blob has not been revoked yet.
+    await tick(HOLD_MS - 1);
+    expect(screen.getByTestId("dsa-question-media")).toHaveAttribute("src", `blob:${answeredImg}`);
+    expect(clientMocks.fetchQuestionImageObjectUrl).not.toHaveBeenCalledWith(
+      nextImg,
+      expect.anything(),
+    );
+    expect(revokeSpy).not.toHaveBeenCalledWith(`blob:${answeredImg}`);
+
+    // After the hold the next question's media loads and the stale answered blob
+    // is revoked.
+    await tick(1 + 50);
+    await tick(0); // flush next media fetch
+    expect(clientMocks.fetchQuestionImageObjectUrl).toHaveBeenCalledWith(nextImg, expect.anything());
+    expect(screen.getByTestId("dsa-question-media")).toHaveAttribute("src", `blob:${nextImg}`);
+    expect(revokeSpy).toHaveBeenCalledWith(`blob:${answeredImg}`);
+    revokeSpy.mockRestore();
+  });
+
+  it("keeps the authoritative timer counting down during the hold", async () => {
+    clientMocks.startOfficialRun.mockResolvedValue(activeRunFixture());
+    // Next-question projection starts just below a whole second so a sub-900ms
+    // advance crosses a second boundary in the display.
+    clientMocks.submitAnswer.mockResolvedValue(
+      resolutionFixture({
+        run: activeRunFixture({
+          sequence: 2,
+          remaining_ms: 89_600,
+          question: {
+            sequence: 2,
+            question_id: 102,
+            question_text: "Which item grants Attack Damage?",
+            choices: ["Rod of Ages", "Infinity Edge", "Sunfire Aegis", "Rylai's"],
+            difficulty_label: "medium",
+            category: "Items",
+            has_image: false,
+            image_url: null,
+          },
+        }),
+      }),
+    );
+    await driveToQuestion("dsa-start-official");
+    await submitFirstAnswer();
+
+    const timer = screen.getByTestId("dsa-timer");
+    expect(timer).toHaveTextContent("1:30"); // ceil(89.6s)
+    await tick(800); // still within the 900ms hold; timer ticks at 250ms cadence
+    expect(screen.getByTestId("dsa-reveal")).toBeInTheDocument(); // hold ongoing
+    expect(screen.getByTestId("dsa-timer")).toHaveTextContent("1:29"); // ceil(88.85s)
+  });
+
+  it("lets run completion during the hold win over advancing", async () => {
+    clientMocks.startOfficialRun.mockResolvedValue(activeRunFixture());
+    clientMocks.submitAnswer.mockResolvedValue(
+      resolutionFixture({ run: terminalRunFixture() }),
+    );
+    clientMocks.fetchResults.mockResolvedValue(resultsFixture());
+    await driveToQuestion("dsa-start-official");
+    await submitFirstAnswer();
+
+    await tick(HOLD_MS + 50);
+    await tick(0); // flush terminal results + history load
+    await tick(0);
+    // Terminal state wins: the run does not advance to another active question,
+    // and the server results are shown instead.
+    expect(screen.queryByTestId("dsa-reveal")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.getByTestId("dsa-final-score")).toBeInTheDocument();
+  });
+
+  it("clears the hold timer on unmount without advancing", async () => {
+    clientMocks.startOfficialRun.mockResolvedValue(activeRunFixture());
+    clientMocks.submitAnswer.mockResolvedValue(resolutionFixture());
+
+    const { unmount } = render(<DailyScoreAttackPage />);
+    await tick(0);
+    fireEvent.click(screen.getByTestId("dsa-start-official"));
+    await tick(2400);
+    await tick(0);
+    fireEvent.click(screen.getAllByRole("radio")[0]);
+    await tick(0);
+    expect(screen.getByTestId("dsa-reveal")).toBeInTheDocument();
+
+    // Unmount mid-hold, then advance well past the hold. The reveal effect's
+    // cleanup must clear the pending timer so nothing renders afterward and no
+    // stale advance occurs (advancing must not throw).
+    unmount();
+    await tick(HOLD_MS + 200);
+
+    expect(screen.queryByTestId("dsa-reveal")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("dsa-question-text")).not.toBeInTheDocument();
   });
 });

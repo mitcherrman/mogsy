@@ -9,6 +9,7 @@
 import {
   DsaErrorCode,
   DsaHistory,
+  DsaQuestion,
   DsaResolution,
   DsaResults,
   DsaRun,
@@ -44,6 +45,14 @@ export type DsaMachineState = {
   meta: DsaToday | null;
   run: DsaRun | null;
   resolution: DsaResolution | null;
+  /**
+   * Frozen snapshot of the question that was just answered, kept only for the
+   * reveal hold. `run` advances to the next server projection the moment the
+   * resolution arrives, so the reveal renders this snapshot (text, choices,
+   * media) to keep the answered question and its correct-answer highlight
+   * visible. Cleared when the run advances, reconciles, or resets.
+   */
+  answeredQuestion: DsaQuestion | null;
   results: DsaResults | null;
   history: DsaHistory | null;
   /** Cosmetic pre-run count; the server clock starts only at run creation. */
@@ -61,6 +70,7 @@ export const INITIAL_STATE: DsaMachineState = {
   meta: null,
   run: null,
   resolution: null,
+  answeredQuestion: null,
   results: null,
   history: null,
   countdown: 0,
@@ -103,6 +113,7 @@ function adoptTerminalRun(state: DsaMachineState, run: DsaRun): DsaMachineState 
     run,
     previousScore: state.run?.total_score ?? 0,
     selectedIndex: null,
+    answeredQuestion: null,
     error: null,
   };
 }
@@ -114,6 +125,7 @@ function adoptActiveRun(state: DsaMachineState, run: DsaRun): DsaMachineState {
     run,
     previousScore: state.run?.total_score ?? 0,
     selectedIndex: null,
+    answeredQuestion: null,
     error: null,
   };
 }
@@ -156,6 +168,7 @@ export function dsaReducer(state: DsaMachineState, action: DsaAction): DsaMachin
         resolution: null,
         results: null,
         selectedIndex: null,
+        answeredQuestion: null,
         error: null,
       };
 
@@ -183,6 +196,11 @@ export function dsaReducer(state: DsaMachineState, action: DsaAction): DsaMachin
         ...state,
         phase: "reveal",
         resolution: action.resolution,
+        // Snapshot the answered question BEFORE `run` advances to the next
+        // projection, so the reveal keeps showing what was answered. Idempotent
+        // under duplicate delivery: a repeated resolution re-snapshots the same
+        // already-answered question (run has not changed while in reveal).
+        answeredQuestion: state.answeredQuestion ?? state.run?.question ?? null,
         run: action.resolution.run,
         previousScore: state.run?.total_score ?? 0,
         error: null,
@@ -197,7 +215,7 @@ export function dsaReducer(state: DsaMachineState, action: DsaAction): DsaMachin
 
     case "TRANSITION_DONE":
       if (state.phase !== "transitioning" || !state.run) return state;
-      return { ...state, phase: "active-question", selectedIndex: null };
+      return { ...state, phase: "active-question", selectedIndex: null, answeredQuestion: null };
 
     case "RECONCILE_REQUESTED":
       if (TERMINAL_PHASES.has(state.phase)) return state;
@@ -208,7 +226,7 @@ export function dsaReducer(state: DsaMachineState, action: DsaAction): DsaMachin
       return adoptActiveRun(state, action.run);
 
     case "NO_RUN":
-      return { ...state, phase: "ready", run: null, selectedIndex: null };
+      return { ...state, phase: "ready", run: null, selectedIndex: null, answeredQuestion: null };
 
     case "RESULTS_LOADED":
       return {
