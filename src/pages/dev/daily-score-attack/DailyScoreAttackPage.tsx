@@ -33,8 +33,11 @@ import {
   dsaReducer,
 } from "./dailyScoreAttackMachine";
 
-const REVEAL_MS = 1400;
-const REVEAL_MS_REDUCED = 400;
+// Time Trial-local post-answer result hold. Keeps the resolved question
+// (correct/incorrect styling + highlighted correct answer) visible for exactly
+// this long before advancing. The authoritative 90s run timer keeps counting
+// during the hold — this is presentation-only and never touches scoring/expiry.
+const TIME_TRIAL_RESULT_HOLD_MS = 900;
 const RECOVERY_BACKOFF_MS = [1000, 2000, 4000, 8000];
 
 function usePrefersReducedMotion(): boolean {
@@ -293,10 +296,10 @@ export default function DailyScoreAttackPage({ production = false }: PageProps) 
     if (state.phase !== "reveal") return undefined;
     const timeout = window.setTimeout(
       () => send({ type: "REVEAL_DONE" }),
-      reducedMotion ? REVEAL_MS_REDUCED : REVEAL_MS,
+      TIME_TRIAL_RESULT_HOLD_MS,
     );
     return () => window.clearTimeout(timeout);
-  }, [state.phase, reducedMotion, send]);
+  }, [state.phase, send]);
 
   useEffect(() => {
     if (state.phase !== "transitioning") return undefined;
@@ -466,6 +469,7 @@ export default function DailyScoreAttackPage({ production = false }: PageProps) 
           run={state.run}
           phase={state.phase as "active-question" | "submitting-answer" | "reveal" | "transitioning"}
           resolution={state.resolution}
+          answeredQuestion={state.answeredQuestion}
           selectedIndex={state.selectedIndex}
           reducedMotion={reducedMotion}
           onSelect={(index) => void handleSelect(index)}

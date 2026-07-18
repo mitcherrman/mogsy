@@ -88,13 +88,20 @@ describe("dsaReducer", () => {
     state = dsaReducer(state, { type: "RESOLUTION_RECEIVED", resolution: resolutionFixture() });
     expect(state.phase).toBe("reveal");
     expect(state.run?.total_score).toBe(200); // server value adopted
+    expect(state.run?.sequence).toBe(2); // run advances to the next projection
     expect(state.previousScore).toBe(0); // prior server value kept for animation
+    // The answered question (seq 1) is snapshotted for the reveal hold even
+    // though `run` has already advanced to seq 2.
+    expect(state.answeredQuestion?.sequence).toBe(1);
+    expect(state.answeredQuestion?.question_text).toBe("Which item grants Ability Power?");
     state = dsaReducer(state, { type: "REVEAL_DONE" });
     expect(state.phase).toBe("transitioning");
+    expect(state.answeredQuestion?.sequence).toBe(1); // still frozen during the hold
     state = dsaReducer(state, { type: "TRANSITION_DONE" });
     expect(state.phase).toBe("active-question");
     expect(state.run?.sequence).toBe(2);
     expect(state.selectedIndex).toBeNull();
+    expect(state.answeredQuestion).toBeNull(); // cleared once advanced
   });
 
   it("moves to terminal after a reveal whose projection is terminal", () => {
@@ -106,6 +113,44 @@ describe("dsaReducer", () => {
     });
     state = dsaReducer(state, { type: "REVEAL_DONE" });
     expect(state.phase).toBe("expired");
+  });
+
+  it("stays in a single reveal under duplicate resolution delivery", () => {
+    // Repeated RESOLUTION_RECEIVED (e.g. a retried/duplicated response) must not
+    // change phase away from reveal, so the page's reveal-hold effect — keyed on
+    // state.phase — never reschedules and cannot advance twice.
+    let state = dsaReducer(INITIAL_STATE, { type: "RUN_STARTED", run: activeRunFixture() });
+    state = dsaReducer(state, { type: "ANSWER_SELECTED", selectedIndex: 0 });
+    state = dsaReducer(state, { type: "RESOLUTION_RECEIVED", resolution: resolutionFixture() });
+    const first = state;
+    state = dsaReducer(state, { type: "RESOLUTION_RECEIVED", resolution: resolutionFixture() });
+    expect(state.phase).toBe("reveal");
+    expect(first.phase).toBe("reveal");
+    // The answered snapshot stays the ORIGINAL answered question (seq 1) — a
+    // duplicate resolution must not re-snapshot from the already-advanced run.
+    expect(state.answeredQuestion?.sequence).toBe(1);
+    // A single REVEAL_DONE advances exactly once.
+    state = dsaReducer(state, { type: "REVEAL_DONE" });
+    expect(state.phase).toBe("transitioning");
+  });
+
+  it("lets recovery replace the reveal so a stale hold cannot advance it", () => {
+    // If refresh/recovery reconciles mid-reveal, the run/question is replaced and
+    // the phase leaves reveal — the page effect's cleanup clears the stale timer.
+    let state = dsaReducer(INITIAL_STATE, { type: "RUN_STARTED", run: activeRunFixture() });
+    state = dsaReducer(state, { type: "ANSWER_SELECTED", selectedIndex: 0 });
+    state = dsaReducer(state, { type: "RESOLUTION_RECEIVED", resolution: resolutionFixture() });
+    expect(state.phase).toBe("reveal");
+    const recovered = activeRunFixture({
+      sequence: 5,
+      question: { ...activeRunFixture().question!, sequence: 5, question_id: 205 },
+    });
+    state = dsaReducer(state, { type: "RUN_SYNCED", run: recovered });
+    expect(state.phase).toBe("active-question");
+    expect(state.run?.sequence).toBe(5);
+    // Recovery clears the stale answered-question snapshot so no reveal state
+    // leaks onto the recovered run.
+    expect(state.answeredQuestion).toBeNull();
   });
 
   it("reconciles through RUN_SYNCED in both directions", () => {
