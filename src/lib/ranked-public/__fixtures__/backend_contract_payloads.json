@@ -1,0 +1,625 @@
+{
+  "match_result_forfeit": {
+    "match_id": "mf",
+    "payload": {
+      "completion_reason": "forfeit",
+      "final_round_number": 1,
+      "match_id": "mf",
+      "outcome": "decisive",
+      "rating_application_status": "pending",
+      "terminal_reason": "forfeit",
+      "winner_user_id": "userA"
+    },
+    "projection_type": "match_result",
+    "round_number": 1,
+    "schema_version": "ranked_duel.match_result.v1",
+    "server_time": "2026-07-18T12:00:52+00:00"
+  },
+  "match_result_no_contest": {
+    "match_id": "mn",
+    "payload": {
+      "completion_reason": "no_contest",
+      "final_round_number": 1,
+      "match_id": "mn",
+      "outcome": "draw",
+      "rating_application_status": "pending",
+      "terminal_reason": "no_contest",
+      "winner_user_id": null
+    },
+    "projection_type": "match_result",
+    "round_number": 1,
+    "schema_version": "ranked_duel.match_result.v1",
+    "server_time": "2026-07-18T12:01:01+00:00"
+  },
+  "presence_heartbeat": {
+    "active": false,
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "status": "complete"
+  },
+  "private_player": {
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "payload": {
+      "active_round": {
+        "active_deadline": "2026-07-18T12:00:31+00:00",
+        "duration_seconds": 30.0,
+        "pressure_applied": false,
+        "ready_to_resolve": false,
+        "round_number": 1,
+        "started_at": "2026-07-18T12:00:01+00:00"
+      },
+      "completed_rounds": 0,
+      "completion_reason": null,
+      "match_id": "rkm_84a1fc35befb41649791fcfd",
+      "match_over": false,
+      "match_status": "active",
+      "next_round_duration_seconds": 30.0,
+      "own_abilities": {
+        "level2_choice": null,
+        "level2_choice_made": false,
+        "level2_options": [
+          "tank.brace",
+          "tank.barrier"
+        ],
+        "level3_final_unlock_id": null,
+        "level3_unlocked": false,
+        "locked_ability_ids": [
+          "tank.brace",
+          "tank.barrier"
+        ],
+        "remaining_charges": {
+          "tank.fortify": 3
+        },
+        "unlocked_ability_ids": [
+          "tank.fortify"
+        ]
+      },
+      "own_carryover": {
+        "consecutive_correct": 0,
+        "pending_arcane_charge": false,
+        "pending_focus": false,
+        "pending_fortify": false,
+        "pending_insight": false,
+        "pending_tempo": false
+      },
+      "own_combat_lab_unlock_delta_seconds": 0.0,
+      "own_selection": {
+        "phase": "open",
+        "selected_ability_id": null
+      },
+      "owner_player_id": "userA",
+      "players": [
+        {
+          "ability_selection_phase": "open",
+          "class_id": "tank",
+          "has_ability_selected": false,
+          "has_submitted": false,
+          "hp": 170,
+          "level": 1,
+          "max_hp": 170,
+          "player_id": "userA",
+          "total_xp": 0
+        },
+        {
+          "ability_selection_phase": "open",
+          "class_id": "mage",
+          "has_ability_selected": false,
+          "has_submitted": false,
+          "hp": 150,
+          "level": 1,
+          "max_hp": 150,
+          "player_id": "userB",
+          "total_xp": 0
+        }
+      ],
+      "presence": {
+        "opponent_connection_state": "connected",
+        "own_reconnect_grace_deadline": null,
+        "participant_status": "connected",
+        "reconnect_grace_deadline": null
+      },
+      "progression_pending_players": [],
+      "question": {
+        "category": null,
+        "options": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "prompt": "Question 1",
+        "question_id": "seq-1:r1"
+      },
+      "winner_id": null
+    },
+    "projection_type": "private_player",
+    "round_number": 1,
+    "schema_version": "ranked_duel.private_player.v2",
+    "server_time": "2026-07-18T12:00:02+00:00"
+  },
+  "public_round": {
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "payload": {
+      "active_round": {
+        "active_deadline": "2026-07-18T12:00:31+00:00",
+        "duration_seconds": 30.0,
+        "pressure_applied": false,
+        "ready_to_resolve": false,
+        "round_number": 1,
+        "started_at": "2026-07-18T12:00:01+00:00"
+      },
+      "completed_rounds": 0,
+      "completion_reason": null,
+      "match_id": "rkm_84a1fc35befb41649791fcfd",
+      "match_over": false,
+      "match_status": "active",
+      "next_round_duration_seconds": 30.0,
+      "players": [
+        {
+          "ability_selection_phase": "open",
+          "class_id": "tank",
+          "has_ability_selected": false,
+          "has_submitted": false,
+          "hp": 170,
+          "level": 1,
+          "max_hp": 170,
+          "player_id": "userA",
+          "total_xp": 0
+        },
+        {
+          "ability_selection_phase": "open",
+          "class_id": "mage",
+          "has_ability_selected": false,
+          "has_submitted": false,
+          "hp": 150,
+          "level": 1,
+          "max_hp": 150,
+          "player_id": "userB",
+          "total_xp": 0
+        }
+      ],
+      "presence": {
+        "opponent_connection_state": "connected",
+        "own_reconnect_grace_deadline": null,
+        "participant_status": "connected",
+        "reconnect_grace_deadline": null
+      },
+      "progression_pending_players": [],
+      "question": {
+        "category": null,
+        "options": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        "prompt": "Question 1",
+        "question_id": "seq-1:r1"
+      },
+      "winner_id": null
+    },
+    "projection_type": "public_round",
+    "round_number": 1,
+    "schema_version": "ranked_duel.public_round.v2",
+    "server_time": "2026-07-18T12:00:02+00:00"
+  },
+  "queue_status_matched": {
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "payload": {
+      "class_id": "mage",
+      "enqueued_at": "2026-07-18T12:00:01.000000+00:00",
+      "match_id": "rkm_84a1fc35befb41649791fcfd",
+      "queue_version": 1,
+      "status": "matched"
+    },
+    "projection_type": "queue_status",
+    "round_number": null,
+    "schema_version": "ranked_duel.queue_status.v1",
+    "server_time": "2026-07-18T12:00:01+00:00"
+  },
+  "queue_status_waiting": {
+    "match_id": null,
+    "payload": {
+      "class_id": "tank",
+      "enqueued_at": "2026-07-18T12:00:00.000000+00:00",
+      "match_id": null,
+      "queue_version": 1,
+      "status": "waiting"
+    },
+    "projection_type": "queue_status",
+    "round_number": null,
+    "schema_version": "ranked_duel.queue_status.v1",
+    "server_time": "2026-07-18T12:00:00+00:00"
+  },
+  "resolved_round": {
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "payload": {
+      "completion_reason": null,
+      "end_reason": "both_answered",
+      "final_deadline": "2026-07-18T12:00:26+00:00",
+      "match_id": "rkm_84a1fc35befb41649791fcfd",
+      "match_over": false,
+      "max_hp": {
+        "userA": 170,
+        "userB": 150
+      },
+      "next_round_duration_delta": 0.0,
+      "next_round_duration_seconds": 30.0,
+      "original_deadline": "2026-07-18T12:00:31+00:00",
+      "players": [
+        {
+          "answered_first": true,
+          "carryover": {
+            "consecutive_correct": 1,
+            "effects_consumed": [],
+            "effects_gained": []
+          },
+          "charge_consumed": false,
+          "class_id": "tank",
+          "combat_lab_unlock_delta_seconds": 0.0,
+          "consumed_ability_id": null,
+          "damage": {
+            "base_damage_dealt": 20,
+            "final_damage_dealt": 20,
+            "final_damage_received": 0,
+            "incoming_reduction": 0,
+            "outgoing_bonus": 0,
+            "shield_absorbed": 0
+          },
+          "hp_after": 170,
+          "hp_before": 170,
+          "level_after": 1,
+          "level_before": 1,
+          "level_up_events": [],
+          "outcome": "correct",
+          "player_id": "userA",
+          "reached_zero_hp": false,
+          "remaining_charges": {
+            "tank.fortify": 3
+          },
+          "selected_ability_id": null,
+          "submitted_at": "2026-07-18T12:00:03+00:00",
+          "timed_out": false,
+          "total_xp_after": 12,
+          "xp_gained": 12
+        },
+        {
+          "answered_first": false,
+          "carryover": {
+            "consecutive_correct": 0,
+            "effects_consumed": [],
+            "effects_gained": []
+          },
+          "charge_consumed": false,
+          "class_id": "mage",
+          "combat_lab_unlock_delta_seconds": 0.0,
+          "consumed_ability_id": null,
+          "damage": {
+            "base_damage_dealt": 0,
+            "final_damage_dealt": 0,
+            "final_damage_received": 20,
+            "incoming_reduction": 0,
+            "outgoing_bonus": 0,
+            "shield_absorbed": 0
+          },
+          "hp_after": 130,
+          "hp_before": 150,
+          "level_after": 1,
+          "level_before": 1,
+          "level_up_events": [],
+          "outcome": "incorrect",
+          "player_id": "userB",
+          "reached_zero_hp": false,
+          "remaining_charges": {
+            "mage.arcane_charge": 3
+          },
+          "selected_ability_id": null,
+          "submitted_at": "2026-07-18T12:00:04+00:00",
+          "timed_out": false,
+          "total_xp_after": 9,
+          "xp_gained": 9
+        }
+      ],
+      "pressure_applied": true,
+      "question_id": "seq-1:r1",
+      "round_number": 1,
+      "started_at": "2026-07-18T12:00:01+00:00",
+      "winner_id": null
+    },
+    "projection_type": "resolved_round",
+    "round_number": 1,
+    "schema_version": "ranked_duel.resolved_round.v2",
+    "server_time": "2026-07-18T12:00:05+00:00"
+  },
+  "resume": {
+    "match_id": "rkm_84a1fc35befb41649791fcfd",
+    "payload": {
+      "latest_resolved_round": {
+        "match_id": "rkm_84a1fc35befb41649791fcfd",
+        "payload": {
+          "completion_reason": null,
+          "end_reason": "both_answered",
+          "final_deadline": "2026-07-18T12:00:26+00:00",
+          "match_id": "rkm_84a1fc35befb41649791fcfd",
+          "match_over": false,
+          "max_hp": {
+            "userA": 170,
+            "userB": 150
+          },
+          "next_round_duration_delta": 0.0,
+          "next_round_duration_seconds": 30.0,
+          "original_deadline": "2026-07-18T12:00:31+00:00",
+          "players": [
+            {
+              "answered_first": true,
+              "carryover": {
+                "consecutive_correct": 1,
+                "effects_consumed": [],
+                "effects_gained": []
+              },
+              "charge_consumed": false,
+              "class_id": "tank",
+              "combat_lab_unlock_delta_seconds": 0.0,
+              "consumed_ability_id": null,
+              "damage": {
+                "base_damage_dealt": 20,
+                "final_damage_dealt": 20,
+                "final_damage_received": 0,
+                "incoming_reduction": 0,
+                "outgoing_bonus": 0,
+                "shield_absorbed": 0
+              },
+              "hp_after": 170,
+              "hp_before": 170,
+              "level_after": 1,
+              "level_before": 1,
+              "level_up_events": [],
+              "outcome": "correct",
+              "player_id": "userA",
+              "reached_zero_hp": false,
+              "remaining_charges": {
+                "tank.fortify": 3
+              },
+              "selected_ability_id": null,
+              "submitted_at": "2026-07-18T12:00:03+00:00",
+              "timed_out": false,
+              "total_xp_after": 12,
+              "xp_gained": 12
+            },
+            {
+              "answered_first": false,
+              "carryover": {
+                "consecutive_correct": 0,
+                "effects_consumed": [],
+                "effects_gained": []
+              },
+              "charge_consumed": false,
+              "class_id": "mage",
+              "combat_lab_unlock_delta_seconds": 0.0,
+              "consumed_ability_id": null,
+              "damage": {
+                "base_damage_dealt": 0,
+                "final_damage_dealt": 0,
+                "final_damage_received": 20,
+                "incoming_reduction": 0,
+                "outgoing_bonus": 0,
+                "shield_absorbed": 0
+              },
+              "hp_after": 130,
+              "hp_before": 150,
+              "level_after": 1,
+              "level_before": 1,
+              "level_up_events": [],
+              "outcome": "incorrect",
+              "player_id": "userB",
+              "reached_zero_hp": false,
+              "remaining_charges": {
+                "mage.arcane_charge": 3
+              },
+              "selected_ability_id": null,
+              "submitted_at": "2026-07-18T12:00:04+00:00",
+              "timed_out": false,
+              "total_xp_after": 9,
+              "xp_gained": 9
+            }
+          ],
+          "pressure_applied": true,
+          "question_id": "seq-1:r1",
+          "round_number": 1,
+          "started_at": "2026-07-18T12:00:01+00:00",
+          "winner_id": null
+        },
+        "projection_type": "resolved_round",
+        "round_number": 1,
+        "schema_version": "ranked_duel.resolved_round.v2",
+        "server_time": "2026-07-18T12:00:06+00:00"
+      },
+      "match_over": false,
+      "match_status": "active",
+      "presence": {
+        "opponent_connection_state": "connected",
+        "own_reconnect_grace_deadline": null,
+        "participant_status": "connected",
+        "reconnect_grace_deadline": null
+      },
+      "private": {
+        "match_id": "rkm_84a1fc35befb41649791fcfd",
+        "payload": {
+          "active_round": {
+            "active_deadline": "2026-07-18T12:00:34+00:00",
+            "duration_seconds": 30.0,
+            "pressure_applied": false,
+            "ready_to_resolve": false,
+            "round_number": 2,
+            "started_at": "2026-07-18T12:00:04+00:00"
+          },
+          "completed_rounds": 1,
+          "completion_reason": null,
+          "match_id": "rkm_84a1fc35befb41649791fcfd",
+          "match_over": false,
+          "match_status": "active",
+          "next_round_duration_seconds": 30.0,
+          "own_abilities": {
+            "level2_choice": null,
+            "level2_choice_made": false,
+            "level2_options": [
+              "tank.brace",
+              "tank.barrier"
+            ],
+            "level3_final_unlock_id": null,
+            "level3_unlocked": false,
+            "locked_ability_ids": [
+              "tank.brace",
+              "tank.barrier"
+            ],
+            "remaining_charges": {
+              "tank.fortify": 3
+            },
+            "unlocked_ability_ids": [
+              "tank.fortify"
+            ]
+          },
+          "own_carryover": {
+            "consecutive_correct": 1,
+            "pending_arcane_charge": false,
+            "pending_focus": false,
+            "pending_fortify": false,
+            "pending_insight": false,
+            "pending_tempo": false
+          },
+          "own_combat_lab_unlock_delta_seconds": 0.0,
+          "own_selection": {
+            "phase": "open",
+            "selected_ability_id": null
+          },
+          "owner_player_id": "userA",
+          "players": [
+            {
+              "ability_selection_phase": "open",
+              "class_id": "tank",
+              "has_ability_selected": false,
+              "has_submitted": false,
+              "hp": 170,
+              "level": 1,
+              "max_hp": 170,
+              "player_id": "userA",
+              "total_xp": 12
+            },
+            {
+              "ability_selection_phase": "open",
+              "class_id": "mage",
+              "has_ability_selected": false,
+              "has_submitted": false,
+              "hp": 130,
+              "level": 1,
+              "max_hp": 150,
+              "player_id": "userB",
+              "total_xp": 9
+            }
+          ],
+          "presence": {
+            "opponent_connection_state": "connected",
+            "own_reconnect_grace_deadline": null,
+            "participant_status": "connected",
+            "reconnect_grace_deadline": null
+          },
+          "progression_pending_players": [],
+          "question": {
+            "category": null,
+            "options": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "prompt": "Question 2",
+            "question_id": "seq-2:r2"
+          },
+          "winner_id": null
+        },
+        "projection_type": "private_player",
+        "round_number": 2,
+        "schema_version": "ranked_duel.private_player.v2",
+        "server_time": "2026-07-18T12:00:06+00:00"
+      },
+      "progression_pending_players": [],
+      "public": {
+        "match_id": "rkm_84a1fc35befb41649791fcfd",
+        "payload": {
+          "active_round": {
+            "active_deadline": "2026-07-18T12:00:34+00:00",
+            "duration_seconds": 30.0,
+            "pressure_applied": false,
+            "ready_to_resolve": false,
+            "round_number": 2,
+            "started_at": "2026-07-18T12:00:04+00:00"
+          },
+          "completed_rounds": 1,
+          "completion_reason": null,
+          "match_id": "rkm_84a1fc35befb41649791fcfd",
+          "match_over": false,
+          "match_status": "active",
+          "next_round_duration_seconds": 30.0,
+          "players": [
+            {
+              "ability_selection_phase": "open",
+              "class_id": "tank",
+              "has_ability_selected": false,
+              "has_submitted": false,
+              "hp": 170,
+              "level": 1,
+              "max_hp": 170,
+              "player_id": "userA",
+              "total_xp": 12
+            },
+            {
+              "ability_selection_phase": "open",
+              "class_id": "mage",
+              "has_ability_selected": false,
+              "has_submitted": false,
+              "hp": 130,
+              "level": 1,
+              "max_hp": 150,
+              "player_id": "userB",
+              "total_xp": 9
+            }
+          ],
+          "presence": {
+            "opponent_connection_state": "connected",
+            "own_reconnect_grace_deadline": null,
+            "participant_status": "connected",
+            "reconnect_grace_deadline": null
+          },
+          "progression_pending_players": [],
+          "question": {
+            "category": null,
+            "options": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "prompt": "Question 2",
+            "question_id": "seq-2:r2"
+          },
+          "winner_id": null
+        },
+        "projection_type": "public_round",
+        "round_number": 2,
+        "schema_version": "ranked_duel.public_round.v2",
+        "server_time": "2026-07-18T12:00:06+00:00"
+      },
+      "result": null
+    },
+    "projection_type": "resume",
+    "round_number": 2,
+    "schema_version": "ranked_duel.resume.v1",
+    "server_time": "2026-07-18T12:00:06+00:00"
+  },
+  "typed_error_rate_limited": {
+    "detail": {
+      "code": "RANKED_RATE_LIMITED",
+      "message": "too many requests; slow down",
+      "retry_after_seconds": 3
+    }
+  }
+}

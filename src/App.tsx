@@ -106,6 +106,10 @@ const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/D
 // Quiz hub only links here when the backend reports the mode enabled).
 const QuizDailyScoreAttack = lazy(() => import("./pages/QuizDailyScoreAttack"));
 
+// Public Ranked route (F1.5) — allowlisted/feature-gated server-side; the
+// page fails closed on backend disabled/ineligible via typed error codes.
+const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
+
 // Dev-only Ranked TUTORIAL prototype — scripted local training match,
 // no auth/API/persistence, not linked from any navigation.
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
@@ -234,6 +238,7 @@ const App = () => (
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
                   <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />
+                  <Route path="/quiz/ranked" element={<Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />

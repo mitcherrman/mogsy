@@ -796,10 +796,8 @@ export default function Quiz() {
               <QuizRankedQueueCard
                 progress={userProgress}
                 ranked={getRankedState(userProgress?.attempts ?? 0)}
-                disabled={setsLoading || sets.length === 0}
-                onPlay={() => {
-                  if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
-                }}
+                disabled={false}
+                onPlay={() => navigate("/quiz/ranked")}
               />
             </div>
 
@@ -827,9 +825,7 @@ export default function Quiz() {
                 history={recentHistory}
                 loading={historyLoading}
                 error={historyError}
-                onPlayRanked={() => {
-                  if (sets.length > 0) handleSelectSet(sets[sets.length - 1] ?? sets[0]);
-                }}
+                onPlayRanked={() => navigate("/quiz/ranked")}
               />
             </div>
 
