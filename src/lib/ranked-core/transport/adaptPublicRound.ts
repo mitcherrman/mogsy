@@ -8,8 +8,8 @@
 // adapter cannot create any.
 // ---------------------------------------------------------------------------
 
-import { PlayerId } from "../fixtures";
-import { PlayerIdMapping } from "../backend-adapter/adaptBackendSettlement";
+import type { PlayerSlot as PlayerId } from "../viewTypes";
+import { PlayerIdMapping } from "../backend/adaptBackendSettlement";
 import {
   BackendPublicPlayer,
   PublicRoundEnvelope,

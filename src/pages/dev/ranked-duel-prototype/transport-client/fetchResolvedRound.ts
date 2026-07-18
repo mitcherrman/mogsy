@@ -13,11 +13,11 @@
 // Dev-prototype local; not a production transport client.
 // ---------------------------------------------------------------------------
 
-import { ResolvedRoundEnvelope } from "../transport-adapter/rankedDuelEnvelopeTypes";
+import { ResolvedRoundEnvelope } from "@/lib/ranked-core/transport/rankedDuelEnvelopeTypes";
 import {
   EnvelopeValidationError,
   validateResolvedRoundEnvelope,
-} from "../transport-adapter/rankedDuelEnvelopeValidation";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 
 /** Same env convention as the repo's other backend clients. */
 export const DEFAULT_RANKED_DUEL_API_BASE =

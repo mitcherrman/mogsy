@@ -13,11 +13,11 @@
 // fallback. Dev-prototype local; not a production transport client.
 // ---------------------------------------------------------------------------
 
-import { PublicRoundEnvelope } from "../transport-adapter/rankedDuelEnvelopeTypes";
+import { PublicRoundEnvelope } from "@/lib/ranked-core/transport/rankedDuelEnvelopeTypes";
 import {
   EnvelopeValidationError,
   validatePublicRoundEnvelope,
-} from "../transport-adapter/rankedDuelEnvelopeValidation";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 
 export type PublicRoundFetchErrorKind =
   | "invalid_request" // rejected locally before any network call

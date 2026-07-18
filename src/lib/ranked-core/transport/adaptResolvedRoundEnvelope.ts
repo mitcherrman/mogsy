@@ -15,7 +15,7 @@ import {
   AdaptedSettlement,
   PlayerIdMapping,
   adaptBackendSettlement,
-} from "../backend-adapter/adaptBackendSettlement";
+} from "../backend/adaptBackendSettlement";
 import { validateResolvedRoundEnvelope } from "./rankedDuelEnvelopeValidation";
 
 export function adaptResolvedRoundEnvelope(

@@ -6,7 +6,7 @@ import {
   getPrivateEnvelopeScenario,
   getPublicEnvelopeScenario,
   getResolvedEnvelopeScenario,
-} from "../transport-adapter/rankedDuelEnvelopeFixtures";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 import { DuelAction } from "../duelMachine";
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;

@@ -15,8 +15,8 @@ import {
   XP,
   getDuelClass,
 } from "./fixtures";
-import { adaptBackendSettlement } from "./backend-adapter/adaptBackendSettlement";
-import { FIXTURE_PLAYER_IDS, getScenario } from "./backend-adapter/backendSettlementFixtures";
+import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
+import { FIXTURE_PLAYER_IDS, getScenario } from "@/lib/ranked-core/backend/backendSettlementFixtures";
 
 const run = (state: DuelState, ...actions: DuelAction[]): DuelState =>
   actions.reduce(duelReducer, state);

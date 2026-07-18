@@ -1,23 +1,39 @@
 // ---------------------------------------------------------------------------
-// The playable arena: shared public state, owner-private state, the question,
-// the ability picker, the final atomic submission, the waiting state, the
-// round reveal, the Level 2 gate, and the match-over state.
-//
-// Everything rendered here comes from a backend projection. This component
-// computes no damage, HP, XP, level, charge, timer, correctness, or winner
-// value, and it never marks an option as correct before the backend resolves
-// the round. The only locally derived numbers are the display countdown (from
-// the backend's deadline) and the HP-bar denominator (the highest HP observed
-// for that player — the backend projects no max-HP field).
+// Staff-duel arena — first real consumer of the canonical ranked-arena
+// components (F1 Phase D). This file is the staff COMPOSITION layer: it maps
+// session state to neutral view contracts (via staffDuelProjection), owns the
+// local select → review → confirm flow, and emits exactly one atomic
+// submission per round. All transport, polling, tokens, and error
+// classification stay in useStaffDuelSession; all combat values come from
+// backend projections and settlements. Nothing here computes damage, HP, XP,
+// levels, charges, correctness, deadlines, or winners.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { AdaptedSettlement } from "../backend-adapter/adaptBackendSettlement";
-import { NO_ABILITY, abilityDescription, abilityName } from "./abilityDisplay";
-import { PublicPlayer } from "./rankedDuelTypes";
+import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
+import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
+import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
+import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
+import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
+import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
+import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
+import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
+import { abilityViewsFromPrivatePlayer } from "@/lib/ranked-core/adapters/adaptToViews";
+import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
+import {
+  CombatantView,
+  NO_INTERACTIONS,
+  SubmissionPhase,
+} from "@/lib/ranked-core/viewTypes";
 import { StaffDuelCredentials, StaffDuelSessionState } from "./useStaffDuelSession";
+import {
+  duplicateOptionLabels,
+  projectStaffCombatants,
+  projectStaffPermissions,
+  projectStaffQuestion,
+  projectStaffTimer,
+} from "./staffDuelProjection";
 
 interface Props {
   credentials: StaffDuelCredentials;
@@ -26,152 +42,132 @@ interface Props {
   onChooseLevelTwo: (abilityId: string) => void;
 }
 
-const secondsUntil = (deadline: string | null, nowMs: number): number | null => {
-  if (!deadline) return null;
-  const ms = Date.parse(deadline) - nowMs;
-  if (Number.isNaN(ms)) return null;
-  return Math.max(0, Math.round(ms / 1000));
+const levelUpOption = (id: string) => ({
+  id,
+  name: abilityName(id),
+  description: abilityDescription(id),
+});
+
+/** Final combatant summary for match-over: public row preferred, else the
+ * last settlement's post-round values. Pure mapping, no computation. */
+const finalCombatants = (
+  state: StaffDuelSessionState,
+  viewerId: string,
+): { player: CombatantView; opponent: CombatantView } | null => {
+  if (state.publicRound) {
+    return projectStaffCombatants(state.publicRound, viewerId, state.observedMaxHp);
+  }
+  if (state.lastResolved) {
+    const from = (slot: "p1" | "p2", side: CombatantView["side"]): CombatantView => {
+      const p = state.lastResolved!.players[slot];
+      return {
+        playerId: p.playerId,
+        name: p.playerId,
+        tag: side === "player" ? "you" : undefined,
+        side,
+        classId: "",
+        hp: p.hpAfter,
+        maxHp: state.observedMaxHp[p.playerId] ?? null,
+        xp: p.totalXpAfter,
+        level: p.levelAfter,
+        nextLevelThreshold: null,
+        currentLevelThreshold: null,
+        hasSubmitted: false,
+        abilityWindow: null,
+        hasAbilitySelected: null,
+      };
+    };
+    return { player: from("p1", "player"), opponent: from("p2", "opponent") };
+  }
+  return null;
 };
-
-function PlayerCard({
-  player,
-  maxHp,
-  isMe,
-}: {
-  player: PublicPlayer;
-  maxHp: number;
-  isMe: boolean;
-}) {
-  const pct = maxHp > 0 ? Math.min(100, Math.round((player.hp / maxHp) * 100)) : 0;
-  return (
-    <div
-      data-testid={`sd-player-${player.playerId}`}
-      className={`rounded-md border p-3 space-y-1 ${isMe ? "border-primary" : "border-border"}`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{player.playerId}</span>
-        {isMe && <Badge variant="secondary">You</Badge>}
-        <Badge variant="outline">{player.classId}</Badge>
-        <Badge variant="outline">Level {player.level}</Badge>
-      </div>
-      <p className="text-sm">
-        HP {player.hp} / {maxHp}
-      </p>
-      <div className="h-2 w-full rounded bg-muted" aria-hidden="true">
-        <div className="h-2 rounded bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        XP {player.totalXp} ·{" "}
-        <span data-testid={`sd-submitted-${player.playerId}`}>
-          {player.hasSubmitted ? "locked in" : "still choosing"}
-        </span>
-      </p>
-    </div>
-  );
-}
-
-function RoundReveal({
-  settlement,
-  ownerId,
-}: {
-  settlement: AdaptedSettlement;
-  ownerId: string;
-}) {
-  const rows = [
-    { label: `${ownerId} (you)`, p: settlement.players.p1 },
-    { label: settlement.players.p2.playerId, p: settlement.players.p2 },
-  ];
-  return (
-    <section
-      data-testid="sd-reveal"
-      className="rounded-lg border border-border bg-card p-4 space-y-2"
-    >
-      <h3 className="text-base font-semibold">Round {settlement.roundNumber} result</h3>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {rows.map(({ label, p }) => (
-          <div
-            key={p.playerId}
-            data-testid={`sd-reveal-${p.playerId}`}
-            className="rounded-md border border-border p-2 text-sm space-y-1"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{label}</span>
-              <Badge variant={p.outcome === "correct" ? "default" : "outline"}>
-                {p.outcome.replace("_", " ")}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Ability: {p.abilityId ? abilityName(p.abilityId) : "none"}
-              {p.chargeConsumed && p.consumedAbilityId
-                ? ` · charge used (${abilityName(p.consumedAbilityId)})`
-                : ""}
-            </p>
-            <p className="text-xs">
-              Damage dealt {p.finalDamageDealt} · damage taken {p.finalDamageReceived}
-              {p.shieldAbsorbed > 0 ? ` · shield absorbed ${p.shieldAbsorbed}` : ""}
-              {p.incomingReduction > 0 ? ` · reduced ${p.incomingReduction}` : ""}
-            </p>
-            <p className="text-xs">
-              HP {p.hpBefore} → {p.hpAfter} · XP +{p.xpGained} (total {p.totalXpAfter}) · Level{" "}
-              {p.levelBefore} → {p.levelAfter}
-              {p.leveledUp ? " · LEVEL UP" : ""}
-            </p>
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Round ended: {settlement.endReason.replace("_", " ")} · next shared timer{" "}
-        {settlement.sharedNextRoundDurationSeconds}s
-      </p>
-    </section>
-  );
-}
 
 export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Props) {
   const { publicRound, privatePlayer, lastResolved, pendingProgression } = state;
-  const [answerIndex, setAnswerIndex] = useState<number | null>(null);
-  const [abilityChoice, setAbilityChoice] = useState<string>(NO_ABILITY);
-  const [confirming, setConfirming] = useState(false);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedAbilityId, setSelectedAbilityId] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   const activeRoundNumber = publicRound?.activeRound?.roundNumber ?? null;
 
   // The backend advancing to a new round is the ONLY thing that clears a
-  // previous round's selection.
+  // previous round's selection — including one abandoned mid-review.
   useEffect(() => {
-    setAnswerIndex(null);
-    setAbilityChoice(NO_ABILITY);
-    setConfirming(false);
+    setSelectedOptionId(null);
+    setSelectedAbilityId(null);
+    setReviewing(false);
   }, [activeRoundNumber]);
 
-  // Display-only countdown. The backend's deadline is authoritative; this
-  // never resolves or submits anything.
+  // Display-only countdown tick. The backend's deadline is authoritative;
+  // reaching local zero changes presentation only — the poll loop already
+  // running is what learns the authoritative resolution.
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
-
-  const me = publicRound?.players.find((p) => p.playerId === credentials.playerId) ?? null;
-  const opponent = publicRound?.players.find((p) => p.playerId !== credentials.playerId) ?? null;
-  const remaining = secondsUntil(publicRound?.activeRound?.activeDeadline ?? null, nowMs);
 
   const privateIsCurrent =
     privatePlayer !== null &&
     activeRoundNumber !== null &&
     privatePlayer.roundNumber === activeRoundNumber;
 
+  const me = publicRound?.players.find((p) => p.playerId === credentials.playerId) ?? null;
+  const hasSubmitted = (privateIsCurrent && privatePlayer.hasSubmitted) || me?.hasSubmitted === true;
   const iOweChoice = pendingProgression.includes(credentials.playerId);
   const opponentOwesChoice = pendingProgression.some((id) => id !== credentials.playerId);
-  const hasSubmitted = (privateIsCurrent && privatePlayer.hasSubmitted) || me?.hasSubmitted === true;
 
-  const abilityRows = useMemo(() => {
-    if (!privatePlayer) return [];
-    return privatePlayer.unlockedAbilityIds.map((id) => {
-      const charges = privatePlayer.remainingCharges[id];
-      const depleted = charges !== null && charges !== undefined && charges <= 0;
-      return { id, charges: charges ?? null, depleted, locked: false };
-    });
-  }, [privatePlayer]);
+  const phase: SubmissionPhase = hasSubmitted ? "locked" : reviewing ? "reviewing" : "selecting";
+  const inputOpen = !hasSubmitted && privateIsCurrent && activeRoundNumber !== null;
+  const permissions = projectStaffPermissions({
+    phase,
+    inputOpen,
+    submitting: state.submitting,
+  });
+
+  const question = useMemo(
+    () => (publicRound?.question ? projectStaffQuestion(publicRound.question) : null),
+    [publicRound?.question],
+  );
+  const duplicateLabels = useMemo(
+    () => (question ? duplicateOptionLabels(question) : []),
+    [question],
+  );
+  const selectedOption =
+    question?.options.find((o) => o.id === selectedOptionId) ?? null;
+
+  const abilities = useMemo(
+    () =>
+      privatePlayer
+        ? abilityViewsFromPrivatePlayer(privatePlayer, { selectedAbilityId })
+        : [],
+    [privatePlayer, selectedAbilityId],
+  );
+
+  const combatants = useMemo(
+    () =>
+      publicRound && me
+        ? projectStaffCombatants(publicRound, credentials.playerId, state.observedMaxHp)
+        : null,
+    [publicRound, me, credentials.playerId, state.observedMaxHp],
+  );
+
+  const timer = projectStaffTimer(publicRound?.activeRound ?? null, nowMs);
+
+  const revealNames = useMemo(() => {
+    const names: Record<string, string> = {
+      [credentials.playerId]: `${credentials.playerId} (you)`,
+    };
+    for (const p of publicRound?.players ?? []) {
+      if (p.playerId !== credentials.playerId) names[p.playerId] = p.playerId;
+    }
+    if (lastResolved) {
+      const other = lastResolved.players.p2.playerId;
+      if (!(other in names)) names[other] = other;
+    }
+    return names;
+  }, [credentials.playerId, publicRound?.players, lastResolved]);
 
   if (state.fatal) {
     return (
@@ -190,30 +186,39 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
 
   if (state.matchOver) {
     const winner = state.winnerId;
+    const final = finalCombatants(state, credentials.playerId);
     return (
-      <div className="space-y-4">
-        <section
-          data-testid="sd-match-over"
-          className="rounded-lg border border-border bg-card p-4 space-y-1"
-        >
-          <h3 className="text-lg font-semibold">Match over</h3>
-          <p className="text-sm" data-testid="sd-winner">
-            {winner === null
-              ? "Draw — simultaneous knockout."
-              : winner === credentials.playerId
-                ? `Winner: ${winner} (you)`
-                : `Winner: ${winner}`}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            No further submissions are accepted. Polling has stopped.
-          </p>
-        </section>
-        {lastResolved && <RoundReveal settlement={lastResolved} ownerId={credentials.playerId} />}
+      <div className="space-y-4" data-testid="sd-match-over">
+        {final ? (
+          <MatchOverFrame
+            result={winner === null ? "draw" : winner === credentials.playerId ? "victory" : "defeat"}
+            player={final.player}
+            opponent={final.opponent}
+            subheading={
+              winner === null
+                ? "Draw — simultaneous knockout. No further submissions are accepted."
+                : winner === credentials.playerId
+                  ? `Winner: ${winner} (you). No further submissions are accepted.`
+                  : `Winner: ${winner}. No further submissions are accepted.`
+            }
+          />
+        ) : (
+          <section className="rounded-lg border border-border bg-card p-4">
+            <h3 className="text-lg font-semibold">Match over</h3>
+          </section>
+        )}
+        {lastResolved && (
+          <RevealPanel
+            settlement={lastResolved}
+            viewerSlot="p1"
+            namesByPlayerId={revealNames}
+          />
+        )}
       </div>
     );
   }
 
-  if (!publicRound || !me || !opponent) {
+  if (!publicRound || !combatants) {
     return (
       <section data-testid="sd-loading" className="rounded-lg border border-border p-4">
         <p className="text-sm text-muted-foreground">Loading match state…</p>
@@ -233,19 +238,17 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
           <h3 className="text-base font-semibold" data-testid="sd-round">
             Round {activeRoundNumber ?? publicRound.roundNumber}
           </h3>
-          <span className="text-sm text-muted-foreground" data-testid="sd-timer">
-            {remaining === null
-              ? "Shared timer: —"
-              : `Shared timer: ${remaining}s (one countdown for both players)`}
-          </span>
+          {timer ? (
+            <TimerDisplay timer={timer} label="Shared round timer" />
+          ) : (
+            <span className="text-sm text-muted-foreground" data-testid="sd-timer-idle">
+              Shared timer: —
+            </span>
+          )}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <PlayerCard player={me} maxHp={state.observedMaxHp[me.playerId] ?? me.hp} isMe />
-          <PlayerCard
-            player={opponent}
-            maxHp={state.observedMaxHp[opponent.playerId] ?? opponent.hp}
-            isMe={false}
-          />
+          <CombatantPanel combatant={combatants.player} />
+          <CombatantPanel combatant={combatants.opponent} />
         </div>
       </section>
 
@@ -256,33 +259,27 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
       )}
 
       {iOweChoice ? (
-        <section
-          data-testid="sd-progression"
-          className="rounded-lg border border-primary bg-card p-4 space-y-3"
-        >
-          <h3 className="text-base font-semibold">Level 2 — choose your next ability</h3>
-          <p className="text-xs text-muted-foreground">
-            Play is paused until you choose. Level 3 unlocks the remaining ability automatically.
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(privatePlayer?.level2Options ?? []).map((id) => (
-              <Button
-                key={id}
-                variant="outline"
-                className="h-auto justify-start whitespace-normal py-3 text-left"
-                data-testid={`sd-level2-${id}`}
-                disabled={state.submitting}
-                onClick={() => onChooseLevelTwo(id)}
-              >
-                <span>
-                  <span className="block font-medium">{abilityName(id)}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {abilityDescription(id)}
-                  </span>
-                </span>
-              </Button>
-            ))}
-          </div>
+        <section data-testid="sd-progression" className="space-y-2">
+          <LevelUpPanel
+            event={{
+              kind: "level2-choice",
+              options: (privatePlayer?.level2Options ?? []).map(levelUpOption),
+              pendingOptionId: pendingLevel2,
+              confirmedOptionId: null,
+            }}
+            permissions={{
+              ...NO_INTERACTIONS,
+              canSelectAbility: !state.submitting,
+              canConfirmSubmission: !state.submitting,
+            }}
+            onSelectOption={setPendingLevel2}
+            onConfirmOption={() => {
+              if (pendingLevel2 !== null && !state.submitting) {
+                onChooseLevelTwo(pendingLevel2);
+              }
+            }}
+            gatesNextRound
+          />
           {(privatePlayer?.level2Options ?? []).length === 0 && (
             <p className="text-sm text-muted-foreground" data-testid="sd-level2-empty">
               Waiting for the backend to send your eligible choices…
@@ -307,40 +304,25 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
             data-testid="sd-question"
             className="rounded-lg border border-border bg-card p-4 space-y-3"
           >
-            {publicRound.question ? (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  {publicRound.question.category && (
-                    <Badge variant="outline">{publicRound.question.category}</Badge>
-                  )}
-                </div>
-                <p className="text-base font-medium" data-testid="sd-prompt">
-                  {publicRound.question.prompt}
-                </p>
-                <div
-                  role="radiogroup"
-                  aria-label="Answer options"
-                  className="grid gap-2 sm:grid-cols-2"
-                >
-                  {publicRound.question.options.map((option, index) => (
-                    <Button
-                      key={option}
-                      role="radio"
-                      aria-checked={answerIndex === index}
-                      variant={answerIndex === index ? "default" : "outline"}
-                      className="h-auto justify-start whitespace-normal py-3 text-left"
-                      data-testid={`sd-answer-${index}`}
-                      disabled={hasSubmitted || state.submitting}
-                      onClick={() => {
-                        setAnswerIndex(index);
-                        setConfirming(false);
-                      }}
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-              </>
+            {question ? (
+              <QuestionPanel question={question}>
+                {duplicateLabels.length > 0 && (
+                  <p
+                    data-testid="sd-duplicate-options"
+                    className="text-xs text-destructive"
+                    role="alert"
+                  >
+                    Duplicate option labels from the backend: {duplicateLabels.join(", ")} —
+                    selection may be ambiguous.
+                  </p>
+                )}
+                <AnswerGrid
+                  options={question.options}
+                  selectedOptionId={selectedOptionId}
+                  permissions={permissions}
+                  onSelectOption={(option) => setSelectedOptionId(option.id)}
+                />
+              </QuestionPanel>
             ) : (
               <p className="text-sm text-muted-foreground">Waiting for the round&apos;s question…</p>
             )}
@@ -350,61 +332,22 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
             data-testid="sd-abilities"
             className="rounded-lg border border-border bg-card p-4 space-y-3"
           >
-            <h3 className="text-base font-semibold">Your abilities</h3>
             {privatePlayer ? (
               <>
-                <div role="radiogroup" aria-label="Ability" className="grid gap-2 sm:grid-cols-2">
-                  <Button
-                    role="radio"
-                    aria-checked={abilityChoice === NO_ABILITY}
-                    variant={abilityChoice === NO_ABILITY ? "default" : "outline"}
-                    className="h-auto justify-start whitespace-normal py-3 text-left"
-                    data-testid="sd-ability-none"
-                    disabled={hasSubmitted || state.submitting}
-                    onClick={() => {
-                      setAbilityChoice(NO_ABILITY);
-                      setConfirming(false);
-                    }}
-                  >
-                    No ability
-                  </Button>
-                  {abilityRows.map((row) => (
-                    <Button
-                      key={row.id}
-                      role="radio"
-                      aria-checked={abilityChoice === row.id}
-                      variant={abilityChoice === row.id ? "default" : "outline"}
-                      className="h-auto justify-start whitespace-normal py-3 text-left"
-                      data-testid={`sd-ability-${row.id}`}
-                      disabled={hasSubmitted || state.submitting || row.depleted}
-                      onClick={() => {
-                        setAbilityChoice(row.id);
-                        setConfirming(false);
-                      }}
-                    >
-                      <span>
-                        <span className="block font-medium">
-                          {abilityName(row.id)}
-                          {row.charges !== null ? ` · ${row.charges} charge(s)` : ""}
-                          {row.depleted ? " · depleted" : ""}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {abilityDescription(row.id)}
-                        </span>
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-                {privatePlayer.lockedAbilityIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground" data-testid="sd-locked-abilities">
-                    Locked:{" "}
-                    {privatePlayer.lockedAbilityIds.map((id) => abilityName(id)).join(", ")}
-                  </p>
-                )}
+                <AbilityTray
+                  abilities={abilities}
+                  selectedAbilityId={selectedAbilityId}
+                  permissions={permissions}
+                  onSelectAbility={setSelectedAbilityId}
+                />
                 {privatePlayer.level3Unlocked && privatePlayer.level3FinalUnlockId && (
-                  <p className="text-xs text-muted-foreground" data-testid="sd-level3">
-                    Level 3 unlocked {abilityName(privatePlayer.level3FinalUnlockId)} automatically.
-                  </p>
+                  <LevelUpPanel
+                    event={{
+                      kind: "level3-unlock",
+                      ability: levelUpOption(privatePlayer.level3FinalUnlockId),
+                    }}
+                    permissions={NO_INTERACTIONS}
+                  />
                 )}
               </>
             ) : (
@@ -413,58 +356,44 @@ export function DuelArena({ credentials, state, onSubmit, onChooseLevelTwo }: Pr
           </section>
 
           <section className="rounded-lg border border-border bg-card p-4 space-y-2">
-            {hasSubmitted ? (
-              <p data-testid="sd-waiting" className="text-sm font-medium">
-                Submitted — waiting for opponent…
-              </p>
-            ) : confirming ? (
-              <div className="space-y-2">
-                <p className="text-sm" data-testid="sd-confirm-note">
-                  This submission is final for the round. Your answer and ability cannot be
-                  changed afterwards.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    data-testid="sd-confirm-submit"
-                    disabled={state.submitting}
-                    onClick={() =>
-                      onSubmit(
-                        answerIndex as number,
-                        abilityChoice === NO_ABILITY ? null : abilityChoice,
-                      )
-                    }
-                  >
-                    {state.submitting ? "Locking…" : "Confirm — lock it in"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    data-testid="sd-cancel-submit"
-                    disabled={state.submitting}
-                    onClick={() => setConfirming(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                data-testid="sd-lock"
-                disabled={answerIndex === null || !privateIsCurrent || state.submitting}
-                onClick={() => setConfirming(true)}
-              >
-                Lock Answer &amp; Ability
-              </Button>
-            )}
-            {state.actionError && (
-              <p data-testid="sd-action-error" className="text-sm text-destructive">
-                {state.actionError}
-              </p>
-            )}
+            <SubmissionReview
+              submission={{
+                selectedOptionId,
+                selectedAbilityId,
+                phase,
+              }}
+              answerLabel={selectedOption?.label ?? null}
+              abilityName={selectedAbilityId !== null ? abilityName(selectedAbilityId) : null}
+              permissions={permissions}
+              onReview={() => setReviewing(true)}
+              onEdit={() => setReviewing(false)}
+              onConfirm={() => {
+                if (selectedOption !== null && !state.submitting) {
+                  // Exactly one atomic backend submission: final answer INDEX
+                  // (mapped from the option id, never the label) + ability id.
+                  onSubmit(selectedOption.index, selectedAbilityId);
+                }
+              }}
+              statusMessage={
+                state.actionError
+                  ? { tone: "error", text: state.actionError }
+                  : hasSubmitted
+                    ? { tone: "info", text: "Submitted — waiting for opponent…" }
+                    : null
+              }
+              confirmLabel={state.submitting ? "Locking…" : "Confirm — lock it in"}
+            />
           </section>
         </>
       )}
 
-      {lastResolved && <RoundReveal settlement={lastResolved} ownerId={credentials.playerId} />}
+      {lastResolved && (
+        <RevealPanel
+          settlement={lastResolved}
+          viewerSlot="p1"
+          namesByPlayerId={revealNames}
+        />
+      )}
     </div>
   );
 }

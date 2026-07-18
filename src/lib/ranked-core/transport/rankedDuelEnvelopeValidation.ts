@@ -25,7 +25,7 @@ import {
   RESOLVED_SCHEMA_VERSION,
   ResolvedRoundEnvelope,
 } from "./rankedDuelEnvelopeTypes";
-import { BackendResolvedRoundProjection } from "../backend-adapter/backendSettlementTypes";
+import { BackendResolvedRoundProjection } from "../backend/backendSettlementTypes";
 
 export class EnvelopeValidationError extends Error {
   constructor(message: string) {

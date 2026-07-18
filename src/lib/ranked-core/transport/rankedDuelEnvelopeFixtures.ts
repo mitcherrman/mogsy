@@ -12,7 +12,7 @@
 import {
   SETTLEMENT_SCENARIOS,
   SettlementScenario,
-} from "../backend-adapter/backendSettlementFixtures";
+} from "../backend/backendSettlementFixtures";
 import {
   BackendPrivatePlayerProjection,
   BackendPublicPlayer,

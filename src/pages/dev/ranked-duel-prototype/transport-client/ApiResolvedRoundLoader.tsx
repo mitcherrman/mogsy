@@ -2,9 +2,9 @@ import { Dispatch, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DuelAction } from "../duelMachine";
-import { adaptResolvedRoundEnvelope } from "../transport-adapter/adaptResolvedRoundEnvelope";
-import { SettlementAdapterError } from "../backend-adapter/adaptBackendSettlement";
-import { EnvelopeValidationError } from "../transport-adapter/rankedDuelEnvelopeValidation";
+import { adaptResolvedRoundEnvelope } from "@/lib/ranked-core/transport/adaptResolvedRoundEnvelope";
+import { SettlementAdapterError } from "@/lib/ranked-core/backend/adaptBackendSettlement";
+import { EnvelopeValidationError } from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 import {
   DEFAULT_RANKED_DUEL_API_BASE,
   ResolvedRoundFetchError,

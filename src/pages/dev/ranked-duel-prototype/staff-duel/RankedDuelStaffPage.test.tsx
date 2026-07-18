@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { RankedDuelStaffPage } from "./RankedDuelStaffPage";
 import {
   MATCH_ID,
@@ -23,6 +23,8 @@ interface FakeBackend {
   privateUnlocked: string[];
   privateCharges: Record<string, number | null>;
   matchGone: boolean;
+  /** When true, submission POSTs fail once (flag auto-clears). */
+  submitFailOnce: boolean;
   resolved: Record<number, unknown>;
   submissions: unknown[];
   levelTwoChoices: unknown[];
@@ -127,6 +129,10 @@ const install = () => {
         return json(body);
       }
       if (path.includes("/rounds/current/submission")) {
+        if (backend.submitFailOnce) {
+          backend.submitFailOnce = false;
+          return json(errorBody("ranked_duel_round_mismatch", "submission arrived for a stale round"), 409);
+        }
         backend.submissions.push(JSON.parse(init.body as string));
         return json({
           status: "accepted",
@@ -169,6 +175,24 @@ const joinAsMe = async () => {
   await tick(10);
 };
 
+/** Canonical AnswerGrid button for backend option index i. */
+const answerBtn = (i: number): HTMLButtonElement => {
+  const grid = screen.getByTestId("answer-grid");
+  const btn = grid.querySelector(`[data-quiz-choice="${i}"]`);
+  if (!btn) throw new Error(`no answer option ${i}`);
+  return btn as HTMLButtonElement;
+};
+
+/** Full canonical submission flow: pick -> review -> confirm atomically. */
+const submitAnswer = async (i: number, abilityId?: string) => {
+  fireEvent.click(answerBtn(i));
+  if (abilityId) fireEvent.click(screen.getByTestId(`ability-${abilityId}`));
+  fireEvent.click(screen.getByTestId("review-button"));
+  backend.meSubmitted = true;
+  fireEvent.click(screen.getByTestId("confirm-button"));
+  await tick(50);
+};
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-07-14T12:00:05Z"));
@@ -182,6 +206,7 @@ beforeEach(() => {
     privateUnlocked: ["tank.fortify"],
     privateCharges: { "tank.fortify": 3 },
     matchGone: false,
+    submitFailOnce: false,
     resolved: {},
     submissions: [],
     levelTwoChoices: [],
@@ -251,40 +276,50 @@ describe("gameplay", () => {
     render(<RankedDuelStaffPage />);
     await joinAsMe();
 
-    expect(screen.getByTestId("sd-prompt").textContent).toContain("Immolate");
-    expect(screen.getByTestId("sd-answer-0").textContent).toContain("Sunfire Aegis");
-    expect(screen.getByTestId("sd-answer-3")).toBeTruthy();
+    expect(screen.getByTestId("sd-question").textContent).toContain("Immolate");
+    expect(answerBtn(0).textContent).toContain("Sunfire Aegis");
+    expect(answerBtn(3)).toBeTruthy();
     // Nothing marks an option as correct before the backend resolves.
     for (const i of [0, 1, 2, 3]) {
-      expect(screen.getByTestId(`sd-answer-${i}`).getAttribute("aria-checked")).toBe("false");
+      expect(answerBtn(i).getAttribute("data-choice-state")).toBe("idle");
     }
     expect(screen.getByTestId("sd-question").textContent?.toLowerCase()).not.toContain("correct");
 
-    expect(screen.getByTestId("sd-ability-tank.fortify").textContent).toContain("3 charge(s)");
-    expect(screen.getByTestId("sd-ability-none")).toBeTruthy();
-    expect(screen.getByTestId("sd-locked-abilities").textContent).toContain("Brace");
+    expect(screen.getByTestId("ability-tank.fortify").textContent).toContain("3 charges left");
+    expect(screen.getByTestId("ability-none")).toBeTruthy();
+    // Progression-locked abilities render disabled with the lock state.
+    const brace = screen.getByTestId("ability-tank.brace") as HTMLButtonElement;
+    expect(brace.disabled).toBe(true);
+    expect(brace.getAttribute("data-ability-state")).toBe("locked-progression");
   });
 
-  it("selects exactly one answer and one ability, then submits the backend round number", async () => {
+  it("selects one answer + one ability, reviews, and submits the backend round number and index once", async () => {
     backend.round = 2;
     render(<RankedDuelStaffPage />);
     await joinAsMe();
 
-    fireEvent.click(screen.getByTestId("sd-answer-2"));
-    fireEvent.click(screen.getByTestId("sd-answer-1"));
-    expect(screen.getByTestId("sd-answer-2").getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByTestId("sd-answer-1").getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(answerBtn(2));
+    fireEvent.click(answerBtn(1));
+    expect(answerBtn(2).getAttribute("data-choice-state")).toBe("idle");
+    expect(answerBtn(1).getAttribute("data-choice-state")).toBe("selected");
 
-    fireEvent.click(screen.getByTestId("sd-ability-tank.fortify"));
-    expect(screen.getByTestId("sd-ability-none").getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(screen.getByTestId("ability-tank.fortify"));
+    expect(screen.getByTestId("ability-none").getAttribute("aria-pressed")).toBe("false");
 
-    fireEvent.click(screen.getByTestId("sd-lock"));
-    expect(screen.getByTestId("sd-confirm-note").textContent).toContain("final for the round");
+    fireEvent.click(screen.getByTestId("review-button"));
+    const review = screen.getByTestId("submission-review");
+    expect(review.getAttribute("data-phase")).toBe("reviewing");
+    expect(review.textContent).toContain("lock together");
+    expect(screen.getByTestId("review-answer").textContent).toContain("Heartsteel");
+    expect(screen.getByTestId("review-ability").textContent).toContain("Fortify");
+    // Entering review sends nothing.
+    expect(backend.submissions).toHaveLength(0);
 
     backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
+    fireEvent.click(screen.getByTestId("confirm-button"));
     await tick(10);
 
+    // Exactly one atomic submission with the backend round number + index.
     expect(backend.submissions).toEqual([
       { round_number: 2, answer: 1, ability_id: "tank.fortify" },
     ]);
@@ -294,46 +329,81 @@ describe("gameplay", () => {
   it("submits a null ability when 'No ability' is chosen", async () => {
     render(<RankedDuelStaffPage />);
     await joinAsMe();
-    fireEvent.click(screen.getByTestId("sd-answer-0"));
-    fireEvent.click(screen.getByTestId("sd-lock"));
-    backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
-    await tick(10);
+    await submitAnswer(0);
     expect(backend.submissions).toEqual([{ round_number: 1, answer: 0, ability_id: null }]);
+  });
+
+  it("allows editing the selection before the atomic confirm", async () => {
+    render(<RankedDuelStaffPage />);
+    await joinAsMe();
+    fireEvent.click(answerBtn(0));
+    fireEvent.click(screen.getByTestId("review-button"));
+    fireEvent.click(screen.getByTestId("edit-button"));
+    // Back in selecting: the answer can change, nothing was sent.
+    fireEvent.click(answerBtn(2));
+    expect(answerBtn(2).getAttribute("data-choice-state")).toBe("selected");
+    expect(backend.submissions).toHaveLength(0);
+    fireEvent.click(screen.getByTestId("review-button"));
+    backend.meSubmitted = true;
+    fireEvent.click(screen.getByTestId("confirm-button"));
+    await tick(10);
+    expect(backend.submissions).toEqual([{ round_number: 1, answer: 2, ability_id: null }]);
+  });
+
+  it("keeps answer and ability after a failed submit and allows a retry", async () => {
+    render(<RankedDuelStaffPage />);
+    await joinAsMe();
+    backend.submitFailOnce = true;
+    fireEvent.click(answerBtn(1));
+    fireEvent.click(screen.getByTestId("ability-tank.fortify"));
+    fireEvent.click(screen.getByTestId("review-button"));
+    fireEvent.click(screen.getByTestId("confirm-button"));
+    await tick(50);
+
+    // The failure surfaced; nothing was accepted; the selection is intact.
+    expect(screen.getByTestId("submission-status")).toBeTruthy();
+    expect(backend.submissions).toHaveLength(0);
+    expect(screen.getByTestId("review-answer").textContent).toContain("Heartsteel");
+    expect(screen.getByTestId("review-ability").textContent).toContain("Fortify");
+
+    backend.meSubmitted = true;
+    fireEvent.click(screen.getByTestId("confirm-button"));
+    await tick(50);
+    expect(backend.submissions).toEqual([
+      { round_number: 1, answer: 1, ability_id: "tank.fortify" },
+    ]);
   });
 
   it("disables a depleted ability", async () => {
     backend.privateCharges = { "tank.fortify": 0 };
     render(<RankedDuelStaffPage />);
     await joinAsMe();
-    const depleted = screen.getByTestId("sd-ability-tank.fortify") as HTMLButtonElement;
+    const depleted = screen.getByTestId("ability-tank.fortify") as HTMLButtonElement;
     expect(depleted.disabled).toBe(true);
-    expect(depleted.textContent).toContain("depleted");
+    expect(depleted.textContent).toContain("No charges remaining");
   });
 
   it("shows the waiting state and blocks duplicate submissions", async () => {
     render(<RankedDuelStaffPage />);
     await joinAsMe();
-    fireEvent.click(screen.getByTestId("sd-answer-0"));
-    fireEvent.click(screen.getByTestId("sd-lock"));
-    backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
-    await tick(10);
+    await submitAnswer(0);
 
-    expect(screen.getByTestId("sd-waiting").textContent).toContain("waiting for opponent");
-    expect(screen.queryByTestId("sd-lock")).toBeNull();
-    expect((screen.getByTestId("sd-answer-0") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("submission-review").getAttribute("data-phase")).toBe("locked");
+    expect(screen.getByTestId("locked-banner")).toBeTruthy();
+    expect(screen.getByTestId("submission-status").textContent).toContain("waiting for opponent");
+    // No confirm control exists once locked; the grid is disabled (via its
+    // fieldset, so match :disabled rather than the button's own property).
+    expect(screen.queryByTestId("confirm-button")).toBeNull();
+    expect(screen.queryByTestId("review-button")).toBeNull();
+    expect(screen.getByTestId("answer-grid").getAttribute("data-answers-state")).toBe("locked");
+    expect(answerBtn(0).matches(":disabled")).toBe(true);
     expect(backend.submissions).toHaveLength(1);
   });
 
   it("reveals the resolved round and resets the selection when the backend advances", async () => {
     render(<RankedDuelStaffPage />);
     await joinAsMe();
-    fireEvent.click(screen.getByTestId("sd-answer-0"));
-    fireEvent.click(screen.getByTestId("sd-lock"));
-    backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
-    await tick(10);
+    await submitAnswer(0);
 
     // Backend resolves round 1 and starts round 2.
     backend.resolved[1] = resolvedEnvelope({
@@ -345,17 +415,37 @@ describe("gameplay", () => {
     backend.meSubmitted = false;
     await tick(2000);
 
-    expect(screen.getByTestId("sd-reveal").textContent).toContain("Round 1 result");
-    expect(screen.getByTestId(`sd-reveal-${OPPONENT}`).textContent).toContain("damage taken 30");
+    expect(screen.getByTestId("reveal-panel").textContent).toContain("Round 1 resolved");
+    const opponentCard = within(screen.getByTestId(`reveal-${OPPONENT}`));
+    expect(opponentCard.getByTestId(`reveal-hp-${OPPONENT}`).textContent).toContain("90 → 60");
+    expect(opponentCard.getByTestId(`reveal-hp-${OPPONENT}`).textContent).toContain("−30");
     expect(screen.getByTestId("sd-round").textContent).toContain("Round 2");
     // Previous round's answer is not carried into the new round.
-    expect(screen.getByTestId("sd-answer-0").getAttribute("aria-checked")).toBe("false");
-    expect((screen.getByTestId("sd-lock") as HTMLButtonElement).disabled).toBe(true);
+    expect(answerBtn(0).getAttribute("data-choice-state")).toBe("idle");
+    expect((screen.getByTestId("review-button") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("a round change while reviewing returns safely to a fresh selection", async () => {
+    render(<RankedDuelStaffPage />);
+    await joinAsMe();
+    fireEvent.click(answerBtn(0));
+    fireEvent.click(screen.getByTestId("review-button"));
+    expect(screen.getByTestId("submission-review").getAttribute("data-phase")).toBe("reviewing");
+
+    // Backend resolves the round (opponent finished it) and starts round 2.
+    backend.resolved[1] = resolvedEnvelope({ roundNumber: 1 });
+    backend.round = 2;
+    await tick(2000);
+
+    const review = screen.getByTestId("submission-review");
+    expect(review.getAttribute("data-phase")).toBe("selecting");
+    expect(answerBtn(0).getAttribute("data-choice-state")).toBe("idle");
+    expect(backend.submissions).toHaveLength(0);
   });
 });
 
 describe("progression", () => {
-  it("blocks submission, renders the backend's Level 2 options, and posts the choice", async () => {
+  it("blocks submission, renders the backend's Level 2 options, and posts the confirmed choice", async () => {
     render(<RankedDuelStaffPage />);
     await joinAsMe();
 
@@ -369,15 +459,18 @@ describe("progression", () => {
     await tick(2000);
 
     expect(screen.getByTestId("sd-progression")).toBeTruthy();
-    expect(screen.queryByTestId("sd-lock")).toBeNull();
-    expect(screen.getByTestId("sd-level2-tank.brace")).toBeTruthy();
-    expect(screen.getByTestId("sd-level2-tank.barrier")).toBeTruthy();
+    expect(screen.queryByTestId("review-button")).toBeNull();
+    expect(screen.getByTestId("level-option-tank.brace")).toBeTruthy();
+    expect(screen.getByTestId("level-option-tank.barrier")).toBeTruthy();
     // No passive or ultimate concepts exist anywhere in this UI.
     const text = document.body.textContent?.toLowerCase() ?? "";
     expect(text).not.toContain("passive");
     expect(text).not.toContain("ultimate");
 
-    fireEvent.click(screen.getByTestId("sd-level2-tank.brace"));
+    // Canonical two-step: pick, then confirm the permanent choice.
+    fireEvent.click(screen.getByTestId("level-option-tank.brace"));
+    expect(backend.levelTwoChoices).toHaveLength(0);
+    fireEvent.click(screen.getByTestId("level-confirm"));
     await tick(10);
     expect(backend.levelTwoChoices).toEqual([{ ability_id: "tank.brace" }]);
     expect(backend.tokenHeaders.filter(Boolean)).toContain(TOKEN);
@@ -392,7 +485,7 @@ describe("progression", () => {
     await tick(2000);
 
     expect(screen.queryByTestId("sd-progression")).toBeNull();
-    expect(screen.getByTestId("sd-ability-tank.brace")).toBeTruthy();
+    expect(screen.getByTestId("ability-tank.brace")).toBeTruthy();
   });
 
   it("shows a waiting state while only the opponent owes a choice", async () => {
@@ -431,8 +524,11 @@ describe("progression", () => {
     );
     render(<RankedDuelStaffPage />);
     await joinAsMe();
-    expect(screen.getByTestId("sd-level3").textContent).toContain("Barrier");
-    expect(screen.queryByTestId("sd-locked-abilities")).toBeNull();
+    const unlock = screen.getByTestId("level-up-panel");
+    expect(unlock.getAttribute("data-kind")).toBe("level3-unlock");
+    expect(unlock.textContent).toContain("Barrier");
+    // Nothing remains progression-locked.
+    expect(document.querySelector('[data-ability-state="locked-progression"]')).toBeNull();
   });
 });
 
@@ -452,8 +548,9 @@ describe("match completion and failure states", () => {
     await tick(2000);
 
     expect(screen.getByTestId("sd-match-over")).toBeTruthy();
-    expect(screen.getByTestId("sd-winner").textContent).toContain(`${ME} (you)`);
-    expect(screen.queryByTestId("sd-lock")).toBeNull();
+    expect(screen.getByTestId("match-over-frame").getAttribute("data-result")).toBe("victory");
+    expect(screen.getByTestId("match-over-subheading").textContent).toContain(`${ME} (you)`);
+    expect(screen.queryByTestId("review-button")).toBeNull();
 
     const after = backend.urls.length;
     await tick(20000);
@@ -519,10 +616,10 @@ describe("polling discipline", () => {
 
     // Submit while that poll is unresolved; the command asks for an immediate
     // refresh as soon as its POST returns.
-    fireEvent.click(screen.getByTestId("sd-answer-0"));
-    fireEvent.click(screen.getByTestId("sd-lock"));
+    fireEvent.click(answerBtn(0));
+    fireEvent.click(screen.getByTestId("review-button"));
     backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
+    fireEvent.click(screen.getByTestId("confirm-button"));
     await tick(50);
 
     // The refresh is queued, not run: no second cycle has begun.
@@ -548,10 +645,10 @@ describe("polling discipline", () => {
     backend.round = 2;
     backend.meSubmitted = false;
     await tick(2000);
-    fireEvent.click(screen.getByTestId("sd-answer-1"));
-    fireEvent.click(screen.getByTestId("sd-lock"));
+    fireEvent.click(answerBtn(1));
+    fireEvent.click(screen.getByTestId("review-button"));
     backend.meSubmitted = true;
-    fireEvent.click(screen.getByTestId("sd-confirm-submit"));
+    fireEvent.click(screen.getByTestId("confirm-button"));
     await tick(50);
     const beforeSecondCadence = backend.publicStarts;
     await tick(6000);
@@ -587,7 +684,8 @@ describe("polling discipline", () => {
     expect(backend.publicStarts).toBe(startsBeforeHeldPoll + 1);
     expect(backend.pollInFlight).toBe(1);
 
-    fireEvent.click(screen.getByTestId("sd-level2-tank.brace"));
+    fireEvent.click(screen.getByTestId("level-option-tank.brace"));
+    fireEvent.click(screen.getByTestId("level-confirm"));
     await tick(50);
     expect(backend.levelTwoChoices).toEqual([{ ability_id: "tank.brace" }]);
     expect(backend.publicStarts).toBe(startsBeforeHeldPoll + 1); // queued, not run

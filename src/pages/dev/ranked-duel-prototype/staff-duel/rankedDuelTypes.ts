@@ -2,7 +2,7 @@
 // Narrow, tolerant types for the PLAYABLE staff duel lifecycle (backend
 // commits 8d9520e / de04485 / b873246).
 //
-// Deliberately different from ../transport-adapter: those validators are
+// Deliberately different from @/lib/ranked-core/transport: those validators are
 // exact-key-set strict (five envelope fields only), which is correct for the
 // read-only inspection surface but structurally rejects the playable
 // endpoints — the live public body now carries additive `question` and

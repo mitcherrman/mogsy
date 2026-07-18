@@ -4,9 +4,9 @@ import {
   buildPublicRoundUrl,
   fetchPublicRound,
 } from "./fetchPublicRound";
-import { getPublicEnvelopeScenario } from "../transport-adapter/rankedDuelEnvelopeFixtures";
-import { adaptPublicRound } from "../transport-adapter/adaptPublicRound";
-import { PublicRoundEnvelope } from "../transport-adapter/rankedDuelEnvelopeTypes";
+import { getPublicEnvelopeScenario } from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
+import { adaptPublicRound } from "@/lib/ranked-core/transport/adaptPublicRound";
+import { PublicRoundEnvelope } from "@/lib/ranked-core/transport/rankedDuelEnvelopeTypes";
 
 const IDS = { p1PlayerId: "alice", p2PlayerId: "bob" };
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;

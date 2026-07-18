@@ -15,12 +15,12 @@ import {
 } from "./fixtures";
 import { DuelState, DuelAction, RoundPlayerState } from "./duelMachine";
 import { Dispatch, useState } from "react";
-import { FIXTURE_PLAYER_IDS } from "./backend-adapter/backendSettlementFixtures";
+import { FIXTURE_PLAYER_IDS } from "@/lib/ranked-core/backend/backendSettlementFixtures";
 import {
   RESOLVED_ENVELOPE_SCENARIOS,
   getResolvedEnvelopeScenario,
-} from "./transport-adapter/rankedDuelEnvelopeFixtures";
-import { adaptResolvedRoundEnvelope } from "./transport-adapter/adaptResolvedRoundEnvelope";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
+import { adaptResolvedRoundEnvelope } from "@/lib/ranked-core/transport/adaptResolvedRoundEnvelope";
 import { ApiResolvedRoundLoader } from "./transport-client/ApiResolvedRoundLoader";
 import { ApiPublicRoundLoader } from "./transport-client/ApiPublicRoundLoader";
 import { ApiPrivatePlayerLoader } from "./transport-client/ApiPrivatePlayerLoader";

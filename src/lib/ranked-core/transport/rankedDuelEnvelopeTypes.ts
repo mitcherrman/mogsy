@@ -12,7 +12,7 @@
 // Deterministic fixture data only; local to the /dev/ranked-duel prototype.
 // ---------------------------------------------------------------------------
 
-import { BackendResolvedRoundProjection } from "../backend-adapter/backendSettlementTypes";
+import { BackendResolvedRoundProjection } from "../backend/backendSettlementTypes";
 
 export const RESOLVED_SCHEMA_VERSION = "ranked_duel.resolved_round.v1" as const;
 export const PUBLIC_SCHEMA_VERSION = "ranked_duel.public_round.v1" as const;

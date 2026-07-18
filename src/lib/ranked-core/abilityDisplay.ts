@@ -58,4 +58,3 @@ export const abilityName = (abilityId: string): string => LABELS[abilityId]?.nam
 export const abilityDescription = (abilityId: string): string =>
   LABELS[abilityId]?.description ?? "";
 
-export const NO_ABILITY = "__none__";

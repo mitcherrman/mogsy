@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   AdaptedPrivatePlayer,
   adaptPrivatePlayer,
-} from "../transport-adapter/adaptPrivatePlayer";
-import { EnvelopeValidationError } from "../transport-adapter/rankedDuelEnvelopeValidation";
+} from "@/lib/ranked-core/transport/adaptPrivatePlayer";
+import { EnvelopeValidationError } from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 import { DEFAULT_RANKED_DUEL_API_BASE } from "./fetchResolvedRound";
 import { PrivatePlayerFetchError, fetchPrivatePlayer } from "./fetchPrivatePlayer";
 

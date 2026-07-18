@@ -7,9 +7,9 @@ import {
 import {
   FIXTURE_OWNER_ID,
   getPrivateEnvelopeScenario,
-} from "../transport-adapter/rankedDuelEnvelopeFixtures";
-import { adaptPrivatePlayer } from "../transport-adapter/adaptPrivatePlayer";
-import { PrivatePlayerEnvelope } from "../transport-adapter/rankedDuelEnvelopeTypes";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
+import { adaptPrivatePlayer } from "@/lib/ranked-core/transport/adaptPrivatePlayer";
+import { PrivatePlayerEnvelope } from "@/lib/ranked-core/transport/rankedDuelEnvelopeTypes";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const envelope = (key = "private-idle"): PrivatePlayerEnvelope =>

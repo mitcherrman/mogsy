@@ -15,7 +15,7 @@
 // explicit level_up_events, not numeric comparison.
 // ---------------------------------------------------------------------------
 
-import { PlayerId } from "../fixtures";
+import type { PlayerSlot as PlayerId } from "../viewTypes";
 import {
   BackendCompletionReason,
   BackendResolvedPlayer,

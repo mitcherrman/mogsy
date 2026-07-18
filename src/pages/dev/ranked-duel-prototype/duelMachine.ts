@@ -23,7 +23,7 @@ import {
 import type {
   AdaptedPlayerSettlement,
   AdaptedSettlement,
-} from "./backend-adapter/adaptBackendSettlement";
+} from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
 export type DuelPhase =
   | "setup"
