@@ -20,7 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdaptedSettlement, adaptBackendSettlement } from "../backend-adapter/adaptBackendSettlement";
+import { AdaptedSettlement, adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import { fetchResolvedRound } from "../transport-client/fetchResolvedRound";
 import {
   RankedDuelApiError,

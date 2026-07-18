@@ -157,6 +157,19 @@ describe("abilityViewsFromPrivatePlayer", () => {
     expect(fortify?.unavailableReason).toMatch(/charges/i);
   });
 
+  it("an id in both unlocked and locked lists renders once, as unlocked", () => {
+    const priv = privatePlayer("private-idle");
+    const overlapping = {
+      ...priv,
+      unlockedAbilityIds: ["tank.fortify", "tank.brace"],
+      lockedAbilityIds: ["tank.brace", "tank.barrier"],
+    };
+    const views = abilityViewsFromPrivatePlayer(overlapping);
+    const brace = views.filter((v) => v.id === "tank.brace");
+    expect(brace).toHaveLength(1);
+    expect(brace[0].unlocked).toBe(true);
+  });
+
   it("covers all three unlocked abilities at max level with live charges", () => {
     const priv = privatePlayer("private-max-level");
     const views = abilityViewsFromPrivatePlayer(priv);

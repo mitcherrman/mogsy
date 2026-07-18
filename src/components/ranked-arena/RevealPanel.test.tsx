@@ -49,7 +49,7 @@ describe("RevealPanel — real backend-shaped settlements", () => {
     expect(p1.getByTestId(`damage-${s.players.p1.playerId}`)).toHaveTextContent(
       String(s.players.p1.finalDamageDealt),
     );
-    expect(p1.getByTestId(`hp-${s.players.p1.playerId}`)).toHaveTextContent(
+    expect(p1.getByTestId(`reveal-hp-${s.players.p1.playerId}`)).toHaveTextContent(
       `${s.players.p1.hpBefore} → ${s.players.p1.hpAfter}`,
     );
   });
@@ -66,7 +66,7 @@ describe("RevealPanel — real backend-shaped settlements", () => {
   it("both wrong (wash): renders zero-damage round without inventing numbers", () => {
     const s = settlement("both-incorrect-wash");
     renderReveal(s);
-    expect(card(s, "p1").getByTestId(`xp-${s.players.p1.playerId}`)).toHaveTextContent(
+    expect(card(s, "p1").getByTestId(`reveal-xp-${s.players.p1.playerId}`)).toHaveTextContent(
       `+${s.players.p1.xpGained} → ${s.players.p1.totalXpAfter}`,
     );
   });

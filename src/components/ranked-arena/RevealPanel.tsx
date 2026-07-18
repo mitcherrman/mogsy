@@ -119,7 +119,7 @@ function ResolvedCombatantCard({
         )}
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">HP</dt>
-          <dd className="font-medium" data-testid={`hp-${player.playerId}`}>
+          <dd className="font-medium" data-testid={`reveal-hp-${player.playerId}`}>
             {player.hpBefore} → {player.hpAfter}
             {player.finalDamageReceived > 0 && (
               <span className="text-muted-foreground"> (−{player.finalDamageReceived})</span>
@@ -128,7 +128,7 @@ function ResolvedCombatantCard({
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">XP</dt>
-          <dd className="font-medium" data-testid={`xp-${player.playerId}`}>
+          <dd className="font-medium" data-testid={`reveal-xp-${player.playerId}`}>
             +{player.xpGained} → {player.totalXpAfter}
           </dd>
         </div>

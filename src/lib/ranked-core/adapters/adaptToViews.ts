@@ -197,9 +197,12 @@ export function abilityViewsFromPrivatePlayer(
     };
   };
 
+  // An id present in both lists renders once, as unlocked — projections
+  // shouldn't overlap, but a duplicate row must never appear if one does.
+  const unlockedSet = new Set(priv.unlockedAbilityIds);
   return [
     ...priv.unlockedAbilityIds.map((id) => toView(id, true)),
-    ...priv.lockedAbilityIds.map((id) => toView(id, false)),
+    ...priv.lockedAbilityIds.filter((id) => !unlockedSet.has(id)).map((id) => toView(id, false)),
   ];
 }
 
