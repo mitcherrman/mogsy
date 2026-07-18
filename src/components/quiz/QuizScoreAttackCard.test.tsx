@@ -31,8 +31,8 @@ function renderCard(today: Partial<DsaToday>, hasAccount = true) {
 describe("QuizScoreAttackCard", () => {
   it("shows the available state with a play CTA to /quiz/daily", () => {
     renderCard({});
-    expect(screen.getByTestId("hub-score-attack-card")).toHaveTextContent("Daily Score Attack");
-    expect(screen.getByTestId("score-attack-status")).toHaveTextContent("One official run per day");
+    expect(screen.getByTestId("hub-score-attack-card")).toHaveTextContent("Time Trial");
+    expect(screen.getByTestId("hub-score-attack-card")).toHaveTextContent("One official attempt per day");
     const link = screen.getByTestId("score-attack-cta").querySelector("a") ?? screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/quiz/daily");
     expect(screen.getByRole("link")).toHaveTextContent("Play now");

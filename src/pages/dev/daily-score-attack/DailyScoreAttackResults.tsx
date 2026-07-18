@@ -33,7 +33,7 @@ export default function DailyScoreAttackResults({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-3">
       <h2 ref={headingRef} tabIndex={-1} className="text-xl font-bold outline-none">
-        {results.official ? "Official Run Complete" : "Practice Run Complete"}
+        {results.official ? "Time Trial complete" : "Practice run complete"}
       </h2>
       <span
         data-testid="dsa-results-badge"
@@ -109,7 +109,7 @@ export default function DailyScoreAttackResults({
 
       {results.official && history && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm" data-testid="dsa-history">
-          <p className="font-medium">Official history</p>
+          <p className="font-medium">Your recent Time Trial runs</p>
           {history.personal_best && (
             <p className="text-muted-foreground">
               Personal best: {history.personal_best.score.toLocaleString()} (
