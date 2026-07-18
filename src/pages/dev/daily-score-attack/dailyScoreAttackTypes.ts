@@ -110,6 +110,10 @@ export type DsaToday = {
   } | null;
   auth_required_for_official: boolean;
   practice_available: boolean;
+  /** Server-authoritative current daily streak (UTC). The backend /today
+   * projection always emits this as a non-negative integer (0 when none),
+   * so it is required, not optional. */
+  daily_streak: number;
   /** Legacy Daily Challenge already completed (bonus paid) today; the DSA
    * official run stays playable but earns no second bonus or streak. */
   legacy_completed_today?: boolean;

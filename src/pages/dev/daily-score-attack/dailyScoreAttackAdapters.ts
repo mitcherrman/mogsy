@@ -159,6 +159,7 @@ export function readToday(raw: unknown): DsaToday {
   requireNonNegativeInt(today.question_count, "question_count");
   requireNonNegativeInt(today.run_duration_seconds, "run_duration_seconds");
   requireNonNegativeInt(today.seconds_until_reset, "seconds_until_reset");
+  requireNonNegativeInt(today.daily_streak, "daily_streak");
   return today as unknown as DsaToday;
 }
 
