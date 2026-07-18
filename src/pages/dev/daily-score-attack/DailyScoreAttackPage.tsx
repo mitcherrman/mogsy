@@ -169,7 +169,11 @@ export default function DailyScoreAttackPage({ production = false }: PageProps) 
         const results = await fetchResults(runId);
         send({ type: "RESULTS_LOADED", results });
         track("dsa_results_viewed", { official });
-        announce(official ? "Official run finished" : "Practice run finished");
+        announce(
+          official
+            ? `Time Trial finished. Score ${results.total_score.toLocaleString()}, ${results.correct_count} of ${results.answered_count} correct.`
+            : "Practice run finished",
+        );
         if (official) {
           try {
             send({ type: "HISTORY_LOADED", history: await fetchHistory() });
@@ -397,7 +401,7 @@ export default function DailyScoreAttackPage({ production = false }: PageProps) 
   return (
     <main className="min-h-screen bg-background pb-10 pt-4 text-foreground">
       <div className="mx-auto mb-4 flex w-full max-w-xl items-center justify-between px-3">
-        <h1 className="text-base font-bold">Daily Score Attack</h1>
+        <h1 className="text-base font-bold">Time Trial</h1>
         {!production && (
           <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
             dev prototype
@@ -414,7 +418,7 @@ export default function DailyScoreAttackPage({ production = false }: PageProps) 
 
       {state.phase === "unavailable" && (
         <div className="mx-auto max-w-xl px-3 text-center" data-testid="dsa-unavailable">
-          <p className="font-medium">Daily Score Attack is not available right now.</p>
+          <p className="font-medium">Time Trial isn't available right now. Try again shortly.</p>
           <button
             type="button"
             onClick={() => send({ type: "RETRY" })}

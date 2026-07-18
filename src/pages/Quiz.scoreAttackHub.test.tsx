@@ -103,7 +103,7 @@ describe("Quiz hub Daily entry transition", () => {
     todayMock.mockResolvedValue({ ...todayFixture, daily_streak: 2 });
     await renderHub();
     const card = await screen.findByTestId("hub-score-attack-card");
-    expect(card).toHaveTextContent("Daily Score Attack");
+    expect(card).toHaveTextContent("Time Trial");
     expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
     const link = screen.getByTestId("score-attack-cta");
     expect(link.getAttribute("href")).toBe("/quiz/daily");

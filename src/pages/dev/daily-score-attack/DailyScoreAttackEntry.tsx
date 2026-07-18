@@ -27,7 +27,7 @@ export function DailyScoreAttackEntry({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-3">
       <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-semibold">Daily Score Attack — {meta.challenge_date}</h2>
+        <h2 className="text-lg font-semibold">Time Trial — {meta.challenge_date}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {meta.question_count} questions · {meta.run_duration_seconds} second global timer ·
           one official run per day (UTC reset in{" "}

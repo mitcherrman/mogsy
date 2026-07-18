@@ -47,7 +47,7 @@ export default function QuizScoreAttackCard({ today, hasAccount, onPlay }: Props
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-base font-bold">
           <Trophy className="h-4 w-4 text-amber-400" aria-hidden />
-          Daily Score Attack
+          Time Trial
         </h3>
         {streak > 0 && (
           <span
@@ -61,8 +61,8 @@ export default function QuizScoreAttackCard({ today, hasAccount, onPlay }: Props
       </div>
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Timer className="h-3.5 w-3.5" aria-hidden />
-        {today.question_count} questions · {today.run_duration_seconds}s global timer ·
-        one official run per day (UTC)
+        {today.question_count} questions, one {today.run_duration_seconds}-second run.
+        One official attempt per day; practice anytime.
       </p>
       <p className="text-sm" data-testid="score-attack-status">
         {statusLine}
