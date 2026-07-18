@@ -9,6 +9,7 @@ import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequireRankedTutorial from "./components/RequireRankedTutorial";
 import AdminRoute from "./components/AdminRoute";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import Layout from "./components/Layout";
@@ -113,6 +114,10 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 // Dev-only Ranked TUTORIAL prototype — scripted local training match,
 // no auth/API/persistence, not linked from any navigation.
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
+
+// Production Ranked TUTORIAL onboarding — mandatory for new accounts, replayable
+// for completed ones. Reuses the canonical tutorial with durable completion.
+const RankedTutorialOnboardingPage = lazy(() => import("./pages/onboarding/RankedTutorialOnboardingPage"));
 
 // Screenshot render harness — inert without locally injected data, not
 // linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
@@ -236,9 +241,10 @@ const App = () => (
                   </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
-                  <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
-                  <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />
-                  <Route path="/quiz/ranked" element={<Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense>} />
+                  <Route path="/onboarding/ranked-tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
+                  <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
+                  <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />

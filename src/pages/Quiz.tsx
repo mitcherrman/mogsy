@@ -831,13 +831,24 @@ export default function Quiz() {
 
             {/* 3. Practice categories — train topics before the next match. */}
             <div className="mb-3" data-testid="hub-practice-section">
-              <div className="mb-2 mt-1">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-                  Practice Your Knowledge
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Train specific topics before your next ranked match.
-                </p>
+              <div className="mb-2 mt-1 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                    Practice Your Knowledge
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Train specific topics before your next ranked match.
+                  </p>
+                </div>
+                {/* Voluntary tutorial replay. Anyone on /quiz has already cleared the
+                    onboarding gate, so this never affects saved completion. */}
+                <Link
+                  to="/onboarding/ranked-tutorial"
+                  className="shrink-0 text-xs font-medium text-primary/80 underline-offset-4 hover:underline"
+                  data-testid="replay-tutorial-link"
+                >
+                  Replay tutorial
+                </Link>
               </div>
               {/* Plain conditional swap (no AnimatePresence mode="wait"):
                   under prefers-reduced-motion the skeleton's exit animation
