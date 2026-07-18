@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProChampionUrl,
+  buildProExplorerUrl,
   buildProYearUrl,
   isProChampionSection,
   normalizeScopeName,
@@ -45,6 +46,61 @@ describe("buildProChampionUrl", () => {
     expect(
       buildProChampionUrl({ slug: "akali", section: "nope" as never }),
     ).toBe("/lol/docs/pro/champions/akali");
+  });
+});
+
+describe("buildProExplorerUrl", () => {
+  it("builds the base Explorer URL with view=explorer only", () => {
+    expect(buildProExplorerUrl()).toBe("/lol/docs/pro?view=explorer");
+    expect(buildProExplorerUrl({})).toBe("/lol/docs/pro?view=explorer");
+  });
+
+  it("adds a year", () => {
+    expect(buildProExplorerUrl({ year: 2026 })).toBe("/lol/docs/pro?view=explorer&year=2026");
+  });
+
+  it("adds a champion slug", () => {
+    expect(buildProExplorerUrl({ champion: "ryze" })).toBe(
+      "/lol/docs/pro?view=explorer&champion=ryze",
+    );
+  });
+
+  it("combines year and champion (view first, then year, then champion)", () => {
+    expect(buildProExplorerUrl({ year: 2026, champion: "ryze" })).toBe(
+      "/lol/docs/pro?view=explorer&year=2026&champion=ryze",
+    );
+  });
+
+  it("URL-encodes champion values", () => {
+    expect(buildProExplorerUrl({ champion: "kai'sa" })).toBe(
+      "/lol/docs/pro?view=explorer&champion=kai%27sa",
+    );
+  });
+
+  it("omits null, undefined, empty, whitespace, and non-integer values", () => {
+    expect(buildProExplorerUrl({ year: null, champion: "", scope: undefined })).toBe(
+      "/lol/docs/pro?view=explorer",
+    );
+    expect(buildProExplorerUrl({ champion: "   " })).toBe("/lol/docs/pro?view=explorer");
+    // Non-integer years aren't part of the parser's /^\d{4}$/ contract.
+    expect(buildProExplorerUrl({ year: 2011.5 })).toBe("/lol/docs/pro?view=explorer");
+  });
+
+  it("emits scope only for parser-supported values, normalizing the 'all' alias", () => {
+    expect(buildProExplorerUrl({ scope: "major" })).toBe(
+      "/lol/docs/pro?view=explorer&scope=major",
+    );
+    expect(buildProExplorerUrl({ scope: "all" })).toBe(
+      "/lol/docs/pro?view=explorer&scope=all-imported",
+    );
+    // Unsupported scope is dropped rather than widening/breaking the link.
+    expect(buildProExplorerUrl({ scope: "challenger" })).toBe("/lol/docs/pro?view=explorer");
+  });
+
+  it("combines year, champion, and scope", () => {
+    expect(buildProExplorerUrl({ year: 2026, champion: "ryze", scope: "major" })).toBe(
+      "/lol/docs/pro?view=explorer&year=2026&champion=ryze&scope=major",
+    );
   });
 });
 

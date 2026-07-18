@@ -273,12 +273,19 @@ export default function LeagueDocsProData() {
       />
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-        <Link
-          to="/lol/docs"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-[#c9a84c] transition-colors"
+        <nav
+          aria-label="Breadcrumb"
+          className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> League Docs
-        </Link>
+          <Link
+            to="/lol/docs"
+            className="hover:text-[#c9a84c] transition-colors inline-flex items-center gap-1.5"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> League Docs
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="text-foreground/80">Pro Data</span>
+        </nav>
 
         {/* Header */}
         <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 via-[#091428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-6 md:p-8">

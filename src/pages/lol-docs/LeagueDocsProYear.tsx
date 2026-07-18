@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDashed,
+  Compass,
   Database,
   Eye,
   Hourglass,
@@ -32,7 +33,7 @@ import {
   type ProTopChampion,
   type ProYearDetail,
 } from "@/lib/league-docs/api";
-import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
+import { buildProChampionUrl, buildProExplorerUrl } from "@/lib/league-docs/pro-data-links";
 
 const GOLD = "#c9a84c";
 
@@ -452,6 +453,18 @@ function YearContent({
               Mogzy has imported — not a claim that every {data.year} pro match ever played is
               represented.
             </p>
+            <div className="mt-3">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+              >
+                <Link to={buildProExplorerUrl({ year: data.year })}>
+                  <Compass className="h-3.5 w-3.5 mr-1.5" aria-hidden /> Explore {data.year} data
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
