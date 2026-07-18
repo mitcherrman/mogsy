@@ -68,11 +68,11 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     category: "damage",
     order: 20,
     shortDefinition:
-      "The damage remaining after every armor, magic resistance, penetration, reduction, shield, and other included effect is applied.",
+      "The damage remaining after the stated resistances, penetration, resistance reductions, and damage modifiers are applied. Shield absorption is not included.",
     fullDefinition:
-      "The damage remaining after the stated armor, magic resistance, penetration, reductions, shields, and other included effects are applied. Only effects explicitly present in the scenario are included; any interaction not stated is not part of the number.",
+      "The damage value produced after the stated resistances (armor and magic resistance), penetration, resistance reductions, and damage modifiers are applied to the raw damage. It is the amount that then reaches the target's shields and health; shield absorption is a later step and is not part of this number. The amount actually removed from health after shields is Health damage. Only effects explicitly present in the scenario are included.",
     aliases: ["mitigated damage", "final damage", "effective damage"],
-    relatedTermIds: ["raw-damage", "armor", "magic-resistance", "lethal-damage"],
+    relatedTermIds: ["raw-damage", "armor", "magic-resistance", "health-damage", "lethal-damage"],
     patchSensitive: false,
   },
   {
@@ -84,7 +84,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
       "A damage type that is reduced by the target's armor and can be increased against the target by physical (armor) penetration.",
     fullDefinition:
       "Physical damage is one of the game's three damage types. Its post-mitigation value is reduced by the target's effective armor after any armor penetration or armor reduction from the source has been applied. It is not reduced by magic resistance.",
-    aliases: ["AD damage"],
+    aliases: [],
     relatedTermIds: ["armor", "post-mitigation-damage", "magic-damage", "true-damage"],
     patchSensitive: false,
   },
@@ -97,7 +97,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
       "A damage type that is reduced by the target's magic resistance and can be increased against the target by magic penetration.",
     fullDefinition:
       "Magic damage is one of the game's three damage types. Its post-mitigation value is reduced by the target's effective magic resistance after any magic penetration or magic-resist reduction from the source has been applied. It is not reduced by armor.",
-    aliases: ["AP damage"],
+    aliases: [],
     relatedTermIds: [
       "magic-resistance",
       "flat-magic-penetration",
@@ -112,9 +112,9 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     category: "damage",
     order: 50,
     shortDefinition:
-      "A damage type that ignores armor and magic resistance. It is still affected by shields and by damage reductions that explicitly apply to all damage types.",
+      "A damage type that ignores armor and magic resistance. Shields may absorb true damage unless the shield or effect states otherwise.",
     fullDefinition:
-      "True damage bypasses armor and magic resistance entirely, so its post-mitigation value is equal to its raw value with respect to those two resistances. It is still reduced by shields and by any effect that reduces incoming damage of all types.",
+      "True damage bypasses armor and magic resistance entirely, so its post-mitigation value is equal to its raw value with respect to those two resistances. Shields may still absorb true damage unless the specific shield or effect states that it does not.",
     aliases: [],
     relatedTermIds: ["raw-damage", "post-mitigation-damage", "physical-damage", "magic-damage"],
     patchSensitive: false,
@@ -128,7 +128,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     fullDefinition:
       "The target's health at the exact moment referenced by the scenario, after all previously applied damage and healing. It does not include shields, which are tracked separately.",
     aliases: ["current HP", "HP"],
-    relatedTermIds: ["maximum-health", "health-remaining", "lethal-damage"],
+    relatedTermIds: ["maximum-health", "health-remaining", "health-damage", "lethal-damage"],
     patchSensitive: false,
   },
   {
@@ -152,14 +152,30 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     category: "health",
     order: 30,
     shortDefinition:
-      "The target's current health minus the post-mitigation damage of the stated instance.",
+      "The target's current health after the stated health damage is applied.",
     fullDefinition:
-      "Current health minus the post-mitigation damage of the specified damage instance. If the result is greater than zero, the target survives that instance with exactly that health value. If the result is zero or less, see Lethal damage.",
+      "Current health minus the health damage from the specified damage instance. Shield absorption is already accounted for when health damage is calculated. If the result is greater than zero, the target survives with that amount of health. If the result is zero, the damage is lethal.",
     aliases: ["remaining HP", "HP after"],
-    formula: "health_remaining = current_health − post_mitigation_damage",
+    formula: "health_remaining = max(0, current_health − health_damage)",
     example:
-      "Current health 420, post-mitigation damage 380: health_remaining = 420 − 380 = 40.",
-    relatedTermIds: ["current-health", "post-mitigation-damage", "lethal-damage"],
+      "Current health 420, post-mitigation damage 380, shield absorbing 100: health_damage = 280, health_remaining = max(0, 420 − 280) = 140.",
+    relatedTermIds: ["current-health", "health-damage", "post-mitigation-damage", "lethal-damage"],
+    patchSensitive: false,
+  },
+  {
+    id: "health-damage",
+    term: "Health damage",
+    category: "health",
+    order: 35,
+    shortDefinition:
+      "The amount removed from current health after applicable shields and other explicitly stated absorption effects are applied.",
+    fullDefinition:
+      "The amount actually removed from the target's current health, computed by applying any shields and other explicitly stated absorption effects to the post-mitigation damage. Only absorption effects present in the scenario are counted. If no shield or absorption effect is stated, health damage equals the post-mitigation damage.",
+    aliases: [],
+    formula: "health_damage = max(0, post_mitigation_damage − absorbed_by_shields)",
+    example:
+      "Post-mitigation damage 380, shield absorbing 100: health_damage = max(0, 380 − 100) = 280.",
+    relatedTermIds: ["post-mitigation-damage", "current-health", "lethal-damage"],
     patchSensitive: false,
   },
   {
@@ -168,14 +184,14 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     category: "health",
     order: 40,
     shortDefinition:
-      "Damage equal to or greater than the target's current health after every included defensive effect is applied.",
+      "Damage is lethal when the resulting health damage is equal to or greater than the target's current health.",
     fullDefinition:
-      "Damage equal to or greater than the target's current health after every shield, resistance, reduction, and other effect explicitly included in the scenario is applied. Only effects present in the scenario are counted; any interaction not stated is not part of the check.",
+      "An instance is lethal when the health damage it produces — the amount removed from current health after every shield and other explicitly stated absorption effect is applied to the post-mitigation damage — is equal to or greater than the target's current health. Only effects present in the scenario are counted; any interaction not stated is not part of the check.",
     aliases: ["lethal", "kills the target"],
-    formula: "lethal ⇔ post_mitigation_damage ≥ current_health",
+    formula: "lethal ⇔ health_damage ≥ current_health",
     example:
-      "Current health 300, post-mitigation damage 300 → lethal. Current health 300, post-mitigation damage 299 → not lethal.",
-    relatedTermIds: ["current-health", "post-mitigation-damage", "health-remaining"],
+      "Current health 300, health damage 300 → lethal. Current health 300, health damage 299 → not lethal.",
+    relatedTermIds: ["health-damage", "current-health", "post-mitigation-damage", "health-remaining"],
     patchSensitive: false,
   },
   {
