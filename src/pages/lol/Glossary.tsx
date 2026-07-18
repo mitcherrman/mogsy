@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Copy, ExternalLink, Search as SearchIcon, X } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -279,8 +279,6 @@ function CategoryChip({
     </button>
   );
 }
-
-import { forwardRef } from "react";
 
 interface TermCardProps {
   term: GlossaryTerm;
