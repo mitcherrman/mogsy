@@ -5,6 +5,7 @@ import {
   BookOpen,
   BrainCircuit,
   FlaskConical,
+  Library,
   Scale,
   ScrollText,
   Search as SearchIcon,
@@ -30,6 +31,12 @@ type Category = {
 };
 
 const CATEGORIES: Category[] = [
+  {
+    title: "Glossary",
+    description: "Precise definitions for every mechanical term: raw vs post-mitigation damage, lethal damage, ability haste, penetration, and more.",
+    Icon: Library,
+    to: "/lol/glossary",
+  },
   {
     title: "Champions",
     description: "Base stats, per-level growth, and level projections for every champion.",
