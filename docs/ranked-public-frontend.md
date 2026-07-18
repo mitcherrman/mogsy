@@ -1,0 +1,96 @@
+# Public Ranked Frontend (F1.5)
+
+The first real public Ranked experience at **`/quiz/ranked`**, built on the
+durable F1.2–F1.4 backend (`ranked-public-platform`, not yet merged/deployed).
+It reuses the canonical arena unchanged and adds no low-level mode flags.
+
+## Route and state model
+
+`src/pages/quiz-ranked/QuizRankedPage.tsx` (lazy route in `App.tsx`):
+
+```
+account required → class selection → join queue → waiting → matched → live match → match over
+```
+
+- **Queue controller** (`useRankedQueue`): `recovering → selecting_class → joining
+  → waiting → matched → cancelling → unavailable → fatal`. Single-flight polling
+  with exponential backoff, aborts on unmount, restores an existing queue entry
+  or assigned match on mount (refresh-safe), and never pairs locally, invents a
+  wait estimate, or shows opponent identity/population.
+- **Match controller** (`useRankedMatch`): owns the match id, single-flight
+  public/private polling (backoff + abort + queued rerun), skew-anchored timer
+  input, resolved-round capture, the submission flow, the Level 2 gate, a
+  separate 10s presence heartbeat, and recovery/terminal states. Resumes via
+  `POST /resume` on mount so a refresh or backend restart recovers through JWT
+  membership.
+
+## Backend contracts
+
+`src/lib/ranked-public/contracts.ts` parses the versioned envelopes
+(`public_round.v2`, `private_player.v2`, `resolved_round.v2`, `resume.v1`,
+`match_result.v1`, `queue_status.v1`) into camelCase shapes that feed the
+canonical `ranked-core` view adapters directly. The existing `.v1` staff/tutorial
+validators are untouched. `src/lib/ranked-public/client.ts` is the typed API
+client (join/status/cancel/resume/public/private/resolved/submit/level-two/
+presence/result).
+
+## Auth boundary
+
+Identity is the Supabase **bearer JWT only** (`getBackendAuthHeaders`); the client
+sends no admin key, no participant token, and no user/match/opponent id in any
+body — ownership is server-derived from the verified `sub`. The page requires a
+verified non-anonymous account (anonymous/guest → "sign in" state).
+
+## Polling, heartbeat, timer
+
+- Public/private polled at ~1.5s with single-flight + backoff; queue at ~2s.
+- Presence heartbeat on a separate 10s interval; one missed heartbeat/poll is
+  never treated as a disconnect.
+- The timer uses backend `server_time` + authoritative `active_deadline` via
+  `timerMath`; a 1s render tick counts down between polls. Local zero never
+  resolves a round — it only prompts the next poll. First-answer pressure updates
+  when the next public snapshot arrives. No WebSockets/SSE.
+
+## Submission flow (unchanged canonical contract)
+
+`select answer (+ optional ability) → review → confirm atomically → locked →
+authoritative reveal`. Entering review sends nothing; confirm issues exactly one
+`POST .../submission` with the backend **answer index** (not label) and the
+ability id or null; a stale-round error triggers a resync; a failed submit
+preserves the selection for retry; a round change while reviewing resets safely.
+Correctness/damage are never computed locally.
+
+## Presence and reconnect UX
+
+Neutral opponent states from the backend presence block: connected / temporarily
+disconnected (reconnect grace) / disconnected / forfeited / left. The grace
+deadline is presentation-only; **no local forfeit countdown determines the
+winner** — the terminal result (`terminal_reason` ∈ combat/forfeit/no_contest)
+is authoritative. A temporary API failure enters a recovering state, not an
+immediate fatal; fatal membership/match-gone errors stop polling.
+
+## Hidden-information rules
+
+The public/private readers reject any payload carrying a pre-reveal
+`correct_index`, and the private reader exposes only the owner's ability state
+(the opponent's private state is structurally absent). Reveal content comes only
+from the resolved-round settlement after resolution.
+
+## Feature gating (fails closed)
+
+The route relies on backend error codes as the authority, never hidden-route
+security: `FEATURE_DISABLED`, `AUTH_REQUIRED`/`ACCOUNT_REQUIRED`,
+`RANKED_QUEUE_DISABLED`, `RANKED_QUEUE_NOT_ELIGIBLE` (allowlist),
+`RANKED_QUESTION_POOL_UNAVAILABLE` → the page shows an unavailable/account
+state. There is no silent fixture fallback.
+
+## Known alpha limitations
+
+- Multiple tabs are equivalent readers (backend idempotency keeps duplicate
+  submits safe); no tab-lease UI.
+- No rating/MMR, history, rematch, regions, bots, ads, or Pro gating (all out of
+  scope). `class_id` is selected before joining.
+- HTTP/user/IP **rate limiting is a backend F1.8 requirement** — not present yet;
+  gate external exposure accordingly.
+- The backend branch is unmerged; the client uses `VITE_COMBAT_API_URL` and typed
+  fixtures. Point it at a running F1 backend for live play.
