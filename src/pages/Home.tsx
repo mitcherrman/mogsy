@@ -20,6 +20,7 @@ import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import { postProfileOnboardingDestination } from "@/lib/ranked-tutorial/onboarding";
 import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-text-logo.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
@@ -217,7 +218,24 @@ export default function Home() {
       setLoading(false);
       return;
     }
-    const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+    // Authoritative re-read: OnboardingFlow only calls back after awaiting its
+    // profiles update, so a successful write shows onboarding_completed here. A
+    // failed write leaves it false, so the handoff below is skipped (no premature
+    // navigation).
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, is_anonymous, onboarding_completed, ranked_tutorial_completed_at, ranked_tutorial_version")
+      .eq("user_id", user.id)
+      .single();
+
+    // New real accounts hand off straight into the mandatory Ranked Tutorial.
+    // `replace` so browser Back never returns to the completed onboarding form.
+    const dest = postProfileOnboardingDestination(profile ?? null);
+    if (dest) {
+      navigate(dest, { replace: true });
+      return;
+    }
+
     if (profile) await loadData(profile.id, categories);
     else setLoading(false);
   };

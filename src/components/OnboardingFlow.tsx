@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import OnboardingWelcome from "./onboarding/OnboardingWelcome";
@@ -31,7 +32,7 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
     }
 
     if (!skipToTheme && user) {
-      await supabase
+      const { error } = await supabase
         .from("profiles")
         .update({
           onboarding_completed: true,
@@ -39,6 +40,14 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
           custom_theme: chosenTheme || "default",
         })
         .eq("user_id", user.id);
+
+      // Surface the failure and stay on this step so the user can retry — never
+      // advance (or hand off to the tutorial) on an unpersisted write.
+      if (error) {
+        setSaving(false);
+        toast.error("We couldn't save your setup. Please check your connection and try again.");
+        return;
+      }
     }
 
     setSaving(false);
