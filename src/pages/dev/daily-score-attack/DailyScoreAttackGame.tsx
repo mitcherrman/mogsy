@@ -4,9 +4,78 @@
  * Answers are an accessible single-choice radiogroup submitted by index.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DsaResolution, DsaRun, dsaChoiceLabel } from "./dailyScoreAttackTypes";
 import DailyScoreAttackTimer from "./DailyScoreAttackTimer";
+import { fetchQuestionImageObjectUrl } from "./dailyScoreAttackClient";
+
+/**
+ * Renders the current question's media, fetched from the opaque auth-scoped
+ * endpoint as a blob object URL — so the DOM `src` is a `blob:` URL that
+ * carries no champion/entity name. Eager-loads (this is the active question in
+ * timed play); degrades silently to nothing on absence or fetch failure.
+ */
+function revokeObjectUrl(url: string): void {
+  if (typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function QuestionMedia({ imageUrl }: { imageUrl: string }) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let revoked = false;
+    let created: string | null = null;
+    const controller = new AbortController();
+    setObjectUrl(null);
+    setFailed(false);
+    fetchQuestionImageObjectUrl(imageUrl, controller.signal)
+      .then((url) => {
+        if (revoked) {
+          revokeObjectUrl(url);
+          return;
+        }
+        created = url;
+        setObjectUrl(url);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setFailed(true);
+      });
+    return () => {
+      revoked = true;
+      controller.abort();
+      if (created) revokeObjectUrl(created);
+    };
+  }, [imageUrl]);
+
+  if (failed) {
+    return (
+      <p className="mb-3 text-xs text-muted-foreground" data-testid="dsa-question-media-error">
+        Question image unavailable.
+      </p>
+    );
+  }
+  if (!objectUrl) {
+    return (
+      <div
+        className="mb-3 h-40 w-full animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+        data-testid="dsa-question-media-loading"
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <img
+      src={objectUrl}
+      alt="Question image"
+      data-testid="dsa-question-media"
+      className="mb-3 max-h-56 w-full rounded-lg object-contain"
+    />
+  );
+}
 
 type GameProps = {
   run: DsaRun;
@@ -76,6 +145,9 @@ export default function DailyScoreAttackGame({
 
       {question && (
         <div className="rounded-xl border border-border bg-card p-4">
+          {question.has_image && question.image_url && (
+            <QuestionMedia key={question.sequence} imageUrl={question.image_url} />
+          )}
           <h2
             ref={headingRef}
             tabIndex={-1}
