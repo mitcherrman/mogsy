@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Compass,
   Database,
   ExternalLink,
   Hourglass,
@@ -33,6 +34,7 @@ import {
   type ProChampionYearlyStats,
 } from "@/lib/league-docs/api";
 import {
+  buildProExplorerUrl,
   buildProYearUrl,
   isProChampionSection,
   normalizeScopeName,
@@ -529,7 +531,17 @@ function ChampionContent({
               {s.label}
             </a>
           ))}
-          <span className="ml-auto">
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+            >
+              <Link to={buildProExplorerUrl({ champion: data.slug, year: focusYear })}>
+                <Compass className="h-3.5 w-3.5 mr-1.5" aria-hidden /> Explore {data.champion} data
+              </Link>
+            </Button>
             <CopyLinkButton />
           </span>
         </div>

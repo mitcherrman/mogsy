@@ -151,3 +151,15 @@ describe("LeagueDocsProData view switcher", () => {
     expect(await screen.findByText("Distinct games")).toBeInTheDocument();
   });
 });
+
+describe("LeagueDocsProData breadcrumb", () => {
+  it("renders a semantic breadcrumb: League Docs link + Pro Data as the current page", () => {
+    renderPage();
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const leagueDocs = screen.getByRole("link", { name: /League Docs/i });
+    expect(leagueDocs).toHaveAttribute("href", "/lol/docs");
+    // Current page is present as text but not a redundant link.
+    expect(nav).toHaveTextContent("Pro Data");
+    expect(screen.queryByRole("link", { name: "Pro Data" })).toBeNull();
+  });
+});

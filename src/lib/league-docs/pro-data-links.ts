@@ -79,6 +79,50 @@ export function buildProYearUrl(year: number): string {
 }
 
 /**
+ * Deep link into the Pro Data Explorer sub-view
+ * (`/lol/docs/pro?view=explorer`) with optional pre-applied filters.
+ *
+ * Emits only parameters the current Explorer parser (`filtersFromSearch` in
+ * `lib/league-docs/explorer.ts`) already understands, using its exact query
+ * names — this builds a URL only and does not change Explorer parsing:
+ *   - `year`     — 4-digit year (parser accepts /^\d{4}$/)
+ *   - `champion` — champion slug (the Explorer champion filter's option value)
+ *   - `scope`    — legacy scope alias, honored by the parser only for its
+ *                  LEGACY_SCOPE_IDS ("all-imported" | "major" | "international");
+ *                  normalized here (all → all-imported) and dropped otherwise
+ *                  so an unsupported scope never widens or breaks the link.
+ *
+ * `view=explorer` is always present. Undefined, null, and empty values are
+ * omitted. Values are URL-encoded via URLSearchParams.
+ */
+export function buildProExplorerUrl({
+  year,
+  champion,
+  scope,
+}: {
+  year?: number | null;
+  champion?: string | null;
+  scope?: string | null;
+} = {}): string {
+  const params = new URLSearchParams();
+  params.set("view", "explorer");
+
+  if (year !== null && year !== undefined && Number.isInteger(year)) {
+    params.set("year", String(year));
+  }
+
+  const trimmedChampion = typeof champion === "string" ? champion.trim() : "";
+  if (trimmedChampion) params.set("champion", trimmedChampion);
+
+  const normalizedScope = normalizeScopeName(scope);
+  if (normalizedScope && isSupportedScope(normalizedScope)) {
+    params.set("scope", normalizedScope);
+  }
+
+  return `/lol/docs/pro?${params.toString()}`;
+}
+
+/**
  * Structured "view source data" reference stored on a quiz question's
  * metadata (question.metadata.pro_data_source). Typed inputs only — never a
  * fully constructed URL and never an arbitrary external URL — so the
