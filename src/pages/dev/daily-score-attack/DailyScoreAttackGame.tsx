@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { DsaResolution, DsaRun, dsaChoiceLabel } from "./dailyScoreAttackTypes";
+import { DsaQuestion, DsaResolution, DsaRun, dsaChoiceLabel } from "./dailyScoreAttackTypes";
 import DailyScoreAttackTimer from "./DailyScoreAttackTimer";
 import { fetchQuestionImageObjectUrl } from "./dailyScoreAttackClient";
 
@@ -81,6 +81,12 @@ type GameProps = {
   run: DsaRun;
   phase: "active-question" | "submitting-answer" | "reveal" | "transitioning";
   resolution: DsaResolution | null;
+  /**
+   * Frozen answered-question snapshot for the reveal hold. `run` has already
+   * advanced to the next projection by the time we reveal, so the question
+   * card and its media render from this snapshot while resolved.
+   */
+  answeredQuestion: DsaQuestion | null;
   selectedIndex: number | null;
   reducedMotion: boolean;
   onSelect: (index: number) => void;
@@ -92,13 +98,17 @@ export default function DailyScoreAttackGame({
   run,
   phase,
   resolution,
+  answeredQuestion,
   selectedIndex,
   reducedMotion,
   onSelect,
   onTimerZero,
   onAnnounce,
 }: GameProps) {
-  const question = run.question;
+  const inReveal = phase === "reveal" && resolution !== null;
+  // During reveal, render the answered snapshot (text/choices/media); the header
+  // (timer, score, combo, progress) always uses the live authoritative `run`.
+  const question = inReveal ? answeredQuestion ?? run.question : run.question;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -106,7 +116,6 @@ export default function DailyScoreAttackGame({
   }, [phase, question?.sequence]);
 
   const locked = phase !== "active-question";
-  const inReveal = phase === "reveal" && resolution !== null;
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-3">
