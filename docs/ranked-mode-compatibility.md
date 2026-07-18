@@ -42,6 +42,16 @@ unchanged), `AbilityTray`, `SubmissionReview`, `RevealPanel`,
   through the shared arena via the pure `staffDuelProjection.ts` controller
   layer. The canonical review-before-confirm flow produces exactly one
   atomic backend submission per round.
+- **E2 Ranked Tutorial** (`src/pages/dev/ranked-tutorial/`): second
+  validated consumer. The tutorial director (local step machine) drives the
+  full arena set through a pure adapter (`adapters.ts`) that projects
+  tutorial state and AUTHORED resolved fixtures into the canonical view
+  contracts, including `ResolvedRoundView` — no backend combat is computed
+  client-side. Canonical components required no tutorial-specific flags and
+  no contract changes; `permissionsForSubmissionPhase` + `restrictPermissions`
+  (restrictions only remove) plus controlled `TimerView.paused` covered all
+  tutorial gating. Hidden-information behavior preserved (opponent content
+  exists only post-reveal). E1 impact: none. Classification: informational.
 
 ## Transitional shims
 
