@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ApiPrivatePlayerLoader } from "./ApiPrivatePlayerLoader";
-import { getPrivateEnvelopeScenario } from "../transport-adapter/rankedDuelEnvelopeFixtures";
+import { getPrivateEnvelopeScenario } from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const envelope = (key: string) => clone(getPrivateEnvelopeScenario(key)!.envelope);

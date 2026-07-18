@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ApiResolvedRoundLoader } from "./ApiResolvedRoundLoader";
-import { getResolvedEnvelopeScenario } from "../transport-adapter/rankedDuelEnvelopeFixtures";
+import { getResolvedEnvelopeScenario } from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 import { DuelAction } from "../duelMachine";
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;

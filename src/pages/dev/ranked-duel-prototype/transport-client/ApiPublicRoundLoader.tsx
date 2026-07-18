@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
   AdaptedPublicRound,
   adaptPublicRound,
-} from "../transport-adapter/adaptPublicRound";
-import { EnvelopeValidationError } from "../transport-adapter/rankedDuelEnvelopeValidation";
+} from "@/lib/ranked-core/transport/adaptPublicRound";
+import { EnvelopeValidationError } from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 import { DEFAULT_RANKED_DUEL_API_BASE } from "./fetchResolvedRound";
 import { PublicRoundFetchError, fetchPublicRound } from "./fetchPublicRound";
 import { PlayerId } from "../fixtures";

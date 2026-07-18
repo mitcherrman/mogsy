@@ -22,11 +22,11 @@ import {
   ResolvedRoundFetchError,
   DEFAULT_RANKED_DUEL_API_BASE,
 } from "../transport-client/fetchResolvedRound";
-import { adaptPublicRound } from "../transport-adapter/adaptPublicRound";
-import { adaptPrivatePlayer } from "../transport-adapter/adaptPrivatePlayer";
-import { adaptResolvedRoundEnvelope } from "../transport-adapter/adaptResolvedRoundEnvelope";
-import { EnvelopeValidationError } from "../transport-adapter/rankedDuelEnvelopeValidation";
-import { SettlementAdapterError } from "../backend-adapter/adaptBackendSettlement";
+import { adaptPublicRound } from "@/lib/ranked-core/transport/adaptPublicRound";
+import { adaptPrivatePlayer } from "@/lib/ranked-core/transport/adaptPrivatePlayer";
+import { adaptResolvedRoundEnvelope } from "@/lib/ranked-core/transport/adaptResolvedRoundEnvelope";
+import { EnvelopeValidationError } from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
+import { SettlementAdapterError } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
 /**
  * DEV-ONLY manual one-shot read composition panel.

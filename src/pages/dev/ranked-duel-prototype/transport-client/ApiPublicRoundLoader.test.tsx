@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ApiPublicRoundLoader } from "./ApiPublicRoundLoader";
-import { getPublicEnvelopeScenario } from "../transport-adapter/rankedDuelEnvelopeFixtures";
+import { getPublicEnvelopeScenario } from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const envelope = (key: string) => clone(getPublicEnvelopeScenario(key)!.envelope);

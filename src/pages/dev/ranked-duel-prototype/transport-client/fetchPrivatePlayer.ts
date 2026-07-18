@@ -15,11 +15,11 @@
 // sanitized message. No retries, polling, caching, or fixture fallback.
 // ---------------------------------------------------------------------------
 
-import { PrivatePlayerEnvelope } from "../transport-adapter/rankedDuelEnvelopeTypes";
+import { PrivatePlayerEnvelope } from "@/lib/ranked-core/transport/rankedDuelEnvelopeTypes";
 import {
   EnvelopeValidationError,
   validatePrivatePlayerEnvelope,
-} from "../transport-adapter/rankedDuelEnvelopeValidation";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeValidation";
 
 export type PrivatePlayerFetchErrorKind =
   | "invalid_request" // rejected locally before any network call

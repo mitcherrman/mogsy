@@ -43,12 +43,12 @@ unchanged), `AbilityTray`, `SubmissionReview`, `RevealPanel`,
   layer. The canonical review-before-confirm flow produces exactly one
   atomic backend submission per round.
 
-## Transitional shims (delete when their consumers migrate)
+## Transitional shims
 
-Re-export shims marked "TEMPORARY COMPATIBILITY SHIM" remain at
-`src/pages/dev/ranked-duel-prototype/backend-adapter/*`,
-`.../transport-adapter/*`, and `.../staff-duel/abilityDisplay.ts` for the
-fixture prototype, transport-client loaders, and read-composition panel.
+None remain. Every consumer (staff duel, fixture prototype,
+transport-client loaders, read-composition) imports from
+`@/lib/ranked-core/...` directly; the Phase D re-export shims were removed
+in the landing audit.
 
 ## Known limitations
 

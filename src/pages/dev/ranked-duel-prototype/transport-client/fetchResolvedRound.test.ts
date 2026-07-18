@@ -4,13 +4,13 @@ import {
   buildResolvedRoundUrl,
   fetchResolvedRound,
 } from "./fetchResolvedRound";
-import { getResolvedEnvelopeScenario } from "../transport-adapter/rankedDuelEnvelopeFixtures";
-import { adaptResolvedRoundEnvelope } from "../transport-adapter/adaptResolvedRoundEnvelope";
+import { getResolvedEnvelopeScenario } from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
+import { adaptResolvedRoundEnvelope } from "@/lib/ranked-core/transport/adaptResolvedRoundEnvelope";
 import {
   FIXTURE_PLAYER_IDS,
   getScenario,
-} from "../backend-adapter/backendSettlementFixtures";
-import { adaptBackendSettlement } from "../backend-adapter/adaptBackendSettlement";
+} from "@/lib/ranked-core/backend/backendSettlementFixtures";
+import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const envelope = (key = "solo-correct") => clone(getResolvedEnvelopeScenario(key)!.envelope);

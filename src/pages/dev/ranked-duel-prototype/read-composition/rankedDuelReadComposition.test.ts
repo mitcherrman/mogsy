@@ -8,24 +8,24 @@ import {
   pendingSettlementToCommit,
   readCompositionReducer,
 } from "./rankedDuelReadComposition";
-import { adaptPublicRound, AdaptedPublicRound } from "../transport-adapter/adaptPublicRound";
+import { adaptPublicRound, AdaptedPublicRound } from "@/lib/ranked-core/transport/adaptPublicRound";
 import {
   adaptPrivatePlayer,
   AdaptedPrivatePlayer,
-} from "../transport-adapter/adaptPrivatePlayer";
+} from "@/lib/ranked-core/transport/adaptPrivatePlayer";
 import {
   FIXTURE_OWNER_ID,
   getPrivateEnvelopeScenario,
   getPublicEnvelopeScenario,
-} from "../transport-adapter/rankedDuelEnvelopeFixtures";
+} from "@/lib/ranked-core/transport/rankedDuelEnvelopeFixtures";
 import {
   AdaptedSettlement,
   adaptBackendSettlement,
-} from "../backend-adapter/adaptBackendSettlement";
+} from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
   FIXTURE_PLAYER_IDS,
   getScenario,
-} from "../backend-adapter/backendSettlementFixtures";
+} from "@/lib/ranked-core/backend/backendSettlementFixtures";
 
 // ---------------------------------------------------------------------------
 // Deterministic adapted fixtures (no HTTP anywhere). All committed fixtures

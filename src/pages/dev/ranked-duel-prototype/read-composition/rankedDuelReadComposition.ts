@@ -21,9 +21,9 @@
 // its surface.
 // ---------------------------------------------------------------------------
 
-import { AdaptedSettlement } from "../backend-adapter/adaptBackendSettlement";
-import { AdaptedPublicRound } from "../transport-adapter/adaptPublicRound";
-import { AdaptedPrivatePlayer } from "../transport-adapter/adaptPrivatePlayer";
+import { AdaptedSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
+import { AdaptedPublicRound } from "@/lib/ranked-core/transport/adaptPublicRound";
+import { AdaptedPrivatePlayer } from "@/lib/ranked-core/transport/adaptPrivatePlayer";
 
 export class ReadCompositionError extends Error {
   constructor(message: string) {
