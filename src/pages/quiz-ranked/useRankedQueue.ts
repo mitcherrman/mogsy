@@ -72,6 +72,11 @@ export function useRankedQueue(): QueueController {
 
   const handleError = useCallback((e: unknown, phase: "poll" | "action") => {
     if (api.isAborted(e)) return;
+    if (api.isRateLimited(e)) {
+      // Transient throttle: keep waiting and back off; never fatal/unavailable.
+      setError("Slowing down to respect the queue rate limit…");
+      return;
+    }
     if (e instanceof RankedApiError && e.code && UNAVAILABLE_CODES.has(e.code)) {
       setUnavailableReason(e.message);
       setState("unavailable");

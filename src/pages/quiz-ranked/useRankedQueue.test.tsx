@@ -24,6 +24,7 @@ vi.mock("@/lib/ranked-public/client", () => ({
   RankedApiError: h.FakeApiError,
   isAborted: (e: unknown) => (e as { name?: string })?.name === "AbortError",
   isFatal: () => false,
+  isRateLimited: () => false,
   getQueueStatus: vi.fn(async () => { if (h.state.statusError) throw h.state.statusError; return h.snap(); }),
   joinQueue: vi.fn(async () => { if (h.state.joinError) throw h.state.joinError; return h.snap(); }),
   cancelQueue: vi.fn(async () => { h.state.status = "cancelled"; return h.snap(); }),

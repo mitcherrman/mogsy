@@ -45,7 +45,12 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_INTEGRITY_ERROR",
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_ACTIVE_MATCH_EXISTS",
   "RANKED_QUESTION_POOL_UNAVAILABLE", "RANKED_CANNOT_CANCEL", "RANKED_INVALID_CLASS",
+  "RANKED_RATE_LIMITED",
 ]);
+
+/** A 429 throttle is transient — back off and retry, never fatal. */
+export const isRateLimited = (e: unknown): boolean =>
+  e instanceof RankedApiError && (e.status === 429 || e.code === "RANKED_RATE_LIMITED");
 
 export class RankedApiError extends Error {
   kind: RankedApiErrorKind;
