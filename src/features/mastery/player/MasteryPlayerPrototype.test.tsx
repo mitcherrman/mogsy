@@ -46,7 +46,8 @@ describe("intro", () => {
     render(<MasteryPlayerPrototype />);
     start();
     await waitForQuestion();
-    expect(screen.getByTestId("mastery-readonly-badge")).toHaveTextContent(/read-only/i);
+    // Player-safe header: matchup instead of an internal "read-only" badge.
+    expect(screen.getByTestId("mastery-matchup-header")).toHaveTextContent(/ahri vs syndra/i);
   });
 });
 
@@ -86,9 +87,8 @@ describe("Q1 reveal uses authoritative fixture correctness and applies T1", () =
     const correctness = screen.getByTestId("mastery-correctness");
     expect(correctness).toHaveAttribute("data-correct", "true"); // authoritative, not locally judged
     expect(screen.getByTestId("mastery-correct-answer")).toHaveTextContent("3");
-    // Authored inter-step transition T1.
-    expect(screen.getByTestId("transition-authored-effect")).toBeInTheDocument();
-    expect(screen.getByTestId("transition-origin-authored_inter_step")).toBeInTheDocument();
+    // Authored inter-step transition T1, in plain language (no internal origin badge).
+    expect(screen.getByTestId("transition-authored-effect")).toHaveTextContent(/ahri gains \+20 ability haste/i);
     // Before = S0 (no Ahri effect), After = S1 (Ahri +20 effect).
     const before = within(screen.getByLabelText("Before"));
     const after = within(screen.getByLabelText("After"));
@@ -139,8 +139,7 @@ describe("canonical six-step sequence", () => {
     await submitNumeric("325"); await next();
     await waitForQuestion();
     await submitNumeric("230");
-    expect(screen.getByTestId("transition-health-change")).toBeInTheDocument();
-    expect(screen.getByTestId("transition-origin-question_proposed")).toBeInTheDocument();
+    expect(screen.getByTestId("transition-health-change")).toHaveTextContent(/syndra loses 250 hp/i);
     expect(screen.getByTestId("mastery-explanation")).toHaveTextContent("250");
     expect(screen.getByTestId("mastery-explanation")).toHaveTextContent("230");
     const after = within(screen.getByLabelText("After"));
@@ -226,12 +225,15 @@ describe("accessibility & focus", () => {
     expect(correctness.querySelector("svg")).not.toBeNull(); // semantic icon
   });
 
-  it("keeps technical/provenance details collapsed by default", async () => {
+  it("keeps the detailed calculation collapsed by default (progressive disclosure)", async () => {
     render(<MasteryPlayerPrototype />);
     start();
     await submitNumeric("3");
-    // Collapsed Radix content is not rendered/visible by default.
-    expect(screen.getByTestId("mastery-provenance-trigger")).toHaveAttribute("data-state", "closed");
+    // The calculation is behind a disclosure; its steps are not shown by default,
+    // and no player-facing provenance/snapshot digests are rendered at all.
+    expect(screen.getByTestId("mastery-calc-trigger")).toHaveAttribute("data-state", "closed");
+    expect(screen.queryByTestId("mastery-calc-steps")).toBeNull();
+    expect(screen.queryByTestId("mastery-provenance-trigger")).toBeNull();
   });
 
   it("renders a reduced-motion-safe (motion-reduce) transition path", async () => {

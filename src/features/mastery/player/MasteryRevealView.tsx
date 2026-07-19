@@ -1,9 +1,12 @@
 /**
- * Reveal screen (G5.2B). Renders backend-authoritative reveal evidence as
- * pass-through. Correctness comes ONLY from `authoritativeCorrectness` — never
- * computed here — and is communicated with an icon AND text (not colour alone).
- * Calculation expressions are displayed verbatim and never evaluated. Focus moves
- * to the result heading on mount (i.e. after submit).
+ * Reveal screen (G5.2B; J1 player-safe redesign).
+ *
+ * Renders backend-authoritative reveal evidence as pass-through. Correctness comes
+ * ONLY from `authoritativeCorrectness` — never computed here — and is communicated
+ * with an icon AND text (not colour alone). Player hierarchy: result → answers →
+ * one-line explanation → state update → concise calculation (progressive
+ * disclosure) → next. No raw engine expressions, snapshot/artifact digests, or
+ * internal slugs are shown to players (those live on the admin reviewer route).
  */
 import { useEffect, useRef } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
@@ -19,6 +22,7 @@ import type { MasteryPlayerReveal } from "../contracts/playerReveal";
 import type { PlayerAnswer } from "./useMasteryFixtureSession";
 import { MasteryStatePanel } from "./MasteryStatePanel";
 import { MasteryTransitionPanel } from "./MasteryTransitionPanel";
+import { formatNumber } from "./playerFormat";
 
 function formatAnswer(value: PlayerAnswer | string | number | boolean, question: MasteryPlayerQuestion): string {
   if (typeof value === "boolean") {
@@ -27,6 +31,7 @@ function formatAnswer(value: PlayerAnswer | string | number | boolean, question:
     }
     return value ? "Yes" : "No";
   }
+  if (typeof value === "number") return formatNumber(value);
   return String(value);
 }
 
@@ -50,6 +55,9 @@ export function MasteryRevealView({
 
   const correct = reveal.authoritativeCorrectness;
   const playerAnswer = submittedAnswer ?? reveal.playerAnswer;
+  const transition = reveal.appliedTransition ?? reveal.proposedTransition;
+  const champA = reveal.afterState.championA.displayName ?? reveal.afterState.championA.championId;
+  const champB = reveal.afterState.championB.displayName ?? reveal.afterState.championB.championId;
 
   return (
     <section aria-label="Result" className="space-y-4">
@@ -67,7 +75,11 @@ export function MasteryRevealView({
         aria-live="polite"
         data-testid="mastery-correctness"
         data-correct={correct ? "true" : "false"}
-        className="flex items-center gap-2"
+        className={`flex items-center gap-2 rounded-lg border p-3 ${
+          correct
+            ? "border-emerald-600/30 bg-emerald-500/10"
+            : "border-destructive/30 bg-destructive/10"
+        }`}
       >
         {correct ? (
           <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden="true" />
@@ -92,71 +104,40 @@ export function MasteryRevealView({
 
       <p data-testid="mastery-explanation" className="text-sm">{reveal.explanation}</p>
 
-      <div>
-        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Calculation
-        </h3>
-        <ol className="space-y-1" data-testid="mastery-calc-steps">
-          {reveal.calculationSteps.map((s) => (
-            <li key={s.order} className="text-xs">
-              <span className="text-muted-foreground">{s.description}: </span>
-              <code className="break-all">{s.expression}</code>
-              <span className="tabular-nums font-medium"> = {s.result}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <Separator />
+      {transition && (
+        <MasteryTransitionPanel transition={transition} championA={champA} championB={champB} />
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <MasteryStatePanel state={reveal.beforeState} heading="Before" />
         <MasteryStatePanel state={reveal.afterState} heading="After" />
       </div>
 
-      {reveal.appliedTransition && (
-        <MasteryTransitionPanel
-          transition={reveal.appliedTransition}
-          beforeSnapshotId={reveal.beforeState.snapshotId}
-          afterSnapshotId={reveal.afterState.snapshotId}
-          heading="Applied transition"
-        />
-      )}
-      {reveal.proposedTransition && (
-        <MasteryTransitionPanel transition={reveal.proposedTransition} heading="Proposed transition" />
+      {reveal.calculationSteps.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger
+            data-testid="mastery-calc-trigger"
+            className="text-xs font-medium text-primary underline underline-offset-2"
+          >
+            Show calculation
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ol className="mt-2 space-y-1" data-testid="mastery-calc-steps">
+              {reveal.calculationSteps.map((s) => (
+                <li key={s.order} className="flex justify-between gap-3 text-xs">
+                  <span className="text-muted-foreground">{s.description}</span>
+                  <span className="shrink-0 tabular-nums font-medium">{formatNumber(s.result)}</span>
+                </li>
+              ))}
+            </ol>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
-      <Collapsible>
-        <CollapsibleTrigger
-          data-testid="mastery-provenance-trigger"
-          className="text-[11px] text-muted-foreground underline underline-offset-2"
-        >
-          Provenance &amp; technical details
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <dl className="mt-1 space-y-0.5 text-[10px] text-muted-foreground">
-            <div className="flex gap-1">
-              <dt className="shrink-0 font-medium">Source:</dt>
-              <dd>{reveal.sourceSummary.label} ({reveal.sourceSummary.sourceCount})</dd>
-            </div>
-            <div className="flex gap-1">
-              <dt className="shrink-0 font-medium">Artifact:</dt>
-              <dd className="truncate" title={reveal.artifactDigest}>{reveal.artifactDigest}</dd>
-            </div>
-            <div className="flex gap-1">
-              <dt className="shrink-0 font-medium">Before snapshot:</dt>
-              <dd className="truncate" title={reveal.beforeState.snapshotId}>{reveal.beforeState.snapshotId}</dd>
-            </div>
-            <div className="flex gap-1">
-              <dt className="shrink-0 font-medium">After snapshot:</dt>
-              <dd className="truncate" title={reveal.afterState.snapshotId}>{reveal.afterState.snapshotId}</dd>
-            </div>
-          </dl>
-        </CollapsibleContent>
-      </Collapsible>
+      <Separator />
 
-      <Button onClick={onNext} data-testid="mastery-next-button">
-        {isFinal ? "See summary" : "Next question"}
+      <Button onClick={onNext} data-testid="mastery-next-button" className="w-full sm:w-auto">
+        {isFinal ? "View results" : "Next question"}
       </Button>
     </section>
   );

@@ -1,17 +1,16 @@
 /**
- * Display-only canonical-state panel (G5.2B).
+ * Display-only canonical-state panel (G5.2B; J1 player-safe pass).
  *
  * Renders champions' current health, optional backend-provided maximum, resource,
  * and active authored effects from a parsed `MasteryStateView`. It NEVER invents
- * a maximum health value: when `maxHealth` is null it shows the absolute number
- * and no proportional meter (following the Ranked CombatantPanel discipline).
+ * a maximum health value: when `maxHealth` is null it shows only the absolute
+ * number (never "maximum unavailable"). Player-facing only — no snapshot ids,
+ * validation status, or internal stat slugs are shown here (those live on the
+ * admin reviewer route).
  */
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import type { MasteryChampionView, MasteryStateView } from "../contracts/stateView";
+import { MasteryChampionPortrait } from "./MasteryChampionPortrait";
+import { effectLabel, humanizeResource } from "./playerFormat";
 
 function HealthMeter({ champion }: { champion: MasteryChampionView }) {
   const { currentHealth, maxHealth, displayName, championId } = champion;
@@ -45,12 +44,14 @@ function HealthMeter({ champion }: { champion: MasteryChampionView }) {
           />
         </div>
       ) : (
-        <p
-          className="text-[11px] text-muted-foreground"
-          aria-label={`${name} health ${currentHealth}, maximum unavailable`}
+        // No maximum in this scenario — show the absolute value only, with a thin
+        // neutral bar for visual rhythm. Never surface "maximum unavailable".
+        <div
+          className="h-3.5 overflow-hidden rounded-full border border-border bg-muted"
+          aria-label={`${name} health ${currentHealth}`}
         >
-          {currentHealth} health (maximum unavailable)
-        </p>
+          <div className="h-full w-full rounded-full bg-emerald-500/60" />
+        </div>
       )}
     </div>
   );
@@ -63,21 +64,27 @@ function ChampionCard({ champion }: { champion: MasteryChampionView }) {
       data-testid={`mastery-champion-${champion.championId}`}
       className="flex-1 space-y-2 rounded-lg border border-border bg-card/50 p-3"
     >
-      <h4 className="text-sm font-semibold">{name}</h4>
+      <div className="flex items-center gap-2">
+        <MasteryChampionPortrait
+          championId={champion.championId}
+          displayName={champion.displayName}
+          size={28}
+        />
+        <h4 className="text-sm font-semibold">{name}</h4>
+      </div>
       <HealthMeter champion={champion} />
       {champion.resourceType && champion.currentResource !== null && (
         <p className="text-[11px] text-muted-foreground">
-          <span className="capitalize">{champion.resourceType}</span>: {champion.currentResource}
-          {champion.maxResource !== null && ` / ${champion.maxResource}`}
+          {champion.currentResource}
+          {champion.maxResource !== null && ` / ${champion.maxResource}`} {humanizeResource(champion.resourceType)}
         </p>
       )}
       {champion.activeEffects.length > 0 && (
-        <ul data-testid={`mastery-effects-${champion.championId}`} className="space-y-1">
+        <ul data-testid={`mastery-effects-${champion.championId}`} className="flex flex-wrap gap-1">
           {champion.activeEffects.map((e, i) => (
-            <li key={`${e.effectId}-${i}`} className="text-[11px]">
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
-                {e.label}
-                {e.magnitude !== null && ` (+${e.magnitude}${e.unit ? ` ${e.unit}` : ""})`}
+            <li key={`${e.effectId}-${i}`}>
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                {effectLabel(e)}
               </span>
             </li>
           ))}
@@ -101,25 +108,6 @@ export function MasteryStatePanel({
         <ChampionCard champion={state.championA} />
         <ChampionCard champion={state.championB} />
       </div>
-      <Collapsible>
-        <CollapsibleTrigger className="text-[11px] text-muted-foreground underline underline-offset-2">
-          Technical details
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <dl className="mt-1 space-y-0.5 text-[10px] text-muted-foreground">
-            <div className="flex gap-1">
-              <dt className="shrink-0 font-medium">Snapshot:</dt>
-              <dd className="truncate" title={state.snapshotId}>{state.snapshotId}</dd>
-            </div>
-            {state.validationStatus && (
-              <div className="flex gap-1">
-                <dt className="shrink-0 font-medium">Validation:</dt>
-                <dd>{state.validationStatus}</dd>
-              </div>
-            )}
-          </dl>
-        </CollapsibleContent>
-      </Collapsible>
     </section>
   );
 }
