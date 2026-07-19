@@ -12,6 +12,7 @@
  */
 
 import {
+  MasteryContractParseError,
   MasteryQuestionFamily,
   ReviewerStatus,
   PublicationStatus,
@@ -26,6 +27,19 @@ import {
   str,
   strList,
 } from "./common";
+
+/**
+ * A required, non-empty array of audit evidence. Fails closed when the key is
+ * absent, non-array, or empty — a review projection must never present an empty
+ * evidence collection as valid.
+ */
+function requiredNonEmptyArr(value: unknown, label: string): unknown[] {
+  const a = arr(value, label); // throws if missing / not an array
+  if (a.length === 0) {
+    throw new MasteryContractParseError(`${label} must not be empty (required audit evidence)`, label);
+  }
+  return a;
+}
 import {
   MasteryArtifactDigest,
   MasteryCapsuleId,
@@ -160,13 +174,16 @@ function readReviewStep(value: unknown, label: string): MasteryReviewStep {
     hint: nstr(s.hint, `${label}.hint`),
     isReadOnly: bool(s.is_read_only, `${label}.is_read_only`),
     proposesDeferredTransition: bool(s.proposes_deferred_transition, `${label}.proposes_deferred_transition`),
-    answerOptions: strList(s.answer_options ?? [], `${label}.answer_options`),
-    canonicalInputs: rec(s.canonical_inputs ?? {}, `${label}.canonical_inputs`),
+    // Required audit evidence — must be present and correctly typed; never
+    // defaulted. answer_options may be an empty array (numeric/boolean questions);
+    // canonical_inputs may be an empty object; source_records must be non-empty.
+    answerOptions: strList(s.answer_options, `${label}.answer_options`),
+    canonicalInputs: rec(s.canonical_inputs, `${label}.canonical_inputs`),
     rankedCapsuleEligibility: readCapsuleEligibility(s.ranked_capsule_eligibility, `${label}.ranked_capsule_eligibility`),
     suppressionState: readSuppression(s.suppression_state, `${label}.suppression_state`),
     calculationResult: rec(s.calculation_result, `${label}.calculation_result`),
     eligibilityEvidence: rec(s.eligibility_evidence, `${label}.eligibility_evidence`),
-    sourceRecords: arr(s.source_records ?? [], `${label}.source_records`),
+    sourceRecords: requiredNonEmptyArr(s.source_records, `${label}.source_records`),
   };
 }
 
@@ -186,7 +203,31 @@ export function readReviewArtifact(value: unknown, label = "artifact"): MasteryR
   const chain = arr(a.transition_chain, `${label}.transition_chain`);
   const supported = arr(a.supported_mechanic_declarations, `${label}.supported_mechanic_declarations`);
   const suppressed = arr(a.suppressed_mechanic_declarations, `${label}.suppressed_mechanic_declarations`);
-  const capsules = arr(a.ranked_capsules ?? [], `${label}.ranked_capsules`);
+  // Required audit evidence — the capsule-reference collection must exist and be
+  // an array (an empty array is permitted for artifacts with no eligible steps).
+  const capsules = arr(a.ranked_capsules, `${label}.ranked_capsules`);
+  const rankedCapsules = capsules.map((c, i) => {
+    const rc = rec(c, `${label}.ranked_capsules[${i}]`);
+    return {
+      capsuleId: capsuleId(rc.capsule_id, `${label}.ranked_capsules[${i}].capsule_id`),
+      capsuleDigest: nonEmptyStr(rc.capsule_digest, `${label}.ranked_capsules[${i}].capsule_digest`),
+      sourceStepId: stepId(rc.source_step_id, `${label}.ranked_capsules[${i}].source_step_id`),
+      sourceSequenceIndex: intIndex(rc.source_sequence_index, `${label}.ranked_capsules[${i}].source_sequence_index`),
+    };
+  });
+  // Reject duplicate capsule or source-step references.
+  const seenCapsule = new Set<string>();
+  const seenStep = new Set<string>();
+  for (const c of rankedCapsules) {
+    if (seenCapsule.has(c.capsuleId)) {
+      throw new MasteryContractParseError(`duplicate ranked_capsules capsule_id ${c.capsuleId}`, `${label}.ranked_capsules`);
+    }
+    if (seenStep.has(c.sourceStepId)) {
+      throw new MasteryContractParseError(`duplicate ranked_capsules source_step_id ${c.sourceStepId}`, `${label}.ranked_capsules`);
+    }
+    seenCapsule.add(c.capsuleId);
+    seenStep.add(c.sourceStepId);
+  }
   return {
     masterySetId: masterySetId(a.mastery_set_id, `${label}.mastery_set_id`),
     artifactDigest: artifactDigest(a.artifact_digest, `${label}.artifact_digest`),
@@ -202,16 +243,8 @@ export function readReviewArtifact(value: unknown, label = "artifact"): MasteryR
     buildClassification: readBuildClassification(a.build_classification, `${label}.build_classification`),
     patchDescriptor: rec(a.patch_descriptor, `${label}.patch_descriptor`),
     validationContext: rec(a.validation_context, `${label}.validation_context`),
-    sourceRecords: arr(a.source_records, `${label}.source_records`),
-    rankedCapsules: capsules.map((c, i) => {
-      const rc = rec(c, `${label}.ranked_capsules[${i}]`);
-      return {
-        capsuleId: capsuleId(rc.capsule_id, `${label}.ranked_capsules[${i}].capsule_id`),
-        capsuleDigest: nonEmptyStr(rc.capsule_digest, `${label}.ranked_capsules[${i}].capsule_digest`),
-        sourceStepId: stepId(rc.source_step_id, `${label}.ranked_capsules[${i}].source_step_id`),
-        sourceSequenceIndex: intIndex(rc.source_sequence_index, `${label}.ranked_capsules[${i}].source_sequence_index`),
-      };
-    }),
+    sourceRecords: requiredNonEmptyArr(a.source_records, `${label}.source_records`),
+    rankedCapsules,
     generatorId: nonEmptyStr(a.generator_id, `${label}.generator_id`),
     generationEngineVersion: nonEmptyStr(a.generation_engine_version, `${label}.generation_engine_version`),
   };
