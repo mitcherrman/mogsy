@@ -23,8 +23,22 @@ export const TRANSITION_CLASSIFICATIONS = [
 ] as const;
 export type TransitionClassification = (typeof TRANSITION_CLASSIFICATIONS)[number];
 
+/**
+ * Provenance of an applied/proposed transition — a G5-owned display discriminant
+ * (NOT a backend contract field). It records how the transition entered the
+ * chain so a reveal never implies the source question proposed it:
+ *   - `authored_inter_step`  — an authored scenario transition applied BETWEEN
+ *     questions (e.g. the +20 ability-haste effect T1); the question did not
+ *     calculate or propose it.
+ *   - `question_proposed`    — the exact transition the source question's
+ *     calculation proposed (e.g. T2, bound to Q5).
+ */
+export const TRANSITION_ORIGINS = ["authored_inter_step", "question_proposed"] as const;
+export type TransitionOrigin = (typeof TRANSITION_ORIGINS)[number];
+
 export interface AuthoredEffectTransitionView {
   readonly classification: "authored_effect";
+  readonly origin: TransitionOrigin;
   readonly transitionId: MasteryTransitionId;
   readonly target: string;
   readonly label: string;
@@ -36,6 +50,7 @@ export interface AuthoredEffectTransitionView {
 
 export interface HealthChangeTransitionView {
   readonly classification: "health_change";
+  readonly origin: TransitionOrigin;
   readonly transitionId: MasteryTransitionId;
   readonly target: string;
   readonly label: string;
@@ -64,6 +79,7 @@ export function readTransitionView(value: unknown, label = "transition"): Master
     case "authored_effect":
       return {
         classification,
+        origin: oneOf(t.origin, TRANSITION_ORIGINS, `${label}.origin`),
         transitionId: transitionId(t.transition_id, `${label}.transition_id`),
         target: str(t.target, `${label}.target`),
         label: str(t.label, `${label}.label`),
@@ -75,6 +91,7 @@ export function readTransitionView(value: unknown, label = "transition"): Master
     case "health_change":
       return {
         classification,
+        origin: oneOf(t.origin, TRANSITION_ORIGINS, `${label}.origin`),
         transitionId: transitionId(t.transition_id, `${label}.transition_id`),
         target: str(t.target, `${label}.target`),
         label: str(t.label, `${label}.label`),

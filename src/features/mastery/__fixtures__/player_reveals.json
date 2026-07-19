@@ -67,10 +67,10 @@
         }
       },
       "after_state": {
-        "snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
         "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
         "validation_status": "certified",
-        "label": "Initial state",
+        "label": "After authored +20 ability haste on Ahri",
         "champion_a": {
           "champion_id": "ahri",
           "display_name": "Ahri",
@@ -79,7 +79,14 @@
           "resource_type": "mana",
           "current_resource": 400,
           "max_resource": null,
-          "active_effects": [],
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
           "inventory_summary": []
         },
         "champion_b": {
@@ -95,8 +102,15 @@
         }
       },
       "applied_transition": {
-        "classification": "state_unchanged",
-        "label": "State unchanged — read-only question"
+        "classification": "authored_effect",
+        "origin": "authored_inter_step",
+        "transition_id": "txn_2419e8cc94d889e15031d24ac02c51f533a675c17a73dc69cd781abd79da4e5a",
+        "target": "A",
+        "label": "Authored +20 ability haste applied to Ahri (independent scenario transition, not proposed by this question)",
+        "effect": "ability_haste",
+        "magnitude": 20,
+        "unit": "ability_haste",
+        "applied": true
       },
       "proposed_transition": null,
       "completion_state": {
@@ -139,10 +153,10 @@
         }
       ],
       "before_state": {
-        "snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
         "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
         "validation_status": "certified",
-        "label": "Initial state",
+        "label": "After authored +20 ability haste on Ahri",
         "champion_a": {
           "champion_id": "ahri",
           "display_name": "Ahri",
@@ -151,7 +165,14 @@
           "resource_type": "mana",
           "current_resource": 400,
           "max_resource": null,
-          "active_effects": [],
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
           "inventory_summary": []
         },
         "champion_b": {
@@ -202,14 +223,8 @@
         }
       },
       "applied_transition": {
-        "classification": "authored_effect",
-        "transition_id": "txn_2419e8cc94d889e15031d24ac02c51f533a675c17a73dc69cd781abd79da4e5a",
-        "target": "A",
-        "label": "Authored +20 ability haste applied to Ahri",
-        "effect": "ability_haste",
-        "magnitude": 20,
-        "unit": "ability_haste",
-        "applied": true
+        "classification": "state_unchanged",
+        "label": "State unchanged — reads the existing authored effect, applies nothing"
       },
       "proposed_transition": null,
       "completion_state": {
@@ -557,6 +572,7 @@
       },
       "applied_transition": {
         "classification": "health_change",
+        "origin": "question_proposed",
         "transition_id": "txn_07527993aaa9365bbcba861d5182b715e0c52a965471fbc3e533213547a16465",
         "target": "B",
         "label": "Ahri E first hit applied to Syndra",
@@ -694,6 +710,7 @@
       },
       "proposed_transition": {
         "classification": "health_change",
+        "origin": "question_proposed",
         "transition_id": "txn_07527993aaa9365bbcba861d5182b715e0c52a965471fbc3e533213547a16465",
         "target": "B",
         "label": "Proposed second Ahri E hit (not applied — chain ends)",

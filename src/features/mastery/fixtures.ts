@@ -246,9 +246,22 @@ export function playerRevealEnvelopes(): Record<string, unknown>[] {
         calcStep(2, "Syndra E final cooldown (certified base 15.0, haste 0.0)", "final_cooldown(15.0, 0.0)", 15.0),
         calcStep(3, "Absolute cooldown difference", "abs(12.0 - 15.0)", 3.0),
       ],
+      // Q1 is answered from S0; its calculation neither proposes nor computes T1.
+      // After the reveal, the independently authored +20 ability-haste effect (T1)
+      // is applied as an inter-step transition, advancing display state S0 -> S1.
       before_state: stateS0(),
-      after_state: stateS0(),
-      applied_transition: stateUnchanged("State unchanged — read-only question"),
+      after_state: stateS1(),
+      applied_transition: {
+        classification: "authored_effect",
+        origin: "authored_inter_step",
+        transition_id: TXN1,
+        target: "A",
+        label: "Authored +20 ability haste applied to Ahri (independent scenario transition, not proposed by this question)",
+        effect: "ability_haste",
+        magnitude: 20.0,
+        unit: "ability_haste",
+        applied: true,
+      },
       proposed_transition: null,
       completion_state: { is_final_step: false, set_completed: false },
     }),
@@ -263,19 +276,11 @@ export function playerRevealEnvelopes(): Record<string, unknown>[] {
         calcStep(1, "Cooldown reduction multiplier from ability haste", "100 / (100 + 20.0)", 0.8333333333333334),
         calcStep(2, "Final cooldown after haste", "12.0 * 0.8333333333333334", 10.0),
       ],
-      // The authored +20 ability-haste effect (T1) applied entering this question.
-      before_state: stateS0(),
+      // Q2 is served from S1: it READS the already-applied authored +20 haste
+      // effect (visible in its state view) but does not cause or re-apply T1.
+      before_state: stateS1(),
       after_state: stateS1(),
-      applied_transition: {
-        classification: "authored_effect",
-        transition_id: TXN1,
-        target: "A",
-        label: "Authored +20 ability haste applied to Ahri",
-        effect: "ability_haste",
-        magnitude: 20.0,
-        unit: "ability_haste",
-        applied: true,
-      },
+      applied_transition: stateUnchanged("State unchanged — reads the existing authored effect, applies nothing"),
       proposed_transition: null,
       completion_state: { is_final_step: false, set_completed: false },
     }),
@@ -329,6 +334,7 @@ export function playerRevealEnvelopes(): Record<string, unknown>[] {
       after_state: stateS2(),
       applied_transition: {
         classification: "health_change",
+        origin: "question_proposed",
         transition_id: TXN2,
         target: "B",
         label: "Ahri E first hit applied to Syndra",
@@ -360,6 +366,7 @@ export function playerRevealEnvelopes(): Record<string, unknown>[] {
       // Q6 proposes a health change but the chain ends; it is not applied.
       proposed_transition: {
         classification: "health_change",
+        origin: "question_proposed",
         transition_id: TXN2,
         target: "B",
         label: "Proposed second Ahri E hit (not applied — chain ends)",

@@ -10,7 +10,11 @@ import {
 import {
   ARTIFACT_DIGEST,
   SET_ID,
+  SNAP0,
+  SNAP1,
+  SNAP2,
   STEP_IDS,
+  TXN1,
   playerQuestionEnvelopes,
   playerRevealEnvelopes,
   reviewArtifactEnvelope,
@@ -26,6 +30,19 @@ describe("player-question parsing", () => {
     expect(parsed[5].answerType).toBe("boolean");
     expect(parsed[4].isReadOnly).toBe(false); // Q5 is transition-bound
     expect(parsed[0].isReadOnly).toBe(true);
+  });
+
+  it("Q1 embeds S0 with no authored haste effect; Q2 embeds S1 carrying it", () => {
+    const [q1, q2] = playerQuestionEnvelopes().map(parseMasteryPlayerQuestion);
+    // Q1: initial state S0, read-only, Syndra at 480, Ahri unbuffed.
+    expect(q1.state.snapshotId).toBe(SNAP0);
+    expect(q1.isReadOnly).toBe(true);
+    expect(q1.state.championA.activeEffects).toHaveLength(0);
+    expect(q1.state.championB.currentHealth).toBe(480);
+    // Q2: state S1, Ahri carries the authored +20 ability-haste effect.
+    expect(q2.state.snapshotId).toBe(SNAP1);
+    expect(q2.state.championA.activeEffects[0]?.magnitude).toBe(20);
+    expect(q2.state.championA.activeEffects[0]?.unit).toBe("ability_haste");
   });
 
   it("preserves opaque IDs exactly", () => {
@@ -109,19 +126,62 @@ describe("player-reveal parsing", () => {
     expect(parsed[5].correctAnswer).toBe(true);
   });
 
-  it("exposes the three transition-view arms", () => {
+  it("exposes the three transition-view arms with correct T1 sequencing", () => {
     const parsed = playerRevealEnvelopes().map(parseMasteryPlayerReveal);
-    expect(parsed[0].appliedTransition?.classification).toBe("state_unchanged");
-    expect(parsed[1].appliedTransition?.classification).toBe("authored_effect");
+    // Q1 applies the authored inter-step T1 (S0 -> S1).
+    expect(parsed[0].appliedTransition?.classification).toBe("authored_effect");
+    // Q2 reads the existing effect and applies nothing.
+    expect(parsed[1].appliedTransition?.classification).toBe("state_unchanged");
+    expect(parsed[3].appliedTransition?.classification).toBe("state_unchanged");
+    // Q5 applies the question-proposed health change T2 (S1 -> S2).
     expect(parsed[4].appliedTransition?.classification).toBe("health_change");
     expect(parsed[5].proposedTransition?.classification).toBe("health_change");
     expect(parsed[5].completionState.setCompleted).toBe(true);
   });
 
-  it("carries audited before/after health for Q5", () => {
+  it("sequences T1 across Q1 (S0 -> S1) and holds S1 at Q2", () => {
+    const q1 = parseMasteryPlayerReveal(playerRevealEnvelopes()[0]);
+    const q2 = parseMasteryPlayerReveal(playerRevealEnvelopes()[1]);
+
+    // Q1 reveal: before S0, after S1, applies T1 as an authored inter-step effect.
+    expect(q1.beforeState.snapshotId).toBe(SNAP0);
+    expect(q1.afterState.snapshotId).toBe(SNAP1);
+    const applied = q1.appliedTransition;
+    expect(applied?.classification).toBe("authored_effect");
+    if (applied?.classification === "authored_effect") {
+      expect(applied.origin).toBe("authored_inter_step");
+      expect(applied.transitionId).toBe(TXN1);
+      expect(applied.target).toBe("A");
+      expect(applied.magnitude).toBe(20);
+    }
+    // Q1 shows S0 (no authored effect yet); its calc evidence is a base-cooldown
+    // comparison and never claims to author/propose T1 (no authored effect, no TXN1).
+    expect(q1.beforeState.championA.activeEffects).toHaveLength(0);
+    const q1Text = JSON.stringify(q1.calculationSteps).toLowerCase();
+    expect(q1Text).not.toContain("authored");
+    expect(q1Text).not.toContain(TXN1.toLowerCase());
+    expect(q1Text).not.toContain("+20");
+
+    // Q2 reveal: begins and ends at S1, applies nothing, still shows the +20 effect.
+    expect(q2.beforeState.snapshotId).toBe(SNAP1);
+    expect(q2.afterState.snapshotId).toBe(SNAP1);
+    expect(q2.appliedTransition?.classification).toBe("state_unchanged");
+    expect(q2.beforeState.championA.activeEffects[0]?.magnitude).toBe(20);
+  });
+
+  it("carries audited before/after health for Q5 (T2) and holds S2 at Q6", () => {
     const q5 = parseMasteryPlayerReveal(playerRevealEnvelopes()[4]);
+    expect(q5.beforeState.snapshotId).toBe(SNAP1);
+    expect(q5.afterState.snapshotId).toBe(SNAP2);
     expect(q5.beforeState.championB.currentHealth).toBe(480);
     expect(q5.afterState.championB.currentHealth).toBe(230);
+    if (q5.appliedTransition?.classification === "health_change") {
+      expect(q5.appliedTransition.origin).toBe("question_proposed");
+    }
+    const q6 = parseMasteryPlayerReveal(playerRevealEnvelopes()[5]);
+    expect(q6.beforeState.snapshotId).toBe(SNAP2);
+    expect(q6.afterState.snapshotId).toBe(SNAP2);
+    expect(q6.appliedTransition?.classification).toBe("state_unchanged");
   });
 });
 
