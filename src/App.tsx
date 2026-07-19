@@ -116,6 +116,7 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 // Dev-only Ranked TUTORIAL prototype — scripted local training match,
 // no auth/API/persistence, not linked from any navigation.
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
+const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 
 // Production Ranked TUTORIAL onboarding — mandatory for new accounts, replayable
 // for completed ones. Reuses the canonical tutorial with durable completion.
@@ -280,6 +281,7 @@ const App = () => (
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
+                  <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/mastery/:artifactDigest" element={<AdminRoute><Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense></AdminRoute>} />
                 </Route>
