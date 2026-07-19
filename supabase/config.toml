@@ -1,32 +1,25 @@
 project_id = "kewgjwrzpzpeltwidvuc"
 
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.check-subscription]
-verify_jwt = false
-
-[functions.customer-portal]
-verify_jwt = false
-
-[functions.admin-get-emails]
-verify_jwt = false
-
-[functions.populate-preset-images]
-verify_jwt = false
-
-[functions.snapshot-global-elo]
-verify_jwt = false
-
-[functions.purge-anonymous-users]
-verify_jwt = false
-
-[functions.verify-gift]
-verify_jwt = true
-
-# Stripe calls this endpoint directly; auth is the webhook signature, not a JWT.
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.admin-get-emails]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.check-subscription]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.customer-portal]
+    verify_jwt = false
+  [functions.populate-preset-images]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.purge-anonymous-users]
+    verify_jwt = false
+  [functions.snapshot-global-elo]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.verify-gift]
+    verify_jwt = true
