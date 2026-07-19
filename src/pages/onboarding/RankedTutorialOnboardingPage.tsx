@@ -52,7 +52,7 @@ export default function RankedTutorialOnboardingPage() {
     return (
       <main className="container max-w-xl mx-auto px-4 py-10">
         <section
-          aria-label="Welcome to Mogzy"
+          aria-label="Welcome to Ranked training"
           data-testid="onboarding-welcome"
           className="rounded-xl border bg-card p-6 space-y-4 text-center"
         >
@@ -61,11 +61,14 @@ export default function RankedTutorialOnboardingPage() {
               <GraduationCap className="h-6 w-6 text-emerald-600" aria-hidden />
             </span>
           </div>
-          <h1 className="text-2xl font-bold">Welcome to Mogzy</h1>
+          <h1 className="text-2xl font-bold">Welcome to Ranked training</h1>
           <p className="text-sm text-muted-foreground">
-            This short guided tutorial teaches Ranked quiz-combat — how questions,
-            damage, XP, and abilities work. It only takes a few minutes, and finishing
-            it unlocks the normal quiz experience.
+            You&apos;re about to play a scripted Training Match against the Training Golem
+            — practice only, so nothing here counts toward real Ranked. In a few minutes
+            you&apos;ll learn everything a Ranked duel uses: the shared timer, answering and
+            locking in, dealing damage, earning XP, leveling up, and your Tank abilities.
+            We&apos;ll take it one step at a time, and the timer stays paused whenever
+            there&apos;s something to read.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
             <Button

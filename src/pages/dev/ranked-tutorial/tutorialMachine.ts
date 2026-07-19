@@ -59,7 +59,7 @@ const initialCharges = (): Record<string, number> => ({
 
 /** Fresh training-match state. Both combatants are full-HP Level 1 Tanks. */
 export const initialTutorialState = (): TutorialState => ({
-  stepId: "welcome",
+  stepId: "timer_intro",
   player: { hp: TANK_STARTING_HP, maxHp: TANK_STARTING_HP, xp: 0, level: 1 },
   opponent: { hp: TANK_STARTING_HP, maxHp: TANK_STARTING_HP, xp: 0, level: 1 },
   round: null,
@@ -301,9 +301,6 @@ export const tutorialReducer = (
   switch (event.type) {
     case "RESTART":
       return initialTutorialState();
-
-    case "BEGIN_TRAINING":
-      return advance(state);
 
     case "CONTINUE":
       return continueFrom(state);

@@ -8,18 +8,17 @@ import { TutorialStepDefinition } from "../types";
  */
 export function InstructionPanel({
   step,
-  onBegin,
   onContinue,
   continueDisabled = false,
 }: {
   step: TutorialStepDefinition;
-  onBegin: () => void;
   onContinue: () => void;
   /** Blocks advancement until the step's required action is done. */
   continueDisabled?: boolean;
 }) {
-  const showBegin = step.permittedEvents.includes("BEGIN_TRAINING");
   const showContinue = step.permittedEvents.includes("CONTINUE");
+  // The locked step's forward control is an explicit, player-paced reveal.
+  const continueLabel = step.id === "answer_locked" ? "Reveal answers" : "Continue";
   return (
     <section
       aria-label="Tutorial instructions"
@@ -31,14 +30,9 @@ export function InstructionPanel({
         <p className="mt-1 text-sm text-muted-foreground">{step.body}</p>
         <span className="sr-only">{step.announcement}</span>
       </div>
-      {showBegin && (
-        <Button onClick={onBegin} data-testid="begin-training">
-          Begin Training
-        </Button>
-      )}
       {showContinue && (
         <Button onClick={onContinue} disabled={continueDisabled} data-testid="continue-step">
-          Continue
+          {continueLabel}
         </Button>
       )}
     </section>

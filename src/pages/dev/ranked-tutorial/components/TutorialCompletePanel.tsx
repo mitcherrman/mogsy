@@ -112,7 +112,7 @@ export function TutorialCompletePanel({
             This returns to the Ranked area. It does not automatically queue you.
             {mode === "replay"
               ? " Replaying does not change your saved progress."
-              : " Nothing from this tutorial was saved."}
+              : " This dev run doesn't write anything to your account."}
           </p>
         </>
       )}

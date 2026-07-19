@@ -6,7 +6,13 @@ import {
   visibleState,
 } from "./tutorialMachine";
 import { STEPS, STEP_ORDER } from "./tutorialSteps";
-import { TUTORIAL_ROUNDS, XP, LEVEL_THRESHOLDS, levelForXp } from "./fixtures";
+import {
+  TUTORIAL_ROUNDS,
+  TUTORIAL_QUESTIONS,
+  XP,
+  LEVEL_THRESHOLDS,
+  levelForXp,
+} from "./fixtures";
 import { TutorialEvent, TutorialState } from "./types";
 
 const reduceAll = (events: TutorialEvent[], from?: TutorialState) =>
@@ -14,8 +20,7 @@ const reduceAll = (events: TutorialEvent[], from?: TutorialState) =>
 
 // --- Walk helpers -------------------------------------------------------------
 
-const toAnswerSelection = () =>
-  reduceAll([{ type: "BEGIN_TRAINING" }, { type: "CONTINUE" }]);
+const toAnswerSelection = () => reduceAll([{ type: "CONTINUE" }]);
 
 const throughRoundA = () =>
   reduceAll(
@@ -68,7 +73,7 @@ const throughRoundE = () =>
   reduceAll(
     [
       { type: "TICK" }, // Golem answers instantly: 35 → 30
-      { type: "SELECT_ANSWER", answerIndex: 0 }, // guided wrong answer
+      { type: "SELECT_ANSWER", answerIndex: 3 }, // guided wrong answer ("Four"; correct is "Two")
       { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
       { type: "LOCK_SUBMISSION" },
       { type: "CONFIRM_LOCK" },
@@ -107,15 +112,16 @@ const throughVictory = (choice: "tank.brace" | "tank.barrier" = "tank.brace") =>
 // --- Foundation ---------------------------------------------------------------
 
 describe("tutorialMachine foundation", () => {
-  it("starts at welcome with full-HP level-1 tanks", () => {
+  it("starts at timer_intro (welcome is now the un-numbered entry screen) with full-HP level-1 tanks", () => {
     const s = initialTutorialState();
-    expect(s.stepId).toBe("welcome");
+    expect(s.stepId).toBe("timer_intro");
     expect(s.player).toEqual({ hp: 170, maxHp: 170, xp: 0, level: 1 });
     expect(s.opponent).toEqual({ hp: 170, maxHp: 170, xp: 0, level: 1 });
     expect(s.round).toBeNull();
+    expect(s.timer.running).toBe(false); // timer_intro is paused
   });
 
-  it("BEGIN_TRAINING → timer_intro; CONTINUE → answer_selection with Round A live", () => {
+  it("CONTINUE from timer_intro → answer_selection with Round A live", () => {
     const s = toAnswerSelection();
     expect(s.stepId).toBe("answer_selection");
     expect(s.round?.roundId).toBe("A");
@@ -124,13 +130,27 @@ describe("tutorialMachine foundation", () => {
     expect(s.timer.remaining).toBe(30);
   });
 
+  it("STEP_ORDER has 18 numbered steps: no welcome, ads_pro_explanation immediately before complete", () => {
+    expect(STEP_ORDER.length).toBe(18);
+    expect(STEP_ORDER).not.toContain("welcome");
+    expect(STEP_ORDER[0]).toBe("timer_intro");
+    // Matchmaking + reconnect remain numbered mandatory steps.
+    expect(STEP_ORDER).toContain("queue_explanation");
+    expect(STEP_ORDER).toContain("reconnect_explanation");
+    // Ads & Pro remains numbered, immediately before completion.
+    const adsIdx = STEP_ORDER.indexOf("ads_pro_explanation");
+    expect(adsIdx).toBeGreaterThan(-1);
+    expect(STEP_ORDER[adsIdx + 1]).toBe("complete");
+    expect(STEP_ORDER[STEP_ORDER.length - 1]).toBe("complete");
+  });
+
   it("rejects unpermitted and out-of-order events without state change", () => {
     const start = initialTutorialState();
-    expect(tutorialReducer(start, { type: "CONTINUE" })).toBe(start);
+    // timer_intro permits only CONTINUE/RESTART; round/combat events are rejected.
     expect(tutorialReducer(start, { type: "SELECT_ANSWER", answerIndex: 0 })).toBe(start);
     expect(tutorialReducer(start, { type: "CONFIRM_LOCK" })).toBe(start);
+    expect(tutorialReducer(start, { type: "SIMULATE_TIMEOUT" })).toBe(start);
     const sel = toAnswerSelection();
-    expect(tutorialReducer(sel, { type: "BEGIN_TRAINING" })).toBe(sel);
     expect(tutorialReducer(sel, { type: "SIMULATE_TIMEOUT" })).toBe(sel);
     expect(tutorialReducer(sel, { type: "CHOOSE_LEVEL_TWO", abilityId: "tank.brace" })).toBe(sel);
     // Confirm without review is rejected.
@@ -521,6 +541,69 @@ describe("commitment rule (Round E)", () => {
     expect(s.charges["tank.fortify"]).toBe(1);
     expect(s.charges["tank.brace"]).toBe(3);
     expect(s.charges["tank.barrier"]).toBe(1);
+  });
+});
+
+// --- Round E — approved guided-wrong summoner-spell exercise -----------------
+
+describe("Round E — approved summoner-spell guided-wrong question", () => {
+  it("uses the exact question text and choice order", () => {
+    const q = TUTORIAL_QUESTIONS[TUTORIAL_ROUNDS.E.questionIndex];
+    expect(q.prompt).toBe(
+      "How many summoner spells can a player normally equip before a match?",
+    );
+    expect(q.choices).toEqual(["One", "Two", "Three", "Four"]);
+  });
+
+  it("has correct=Two(1), guided-wrong player=Four(3), Golem=One(0); both incorrect", () => {
+    const f = TUTORIAL_ROUNDS.E;
+    const CORRECT_INDEX = 1; // "Two"
+    expect(f.playerAnswer).toBe(3); // "Four" — guided wrong
+    expect(f.opponentAnswer).toBe(0); // "One"
+    expect(f.playerCorrect).toBe(false);
+    expect(f.opponentCorrect).toBe(false);
+    // The guided-wrong answer must differ from the true correct answer.
+    expect(f.playerAnswer).not.toBe(CORRECT_INDEX);
+    expect(f.opponentAnswer).not.toBe(CORRECT_INDEX);
+  });
+
+  it("resolves to a no-damage wash with Fortify consumed but not triggered", () => {
+    const before = throughRoundD();
+    expect(before.charges["tank.fortify"]).toBe(2);
+    const s = throughRoundE();
+    const f = TUTORIAL_ROUNDS.E;
+    // No damage either side; HP unchanged at the approved values.
+    expect(f.playerDamage).toBe(0);
+    expect(f.opponentDamage).toBe(0);
+    expect(s.player.hp).toBe(150);
+    expect(s.opponent.hp).toBe(70);
+    // Fortify charge consumed 2 → 1; effect did NOT trigger (wrong answer).
+    expect(s.charges["tank.fortify"]).toBe(1);
+    expect(f.chargeConsumed).toBe(true);
+    expect(f.effectTriggered).toBe(false);
+    // Approved XP progression.
+    expect(s.player.xp).toBe(53); // 44 + 9
+    expect(s.opponent.xp).toBe(47); // 38 + 9
+    // Reveal copy references the deliberate 'Four' pick and the true 'two'.
+    expect(f.resultCopy).toMatch(/Four/);
+    expect(f.resultCopy).toMatch(/two summoner spells/);
+  });
+});
+
+// --- Completion copy distinctions (Decision: saved marker vs unsaved match) ---
+
+describe("completion copy", () => {
+  it("distinguishes the saved marker, the unsaved match, and unaffected Ranked data without 'nothing was saved'", () => {
+    const body = STEPS.complete.body.toLowerCase();
+    // Saved completion marker.
+    expect(body).toMatch(/marker/);
+    // Unsaved Training Match details.
+    expect(body).toMatch(/training match/);
+    expect(body).toMatch(/aren't recorded anywhere|are not recorded anywhere/);
+    // Unaffected Ranked rating / history / progression.
+    expect(body).toMatch(/ranked rating, match history, or progression/);
+    // Must NOT claim nothing was saved.
+    expect(body).not.toMatch(/nothing was saved/);
   });
 });
 
