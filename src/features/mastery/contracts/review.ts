@@ -28,11 +28,13 @@ import {
 } from "./common";
 import {
   MasteryArtifactDigest,
+  MasteryCapsuleId,
   MasterySetId,
   MasterySnapshotId,
   MasteryStepId,
   MasteryTransitionId,
   artifactDigest,
+  capsuleId,
   masterySetId,
   snapshotId,
   stepId,
@@ -57,6 +59,8 @@ export interface MasteryReviewStep {
   readonly questionFamily: MasteryQuestionFamily;
   readonly answerType: string;
   readonly correctAnswer: string | number | boolean;
+  readonly answerOptions: readonly string[];
+  readonly canonicalInputs: Readonly<Record<string, unknown>>;
   readonly beforeSnapshotId: MasterySnapshotId;
   readonly afterSnapshotId: MasterySnapshotId;
   readonly transitionId: MasteryTransitionId | null;
@@ -72,6 +76,14 @@ export interface MasteryReviewStep {
   /** Full calculation evidence, preserved verbatim for display/inspection. */
   readonly calculationResult: Readonly<Record<string, unknown>>;
   readonly eligibilityEvidence: Readonly<Record<string, unknown>>;
+  readonly sourceRecords: readonly unknown[];
+}
+
+export interface MasteryRankedCapsuleRef {
+  readonly capsuleId: MasteryCapsuleId;
+  readonly capsuleDigest: string;
+  readonly sourceStepId: MasteryStepId;
+  readonly sourceSequenceIndex: number;
 }
 
 export interface MasteryBuildClassificationView {
@@ -97,6 +109,7 @@ export interface MasteryReviewArtifact {
   readonly patchDescriptor: Readonly<Record<string, unknown>>;
   readonly validationContext: Readonly<Record<string, unknown>>;
   readonly sourceRecords: readonly unknown[];
+  readonly rankedCapsules: readonly MasteryRankedCapsuleRef[];
   readonly generatorId: string;
   readonly generationEngineVersion: string;
 }
@@ -147,10 +160,13 @@ function readReviewStep(value: unknown, label: string): MasteryReviewStep {
     hint: nstr(s.hint, `${label}.hint`),
     isReadOnly: bool(s.is_read_only, `${label}.is_read_only`),
     proposesDeferredTransition: bool(s.proposes_deferred_transition, `${label}.proposes_deferred_transition`),
+    answerOptions: strList(s.answer_options ?? [], `${label}.answer_options`),
+    canonicalInputs: rec(s.canonical_inputs ?? {}, `${label}.canonical_inputs`),
     rankedCapsuleEligibility: readCapsuleEligibility(s.ranked_capsule_eligibility, `${label}.ranked_capsule_eligibility`),
     suppressionState: readSuppression(s.suppression_state, `${label}.suppression_state`),
     calculationResult: rec(s.calculation_result, `${label}.calculation_result`),
     eligibilityEvidence: rec(s.eligibility_evidence, `${label}.eligibility_evidence`),
+    sourceRecords: arr(s.source_records ?? [], `${label}.source_records`),
   };
 }
 
@@ -170,6 +186,7 @@ export function readReviewArtifact(value: unknown, label = "artifact"): MasteryR
   const chain = arr(a.transition_chain, `${label}.transition_chain`);
   const supported = arr(a.supported_mechanic_declarations, `${label}.supported_mechanic_declarations`);
   const suppressed = arr(a.suppressed_mechanic_declarations, `${label}.suppressed_mechanic_declarations`);
+  const capsules = arr(a.ranked_capsules ?? [], `${label}.ranked_capsules`);
   return {
     masterySetId: masterySetId(a.mastery_set_id, `${label}.mastery_set_id`),
     artifactDigest: artifactDigest(a.artifact_digest, `${label}.artifact_digest`),
@@ -186,6 +203,15 @@ export function readReviewArtifact(value: unknown, label = "artifact"): MasteryR
     patchDescriptor: rec(a.patch_descriptor, `${label}.patch_descriptor`),
     validationContext: rec(a.validation_context, `${label}.validation_context`),
     sourceRecords: arr(a.source_records, `${label}.source_records`),
+    rankedCapsules: capsules.map((c, i) => {
+      const rc = rec(c, `${label}.ranked_capsules[${i}]`);
+      return {
+        capsuleId: capsuleId(rc.capsule_id, `${label}.ranked_capsules[${i}].capsule_id`),
+        capsuleDigest: nonEmptyStr(rc.capsule_digest, `${label}.ranked_capsules[${i}].capsule_digest`),
+        sourceStepId: stepId(rc.source_step_id, `${label}.ranked_capsules[${i}].source_step_id`),
+        sourceSequenceIndex: intIndex(rc.source_sequence_index, `${label}.ranked_capsules[${i}].source_sequence_index`),
+      };
+    }),
     generatorId: nonEmptyStr(a.generator_id, `${label}.generator_id`),
     generationEngineVersion: nonEmptyStr(a.generation_engine_version, `${label}.generation_engine_version`),
   };

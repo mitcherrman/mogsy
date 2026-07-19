@@ -20,6 +20,13 @@
           "question_family": "cooldown_comparison",
           "answer_type": "numeric",
           "correct_answer": 3,
+          "answer_options": [],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ability_haste": 0,
+            "other_ability_rank": 5,
+            "other_ability_haste": 0
+          },
           "before_snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
           "after_snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
           "transition_id": null,
@@ -43,6 +50,38 @@
           "calculation_result": {
             "value": 3,
             "unit": "seconds",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Ahri E final cooldown (certified base 12.0, haste 0.0)",
+                "expression": "final_cooldown(12.0, 0.0)",
+                "result": 12
+              },
+              {
+                "order": 2,
+                "description": "Syndra E final cooldown (certified base 15.0, haste 0.0)",
+                "expression": "final_cooldown(15.0, 0.0)",
+                "result": 15
+              },
+              {
+                "order": 3,
+                "description": "Absolute cooldown difference",
+                "expression": "abs(12.0 - 15.0)",
+                "result": 3
+              }
+            ],
+            "provenance": {
+              "champion_id": "ahri",
+              "ability_key": "E",
+              "operation": "cooldown_comparison",
+              "difference_seconds": 3,
+              "unit": "seconds",
+              "rune_haste_included": false,
+              "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e"
+            },
+            "warnings": [],
+            "state_changes": [],
             "recomputation": {
               "matches": true,
               "recomputed_value": 3,
@@ -52,9 +91,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "cooldown_comparison",
+            "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         },
         {
           "step_id": "mqstep_4ab308058717ad0ed256a152e2e3ae5480dc00fb3d2529a426462896f42a26f4",
@@ -62,6 +142,11 @@
           "question_family": "cooldown_with_haste",
           "answer_type": "numeric",
           "correct_answer": 10,
+          "answer_options": [],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ability_haste": 20
+          },
           "before_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "after_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "transition_id": null,
@@ -85,6 +170,32 @@
           "calculation_result": {
             "value": 10,
             "unit": "seconds",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Cooldown reduction multiplier from ability haste",
+                "expression": "100 / (100 + 20.0)",
+                "result": 0.8333333333333334
+              },
+              {
+                "order": 2,
+                "description": "Final cooldown after haste",
+                "expression": "12.0 * 0.8333333333333334",
+                "result": 10
+              }
+            ],
+            "provenance": {
+              "formula": "base * 100/(100+haste)",
+              "champion_id": "ahri",
+              "ability_key": "E",
+              "operation": "cooldown_with_haste",
+              "certified_base_cooldown": 12,
+              "ability_haste": 20,
+              "adapter_id": "adapter_416e22ddfbdd0e11515b8b36d9221d47b099ecc32bcae5217c57aff5dd60d11b"
+            },
+            "warnings": [],
+            "state_changes": [],
             "recomputation": {
               "matches": true,
               "recomputed_value": 10,
@@ -94,9 +205,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "cooldown",
+            "adapter_id": "adapter_416e22ddfbdd0e11515b8b36d9221d47b099ecc32bcae5217c57aff5dd60d11b",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_416e22ddfbdd0e11515b8b36d9221d47b099ecc32bcae5217c57aff5dd60d11b"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         },
         {
           "step_id": "mqstep_ad74edf52ea65f9f6b86ce82355bf0dcb7f8030b79b384ad0787323cedd99d24",
@@ -104,6 +256,13 @@
           "question_family": "cooldown_comparison",
           "answer_type": "numeric",
           "correct_answer": 5,
+          "answer_options": [],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ability_haste": 20,
+            "other_ability_rank": 5,
+            "other_ability_haste": 0
+          },
           "before_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "after_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "transition_id": null,
@@ -127,6 +286,35 @@
           "calculation_result": {
             "value": 5,
             "unit": "seconds",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Ahri E final cooldown (certified base 12.0, haste 20.0)",
+                "expression": "final_cooldown(12.0, 20.0)",
+                "result": 10
+              },
+              {
+                "order": 2,
+                "description": "Syndra E final cooldown (certified base 15.0, haste 0.0)",
+                "expression": "final_cooldown(15.0, 0.0)",
+                "result": 15
+              },
+              {
+                "order": 3,
+                "description": "Absolute cooldown difference",
+                "expression": "abs(10.0 - 15.0)",
+                "result": 5
+              }
+            ],
+            "provenance": {
+              "champion_id": "ahri",
+              "operation": "cooldown_comparison",
+              "difference_seconds": 5,
+              "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e"
+            },
+            "warnings": [],
+            "state_changes": [],
             "recomputation": {
               "matches": true,
               "recomputed_value": 5,
@@ -136,9 +324,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "cooldown_comparison",
+            "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         },
         {
           "step_id": "mqstep_51ff339b3dfb3f9c3551523df6d64aebe4c5ed203be92631bd8b207ba39604fb",
@@ -146,6 +375,11 @@
           "question_family": "raw_single_type_damage",
           "answer_type": "numeric",
           "correct_answer": 325,
+          "answer_options": [],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ap": 100
+          },
           "before_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "after_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "transition_id": null,
@@ -169,6 +403,31 @@
           "calculation_result": {
             "value": 325,
             "unit": "damage",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Certified Ahri E base magic damage at rank 5",
+                "expression": "240.0",
+                "result": 240
+              },
+              {
+                "order": 2,
+                "description": "Add certified AP scaling",
+                "expression": "240.0 + 0.85 * 100",
+                "result": 325
+              }
+            ],
+            "provenance": {
+              "champion_id": "ahri",
+              "operation": "raw_damage",
+              "base_damage": 240,
+              "ap_ratio": 0.85,
+              "ap": 100,
+              "adapter_id": "adapter_raw_ahri_e_v1"
+            },
+            "warnings": [],
+            "state_changes": [],
             "recomputation": {
               "matches": true,
               "recomputed_value": 325,
@@ -178,9 +437,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "raw_damage",
+            "adapter_id": "adapter_raw_ahri_e_v1",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_raw_ahri_e_v1"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         },
         {
           "step_id": "mqstep_7ccf5942ba7eb149c21c92f321b5d01a3cfd4acee8049edbc6aca4c151c561f7",
@@ -188,6 +488,13 @@
           "question_family": "health_remaining",
           "answer_type": "numeric",
           "correct_answer": 230,
+          "answer_options": [],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ap": 100,
+            "target_magic_resist": 30,
+            "target_current_hp": 480
+          },
           "before_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "after_snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
           "transition_id": "txn_07527993aaa9365bbcba861d5182b715e0c52a965471fbc3e533213547a16465",
@@ -211,6 +518,47 @@
           "calculation_result": {
             "value": 230,
             "unit": "health",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Post-mitigation damage",
+                "expression": "325.0 * 0.7692307692307693",
+                "result": 250
+              },
+              {
+                "order": 2,
+                "description": "Raw remaining health",
+                "expression": "480.0 - 250.0",
+                "result": 230
+              },
+              {
+                "order": 3,
+                "description": "Health remaining (floored at zero)",
+                "expression": "max(0, 230.0)",
+                "result": 230
+              }
+            ],
+            "provenance": {
+              "champion_id": "ahri",
+              "operation": "post_mitigation_damage",
+              "damage_applied": 250,
+              "health_remaining": 230,
+              "reaches_zero": false,
+              "overkill": 0,
+              "adapter_id": "adapter_health_ahri_e_v1"
+            },
+            "warnings": [],
+            "state_changes": [
+              {
+                "transition_type": "health_change",
+                "target": "B",
+                "params": {
+                  "delta": -250
+                },
+                "applied": true
+              }
+            ],
             "recomputation": {
               "matches": true,
               "recomputed_value": 230,
@@ -220,9 +568,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "health_remaining",
+            "adapter_id": "adapter_health_ahri_e_v1",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_health_ahri_e_v1"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         },
         {
           "step_id": "mqstep_4d1adaaa91fd8eb3bada2ce77585c642edf6cdd8e574e40ac8f8adb356db21ab",
@@ -230,6 +619,16 @@
           "question_family": "health_remaining",
           "answer_type": "boolean",
           "correct_answer": true,
+          "answer_options": [
+            "No",
+            "Yes"
+          ],
+          "canonical_inputs": {
+            "ability_rank": 5,
+            "ap": 100,
+            "target_magic_resist": 30,
+            "target_current_hp": 230
+          },
           "before_snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
           "after_snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
           "transition_id": null,
@@ -253,6 +652,53 @@
           "calculation_result": {
             "value": 0,
             "unit": "health",
+            "runtime_version": "mastery-runtime-1.0.0",
+            "steps": [
+              {
+                "order": 1,
+                "description": "Post-mitigation damage",
+                "expression": "325.0 * 0.7692307692307693",
+                "result": 250
+              },
+              {
+                "order": 2,
+                "description": "Raw remaining health",
+                "expression": "230.0 - 250.0",
+                "result": -20
+              },
+              {
+                "order": 3,
+                "description": "Health remaining (floored at zero)",
+                "expression": "max(0, -20.0)",
+                "result": 0
+              },
+              {
+                "order": 4,
+                "description": "Overkill",
+                "expression": "abs(min(0, -20.0))",
+                "result": 20
+              }
+            ],
+            "provenance": {
+              "champion_id": "ahri",
+              "operation": "health_remaining",
+              "damage_applied": 250,
+              "health_remaining": 0,
+              "reaches_zero": true,
+              "overkill": 20,
+              "adapter_id": "adapter_health_ahri_e_v1"
+            },
+            "warnings": [],
+            "state_changes": [
+              {
+                "transition_type": "health_change",
+                "target": "B",
+                "params": {
+                  "delta": -250
+                },
+                "applied": false
+              }
+            ],
             "recomputation": {
               "matches": true,
               "recomputed_value": 0,
@@ -262,9 +708,50 @@
           "eligibility_evidence": {
             "eligible": true,
             "operation_type": "health_remaining",
+            "adapter_id": "adapter_health_ahri_e_v1",
             "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-            "adapter_id": "adapter_health_ahri_e_v1"
-          }
+            "validation_context_digest": "vctx_c37cae554ae880d43657230fa0c119796a5b6fc59439d82187fa189d08585980",
+            "profile_version": "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858",
+            "certification_state": "ability_partial",
+            "source_records": [
+              {
+                "source_kind": "data_dragon",
+                "source_name": "DataDragon 16.12.1",
+                "revision": "16.12.1",
+                "captured_formula": "12",
+                "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+              },
+              {
+                "source_kind": "spreadsheet",
+                "source_name": "Champions",
+                "revision": "2026-05-31T06:52:52",
+                "source_sheet": "Champions",
+                "source_row": 6,
+                "source_col": 27,
+                "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+                "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+              }
+            ]
+          },
+          "source_records": [
+            {
+              "source_kind": "data_dragon",
+              "source_name": "DataDragon 16.12.1",
+              "revision": "16.12.1",
+              "captured_formula": "12",
+              "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+            },
+            {
+              "source_kind": "spreadsheet",
+              "source_name": "Champions",
+              "revision": "2026-05-31T06:52:52",
+              "source_sheet": "Champions",
+              "source_row": 6,
+              "source_col": 27,
+              "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+              "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+            }
+          ]
         }
       ],
       "transition_chain": [
@@ -276,7 +763,8 @@
           "after_snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
           "params": {
             "effect_id": "mastery.authored.ability_haste.scenario.v1",
-            "magnitude": 20
+            "magnitude": 20,
+            "stat": "ability_haste"
           }
         },
         {
@@ -303,8 +791,20 @@
         {
           "champion_id": "ahri",
           "ability_key": "E",
+          "operation": "cooldown_comparison",
+          "question_family": "cooldown_comparison"
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "E",
           "operation": "raw_damage",
           "question_family": "raw_single_type_damage"
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "E",
+          "operation": "post_mitigation_damage",
+          "question_family": "post_mitigation_single_type_damage"
         },
         {
           "champion_id": "ahri",
@@ -321,14 +821,145 @@
       ],
       "suppressed_mechanic_declarations": [
         {
-          "champion_id": "*",
-          "ability_key": "*",
-          "operation": "item_sale",
-          "reason_code": "uncertified_source",
+          "champion_id": "ahri",
+          "ability_key": "Q",
+          "operation": "mixed_damage",
+          "reason_code": "mixed_damage_unsupported",
           "eligibility_evidence": {},
           "source_evidence": [
             {
-              "item": "Malignance"
+              "suppressed": true,
+              "operation": "mixed_damage"
+            }
+          ]
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "W",
+          "operation": "stateful_target_multiplier",
+          "reason_code": "stateful_mechanic_absent",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "stateful_target_multiplier"
+            }
+          ]
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "P",
+          "operation": "self_heal",
+          "reason_code": "not_implemented",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "self_heal"
+            }
+          ]
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "R",
+          "operation": "recast_amplification",
+          "reason_code": "stateful_mechanic_absent",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "recast_amplification"
+            }
+          ]
+        },
+        {
+          "champion_id": "ahri",
+          "ability_key": "R",
+          "operation": "cooldown",
+          "reason_code": "source_conflict",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "cooldown"
+            }
+          ]
+        },
+        {
+          "champion_id": "syndra",
+          "ability_key": "W",
+          "operation": "mixed_damage",
+          "reason_code": "mixed_damage_unsupported",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "mixed_damage"
+            }
+          ]
+        },
+        {
+          "champion_id": "syndra",
+          "ability_key": "Q",
+          "operation": "sphere_state",
+          "reason_code": "stateful_mechanic_absent",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "sphere_state"
+            }
+          ]
+        },
+        {
+          "champion_id": "syndra",
+          "ability_key": "R",
+          "operation": "dynamic_stack_consumption",
+          "reason_code": "stateful_mechanic_absent",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "dynamic_stack_consumption"
+            }
+          ]
+        },
+        {
+          "champion_id": "syndra",
+          "ability_key": "P",
+          "operation": "passive_upgrade",
+          "reason_code": "not_implemented",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "passive_upgrade"
+            }
+          ]
+        },
+        {
+          "champion_id": "*",
+          "ability_key": "*",
+          "operation": "item_sale",
+          "reason_code": "missing_data",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "item_sale"
+            }
+          ]
+        },
+        {
+          "champion_id": "*",
+          "ability_key": "*",
+          "operation": "rune_haste_calculation",
+          "reason_code": "unversioned_source",
+          "eligibility_evidence": {},
+          "source_evidence": [
+            {
+              "suppressed": true,
+              "operation": "rune_haste_calculation"
             }
           ]
         }
@@ -343,18 +974,62 @@
       "patch_descriptor": {
         "game_patch_display": "Mixed verified snapshot — League 26.13 context",
         "ddragon_version": "16.12.1",
+        "champion_stats_revision": "Champions@2026-05-23T09:14:42",
+        "ability_formula_revision": "Champions@2026-05-31T06:52:52",
+        "item_revision": "wiki-itemdata-rev-4041705@2026-07-14",
+        "rune_revision": null,
         "engine_version": "mastery-g2-0.1.0",
+        "artifact_version": "MasterySetArtifact.v1",
         "provenance_status": "mixed_verified"
       },
       "validation_context": {
         "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
-        "stat_calculation_version": "mastery-calc-1.0.0"
+        "stat_calculation_version": "mastery-calc-1.0.0",
+        "resource_model_version": "mastery-resource-1.0.0"
       },
       "source_records": [
         {
           "source_kind": "data_dragon",
           "source_name": "DataDragon 16.12.1",
-          "revision": "16.12.1"
+          "revision": "16.12.1",
+          "captured_formula": "12",
+          "note": "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12"
+        },
+        {
+          "source_kind": "spreadsheet",
+          "source_name": "Champions",
+          "revision": "2026-05-31T06:52:52",
+          "source_sheet": "Champions",
+          "source_row": 6,
+          "source_col": 27,
+          "captured_formula": "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+          "note": "champion_ability_formulas Ahri E damage (comma decimals => 0.85)"
+        }
+      ],
+      "ranked_capsules": [
+        {
+          "capsule_id": "rankcapsule_a99e8dc68237e975bb83f0b3b57c1e20a7117230adb67b1c1aec5d2ed9b35cc1",
+          "capsule_digest": "rankcapsuleartifact_b8cc092a71886457449d47e503d8e47ae5b68a1c3f644f3a605edb4a243607f9",
+          "source_step_id": "mqstep_873758512f3eb1ae090dfcbfdbc1c1e60075737c092c53652cce7ed0aa3a085e",
+          "source_sequence_index": 0
+        },
+        {
+          "capsule_id": "rankcapsule_0e900511bc5970ee27f8e422f1cb7f1f8110520af042acf327a8d2c60e301727",
+          "capsule_digest": "rankcapsuleartifact_7ab6c4ae42138f026dd0ae0d470232905ae0042ebd211fb66eddf4f920e21424",
+          "source_step_id": "mqstep_4ab308058717ad0ed256a152e2e3ae5480dc00fb3d2529a426462896f42a26f4",
+          "source_sequence_index": 1
+        },
+        {
+          "capsule_id": "rankcapsule_1c279096cd4ffb6e0c31579cf73a803325947d8ee333dca6dba198b6f53d822f",
+          "capsule_digest": "rankcapsuleartifact_5b7f4b8408bb8665af930c79b196d11562f22dc36c071372b2811ee776d01b1f",
+          "source_step_id": "mqstep_51ff339b3dfb3f9c3551523df6d64aebe4c5ed203be92631bd8b207ba39604fb",
+          "source_sequence_index": 3
+        },
+        {
+          "capsule_id": "rankcapsule_325382e926472ed84515586ad1b97dc83bf74c08fb78db2b2ee1ef0a4997328c",
+          "capsule_digest": "rankcapsuleartifact_cddf6eee9d1069be88a16d4d3f1f4f48ab3b1dc62fa7758361188817f7f5aeba",
+          "source_step_id": "mqstep_7ccf5942ba7eb149c21c92f321b5d01a3cfd4acee8049edbc6aca4c151c561f7",
+          "source_sequence_index": 4
         }
       ],
       "generator_id": "g4.2c-first-ahri-syndra",

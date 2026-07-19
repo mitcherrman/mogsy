@@ -381,11 +381,41 @@ export function playerRevealEnvelopes(): Record<string, unknown>[] {
   ];
 }
 
+
 // -------------------------------------------------------- reviewer envelope
-function reviewStep(index: number, opts: {
+const ADAPTER_CMP = "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e";
+const ADAPTER_CD = "adapter_416e22ddfbdd0e11515b8b36d9221d47b099ecc32bcae5217c57aff5dd60d11b";
+const ADAPTER_RAW = "adapter_raw_ahri_e_v1";
+const ADAPTER_HP = "adapter_health_ahri_e_v1";
+const PROFILE_VERSION = "profile_9f098648feb07776dc6373c8e8f4e3cbdf50d633b3dcaf2aa4e661164f756858";
+
+// Certified source-record union (Riot DataDragon + certified spreadsheet revisions).
+const SRC: Record<string, unknown>[] = [
+  {
+    source_kind: "data_dragon",
+    source_name: "DataDragon 16.12.1",
+    revision: "16.12.1",
+    captured_formula: "12",
+    note: "Ahri E cooldown reconciled: spreadsheet row6 col33 == 12 agrees with DDragon 12/12/12/12/12",
+  },
+  {
+    source_kind: "spreadsheet",
+    source_name: "Champions",
+    revision: "2026-05-31T06:52:52",
+    source_sheet: "Champions",
+    source_row: 6,
+    source_col: 27,
+    captured_formula: "(40 + 40 * P_E + 0,85 * AP) * MOD_Magic",
+    note: "champion_ability_formulas Ahri E damage (comma decimals => 0.85)",
+  },
+];
+
+interface StepEvidence {
   family: string;
   answerType: string;
   correct: number | boolean;
+  answerOptions: string[];
+  canonicalInputs: Record<string, unknown>;
   before: string;
   after: string;
   transitionId: string | null;
@@ -401,48 +431,78 @@ function reviewStep(index: number, opts: {
   operationType: string;
   calcValue: number;
   calcUnit: string;
-}) {
+  calcSteps: [string, string, number][];
+  provenance: Record<string, unknown>;
+  stateChanges: Record<string, unknown>[];
+}
+
+function reviewStep(index: number, e: StepEvidence) {
   return {
     step_id: STEP_IDS[index],
     sequence_index: index,
-    question_family: opts.family,
-    answer_type: opts.answerType,
-    correct_answer: opts.correct,
-    before_snapshot_id: opts.before,
-    after_snapshot_id: opts.after,
-    transition_id: opts.transitionId,
-    adapter_id: opts.adapterId,
-    operation_type: opts.operationType,
-    prompt: opts.prompt,
-    explanation: opts.explanation,
+    question_family: e.family,
+    answer_type: e.answerType,
+    correct_answer: e.correct,
+    answer_options: e.answerOptions,
+    canonical_inputs: e.canonicalInputs,
+    before_snapshot_id: e.before,
+    after_snapshot_id: e.after,
+    transition_id: e.transitionId,
+    adapter_id: e.adapterId,
+    operation_type: e.operationType,
+    prompt: e.prompt,
+    explanation: e.explanation,
     hint: null,
-    is_read_only: opts.isReadOnly,
-    proposes_deferred_transition: opts.proposes,
+    is_read_only: e.isReadOnly,
+    proposes_deferred_transition: e.proposes,
     ranked_capsule_eligibility: {
-      eligible: opts.capsuleEligible,
-      reason_code: opts.capsuleReason,
-      requires_rewording: opts.requiresRewording,
-      standalone_state_complete: opts.standaloneComplete,
+      eligible: e.capsuleEligible,
+      reason_code: e.capsuleReason,
+      requires_rewording: e.requiresRewording,
+      standalone_state_complete: e.standaloneComplete,
     },
     suppression_state: { suppressed: false, reason_code: null },
     calculation_result: {
-      value: opts.calcValue,
-      unit: opts.calcUnit,
-      recomputation: { matches: true, recomputed_value: opts.calcValue, recomputed_unit: opts.calcUnit },
+      value: e.calcValue,
+      unit: e.calcUnit,
+      runtime_version: "mastery-runtime-1.0.0",
+      steps: e.calcSteps.map(([description, expression, result], i) => ({
+        order: i + 1,
+        description,
+        expression,
+        result,
+      })),
+      provenance: e.provenance,
+      warnings: [],
+      state_changes: e.stateChanges,
+      recomputation: { matches: true, recomputed_value: e.calcValue, recomputed_unit: e.calcUnit },
     },
     eligibility_evidence: {
       eligible: true,
-      operation_type: opts.operationType,
+      operation_type: e.operationType,
+      adapter_id: e.adapterId,
       patch_key_digest: PATCH_KEY_DIGEST,
-      adapter_id: opts.adapterId,
+      validation_context_digest: VCTX_DIGEST,
+      profile_version: PROFILE_VERSION,
+      certification_state: "ability_partial",
+      source_records: SRC,
     },
+    source_records: SRC,
   };
 }
 
-const ADAPTER_CMP = "adapter_261e24c28f455372b3f6beb6f1d378559bb7db8bd737d15c828c1afce329085e";
-const ADAPTER_CD = "adapter_416e22ddfbdd0e11515b8b36d9221d47b099ecc32bcae5217c57aff5dd60d11b";
-const ADAPTER_RAW = "adapter_raw_ahri_e_v1";
-const ADAPTER_HP = "adapter_health_ahri_e_v1";
+// Suppressed mechanic declarations (verbatim canonical reason codes from ea527ee).
+function suppressedDecl(champion_id: string, ability_key: string, operation: string, reason_code: string) {
+  return {
+    champion_id,
+    ability_key,
+    operation,
+    reason_code,
+    eligibility_evidence: {},
+    // A suppressed mechanic carries NO calculation result — only audit evidence.
+    source_evidence: [{ suppressed: true, operation }],
+  };
+}
 
 /** One complete reviewer envelope: full immutable artifact + mutable review record. */
 export function reviewArtifactEnvelope(): Record<string, unknown> {
@@ -459,52 +519,99 @@ export function reviewArtifactEnvelope(): Record<string, unknown> {
         champion_matchup_identity: { ...MATCHUP },
         ordered_steps: [
           reviewStep(0, {
-            family: "cooldown_comparison", answerType: "numeric", correct: 3.0, before: SNAP0, after: SNAP0,
-            transitionId: null, isReadOnly: true, proposes: false, capsuleEligible: true, capsuleReason: null,
-            requiresRewording: false, standaloneComplete: true,
+            family: "cooldown_comparison", answerType: "numeric", correct: 3.0, answerOptions: [],
+            canonicalInputs: { ability_rank: 5, ability_haste: 0, other_ability_rank: 5, other_ability_haste: 0 },
+            before: SNAP0, after: SNAP0, transitionId: null, isReadOnly: true, proposes: false,
+            capsuleEligible: true, capsuleReason: null, requiresRewording: false, standaloneComplete: true,
             prompt: "Ahri E base cooldown is 12 seconds and Syndra E base cooldown is 15 seconds, both at 0 ability haste. By how many seconds is Ahri E's base cooldown lower than Syndra E's?",
             explanation: "Ahri E 12 s vs Syndra E 15 s; difference is 3 seconds.",
             adapterId: ADAPTER_CMP, operationType: "cooldown_comparison", calcValue: 3.0, calcUnit: "seconds",
+            calcSteps: [
+              ["Ahri E final cooldown (certified base 12.0, haste 0.0)", "final_cooldown(12.0, 0.0)", 12.0],
+              ["Syndra E final cooldown (certified base 15.0, haste 0.0)", "final_cooldown(15.0, 0.0)", 15.0],
+              ["Absolute cooldown difference", "abs(12.0 - 15.0)", 3.0],
+            ],
+            provenance: { champion_id: "ahri", ability_key: "E", operation: "cooldown_comparison", difference_seconds: 3.0, unit: "seconds", rune_haste_included: false, adapter_id: ADAPTER_CMP },
+            stateChanges: [],
           }),
           reviewStep(1, {
-            family: "cooldown_with_haste", answerType: "numeric", correct: 10.0, before: SNAP1, after: SNAP1,
-            transitionId: null, isReadOnly: true, proposes: false, capsuleEligible: true, capsuleReason: null,
-            requiresRewording: false, standaloneComplete: true,
+            family: "cooldown_with_haste", answerType: "numeric", correct: 10.0, answerOptions: [],
+            canonicalInputs: { ability_rank: 5, ability_haste: 20 },
+            before: SNAP1, after: SNAP1, transitionId: null, isReadOnly: true, proposes: false,
+            capsuleEligible: true, capsuleReason: null, requiresRewording: false, standaloneComplete: true,
             prompt: "With an authored +20 ability haste applied to Ahri, what is Ahri E's cooldown in seconds (base 12 seconds)?",
             explanation: "12 * 100 / (100 + 20) = 10 seconds.",
             adapterId: ADAPTER_CD, operationType: "cooldown", calcValue: 10.0, calcUnit: "seconds",
+            calcSteps: [
+              ["Cooldown reduction multiplier from ability haste", "100 / (100 + 20.0)", 0.8333333333333334],
+              ["Final cooldown after haste", "12.0 * 0.8333333333333334", 10.0],
+            ],
+            provenance: { formula: "base * 100/(100+haste)", champion_id: "ahri", ability_key: "E", operation: "cooldown_with_haste", certified_base_cooldown: 12.0, ability_haste: 20.0, adapter_id: ADAPTER_CD },
+            stateChanges: [],
           }),
           reviewStep(2, {
-            family: "cooldown_comparison", answerType: "numeric", correct: 5.0, before: SNAP1, after: SNAP1,
-            transitionId: null, isReadOnly: true, proposes: false, capsuleEligible: false,
-            capsuleReason: "prompt_references_chain_context", requiresRewording: true, standaloneComplete: false,
+            family: "cooldown_comparison", answerType: "numeric", correct: 5.0, answerOptions: [],
+            canonicalInputs: { ability_rank: 5, ability_haste: 20, other_ability_rank: 5, other_ability_haste: 0 },
+            before: SNAP1, after: SNAP1, transitionId: null, isReadOnly: true, proposes: false,
+            capsuleEligible: false, capsuleReason: "prompt_references_chain_context", requiresRewording: true, standaloneComplete: false,
             prompt: "With Ahri E at 20 ability haste (10 seconds) and Syndra E at 0 ability haste (15 seconds), by how many seconds is Ahri E's cooldown lower than Syndra E's?",
             explanation: "Ahri E 10 s vs Syndra E 15 s; difference is 5 seconds.",
             adapterId: ADAPTER_CMP, operationType: "cooldown_comparison", calcValue: 5.0, calcUnit: "seconds",
+            calcSteps: [
+              ["Ahri E final cooldown (certified base 12.0, haste 20.0)", "final_cooldown(12.0, 20.0)", 10.0],
+              ["Syndra E final cooldown (certified base 15.0, haste 0.0)", "final_cooldown(15.0, 0.0)", 15.0],
+              ["Absolute cooldown difference", "abs(10.0 - 15.0)", 5.0],
+            ],
+            provenance: { champion_id: "ahri", operation: "cooldown_comparison", difference_seconds: 5.0, adapter_id: ADAPTER_CMP },
+            stateChanges: [],
           }),
           reviewStep(3, {
-            family: "raw_single_type_damage", answerType: "numeric", correct: 325.0, before: SNAP1, after: SNAP1,
-            transitionId: null, isReadOnly: true, proposes: false, capsuleEligible: true, capsuleReason: null,
-            requiresRewording: false, standaloneComplete: true,
+            family: "raw_single_type_damage", answerType: "numeric", correct: 325.0, answerOptions: [],
+            canonicalInputs: { ability_rank: 5, ap: 100 },
+            before: SNAP1, after: SNAP1, transitionId: null, isReadOnly: true, proposes: false,
+            capsuleEligible: true, capsuleReason: null, requiresRewording: false, standaloneComplete: true,
             prompt: "At Ahri E rank 5 with 100 ability power, what is Ahri E's raw magic damage?",
             explanation: "240 base + 0.85 * 100 AP = 325 magic damage.",
             adapterId: ADAPTER_RAW, operationType: "raw_damage", calcValue: 325.0, calcUnit: "damage",
+            calcSteps: [
+              ["Certified Ahri E base magic damage at rank 5", "240.0", 240.0],
+              ["Add certified AP scaling", "240.0 + 0.85 * 100", 325.0],
+            ],
+            provenance: { champion_id: "ahri", operation: "raw_damage", base_damage: 240.0, ap_ratio: 0.85, ap: 100.0, adapter_id: ADAPTER_RAW },
+            stateChanges: [],
           }),
           reviewStep(4, {
-            family: "health_remaining", answerType: "numeric", correct: 230.0, before: SNAP1, after: SNAP2,
-            transitionId: TXN2, isReadOnly: false, proposes: true, capsuleEligible: true, capsuleReason: null,
-            requiresRewording: false, standaloneComplete: true,
+            family: "health_remaining", answerType: "numeric", correct: 230.0, answerOptions: [],
+            canonicalInputs: { ability_rank: 5, ap: 100, target_magic_resist: 30, target_current_hp: 480 },
+            before: SNAP1, after: SNAP2, transitionId: TXN2, isReadOnly: false, proposes: true,
+            capsuleEligible: true, capsuleReason: null, requiresRewording: false, standaloneComplete: true,
             prompt: "Ahri's rank-5 E deals 250 magic damage after mitigation. If the target begins at 480 health, how much health remains after the hit?",
             explanation: "The hit deals 250 post-mitigation magic damage; 480 - 250 = 230 health remaining.",
             adapterId: ADAPTER_HP, operationType: "health_remaining", calcValue: 230.0, calcUnit: "health",
+            calcSteps: [
+              ["Post-mitigation damage", "325.0 * 0.7692307692307693", 250.0],
+              ["Raw remaining health", "480.0 - 250.0", 230.0],
+              ["Health remaining (floored at zero)", "max(0, 230.0)", 230.0],
+            ],
+            provenance: { champion_id: "ahri", operation: "post_mitigation_damage", damage_applied: 250.0, health_remaining: 230.0, reaches_zero: false, overkill: 0.0, adapter_id: ADAPTER_HP },
+            stateChanges: [{ transition_type: "health_change", target: "B", params: { delta: -250.0 }, applied: true }],
           }),
           reviewStep(5, {
-            family: "health_remaining", answerType: "boolean", correct: true, before: SNAP2, after: SNAP2,
-            transitionId: null, isReadOnly: true, proposes: true, capsuleEligible: false,
-            capsuleReason: "depends_on_prior_step", requiresRewording: true, standaloneComplete: false,
+            family: "health_remaining", answerType: "boolean", correct: true, answerOptions: ["No", "Yes"],
+            canonicalInputs: { ability_rank: 5, ap: 100, target_magic_resist: 30, target_current_hp: 230 },
+            before: SNAP2, after: SNAP2, transitionId: null, isReadOnly: true, proposes: true,
+            capsuleEligible: false, capsuleReason: "depends_on_prior_step", requiresRewording: true, standaloneComplete: false,
             prompt: "The target is at 230 health after the first Ahri E hit. Does a second identical Ahri E hit (250 post-mitigation magic damage) reduce the target's health to 0?",
             explanation: "230 - 250 = -20; health floors at 0, so the target reaches 0 (overkill 20).",
             adapterId: ADAPTER_HP, operationType: "health_remaining", calcValue: 0.0, calcUnit: "health",
+            calcSteps: [
+              ["Post-mitigation damage", "325.0 * 0.7692307692307693", 250.0],
+              ["Raw remaining health", "230.0 - 250.0", -20.0],
+              ["Health remaining (floored at zero)", "max(0, -20.0)", 0.0],
+              ["Overkill", "abs(min(0, -20.0))", 20.0],
+            ],
+            provenance: { champion_id: "ahri", operation: "health_remaining", damage_applied: 250.0, health_remaining: 0.0, reaches_zero: true, overkill: 20.0, adapter_id: ADAPTER_HP },
+            stateChanges: [{ transition_type: "health_change", target: "B", params: { delta: -250.0 }, applied: false }],
           }),
         ],
         transition_chain: [
@@ -514,7 +621,7 @@ export function reviewArtifactEnvelope(): Record<string, unknown> {
             target: "A",
             before_snapshot_id: SNAP0,
             after_snapshot_id: SNAP1,
-            params: { effect_id: "mastery.authored.ability_haste.scenario.v1", magnitude: 20.0 },
+            params: { effect_id: "mastery.authored.ability_haste.scenario.v1", magnitude: 20.0, stat: "ability_haste" },
           },
           {
             transition_id: TXN2,
@@ -528,15 +635,24 @@ export function reviewArtifactEnvelope(): Record<string, unknown> {
         authored_transition_ids: [TXN1],
         supported_mechanic_declarations: [
           { champion_id: "ahri", ability_key: "E", operation: "cooldown", question_family: "cooldown_with_haste" },
+          { champion_id: "ahri", ability_key: "E", operation: "cooldown_comparison", question_family: "cooldown_comparison" },
           { champion_id: "ahri", ability_key: "E", operation: "raw_damage", question_family: "raw_single_type_damage" },
+          { champion_id: "ahri", ability_key: "E", operation: "post_mitigation_damage", question_family: "post_mitigation_single_type_damage" },
           { champion_id: "ahri", ability_key: "E", operation: "health_remaining", question_family: "health_remaining" },
           { champion_id: "syndra", ability_key: "E", operation: "cooldown", question_family: "cooldown_with_haste" },
         ],
         suppressed_mechanic_declarations: [
-          {
-            champion_id: "*", ability_key: "*", operation: "item_sale",
-            reason_code: "uncertified_source", eligibility_evidence: {}, source_evidence: [{ item: "Malignance" }],
-          },
+          suppressedDecl("ahri", "Q", "mixed_damage", "mixed_damage_unsupported"),
+          suppressedDecl("ahri", "W", "stateful_target_multiplier", "stateful_mechanic_absent"),
+          suppressedDecl("ahri", "P", "self_heal", "not_implemented"),
+          suppressedDecl("ahri", "R", "recast_amplification", "stateful_mechanic_absent"),
+          suppressedDecl("ahri", "R", "cooldown", "source_conflict"),
+          suppressedDecl("syndra", "W", "mixed_damage", "mixed_damage_unsupported"),
+          suppressedDecl("syndra", "Q", "sphere_state", "stateful_mechanic_absent"),
+          suppressedDecl("syndra", "R", "dynamic_stack_consumption", "stateful_mechanic_absent"),
+          suppressedDecl("syndra", "P", "passive_upgrade", "not_implemented"),
+          suppressedDecl("*", "*", "item_sale", "missing_data"),
+          suppressedDecl("*", "*", "rune_haste_calculation", "unversioned_source"),
         ],
         build_classification: {
           classification: "curated",
@@ -548,11 +664,26 @@ export function reviewArtifactEnvelope(): Record<string, unknown> {
         patch_descriptor: {
           game_patch_display: PATCH_DISPLAY,
           ddragon_version: "16.12.1",
+          champion_stats_revision: "Champions@2026-05-23T09:14:42",
+          ability_formula_revision: "Champions@2026-05-31T06:52:52",
+          item_revision: "wiki-itemdata-rev-4041705@2026-07-14",
+          rune_revision: null,
           engine_version: "mastery-g2-0.1.0",
+          artifact_version: "MasterySetArtifact.v1",
           provenance_status: "mixed_verified",
         },
-        validation_context: { patch_key_digest: PATCH_KEY_DIGEST, stat_calculation_version: "mastery-calc-1.0.0" },
-        source_records: [{ source_kind: "data_dragon", source_name: "DataDragon 16.12.1", revision: "16.12.1" }],
+        validation_context: {
+          patch_key_digest: PATCH_KEY_DIGEST,
+          stat_calculation_version: "mastery-calc-1.0.0",
+          resource_model_version: "mastery-resource-1.0.0",
+        },
+        source_records: SRC,
+        ranked_capsules: [
+          { capsule_id: "rankcapsule_a99e8dc68237e975bb83f0b3b57c1e20a7117230adb67b1c1aec5d2ed9b35cc1", capsule_digest: "rankcapsuleartifact_b8cc092a71886457449d47e503d8e47ae5b68a1c3f644f3a605edb4a243607f9", source_step_id: STEP_IDS[0], source_sequence_index: 0 },
+          { capsule_id: "rankcapsule_0e900511bc5970ee27f8e422f1cb7f1f8110520af042acf327a8d2c60e301727", capsule_digest: "rankcapsuleartifact_7ab6c4ae42138f026dd0ae0d470232905ae0042ebd211fb66eddf4f920e21424", source_step_id: STEP_IDS[1], source_sequence_index: 1 },
+          { capsule_id: "rankcapsule_1c279096cd4ffb6e0c31579cf73a803325947d8ee333dca6dba198b6f53d822f", capsule_digest: "rankcapsuleartifact_5b7f4b8408bb8665af930c79b196d11562f22dc36c071372b2811ee776d01b1f", source_step_id: STEP_IDS[3], source_sequence_index: 3 },
+          { capsule_id: "rankcapsule_325382e926472ed84515586ad1b97dc83bf74c08fb78db2b2ee1ef0a4997328c", capsule_digest: "rankcapsuleartifact_cddf6eee9d1069be88a16d4d3f1f4f48ab3b1dc62fa7758361188817f7f5aeba", source_step_id: STEP_IDS[4], source_sequence_index: 4 },
+        ],
         generator_id: "g4.2c-first-ahri-syndra",
         generation_engine_version: "mastery-g4-0.1.0",
       },
