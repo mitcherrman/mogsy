@@ -8,7 +8,7 @@
 // Fully local: no auth, no API calls, no ads, no persistence.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
@@ -42,14 +42,28 @@ export default function RankedTutorialPage() {
   const view = visibleState(state);
   const instructionRef = useRef<HTMLDivElement>(null);
 
+  // Pause the countdown while the tab is hidden (Alt-Tab, minimize, tab switch)
+  // so no tutorial time advances in the background. Losing focus never resets
+  // state — only the ticking is suspended, and it resumes on return.
+  const [documentHidden, setDocumentHidden] = useState(
+    () => typeof document !== "undefined" && document.hidden,
+  );
+  useEffect(() => {
+    const onVisibilityChange = () => setDocumentHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
   // Reducer-driven countdown: the interval only emits TICK events; all
-  // timer semantics (pressure cut, warning, floor) live in the machine.
+  // timer semantics (pressure cut, warning, floor) live in the machine. The
+  // interval is torn down while hidden and re-created on return, so a
+  // backgrounded tab never advances the timer.
   const timerRunning = view.timer.running;
   useEffect(() => {
-    if (!timerRunning) return;
+    if (!timerRunning || documentHidden) return;
     const id = setInterval(() => dispatch({ type: "TICK" }), 1000);
     return () => clearInterval(id);
-  }, [timerRunning]);
+  }, [timerRunning, documentHidden]);
 
   // Move focus to the instruction area after each major step transition so
   // keyboard and screen-reader users land on the new explanation.

@@ -33,7 +33,22 @@ afterEach(() => {
   localSet.mockRestore();
   sessionSet.mockRestore();
   fetchSpy.mockClear();
+  // Reset any visibility override so tests stay isolated.
+  Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
 });
+
+/** Flip document.hidden and fire visibilitychange the way a real Alt-Tab does. */
+const setTabHidden = (hidden: boolean) => {
+  Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    get: () => (hidden ? "hidden" : "visible"),
+  });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+};
 
 // --- Walk helpers (fireEvent.click on native buttons = keyboard operable) ----
 
@@ -321,6 +336,55 @@ describe("education panels and completion", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(localSet).not.toHaveBeenCalled();
     expect(sessionSet).not.toHaveBeenCalled();
+  });
+});
+
+describe("hidden-tab timer pause/resume (focus loss never resets state)", () => {
+  it("does not advance the timer while the tab is hidden, and resumes when visible", () => {
+    vi.useFakeTimers();
+    renderPage();
+    toRoundA(); // answer_selection: timer running at 0:30
+    expect(screen.getByTestId("timer-value")).toHaveTextContent("0:30");
+
+    // Tab hidden → interval torn down; ticks must not fire.
+    setTabHidden(true);
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByTestId("timer-value")).toHaveTextContent("0:30"); // paused
+    // State is fully intact — still the same step, HP/XP unchanged.
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    expect(screen.getByTestId(`xp-${TUTORIAL_PLAYER_ID}`)).toHaveTextContent("0 / 30 xp");
+
+    // Tab visible again → timer resumes counting from where it paused.
+    setTabHidden(false);
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByTestId("timer-value")).toHaveTextContent("0:27");
+  });
+
+  it("hard refresh (fresh mount) restarts at Step 1 — documented behavior", () => {
+    // Advance into the tutorial, then simulate a full page reload by remounting.
+    // In-memory reducer state is intentionally NOT persisted this commit, so a
+    // reload starts over at the welcome step.
+    const { unmount } = renderPage();
+    toRoundA();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    unmount();
+
+    renderPage(); // fresh mount == page reload
+    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+  });
+
+  it("explicit Restart still resets to Step 1 mid-tutorial", () => {
+    renderPage();
+    toRoundA();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    fireEvent.click(screen.getByTestId("restart-tutorial"));
+    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
   });
 });
 
