@@ -36,10 +36,21 @@ export interface RankedTutorialStatus {
  */
 export function useRankedTutorialStatus(): RankedTutorialStatus {
   const { user, loading: authLoading } = useAuth();
+  // Key everything off the STABLE user id, not the User object. Supabase
+  // re-emits auth events (e.g. TOKEN_REFRESHED on tab refocus) with a fresh
+  // User object reference for the same identity; depending on the object would
+  // recreate `load` and re-run the effect on every refocus, needlessly
+  // reloading and (below) flipping `loading`.
+  const userId = user?.id ?? null;
   const [profile, setProfile] = useState<RankedTutorialProfileFields | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const mounted = useRef(true);
+  // The identity we have already completed an initial load for. Used to keep
+  // background refetches (same user) OFF the blocking loading state, so the
+  // onboarding page never unmounts the in-progress tutorial (which would
+  // discard its in-memory reducer state — the focus-reset bug).
+  const loadedForUser = useRef<string | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -49,22 +60,27 @@ export function useRankedTutorialStatus(): RankedTutorialStatus {
   }, []);
 
   const load = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       if (mounted.current) {
         setProfile(null);
         setError(false);
         setLoading(false);
       }
+      loadedForUser.current = null;
       return;
     }
+    // Only enter the blocking loading state on the FIRST load for this identity.
+    // A same-user re-read (auth refresh, explicit refresh()) is a background
+    // refetch: keep loading=false so the tutorial subtree stays mounted.
+    const isInitialForUser = loadedForUser.current !== userId;
     if (mounted.current) {
-      setLoading(true);
+      if (isInitialForUser) setLoading(true);
       setError(false);
     }
     const { data, error: readErr } = await supabase
       .from("profiles")
       .select(PROFILE_SELECT)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (!mounted.current) return;
     if (readErr) {
@@ -73,8 +89,9 @@ export function useRankedTutorialStatus(): RankedTutorialStatus {
     } else {
       setProfile((data as RankedTutorialProfileFields | null) ?? null);
     }
+    loadedForUser.current = userId;
     setLoading(false);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -82,7 +99,7 @@ export function useRankedTutorialStatus(): RankedTutorialStatus {
   }, [authLoading, load]);
 
   const completeTutorial = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
+    if (!userId) return false;
 
     // First-write-wins: only stamp when no completion exists yet. On replay this
     // matches zero rows (no error), and the authoritative re-read below still
@@ -93,7 +110,7 @@ export function useRankedTutorialStatus(): RankedTutorialStatus {
         ranked_tutorial_completed_at: new Date().toISOString(),
         ranked_tutorial_version: RANKED_TUTORIAL_VERSION,
       })
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("ranked_tutorial_completed_at", null);
     if (updErr) return false;
 
@@ -101,16 +118,16 @@ export function useRankedTutorialStatus(): RankedTutorialStatus {
     const { data, error: readErr } = await supabase
       .from("profiles")
       .select(PROFILE_SELECT)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (readErr || !data) return false;
 
     const next = data as RankedTutorialProfileFields;
     if (mounted.current) setProfile(next);
     return next.ranked_tutorial_completed_at != null;
-  }, [user]);
+  }, [userId]);
 
-  const { completed, required } = evaluateRankedTutorial(profile, { hasUser: !!user });
+  const { completed, required } = evaluateRankedTutorial(profile, { hasUser: !!userId });
 
   return {
     loading: authLoading || loading,

@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   readError: null as unknown,
   updateArg: null as Record<string, unknown> | null,
   updateCalls: 0,
+  readCalls: 0,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -36,8 +37,10 @@ vi.mock("@/integrations/supabase/client", () => ({
       // Read chain: .select(cols).eq("user_id", id).maybeSingle()
       select: () => ({
         eq: () => ({
-          maybeSingle: () =>
-            Promise.resolve({ data: mocks.row, error: mocks.readError }),
+          maybeSingle: () => {
+            mocks.readCalls += 1;
+            return Promise.resolve({ data: mocks.row, error: mocks.readError });
+          },
         }),
       }),
       // Write chain: .update(payload).eq("user_id", id).is("ranked_tutorial_completed_at", null)
@@ -66,6 +69,7 @@ beforeEach(() => {
   mocks.readError = null;
   mocks.updateArg = null;
   mocks.updateCalls = 0;
+  mocks.readCalls = 0;
   mocks.row = {
     is_anonymous: true,
     onboarding_completed: false,
@@ -122,5 +126,63 @@ describe("useRankedTutorialStatus — anonymous completion", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe(true);
     expect(result.current.required).toBe(false);
+  });
+});
+
+describe("useRankedTutorialStatus — focus/refresh stability (no reset)", () => {
+  it("a same-id auth refresh (new User object) does not reload or re-block", async () => {
+    const { result, rerender } = renderHook(() => useRankedTutorialStatus());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const readsAfterInitial = mocks.readCalls;
+    expect(readsAfterInitial).toBe(1);
+
+    // Simulate Supabase re-emitting TOKEN_REFRESHED on tab refocus: a NEW User
+    // object reference for the SAME identity flows through useAuth.
+    let sawLoadingTrue = false;
+    for (let i = 0; i < 3; i++) {
+      mocks.user = { id: "anon-1", is_anonymous: true }; // new object, same id
+      rerender();
+      if (result.current.loading) sawLoadingTrue = true;
+    }
+    // Give any (unwanted) async load a chance to run.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Keyed on user.id, so no new load ran and loading never flipped back to true.
+    expect(sawLoadingTrue).toBe(false);
+    expect(result.current.loading).toBe(false);
+    expect(mocks.readCalls).toBe(readsAfterInitial); // no extra reads
+    expect(result.current.required).toBe(true); // state preserved
+  });
+
+  it("an explicit background refresh() does not return to the blocking loading state", async () => {
+    const { result } = renderHook(() => useRankedTutorialStatus());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let sawLoadingTrue = false;
+    await act(async () => {
+      const p = result.current.refresh();
+      if (result.current.loading) sawLoadingTrue = true;
+      await p;
+    });
+
+    expect(sawLoadingTrue).toBe(false);
+    expect(result.current.loading).toBe(false);
+    expect(mocks.readCalls).toBeGreaterThan(1); // it DID refetch in the background
+  });
+
+  it("a genuine identity change (null → user) still shows the initial loading gate", async () => {
+    mocks.user = null;
+    const { result, rerender } = renderHook(() => useRankedTutorialStatus());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.required).toBe(false); // no user yet
+
+    // Anonymous sign-in completes: a brand-new identity appears.
+    mocks.user = { id: "anon-1", is_anonymous: true };
+    rerender();
+    // First load for this new id enters the blocking loading state.
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.required).toBe(true);
   });
 });
