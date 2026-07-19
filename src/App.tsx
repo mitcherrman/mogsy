@@ -134,6 +134,7 @@ const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentS
 // Live Mastery (H1/G7) — gated dev player + admin reviewer. Not linked from
 // navigation and absent from the sitemap; authenticated / admin-gated routes only.
 const MasteryAhriVsSyndraPage = lazy(() => import("./pages/dev/mastery/AhriVsSyndraPage"));
+const MasterySyndraProgressionPage = lazy(() => import("./pages/dev/mastery/SyndraProgressionPage"));
 const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryReviewerPage"));
 
 // League of Legends Glossary — public reference module. Lazy so the
@@ -283,6 +284,7 @@ const App = () => (
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/dev/mastery/syndra-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasterySyndraProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/mastery/:artifactDigest" element={<AdminRoute><Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense></AdminRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />

@@ -1,5 +1,5 @@
 /**
- * Display-only canonical-state panel (G5.2B; J1 player-safe pass).
+ * Display-only canonical-state panel (G5.2B; J1 player-safe pass; G4 progression).
  *
  * Renders champions' current health, optional backend-provided maximum, resource,
  * and active authored effects from a parsed `MasteryStateView`. It NEVER invents
@@ -7,10 +7,106 @@
  * number (never "maximum unavailable"). Player-facing only — no snapshot ids,
  * validation status, or internal stat slugs are shown here (those live on the
  * admin reviewer route).
+ *
+ * When a set supplies progression display facts (level, ability ranks, AP, gold,
+ * target resistances, inventory — the Ahri chain does not), a gated progression
+ * block renders them; sets without those facts are visually unchanged.
  */
+import { useState } from "react";
+
 import type { MasteryChampionView, MasteryStateView } from "../contracts/stateView";
 import { MasteryChampionPortrait } from "./MasteryChampionPortrait";
+import { useMasteryAssets } from "./MasteryAssets";
 import { effectLabel, humanizeResource } from "./playerFormat";
+
+/** A champion carries progression detail only when a set populates these display
+ *  facts, so the extra block never affects sets (e.g. Ahri) that omit them. */
+function hasProgression(c: MasteryChampionView): boolean {
+  return (
+    c.abilityPower !== null ||
+    c.gold !== null ||
+    c.archetype !== null ||
+    c.inventoryItems.length > 0
+  );
+}
+
+function ItemIcon({ name, itemId }: { name: string; itemId: number | null }) {
+  const { itemIconUrl } = useMasteryAssets();
+  const [broken, setBroken] = useState(false);
+  const url = itemIconUrl(itemId);
+  return (
+    <span
+      data-testid={`mastery-item-${itemId ?? name}`}
+      className="inline-flex items-center gap-1 rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[11px]"
+    >
+      {url && !broken && (
+        <img
+          src={url}
+          alt=""
+          width={16}
+          height={16}
+          className="h-4 w-4 rounded-sm"
+          onError={() => setBroken(true)}
+          loading="lazy"
+        />
+      )}
+      <span>{name}</span>
+    </span>
+  );
+}
+
+const _ABILITY_ORDER = ["Q", "W", "E", "R"];
+
+function ProgressionDetails({ champion }: { champion: MasteryChampionView }) {
+  const ranks = Object.entries(champion.abilityRanks)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => _ABILITY_ORDER.indexOf(a[0]) - _ABILITY_ORDER.indexOf(b[0]));
+  return (
+    <div
+      data-testid={`mastery-progression-${champion.championId}`}
+      className="space-y-1.5 border-t border-border/60 pt-1.5 text-[11px]"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+        {champion.level !== null && (
+          <span>
+            <span className="font-medium text-foreground">Lv {champion.level}</span>
+          </span>
+        )}
+        {ranks.length > 0 && (
+          <span className="flex items-center gap-1" data-testid={`mastery-ranks-${champion.championId}`}>
+            {ranks.map(([k, v]) => (
+              <span key={k} className="rounded bg-primary/10 px-1 py-0.5 font-medium text-primary">
+                {k}
+                {v}
+              </span>
+            ))}
+          </span>
+        )}
+        {champion.abilityPower !== null && champion.abilityPower > 0 && (
+          <span>AP <span className="font-medium text-foreground">{champion.abilityPower}</span></span>
+        )}
+        {champion.gold !== null && (
+          <span data-testid={`mastery-gold-${champion.championId}`}>
+            Gold <span className="font-medium text-foreground">{champion.gold}</span>
+          </span>
+        )}
+        {champion.armor !== null && (
+          <span>Armor <span className="font-medium text-foreground">{champion.armor}</span></span>
+        )}
+        {champion.magicResist !== null && (
+          <span>MR <span className="font-medium text-foreground">{champion.magicResist}</span></span>
+        )}
+      </div>
+      {champion.inventoryItems.length > 0 && (
+        <div className="flex flex-wrap gap-1" data-testid={`mastery-inventory-${champion.championId}`}>
+          {champion.inventoryItems.map((it, i) => (
+            <ItemIcon key={`${it.itemId ?? it.name}-${i}`} name={it.name} itemId={it.itemId} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function HealthMeter({ champion }: { champion: MasteryChampionView }) {
   const { currentHealth, maxHealth, displayName, championId } = champion;
@@ -90,6 +186,7 @@ function ChampionCard({ champion }: { champion: MasteryChampionView }) {
           ))}
         </ul>
       )}
+      {hasProgression(champion) && <ProgressionDetails champion={champion} />}
     </div>
   );
 }

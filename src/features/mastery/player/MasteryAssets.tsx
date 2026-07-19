@@ -11,8 +11,13 @@ import { createContext, useContext } from "react";
 export interface MasteryAssets {
   /** Square champion icon URL, or null when unavailable (caller shows a fallback). */
   championIconUrl: (championId: string, displayName?: string | null) => string | null;
+  /** Square item icon URL by stable LoL item id, or null (caller shows a fallback). */
+  itemIconUrl: (itemId: number | null | undefined) => string | null;
 }
 
-export const MasteryAssetsContext = createContext<MasteryAssets>({ championIconUrl: () => null });
+export const MasteryAssetsContext = createContext<MasteryAssets>({
+  championIconUrl: () => null,
+  itemIconUrl: () => null,
+});
 
 export const useMasteryAssets = (): MasteryAssets => useContext(MasteryAssetsContext);
