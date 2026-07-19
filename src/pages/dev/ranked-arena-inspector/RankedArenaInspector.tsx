@@ -1,0 +1,261 @@
+/**
+ * Dev-only canonical Ranked arena inspector (F1 prototype visual QA).
+ *
+ * Renders the SHARED ranked-arena components from static, backend-shaped view
+ * fixtures so every important visual state can be captured/compared without a
+ * live match. There is NO gameplay engine, NO controller, NO fetch, and NO
+ * database mutation here — it only maps fixtures to presentation, so it can
+ * never drift into a second implementation of the game (a test asserts it
+ * imports no duel/engine/service module).
+ *
+ * Excluded from navigation and the sitemap (a /dev route); unavailable in
+ * production builds unless explicitly enabled.
+ */
+import { useState } from "react";
+import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
+import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
+import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
+import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
+import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
+import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
+import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
+import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
+import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
+import {
+  FIXTURE_P1_ID, FIXTURE_P2_ID, getScenario,
+} from "@/lib/ranked-core/backend/backendSettlementFixtures";
+import {
+  AbilityView, CombatantView, InteractionPermissions, NO_INTERACTIONS,
+  QuestionView, TimerView,
+} from "@/lib/ranked-core/viewTypes";
+
+// --------------------------------------------------------------- fixtures
+
+function player(over: Partial<CombatantView> = {}): CombatantView {
+  return {
+    playerId: "you", name: "You", tag: "Tank", side: "player", classId: "tank",
+    hp: 150, maxHp: 170, xp: 12, level: 1, nextLevelThreshold: 30,
+    currentLevelThreshold: 0, hasSubmitted: false, abilityWindow: "open",
+    hasAbilitySelected: false, ...over,
+  };
+}
+function opponent(over: Partial<CombatantView> = {}): CombatantView {
+  return {
+    playerId: "opp", name: "Opponent", tag: "Mage", side: "opponent",
+    classId: "mage", hp: 150, maxHp: 150, xp: 9, level: 1,
+    nextLevelThreshold: 30, currentLevelThreshold: 0, hasSubmitted: false,
+    abilityWindow: "open", hasAbilitySelected: null, ...over,
+  };
+}
+
+const QUESTION: QuestionView = {
+  questionId: "q1", category: "items",
+  prompt: "Darius bought Doran's Blade, a Health Potion, Phage and Kindlegem. How much gold spent?",
+  options: [
+    { id: "0", index: 0, label: "2400" },
+    { id: "1", index: 1, label: "2500" },
+    { id: "2", index: 2, label: "2450" },
+    { id: "3", index: 3, label: "2300" },
+  ],
+};
+
+const TIMER = (over: Partial<TimerView> = {}): TimerView => ({
+  durationSeconds: 30, remainingSeconds: 22, paused: false, urgent: false, ...over,
+});
+
+const ABILITIES = (over: Partial<AbilityView>[] = []): AbilityView[] => {
+  const base: AbilityView[] = [
+    { id: "tank.fortify", name: "Fortify", description: "+5s next round on a correct answer.",
+      unlocked: true, remainingCharges: 3, selected: false, locked: false, exhausted: false },
+    { id: "tank.brace", name: "Brace", description: "Reduce incoming damage next round.",
+      unlocked: false, remainingCharges: 3, selected: false, locked: false, exhausted: false,
+      unavailableReason: "Unlocks at Level 2." },
+    { id: "tank.barrier", name: "Barrier", description: "One-time shield.",
+      unlocked: false, remainingCharges: 1, selected: false, locked: false, exhausted: false,
+      unavailableReason: "Unlocks at Level 3." },
+  ];
+  return base.map((a, i) => ({ ...a, ...(over[i] ?? {}) }));
+};
+
+const OPEN: InteractionPermissions = {
+  canSelectAnswer: true, canChangeAnswer: true, canSelectAbility: true,
+  canReviewSubmission: true, canConfirmSubmission: true, canAdvance: false,
+};
+
+const NAMES = { [FIXTURE_P1_ID]: "You", [FIXTURE_P2_ID]: "Opponent" };
+const settlement = (key: string) =>
+  adaptBackendSettlement(getScenario(key)!.settlement,
+    { p1PlayerId: FIXTURE_P1_ID, p2PlayerId: FIXTURE_P2_ID });
+
+// ------------------------------------------------------------------ states
+
+interface InspectorState {
+  key: string;
+  label: string;
+  render: () => React.ReactNode;
+}
+
+function Combatants({ p, o }: { p: CombatantView; o: CombatantView }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <CombatantPanel combatant={p} />
+      <CombatantPanel combatant={o} />
+    </div>
+  );
+}
+
+const STATES: InspectorState[] = [
+  { key: "level1", label: "Level 1 — initial",
+    render: () => <Combatants p={player()} o={opponent()} /> },
+  { key: "answer-unselected", label: "Answer — unselected",
+    render: () => (
+      <QuestionPanel question={QUESTION}>
+        <AnswerGrid options={QUESTION.options} selectedOptionId={null}
+          permissions={OPEN} onSelectOption={() => {}} />
+      </QuestionPanel>
+    ) },
+  { key: "answer-selected", label: "Answer — selected",
+    render: () => (
+      <QuestionPanel question={QUESTION}>
+        <AnswerGrid options={QUESTION.options} selectedOptionId="0"
+          permissions={OPEN} onSelectOption={() => {}} />
+      </QuestionPanel>
+    ) },
+  { key: "submission-review", label: "Submission review",
+    render: () => (
+      <SubmissionReview
+        submission={{ selectedOptionId: "0", selectedAbilityId: "tank.fortify", phase: "reviewing" }}
+        answerLabel="2400" abilityName="Fortify" permissions={OPEN}
+        onReview={() => {}} onEdit={() => {}} onConfirm={() => {}} />
+    ) },
+  { key: "locked", label: "Locked / waiting",
+    render: () => (
+      <>
+        <Combatants p={player({ hasSubmitted: true, abilityWindow: "locked", hasAbilitySelected: true })}
+          o={opponent({ hasSubmitted: false })} />
+        <SubmissionReview
+          submission={{ selectedOptionId: "0", selectedAbilityId: null, phase: "locked" }}
+          answerLabel="2400" abilityName={null} permissions={NO_INTERACTIONS}
+          onReview={() => {}} onEdit={() => {}} onConfirm={() => {}}
+          statusMessage={{ tone: "info", text: "Submitted — waiting for opponent…" }} />
+      </>
+    ) },
+  { key: "timer-urgent", label: "Timer — urgent",
+    render: () => <TimerDisplay timer={TIMER({ remainingSeconds: 4, urgent: true, modifierNotices: ["-5s pressure"] })} /> },
+  { key: "ability-selected", label: "Ability — selected",
+    render: () => (
+      <AbilityTray abilities={ABILITIES([{ selected: true }])} selectedAbilityId="tank.fortify"
+        permissions={OPEN} onSelectAbility={() => {}} />
+    ) },
+  { key: "ability-exhausted", label: "Ability — depleted charge",
+    render: () => (
+      <AbilityTray abilities={ABILITIES([{ remainingCharges: 0, exhausted: true, unavailableReason: "Out of charges." }])}
+        selectedAbilityId={null} permissions={OPEN} onSelectAbility={() => {}} />
+    ) },
+  { key: "reveal-solo", label: "Reveal — player correct / opponent wrong",
+    render: () => <RevealPanel settlement={settlement("solo-correct")} viewerSlot="p1" namesByPlayerId={NAMES} /> },
+  { key: "reveal-both", label: "Reveal — both correct",
+    render: () => <RevealPanel settlement={settlement("both-correct-faster")} viewerSlot="p1" namesByPlayerId={NAMES} /> },
+  { key: "reveal-wash", label: "Reveal — both wrong (wash)",
+    render: () => <RevealPanel settlement={settlement("both-incorrect-wash")} viewerSlot="p1" namesByPlayerId={NAMES} /> },
+  { key: "reveal-timeout", label: "Reveal — opponent timed out",
+    render: () => <RevealPanel settlement={settlement("timed-out")} viewerSlot="p1" namesByPlayerId={NAMES} /> },
+  { key: "reveal-shield", label: "Reveal — shield / mitigation",
+    render: () => <RevealPanel settlement={settlement("shield-absorb")} viewerSlot="p1" namesByPlayerId={NAMES} /> },
+  { key: "level2", label: "Level 2 — choice",
+    render: () => (
+      <LevelUpPanel gatesNextRound
+        event={{ kind: "level2-choice", pendingOptionId: "tank.brace", confirmedOptionId: null,
+          options: [
+            { id: "tank.brace", name: "Brace", description: "Reduce incoming damage." },
+            { id: "tank.barrier", name: "Barrier", description: "One-time shield." },
+          ] }}
+        permissions={{ ...NO_INTERACTIONS, canSelectAbility: true, canConfirmSubmission: true }}
+        onSelectOption={() => {}} onConfirmOption={() => {}} />
+    ) },
+  { key: "level3", label: "Level 3 — auto-unlock",
+    render: () => (
+      <LevelUpPanel event={{ kind: "level3-unlock", ability: { id: "tank.barrier", name: "Barrier", description: "One-time shield unlocked automatically at 66 XP." } }}
+        permissions={NO_INTERACTIONS} />
+    ) },
+  { key: "low-hp", label: "Low HP tension",
+    render: () => <Combatants p={player({ hp: 20, xp: 66, level: 3, nextLevelThreshold: null, currentLevelThreshold: 66 })}
+      o={opponent({ hp: 10, xp: 54, level: 2, nextLevelThreshold: 66, currentLevelThreshold: 30 })} /> },
+  { key: "victory", label: "Match over — victory",
+    render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "defeat", label: "Match over — defeat",
+    render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "draw", label: "Match over — draw",
+    render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
+      subheading="No contest — both players left."
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+];
+
+const VIEWPORTS: { key: string; label: string; width: number | null }[] = [
+  { key: "mobile", label: "Mobile 375", width: 375 },
+  { key: "narrow", label: "Narrow 1024", width: 1024 },
+  { key: "desktop", label: "Full", width: null },
+];
+
+// ------------------------------------------------------------------- page
+
+export default function RankedArenaInspector() {
+  const [stateKey, setStateKey] = useState(STATES[0].key);
+  const [viewport, setViewport] = useState(VIEWPORTS[2]);
+
+  if (!import.meta.env.DEV) {
+    return (
+      <div className="mx-auto max-w-lg p-6 text-center text-sm text-muted-foreground">
+        The Ranked arena inspector is a development-only tool.
+      </div>
+    );
+  }
+
+  const active = STATES.find((s) => s.key === stateKey) ?? STATES[0];
+
+  return (
+    <div className="mx-auto max-w-5xl p-4 space-y-4" data-testid="ranked-arena-inspector">
+      <header className="space-y-1">
+        <h1 className="text-lg font-bold">Ranked Arena Inspector</h1>
+        <p className="text-xs text-muted-foreground">
+          Canonical arena components rendered from static fixtures. No engine, no backend — visual QA only.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Viewport">
+        {VIEWPORTS.map((v) => (
+          <button key={v.key} type="button" data-testid={`inspector-viewport-${v.key}`}
+            aria-pressed={viewport.key === v.key} onClick={() => setViewport(v)}
+            className={`min-h-[36px] rounded-md border px-3 text-xs ${
+              viewport.key === v.key ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+        <nav className="flex flex-col gap-1" aria-label="States">
+          {STATES.map((s) => (
+            <button key={s.key} type="button" data-testid={`inspector-state-${s.key}`}
+              aria-pressed={stateKey === s.key} onClick={() => setStateKey(s.key)}
+              className={`rounded-md border px-3 py-2 text-left text-xs ${
+                stateKey === s.key ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+              {s.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="rounded-lg border border-border bg-background p-3 overflow-x-auto">
+          <div className="mx-auto space-y-3"
+            style={viewport.width ? { maxWidth: viewport.width } : undefined}
+            data-testid="inspector-stage" data-viewport={viewport.key}>
+            {active.render()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

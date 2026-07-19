@@ -92,6 +92,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           <h3 className="font-semibold">Round {m.publicRound.activeRound?.roundNumber ?? "—"}</h3>
           {timer && <TimerDisplay timer={timer} label="Shared round timer" />}
         </div>
+        {m.publicRound.playtest?.isPlaceholder && (
+          <p data-testid="ranked-playtest-label"
+            className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Ranked Playtest{m.publicRound.playtest.isBotMatch ? " · vs Bot" : ""} · Placeholder questions
+          </p>
+        )}
         {opponentLabel && (
           <p data-testid="ranked-presence" className="text-xs text-muted-foreground">{opponentLabel}</p>
         )}
