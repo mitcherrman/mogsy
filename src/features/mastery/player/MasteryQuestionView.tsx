@@ -71,14 +71,19 @@ export function MasteryQuestionView({
           <div className="flex items-center gap-2" data-testid="mastery-matchup-header">
             <MasteryChampionPortrait
               championId={question.matchupIdentity.championA}
+              displayName={question.matchupIdentity.championADisplay}
               size={32}
             />
             <span className="text-sm font-semibold">
-              {championName(question.matchupIdentity.championA)} vs{" "}
-              {championName(question.matchupIdentity.championB)}
+              {question.matchupIdentity.championADisplay ??
+                championName(question.matchupIdentity.championA)}{" "}
+              vs{" "}
+              {question.matchupIdentity.championBDisplay ??
+                championName(question.matchupIdentity.championB)}
             </span>
             <MasteryChampionPortrait
               championId={question.matchupIdentity.championB}
+              displayName={question.matchupIdentity.championBDisplay}
               size={32}
             />
           </div>
