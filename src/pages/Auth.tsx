@@ -13,6 +13,8 @@ import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { safeReturnPath } from "@/lib/auth/safe-return";
+import AccountUpgradePanel from "@/components/auth/AccountUpgradePanel";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -26,16 +28,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const { user, signIn, signUp, linkAnonymousAccount } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite");
   const defaultReturnTo = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/home";
-  const returnTo = searchParams.get("returnTo") || defaultReturnTo;
 
-  // Only allow relative paths to prevent open-redirect attacks.
-  const safeReturnTo = returnTo.startsWith("/") ? returnTo : defaultReturnTo;
+  // Only allow safe same-origin relative paths (blocks //evil.com open redirects).
+  const safeReturnTo = safeReturnPath(searchParams.get("returnTo"), defaultReturnTo);
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
@@ -128,30 +129,10 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
 
-    if (isAnonymous && showLinkFlow) {
-      if (password !== confirmPassword) {
-        toast({ title: "Passwords don't match", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-      const { error } = await linkAnonymousAccount(email, password);
-      if (error) {
-        toast({ title: "Linking failed", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Account created!", description: "Your progress has been saved." });
-        if (cameFromQuiz) {
-          trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "link_anonymous" });
-        }
-        resetGateState();
-        if (user) await redeemInvite(user.id);
-        navigate(safeReturnTo);
-      }
-      setLoading(false);
-      return;
-    }
-
     if (mode === "signin") {
-      // Sign out anonymous session first so we can sign in as a real user
+      // Explicit sign-in to an EXISTING account is a separate action from guest
+      // account creation. Switching accounts requires ending the guest session
+      // first — this is NOT the anonymous-upgrade path (that never signs out).
       if (isAnonymous) {
         await supabase.auth.signOut();
       }
@@ -188,9 +169,13 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      // Sign out anonymous session first
+      // Anonymous guests never reach this branch — they render the email-first
+      // AccountUpgradePanel instead (see render gate). This path is only for a
+      // brand-new account with no active guest session: never sign out + signUp
+      // an anonymous user (that orphaned the guest profile and progress).
       if (isAnonymous) {
-        await supabase.auth.signOut();
+        setLoading(false);
+        return;
       }
       const { error } = await signUp(email, password);
       if (error) {
@@ -316,6 +301,27 @@ export default function Auth() {
             </Button>
           </div>
         </motion.div>
+      </div>
+    );
+  }
+
+  // Anonymous guest choosing to create an account -> the single shared,
+  // confirmation-aware upgrade flow (email-first). Never signs out, never
+  // signUp(): the current guest identity is upgraded in place.
+  if (isAnonymous && (mode === "signup" || showLinkFlow)) {
+    return (
+      <div className="flex min-h-dvh items-start min-[768px]:items-center justify-center overflow-y-auto px-4 py-8">
+        <SEOHead
+          title="Save Your Progress — Mogzy"
+          description="Create a free Mogzy account to keep your XP, streaks, and progress."
+        />
+        <AccountUpgradePanel
+          returnTo={safeReturnTo}
+          onSignInInstead={() => {
+            setShowLinkFlow(false);
+            setMode("signin");
+          }}
+        />
       </div>
     );
   }

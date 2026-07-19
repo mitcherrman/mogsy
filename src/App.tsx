@@ -36,6 +36,8 @@ const EloCheck = R.EloCheck.Component;
 const SwipeLeagues = R.SwipeLeagues.Component;
 const UserProfile = R.UserProfile.Component;
 const ResetPassword = R.ResetPassword.Component;
+// Anonymous -> permanent account confirmation callback (Concern B).
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const AdminPlay = R.AdminPlay.Component;
 const AdminData = R.AdminData.Component;
 const AdminDemo = R.AdminDemo.Component;
@@ -186,6 +188,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={leagueGate(<Suspense fallback={<RouteLoader />}><Index /></Suspense>)} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
+                <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
                 <Route element={<Layout />}>
                   <Route path="/home" element={leagueGate(<ProtectedRoute><Home /></ProtectedRoute>)} />
