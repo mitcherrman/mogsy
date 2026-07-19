@@ -2885,6 +2885,8 @@ export type Database = {
           onboarding_completed: boolean | null
           preferred_categories: string[] | null
           profile_frame: string | null
+          ranked_tutorial_completed_at: string | null
+          ranked_tutorial_version: number | null
           reveals: number | null
           rewinds: number | null
           socials: Json | null

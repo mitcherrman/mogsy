@@ -27,3 +27,6 @@ verify_jwt = true
 # Stripe calls this endpoint directly; auth is the webhook signature, not a JWT.
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
