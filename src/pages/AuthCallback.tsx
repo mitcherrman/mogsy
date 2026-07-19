@@ -213,15 +213,27 @@ export default function AuthCallback() {
     return (
       <Shell>
         <Mail className="h-8 w-8 text-primary" aria-hidden />
-        <h2 className="text-lg font-bold text-foreground">Couldn&apos;t finish</h2>
+        <h2 className="text-lg font-bold text-foreground">Couldn&apos;t finish here</h2>
         <p className="text-sm text-muted-foreground" data-testid="callback-error">
           {message}
         </p>
+        <p className="text-xs text-muted-foreground">
+          If you started creating your account in a different browser or on another device, open
+          this confirmation link there to keep that guest progress. Otherwise you can sign in, or
+          start again as a guest on this device.
+        </p>
         <div className="w-full space-y-2">
-          <Button className="w-full" onClick={() => navigate("/auth?mode=signup")}>
+          <Button className="w-full" onClick={() => navigate("/auth")} data-testid="callback-error-signin">
+            Sign in
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate("/auth?mode=signup")}
+          >
             Start account creation again
           </Button>
-          <Button variant="outline" className="w-full" onClick={() => navigate(returnTo)}>
+          <Button variant="ghost" className="w-full" onClick={() => navigate(returnTo)}>
             Continue using Mogzy
           </Button>
         </div>
