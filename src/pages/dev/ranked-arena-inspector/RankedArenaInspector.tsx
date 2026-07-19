@@ -21,6 +21,8 @@ import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
+import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import type { QuizQuestion } from "@/lib/quiz/api";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
   FIXTURE_P1_ID, FIXTURE_P2_ID, getScenario,
@@ -87,6 +89,50 @@ const NAMES = { [FIXTURE_P1_ID]: "You", [FIXTURE_P2_ID]: "Opponent" };
 const settlement = (key: string) =>
   adaptBackendSettlement(getScenario(key)!.settlement,
     { p1PlayerId: FIXTURE_P1_ID, p2PlayerId: FIXTURE_P2_ID });
+
+// ---------------------------------------------------- shared surface fixtures
+
+const ITEM_Q: QuestionView = {
+  questionId: "sq-item", category: "items",
+  prompt: "Which item grants the largest single burst of Ability Power?",
+  options: [
+    { id: "0", index: 0, label: "Rabadon's Deathcap" },
+    { id: "1", index: 1, label: "Needlessly Large Rod" },
+    { id: "2", index: 2, label: "Blasting Wand" },
+    { id: "3", index: 3, label: "Amplifying Tome" },
+  ],
+};
+const CHAMP_Q: QuestionView = {
+  questionId: "sq-champ", category: "champions",
+  prompt: "Which region is Ahri from?",
+  options: [
+    { id: "0", index: 0, label: "Ionia" },
+    { id: "1", index: 1, label: "Noxus" },
+    { id: "2", index: 2, label: "Demacia" },
+    { id: "3", index: 3, label: "Piltover" },
+  ],
+};
+const subjectSource = (q: QuestionView, subject: Record<string, unknown>): QuizQuestion => ({
+  id: q.questionId, category: q.category ?? "", question_text: q.prompt,
+  format: "multiple_choice", choices: q.options.map((o) => o.label),
+  metadata: { assets: { subject } },
+});
+const ITEM_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Rabadon's Deathcap", icon: "assets/items/3089.png" });
+const CHAMP_SCENARIO = subjectSource(CHAMP_Q, { type: "champion", name: "Ahri", icon: "assets/champions/Ahri.png" });
+const BROKEN_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Missing Icon", icon: "assets/items/does-not-exist.png" });
+
+function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
+  return (
+    <InteractiveScenarioSurface
+      question={ITEM_Q}
+      selectedOptionId={null}
+      permissions={OPEN}
+      onSelectOption={() => {}}
+      variant="competitive"
+      {...props}
+    />
+  );
+}
 
 // ------------------------------------------------------------------ states
 
@@ -192,6 +238,32 @@ const STATES: InspectorState[] = [
     render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
       subheading="No contest — both players left."
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+
+  // --- shared InteractiveScenarioSurface ---
+  { key: "surface-text-fallback", label: "Surface — text fallback (placeholder)",
+    render: () => <Surface /> },
+  { key: "surface-champion", label: "Surface — champion-rich",
+    render: () => <Surface question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
+  { key: "surface-item", label: "Surface — item-rich",
+    render: () => <Surface scenarioSource={ITEM_SCENARIO} /> },
+  { key: "surface-selecting", label: "Surface — selecting",
+    render: () => <Surface scenarioSource={ITEM_SCENARIO} selectedOptionId="1" /> },
+  { key: "surface-missing-asset", label: "Surface — missing-asset fallback",
+    render: () => <Surface scenarioSource={BROKEN_SCENARIO} /> },
+  { key: "surface-reveal-correct", label: "Surface — correct reveal + explanation",
+    render: () => <Surface variant="standard" scenarioSource={ITEM_SCENARIO} selectedOptionId="0"
+      reveal={{ revealed: true, isCorrect: true, correctOptionId: "0",
+        explanation: "Rabadon's Deathcap gives 130 AP flat plus a 35% amplifier." }} /> },
+  { key: "surface-reveal-incorrect", label: "Surface — incorrect reveal",
+    render: () => <Surface variant="standard" scenarioSource={ITEM_SCENARIO} selectedOptionId="2"
+      reveal={{ revealed: true, isCorrect: false, correctOptionId: "0",
+        explanation: "Blasting Wand gives only 45 AP." }} /> },
+  { key: "surface-standard-hero", label: "Surface — standard (hero)",
+    render: () => <Surface variant="standard" question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
+  { key: "surface-tutorial", label: "Surface — tutorial variant",
+    render: () => <Surface variant="tutorial" scenarioSource={ITEM_SCENARIO} /> },
+  { key: "surface-speed", label: "Surface — speed (no media)",
+    render: () => <Surface variant="speed" /> },
 ];
 
 const VIEWPORTS: { key: string; label: string; width: number | null }[] = [
