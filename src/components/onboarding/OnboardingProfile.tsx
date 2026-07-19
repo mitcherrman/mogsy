@@ -37,7 +37,7 @@ interface Props {
 }
 
 export default function OnboardingProfile({ onNext }: Props) {
-  const { user, linkAnonymousAccount } = useAuth();
+  const { user, upgradeAnonymousEmail } = useAuth();
   const isAnonymous = user?.is_anonymous ?? false;
 
   const [displayName, setDisplayName] = useState("");
@@ -160,14 +160,17 @@ export default function OnboardingProfile({ onNext }: Props) {
         await supabase.from("profiles").update(updates).eq("user_id", user.id);
       }
 
-      if (isAnonymous && email.trim() && password) {
-        const { error } = await linkAnonymousAccount(email.trim(), password);
-        if (error) {
-          setLinkError(error.message || "Failed to link account.");
+      if (isAnonymous && email.trim()) {
+        // Email-first upgrade of the CURRENT guest identity. The password is set
+        // after email confirmation (via /auth/callback); it is not collected here.
+        const redirectTo = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent("/quiz")}`;
+        const res = await upgradeAnonymousEmail(email.trim(), redirectTo);
+        if (!res.ok) {
+          setLinkError(res.error || "Could not start account creation.");
           setSaving(false);
           return;
         }
-        toast.success("Account linked! Check your email to verify.");
+        toast.success("Check your email to finish creating your account.");
       }
     } catch (err) {
       console.error("Onboarding profile save error:", err);

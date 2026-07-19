@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { LogOut, LogIn, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
+import { LogOut, LogIn, UserPlus, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,9 +234,28 @@ export default function Settings() {
 
           {isAnonymousOrNoUser ? (
             <>
-              <p className="text-sm text-muted-foreground mb-4">You are not signed in.</p>
-              <Button variant="default" onClick={() => navigate("/auth")} className="w-full">
-                <LogIn className="h-4 w-4 mr-2" /> Sign In
+              <p className="text-sm text-muted-foreground mb-4">
+                {user?.is_anonymous
+                  ? "You're playing as a guest. Save your progress to keep it across devices."
+                  : "You are not signed in."}
+              </p>
+              {/* Primary: upgrade the current guest in place (email-first flow). */}
+              <Button
+                variant="default"
+                onClick={() => navigate("/auth?mode=signup&returnTo=%2Fsettings")}
+                className="w-full mb-2"
+                data-testid="settings-create-account"
+              >
+                <UserPlus className="h-4 w-4 mr-2" /> Save progress / Create account
+              </Button>
+              {/* Separate explicit action: sign in to an existing account. */}
+              <Button
+                variant="outline"
+                onClick={() => navigate("/auth?returnTo=%2Fsettings")}
+                className="w-full"
+                data-testid="settings-sign-in"
+              >
+                <LogIn className="h-4 w-4 mr-2" /> Sign in to an existing account
               </Button>
             </>
           ) : (
