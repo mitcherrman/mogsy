@@ -6,11 +6,10 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
-import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
+import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
-import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
@@ -127,10 +126,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         <>
           {question && (
             <section data-testid="ranked-question" className="rounded-lg border border-border bg-card p-4">
-              <QuestionPanel question={question}>
-                <AnswerGrid options={question.options} selectedOptionId={m.selectedOptionId}
-                  permissions={permissions} onSelectOption={(o) => m.selectOption(o.id)} />
-              </QuestionPanel>
+              <InteractiveScenarioSurface
+                question={question}
+                selectedOptionId={m.selectedOptionId}
+                permissions={permissions}
+                onSelectOption={(o) => m.selectOption(o.id)}
+                variant="competitive"
+              />
             </section>
           )}
           {m.privatePlayer && (

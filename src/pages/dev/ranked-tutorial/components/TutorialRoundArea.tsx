@@ -1,6 +1,5 @@
-import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
+import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
-import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
@@ -83,16 +82,15 @@ export function TutorialRoundArea({
 
   return (
     <div className="space-y-4">
-      <QuestionPanel question={question}>
-        <AnswerGrid
-          options={question.options}
-          selectedOptionId={submission.selectedOptionId}
-          permissions={permissions}
-          onSelectOption={(option) =>
-            dispatch({ type: "SELECT_ANSWER", answerIndex: option.index })
-          }
-        />
-      </QuestionPanel>
+      <InteractiveScenarioSurface
+        question={question}
+        selectedOptionId={submission.selectedOptionId}
+        permissions={permissions}
+        onSelectOption={(option) =>
+          dispatch({ type: "SELECT_ANSWER", answerIndex: option.index })
+        }
+        variant="tutorial"
+      />
       <AbilityTray
         abilities={showAbilityTray ? abilities : []}
         selectedAbilityId={submission.selectedAbilityId}
