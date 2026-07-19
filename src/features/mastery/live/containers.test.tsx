@@ -151,6 +151,23 @@ describe("MasteryPlayerLive", () => {
     fireEvent.click(await screen.findByTestId("mastery-next-button"));
     expect(await screen.findByTestId("mastery-player-completion")).toBeTruthy();
   });
+
+  it("fails closed (no blank player) if advance returns a non-completed view with no question", async () => {
+    // Guards the advance path against the same blank-player defect boot() guards:
+    // a non-completed advance with a null question must surface an error, never
+    // re-enter a question phase that renders an empty container.
+    api.startSession.mockResolvedValue(view({ session: session(0, "question"), question: qEnv(0, S0, "Initial state", "Q1?") }));
+    api.submitAnswer.mockResolvedValue(parseMasteryPlayerReveal(rEnv(0, true, 3)));
+    api.advance.mockResolvedValue({ session: readSessionState(session(1, "question", false)),
+      question: null, reveal: null, summary: null });
+    render(<MasteryPlayerLive masterySetId={SET_ID} />);
+    await screen.findByTestId("mastery-numeric-input");
+    fireEvent.change(screen.getByTestId("mastery-numeric-input"), { target: { value: "3" } });
+    fireEvent.click(screen.getByTestId("mastery-submit-button"));
+    fireEvent.click(await screen.findByTestId("mastery-next-button"));
+    expect(await screen.findByTestId("mastery-player-error")).toBeTruthy();
+    expect(screen.queryByTestId("mastery-question-heading")).toBeNull();
+  });
 });
 
 describe("MasteryReviewerLive", () => {

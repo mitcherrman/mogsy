@@ -120,6 +120,11 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
       const view = await advance(s.sessionId, seq);
       if (view.summary || view.session.completed) {
         setS((p) => ({ ...p, phase: "completed", summary: view.summary, reveal: null }));
+      } else if (!view.question) {
+        // Fail closed (same invariant boot() enforces): a non-completed advance MUST
+        // carry a question. Never re-enter a blank question phase with a null question.
+        setS((p) => ({ ...p, phase: "error",
+          error: "advance response did not include a question projection" }));
       } else {
         setS((p) => ({ ...p, phase: "question", question: view.question, reveal: null, submittedAnswer: null }));
       }
