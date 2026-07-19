@@ -1,5 +1,5 @@
 /**
- * Live Mastery player container (H1 / G7).
+ * Live Mastery player container (Claude G1).
  *
  * Drives the six-question flow against the backend Mastery API. It reuses the G5
  * presentational views (`MasteryQuestionView`, `MasteryRevealView`) but the
@@ -60,6 +60,14 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
       const setId = masterySetId ?? (await listSets(signal))[0]?.masterySetId;
       if (!setId) { setS((p) => ({ ...p, phase: "error", error: "no published mastery set" })); return; }
       const view = await startSession(setId, signal);
+      const phase: Phase = view.summary ? "completed" : view.reveal ? "reveal" : "question";
+      // Fail closed: a non-completed session MUST carry a question. Never render a
+      // blank player by entering a question/reveal phase with a null question.
+      if (phase !== "completed" && !view.question) {
+        setS((p) => ({ ...p, phase: "error",
+          error: "session response did not include a question projection" }));
+        return;
+      }
       setS((p) => ({
         ...p,
         sessionId: view.session.sessionId,
@@ -67,7 +75,7 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
         reveal: view.reveal,
         submittedAnswer: view.reveal ? (view.reveal.playerAnswer as Answer) : null,
         summary: view.summary,
-        phase: view.summary ? "completed" : view.reveal ? "reveal" : "question",
+        phase,
       }));
     } catch (e) { fail(e); }
   }, [masterySetId, fail]);
