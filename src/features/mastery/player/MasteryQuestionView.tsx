@@ -5,15 +5,16 @@
  * heading on mount (i.e. after each advance).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { PlayerAnswer } from "./useMasteryFixtureSession";
 import { MasteryNumericInput, validateNumeric } from "./MasteryNumericInput";
 import { MasteryChoiceInput, booleanOptions, type ChoiceOption } from "./MasteryBooleanInput";
+import { MasteryChampionPortrait } from "./MasteryChampionPortrait";
 import { MasteryPatchBadge } from "./MasteryPatchBadge";
 import { MasteryProgress } from "./MasteryProgress";
 import { MasteryStatePanel } from "./MasteryStatePanel";
+import { championName } from "./playerFormat";
 
 export function MasteryQuestionView({
   question,
@@ -66,18 +67,27 @@ export function MasteryQuestionView({
     <section aria-label="Question" className="space-y-4">
       <div className="space-y-3">
         <MasteryProgress index={question.sequenceIndex} total={total} />
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px] uppercase">
-            {question.matchupIdentity.championA} vs {question.matchupIdentity.championB}
-          </Badge>
-          <MasteryPatchBadge patchDisplay={question.patchDisplay} />
-          <Badge
-            variant={question.isReadOnly ? "secondary" : "default"}
-            className="text-[10px]"
-            data-testid="mastery-readonly-badge"
-          >
-            {question.isReadOnly ? "Read-only question" : "State-transition question"}
-          </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2" data-testid="mastery-matchup-header">
+            <MasteryChampionPortrait
+              championId={question.matchupIdentity.championA}
+              size={32}
+            />
+            <span className="text-sm font-semibold">
+              {championName(question.matchupIdentity.championA)} vs{" "}
+              {championName(question.matchupIdentity.championB)}
+            </span>
+            <MasteryChampionPortrait
+              championId={question.matchupIdentity.championB}
+              size={32}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <MasteryPatchBadge patchDisplay={question.patchDisplay} />
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Fixed scenario
+            </span>
+          </div>
         </div>
       </div>
 
