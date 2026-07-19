@@ -132,8 +132,8 @@ export const TUTORIAL_QUESTIONS: TutorialQuestion[] = [
     choices: ["Soak damage up front", "Snipe from afar", "Heal allies only", "Steal camps"],
   },
   {
-    prompt: "Where does Baron Nashor live?",
-    choices: ["The shop", "The river pit", "Bot lane", "The fountain"],
+    prompt: "How many summoner spells can a player normally equip before a match?",
+    choices: ["One", "Two", "Three", "Four"],
   },
   {
     prompt: "What color is your own team's Nexus crystal aura?",
@@ -382,8 +382,8 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
   E: {
     roundId: "E",
     questionIndex: 4,
-    playerAnswer: 0, // "The shop" — deliberately wrong, guided demonstration
-    opponentAnswer: 0, // scripted wrong too — a wash round
+    playerAnswer: 3, // "Four" — deliberately wrong, guided demonstration (correct is "Two")
+    opponentAnswer: 0, // "One" — scripted wrong too — a wash round
     playerCorrect: false,
     opponentCorrect: false,
     playerTimedOut: false,
@@ -414,7 +414,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
       "An armed ability is committed when the round resolves. This answer was incorrect, so Fortify did not activate. The charge was still consumed.",
     nextRoundDurationAfterAbility: ROUND_SECONDS,
     resultCopy:
-      "This was a controlled demonstration: the guided wrong answer meant Fortify did not activate — but the armed charge was still consumed. Commitment happens at resolution, hit or miss.",
+      "You armed Fortify and deliberately picked an answer you knew was wrong — 'Four.' Players normally equip exactly two summoner spells, so your answer was incorrect and Fortify did not activate. The charge was still committed when the round resolved. The Golem also answered incorrectly ('One'), so neither side dealt damage.",
   },
   // Rounds F & G — progress drill toward Level 3 (no ability, charges kept).
   // F lands on 65 XP: still one point BELOW the 66 threshold.

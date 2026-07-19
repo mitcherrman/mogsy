@@ -9,7 +9,6 @@
 import { TutorialStepDefinition, TutorialStepId } from "./types";
 
 export const STEP_ORDER: readonly TutorialStepId[] = [
-  "welcome",
   "timer_intro",
   "answer_selection",
   "answer_locked",
@@ -37,18 +36,6 @@ const NAV = ["CONTINUE", "RESTART"] as const;
  * mode for every step of the complete tutorial, welcome through complete.
  */
 export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
-  welcome: {
-    id: "welcome",
-    label: "Welcome",
-    title: "Welcome to Ranked training",
-    body:
-      "This is a scripted Training Match against the Training Golem — nothing here counts toward real Ranked. You'll learn the shared timer, answering, damage, XP, and your Tank abilities one step at a time. The timer stays paused while you read.",
-    announcement:
-      "Welcome to Ranked training. A scripted practice match. Press Begin Training to start.",
-    timerMode: "paused",
-    permittedEvents: ["BEGIN_TRAINING", "RESTART"],
-    allowBack: false,
-  },
   timer_intro: {
     id: "timer_intro",
     label: "Timer",
@@ -86,8 +73,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Locked",
     title: "Locked in",
     body:
-      "Your submission is final for the round: the answer can't change and can't be sent twice. Your answer is hidden until reveal — the Golem only sees that you've locked, never what you picked. It has now locked its own answer too.",
-    announcement: "Submission locked. Choices stay hidden until the reveal.",
+      "Your answer is locked — it's final for this round and can't be changed or sent twice. It stays hidden: the Training Golem only sees that you've submitted, never what you picked. Locking isn't the reveal, though. In a real match your answer stays sealed until the round resolves, and then both sides are shown at once. The Golem has submitted too, so this round is ready. Reveal the answers when you're ready.",
+    announcement:
+      "Answer locked and hidden. The Golem has submitted too. Reveal the answers when you're ready.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: false,
@@ -185,7 +173,7 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Commit",
     title: "Armed means committed",
     body:
-      "This question starts at 35 seconds — Fortify added five. Now a controlled demonstration: arm Fortify again and lock in the guided WRONG answer on purpose. You'll see the charge is consumed at resolution even though the effect never triggers. (The Golem answers instantly, so watch its first answer cut the shared timer by 5.)",
+      "This question starts at 35 seconds — Fortify added five. Now a controlled demonstration: arm Fortify again and lock in the guided wrong answer on purpose. You'll see the charge is consumed at resolution even though the effect never triggers. (The Golem answers instantly, so watch its first answer cut the shared timer by 5.)",
     announcement:
       "Commitment demonstration. This question starts at thirty-five seconds thanks to Fortify. Arm Fortify and lock the guided wrong answer on purpose.",
     timerMode: "running",
@@ -259,9 +247,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Match over",
     title: "Victory!",
     body:
-      "The Training Golem is at 0 HP. Correct answers deal damage; both players can deal damage in the same round; XP unlocks abilities; charges are limited; zero HP ends the match. This training match did not affect your rating, history, or permanent progression.",
+      "The Training Golem is at 0 HP, so you win — HP is what decides a duel, not XP or level (you both reached Level 3). Correct answers deal damage; both players can deal damage in the same round; XP unlocks abilities; charges are limited; zero HP ends the match. This training match did not affect your Ranked rating, match history, or permanent progression.",
     announcement:
-      "Victory. The Training Golem is at zero HP. This training match did not affect your rating, history, or permanent progression.",
+      "Victory. The Training Golem is at zero HP. HP decides the duel, not level. This training match did not affect your Ranked rating, match history, or permanent progression.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: false,
@@ -271,9 +259,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Queue",
     title: "How real matches start",
     body:
-      "Queueing searches for another player. A real match begins only after matchmaking succeeds — until then you're not in a match. This tutorial does not enter the live queue, and the Training Golem is a scripted teacher, not a bot opponent: a real opponent sees the same questions and timer you do.",
+      "Real Ranked doesn't start until matchmaking finds you another human player — until then you aren't in a match. The Training Golem you just beat is a scripted teacher, not a real opponent or a bot: in a real duel your opponent sees the same questions and the same shared timer you do. The panel below is a local demonstration only — it does not enter the live queue or connect to matchmaking.",
     announcement:
-      "The queue. Queueing searches for another player; a real match begins only after matchmaking succeeds. This tutorial does not enter the live queue.",
+      "The queue. Real Ranked starts only after matchmaking finds another player. The panel below is a local demonstration and does not enter the live queue.",
     timerMode: "paused",
     permittedEvents: ["SIMULATE_MATCHMAKING", "CONTINUE", "RESTART"],
     allowBack: true,
@@ -283,9 +271,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Recovery",
     title: "If your connection drops",
     body:
-      "An active match is server-authoritative. If your connection drops, Ranked attempts to restore the active match: locked answers stay locked, and refreshing never grants a free restart. Recovery should return you to the server-authoritative state. This panel demonstrates the intended recovery behavior — it is a local simulation, nothing is connected.",
+      "A live Ranked match is server-authoritative — the server, not your browser, holds the true match state. If your connection drops, Ranked is meant to reconnect you to that same active match: your locked answers stay locked, and refreshing never buys you a free restart. The panel below is a local demonstration of that intended recovery — nothing here is actually connected to a live match or recovery system yet.",
     announcement:
-      "Recovery. If your connection drops, Ranked attempts to restore the active match. Locked answers stay locked.",
+      "Recovery. A live match is server-authoritative; reconnecting restores it and locked answers stay locked. The panel below is a local demonstration only.",
     timerMode: "paused",
     permittedEvents: ["SIMULATE_DISCONNECT", "CONTINUE", "RESTART"],
     allowBack: true,
@@ -295,9 +283,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Ads & Pro",
     title: "Ads and Pro",
     body:
-      "Free players may see ads around Ranked. Ads should not cover active timed gameplay. Ad behavior is part of alpha testing, and Pro removes ads. This is purely informational — nothing here shows a live ad or touches your account.",
+      "Free players may see ads around Ranked, but ads will not cover active timed questions. Pro removes ads. This panel is informational and does not display a live ad.",
     announcement:
-      "Ads and Pro. Free players may see ads around Ranked; Pro removes them. Informational only.",
+      "Ads and Pro. Free players may see ads around Ranked but not over active timed questions; Pro removes ads. Informational only.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: true,
@@ -307,9 +295,9 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Done",
     title: "Tutorial complete",
     body:
-      "You've finished Ranked training. Nothing was saved and nothing counted toward rating, history, or progression — practice again any time, or head to the Ranked area when you're ready.",
+      "That's the whole tutorial. We save exactly one thing from this: a marker that you've finished, so you won't have to do it again. The Training Match itself was scripted practice — its HP, XP, damage, abilities, charges, answers, and how long it took aren't recorded anywhere. And none of it touched your Ranked rating, match history, or progression. You're ready for the real thing.",
     announcement:
-      "Tutorial complete. Nothing was saved. You can practice again or return to the Ranked area.",
+      "Tutorial complete. We save only a completion marker; the Training Match details aren't recorded, and your Ranked rating, history, and progression are unaffected.",
     timerMode: "paused",
     permittedEvents: ["RESTART"],
     allowBack: false,

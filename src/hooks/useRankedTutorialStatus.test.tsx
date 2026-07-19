@@ -101,6 +101,12 @@ describe("useRankedTutorialStatus — anonymous completion", () => {
     expect(mocks.updateArg?.ranked_tutorial_version).toBe(RANKED_TUTORIAL_VERSION);
     expect(mocks.updateArg?.ranked_tutorial_version).toBe(1);
     expect(typeof mocks.updateArg?.ranked_tutorial_completed_at).toBe("string");
+    // Only the two completion fields are ever written — no Training Match result
+    // details (HP, XP, answers, abilities, charges, damage, duration) are saved.
+    expect(Object.keys(mocks.updateArg ?? {}).sort()).toEqual([
+      "ranked_tutorial_completed_at",
+      "ranked_tutorial_version",
+    ]);
 
     // Same row now reads back completed → no longer required.
     await waitFor(() => expect(result.current.completed).toBe(true));

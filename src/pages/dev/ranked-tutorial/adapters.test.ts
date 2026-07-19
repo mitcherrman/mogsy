@@ -19,7 +19,7 @@ import { TutorialEvent, TutorialState } from "./types";
 const reduceAll = (events: TutorialEvent[], from?: TutorialState) =>
   events.reduce(tutorialReducer, from ?? initialTutorialState());
 
-const toRoundA = () => reduceAll([{ type: "BEGIN_TRAINING" }, { type: "CONTINUE" }]);
+const toRoundA = () => reduceAll([{ type: "CONTINUE" }]);
 
 const lockedRoundA = () =>
   reduceAll(

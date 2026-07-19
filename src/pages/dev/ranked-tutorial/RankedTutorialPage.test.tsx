@@ -52,7 +52,6 @@ const setTabHidden = (hidden: boolean) => {
 
 // --- Walk helpers (fireEvent.click on native buttons = keyboard operable) ----
 
-const begin = () => fireEvent.click(screen.getByTestId("begin-training"));
 const cont = () => fireEvent.click(screen.getByTestId("continue-step"));
 const pickAnswer = (label: string) =>
   fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
@@ -61,9 +60,8 @@ const reviewAndConfirm = () => {
   fireEvent.click(screen.getByTestId("confirm-button"));
 };
 
-/** welcome → answer_selection */
+/** timer_intro (Step 1) → answer_selection (Step 2) */
 const toRoundA = () => {
-  begin();
   cont();
 };
 
@@ -100,7 +98,7 @@ const completeFullMatch = (choice: "tank.brace" | "tank.barrier" = "tank.brace")
   act(() => {
     vi.advanceTimersByTime(1000); // Golem answers instantly: 35 → 30
   });
-  pickAnswer("The shop");
+  pickAnswer("Four");
   fireEvent.click(screen.getByTestId("ability-tank.fortify"));
   reviewAndConfirm();
   cont(); // reveal E
@@ -140,7 +138,7 @@ describe("shell on the canonical arena", () => {
     expect(screen.getByTestId(`combatant-${TUTORIAL_GOLEM_ID}`)).toHaveTextContent(
       "Training Golem",
     );
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 18");
     expect(screen.getByTestId("timer-paused")).toBeInTheDocument();
     expect(screen.getByTestId("timer-value")).toHaveTextContent("0:30");
   });
@@ -182,6 +180,27 @@ describe("canonical answer interaction", () => {
     pickAnswer("Five");
     fireEvent.click(screen.getByTestId("review-button"));
     expect(screen.getByTestId("confirm-button")).toBeEnabled();
+  });
+
+  it("locked step shows 'Reveal answers' and only advances on click — no auto-advance", () => {
+    vi.useFakeTimers();
+    renderPage();
+    toRoundA(); // → answer_selection (Step 2)
+    pickAnswer("Five");
+    reviewAndConfirm(); // → answer_locked (Step 3)
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 18");
+    const revealBtn = screen.getByTestId("continue-step");
+    expect(revealBtn).toHaveTextContent("Reveal answers");
+    // No timer, delay, or automatic transition: waiting reveals nothing.
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 18");
+    expect(screen.queryByTestId("reveal-panel")).toBeNull();
+    // Clicking dispatches the existing continuation → Round A resolves and advances.
+    fireEvent.click(revealBtn);
+    expect(screen.getByTestId("reveal-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 4 of 18");
   });
 
   it("opponent stays neutral pre-reveal; both sides appear together at reveal", () => {
@@ -321,8 +340,8 @@ describe("education panels and completion", () => {
     completeFullMatch("tank.barrier");
     throughEducation();
     fireEvent.click(screen.getByTestId("practice-again"));
-    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+    expect(screen.getByText("One shared timer")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 18");
     expect(screen.getByTestId(`xp-${TUTORIAL_PLAYER_ID}`)).toHaveTextContent("0 / 30 xp");
     const meters = screen.getAllByRole("meter");
     expect(meters[0]).toHaveAttribute("aria-valuenow", "170");
@@ -353,7 +372,7 @@ describe("hidden-tab timer pause/resume (focus loss never resets state)", () => 
     });
     expect(screen.getByTestId("timer-value")).toHaveTextContent("0:30"); // paused
     // State is fully intact — still the same step, HP/XP unchanged.
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 2 of 18");
     expect(screen.getByTestId(`xp-${TUTORIAL_PLAYER_ID}`)).toHaveTextContent("0 / 30 xp");
 
     // Tab visible again → timer resumes counting from where it paused.
@@ -367,31 +386,31 @@ describe("hidden-tab timer pause/resume (focus loss never resets state)", () => 
   it("hard refresh (fresh mount) restarts at Step 1 — documented behavior", () => {
     // Advance into the tutorial, then simulate a full page reload by remounting.
     // In-memory reducer state is intentionally NOT persisted this commit, so a
-    // reload starts over at the welcome step.
+    // reload starts over at the first numbered step (timer_intro).
     const { unmount } = renderPage();
     toRoundA();
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 2 of 18");
     unmount();
 
     renderPage(); // fresh mount == page reload
-    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+    expect(screen.getByText("One shared timer")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 18");
   });
 
   it("explicit Restart still resets to Step 1 mid-tutorial", () => {
     renderPage();
     toRoundA();
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 19");
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 2 of 18");
     fireEvent.click(screen.getByTestId("restart-tutorial"));
-    expect(screen.getByText("Welcome to Ranked training")).toBeInTheDocument();
-    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 19");
+    expect(screen.getByText("One shared timer")).toBeInTheDocument();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 1 of 18");
   });
 });
 
 describe("accessibility", () => {
   it("moves focus to the instruction area after a step transition", () => {
     renderPage();
-    begin();
+    cont();
     const live = screen.getByTestId("instruction-live");
     expect(document.activeElement?.contains(live)).toBe(true);
   });

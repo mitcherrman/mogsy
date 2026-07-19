@@ -10,7 +10,6 @@ import type { TutorialRoundId } from "./fixtures";
 
 /** Every step of the tutorial, in teaching order (see STEP_ORDER). */
 export type TutorialStepId =
-  | "welcome"
   | "timer_intro"
   | "answer_selection"
   | "answer_locked"
@@ -41,7 +40,6 @@ export type TutorialTimerMode = "paused" | "running" | "simulated";
 
 /** Events the machine understands. */
 export type TutorialEvent =
-  | { type: "BEGIN_TRAINING" }
   | { type: "CONTINUE" }
   | { type: "RESTART" }
   | { type: "TICK" }

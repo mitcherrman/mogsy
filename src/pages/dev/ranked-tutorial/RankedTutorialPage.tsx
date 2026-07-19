@@ -137,7 +137,6 @@ export default function RankedTutorialPage() {
         <div ref={instructionRef} tabIndex={-1} className="outline-none space-y-4">
           <InstructionPanel
             step={view.step}
-            onBegin={() => dispatch({ type: "BEGIN_TRAINING" })}
             onContinue={() => dispatch({ type: "CONTINUE" })}
             continueDisabled={
               (stepId === "both_correct_demo" ||
