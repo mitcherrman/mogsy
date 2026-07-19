@@ -128,6 +128,13 @@ export interface PublicActiveRound {
   readyToResolve: boolean;
 }
 
+/** Non-secret playtest metadata (prototype label only; never correctness). */
+export interface PlaytestMeta {
+  questionBankMode: string;
+  isPlaceholder: boolean;
+  isBotMatch: boolean;
+}
+
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
 export interface PublicRoundView {
   schemaVersion: string;
@@ -144,6 +151,7 @@ export interface PublicRoundView {
   question: PublicQuestionSource | null;
   progressionPendingPlayers: string[];
   presence: PresenceView | null;
+  playtest?: PlaytestMeta | null;
 }
 
 export interface PrivatePlayerView extends PublicRoundView {
@@ -266,6 +274,17 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
       ? strList(payload.progression_pending_players, "progression_pending_players") : [],
     presence: readPresence(payload.presence),
+    playtest: readPlaytest(payload.playtest),
+  };
+}
+
+function readPlaytest(v: unknown): PlaytestMeta | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  return {
+    questionBankMode: typeof o.question_bank_mode === "string" ? o.question_bank_mode : "production",
+    isPlaceholder: o.is_placeholder === true,
+    isBotMatch: o.is_bot_match === true,
   };
 }
 

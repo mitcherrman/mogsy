@@ -5,11 +5,21 @@
  * codes (never hidden-route security). No staff token or admin control is
  * ever exposed.
  */
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  BotDifficulty, createBotMatch, isAborted, RankedApiError,
+} from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RankedClass, useRankedQueue } from "./useRankedQueue";
+
+const BOT_DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
+  { id: "easy", label: "Easy" },
+  { id: "standard", label: "Standard" },
+  { id: "hard", label: "Hard" },
+];
 
 const CLASSES: { id: RankedClass; label: string; blurb: string }[] = [
   { id: "tank", label: "Tank", blurb: "Durable — forgiving abilities and extra HP." },
@@ -49,6 +59,36 @@ export default function QuizRankedPage() {
 
 function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   const q = useRankedQueue();
+  const [botMatchId, setBotMatchId] = useState<string | null>(null);
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("standard");
+  const [botBusy, setBotBusy] = useState(false);
+  const [botError, setBotError] = useState<string | null>(null);
+
+  async function startBotMatch() {
+    setBotBusy(true);
+    setBotError(null);
+    try {
+      const created = await createBotMatch(q.selectedClass ?? "tank", botDifficulty);
+      setBotMatchId(created.matchId);
+    } catch (e) {
+      if (isAborted(e)) return;
+      const msg = e instanceof RankedApiError
+        ? (e.code === "RANKED_BOT_NOT_ELIGIBLE"
+            ? "Bot playtest is limited to the ranked allowlist."
+            : e.code === "RANKED_BOT_DISABLED"
+              ? "Bot playtest is not currently enabled."
+              : e.message)
+        : "Could not start a bot match.";
+      setBotError(msg);
+    } finally {
+      setBotBusy(false);
+    }
+  }
+
+  // A launched bot match reuses the exact live-match view (no separate UI).
+  if (botMatchId) {
+    return <Frame><QuizRankedMatch matchId={botMatchId} viewerUserId={viewerUserId} /></Frame>;
+  }
 
   if (q.state === "matched" && q.matchId) {
     return <Frame><QuizRankedMatch matchId={q.matchId} viewerUserId={viewerUserId} /></Frame>;
@@ -93,6 +133,33 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
             {q.state === "joining" ? "Joining…" : "Join queue"}
           </Button>
           {q.error && <p className="text-xs text-destructive">{q.error}</p>}
+
+          <div data-testid="ranked-playtest-bot"
+            className="rounded-lg border border-dashed border-border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Playtest vs Bot</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Playtest · Placeholder questions
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Bot difficulty">
+              {BOT_DIFFICULTIES.map((d) => (
+                <button key={d.id} type="button"
+                  data-testid={`ranked-bot-difficulty-${d.id}`}
+                  aria-pressed={botDifficulty === d.id}
+                  onClick={() => setBotDifficulty(d.id)}
+                  className={`min-h-[36px] rounded-md border px-3 text-xs ${
+                    botDifficulty === d.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" data-testid="ranked-play-vs-bot"
+              disabled={botBusy} onClick={startBotMatch} className="w-full min-h-[44px]">
+              {botBusy ? "Starting…" : "Play vs Bot — Playtest"}
+            </Button>
+            {botError && <p data-testid="ranked-bot-error" className="text-xs text-destructive">{botError}</p>}
+          </div>
         </section>
       )}
 

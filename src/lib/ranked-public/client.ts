@@ -46,7 +46,16 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_ACTIVE_MATCH_EXISTS",
   "RANKED_QUESTION_POOL_UNAVAILABLE", "RANKED_CANNOT_CANCEL", "RANKED_INVALID_CLASS",
   "RANKED_RATE_LIMITED",
+  "RANKED_BOT_DISABLED", "RANKED_BOT_NOT_ELIGIBLE",
 ]);
+
+export interface BotMatchCreated {
+  matchId: string;
+  botDifficulty: string;
+  questionBankMode: string;
+}
+
+export type BotDifficulty = "easy" | "standard" | "hard";
 
 /** A 429 throttle is transient — back off and retry, never fatal. */
 export const isRateLimited = (e: unknown): boolean =>
@@ -139,6 +148,29 @@ export const joinQueue = (classId: string | null, signal?: AbortSignal): Promise
 
 export const getQueueStatus = (signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, { signal });
+
+/**
+ * Owner/staff-only "Play vs Bot" playtest match. Backend gates on the feature
+ * flag + ranked allowlist and returns typed 503/403 for anyone else; the
+ * client never asserts eligibility itself.
+ */
+export const createBotMatch = (
+  classId: string, difficulty: BotDifficulty | null, signal?: AbortSignal,
+): Promise<BotMatchCreated> =>
+  request("/api/ranked/bot-matches", (json) => {
+    const o = json as Record<string, unknown>;
+    const matchId = o.match_id;
+    if (typeof matchId !== "string") throw new Error("missing match_id");
+    return {
+      matchId,
+      botDifficulty: typeof o.bot_difficulty === "string" ? o.bot_difficulty : "standard",
+      questionBankMode: typeof o.question_bank_mode === "string" ? o.question_bank_mode : "placeholder",
+    };
+  }, {
+    method: "POST",
+    body: { class_id: classId, ...(difficulty ? { difficulty } : {}) },
+    signal,
+  });
 
 export const cancelQueue = (signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, { method: "DELETE", signal });
