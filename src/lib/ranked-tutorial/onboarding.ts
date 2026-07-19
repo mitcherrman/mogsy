@@ -36,12 +36,18 @@ export interface RankedTutorialEligibility {
 /**
  * Decide tutorial eligibility for an account. Pure function — no I/O.
  *
- * Required iff ALL hold:
- *  - there is a durable authenticated user,
+ * The Ranked Tutorial is now the first-visit onboarding experience, shown BEFORE
+ * account creation, so anonymous guests are gated by it too. Required iff ALL hold:
+ *  - there is an authenticated user (anonymous sessions included),
  *  - the profile row has loaded,
- *  - the account is NOT anonymous (guests have no durable identity to gate),
- *  - the profile-setup onboarding is already finished (the tutorial follows it),
  *  - the account has no completion stamp yet.
+ *
+ * Deliberately independent of `is_anonymous` and `onboarding_completed`:
+ *  - anonymous incomplete users MUST complete the tutorial (they can, and their
+ *    completion stamps their own profile row, carried forward on later upgrade);
+ *  - the tutorial no longer follows profile-setup onboarding, so that flag is not
+ *    a precondition here (the profile-setup handoff keeps its own guard in
+ *    `postProfileOnboardingDestination`).
  *
  * Grandfathered rows (version 0) carry a completion timestamp, so `completed` is
  * true and they are never required — exactly the no-lockout guarantee.
@@ -55,10 +61,7 @@ export function evaluateRankedTutorial(
   }
 
   const completed = profile.ranked_tutorial_completed_at != null;
-  const isAnonymous = profile.is_anonymous === true;
-  const profileOnboarded = profile.onboarding_completed === true;
-
-  const required = !completed && !isAnonymous && profileOnboarded;
+  const required = !completed;
   return { completed, required };
 }
 
@@ -74,6 +77,11 @@ export function evaluateRankedTutorial(
 export function postProfileOnboardingDestination(
   profile: RankedTutorialProfileFields | null,
 ): string | null {
+  // The profile-setup handoff must only fire once the setup write persisted:
+  // a failed write leaves `onboarding_completed` false, and we must not navigate
+  // prematurely. This guard is local to the handoff — general tutorial
+  // eligibility (evaluateRankedTutorial) no longer depends on this flag.
+  if (!profile || profile.onboarding_completed !== true) return null;
   return evaluateRankedTutorial(profile, { hasUser: true }).required
     ? RANKED_TUTORIAL_ROUTE
     : null;

@@ -12,6 +12,7 @@ import LolHub from "./LolHub";
 const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
   authUser: { id: "u1", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
+  tutorial: { loading: false, error: false, completed: true },
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -30,8 +31,17 @@ vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));
 vi.mock("@/components/lol/LolWelcomeIntro", () => ({
-  default: () => null,
-  hasSeenLolWelcome: () => true,
+  default: () => <div data-testid="lol-welcome-popup" />,
+}));
+vi.mock("@/hooks/useRankedTutorialStatus", () => ({
+  useRankedTutorialStatus: () => ({
+    loading: mocks.tutorial.loading,
+    error: mocks.tutorial.error,
+    completed: mocks.tutorial.completed,
+    required: !mocks.tutorial.completed,
+    refresh: vi.fn(),
+    completeTutorial: vi.fn(),
+  }),
 }));
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));
 vi.mock("@/lib/funnel-analytics", () => ({
@@ -68,6 +78,7 @@ function renderHub() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.authUser = { id: "u1", is_anonymous: false };
+  mocks.tutorial = { loading: false, error: false, completed: true };
 });
 afterEach(cleanup);
 
@@ -132,5 +143,73 @@ describe("LolHub — navigation structure", () => {
     renderHub();
     expect(mocks.trackFunnelEvent).toHaveBeenCalledWith("lol_landing_viewed");
     expect(screen.getByTestId("ad-lol_hub_mid")).toBeTruthy();
+  });
+});
+
+describe("LolHub — first-visit tutorial popup visibility", () => {
+  const SEEN_KEY = "mogsy.lolWelcome.seen.v1";
+
+  afterEach(() => {
+    try {
+      localStorage.clear();
+    } catch {
+      /* jsdom localStorage always present, guard for safety */
+    }
+  });
+
+  it("shows the popup to an anonymous user who has not completed the tutorial", () => {
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
+  });
+
+  it("still shows the popup even if the OLD popup was dismissed (localStorage ignored)", () => {
+    // Correction 5: a guest who dismissed the legacy popup must still be gated.
+    localStorage.setItem(SEEN_KEY, "1");
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
+  });
+
+  it("shows the popup again after abandoning the tutorial and returning to the hub", () => {
+    // First visit: popup shown.
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    const first = renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
+    // Leave the hub (abandon tutorial) then come back with still-incomplete status.
+    first.unmount();
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
+  });
+
+  it("hides the popup for an anonymous user who already completed the tutorial", () => {
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: true };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("hides the popup for a grandfathered / permanent completed account", () => {
+    mocks.authUser = { id: "u1", is_anonymous: false };
+    mocks.tutorial = { loading: false, error: false, completed: true };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("does not flash the popup while auth/tutorial status is still loading", () => {
+    mocks.authUser = null;
+    mocks.tutorial = { loading: true, error: false, completed: false };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("fails open (no popup) on a genuine profile-read error", () => {
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: true, completed: false };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
   });
 });
