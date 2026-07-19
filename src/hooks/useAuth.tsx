@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import {
+  initiateAnonymousEmailUpgrade,
+  type UpgradeResult,
+} from "@/lib/auth/account-upgrade";
 
 interface AuthContextType {
   user: User | null;
@@ -9,7 +13,14 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  linkAnonymousAccount: (email: string, password: string) => Promise<{ error: any }>;
+  /**
+   * Confirmation-aware anonymous -> permanent upgrade (Concern B). Attaches an
+   * email to the CURRENT anonymous user via updateUser and returns a pending
+   * result — it NEVER signs out, NEVER calls signUp(), and NEVER writes the
+   * profile. The account only becomes permanent after the emailed link is
+   * confirmed (handled by the /auth/callback route).
+   */
+  upgradeAnonymousEmail: (email: string, redirectTo: string) => Promise<UpgradeResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -90,22 +101,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const linkAnonymousAccount = async (email: string, password: string) => {
-    const { error } = await supabase.auth.updateUser({
-      email,
-      password,
-    });
-    if (!error) {
-      const userId = user?.id;
-      if (userId) {
-        await supabase.from("profiles").update({ is_anonymous: false }).eq("user_id", userId);
-      }
+  const upgradeAnonymousEmail = async (
+    email: string,
+    redirectTo: string,
+  ): Promise<UpgradeResult> => {
+    // Guard: only an authenticated anonymous user may be upgraded. Never fall
+    // back to signUp() and never sign out.
+    if (!user) {
+      return { ok: false, error: "No active session to upgrade. Please reload." };
     }
-    return { error };
+    if (user.is_anonymous !== true) {
+      return { ok: false, error: "This account is already registered." };
+    }
+    return initiateAnonymousEmailUpgrade({ userId: user.id, email, redirectTo });
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, linkAnonymousAccount }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signUp, signIn, signOut, upgradeAnonymousEmail }}
+    >
       {children}
     </AuthContext.Provider>
   );
