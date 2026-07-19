@@ -98,6 +98,11 @@ const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRun
 // Admin Directory — private grouped index of admin destinations (E3).
 const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
 
+// Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
+const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
+const CombatBattleDetail = lazy(() => import("./pages/CombatBattleDetail"));
+const CombatBattlesAdmin = lazy(() => import("./pages/admin/CombatBattlesAdmin"));
+
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
 
@@ -251,6 +256,9 @@ const App = () => (
                   </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
+                  <Route path="/lol/combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesIndex /></Suspense>} />
+                  <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
+                  <Route path="/admin/combat-battles" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense></AdminRoute>} />
                   <Route path="/onboarding/ranked-tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
