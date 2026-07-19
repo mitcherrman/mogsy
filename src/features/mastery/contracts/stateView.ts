@@ -27,6 +27,11 @@ export interface MasteryActiveEffectView {
   readonly unit: string | null;
 }
 
+export interface MasteryInventoryItemView {
+  readonly name: string;
+  readonly itemId: number | null;
+}
+
 export interface MasteryChampionView {
   readonly championId: string;
   readonly displayName: string | null;
@@ -38,6 +43,16 @@ export interface MasteryChampionView {
   readonly activeEffects: readonly MasteryActiveEffectView[];
   /** Display-only inventory item labels — never used for any calculation. */
   readonly inventorySummary: readonly string[];
+  // --- additive progression display fields (null/empty for sets that omit them,
+  //     e.g. the Ahri chain). All are backend-provided display facts. ---
+  readonly level: number | null;
+  readonly abilityRanks: Readonly<Record<string, number>>;
+  readonly abilityPower: number | null;
+  readonly gold: number | null;
+  readonly armor: number | null;
+  readonly magicResist: number | null;
+  readonly archetype: string | null;
+  readonly inventoryItems: readonly MasteryInventoryItemView[];
 }
 
 export interface MasteryStateView {
@@ -59,6 +74,27 @@ function readEffect(value: unknown, label: string): MasteryActiveEffectView {
   };
 }
 
+function readAbilityRanks(value: unknown, label: string): Record<string, number> {
+  if (value === undefined || value === null) return {};
+  const r = rec(value, label);
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(r)) {
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  }
+  return out;
+}
+
+function readInventoryItems(value: unknown, label: string): MasteryInventoryItemView[] {
+  const items = arr(value ?? [], label);
+  return items.map((it, i) => {
+    const o = rec(it, `${label}[${i}]`);
+    return {
+      name: nstr(o.name, `${label}[${i}].name`) ?? "",
+      itemId: nnum(o.item_id, `${label}[${i}].item_id`),
+    };
+  });
+}
+
 function readChampion(value: unknown, label: string): MasteryChampionView {
   const c = rec(value, label);
   const effects = arr(c.active_effects ?? [], `${label}.active_effects`);
@@ -72,6 +108,14 @@ function readChampion(value: unknown, label: string): MasteryChampionView {
     maxResource: nnum(c.max_resource, `${label}.max_resource`),
     activeEffects: effects.map((e, i) => readEffect(e, `${label}.active_effects[${i}]`)),
     inventorySummary: strList(c.inventory_summary ?? [], `${label}.inventory_summary`),
+    level: nnum(c.level, `${label}.level`),
+    abilityRanks: readAbilityRanks(c.ability_ranks, `${label}.ability_ranks`),
+    abilityPower: nnum(c.ability_power, `${label}.ability_power`),
+    gold: nnum(c.gold, `${label}.gold`),
+    armor: nnum(c.armor, `${label}.armor`),
+    magicResist: nnum(c.magic_resist, `${label}.magic_resist`),
+    archetype: nstr(c.archetype, `${label}.archetype`),
+    inventoryItems: readInventoryItems(c.inventory_items, `${label}.inventory_items`),
   };
 }
 

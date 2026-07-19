@@ -16,6 +16,7 @@ import {
   intIndex,
   nnum,
   nonEmptyStr,
+  nstr,
   oneOf,
   rec,
   str,
@@ -37,6 +38,10 @@ export interface MasteryMatchupIdentity {
   readonly championA: string;
   readonly championB: string;
   readonly focus: string;
+  /** Player-facing friendly names (backend `champion_display_names` contract).
+   *  Null for older projections; callers fall back to a formatted id. */
+  readonly championADisplay: string | null;
+  readonly championBDisplay: string | null;
 }
 
 export interface NumericInputConstraints {
@@ -93,6 +98,8 @@ function readMatchup(value: unknown, label: string): MasteryMatchupIdentity {
     championA: nonEmptyStr(m.champion_a, `${label}.champion_a`),
     championB: nonEmptyStr(m.champion_b, `${label}.champion_b`),
     focus: str(m.focus, `${label}.focus`),
+    championADisplay: nstr(m.champion_a_display, `${label}.champion_a_display`),
+    championBDisplay: nstr(m.champion_b_display, `${label}.champion_b_display`),
   };
 }
 

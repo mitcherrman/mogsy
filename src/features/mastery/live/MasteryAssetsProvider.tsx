@@ -44,6 +44,10 @@ export function MasteryAssetsProvider({ children }: { children: ReactNode }) {
       championIconUrl: (championId, displayName) =>
         getChampionIcon(manifest, displayName ?? championName(championId)) ??
         getChampionIcon(manifest, championName(championId)),
+      // Item icons follow the same backend asset convention as the quiz surfaces
+      // (assets/items/{id}.png). A missing asset falls back at the <img> level.
+      itemIconUrl: (itemId) =>
+        itemId === null || itemId === undefined ? null : `${API_BASE}/assets/items/${itemId}.png`,
     }),
     [manifest],
   );
