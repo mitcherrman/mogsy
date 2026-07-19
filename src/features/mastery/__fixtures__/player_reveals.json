@@ -1,0 +1,712 @@
+[
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 0,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "cooldown_comparison",
+      "player_answer": 3,
+      "authoritative_correctness": true,
+      "correct_answer": 3,
+      "explanation": "Ahri E 12 s vs Syndra E 15 s; difference is 3 seconds.",
+      "calculation_steps": [
+        {
+          "order": 1,
+          "description": "Ahri E final cooldown (certified base 12.0, haste 0.0)",
+          "expression": "final_cooldown(12.0, 0.0)",
+          "result": 12
+        },
+        {
+          "order": 2,
+          "description": "Syndra E final cooldown (certified base 15.0, haste 0.0)",
+          "expression": "final_cooldown(15.0, 0.0)",
+          "result": 15
+        },
+        {
+          "order": 3,
+          "description": "Absolute cooldown difference",
+          "expression": "abs(12.0 - 15.0)",
+          "result": 3
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "Initial state",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "Initial state",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "state_unchanged",
+        "label": "State unchanged — read-only question"
+      },
+      "proposed_transition": null,
+      "completion_state": {
+        "is_final_step": false,
+        "set_completed": false
+      }
+    }
+  },
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 1,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "cooldown_with_haste",
+      "player_answer": 10,
+      "authoritative_correctness": true,
+      "correct_answer": 10,
+      "explanation": "12 * 100 / (100 + 20) = 10 seconds.",
+      "calculation_steps": [
+        {
+          "order": 1,
+          "description": "Cooldown reduction multiplier from ability haste",
+          "expression": "100 / (100 + 20.0)",
+          "result": 0.8333333333333334
+        },
+        {
+          "order": 2,
+          "description": "Final cooldown after haste",
+          "expression": "12.0 * 0.8333333333333334",
+          "result": 10
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_257350f8b649e44f6c90609da32c36da39c051d0fb493f9391190f40ea334e0a",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "Initial state",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "authored_effect",
+        "transition_id": "txn_2419e8cc94d889e15031d24ac02c51f533a675c17a73dc69cd781abd79da4e5a",
+        "target": "A",
+        "label": "Authored +20 ability haste applied to Ahri",
+        "effect": "ability_haste",
+        "magnitude": 20,
+        "unit": "ability_haste",
+        "applied": true
+      },
+      "proposed_transition": null,
+      "completion_state": {
+        "is_final_step": false,
+        "set_completed": false
+      }
+    }
+  },
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 2,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "cooldown_comparison",
+      "player_answer": 5,
+      "authoritative_correctness": true,
+      "correct_answer": 5,
+      "explanation": "Ahri E 10 s vs Syndra E 15 s; difference is 5 seconds.",
+      "calculation_steps": [
+        {
+          "order": 1,
+          "description": "Ahri E final cooldown (certified base 12.0, haste 20.0)",
+          "expression": "final_cooldown(12.0, 20.0)",
+          "result": 10
+        },
+        {
+          "order": 2,
+          "description": "Syndra E final cooldown (certified base 15.0, haste 0.0)",
+          "expression": "final_cooldown(15.0, 0.0)",
+          "result": 15
+        },
+        {
+          "order": 3,
+          "description": "Absolute cooldown difference",
+          "expression": "abs(10.0 - 15.0)",
+          "result": 5
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "state_unchanged",
+        "label": "State unchanged — read-only question"
+      },
+      "proposed_transition": null,
+      "completion_state": {
+        "is_final_step": false,
+        "set_completed": false
+      }
+    }
+  },
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 3,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "raw_single_type_damage",
+      "player_answer": 325,
+      "authoritative_correctness": true,
+      "correct_answer": 325,
+      "explanation": "240 base + 0.85 * 100 AP = 325 magic damage.",
+      "calculation_steps": [
+        {
+          "order": 1,
+          "description": "Certified Ahri E base magic damage at rank 5",
+          "expression": "240.0",
+          "result": 240
+        },
+        {
+          "order": 2,
+          "description": "Add certified AP scaling",
+          "expression": "240.0 + 0.85 * 100",
+          "result": 325
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "state_unchanged",
+        "label": "State unchanged — read-only question"
+      },
+      "proposed_transition": null,
+      "completion_state": {
+        "is_final_step": false,
+        "set_completed": false
+      }
+    }
+  },
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 4,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "health_remaining",
+      "player_answer": 230,
+      "authoritative_correctness": true,
+      "correct_answer": 230,
+      "explanation": "The hit deals 250 post-mitigation magic damage; 480 - 250 = 230 health remaining.",
+      "calculation_steps": [
+        {
+          "order": 7,
+          "description": "Post-mitigation damage",
+          "expression": "325.0 * 0.7692307692307693",
+          "result": 250
+        },
+        {
+          "order": 8,
+          "description": "Health remaining (floored at zero)",
+          "expression": "max(0, 480.0 - 250.0)",
+          "result": 230
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_35494d698025bab89ac03ee1dbd862924bb07ae190efbf69510db6acb14ab49e",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After authored +20 ability haste on Ahri",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 480,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After the first Ahri E hit",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 230,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "health_change",
+        "transition_id": "txn_07527993aaa9365bbcba861d5182b715e0c52a965471fbc3e533213547a16465",
+        "target": "B",
+        "label": "Ahri E first hit applied to Syndra",
+        "before_value": 480,
+        "after_value": 230,
+        "delta": -250,
+        "unit": "health",
+        "applied": true
+      },
+      "proposed_transition": null,
+      "completion_state": {
+        "is_final_step": false,
+        "set_completed": false
+      }
+    }
+  },
+  {
+    "projection_type": "mastery_player_reveal",
+    "schema_version": "mastery-player-reveal.v1",
+    "data": {
+      "session_id": "msess_fixture_ahri_syndra_001",
+      "mastery_set_id": "mset_aaf6c0553e4d9339ea3295317275e116f2ef0a8f867a34302675f2dea5abc83c",
+      "artifact_digest": "martifact_a91f1584089d0c1d2ef4a14c35ad071bcccf5e473f6d50ebb76206870465fe90",
+      "display_revision": "disprev_ahri-syndra-e.v1",
+      "sequence_index": 5,
+      "source_summary": {
+        "label": "Riot DataDragon 16.12.1 + certified spreadsheet revisions",
+        "source_count": 3
+      },
+      "next_step_ready": true,
+      "question_family": "health_remaining",
+      "player_answer": true,
+      "authoritative_correctness": true,
+      "correct_answer": true,
+      "explanation": "230 - 250 = -20; health floors at 0, so the target reaches 0 (overkill 20).",
+      "calculation_steps": [
+        {
+          "order": 7,
+          "description": "Post-mitigation damage",
+          "expression": "325.0 * 0.7692307692307693",
+          "result": 250
+        },
+        {
+          "order": 8,
+          "description": "Raw remaining health",
+          "expression": "230.0 - 250.0",
+          "result": -20
+        },
+        {
+          "order": 9,
+          "description": "Health remaining (floored at zero)",
+          "expression": "max(0, -20.0)",
+          "result": 0
+        },
+        {
+          "order": 10,
+          "description": "Overkill",
+          "expression": "abs(min(0, -20.0))",
+          "result": 20
+        }
+      ],
+      "before_state": {
+        "snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After the first Ahri E hit",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 230,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "after_state": {
+        "snapshot_id": "snap_09d53f93703b788e02a33e5e7a01522ad8dfbf6a2145e6d26170e2f2665e4d20",
+        "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+        "validation_status": "certified",
+        "label": "After the first Ahri E hit",
+        "champion_a": {
+          "champion_id": "ahri",
+          "display_name": "Ahri",
+          "current_health": 590,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [
+            {
+              "effect_id": "mastery.authored.ability_haste.scenario.v1",
+              "label": "Ability Haste +20 (authored)",
+              "magnitude": 20,
+              "unit": "ability_haste"
+            }
+          ],
+          "inventory_summary": []
+        },
+        "champion_b": {
+          "champion_id": "syndra",
+          "display_name": "Syndra",
+          "current_health": 230,
+          "max_health": null,
+          "resource_type": "mana",
+          "current_resource": 400,
+          "max_resource": null,
+          "active_effects": [],
+          "inventory_summary": []
+        }
+      },
+      "applied_transition": {
+        "classification": "state_unchanged",
+        "label": "State unchanged — read-only question"
+      },
+      "proposed_transition": {
+        "classification": "health_change",
+        "transition_id": "txn_07527993aaa9365bbcba861d5182b715e0c52a965471fbc3e533213547a16465",
+        "target": "B",
+        "label": "Proposed second Ahri E hit (not applied — chain ends)",
+        "before_value": 230,
+        "after_value": 0,
+        "delta": -250,
+        "unit": "health",
+        "applied": false
+      },
+      "completion_state": {
+        "is_final_step": true,
+        "set_completed": true
+      }
+    }
+  }
+]
