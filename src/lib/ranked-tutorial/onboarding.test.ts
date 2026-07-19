@@ -35,17 +35,33 @@ describe("evaluateRankedTutorial", () => {
     expect(r).toEqual({ completed: true, required: false });
   });
 
-  it("exempts anonymous guests even when incomplete", () => {
+  it("requires an anonymous guest who has not completed the tutorial", () => {
+    // The tutorial is now first-visit onboarding, before account creation, so
+    // anonymous incomplete users are gated by it.
     const r = evaluateRankedTutorial({ ...base, is_anonymous: true }, { hasUser: true });
-    expect(r).toEqual({ completed: false, required: false });
+    expect(r).toEqual({ completed: false, required: true });
   });
 
-  it("does not gate until profile-setup onboarding is finished", () => {
+  it("exempts an anonymous guest who already completed the tutorial", () => {
+    const r = evaluateRankedTutorial(
+      {
+        ...base,
+        is_anonymous: true,
+        ranked_tutorial_completed_at: "2026-07-18T00:00:00Z",
+        ranked_tutorial_version: 1,
+      },
+      { hasUser: true },
+    );
+    expect(r).toEqual({ completed: true, required: false });
+  });
+
+  it("ignores profile-setup onboarding state for eligibility", () => {
+    // onboarding_completed is no longer a precondition — the tutorial precedes it.
     const r = evaluateRankedTutorial(
       { ...base, onboarding_completed: false },
       { hasUser: true },
     );
-    expect(r).toEqual({ completed: false, required: false });
+    expect(r).toEqual({ completed: false, required: true });
   });
 
   it("does not require an unauthenticated visitor", () => {
@@ -78,8 +94,12 @@ describe("postProfileOnboardingDestination", () => {
     ).toBeNull();
   });
 
-  it("does not force an anonymous guest into durable onboarding", () => {
-    expect(postProfileOnboardingDestination({ ...base, is_anonymous: true })).toBeNull();
+  it("sends an anonymous guest who finished profile-setup into the tutorial", () => {
+    // If a guest somehow reaches the profile-setup handoff without having
+    // completed the tutorial, the tutorial still gates them (first-visit model).
+    expect(postProfileOnboardingDestination({ ...base, is_anonymous: true })).toBe(
+      RANKED_TUTORIAL_ROUTE,
+    );
   });
 
   it("does not navigate when the profile-onboarding write did not persist", () => {

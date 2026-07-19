@@ -14,7 +14,8 @@ import LolPopoutStyleToggle from "@/components/lol/LolPopoutStyleToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { markHubVisited } from "@/lib/quiz/onboarding-gate";
-import LolWelcomeIntro, { hasSeenLolWelcome } from "@/components/lol/LolWelcomeIntro";
+import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
+import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { playUiSfx } from "@/lib/ui-sfx";
 
@@ -117,9 +118,14 @@ export default function LolHub() {
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const isAnonymous = !user || user.is_anonymous === true;
-  // First-visit guest welcome — decided once on mount so signing in
-  // anonymously mid-session doesn't pop it up again.
-  const [showWelcome] = useState(() => isAnonymous && !hasSeenLolWelcome());
+  // First-visit tutorial onboarding. Authoritative source is the profile's
+  // tutorial-completion state, NOT localStorage: show the popup to an anonymous
+  // user who has not completed the tutorial, once status has finished loading.
+  // Fail-open on a genuine read error (don't trap the user behind a
+  // non-dismissible popup); loading is distinct from error and simply waits.
+  const { loading: tutorialLoading, completed: tutorialCompleted, error: tutorialError } =
+    useRankedTutorialStatus();
+  const showWelcome = !tutorialLoading && !tutorialError && isAnonymous && !tutorialCompleted;
 
   // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
   useEffect(() => {
