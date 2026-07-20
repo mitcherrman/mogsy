@@ -54,6 +54,58 @@ const RECALL_STATE = {
   },
 };
 
+// A Jarvan-style PHYSICAL state carries the attack-damage model + target armor.
+const JARVAN_STATE = {
+  snapshot_id: "snap_jarvan_l6",
+  patch_key_digest: "patchkey_x",
+  validation_status: "certified",
+  label: "Level 6 — Cataclysm vs a standard bruiser",
+  champion_a: {
+    champion_id: "jarvan",
+    display_name: "Jarvan IV",
+    current_health: 1160,
+    max_health: null,
+    resource_type: "mana",
+    current_resource: 500,
+    max_resource: null,
+    active_effects: [],
+    inventory_summary: ["Pickaxe"],
+    level: 6,
+    ability_ranks: { Q: 3, R: 1 },
+    ability_power: null,
+    base_attack_damage: 75.85,
+    bonus_attack_damage: 25,
+    total_attack_damage: 100.85,
+    gold: 25,
+    armor: null,
+    magic_resist: null,
+    archetype: null,
+    inventory_items: [{ name: "Pickaxe", item_id: 1037 }],
+  },
+  champion_b: {
+    champion_id: "target_standard_bruiser",
+    display_name: "Standard level-6 bruiser target",
+    current_health: 1200,
+    max_health: null,
+    resource_type: null,
+    current_resource: null,
+    max_resource: null,
+    active_effects: [],
+    inventory_summary: [],
+    level: 6,
+    ability_ranks: {},
+    ability_power: null,
+    base_attack_damage: null,
+    bonus_attack_damage: null,
+    total_attack_damage: null,
+    gold: null,
+    armor: 55,
+    magic_resist: 40,
+    archetype: "bruiser",
+    inventory_items: [],
+  },
+};
+
 // An Ahri-style state omits all progression fields.
 const AHRI_STATE = {
   snapshot_id: "snap_ahri",
@@ -91,6 +143,26 @@ describe("MasteryStatePanel progression display", () => {
     // With no assets provider the pure context resolver returns null, so the
     // shared portrait renders its text-badge fallback (never a broken image).
     expect(screen.getByTestId("mastery-portrait-fallback-syndra")).toBeTruthy();
+  });
+
+  it("renders the physical attack-damage model (base/bonus/total) and target armor", () => {
+    const view = readStateView(JARVAN_STATE);
+    expect(view.championA.baseAttackDamage).toBe(75.85);
+    expect(view.championA.bonusAttackDamage).toBe(25);
+    expect(view.championA.totalAttackDamage).toBe(100.85);
+    expect(view.championA.abilityPower).toBeNull();
+    expect(view.championB.armor).toBe(55);
+
+    render(<MasteryStatePanel state={view} />);
+    const ad = screen.getByTestId("mastery-ad-jarvan");
+    // total AD rounded, with the base+bonus breakdown.
+    expect(ad.textContent).toContain("101");
+    expect(ad.textContent).toContain("76");
+    expect(ad.textContent).toContain("25");
+    // no AP stat for a physical-only champion.
+    expect(screen.getByTestId("mastery-progression-jarvan").textContent).not.toContain("AP");
+    // target armor renders on champion_b's block.
+    expect(screen.getByTestId("mastery-progression-target_standard_bruiser").textContent).toContain("55");
   });
 
   it("does not render a progression block for a set without progression fields", () => {

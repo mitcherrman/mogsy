@@ -24,6 +24,7 @@ import { effectLabel, humanizeResource } from "./playerFormat";
 function hasProgression(c: MasteryChampionView): boolean {
   return (
     c.abilityPower !== null ||
+    c.totalAttackDamage !== null ||
     c.gold !== null ||
     c.archetype !== null ||
     c.inventoryItems.length > 0
@@ -84,6 +85,19 @@ function ProgressionDetails({ champion }: { champion: MasteryChampionView }) {
         )}
         {champion.abilityPower !== null && champion.abilityPower > 0 && (
           <span>AP <span className="font-medium text-foreground">{champion.abilityPower}</span></span>
+        )}
+        {champion.totalAttackDamage !== null && (
+          <span data-testid={`mastery-ad-${champion.championId}`}>
+            AD <span className="font-medium text-foreground">{Math.round(champion.totalAttackDamage)}</span>
+            {champion.baseAttackDamage !== null &&
+              champion.bonusAttackDamage !== null &&
+              champion.bonusAttackDamage > 0 && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  ({Math.round(champion.baseAttackDamage)}+{Math.round(champion.bonusAttackDamage)})
+                </span>
+              )}
+          </span>
         )}
         {champion.gold !== null && (
           <span data-testid={`mastery-gold-${champion.championId}`}>
