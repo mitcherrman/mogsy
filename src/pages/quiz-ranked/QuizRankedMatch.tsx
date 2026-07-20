@@ -17,7 +17,7 @@ import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDispla
 import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import {
   opponentPresenceLabel, projectAbilities, projectCombatants, projectPermissions,
-  projectQuestion, projectTimer,
+  projectQuestion, projectScenarioSource, projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
 
@@ -38,6 +38,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     [m.publicRound, viewerUserId]);
   const question = useMemo(
     () => (m.publicRound ? projectQuestion(m.publicRound) : null), [m.publicRound]);
+  // Optional rich-visual source (question-safe, pre-reveal). Null → text
+  // fallback. No reveal is passed here, so the surface stays spoiler-safe.
+  const scenarioSource = useMemo(
+    () => (m.publicRound ? projectScenarioSource(m.publicRound) : null), [m.publicRound]);
   const abilities = useMemo(
     () => (m.privatePlayer ? projectAbilities(m.privatePlayer, m.selectedAbilityId) : []),
     [m.privatePlayer, m.selectedAbilityId]);
@@ -132,6 +136,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                 permissions={permissions}
                 onSelectOption={(o) => m.selectOption(o.id)}
                 variant="competitive"
+                scenarioSource={scenarioSource}
               />
             </section>
           )}

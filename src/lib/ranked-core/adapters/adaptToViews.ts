@@ -212,12 +212,18 @@ export const answerOptionId = (index: number): string => String(index);
 /**
  * Structural input for question projection — satisfied by the staff duel's
  * tolerant PublicQuestion without ranked-core importing staff-only modules.
+ *
+ * `presentation` is OPTIONAL, question-safe rich-visual metadata (a
+ * Quiz/Broadcast-compatible `metadata` object) transported from the backend so
+ * a scenario adapter can build a `ScenarioSource` for InteractiveScenarioSurface.
+ * It never carries the correct answer; absent → text-only fallback.
  */
 export interface PublicQuestionSource {
   questionId: string;
   prompt: string;
   options: string[];
   category: string | null;
+  presentation?: Record<string, unknown> | null;
 }
 
 /**
