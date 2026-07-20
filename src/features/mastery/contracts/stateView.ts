@@ -48,6 +48,10 @@ export interface MasteryChampionView {
   readonly level: number | null;
   readonly abilityRanks: Readonly<Record<string, number>>;
   readonly abilityPower: number | null;
+  /** Attack-damage model (physical champions). base + bonus = total. */
+  readonly baseAttackDamage: number | null;
+  readonly bonusAttackDamage: number | null;
+  readonly totalAttackDamage: number | null;
   readonly gold: number | null;
   readonly armor: number | null;
   readonly magicResist: number | null;
@@ -111,6 +115,9 @@ function readChampion(value: unknown, label: string): MasteryChampionView {
     level: nnum(c.level, `${label}.level`),
     abilityRanks: readAbilityRanks(c.ability_ranks, `${label}.ability_ranks`),
     abilityPower: nnum(c.ability_power, `${label}.ability_power`),
+    baseAttackDamage: nnum(c.base_attack_damage, `${label}.base_attack_damage`),
+    bonusAttackDamage: nnum(c.bonus_attack_damage, `${label}.bonus_attack_damage`),
+    totalAttackDamage: nnum(c.total_attack_damage, `${label}.total_attack_damage`),
     gold: nnum(c.gold, `${label}.gold`),
     armor: nnum(c.armor, `${label}.armor`),
     magicResist: nnum(c.magic_resist, `${label}.magic_resist`),
