@@ -37,6 +37,14 @@ const DEFAULT_HEADING: Record<MatchResult, string> = {
   draw: "Draw",
 };
 
+// Result-driven banner styling (never mode identity). Literal hex so the banner
+// reads premium under the /quiz theme AND in the dev inspector alike.
+const RESULT_STYLE: Record<MatchResult, { eyebrow: string; heading: string }> = {
+  victory: { eyebrow: "text-[#f0d78c]", heading: "ranked-title text-[#f5e6b8]" },
+  defeat: { eyebrow: "text-rose-300/80", heading: "text-rose-200" },
+  draw: { eyebrow: "text-[#7fd6ef]", heading: "text-slate-100" },
+};
+
 export function MatchOverFrame({
   result,
   player,
@@ -54,8 +62,10 @@ export function MatchOverFrame({
       data-result={result}
       className="space-y-4"
     >
-      <header className="text-center space-y-1">
-        <h2 className="text-2xl font-bold" data-testid="match-over-heading">
+      <header className="ranked-panel px-4 py-6 text-center space-y-1">
+        <div className={`ranked-eyebrow ${RESULT_STYLE[result].eyebrow}`}>Match Complete</div>
+        <h2 className={`text-3xl font-black uppercase tracking-[0.06em] ${RESULT_STYLE[result].heading}`}
+          data-testid="match-over-heading">
           {heading ?? DEFAULT_HEADING[result]}
         </h2>
         {subheading && (

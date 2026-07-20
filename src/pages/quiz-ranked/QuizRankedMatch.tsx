@@ -57,7 +57,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     );
   }
   if (!m.publicRound || !combatants) {
-    return <p data-testid="ranked-recovering" className="text-sm text-muted-foreground">Recovering match…</p>;
+    return (
+      <section data-testid="ranked-recovering" className="ranked-shell">
+        <div className="ranked-panel p-6 text-center space-y-1">
+          <div className="ranked-eyebrow ranked-eyebrow--cyan">Ranked Duel</div>
+          <p className="text-sm text-muted-foreground">Recovering match…</p>
+        </div>
+      </section>
+    );
   }
 
   if (m.phase === "match_over") {
@@ -69,7 +76,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       ? (won ? "Opponent forfeited." : "You forfeited.")
       : reason === "no_contest" ? "No contest — both players left." : undefined;
     return (
-      <div className="space-y-4" data-testid="ranked-match-over">
+      <div className="ranked-shell space-y-4" data-testid="ranked-match-over">
         <MatchOverFrame result={result} player={combatants.player} opponent={combatants.opponent}
           subheading={subheading}
           primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
@@ -88,17 +95,36 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     m.phase === "locked" ? "locked" : m.phase === "reviewing" ? "reviewing" : "selecting";
   const permissions = projectPermissions(subPhase, inputOpen, m.submitting);
 
+  // Stable round header. `activeRound` briefly reports null between rounds; the
+  // sticky `roundNumber` keeps the last shown round so the header never blanks
+  // to "Round —". During that gap (input phases only) we show an intentional
+  // "Preparing next round…" transition instead of a malformed header/empty timer.
+  const roundLabel = m.roundNumber !== null ? `Round ${m.roundNumber}` : "Preparing match…";
+  const inTransition = !timer && m.phase !== "progression";
+
   return (
-    <div className="space-y-4" data-testid="ranked-match">
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold">Round {m.publicRound.activeRound?.roundNumber ?? "—"}</h3>
-          {timer && <TimerDisplay timer={timer} label="Shared round timer" />}
+    <div className="ranked-shell space-y-4" data-testid="ranked-match">
+      <section className="ranked-panel p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="ranked-eyebrow">
+              Ranked Duel{m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}
+            </div>
+            <h3 className="ranked-title text-lg font-bold">{roundLabel}</h3>
+          </div>
+          {timer ? (
+            <TimerDisplay timer={timer} label="Shared round timer" />
+          ) : inTransition ? (
+            <span data-testid="ranked-round-transition"
+              className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
+              Preparing next round…
+            </span>
+          ) : null}
         </div>
         {m.publicRound.playtest?.isPlaceholder && (
           <p data-testid="ranked-playtest-label"
-            className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Ranked Playtest{m.publicRound.playtest.isBotMatch ? " · vs Bot" : ""} · Placeholder questions
+            className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Playtest · Placeholder questions
           </p>
         )}
         {opponentLabel && (
@@ -129,7 +155,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       ) : (
         <>
           {question && (
-            <section data-testid="ranked-question" className="rounded-lg border border-border bg-card p-4">
+            <section data-testid="ranked-question" className="ranked-panel p-4">
               <InteractiveScenarioSurface
                 question={question}
                 selectedOptionId={m.selectedOptionId}
@@ -141,12 +167,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             </section>
           )}
           {m.privatePlayer && (
-            <section data-testid="ranked-abilities" className="rounded-lg border border-border bg-card p-4">
+            <section data-testid="ranked-abilities" className="ranked-panel p-4 space-y-2">
+              <div className="ranked-eyebrow ranked-eyebrow--cyan">Abilities</div>
               <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
                 permissions={permissions} onSelectAbility={m.selectAbility} />
             </section>
           )}
-          <section className="rounded-lg border border-border bg-card p-4">
+          <section className="ranked-panel p-4">
             <SubmissionReview
               submission={{ selectedOptionId: m.selectedOptionId, selectedAbilityId: m.selectedAbilityId, phase: subPhase }}
               answerLabel={selectedOption?.label ?? null}

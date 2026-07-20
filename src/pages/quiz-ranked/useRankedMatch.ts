@@ -33,6 +33,13 @@ export type MatchPhase =
 export interface MatchController {
   phase: MatchPhase;
   publicRound: PublicRoundView | null;
+  /**
+   * Sticky round number for the arena header. Holds the last observed active
+   * round so the header never blanks to "Round —" during the brief transition
+   * window where the backend reports `activeRound === null` between rounds.
+   * null only before the very first round is seen (→ show a "preparing" state).
+   */
+  roundNumber: number | null;
   privatePlayer: PrivatePlayerView | null;
   lastResolved: ResolvedRoundView | null;
   result: MatchResultView | null;
@@ -55,6 +62,7 @@ export interface MatchController {
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string): MatchController {
   const [publicRound, setPublicRound] = useState<PublicRoundView | null>(null);
+  const [roundNumber, setRoundNumber] = useState<number | null>(null);
   const [privatePlayer, setPrivatePlayer] = useState<PrivatePlayerView | null>(null);
   const [lastResolved, setLastResolved] = useState<ResolvedRoundView | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
@@ -132,7 +140,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
         // A new round: clear the previous round's local selection.
         setSelectedOptionId(null); setSelectedAbilityId(null); setReviewing(false);
       }
-      if (active !== null) activeRoundRef.current = active;
+      if (active !== null) {
+        activeRoundRef.current = active;
+        setRoundNumber(active); // sticky: never blanks during the between-rounds gap
+      }
       setPublicRound(pub);
       setError(null);
       failuresRef.current = 0;
@@ -180,6 +191,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     stoppedRef.current = false;
     activeRoundRef.current = null;
     resolvedRef.current = null;
+    setRoundNumber(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -190,6 +202,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
         setResult(resume.result);
         setSkewMs(snapshotSkewMs(resume.serverTime, Date.now()));
         activeRoundRef.current = resume.public.activeRound?.roundNumber ?? null;
+        if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
         if (resume.latestResolved) {
           try {
             setLastResolved(adaptBackendSettlement(
@@ -254,7 +267,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   }, [matchId, submitting, poke]);
 
   return {
-    phase, publicRound, privatePlayer, lastResolved, result,
+    phase, publicRound, roundNumber, privatePlayer, lastResolved, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, actionError, error,
     selectOption, selectAbility, review, edit, confirm, chooseLevelTwo,

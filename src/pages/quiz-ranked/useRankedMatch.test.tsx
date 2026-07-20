@@ -8,7 +8,7 @@ vi.mock("@/lib/backend-auth", () => ({
 import { useRankedMatch } from "./useRankedMatch";
 import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 
-interface Backend { submissions: unknown[]; resumeCalls: number }
+interface Backend { submissions: unknown[]; resumeCalls: number; publicOverride: unknown | null }
 let backend: Backend;
 
 const json = (body: unknown, status = 200) =>
@@ -29,7 +29,7 @@ function resumeEnvelope() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-07-18T12:00:05Z"));
-  backend = { submissions: [], resumeCalls: 0 };
+  backend = { submissions: [], resumeCalls: 0, publicOverride: null };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
     const method = init.method ?? "GET";
@@ -37,7 +37,8 @@ beforeEach(() => {
     if (u.endsWith("/private")) return json(privatePlayerV2("userA"));
     if (u.includes("/submission")) { backend.submissions.push(JSON.parse(init.body as string)); return json({ status: "accepted" }); }
     if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
-    if (/\/matches\/m1$/.test(u) && method === "GET") return json(publicRoundV2());
+    if (/\/matches\/m1$/.test(u) && method === "GET")
+      return json(backend.publicOverride ?? publicRoundV2());
     return json({}, 200);
   }) as unknown as typeof fetch);
 });
@@ -79,6 +80,27 @@ describe("useRankedMatch", () => {
     act(() => result.current.edit());
     expect(result.current.phase).toBe("active");
     expect(backend.submissions).toHaveLength(0);
+  });
+
+  it("keeps a sticky round number across the between-rounds gap (never blanks)", async () => {
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.roundNumber).toBe(1);
+
+    // Simulate the transition window: the backend reports NO active round (and no
+    // question) between one round settling and the next starting — match not over.
+    const gap = publicRoundV2();
+    gap.payload.active_round = null;
+    gap.payload.question = null;
+    gap.payload.match_status = "active";
+    backend.publicOverride = gap;
+    await settle(2000); // trigger the next poll
+
+    // The raw round has no active round…
+    expect(result.current.publicRound?.activeRound ?? null).toBeNull();
+    // …but the sticky header number is preserved, so the view never shows "Round —".
+    expect(result.current.roundNumber).toBe(1);
+    expect(result.current.phase).not.toBe("match_over");
   });
 
   it("sends a presence heartbeat on its own cadence", async () => {
