@@ -54,9 +54,14 @@ export interface InteractiveScenarioSurfaceProps {
   context?: string | null;
 }
 
+// Cinematic band aspect ratios. The reused Broadcast cards size their foreground
+// in cqmin (min container dimension), which in this inline band is the HEIGHT — so
+// a taller band scales the subject art/labels UP. "band" was 16/6; 16/7 gives the
+// competitive/tutorial variants a noticeably larger, more legible subject without
+// tipping into an over-tall cinematic panel (weak scenarios already go compact).
 const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string> = {
   hero: "16 / 9",
-  band: "16 / 6",
+  band: "16 / 7",
 };
 
 /**
@@ -120,12 +125,12 @@ function HeroBand({
       <div
         data-testid="scenario-hero"
         className="@container relative w-full overflow-hidden rounded-xl bg-black/30"
-        // minHeight floors the container-query box on narrow viewports (where a
-        // 16/6 band would otherwise collapse and shrink every cqmin unit into
+        // minHeight floors the container-query box on narrow viewports (where the
+        // band would otherwise collapse and shrink every cqmin unit into
         // illegibility); maxHeight caps it on ultra-wide columns. Between the two
-        // the aspect ratio drives height exactly as before, so validated desktop
-        // rich cards are unchanged.
-        style={{ containerType: "size", aspectRatio, minHeight: "11rem", maxHeight: "26rem" }}
+        // the aspect ratio drives height, so the subject art gets more room and
+        // reads larger without an over-tall panel.
+        style={{ containerType: "size", aspectRatio, minHeight: "12.5rem", maxHeight: "30rem" }}
       >
         <ScenarioCard question={scenarioSource!} revealActive={revealed} correctAnswer={correctAnswer} />
       </div>

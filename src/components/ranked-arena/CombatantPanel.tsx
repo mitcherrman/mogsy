@@ -144,16 +144,21 @@ export function CombatantPanel({
     <section
       aria-label={`${name} panel`}
       data-testid={`combatant-${combatant.playerId}`}
-      className={`rounded-xl border-2 bg-card p-4 space-y-3 ${
-        side === "player" ? "border-primary/50" : "border-destructive/50"
+      className={`relative rounded-xl border-2 bg-card p-4 space-y-3 ring-1 ring-inset ring-white/5 ${
+        side === "player"
+          ? "border-primary/60 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.55)]"
+          : "border-destructive/50 shadow-[0_0_24px_-12px_hsl(var(--destructive)/0.45)]"
       }`}
     >
       <header className="flex items-center gap-2 min-w-0">
         <div className="min-w-0">
           <div className="font-bold leading-tight truncate">{name}</div>
-          {tag && <div className="text-xs text-muted-foreground truncate">{tag}</div>}
+          {tag && <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground truncate">{tag}</div>}
         </div>
-        <Badge variant="outline" className="ml-auto shrink-0 tabular-nums">
+        <Badge variant="outline"
+          className={`ml-auto shrink-0 tabular-nums ${
+            side === "player" ? "border-primary/50 text-primary" : "border-destructive/50 text-destructive"
+          }`}>
           Lv {combatant.level}
         </Badge>
       </header>
