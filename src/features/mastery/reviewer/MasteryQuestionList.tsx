@@ -4,6 +4,7 @@
  */
 import { Badge } from "@/components/ui/badge";
 import type { MasteryReviewStep } from "../contracts/review";
+import { formatQuestionFamily } from "../formatQuestionFamily";
 
 function transitionLabel(step: MasteryReviewStep): string {
   if (step.transitionId) return "transition-bound";
@@ -49,7 +50,7 @@ export function MasteryQuestionList({
                     </Badge>
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{step.questionFamily}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{formatQuestionFamily(step.questionFamily)}</p>
                 <p className="mt-0.5 line-clamp-2 text-[11px]">{step.prompt}</p>
                 <span className="mt-0.5 inline-block text-[10px] text-muted-foreground">
                   {transitionLabel(step)}
