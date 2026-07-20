@@ -144,4 +144,67 @@ describe("SubmissionReview", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent("Submission rejected — try again.");
   });
+
+  describe("direct flow (streamlined one-shot lock)", () => {
+    it("offers a single Lock-in CTA from the selecting phase and locks atomically", () => {
+      const perms = permissionsForSubmissionPhase("selecting", true);
+      const { onConfirm, onReview } = renderReview(submission(), perms, { flow: "direct" });
+      // No separate review step in direct flow.
+      expect(screen.queryByTestId("review-button")).toBeNull();
+      const lock = screen.getByTestId("lock-in-button");
+      expect(lock).toHaveTextContent(/lock in answer \+ ability/i);
+      expect(screen.getByTestId("summary-answer")).toHaveTextContent("Brace");
+      expect(screen.getByTestId("summary-ability")).toHaveTextContent("Fortify");
+      fireEvent.click(lock);
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+      expect(onReview).not.toHaveBeenCalled();
+    });
+
+    it("labels the CTA for a no-ability submission", () => {
+      const perms = permissionsForSubmissionPhase("selecting", true);
+      render(
+        <SubmissionReview
+          flow="direct"
+          submission={submission({ selectedAbilityId: null })}
+          answerLabel="Brace"
+          abilityName={null}
+          permissions={perms}
+          onReview={() => {}}
+          onEdit={() => {}}
+          onConfirm={() => {}}
+        />,
+      );
+      expect(screen.getByTestId("lock-in-button")).toHaveTextContent(/lock in answer$/i);
+      expect(screen.getByTestId("summary-ability")).toHaveTextContent("No ability");
+    });
+
+    it("disables the lock until an answer is chosen, with a reason", () => {
+      const perms = permissionsForSubmissionPhase("selecting", true);
+      const onConfirm = vi.fn();
+      render(
+        <SubmissionReview
+          flow="direct"
+          submission={submission({ selectedOptionId: null })}
+          answerLabel={null}
+          abilityName={null}
+          permissions={perms}
+          onReview={() => {}}
+          onEdit={() => {}}
+          onConfirm={onConfirm}
+        />,
+      );
+      expect(screen.getByTestId("lock-in-button")).toBeDisabled();
+      expect(screen.getByText(/choose an answer first/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("lock-in-button"));
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("shows the sealed locked banner (no lock CTA) once submitted", () => {
+      const perms = permissionsForSubmissionPhase("locked", true);
+      renderReview(submission({ phase: "locked" }), perms, { flow: "direct" });
+      expect(screen.getByTestId("locked-banner")).toHaveTextContent(/sealed/i);
+      expect(screen.getByTestId("locked-answer")).toHaveTextContent("Brace");
+      expect(screen.queryByTestId("lock-in-button")).toBeNull();
+    });
+  });
 });

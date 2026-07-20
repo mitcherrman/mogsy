@@ -103,38 +103,52 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const inTransition = !timer && m.phase !== "progression";
 
   return (
-    <div className="ranked-shell space-y-4" data-testid="ranked-match">
-      <section className="ranked-panel p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="space-y-1">
+    <div className="ranked-shell space-y-3" data-testid="ranked-match">
+      {/* Condensed top strip — mode · round · timer in one compact row. */}
+      <section className="ranked-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+        <div className="flex items-baseline gap-3">
+          <div>
             <div className="ranked-eyebrow">
               Ranked Duel{m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}
             </div>
-            <h3 className="ranked-title text-lg font-bold">{roundLabel}</h3>
+            <h3 className="ranked-title text-lg font-bold leading-tight">{roundLabel}</h3>
           </div>
-          {timer ? (
-            <TimerDisplay timer={timer} label="Shared round timer" />
-          ) : inTransition ? (
+          {inTransition && (
             <span data-testid="ranked-round-transition"
               className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
               Preparing next round…
             </span>
-          ) : null}
+          )}
         </div>
-        {m.publicRound.playtest?.isPlaceholder && (
-          <p data-testid="ranked-playtest-label"
-            className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Playtest · Placeholder questions
-          </p>
-        )}
-        {opponentLabel && (
-          <p data-testid="ranked-presence" className="text-xs text-muted-foreground">{opponentLabel}</p>
-        )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CombatantPanel combatant={combatants.player} />
-          <CombatantPanel combatant={combatants.opponent} />
+        <div className="flex items-center gap-3">
+          {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
+            <div className="hidden text-right sm:block">
+              {m.publicRound.playtest?.isPlaceholder && (
+                <p data-testid="ranked-playtest-label"
+                  className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Playtest · Placeholder
+                </p>
+              )}
+              {opponentLabel && (
+                <p data-testid="ranked-presence" className="text-[11px] text-muted-foreground">{opponentLabel}</p>
+              )}
+            </div>
+          )}
+          {timer && <TimerDisplay timer={timer} label="Shared round timer" />}
         </div>
       </section>
+
+      {/* Mobile-only presence/playtest line (hidden in the strip on <sm). */}
+      {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
+        <div className="flex flex-wrap gap-x-3 px-1 sm:hidden">
+          {m.publicRound.playtest?.isPlaceholder && (
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Playtest · Placeholder
+            </span>
+          )}
+          {opponentLabel && <span className="text-[11px] text-muted-foreground">{opponentLabel}</span>}
+        </div>
+      )}
 
       {m.phase === "progression" ? (
         <section data-testid="ranked-progression">
@@ -154,39 +168,54 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         </section>
       ) : (
         <>
-          {question && (
-            <section data-testid="ranked-question" className="ranked-panel p-4">
-              <InteractiveScenarioSurface
-                question={question}
-                selectedOptionId={m.selectedOptionId}
+          {/* Arena body: You ⚔ Question ⚔ Opponent. On <lg the two duelists sit
+              side-by-side above the focal question; on lg they flank it. */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:items-start">
+            <div className="lg:col-start-1 lg:row-start-1">
+              <CombatantPanel combatant={combatants.player} />
+            </div>
+            <div className="lg:col-start-3 lg:row-start-1">
+              <CombatantPanel combatant={combatants.opponent} />
+            </div>
+            {question && (
+              <section data-testid="ranked-question"
+                className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+                <InteractiveScenarioSurface
+                  question={question}
+                  selectedOptionId={m.selectedOptionId}
+                  permissions={permissions}
+                  onSelectOption={(o) => m.selectOption(o.id)}
+                  variant="competitive"
+                  scenarioSource={scenarioSource}
+                />
+              </section>
+            )}
+          </div>
+
+          {/* Lower HUD: ability hotbar + one-shot lock. */}
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
+            {m.privatePlayer && (
+              <section data-testid="ranked-abilities" className="ranked-panel p-3 sm:p-4">
+                <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
+                  permissions={permissions} onSelectAbility={m.selectAbility} />
+              </section>
+            )}
+            <section className={`ranked-panel p-3 sm:p-4 ${m.privatePlayer ? "" : "lg:col-span-2"}`}>
+              <SubmissionReview
+                flow="direct"
+                submission={{ selectedOptionId: m.selectedOptionId, selectedAbilityId: m.selectedAbilityId, phase: subPhase }}
+                answerLabel={selectedOption?.label ?? null}
+                abilityName={m.selectedAbilityId ? abilityName(m.selectedAbilityId) : null}
                 permissions={permissions}
-                onSelectOption={(o) => m.selectOption(o.id)}
-                variant="competitive"
-                scenarioSource={scenarioSource}
-              />
+                onReview={m.review}
+                onEdit={m.edit}
+                onConfirm={() => selectedOption && m.confirm(selectedOption.index)}
+                statusMessage={
+                  m.actionError ? { tone: "error", text: m.actionError }
+                    : m.phase === "locked" ? { tone: "info", text: "Submitted — waiting for opponent…" } : null}
+                confirmLabel={m.submitting ? "Locking…" : undefined} />
             </section>
-          )}
-          {m.privatePlayer && (
-            <section data-testid="ranked-abilities" className="ranked-panel p-4 space-y-2">
-              <div className="ranked-eyebrow ranked-eyebrow--cyan">Abilities</div>
-              <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
-                permissions={permissions} onSelectAbility={m.selectAbility} />
-            </section>
-          )}
-          <section className="ranked-panel p-4">
-            <SubmissionReview
-              submission={{ selectedOptionId: m.selectedOptionId, selectedAbilityId: m.selectedAbilityId, phase: subPhase }}
-              answerLabel={selectedOption?.label ?? null}
-              abilityName={m.selectedAbilityId ? abilityName(m.selectedAbilityId) : null}
-              permissions={permissions}
-              onReview={m.review}
-              onEdit={m.edit}
-              onConfirm={() => selectedOption && m.confirm(selectedOption.index)}
-              statusMessage={
-                m.actionError ? { tone: "error", text: m.actionError }
-                  : m.phase === "locked" ? { tone: "info", text: "Submitted — waiting for opponent…" } : null}
-              confirmLabel={m.submitting ? "Locking…" : "Confirm — lock it in"} />
-          </section>
+          </div>
         </>
       )}
 
