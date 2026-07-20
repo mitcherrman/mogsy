@@ -20,6 +20,7 @@ import { toast } from "@/hooks/use-toast";
 import { battlesAdminApi, BattlesApiError } from "@/lib/combat-battles/api";
 import { SAMPLE_LEFT, SAMPLE_RIGHT, SNAPSHOT_HELP } from "@/lib/combat-battles/admin-template";
 import { STATUS_LABELS, fmtDateTime } from "@/lib/combat-battles/lifecycle";
+import { getBattleAdminCapabilities } from "@/lib/combat-battles/adminCapabilities";
 import type { AdminBattle, AdminValidationReport } from "@/lib/combat-battles/types";
 
 const ADMIN_KEY = ["combat-battles", "admin"] as const;
@@ -120,7 +121,11 @@ export default function CombatBattlesAdmin() {
         {/* Right: selected battle operations */}
         <div>
           {selected ? (
-            <BattleOps battle={selected} onChanged={refresh} />
+            // Key by battle_id so a background list refetch (which replaces the
+            // event objects with equivalent data) reuses the SAME BattleOps
+            // instance — preserving unsaved inputs — while switching to a
+            // different event correctly resets its form.
+            <BattleOps key={selected.battle_id} battle={selected} onChanged={refresh} />
           ) : (
             <Card><CardContent className="py-16 text-center text-muted-foreground">
               Select an event, or create a draft.
@@ -202,9 +207,22 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
   const [voidReason, setVoidReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  const settled = battle.stored_status === "void"
-    ? false
-    : Boolean(battle.result_checksum) || false;
+  // Authoritative settlement status — only meaningful once revealed/void. Used
+  // to gate Void (blocked after a completed settlement). Shares the query cache
+  // with SettlementAudit below.
+  const settlementRelevant = status === "revealed" || battle.stored_status === "void";
+  const settlementQ = useQuery({
+    queryKey: ["combat-battles", "admin", "settlement", battle.battle_id],
+    queryFn: ({ signal }) => battlesAdminApi.settlement(battle.battle_id, signal),
+    enabled: settlementRelevant,
+    retry: false,
+  });
+  const settlementStatus = settlementQ.data?.summary.status ?? null;
+
+  // Single source of truth for action availability, derived from the backend
+  // contract (see lib/combat-battles/adminCapabilities). The backend remains
+  // authoritative — these gates only avoid offering certainly-invalid actions.
+  const caps = getBattleAdminCapabilities(battle, { openAt, lockAt, revealAt, settlementStatus });
 
   async function run<T>(name: string, fn: () => Promise<T>, okMsg: string) {
     setBusy(name);
@@ -219,11 +237,6 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
       setBusy(null);
     }
   }
-
-  const canValidate = status === "draft" || status === "validated";
-  const canPublish = status === "validated";
-  const canVoid = status !== "void" && status !== "revealed";
-  const canSettle = status === "revealed" || status === "void";
 
   return (
     <Card>
@@ -250,18 +263,29 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
 
         <Separator />
 
-        {/* Validate */}
+        <p className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+          <strong>Validate</strong> checks whether the configuration is eligible.{" "}
+          <strong>Publish</strong> executes and freezes the deterministic result.{" "}
+          <strong>Reproduce</strong> verifies the frozen result can be regenerated exactly.
+        </p>
+
+        {/* Validate + Reproduce */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" disabled={!canValidate || busy !== null}
+          <Button size="sm" variant="outline" disabled={!caps.validate.available || busy !== null}
+            title={caps.validate.reason ?? undefined}
             onClick={() => run("Validate",
               async () => { const r = await battlesAdminApi.validate(battle.battle_id); setReport(r.report); },
               "Validation complete")}>
             Validate
           </Button>
-          <Button size="sm" variant="outline" disabled={busy !== null}
+          <Button size="sm" variant="outline" disabled={!caps.reproduce.available || busy !== null}
+            title={caps.reproduce.reason ?? undefined}
             onClick={() => run("Reproduce", () => battlesAdminApi.reproduce(battle.battle_id), "Reproduction verified")}>
             Reproduce
           </Button>
+          {!caps.reproduce.available && (
+            <span className="text-xs text-muted-foreground">{caps.reproduce.reason}</span>
+          )}
         </div>
 
         {report && (
@@ -292,13 +316,16 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
           <ConfirmButton
             label="Publish" title="Publish this battle?"
             description="Publishing freezes the inputs and the deterministic result immutably. This cannot be edited afterwards — only voided."
-            disabled={!canPublish || !openAt || !lockAt || !revealAt || busy !== null}
+            disabled={!caps.publish.available || busy !== null}
             pending={busy === "Publish"}
             onConfirm={() => run("Publish",
               () => battlesAdminApi.publish(battle.battle_id, {
                 open_at: toIso(openAt), lock_at: toIso(lockAt), reveal_at: toIso(revealAt),
               }), "Published")}
           />
+          {!caps.publish.available && (
+            <p className="text-xs text-muted-foreground">{caps.publish.reason}</p>
+          )}
         </div>
 
         {/* Settle */}
@@ -307,10 +334,13 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
           <ConfirmButton
             label="Settle" title="Settle predictions?"
             description="Settles all predictions against the frozen result and awards Arena Score. Idempotent and exactly-once."
-            disabled={!canSettle || busy !== null} pending={busy === "Settle"}
+            disabled={!caps.settle.available || busy !== null} pending={busy === "Settle"}
             onConfirm={() => run("Settle", () => battlesAdminApi.settle(battle.battle_id), "Settled")}
           />
-          <SettlementAudit battleId={battle.battle_id} enabled={settled || status === "revealed" || status === "void"} />
+          {!caps.settle.available && (
+            <p className="text-xs text-muted-foreground">{caps.settle.reason}</p>
+          )}
+          <SettlementAudit battleId={battle.battle_id} enabled={settlementRelevant} />
         </div>
 
         {/* Void */}
@@ -321,9 +351,12 @@ function BattleOps({ battle, onChanged }: { battle: AdminBattle; onChanged: () =
           <ConfirmButton
             label="Void" variant="destructive" title="Void this battle?"
             description="Voiding retains predictions but scores nothing. A settled battle cannot be voided."
-            disabled={!canVoid || busy !== null} pending={busy === "Void"}
+            disabled={!caps.void.available || busy !== null} pending={busy === "Void"}
             onConfirm={() => run("Void", () => battlesAdminApi.void(battle.battle_id, voidReason), "Voided")}
           />
+          {!caps.void.available && (
+            <p className="text-xs text-muted-foreground">{caps.void.reason}</p>
+          )}
         </div>
       </CardContent>
     </Card>
