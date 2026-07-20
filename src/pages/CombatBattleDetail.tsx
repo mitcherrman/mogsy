@@ -93,6 +93,20 @@ export default function CombatBattleDetail() {
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>{FORMAT_EXPLANATION}</p>
         </div>
+        {data.status === "void" && (
+          <div
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <p>
+              <span className="font-medium">This battle was voided.</span>{" "}
+              {data.void_reason
+                ? `Reason: ${data.void_reason}`
+                : "No further results will be recorded."}
+            </p>
+          </div>
+        )}
       </header>
 
       {/* Sides */}

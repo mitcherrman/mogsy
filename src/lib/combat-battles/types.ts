@@ -181,6 +181,10 @@ export type BattleDetail = {
   my_prediction: MyPrediction;
   settlement_summary: SettlementSummary;
   my_prediction_result: MyPredictionResult;
+  // present (non-null) only when the battle was voided — shown publicly so a
+  // user who reaches a cancelled battle can see why:
+  voided_at?: string | null;
+  void_reason?: string | null;
 };
 
 export type BattleResultResponse = {
