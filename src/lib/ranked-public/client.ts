@@ -149,6 +149,23 @@ export const joinQueue = (classId: string | null, signal?: AbortSignal): Promise
 export const getQueueStatus = (signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, { signal });
 
+/** The caller's own active match, or null. Account-bound reconnect discovery so
+ * a full page reload can recover an active match — including a bot match, which
+ * is never in the queue and so cannot be recovered from queue status. */
+export interface ActiveMatchInfo {
+  matchId: string;
+  isBotMatch: boolean;
+}
+
+export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | null> =>
+  request("/api/ranked/active-match", (json) => {
+    const am = (json as Record<string, unknown>).active_match;
+    if (am == null || typeof am !== "object") return null;
+    const m = am as Record<string, unknown>;
+    if (typeof m.match_id !== "string") return null;
+    return { matchId: m.match_id, isBotMatch: m.is_bot_match === true };
+  }, { signal });
+
 /**
  * Owner/staff-only "Play vs Bot" playtest match. Backend gates on the feature
  * flag + ranked allowlist and returns typed 503/403 for anyone else; the
