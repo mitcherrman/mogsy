@@ -5,12 +5,12 @@
  * codes (never hidden-route security). No staff token or admin control is
  * ever exposed.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  BotDifficulty, createBotMatch, isAborted, RankedApiError,
+  BotDifficulty, createBotMatch, getActiveMatch, isAborted, RankedApiError,
 } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RankedClass, useRankedQueue } from "./useRankedQueue";
@@ -60,9 +60,29 @@ export default function QuizRankedPage() {
 function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   const q = useRankedQueue();
   const [botMatchId, setBotMatchId] = useState<string | null>(null);
+  const [recoveredMatchId, setRecoveredMatchId] = useState<string | null>(null);
+  const [recoveryChecked, setRecoveryChecked] = useState(false);
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("standard");
   const [botBusy, setBotBusy] = useState(false);
   const [botError, setBotError] = useState<string | null>(null);
+
+  // Reconnect after a full page reload: an active bot match is NOT in the queue,
+  // so queue recovery alone loses it. Account-bound discovery rediscovers the
+  // caller's own active match (bot or human) and re-enters the same live view.
+  // Best-effort: a disabled/ineligible backend just leaves the user at the menu.
+  useEffect(() => {
+    const controller = new AbortController();
+    getActiveMatch(controller.signal)
+      .then((found) => { if (found) setRecoveredMatchId(found.matchId); })
+      .catch(() => { /* not recoverable — fall through to the normal menu */ })
+      .finally(() => setRecoveryChecked(true));
+    return () => controller.abort();
+  }, []);
+
+  // A freshly created bot match wins; otherwise re-enter a rediscovered active
+  // match (bot or human), then a live queue match.
+  const liveMatchId = botMatchId ?? recoveredMatchId
+    ?? (q.state === "matched" ? q.matchId : null);
 
   async function startBotMatch() {
     setBotBusy(true);
@@ -85,13 +105,18 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
     }
   }
 
-  // A launched bot match reuses the exact live-match view (no separate UI).
-  if (botMatchId) {
-    return <Frame><QuizRankedMatch matchId={botMatchId} viewerUserId={viewerUserId} /></Frame>;
+  // A launched / recovered / queued match reuses the exact live-match view.
+  if (liveMatchId) {
+    return <Frame><QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId} /></Frame>;
   }
 
-  if (q.state === "matched" && q.matchId) {
-    return <Frame><QuizRankedMatch matchId={q.matchId} viewerUserId={viewerUserId} /></Frame>;
+  // Don't flash the menu before the account-bound active-match check resolves.
+  if (!recoveryChecked) {
+    return (
+      <Frame>
+        <p data-testid="ranked-loading" className="text-sm text-muted-foreground">Loading Ranked…</p>
+      </Frame>
+    );
   }
 
   return (
