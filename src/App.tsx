@@ -141,6 +141,7 @@ const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentS
 const MasteryAhriVsSyndraPage = lazy(() => import("./pages/dev/mastery/AhriVsSyndraPage"));
 const MasterySyndraProgressionPage = lazy(() => import("./pages/dev/mastery/SyndraProgressionPage"));
 const MasterySyndraBranchingPage = lazy(() => import("./pages/dev/mastery/SyndraBranchingPage"));
+const MasteryLuxProgressionPage = lazy(() => import("./pages/dev/mastery/LuxProgressionPage"));
 const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryReviewerPage"));
 
 // League of Legends Glossary — public reference module. Lazy so the
@@ -295,6 +296,7 @@ const App = () => (
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/syndra-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasterySyndraProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/syndra-branching" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasterySyndraBranchingPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/dev/mastery/lux-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryLuxProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/admin/mastery/:artifactDigest" element={<AdminRoute><Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense></AdminRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
