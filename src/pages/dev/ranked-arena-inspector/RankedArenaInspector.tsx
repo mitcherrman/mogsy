@@ -121,6 +121,12 @@ const subjectSource = (q: QuestionView, subject: Record<string, unknown>): QuizQ
 const ITEM_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Rabadon's Deathcap", icon: "assets/items/3089.png" });
 const CHAMP_SCENARIO = subjectSource(CHAMP_Q, { type: "champion", name: "Ahri", icon: "assets/champions/Ahri.png" });
 const BROKEN_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Missing Icon", icon: "assets/items/does-not-exist.png" });
+// A source that is PRESENT but classifies to nothing cinematic (unknown subject
+// type, no icon) — must fall to the compact band, not a large empty panel.
+const LOW_CONTENT_SCENARIO = subjectSource(
+  { ...ITEM_Q, category: "combat" },
+  { type: "mystery-unknown" },
+);
 
 // Cases exercising the REAL Ranked transport contract: a PublicQuestionSource
 // (as parsed from the backend public projection) run through the shared
@@ -303,13 +309,15 @@ const STATES: InspectorState[] = [
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
 
   // --- shared InteractiveScenarioSurface ---
-  { key: "surface-text-fallback", label: "Surface — text fallback (placeholder)",
+  { key: "surface-text-fallback", label: "Surface — compact band (no source)",
     render: () => <Surface /> },
+  { key: "surface-lowcontent", label: "Surface — compact band (low-content source)",
+    render: () => <Surface question={{ ...ITEM_Q, category: "combat" }} scenarioSource={LOW_CONTENT_SCENARIO} /> },
   { key: "surface-champion", label: "Surface — champion-rich",
     render: () => <Surface question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
   { key: "surface-item", label: "Surface — item-rich",
     render: () => <Surface scenarioSource={ITEM_SCENARIO} /> },
-  { key: "surface-ability", label: "Surface — ability-rich (transport)",
+  { key: "surface-ability", label: "Surface — ability (icon-less → compact)",
     render: () => <Surface question={ABILITY_Q} scenarioSource={ABILITY_SCENARIO} /> },
   { key: "surface-recipe", label: "Surface — item-recipe (transport)",
     render: () => <Surface question={RECIPE_Q} scenarioSource={RECIPE_SCENARIO} /> },
