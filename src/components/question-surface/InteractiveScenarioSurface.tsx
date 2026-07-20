@@ -23,7 +23,8 @@ import { MotionConfig } from "framer-motion";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
-import { ScenarioCardFrame } from "@/components/quiz-broadcast/scenario-cards/ScenarioCardFrame";
+import { selectScenario } from "@/components/quiz-broadcast/scenario-cards/classify";
+import { CompactScenarioBand } from "./CompactScenarioBand";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -58,22 +59,52 @@ const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string
   band: "16 / 6",
 };
 
-/** Premium hero band. Rich scenario art when a source exists, else a polished
- * text-frame fallback (reuses ScenarioCardFrame with no background — never a
- * broken empty media area). Sized as a container-query box so the reused
- * cqmin-based Broadcast cards resolve correctly inline. */
+/**
+ * Presentation of the scenario band, chosen by CONTENT CAPABILITY (never mode
+ * identity):
+ *  - "cinematic": the source resolves to a real premium visual — champion
+ *    splash, item/recipe, combat calc, a framed collectible, OR a spoiler-hidden
+ *    subject (placeholder card) that will reveal into a rich subject. Keeps the
+ *    tall container-query box the Broadcast cards were designed for.
+ *  - "compact": no source, or a source that classifies to nothing worth a
+ *    cinematic panel ("empty"). Renders the short absolute-sized CompactScenarioBand
+ *    instead of reserving a large, mostly-empty cqmin panel.
+ *
+ * Reusing selectScenario (the exact classifier the cinematic card itself uses,
+ * called spoiler-safely with revealActive=false / correctAnswer=null) keeps the
+ * decision consistent with what would actually render and avoids a second
+ * capability heuristic. A spoiler subject classifies to "placeholder", so it
+ * stays cinematic and the band does NOT resize when the reveal arrives.
+ */
+type ScenarioBandProfile = "cinematic" | "compact" | "none";
+
+function resolveBandProfile(
+  scenarioSource: ScenarioSource | null | undefined,
+  mediaScale: SurfaceSettings["mediaScale"],
+): ScenarioBandProfile {
+  if (mediaScale === "none") return "none";
+  if (!scenarioSource) return "compact";
+  return selectScenario(scenarioSource, false, null).card === "empty" ? "compact" : "cinematic";
+}
+
+/** Premium scenario band. Cinematic Broadcast card for rich content; a short,
+ * readable CompactScenarioBand for low-content/text-driven scenarios. */
 function HeroBand({
+  profile,
   scenarioSource,
   question,
   reveal,
   settings,
 }: {
+  profile: ScenarioBandProfile;
   scenarioSource?: ScenarioSource | null;
   question: QuestionView;
   reveal?: SurfaceReveal | null;
   settings: SurfaceSettings;
 }) {
-  if (settings.mediaScale === "none") return null;
+  if (profile === "none") return null;
+  if (profile === "compact") return <CompactScenarioBand category={question.category} />;
+
   const revealed = reveal?.revealed === true;
   // Correct answer is passed to the scenario visual ONLY post-reveal; pre-reveal
   // it is null so spoiler subjects stay hidden (hidden-information safe).
@@ -81,7 +112,7 @@ function HeroBand({
     revealed && reveal?.correctOptionId != null
       ? (question.options.find((o) => o.id === reveal.correctOptionId)?.label ?? null)
       : null;
-  const aspectRatio = BAND_ASPECT[settings.mediaScale];
+  const aspectRatio = BAND_ASPECT[settings.mediaScale as "hero" | "band"];
   const reducedMotion: "never" | "user" = settings.motionLevel === "full" ? "never" : "user";
 
   return (
@@ -89,31 +120,14 @@ function HeroBand({
       <div
         data-testid="scenario-hero"
         className="@container relative w-full overflow-hidden rounded-xl bg-black/30"
-        style={{ containerType: "size", aspectRatio }}
+        // minHeight floors the container-query box on narrow viewports (where a
+        // 16/6 band would otherwise collapse and shrink every cqmin unit into
+        // illegibility); maxHeight caps it on ultra-wide columns. Between the two
+        // the aspect ratio drives height exactly as before, so validated desktop
+        // rich cards are unchanged.
+        style={{ containerType: "size", aspectRatio, minHeight: "11rem", maxHeight: "26rem" }}
       >
-        {scenarioSource ? (
-          <ScenarioCard question={scenarioSource} revealActive={revealed} correctAnswer={correctAnswer} />
-        ) : (
-          // Polished DECORATIVE text fallback: the shared cinematic frame with
-          // no splash. The prompt itself stays in the readable header (never
-          // duplicated here) so it is never overpowered by the band.
-          <div className="flex h-full w-full items-center justify-center" data-testid="scenario-hero-fallback">
-            <ScenarioCardFrame
-              backgroundUrl={null}
-              backgroundAlt=""
-              gradientClass="bg-gradient-to-t from-black/70 via-black/30 to-transparent"
-            >
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-[1.4cqmin] px-[6%] text-center">
-                <span className="text-[1.9cqmin] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/85">
-                  {question.category || "Ranked"}
-                </span>
-                <span className="text-[1.5cqmin] font-medium uppercase tracking-[0.3em] text-white/45">
-                  Knowledge Battle
-                </span>
-              </div>
-            </ScenarioCardFrame>
-          </div>
-        )}
+        <ScenarioCard question={scenarioSource!} revealActive={revealed} correctAnswer={correctAnswer} />
       </div>
     </MotionConfig>
   );
@@ -131,6 +145,7 @@ export function InteractiveScenarioSurface({
   context = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
+  const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale);
   const revealed = reveal?.revealed === true;
   const revealedCorrectOptionId = revealed ? (reveal?.correctOptionId ?? null) : null;
   const correctLabel =
@@ -145,13 +160,20 @@ export function InteractiveScenarioSurface({
       data-testid="scenario-surface"
       data-variant={variant}
       data-media={settings.mediaScale}
+      data-band={bandProfile}
       className="space-y-3"
     >
-      <HeroBand scenarioSource={scenarioSource} question={question} reveal={reveal} settings={settings} />
+      <HeroBand
+        profile={bandProfile}
+        scenarioSource={scenarioSource}
+        question={question}
+        reveal={reveal}
+        settings={settings}
+      />
 
       <header className="space-y-1">
-        {/* Category shows once: in the decorative fallback hero if present, else here. */}
-        {question.category && !(settings.mediaScale !== "none" && !scenarioSource) && (
+        {/* Category shows once: in the compact band when that is shown, else here. */}
+        {question.category && bandProfile !== "compact" && (
           <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {question.category}
           </span>

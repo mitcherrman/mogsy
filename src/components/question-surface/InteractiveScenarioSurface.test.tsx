@@ -50,18 +50,41 @@ describe("InteractiveScenarioSurface", () => {
     for (const o of Q.options) expect(screen.getByText(o.label)).toBeInTheDocument();
   });
 
-  it("shows the polished TEXT fallback hero when no scenario source (no broken media)", () => {
+  it("shows the COMPACT band (not a giant cinematic panel) when no scenario source", () => {
     setup();
-    expect(screen.getByTestId("scenario-hero-fallback")).toBeInTheDocument();
-    // no <img> in the fallback hero
-    const hero = screen.getByTestId("scenario-hero");
-    expect(within(hero).queryByRole("img")).toBeNull();
+    const compact = screen.getByTestId("scenario-compact");
+    expect(compact).toBeInTheDocument();
+    // no cinematic container-query hero, and no broken media in the compact band
+    expect(screen.queryByTestId("scenario-hero")).toBeNull();
+    expect(within(compact).queryByRole("img")).toBeNull();
+    // capability flag reflects the choice (never a mode identity flag)
+    expect(screen.getByTestId("scenario-surface")).toHaveAttribute("data-band", "compact");
   });
 
-  it("renders the premium scenario visual when a source is present", () => {
+  it("keeps the readable category label in the compact band and never duplicates the prompt", () => {
+    setup({ question: { ...Q, category: "combat_math" } });
+    // category rendered once (in the compact band), normalized for display
+    expect(screen.getByText("combat math")).toBeInTheDocument();
+    // the prompt appears exactly once — the band must not echo it
+    expect(screen.getAllByText(Q.prompt)).toHaveLength(1);
+  });
+
+  it("renders the premium CINEMATIC visual when a rich source is present", () => {
     setup({ scenarioSource: ITEM_SCENARIO });
     expect(screen.getByTestId("scenario-hero")).toBeInTheDocument();
-    expect(screen.queryByTestId("scenario-hero-fallback")).toBeNull();
+    expect(screen.queryByTestId("scenario-compact")).toBeNull();
+    expect(screen.getByTestId("scenario-surface")).toHaveAttribute("data-band", "cinematic");
+  });
+
+  it("falls back to the compact band when a source classifies to nothing rich", () => {
+    const empty: QuizQuestion = {
+      id: "q", category: "items", question_text: Q.prompt, format: "multiple_choice",
+      choices: Q.options.map((o) => o.label),
+      metadata: { assets: { subject: { type: "mystery-unknown" } } },
+    };
+    setup({ scenarioSource: empty });
+    expect(screen.getByTestId("scenario-compact")).toBeInTheDocument();
+    expect(screen.queryByTestId("scenario-hero")).toBeNull();
   });
 
   it("emits the selected option through onSelectOption", () => {
@@ -117,10 +140,29 @@ describe("InteractiveScenarioSurface", () => {
     expect(screen.getByTestId("scenario-hero")).toBeInTheDocument();
   });
 
+  it("keeps a spoiler-hidden subject CINEMATIC pre-reveal (no band resize on reveal)", () => {
+    const spoiler: QuizQuestion = {
+      id: "q", category: "champions", question_text: "Which champion is from Ionia?",
+      format: "multiple_choice", choices: Q.options.map((o) => o.label),
+      metadata: {
+        assets: { subject: { type: "champion", name: "Ahri" } },
+        presentation: { spoiler: true, role: "answer", timing: "reveal" },
+      },
+    };
+    setup({ scenarioSource: spoiler });
+    // Placeholder-masked subject stays in the tall cinematic band so it does not
+    // jump size when the backend reveal upgrades it to a splash.
+    expect(screen.getByTestId("scenario-hero")).toBeInTheDocument();
+    expect(screen.queryByTestId("scenario-compact")).toBeNull();
+    expect(screen.getByTestId("scenario-surface")).toHaveAttribute("data-band", "cinematic");
+  });
+
   it("speed variant renders no media band", () => {
     setup({ variant: "speed" });
     expect(screen.getByTestId("scenario-surface")).toHaveAttribute("data-media", "none");
+    expect(screen.getByTestId("scenario-surface")).toHaveAttribute("data-band", "none");
     expect(screen.queryByTestId("scenario-hero")).toBeNull();
+    expect(screen.queryByTestId("scenario-compact")).toBeNull();
   });
 
   it("exposes an accessible answer group", () => {
