@@ -29,3 +29,9 @@ out
 
 # Quiz screenshot factory output (scripts/quiz-screenshots)
 quiz_content_exports
+
+# Combat Sim Battles E2E acceptance artifacts (tokens, disposable db, reports)
+e2e/.artifacts
+e2e/.report
+test-results
+playwright-report

@@ -13,6 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "video:studio": "remotion studio",
     "video:prepare": "tsx scripts/prepare-quiz-video.ts",
     "video:render": "tsx scripts/render-quiz-video.ts",
@@ -93,6 +95,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.61.1",
     "@remotion/tailwind": "4.0.487",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",

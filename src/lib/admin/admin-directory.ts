@@ -179,6 +179,18 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
     dangerLevel: "none",
   },
   {
+    id: "combat-sim-battles",
+    title: "Combat Sim Battles",
+    description:
+      "Create, validate, publish, void, and settle Combat Sim Battle events. The server derives all results — no winner/outcome/score input.",
+    path: "/admin/combat-battles",
+    category: "Site Operations",
+    status: "Internal",
+    environment: "all",
+    dangerLevel: "mutates-production",
+    warning: "Publishing and settling write immutable live event state.",
+  },
+  {
     id: "admin-diagnostics",
     title: "Site Diagnostics",
     description: "Admin diagnostics, route registry, and internal health pages.",

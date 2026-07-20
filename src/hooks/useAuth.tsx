@@ -5,6 +5,7 @@ import {
   initiateAnonymousEmailUpgrade,
   type UpgradeResult,
 } from "@/lib/auth/account-upgrade";
+import { getE2EIdentity, e2eSession, e2eEnabled } from "@/lib/e2e/identity";
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +33,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    // E2E acceptance override (dev-only, VITE_E2E_AUTH gated). In E2E mode we
+    // NEVER wire up Supabase: an injected persona hydrates a synthetic session,
+    // otherwise the app is a clean signed-out guest (no real anonymous sign-in).
+    if (e2eEnabled()) {
+      const e2e = getE2EIdentity();
+      if (e2e) {
+        const { user: synthUser, session: synthSession } = e2eSession(e2e);
+        setSession(synthSession);
+        setUser(synthUser);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
+      setLoading(false);
+      return () => { mounted = false; };
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
