@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getE2EIdentity } from "@/lib/e2e/identity";
 
 type Role = "admin" | "master_admin" | "moderator";
 
@@ -26,6 +27,13 @@ export default function AdminRoute({ children, roles = ["admin", "master_admin"]
     if (authLoading) return;
     if (!user) {
       setStatus("denied");
+      return;
+    }
+    // E2E acceptance override (dev-only, VITE_E2E_AUTH gated): the designated
+    // admin persona is authorized without the has_role RPC (no real Supabase).
+    const e2e = getE2EIdentity();
+    if (e2e && e2e.admin && e2e.user.id === user.id) {
+      setStatus("allowed");
       return;
     }
     setStatus("checking");

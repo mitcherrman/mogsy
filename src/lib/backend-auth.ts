@@ -5,7 +5,16 @@
 // Dynamic import: this module is also pulled into the Remotion webpack
 // bundle (video export), where the Supabase client's import.meta.env
 // access would throw — so failures degrade to unauthenticated requests.
+import { getE2EIdentity, e2eEnabled } from "@/lib/e2e/identity";
+
 export async function getBackendAuthHeaders(): Promise<Record<string, string>> {
+  // E2E acceptance override (dev-only, VITE_E2E_AUTH gated — see lib/e2e/identity).
+  // In E2E mode we NEVER touch real Supabase: an injected persona → its bearer,
+  // otherwise a clean unauthenticated (guest) request.
+  if (e2eEnabled()) {
+    const e2e = getE2EIdentity();
+    return e2e ? { Authorization: `Bearer ${e2e.token}` } : {};
+  }
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     const { data } = await supabase.auth.getSession();
@@ -20,6 +29,7 @@ export async function getBackendAuthHeaders(): Promise<Record<string, string>> {
 // make sure a Supabase session — anonymous if need be — exists and return its
 // access token, or null if a guest session genuinely can't be established.
 export async function ensureBackendAuthToken(): Promise<string | null> {
+  if (e2eEnabled()) return getE2EIdentity()?.token ?? null;
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     const { data } = await supabase.auth.getSession();
