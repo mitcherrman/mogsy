@@ -6,6 +6,7 @@
 import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { MasteryReviewArtifact, MasteryReviewStep } from "../contracts/review";
+import { formatQuestionFamily } from "../formatQuestionFamily";
 import { IdValue, JsonDisclosure, KeyValueList, SectionHeading } from "./_shared";
 import { MasterySnapshotComparison } from "./MasterySnapshotComparison";
 import { MasteryCalculationInspector } from "./MasteryCalculationInspector";
@@ -35,7 +36,7 @@ export function MasteryQuestionInspector({
           >
             {step.isReadOnly ? "Read-only question" : "Transition-bound question"}
           </Badge>
-          <Badge variant="outline" className="text-[10px]">{step.questionFamily}</Badge>
+          <Badge variant="outline" className="text-[10px]">{formatQuestionFamily(step.questionFamily)}</Badge>
           <Badge variant="outline" className="text-[10px]">{step.answerType}</Badge>
           {step.proposesDeferredTransition && (
             <Badge variant="outline" className="text-[10px]" data-testid="detail-proposes-badge">
