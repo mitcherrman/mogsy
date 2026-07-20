@@ -11,6 +11,8 @@ import {
   CombatantViews,
   questionViewFromPublicQuestion,
 } from "@/lib/ranked-core/adapters/adaptToViews";
+import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
+import type { ScenarioSource } from "@/lib/question-surface/contract";
 import {
   permissionsForSubmissionPhase,
   restrictPermissions,
@@ -70,6 +72,12 @@ export function projectAbilities(priv: PrivatePlayerView, selectedAbilityId: str
 
 export function projectQuestion(pub: PublicRoundView): QuestionView | null {
   return pub.question ? questionViewFromPublicQuestion(pub.question) : null;
+}
+
+/** Optional rich-visual source for InteractiveScenarioSurface; null → text
+ * fallback. Question-safe (pre-reveal); the surface handles spoiler gating. */
+export function projectScenarioSource(pub: PublicRoundView): ScenarioSource | null {
+  return pub.question ? scenarioSourceFromPublicQuestion(pub.question) : null;
 }
 
 export function projectPermissions(phase: SubmissionPhase, inputOpen: boolean,

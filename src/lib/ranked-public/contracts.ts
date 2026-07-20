@@ -242,6 +242,39 @@ function readActiveRound(value: unknown): PublicActiveRound | null {
   };
 }
 
+// Defense-in-depth mirror of the backend sanitizer: a question-safe presentation
+// blob never names correctness / a solution / an explanation. This is a soft
+// guard — an unsafe or oversized blob DROPS to null (text fallback) rather than
+// rejecting the whole round payload, so a malformed optional field cannot break
+// an active match.
+const _PRESENTATION_REJECT_TOKENS = ["correct", "solution", "explanation"];
+const _PRESENTATION_MAX_DEPTH = 8;
+const _PRESENTATION_MAX_NODES = 600;
+
+function presentationIsSafe(value: unknown, depth: number, budget: { n: number }): boolean {
+  if (depth > _PRESENTATION_MAX_DEPTH) return false;
+  if (--budget.n < 0) return false;
+  if (value === null || typeof value !== "object") return true;
+  if (Array.isArray(value)) {
+    return value.every((v) => presentationIsSafe(v, depth + 1, budget));
+  }
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    const low = key.toLowerCase();
+    if (_PRESENTATION_REJECT_TOKENS.some((t) => low.includes(t))) return false;
+    if (!presentationIsSafe(v, depth + 1, budget)) return false;
+  }
+  return true;
+}
+
+/** Optional, question-safe rich-visual metadata. Absent/unsafe/malformed → null. */
+function readOptionalPresentation(value: unknown): Record<string, unknown> | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  if (!presentationIsSafe(value, 0, { n: _PRESENTATION_MAX_NODES })) return null;
+  const obj = value as Record<string, unknown>;
+  return Object.keys(obj).length > 0 ? obj : null;
+}
+
 function readQuestion(value: unknown): PublicQuestionSource | null {
   if (value === null || value === undefined) return null;
   const q = rec(value, "question");
@@ -251,6 +284,7 @@ function readQuestion(value: unknown): PublicQuestionSource | null {
     prompt: str(q.prompt, "prompt"),
     options: strList(q.options, "options"),
     category: nstr(q.category, "category"),
+    presentation: readOptionalPresentation(q.presentation),
   };
 }
 

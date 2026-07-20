@@ -22,6 +22,7 @@ import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
@@ -120,6 +121,68 @@ const subjectSource = (q: QuestionView, subject: Record<string, unknown>): QuizQ
 const ITEM_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Rabadon's Deathcap", icon: "assets/items/3089.png" });
 const CHAMP_SCENARIO = subjectSource(CHAMP_Q, { type: "champion", name: "Ahri", icon: "assets/champions/Ahri.png" });
 const BROKEN_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Missing Icon", icon: "assets/items/does-not-exist.png" });
+
+// Cases exercising the REAL Ranked transport contract: a PublicQuestionSource
+// (as parsed from the backend public projection) run through the shared
+// scenario adapter — no hand-built ScenarioSource, no backend fixture schema.
+const ABILITY_Q: QuestionView = {
+  questionId: "sq-ability", category: "abilities",
+  prompt: "In which ability slot does Darius cast Decimate?",
+  options: [
+    { id: "0", index: 0, label: "Q" }, { id: "1", index: 1, label: "W" },
+    { id: "2", index: 2, label: "E" }, { id: "3", index: 3, label: "R" },
+  ],
+};
+const RECIPE_Q: QuestionView = {
+  questionId: "sq-recipe", category: "items",
+  prompt: "Trinity Force builds from Sheen, Phage, and which other component?",
+  options: [
+    { id: "0", index: 0, label: "Kindlegem" }, { id: "1", index: 1, label: "Ruby Crystal" },
+    { id: "2", index: 2, label: "Cloth Armor" }, { id: "3", index: 3, label: "Null-Magic Mantle" },
+  ],
+};
+const COMPARISON_Q: QuestionView = {
+  questionId: "sq-comparison", category: "items",
+  prompt: "Which stat do BOTH Doran's Blade and Doran's Ring provide?",
+  options: [
+    { id: "0", index: 0, label: "Health" }, { id: "1", index: 1, label: "Mana" },
+    { id: "2", index: 2, label: "Armor" }, { id: "3", index: 3, label: "Attack speed" },
+  ],
+};
+
+const transportSource = (q: QuestionView, presentation: Record<string, unknown>): QuizQuestion | null =>
+  scenarioSourceFromPublicQuestion({
+    questionId: q.questionId, prompt: q.prompt,
+    options: q.options.map((o) => o.label), category: q.category ?? null,
+    presentation,
+  });
+
+const ABILITY_SCENARIO = transportSource(ABILITY_Q, {
+  assets: { subject: { type: "ability", name: "Decimate", champion: "Darius" } },
+  presentation: { scenario_type: "ability", role: "context", timing: "question", spoiler: false },
+});
+const RECIPE_SCENARIO = transportSource(RECIPE_Q, {
+  assets: { subject: { type: "item", name: "Trinity Force", icon: "assets/items/3078.png" } },
+  known_components: ["Sheen", "Phage"],
+  known_component_icons: [
+    { name: "Sheen", icon: "assets/items/3057.png" },
+    { name: "Phage", icon: "assets/items/3044.png" },
+  ],
+  presentation: { scenario_type: "item", role: "context", timing: "question", spoiler: false },
+});
+const COMPARISON_SCENARIO = transportSource(COMPARISON_Q, {
+  assets: { subject: { type: "comparison", subjects: [
+    { name: "Doran's Blade", icon: "assets/items/1055.png" },
+    { name: "Doran's Ring", icon: "assets/items/1056.png" },
+  ] } },
+  presentation: { scenario_type: "comparison", role: "context", timing: "question", spoiler: false },
+});
+// A subject that IS the answer (champion identification): the surface must HIDE
+// it pre-reveal and reveal it only when a backend-authoritative reveal arrives.
+const SPOILER_SCENARIO = transportSource(CHAMP_Q, {
+  assets: { subject: { type: "champion", name: "Ahri" } },
+  presentation: { scenario_type: "champion_profile", role: "answer", timing: "reveal", spoiler: true },
+});
 
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
@@ -246,6 +309,18 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
   { key: "surface-item", label: "Surface — item-rich",
     render: () => <Surface scenarioSource={ITEM_SCENARIO} /> },
+  { key: "surface-ability", label: "Surface — ability-rich (transport)",
+    render: () => <Surface question={ABILITY_Q} scenarioSource={ABILITY_SCENARIO} /> },
+  { key: "surface-recipe", label: "Surface — item-recipe (transport)",
+    render: () => <Surface question={RECIPE_Q} scenarioSource={RECIPE_SCENARIO} /> },
+  { key: "surface-comparison", label: "Surface — comparison (transport, falls back)",
+    render: () => <Surface question={COMPARISON_Q} scenarioSource={COMPARISON_SCENARIO} /> },
+  { key: "surface-prereveal-spoiler", label: "Surface — pre-reveal spoiler-safe",
+    render: () => <Surface question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO} /> },
+  { key: "surface-postreveal-rich", label: "Surface — post-reveal rich subject",
+    render: () => <Surface variant="standard" question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO}
+      selectedOptionId="0" reveal={{ revealed: true, isCorrect: true, correctOptionId: "0",
+        explanation: "Ahri is a champion from Ionia." }} /> },
   { key: "surface-selecting", label: "Surface — selecting",
     render: () => <Surface scenarioSource={ITEM_SCENARIO} selectedOptionId="1" /> },
   { key: "surface-missing-asset", label: "Surface — missing-asset fallback",
