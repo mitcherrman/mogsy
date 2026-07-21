@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { resolveGiftByPriceId } from "../_shared/gift-catalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,12 +83,48 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
-    const session = await stripe.checkout.sessions.retrieve(gift.stripe_session_id);
+    const session = await stripe.checkout.sessions.retrieve(gift.stripe_session_id, {
+      expand: ["line_items"],
+    });
     if (session.payment_status === "paid") {
-      await admin.from("gifts").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", gift.id);
+      // Re-derive the canonical gift definition from the Price ID Stripe
+      // actually charged for. This defends against a gift row created before
+      // the create-checkout catalog fix (or via any future bypass) where the
+      // client persisted a mismatched diamond_amount / gift_type.
+      const paidPriceId = session.line_items?.data?.[0]?.price?.id ?? gift.stripe_price_id;
+      const canonical = resolveGiftByPriceId(paidPriceId);
+      if (!canonical) {
+        console.error("verify-gift: paid session used unknown priceId", { giftId: gift.id, paidPriceId });
+        return new Response(JSON.stringify({ error: "Unrecognized Stripe price on paid gift" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409,
+        });
+      }
+      // Idempotent transition: only flip pending → paid, and correct any drift
+      // in the stored gift_type / diamond_amount to the server-owned canonical
+      // values in the same update.
+      const { data: updated } = await admin
+        .from("gifts")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          gift_type: canonical.giftType,
+          diamond_amount: canonical.diamondAmount,
+          stripe_price_id: paidPriceId,
+        })
+        .eq("id", gift.id)
+        .eq("status", "pending")
+        .select("id, redeem_code, recipient_email, gift_type")
+        .maybeSingle();
+      const result = updated ?? {
+        redeem_code: gift.redeem_code,
+        recipient_email: gift.recipient_email,
+        gift_type: canonical.giftType,
+      };
       return new Response(JSON.stringify({
-        status: "paid", redeem_code: gift.redeem_code,
-        recipient_email: gift.recipient_email, gift_type: gift.gift_type,
+        status: "paid",
+        redeem_code: result.redeem_code,
+        recipient_email: result.recipient_email,
+        gift_type: result.gift_type,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
 
