@@ -106,6 +106,59 @@ const JARVAN_STATE = {
   },
 };
 
+// A Maokai-style state: a DAMAGED standardized target with a certified maximum
+// health, so current/maximum/missing health are all displayable.
+const MAOKAI_STATE = {
+  snapshot_id: "snap_maokai_l6",
+  patch_key_digest: "patchkey_x",
+  validation_status: "certified",
+  label: "Level 6 — after the hit resolves",
+  champion_a: {
+    champion_id: "maokai",
+    display_name: "Maokai",
+    current_health: 1210,
+    max_health: null,
+    resource_type: "mana",
+    current_resource: 590,
+    max_resource: null,
+    active_effects: [],
+    inventory_summary: ["Blasting Wand"],
+    level: 6,
+    ability_ranks: { Q: 3, R: 1 },
+    ability_power: 45,
+    base_attack_damage: null,
+    bonus_attack_damage: null,
+    total_attack_damage: null,
+    gold: 50,
+    armor: null,
+    magic_resist: null,
+    archetype: null,
+    inventory_items: [{ name: "Blasting Wand", item_id: 1026 }],
+  },
+  champion_b: {
+    champion_id: "target_standard_tank",
+    display_name: "Standard level-6 tank target",
+    current_health: 1202.76,
+    max_health: 1350,
+    resource_type: null,
+    current_resource: null,
+    max_resource: null,
+    active_effects: [],
+    inventory_summary: [],
+    level: 6,
+    ability_ranks: {},
+    ability_power: null,
+    base_attack_damage: null,
+    bonus_attack_damage: null,
+    total_attack_damage: null,
+    gold: null,
+    armor: 75,
+    magic_resist: 45,
+    archetype: "tank",
+    inventory_items: [],
+  },
+};
+
 // An Ahri-style state omits all progression fields.
 const AHRI_STATE = {
   snapshot_id: "snap_ahri",
@@ -163,6 +216,26 @@ describe("MasteryStatePanel progression display", () => {
     expect(screen.getByTestId("mastery-progression-jarvan").textContent).not.toContain("AP");
     // target armor renders on champion_b's block.
     expect(screen.getByTestId("mastery-progression-target_standard_bruiser").textContent).toContain("55");
+  });
+
+  it("renders target current/maximum/missing health for a health-scaling set", () => {
+    const view = readStateView(MAOKAI_STATE);
+    expect(view.championB.currentHealth).toBe(1202.76);
+    expect(view.championB.maxHealth).toBe(1350);
+
+    render(<MasteryStatePanel state={view} />);
+    // current / maximum health both visible on the target's HP readout
+    const hp = screen.getByTestId("mastery-hp-target_standard_tank");
+    expect(hp.textContent).toContain("1202.76");
+    expect(hp.textContent).toContain("1350");
+    // missing health (value + percentage) is surfaced
+    const missing = screen.getByTestId("mastery-missing-hp-target_standard_tank");
+    expect(missing.textContent).toContain("147"); // 1350 - 1202.76
+    expect(missing.textContent).toContain("11%"); // ~10.9% missing
+    // a full-health champion shows no missing-HP readout
+    expect(screen.queryByTestId("mastery-missing-hp-maokai")).toBeNull();
+    // magic champion keeps AP and shows no AD stat
+    expect(screen.queryByTestId("mastery-ad-maokai")).toBeNull();
   });
 
   it("does not render a progression block for a set without progression fields", () => {
