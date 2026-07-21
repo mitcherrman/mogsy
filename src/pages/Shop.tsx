@@ -286,6 +286,8 @@ export default function Shop() {
       const { data, error } = await supabase.rpc("purchase_powerup", {
         _profile_id: profile.id,
         _powerup_field: powerUp.field,
+        // Server ignores this value and uses its own canonical price. Kept
+        // in the payload only because the RPC signature still requires it.
         _diamond_cost: powerUp.diamondCost,
       });
       if (error) {
@@ -295,10 +297,24 @@ export default function Shop() {
         setPurchasing(null);
         return;
       }
-      const newDiamonds = (data as any)?.diamonds ?? 0;
-      const newValue = (data as any)?.powerup_value ?? 0;
-      setProfile({ ...profile, [powerUp.field]: newValue, diamonds: newDiamonds });
-      toast({ title: `${powerUp.name} purchased!`, description: `You now have ${newValue}. (${newDiamonds} 💎 remaining)` });
+      const result = (data as any) ?? {};
+      if (result.success === false) {
+        const reason = result.reason === "insufficient_diamonds"
+          ? "Not enough diamonds."
+          : result.reason === "invalid_powerup"
+          ? "Unknown power-up."
+          : "Purchase failed.";
+        toast({ title: "Purchase failed", description: reason, variant: "destructive" });
+        await loadProfile();
+        setPurchasing(null);
+        return;
+      }
+      // The server returns diamonds_remaining and the canonical cost. Refresh
+      // the profile so the granted power-up count is authoritative rather than
+      // computed on the client.
+      const newDiamonds = result.diamonds_remaining ?? result.diamonds ?? profile.diamonds ?? 0;
+      await loadProfile();
+      toast({ title: `${powerUp.name} purchased!`, description: `${newDiamonds} 💎 remaining.` });
     } catch (err: any) {
       toast({ title: "Purchase failed", description: "Something went wrong.", variant: "destructive" });
       await loadProfile();
