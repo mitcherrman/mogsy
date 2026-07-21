@@ -104,6 +104,22 @@ function ProgressionDetails({ champion }: { champion: MasteryChampionView }) {
             Gold <span className="font-medium text-foreground">{champion.gold}</span>
           </span>
         )}
+        {champion.maxHealth !== null && champion.maxHealth > 0 &&
+          champion.currentHealth < champion.maxHealth && (
+            <span data-testid={`mastery-missing-hp-${champion.championId}`}>
+              Missing HP{" "}
+              <span className="font-medium text-foreground">
+                {Math.round(champion.maxHealth - champion.currentHealth)}
+              </span>
+              <span className="text-muted-foreground">
+                {" "}
+                ({Math.round(
+                  ((champion.maxHealth - champion.currentHealth) / champion.maxHealth) * 100,
+                )}
+                %)
+              </span>
+            </span>
+          )}
         {champion.armor !== null && (
           <span>Armor <span className="font-medium text-foreground">{champion.armor}</span></span>
         )}
