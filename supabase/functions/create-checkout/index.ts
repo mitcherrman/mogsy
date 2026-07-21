@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { resolveGiftByPriceId } from "../_shared/gift-catalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,12 +120,17 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
         });
       }
-      const giftType = String(gift.gift_type || "");
-      if (!["pro_monthly", "pro_annual", "diamonds"].includes(giftType)) {
-        return new Response(JSON.stringify({ error: "Invalid gift type" }), {
+      // Resolve gift type and diamond amount from the server-owned Price ID
+      // catalog. The client-supplied `gift.gift_type` and `gift.diamond_amount`
+      // are DISCARDED here — the priceId is the only trusted identifier.
+      const catalogEntry = resolveGiftByPriceId(priceId);
+      if (!catalogEntry) {
+        return new Response(JSON.stringify({ error: "Unknown gift priceId" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
         });
       }
+      const giftType = catalogEntry.giftType;
+      const canonicalDiamondAmount = catalogEntry.diamondAmount;
       const adminClient = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -135,7 +141,7 @@ serve(async (req) => {
         sender_email: user.email,
         recipient_email: recipientEmail,
         gift_type: giftType,
-        diamond_amount: Number(gift.diamond_amount) || 0,
+        diamond_amount: canonicalDiamondAmount,
         stripe_price_id: priceId,
         message: typeof gift.message === "string" ? gift.message.slice(0, 500) : null,
       }).select("id, redeem_code").single();
