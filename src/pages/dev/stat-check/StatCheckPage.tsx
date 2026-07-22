@@ -201,7 +201,7 @@ export default function StatCheckPage() {
                 </Button>
               </div>
 
-              <div className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(224px,74vw)] gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
                 {match.currentCategories.map((category, index) => {
                   const resolution = match.lastResolution?.results.find((result) => result.category.id === category.id);
                   const assigned = assignedCard(match, category.id);
@@ -302,7 +302,7 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[360px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-3 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition",
+        "group relative flex min-h-[278px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2.5 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition md:min-h-[360px] md:p-3",
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
         canEdit && selectedCard && "ring-2 ring-[#d6b55d]/55",
         active && "ring-2 ring-cyan-300/65",
@@ -331,10 +331,14 @@ function ArenaLane({
           state={botWon ? (resolution?.decisive ? "decisive" : "winner") : playerWon ? "loser" : "idle"}
           label="Bot"
         />
-        <div className="flex items-center justify-center">
-          <div className="rounded-full border border-cyan-300/20 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-cyan-100">
-            Lane {index + 1}
-          </div>
+        <div className="flex min-h-[48px] items-center justify-center md:min-h-[64px]">
+          {showResult && resolution ? (
+            <LaneResult result={resolution} />
+          ) : (
+            <div className="rounded-full border border-cyan-300/20 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-cyan-100">
+              Lane {index + 1}
+            </div>
+          )}
         </div>
         <ChampionCard
           card={playerCard}
@@ -347,7 +351,6 @@ function ArenaLane({
         />
       </div>
 
-      {showResult && resolution && <LaneResult result={resolution} />}
     </div>
   );
 }
@@ -432,7 +435,7 @@ function ChampionCard({
 }) {
   if (mode === "empty") {
     return (
-      <div className="flex min-h-[128px] items-center justify-center rounded-md border border-dashed border-cyan-300/20 bg-black/25 px-3 text-center text-xs font-semibold text-slate-400">
+      <div className="flex min-h-[88px] items-center justify-center rounded-md border border-dashed border-cyan-300/20 bg-black/25 px-3 text-center text-xs font-semibold text-slate-400 md:min-h-[128px]">
         Place champion
       </div>
     );
@@ -440,10 +443,10 @@ function ChampionCard({
 
   if (mode === "face-down") {
     return (
-      <div className="relative min-h-[128px] overflow-hidden rounded-md border border-cyan-300/20 bg-[linear-gradient(135deg,#0b2032,#071018_45%,#1c1730)] shadow-xl">
+      <div className="relative min-h-[88px] overflow-hidden rounded-md border border-cyan-300/20 bg-[linear-gradient(135deg,#0b2032,#071018_45%,#1c1730)] shadow-xl md:min-h-[128px]">
         <div className="absolute inset-2 rounded border border-[#d6b55d]/30" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(34,211,238,0.25),transparent_32%)]" />
-        <div className="relative flex h-full min-h-[128px] flex-col items-center justify-center gap-2 text-cyan-100">
+        <div className="relative flex h-full min-h-[88px] flex-col items-center justify-center gap-2 text-cyan-100 md:min-h-[128px]">
           <Eye className="h-7 w-7 animate-pulse motion-reduce:animate-none" />
           <span className="text-[10px] font-black uppercase tracking-[0.18em]">Concealed</span>
         </div>
@@ -456,7 +459,7 @@ function ChampionCard({
   const cardClassName = cn(
     "relative block overflow-hidden rounded-md border bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-44 w-32 shrink-0 origin-bottom -translate-y-[var(--hand-rise)] rotate-[var(--hand-rotate)] hover:-translate-y-7 hover:rotate-0 sm:h-48 sm:w-36",
-    mode === "lane" && "min-h-[128px] w-full",
+    mode === "lane" && "min-h-[88px] w-full md:min-h-[128px]",
     state === "selected" && "-translate-y-10 rotate-0 border-[#f4d77d] ring-2 ring-[#f4d77d]/45",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
@@ -654,11 +657,11 @@ function DiscardPile({
 function LaneResult({ result }: { result: CategoryResult }) {
   const winnerCard = result.winner === "player" ? result.playerCard : result.winner === "bot" ? result.botCard : null;
   return (
-    <div className="absolute inset-x-3 top-1/2 z-20 -translate-y-1/2 rounded-md border border-[#d6b55d]/45 bg-black/88 p-3 text-center shadow-2xl">
-      <div className="text-xl font-black text-white">
+    <div className="z-20 w-full rounded-md border border-[#d6b55d]/45 bg-black/82 px-3 py-2 text-center shadow-2xl">
+      <div className="truncate text-base font-black text-white">
         {winnerCard ? `${winnerCard.name} wins` : "Lane tied"}
       </div>
-      <div className="mt-1 text-lg font-black text-[#f4d77d]">
+      <div className="mt-0.5 text-sm font-black text-[#f4d77d]">
         {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
       </div>
       <div className="text-xs font-semibold text-cyan-100">{(result.margin * 100).toFixed(1)}% margin</div>
