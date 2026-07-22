@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import {
   Bot,
   ChevronsRight,
@@ -21,6 +23,15 @@ import { useChampionAssets, getChampionSplash, getChampionIcon } from "@/hooks/u
 import { useChampionBaseStats } from "@/hooks/useChampionBaseStats";
 import { cn } from "@/lib/utils";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
+import { STAT_CHECK_ANIMATION, REVEAL_TIMELINE, animationDuration } from "./animationConfig";
+import {
+  activeResolvedLane,
+  animationStepReducer,
+  revealedOpponentCount,
+  stepAfterLane,
+  stepBeforeDamage,
+  type PresentationStep,
+} from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import {
   STAT_CHECK_RULES,
@@ -41,29 +52,24 @@ import {
 
 const SEED = "stat-check-tabletop-v2";
 
-type RevealStep =
-  | "selecting"
-  | "locking"
-  | "opponent-reveal"
-  | "lane-one"
-  | "lane-two"
-  | "lane-three"
-  | "board-result"
-  | "damage"
-  | "resolved"
-  | "match-over";
+type TravelingCardState = {
+  id: string;
+  card: StatCheckCard;
+  imageUrl?: string | null;
+  from: DOMRectSnapshot;
+  to: DOMRectSnapshot;
+  fromRotation: number;
+  toRotation: number;
+  durationMs: number;
+  kind: "place" | "return" | "lane-move" | "discard" | "deal";
+};
 
-const REVEAL_FLOW: RevealStep[] = [
-  "opponent-reveal",
-  "lane-one",
-  "lane-two",
-  "lane-three",
-  "board-result",
-  "damage",
-  "resolved",
-];
-
-const STEP_DELAY_MS = 280;
+type DOMRectSnapshot = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 export default function StatCheckPage() {
   const { data: statRows, isLoading, isError } = useChampionBaseStats();
@@ -76,50 +82,66 @@ export default function StatCheckPage() {
   const [matchKey, setMatchKey] = useState(0);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`));
-  const [revealStep, setRevealStep] = useState<RevealStep>("selecting");
+  const [revealStep, dispatchRevealStep] = useReducer(animationStepReducer, "selecting" as PresentationStep);
+  const [travelingCards, setTravelingCards] = useState<TravelingCardState[]>([]);
   const [damageFlashKey, setDamageFlashKey] = useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
   const timersRef = useRef<number[]>([]);
+  const handCardRefs = useRef<Record<string, HTMLElement | null>>({});
+  const lanePlayerRefs = useRef<Record<string, HTMLElement | null>>({});
+  const laneBotRefs = useRef<Record<string, HTMLElement | null>>({});
+  const discardRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
+  const hpRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
 
   useEffect(() => {
-    clearRevealTimers(timersRef.current);
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
     setMatch(createMatch(deck, `${SEED}:${matchKey}`));
     setSelectedCardId(null);
-    setRevealStep("selecting");
+    dispatchRevealStep({ type: "cancel" });
   }, [deck, matchKey]);
 
-  useEffect(() => () => clearRevealTimers(timersRef.current), []);
+  useEffect(() => () => clearAnimationTimers(timersRef.current), []);
 
   useEffect(() => {
     if (revealStep !== "locking" || !match.lastResolution) return;
-    clearRevealTimers(timersRef.current);
+    clearAnimationTimers(timersRef.current);
 
     if (prefersReducedMotion) {
-      setRevealStep(match.phase === "match-over" ? "match-over" : "resolved");
+      dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" });
       setDamageFlashKey((key) => key + 1);
       return;
     }
 
-    const flow = match.phase === "match-over" ? [...REVEAL_FLOW.slice(0, -1), "match-over" as RevealStep] : REVEAL_FLOW;
-    timersRef.current = flow.map((step, index) =>
-      window.setTimeout(() => {
-        setRevealStep(step);
-        if (step === "damage") setDamageFlashKey((key) => key + 1);
-      }, STEP_DELAY_MS * (index + 1)),
-    );
+    const timeline: Array<[number, () => void]> = [
+      [REVEAL_TIMELINE.opponentReveal1, () => dispatchRevealStep({ type: "opponent", lane: 1 })],
+      [REVEAL_TIMELINE.opponentReveal2, () => dispatchRevealStep({ type: "opponent", lane: 2 })],
+      [REVEAL_TIMELINE.opponentReveal3, () => dispatchRevealStep({ type: "opponent", lane: 3 })],
+      [REVEAL_TIMELINE.resolveLane1, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
+      [REVEAL_TIMELINE.resolveLane2, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
+      [REVEAL_TIMELINE.resolveLane3, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
+      [REVEAL_TIMELINE.boardResult, () => dispatchRevealStep({ type: "board-result" })],
+      [REVEAL_TIMELINE.damage, () => {
+        dispatchRevealStep({ type: "damage" });
+        setDamageFlashKey((key) => key + 1);
+      }],
+      [REVEAL_TIMELINE.resolved, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
+    ];
+    timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion)));
   }, [match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
 
   const selectedCard = match.playerHand.find((card) => card.id === selectedCardId) ?? null;
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
-  const canEdit = match.phase === "selecting" && revealStep === "selecting";
-  const activeLaneIndex = revealLaneIndex(revealStep);
+  const canEdit = match.phase === "selecting" && ["selecting", "placing-card", "returning-card"].includes(revealStep);
+  const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
-  const displayHp = activeResolution && revealStepBeforeDamage(revealStep)
+  const displayHp = activeResolution && stepBeforeDamage(revealStep)
     ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
     : { player: match.playerHp, bot: match.botHp };
 
   const restart = () => {
-    clearRevealTimers(timersRef.current);
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
     setMatchKey((key) => key + 1);
   };
 
@@ -127,9 +149,41 @@ export default function StatCheckPage() {
     if (!canEdit) return;
     const current = match.assignments[category.id];
     if (selectedCardId) {
+      const card = match.playerHand.find((item) => item.id === selectedCardId);
+      const fromElement = handCardRefs.current[selectedCardId];
+      const toElement = lanePlayerRefs.current[category.id];
+      if (card) {
+        queueCardTravel({
+          card,
+          imageUrl: getImage(assets, card),
+          fromElement,
+          toElement,
+          fromRotation: readElementRotation(fromElement),
+          toRotation: 0,
+          kind: current ? "lane-move" : "place",
+          durationMs: animationDuration(STAT_CHECK_ANIMATION.handTravelMs, prefersReducedMotion),
+        });
+      }
+      dispatchRevealStep({ type: "place" });
       setMatch((state) => assignCard(state, category.id, selectedCardId));
       setSelectedCardId(null);
     } else if (current) {
+      const card = match.playerHand.find((item) => item.id === current);
+      const fromElement = lanePlayerRefs.current[category.id];
+      const toElement = handFallbackElement();
+      if (card) {
+        queueCardTravel({
+          card,
+          imageUrl: getImage(assets, card),
+          fromElement,
+          toElement,
+          fromRotation: 0,
+          toRotation: 0,
+          kind: "return",
+          durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion),
+        });
+      }
+      dispatchRevealStep({ type: "return" });
       setMatch((state) => assignCard(state, category.id, null));
     }
   };
@@ -137,15 +191,78 @@ export default function StatCheckPage() {
   const lockIn = () => {
     if (!isReadyToLock(match) || !canEdit) return;
     setSelectedCardId(null);
-    setRevealStep("locking");
+    dispatchRevealStep({ type: "lock" });
     setMatch((state) => resolveCurrentRound(state));
   };
 
   const nextRound = () => {
-    clearRevealTimers(timersRef.current);
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    dispatchRevealStep({ type: "discard" });
+    queueDiscardTravels();
     setSelectedCardId(null);
-    setRevealStep("selecting");
     setMatch((state) => startNextRound(state));
+    const dealTimer = window.setTimeout(() => dispatchRevealStep({ type: "deal" }), animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion));
+    const selectTimer = window.setTimeout(() => dispatchRevealStep({ type: "select" }), animationDuration(STAT_CHECK_ANIMATION.discardMs + STAT_CHECK_ANIMATION.dealStaggerMs * 4, prefersReducedMotion));
+    timersRef.current.push(dealTimer, selectTimer);
+  };
+
+  const queueCardTravel = ({
+    card,
+    imageUrl,
+    fromElement,
+    toElement,
+    fromRotation,
+    toRotation,
+    kind,
+    durationMs,
+  }: {
+    card: StatCheckCard;
+    imageUrl?: string | null;
+    fromElement?: Element | null;
+    toElement?: Element | null;
+    fromRotation: number;
+    toRotation: number;
+    kind: TravelingCardState["kind"];
+    durationMs: number;
+  }) => {
+    const from = snapshotElement(fromElement) ?? fallbackRect();
+    const to = snapshotElement(toElement) ?? from;
+    const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, kind }]);
+    const timer = window.setTimeout(() => {
+      setTravelingCards((items) => items.filter((item) => item.id !== id));
+      if (["place", "return", "lane-move"].includes(kind)) dispatchRevealStep({ type: "select" });
+    }, durationMs + 80);
+    timersRef.current.push(timer);
+  };
+
+  const handFallbackElement = () => Object.values(handCardRefs.current).find(Boolean) ?? null;
+
+  const queueDiscardTravels = () => {
+    if (!activeResolution) return;
+    for (const result of activeResolution.results) {
+      queueCardTravel({
+        card: result.playerCard,
+        imageUrl: getImage(assets, result.playerCard),
+        fromElement: lanePlayerRefs.current[result.category.id],
+        toElement: discardRefs.current.player,
+        fromRotation: 0,
+        toRotation: -8,
+        kind: "discard",
+        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion),
+      });
+      queueCardTravel({
+        card: result.botCard,
+        imageUrl: getImage(assets, result.botCard),
+        fromElement: laneBotRefs.current[result.category.id],
+        toElement: discardRefs.current.bot,
+        fromRotation: 0,
+        toRotation: 8,
+        kind: "discard",
+        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion),
+      });
+    }
   };
 
   return (
@@ -174,7 +291,12 @@ export default function StatCheckPage() {
         </header>
 
         <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[172px_minmax(0,1fr)_260px] xl:grid-cols-[188px_minmax(0,1fr)_280px]">
-          <MatchUtilityRail match={match} assets={assets} />
+          <MatchUtilityRail
+            match={match}
+            assets={assets}
+            botDiscardRef={(element) => { discardRefs.current.bot = element; }}
+            playerDiscardRef={(element) => { discardRefs.current.player = element; }}
+          />
 
           <section className="order-1 grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
             <HpDisplay
@@ -183,6 +305,7 @@ export default function StatCheckPage() {
               previousHp={activeResolution?.botHpBefore}
               damage={activeResolution?.damage.player ?? 0}
               flashKey={damageFlashKey}
+              elementRef={(element) => { hpRefs.current.bot = element; }}
             />
 
             <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
@@ -216,7 +339,11 @@ export default function StatCheckPage() {
                     canEdit={canEdit}
                     revealStep={revealStep}
                     active={activeLaneIndex === index}
+                    revealedBotCount={revealedOpponentCount(revealStep)}
+                    reducedMotion={prefersReducedMotion}
                     assets={assets}
+                    playerRef={(element) => { lanePlayerRefs.current[category.id] = element; }}
+                    botRef={(element) => { laneBotRefs.current[category.id] = element; }}
                     onPlace={() => placeCard(category)}
                   />
                 );
@@ -230,6 +357,7 @@ export default function StatCheckPage() {
               assignedCardIds={assignedCardIds}
               disabled={!canEdit}
               reducedMotion={prefersReducedMotion}
+              cardRefs={handCardRefs}
               onSelect={(cardId) => setSelectedCardId((current) => (current === cardId ? null : cardId))}
             />
 
@@ -239,6 +367,7 @@ export default function StatCheckPage() {
               previousHp={activeResolution?.playerHpBefore}
               damage={activeResolution?.damage.bot ?? 0}
               flashKey={damageFlashKey}
+              elementRef={(element) => { hpRefs.current.player = element; }}
             />
           </section>
 
@@ -252,6 +381,7 @@ export default function StatCheckPage() {
           />
         </section>
       </div>
+      <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
   );
 }
@@ -266,7 +396,11 @@ function ArenaLane({
   canEdit,
   revealStep,
   active,
+  revealedBotCount,
+  reducedMotion,
   assets,
+  playerRef,
+  botRef,
   onPlace,
 }: {
   category: StatCategory;
@@ -276,15 +410,21 @@ function ArenaLane({
   botCard: StatCheckCard | null;
   resolution?: CategoryResult;
   canEdit: boolean;
-  revealStep: RevealStep;
+  revealStep: PresentationStep;
   active: boolean;
+  revealedBotCount: number;
+  reducedMotion: boolean;
   assets: ReturnType<typeof useChampionAssets>["data"];
+  playerRef: (element: HTMLElement | null) => void;
+  botRef: (element: HTMLElement | null) => void;
   onPlace: () => void;
 }) {
-  const botHidden = !resolution || revealStep === "locking";
-  const showResult = Boolean(resolution && (active || revealStepAfterLane(revealStep, index)));
+  const botHidden = !resolution || revealedBotCount <= index;
+  const showResult = Boolean(resolution && (active || stepAfterLane(revealStep, index)));
   const playerWon = resolution?.winner === "player";
   const botWon = resolution?.winner === "bot";
+  const botState = showResult && botWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && playerWon ? "loser" : "idle";
+  const playerState = showResult && playerWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && botWon ? "loser" : "idle";
 
   return (
     <div
@@ -319,15 +459,17 @@ function ArenaLane({
       </div>
 
       <div className="relative mt-2 grid flex-1 grid-rows-[minmax(78px,1fr)_auto_minmax(78px,1fr)] gap-1.5">
-        <ChampionCard
-          card={botCard}
-          imageUrl={getImage(assets, botCard)}
-          category={category}
-          value={resolution?.botValue}
-          mode={botHidden ? "face-down" : "lane"}
-          state={botWon ? (resolution?.decisive ? "decisive" : "winner") : playerWon ? "loser" : "idle"}
-          label="Bot"
-        />
+        <div ref={botRef}>
+          <FlippableCard
+            card={botCard}
+            imageUrl={getImage(assets, botCard)}
+            category={category}
+            value={resolution?.botValue}
+            flipped={!botHidden}
+            reducedMotion={reducedMotion}
+            state={botState}
+          />
+        </div>
         <div className="flex min-h-[42px] items-center justify-center md:min-h-[50px]">
           {showResult && resolution ? (
             <LaneResult result={resolution} />
@@ -337,15 +479,17 @@ function ArenaLane({
             </div>
           )}
         </div>
-        <ChampionCard
-          card={playerCard}
-          imageUrl={getImage(assets, playerCard)}
-          category={category}
-          value={resolution?.playerValue}
-          mode={playerCard ? "lane" : "empty"}
-          state={playerWon ? (resolution?.decisive ? "decisive" : "winner") : botWon ? "loser" : "idle"}
-          label="You"
-        />
+        <div ref={playerRef}>
+          <ChampionCard
+            card={playerCard}
+            imageUrl={getImage(assets, playerCard)}
+            category={category}
+            value={resolution?.playerValue}
+            mode={playerCard ? "lane" : "empty"}
+            state={playerState}
+            label="You"
+          />
+        </div>
       </div>
 
     </div>
@@ -359,6 +503,7 @@ function PlayerHand({
   assignedCardIds,
   disabled,
   reducedMotion,
+  cardRefs,
   onSelect,
 }: {
   cards: StatCheckCard[];
@@ -367,6 +512,7 @@ function PlayerHand({
   assignedCardIds: Set<string>;
   disabled: boolean;
   reducedMotion: boolean;
+  cardRefs: RefObject<Record<string, HTMLElement | null>>;
   onSelect: (cardId: string) => void;
 }) {
   const viewportWidth = useViewportWidth();
@@ -374,7 +520,7 @@ function PlayerHand({
   const parameters = responsiveFanParameters(activeCards.length, viewportWidth);
 
   return (
-    <div className="relative mx-auto h-[190px] w-full max-w-5xl overflow-x-hidden overflow-y-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[190px] 2xl:h-[210px]" data-testid="stat-check-hand">
+    <div className="relative mx-auto h-[190px] w-full max-w-5xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[190px] 2xl:h-[210px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const selected = selectedCardId === card.id;
@@ -391,6 +537,9 @@ function PlayerHand({
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
               )}
               data-fan-index={index}
+              ref={(element) => {
+                if (cardRefs.current) cardRefs.current[card.id] = element;
+              }}
               style={style}
             >
               <ChampionCard
@@ -413,9 +562,13 @@ function PlayerHand({
 function MatchUtilityRail({
   match,
   assets,
+  botDiscardRef,
+  playerDiscardRef,
 }: {
   match: MatchState;
   assets: ReturnType<typeof useChampionAssets>["data"];
+  botDiscardRef: (element: HTMLElement | null) => void;
+  playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
   return (
     <aside className="order-3 grid gap-2 rounded-md border border-cyan-300/12 bg-black/20 p-2 shadow-2xl lg:order-none lg:h-full lg:min-h-0 lg:content-start lg:overflow-y-auto">
@@ -425,8 +578,8 @@ function MatchUtilityRail({
         <CountPill label="Your hand" value={match.playerHand.length} />
         <CountPill label="Bot hand" value={match.botHand.length} />
       </div>
-      <DiscardPile side="bot" cards={match.botDiscard} assets={assets} />
-      <DiscardPile side="player" cards={match.playerDiscard} assets={assets} />
+      <DiscardPile side="bot" cards={match.botDiscard} assets={assets} elementRef={botDiscardRef} />
+      <DiscardPile side="player" cards={match.playerDiscard} assets={assets} elementRef={playerDiscardRef} />
     </aside>
   );
 }
@@ -436,6 +589,124 @@ function CountPill({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border border-cyan-300/12 bg-black/28 px-2 py-1.5">
       <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</div>
       <div className="text-lg font-black text-cyan-100">{value}</div>
+    </div>
+  );
+}
+
+function CardMotionOverlay({
+  travelingCards,
+  assets,
+  reducedMotion,
+}: {
+  travelingCards: TravelingCardState[];
+  assets: ReturnType<typeof useChampionAssets>["data"];
+  reducedMotion: boolean;
+}) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div data-testid="stat-check-motion-overlay" className="pointer-events-none fixed inset-0 z-[9999]">
+      {travelingCards.map((item) => (
+        <TravelingCard key={item.id} item={item} assets={assets} reducedMotion={reducedMotion} />
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
+function TravelingCard({
+  item,
+  assets,
+  reducedMotion,
+}: {
+  item: TravelingCardState;
+  assets: ReturnType<typeof useChampionAssets>["data"];
+  reducedMotion: boolean;
+}) {
+  const midX = (item.from.x + item.to.x) / 2;
+  const midY = (item.from.y + item.to.y) / 2 - STAT_CHECK_ANIMATION.arcLift;
+  const duration = animationDuration(item.durationMs, reducedMotion) / 1000;
+  return (
+    <motion.div
+      data-testid={`stat-check-travel-card-${item.card.id}`}
+      className="fixed left-0 top-0 origin-top-left"
+      initial={{
+        x: item.from.x,
+        y: item.from.y,
+        width: item.from.width,
+        height: item.from.height,
+        rotate: item.fromRotation,
+        opacity: 0.96,
+        scale: 1,
+      }}
+      animate={{
+        x: reducedMotion ? item.to.x : [item.from.x, midX, item.to.x],
+        y: reducedMotion ? item.to.y : [item.from.y, midY, item.to.y],
+        width: item.to.width,
+        height: item.to.height,
+        rotate: item.toRotation,
+        opacity: [0.96, 1, 0.98],
+        scale: item.kind === "discard" ? 0.45 : 1,
+      }}
+      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing }}
+    >
+      <div className="h-full w-full overflow-hidden rounded-md shadow-[0_20px_48px_rgba(0,0,0,0.5)]">
+        <ChampionCard
+          card={item.card}
+          imageUrl={item.imageUrl ?? getImage(assets, item.card)}
+          mode="lane"
+          state="idle"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+function FlippableCard({
+  card,
+  imageUrl,
+  category,
+  value,
+  flipped,
+  reducedMotion,
+  state,
+}: {
+  card: StatCheckCard | null;
+  imageUrl?: string | null;
+  category: StatCategory;
+  value?: number;
+  flipped: boolean;
+  reducedMotion: boolean;
+  state: "idle" | "winner" | "loser" | "decisive";
+}) {
+  if (reducedMotion) {
+    return (
+      <ChampionCard
+        card={card}
+        imageUrl={imageUrl}
+        category={category}
+        value={value}
+        mode={flipped ? "lane" : "face-down"}
+        state={state}
+        label={flipped ? "Bot" : undefined}
+      />
+    );
+  }
+
+  return (
+    <div className="relative min-h-[88px] w-full md:min-h-[96px]" style={{ perspective: "900px" }}>
+      <motion.div
+        className="relative min-h-[88px] w-full md:min-h-[96px]"
+        style={{ transformStyle: "preserve-3d" }}
+        animate={{ rotateY: flipped ? 180 : 0, y: flipped ? -2 : 0 }}
+        transition={{ duration: STAT_CHECK_ANIMATION.opponentFlipMs / 1000, ease: STAT_CHECK_ANIMATION.easing }}
+      >
+        <div className="absolute inset-0 [backface-visibility:hidden]">
+          <ChampionCard card={null} mode="face-down" />
+        </div>
+        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="lane" state={state} label="Bot" />
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -605,17 +876,19 @@ function HpDisplay({
   previousHp,
   damage,
   flashKey,
+  elementRef,
 }: {
   side: "player" | "bot";
   hp: number;
   previousHp?: number;
   damage: number;
   flashKey: number;
+  elementRef?: (element: HTMLElement | null) => void;
 }) {
   const pct = Math.max(0, Math.min(100, (hp / STAT_CHECK_RULES.startingHp) * 100));
   const damaged = previousHp != null && damage > 0 && hp < previousHp;
   return (
-    <div className="relative mx-auto w-full max-w-4xl rounded-md border border-cyan-300/15 bg-black/32 px-3 py-1.5 shadow-xl">
+    <div ref={elementRef} className="relative mx-auto w-full max-w-4xl rounded-md border border-cyan-300/15 bg-black/32 px-3 py-1.5 shadow-xl">
       {damaged && (
         <div key={flashKey} className="pointer-events-none absolute right-4 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-1 text-xs font-black text-white motion-reduce:animate-none">
           -{damage}
@@ -666,13 +939,15 @@ function DiscardPile({
   side,
   cards,
   assets,
+  elementRef,
 }: {
   side: "player" | "bot";
   cards: StatCheckCard[];
   assets: ReturnType<typeof useChampionAssets>["data"];
+  elementRef?: (element: HTMLElement | null) => void;
 }) {
   return (
-    <details className="rounded-md border border-cyan-300/12 bg-black/25 p-2 shadow-xl" data-testid={`stat-check-${side}-discard`}>
+    <details ref={elementRef} className="rounded-md border border-cyan-300/12 bg-black/25 p-2 shadow-xl" data-testid={`stat-check-${side}-discard`}>
       <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
         {side === "player" ? "Your" : "Bot"} discard - {cards.length}
       </summary>
@@ -826,33 +1101,37 @@ function scopeLabel(category: StatCategory) {
   return "Base";
 }
 
-function revealLaneIndex(step: RevealStep) {
-  if (step === "lane-one") return 0;
-  if (step === "lane-two") return 1;
-  if (step === "lane-three") return 2;
-  return -1;
-}
-
-function revealStepAfterLane(step: RevealStep, laneIndex: number) {
-  const active = revealLaneIndex(step);
-  if (active >= 0) return active > laneIndex;
-  return ["board-result", "damage", "resolved", "match-over"].includes(step);
-}
-
-function revealStepBeforeDamage(step: RevealStep) {
-  return ["locking", "opponent-reveal", "lane-one", "lane-two", "lane-three", "board-result"].includes(step);
-}
-
-function phaseLabel(step: RevealStep) {
+function phaseLabel(step: PresentationStep) {
   return step
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
-function clearRevealTimers(timers: number[]) {
+function clearAnimationTimers(timers: number[]) {
   timers.forEach((timer) => window.clearTimeout(timer));
   timers.length = 0;
+}
+
+function snapshotElement(element?: Element | null): DOMRectSnapshot | null {
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+}
+
+function fallbackRect(): DOMRectSnapshot {
+  if (typeof window === "undefined") return { x: 0, y: 0, width: 120, height: 160 };
+  return { x: window.innerWidth / 2 - 60, y: window.innerHeight / 2 - 80, width: 120, height: 160 };
+}
+
+function readElementRotation(element?: Element | null) {
+  if (!element || typeof window === "undefined") return 0;
+  const transform = window.getComputedStyle(element).transform;
+  if (!transform || transform === "none") return 0;
+  const values = transform.match(/matrix\(([^)]+)\)/)?.[1]?.split(",").map((value) => Number.parseFloat(value.trim()));
+  if (!values || values.length < 2) return 0;
+  return Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
 }
 
 function useViewportWidth() {

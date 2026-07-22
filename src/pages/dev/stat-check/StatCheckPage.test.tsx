@@ -27,6 +27,10 @@ function fillBoard(container: HTMLElement) {
   place(container, 2, 2);
 }
 
+function finishReveal() {
+  act(() => vi.advanceTimersByTime(4_000));
+}
+
 function reducedMotion(matches: boolean) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -50,7 +54,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
+    act(() => vi.runOnlyPendingTimers());
     vi.useRealTimers();
   });
 
@@ -86,6 +90,31 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
   });
 
+  it("starts and completes placement overlay travel without stale cards", () => {
+    const { container } = render(<StatCheckPage />);
+
+    place(container, 0, 0);
+
+    expect(screen.getByTestId("stat-check-motion-overlay")).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+
+    act(() => vi.advanceTimersByTime(600));
+
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+  });
+
+  it("restart cancels active overlay travel", () => {
+    const { container } = render(<StatCheckPage />);
+    place(container, 0, 0);
+
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /restart/i }));
+
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
     const { container } = render(<StatCheckPage />);
     fillBoard(container);
@@ -94,7 +123,7 @@ describe("StatCheckPage tabletop presentation", () => {
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(lanes(container)[0]);
 
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
     expect(screen.getByTestId("stat-check-board-result")).toHaveTextContent(/board/i);
@@ -118,7 +147,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     fireEvent.click(screen.getByRole("button", { name: /restart/i }));
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
     expect(screen.getByText(/Bot cards stay face-down/i)).toBeInTheDocument();
@@ -129,7 +158,7 @@ describe("StatCheckPage tabletop presentation", () => {
     const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     fireEvent.click(screen.getByTestId("stat-check-next-round"));
 
@@ -143,12 +172,13 @@ describe("StatCheckPage tabletop presentation", () => {
     const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     expect(screen.getByTestId("stat-check-board-result")).toBeInTheDocument();
     expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    act(() => vi.advanceTimersByTime(1_000));
 
     expect(screen.getByText(/Round 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Selecting/i)).toBeInTheDocument();
@@ -172,12 +202,12 @@ describe("StatCheckPage tabletop presentation", () => {
     const { container } = render(<StatCheckPage />);
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     expect(screen.getByTestId("stat-check-board-result")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /restart/i }));
-    act(() => vi.advanceTimersByTime(2_200));
+    finishReveal();
 
     expect(screen.getByText(/Round 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Selecting/i)).toBeInTheDocument();
