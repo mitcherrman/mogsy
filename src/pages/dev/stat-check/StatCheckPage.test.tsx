@@ -60,7 +60,8 @@ describe("StatCheckPage tabletop presentation", () => {
 
     place(container, 0, 0);
     expect(within(firstLane).queryByText(/Place champion/i)).toBeNull();
-    expect(screen.getByText(/On table/i)).toBeInTheDocument();
+    expect(screen.queryByText(/On table/i)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
 
     fireEvent.click(firstLane);
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
@@ -68,7 +69,21 @@ describe("StatCheckPage tabletop presentation", () => {
 
     expect(within(firstLane).getByText(/Place champion/i)).toBeInTheDocument();
     expect(within(secondLane).queryByText(/Place champion/i)).toBeNull();
-    expect(screen.getAllByText(/On table/i)).toHaveLength(1);
+    expect(screen.queryByText(/On table/i)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+  });
+
+  it("returns a placed card to the normalized hand fan", () => {
+    const { container } = render(<StatCheckPage />);
+    const [firstLane] = lanes(container);
+
+    place(container, 0, 0);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+
+    fireEvent.click(firstLane);
+
+    expect(within(firstLane).getByText(/Place champion/i)).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
   });
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
@@ -76,7 +91,7 @@ describe("StatCheckPage tabletop presentation", () => {
     fillBoard(container);
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
-    fireEvent.click(screen.getByTestId("stat-check-hand-3"));
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(lanes(container)[0]);
 
     act(() => vi.advanceTimersByTime(2_200));

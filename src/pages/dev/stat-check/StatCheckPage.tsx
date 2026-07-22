@@ -21,6 +21,7 @@ import { useChampionAssets, getChampionSplash, getChampionIcon } from "@/hooks/u
 import { useChampionBaseStats } from "@/hooks/useChampionBaseStats";
 import { cn } from "@/lib/utils";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
+import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import {
   STAT_CHECK_RULES,
   assignCard,
@@ -228,6 +229,7 @@ export default function StatCheckPage() {
               selectedCardId={selectedCardId}
               assignedCardIds={assignedCardIds}
               disabled={!canEdit}
+              reducedMotion={prefersReducedMotion}
               onSelect={(cardId) => setSelectedCardId((current) => (current === cardId ? null : cardId))}
             />
 
@@ -356,6 +358,7 @@ function PlayerHand({
   selectedCardId,
   assignedCardIds,
   disabled,
+  reducedMotion,
   onSelect,
 }: {
   cards: StatCheckCard[];
@@ -363,31 +366,33 @@ function PlayerHand({
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
   disabled: boolean;
+  reducedMotion: boolean;
   onSelect: (cardId: string) => void;
 }) {
+  const viewportWidth = useViewportWidth();
+  const activeCards = cards.filter((card) => !assignedCardIds.has(card.id));
+  const parameters = responsiveFanParameters(activeCards.length, viewportWidth);
+
   return (
-    <div className="relative mx-auto w-full max-w-5xl overflow-x-auto overflow-y-visible px-3 pb-0 pt-1" data-testid="stat-check-hand">
-      <div className="flex min-w-max justify-center gap-0 px-4 pb-2 sm:min-w-0 sm:px-0">
-        {cards.map((card, index) => {
-          const centerOffset = index - (cards.length - 1) / 2;
+    <div className="relative mx-auto h-[190px] w-full max-w-5xl overflow-x-hidden overflow-y-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[190px] 2xl:h-[210px]" data-testid="stat-check-hand">
+      <div className="relative mx-auto h-full min-w-[320px] max-w-full">
+        {activeCards.map((card, index) => {
           const selected = selectedCardId === card.id;
-          const assigned = assignedCardIds.has(card.id);
+          const layout = fanCardLayout(index, activeCards.length, parameters, selected);
           const style = {
-            "--hand-rotate": `${centerOffset * 4}deg`,
-            "--hand-rise": `${Math.abs(centerOffset) * 7}px`,
-            zIndex: selected ? 30 : Math.round(20 - Math.abs(centerOffset)),
+            transform: `translate(-50%, 0) translate(${layout.x}px, ${layout.y}px) rotate(${layout.rotation}deg)`,
+            zIndex: layout.zIndex,
           } as CSSProperties;
-          if (assigned) {
-            return (
-              <div key={card.id} className="-ml-8 first:ml-0 sm:-ml-10" style={style}>
-                <div className="grid h-28 w-20 shrink-0 origin-bottom translate-y-10 rotate-[var(--hand-rotate)] place-items-center rounded-md border border-dashed border-cyan-300/15 bg-black/22 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 sm:h-32 sm:w-24 lg:h-[104px] lg:w-[76px] xl:h-28 xl:w-20">
-                  On table
-                </div>
-              </div>
-            );
-          }
           return (
-            <div key={card.id} className="-ml-5 first:ml-0 sm:-ml-8 xl:-ml-7" style={style}>
+            <div
+              key={card.id}
+              className={cn(
+                "absolute left-1/2 top-0 origin-bottom will-change-transform",
+                reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
+              )}
+              data-fan-index={index}
+              style={style}
+            >
               <ChampionCard
                 card={card}
                 imageUrl={getImage(assets, card)}
@@ -483,9 +488,9 @@ function ChampionCard({
   const chips = card ? statChips(card) : [];
   const cardClassName = cn(
     "relative block overflow-hidden rounded-md border bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
-    mode === "hand" && "h-40 w-28 shrink-0 origin-bottom -translate-y-[var(--hand-rise)] rotate-[var(--hand-rotate)] hover:-translate-y-7 hover:rotate-0 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[108px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
+    mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[108px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "lane" && "min-h-[88px] w-full md:min-h-[96px]",
-    state === "selected" && "-translate-y-10 rotate-0 border-[#f4d77d] ring-2 ring-[#f4d77d]/45",
+    state === "selected" && "border-[#f4d77d] ring-2 ring-[#f4d77d]/45",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -848,6 +853,16 @@ function phaseLabel(step: RevealStep) {
 function clearRevealTimers(timers: number[]) {
   timers.forEach((timer) => window.clearTimeout(timer));
   timers.length = 0;
+}
+
+function useViewportWidth() {
+  const [width, setWidth] = useState(() => window.innerWidth || 1440);
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth || 1440);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return width;
 }
 
 function usePrefersReducedMotion() {
