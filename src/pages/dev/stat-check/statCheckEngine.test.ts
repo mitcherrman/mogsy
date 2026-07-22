@@ -164,6 +164,21 @@ describe("Stat Check engine", () => {
     expect(next.currentCategories.map((c) => c.id)).toContain(preview);
   });
 
+  it("clears the cached round result when entering a new selecting round", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "clear-result");
+    state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+    expect(state.phase).toBe("resolved");
+    expect(state.lastResolution?.round).toBe(1);
+
+    const next = startNextRound(state);
+
+    expect(next.phase).toBe("selecting");
+    expect(next.round).toBe(2);
+    expect(next.lastResolution).toBeNull();
+    expect(next.playerDiscard).toHaveLength(3);
+    expect(next.botDiscard).toHaveLength(3);
+  });
+
   it("selects legal bot assignments with no duplicated cards", () => {
     const categories = generateCategoryBoard("bot", 1);
     const picked = selectBotAssignments(STAT_CHECK_FIXTURE_DECK.slice(0, 6), categories);

@@ -544,6 +544,7 @@ export function startNextRound(state: MatchState): MatchState {
     currentCategories,
     nextCategories,
     assignments: emptyAssignments(currentCategories),
+    lastResolution: null,
   };
 }
 

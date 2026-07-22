@@ -112,8 +112,9 @@ export default function StatCheckPage() {
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
   const canEdit = match.phase === "selecting" && revealStep === "selecting";
   const activeLaneIndex = revealLaneIndex(revealStep);
-  const displayHp = match.lastResolution && revealStepBeforeDamage(revealStep)
-    ? { player: match.lastResolution.playerHpBefore, bot: match.lastResolution.botHpBefore }
+  const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
+  const displayHp = activeResolution && revealStepBeforeDamage(revealStep)
+    ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
     : { player: match.playerHp, bot: match.botHp };
 
   const restart = () => {
@@ -177,8 +178,8 @@ export default function StatCheckPage() {
             <HpDisplay
               side="bot"
               hp={displayHp.bot}
-              previousHp={match.lastResolution?.botHpBefore}
-              damage={match.lastResolution?.damage.player ?? 0}
+              previousHp={activeResolution?.botHpBefore}
+              damage={activeResolution?.damage.player ?? 0}
               flashKey={damageFlashKey}
             />
             <NextRoundIntel categories={match.nextCategories} />
@@ -203,7 +204,7 @@ export default function StatCheckPage() {
 
               <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(224px,74vw)] gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
                 {match.currentCategories.map((category, index) => {
-                  const resolution = match.lastResolution?.results.find((result) => result.category.id === category.id);
+                  const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                   const assigned = assignedCard(match, category.id);
                   return (
                     <ArenaLane
@@ -236,6 +237,7 @@ export default function StatCheckPage() {
 
             <RevealSequence
               match={match}
+              resolution={activeResolution}
               revealStep={revealStep}
               onNextRound={nextRound}
               onRestart={restart}
@@ -247,8 +249,8 @@ export default function StatCheckPage() {
             <HpDisplay
               side="player"
               hp={displayHp.player}
-              previousHp={match.lastResolution?.playerHpBefore}
-              damage={match.lastResolution?.damage.bot ?? 0}
+              previousHp={activeResolution?.playerHpBefore}
+              damage={activeResolution?.damage.bot ?? 0}
               flashKey={damageFlashKey}
             />
             <div className="hidden lg:block" />
@@ -507,16 +509,17 @@ function ChampionCard({
 
 function RevealSequence({
   match,
+  resolution,
   revealStep,
   onNextRound,
   onRestart,
 }: {
   match: MatchState;
+  resolution: RoundResolution | null;
   revealStep: RevealStep;
   onNextRound: () => void;
   onRestart: () => void;
 }) {
-  const resolution = match.lastResolution;
   return (
     <aside className="relative overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-3 shadow-2xl">
       <div className="flex items-center justify-between gap-2">

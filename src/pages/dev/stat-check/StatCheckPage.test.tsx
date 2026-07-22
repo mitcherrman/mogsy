@@ -122,4 +122,56 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-bot-discard")).toHaveTextContent(/3/);
     expect(lanes(container).some((lane) => lane.textContent?.includes(firstIntel))).toBe(true);
   });
+
+  it("clears resolved presentation state when advancing to the next round", () => {
+    const { container } = render(<StatCheckPage />);
+    const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    act(() => vi.advanceTimersByTime(2_200));
+
+    expect(screen.getByTestId("stat-check-board-result")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+
+    expect(screen.getByText(/Round 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selecting/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("stat-check-board-result")).toBeNull();
+    expect(screen.queryByTestId("stat-check-damage-player")).toBeNull();
+    expect(screen.queryByTestId("stat-check-damage-bot")).toBeNull();
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
+    expect(screen.getByText(/Bot cards stay face-down until lock-in/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Concealed/i)).toHaveLength(3);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+    expect(screen.queryByText(/Decisive \+1/i)).toBeNull();
+    expect(lanes(container).some((lane) => lane.textContent?.includes("margin"))).toBe(false);
+    expect(lanes(container).some((lane) => lane.textContent?.includes("Decisive +1"))).toBe(false);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+    expect(screen.getByTestId("stat-check-player-discard")).toHaveTextContent(/3/);
+    expect(screen.getByTestId("stat-check-bot-discard")).toHaveTextContent(/3/);
+    expect(lanes(container).some((lane) => lane.textContent?.includes(firstIntel))).toBe(true);
+  });
+
+  it("restart after resolution clears cached results, pending timers, and staged UI", () => {
+    const { container } = render(<StatCheckPage />);
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    act(() => vi.advanceTimersByTime(2_200));
+
+    expect(screen.getByTestId("stat-check-board-result")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /restart/i }));
+    act(() => vi.advanceTimersByTime(2_200));
+
+    expect(screen.getByText(/Round 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selecting/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("stat-check-board-result")).toBeNull();
+    expect(screen.queryByTestId("stat-check-damage-player")).toBeNull();
+    expect(screen.queryByTestId("stat-check-damage-bot")).toBeNull();
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
+    expect(screen.getAllByText(/Concealed/i)).toHaveLength(3);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
 });
