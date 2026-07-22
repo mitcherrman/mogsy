@@ -148,17 +148,17 @@ export default function StatCheckPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100">
+    <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 lg:h-[calc(100svh-56px)] lg:min-h-[640px]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col gap-3 px-3 py-3 sm:px-5">
-        <header className="flex flex-wrap items-center justify-between gap-2">
+      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 lg:h-full lg:min-h-0">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d]">
               <Swords className="h-4 w-4" /> Dev prototype
             </div>
-            <h1 className="text-2xl font-black leading-tight sm:text-4xl">Stat Check</h1>
+            <h1 className="text-2xl font-black leading-tight sm:text-3xl">Stat Check</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
@@ -172,9 +172,10 @@ export default function StatCheckPage() {
           </div>
         </header>
 
-        <section className="grid flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3">
-          <div className="grid items-start gap-3 lg:grid-cols-[minmax(180px,240px)_1fr_minmax(180px,240px)]">
-            <DiscardPile side="bot" cards={match.botDiscard} assets={assets} />
+        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[172px_minmax(0,1fr)_260px] xl:grid-cols-[188px_minmax(0,1fr)_280px]">
+          <MatchUtilityRail match={match} assets={assets} />
+
+          <section className="order-1 grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
             <HpDisplay
               side="bot"
               hp={displayHp.bot}
@@ -182,70 +183,54 @@ export default function StatCheckPage() {
               damage={activeResolution?.damage.player ?? 0}
               flashKey={damageFlashKey}
             />
-            <NextRoundIntel categories={match.nextCategories} />
-          </div>
 
-          <div className="grid min-h-[460px] gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,260px)]">
-            <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-3">
-              <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-full border border-cyan-300/15 bg-black/25 px-4 py-2 shadow-xl">
-                <p className="text-sm font-semibold text-cyan-100">Choose a champion, then place it in a lane.</p>
-                <Button
-                  data-testid="stat-check-lock"
-                  onClick={lockIn}
-                  disabled={!isReadyToLock(match) || !canEdit}
-                  className={cn(
-                    "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
-                    revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
-                  )}
-                >
-                  <Zap className="mr-1.5 h-4 w-4" /> Lock in
-                </Button>
-              </div>
+            <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
+              <p className="text-sm font-semibold text-cyan-100">Choose a champion, then place it in a lane.</p>
+              <Button
+                data-testid="stat-check-lock"
+                onClick={lockIn}
+                disabled={!isReadyToLock(match) || !canEdit}
+                className={cn(
+                  "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
+                  revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
+                )}
+              >
+                <Zap className="mr-1.5 h-4 w-4" /> Lock in
+              </Button>
+            </div>
 
-              <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(224px,74vw)] gap-3 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
-                {match.currentCategories.map((category, index) => {
-                  const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
-                  const assigned = assignedCard(match, category.id);
-                  return (
-                    <ArenaLane
-                      key={category.id}
-                      category={category}
-                      index={index}
-                      selectedCard={selectedCard}
-                      playerCard={resolution?.playerCard ?? assigned}
-                      botCard={resolution?.botCard ?? null}
-                      resolution={resolution}
-                      canEdit={canEdit}
-                      revealStep={revealStep}
-                      active={activeLaneIndex === index}
-                      assets={assets}
-                      onPlace={() => placeCard(category)}
-                    />
-                  );
-                })}
-              </div>
+            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(214px,74vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
+              {match.currentCategories.map((category, index) => {
+                const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
+                const assigned = assignedCard(match, category.id);
+                return (
+                  <ArenaLane
+                    key={category.id}
+                    category={category}
+                    index={index}
+                    selectedCard={selectedCard}
+                    playerCard={resolution?.playerCard ?? assigned}
+                    botCard={resolution?.botCard ?? null}
+                    resolution={resolution}
+                    canEdit={canEdit}
+                    revealStep={revealStep}
+                    active={activeLaneIndex === index}
+                    assets={assets}
+                    onPlace={() => placeCard(category)}
+                  />
+                );
+              })}
+            </div>
 
-              <PlayerHand
-                cards={match.playerHand}
-                assets={assets}
-                selectedCardId={selectedCardId}
-                assignedCardIds={assignedCardIds}
-                disabled={!canEdit}
-                onSelect={(cardId) => setSelectedCardId((current) => (current === cardId ? null : cardId))}
-              />
-            </section>
-
-            <RevealSequence
-              match={match}
-              resolution={activeResolution}
-              revealStep={revealStep}
-              onNextRound={nextRound}
-              onRestart={restart}
+            <PlayerHand
+              cards={match.playerHand}
+              assets={assets}
+              selectedCardId={selectedCardId}
+              assignedCardIds={assignedCardIds}
+              disabled={!canEdit}
+              onSelect={(cardId) => setSelectedCardId((current) => (current === cardId ? null : cardId))}
             />
-          </div>
 
-          <div className="grid items-end gap-3 lg:grid-cols-[minmax(180px,240px)_1fr_minmax(180px,240px)]">
-            <DiscardPile side="player" cards={match.playerDiscard} assets={assets} />
             <HpDisplay
               side="player"
               hp={displayHp.player}
@@ -253,8 +238,16 @@ export default function StatCheckPage() {
               damage={activeResolution?.damage.bot ?? 0}
               flashKey={damageFlashKey}
             />
-            <div className="hidden lg:block" />
-          </div>
+          </section>
+
+          <RevealSequence
+            match={match}
+            resolution={activeResolution}
+            revealStep={revealStep}
+            nextCategories={match.nextCategories}
+            onNextRound={nextRound}
+            onRestart={restart}
+          />
         </section>
       </div>
     </main>
@@ -304,7 +297,7 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[278px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2.5 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition md:min-h-[360px] md:p-3",
+        "group relative flex min-h-[278px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition md:min-h-0 md:p-2.5",
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
         canEdit && selectedCard && "ring-2 ring-[#d6b55d]/55",
         active && "ring-2 ring-cyan-300/65",
@@ -315,7 +308,7 @@ function ArenaLane({
           <CategoryIcon category={category} />
           <div className="min-w-0">
             <div className="truncate text-sm font-black">{compactCategoryLabel(category)}</div>
-            <div className="truncate text-[11px] text-slate-400">{category.shortLabel} - {scopeLabel(category)}</div>
+            <div className="truncate text-[11px] text-slate-400">{scopeLabel(category)}</div>
           </div>
         </div>
         <div className="shrink-0 rounded-full border border-[#d6b55d]/30 bg-[#d6b55d]/10 px-2 py-1 text-[10px] font-black uppercase text-[#f4d77d]">
@@ -323,7 +316,7 @@ function ArenaLane({
         </div>
       </div>
 
-      <div className="relative mt-3 grid flex-1 grid-rows-[1fr_auto_1fr] gap-2">
+      <div className="relative mt-2 grid flex-1 grid-rows-[minmax(78px,1fr)_auto_minmax(78px,1fr)] gap-1.5">
         <ChampionCard
           card={botCard}
           imageUrl={getImage(assets, botCard)}
@@ -333,7 +326,7 @@ function ArenaLane({
           state={botWon ? (resolution?.decisive ? "decisive" : "winner") : playerWon ? "loser" : "idle"}
           label="Bot"
         />
-        <div className="flex min-h-[48px] items-center justify-center md:min-h-[64px]">
+        <div className="flex min-h-[42px] items-center justify-center md:min-h-[50px]">
           {showResult && resolution ? (
             <LaneResult result={resolution} />
           ) : (
@@ -373,8 +366,8 @@ function PlayerHand({
   onSelect: (cardId: string) => void;
 }) {
   return (
-    <div className="relative mx-auto w-full max-w-5xl overflow-x-auto overflow-y-visible px-3 pb-2 pt-5" data-testid="stat-check-hand">
-      <div className="flex min-w-max justify-center gap-0 px-4 sm:min-w-0 sm:px-0">
+    <div className="relative mx-auto w-full max-w-5xl overflow-x-auto overflow-y-visible px-3 pb-0 pt-1" data-testid="stat-check-hand">
+      <div className="flex min-w-max justify-center gap-0 px-4 pb-2 sm:min-w-0 sm:px-0">
         {cards.map((card, index) => {
           const centerOffset = index - (cards.length - 1) / 2;
           const selected = selectedCardId === card.id;
@@ -386,15 +379,15 @@ function PlayerHand({
           } as CSSProperties;
           if (assigned) {
             return (
-              <div key={card.id} className="-ml-5 first:ml-0 sm:-ml-7" style={style}>
-                <div className="grid h-44 w-32 shrink-0 origin-bottom -translate-y-[var(--hand-rise)] rotate-[var(--hand-rotate)] place-items-center rounded-md border border-dashed border-cyan-300/15 bg-black/22 text-center text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 sm:h-48 sm:w-36">
+              <div key={card.id} className="-ml-8 first:ml-0 sm:-ml-10" style={style}>
+                <div className="grid h-28 w-20 shrink-0 origin-bottom translate-y-10 rotate-[var(--hand-rotate)] place-items-center rounded-md border border-dashed border-cyan-300/15 bg-black/22 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 sm:h-32 sm:w-24 lg:h-[104px] lg:w-[76px] xl:h-28 xl:w-20">
                   On table
                 </div>
               </div>
             );
           }
           return (
-            <div key={card.id} className="-ml-5 first:ml-0 sm:-ml-7" style={style}>
+            <div key={card.id} className="-ml-5 first:ml-0 sm:-ml-8 xl:-ml-7" style={style}>
               <ChampionCard
                 card={card}
                 imageUrl={getImage(assets, card)}
@@ -408,6 +401,36 @@ function PlayerHand({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function MatchUtilityRail({
+  match,
+  assets,
+}: {
+  match: MatchState;
+  assets: ReturnType<typeof useChampionAssets>["data"];
+}) {
+  return (
+    <aside className="order-3 grid gap-2 rounded-md border border-cyan-300/12 bg-black/20 p-2 shadow-2xl lg:order-none lg:h-full lg:min-h-0 lg:content-start lg:overflow-y-auto">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+        <CountPill label="Your deck" value={match.playerDeck.length} />
+        <CountPill label="Bot deck" value={match.botDeck.length} />
+        <CountPill label="Your hand" value={match.playerHand.length} />
+        <CountPill label="Bot hand" value={match.botHand.length} />
+      </div>
+      <DiscardPile side="bot" cards={match.botDiscard} assets={assets} />
+      <DiscardPile side="player" cards={match.playerDiscard} assets={assets} />
+    </aside>
+  );
+}
+
+function CountPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-cyan-300/12 bg-black/28 px-2 py-1.5">
+      <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</div>
+      <div className="text-lg font-black text-cyan-100">{value}</div>
     </div>
   );
 }
@@ -437,7 +460,7 @@ function ChampionCard({
 }) {
   if (mode === "empty") {
     return (
-      <div className="flex min-h-[88px] items-center justify-center rounded-md border border-dashed border-cyan-300/20 bg-black/25 px-3 text-center text-xs font-semibold text-slate-400 md:min-h-[128px]">
+      <div className="flex min-h-[88px] items-center justify-center rounded-md border border-dashed border-cyan-300/20 bg-black/25 px-3 text-center text-xs font-semibold text-slate-400 md:min-h-[96px]">
         Place champion
       </div>
     );
@@ -445,10 +468,10 @@ function ChampionCard({
 
   if (mode === "face-down") {
     return (
-      <div className="relative min-h-[88px] overflow-hidden rounded-md border border-cyan-300/20 bg-[linear-gradient(135deg,#0b2032,#071018_45%,#1c1730)] shadow-xl md:min-h-[128px]">
+      <div className="relative min-h-[88px] overflow-hidden rounded-md border border-cyan-300/20 bg-[linear-gradient(135deg,#0b2032,#071018_45%,#1c1730)] shadow-xl md:min-h-[96px]">
         <div className="absolute inset-2 rounded border border-[#d6b55d]/30" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(34,211,238,0.25),transparent_32%)]" />
-        <div className="relative flex h-full min-h-[88px] flex-col items-center justify-center gap-2 text-cyan-100 md:min-h-[128px]">
+        <div className="relative flex h-full min-h-[88px] flex-col items-center justify-center gap-2 text-cyan-100 md:min-h-[96px]">
           <Eye className="h-7 w-7 animate-pulse motion-reduce:animate-none" />
           <span className="text-[10px] font-black uppercase tracking-[0.18em]">Concealed</span>
         </div>
@@ -460,8 +483,8 @@ function ChampionCard({
   const chips = card ? statChips(card) : [];
   const cardClassName = cn(
     "relative block overflow-hidden rounded-md border bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
-    mode === "hand" && "h-44 w-32 shrink-0 origin-bottom -translate-y-[var(--hand-rise)] rotate-[var(--hand-rotate)] hover:-translate-y-7 hover:rotate-0 sm:h-48 sm:w-36",
-    mode === "lane" && "min-h-[88px] w-full md:min-h-[128px]",
+    mode === "hand" && "h-40 w-28 shrink-0 origin-bottom -translate-y-[var(--hand-rise)] rotate-[var(--hand-rotate)] hover:-translate-y-7 hover:rotate-0 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[108px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
+    mode === "lane" && "min-h-[88px] w-full md:min-h-[96px]",
     state === "selected" && "-translate-y-10 rotate-0 border-[#f4d77d] ring-2 ring-[#f4d77d]/45",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
@@ -511,21 +534,27 @@ function RevealSequence({
   match,
   resolution,
   revealStep,
+  nextCategories,
   onNextRound,
   onRestart,
 }: {
   match: MatchState;
   resolution: RoundResolution | null;
   revealStep: RevealStep;
+  nextCategories: StatCategory[];
   onNextRound: () => void;
   onRestart: () => void;
 }) {
   return (
-    <aside className="relative overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-3 shadow-2xl">
+    <aside className="order-2 relative min-h-0 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto">
+      <NextRoundIntel categories={nextCategories} compact />
+
+      <div className="mt-2 h-px bg-cyan-300/10" />
+
       <div className="flex items-center justify-between gap-2">
         <div>
           <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200">Round {match.round}</div>
-          <div className="text-lg font-black">Resolution</div>
+          <div className="text-base font-black">Resolution</div>
         </div>
         <Badge variant="outline" className="border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]">
           {phaseLabel(revealStep)}
@@ -533,11 +562,11 @@ function RevealSequence({
       </div>
 
       {!resolution ? (
-        <div className="mt-5 rounded-md bg-black/30 p-4 text-sm text-slate-300">
+        <div className="mt-2 rounded-md bg-black/30 p-2 text-xs text-slate-300">
           Bot cards stay face-down until lock-in.
         </div>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="mt-2 space-y-2">
           <BoardResult resolution={resolution} />
           <DamageBreakdown title="You deal" amount={resolution.damage.player} side="player" damage={resolution.damage} />
           <DamageBreakdown title="Bot deals" amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
@@ -581,7 +610,7 @@ function HpDisplay({
   const pct = Math.max(0, Math.min(100, (hp / STAT_CHECK_RULES.startingHp) * 100));
   const damaged = previousHp != null && damage > 0 && hp < previousHp;
   return (
-    <div className="relative mx-auto w-full max-w-xl rounded-md border border-cyan-300/15 bg-black/32 px-3 py-2 shadow-xl">
+    <div className="relative mx-auto w-full max-w-4xl rounded-md border border-cyan-300/15 bg-black/32 px-3 py-1.5 shadow-xl">
       {damaged && (
         <div key={flashKey} className="pointer-events-none absolute right-4 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-1 text-xs font-black text-white motion-reduce:animate-none">
           -{damage}
@@ -596,17 +625,17 @@ function HpDisplay({
           {Math.max(0, hp)} / {STAT_CHECK_RULES.startingHp} HP
         </div>
       </div>
-      <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-900">
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-900">
         <div className="h-full bg-gradient-to-r from-red-500 via-[#d6b55d] to-cyan-300 transition-all duration-500 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
-function NextRoundIntel({ categories }: { categories: StatCategory[] }) {
+function NextRoundIntel({ categories, compact = false }: { categories: StatCategory[]; compact?: boolean }) {
   const [visible, ...hidden] = categories;
   return (
-    <div className="rounded-md border border-[#d6b55d]/25 bg-black/28 p-3 shadow-xl">
+    <div className={cn("rounded-md border border-[#d6b55d]/25 bg-black/28 shadow-xl", compact ? "p-2" : "p-3")}>
       <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4d77d]">Next Round Intel</div>
       <div data-testid="stat-check-next-intel" className="mt-2 rounded-md border border-[#d6b55d]/30 bg-[#d6b55d]/10 p-2">
         <div className="flex items-center gap-2">
@@ -617,9 +646,9 @@ function NextRoundIntel({ categories }: { categories: StatCategory[] }) {
           </div>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
         {hidden.map((category) => (
-          <div key={category.id} className="rounded-md border border-white/10 bg-black/25 p-2 text-center text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+          <div key={category.id} className="rounded-md border border-white/10 bg-black/25 p-1.5 text-center text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
             Hidden
           </div>
         ))}
@@ -642,12 +671,12 @@ function DiscardPile({
       <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
         {side === "player" ? "Your" : "Bot"} discard - {cards.length}
       </summary>
-      <div className="mt-2 flex min-h-12 flex-wrap gap-1">
+      <div className="mt-2 flex min-h-10 flex-wrap gap-1">
         {cards.length === 0 ? (
           <span className="text-xs text-slate-500">Empty</span>
         ) : (
           cards.map((card, index) => (
-            <div key={`${card.id}-${index}`} title={card.name} className="-ml-2 first:ml-0 h-11 w-11 overflow-hidden rounded border border-[#d6b55d]/25 bg-slate-900">
+            <div key={`${card.id}-${index}`} title={card.name} className="-ml-2 h-10 w-10 overflow-hidden rounded border border-[#d6b55d]/25 bg-slate-900 first:ml-0">
               <ChampionArt card={card} imageUrl={getImage(assets, card)} />
             </div>
           ))
