@@ -829,6 +829,30 @@ export default function Quiz() {
               />
             </div>
 
+            {/* 2b. Mastery Journeys — step-by-step champion progressions
+                (public catalog served by the backend registry; the card is a
+                pure link and holds no set data). */}
+            <div className="mb-3" data-testid="hub-mastery-section">
+              <Link
+                to="/quiz/mastery"
+                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="hub-mastery-link"
+              >
+                <Card className="transition-colors hover:border-primary/50">
+                  <CardHeader className="pb-1">
+                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
+                      <BookOpen className="h-4 w-4" aria-hidden="true" />
+                      Mastery Journeys
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Guided champion progressions — cooldowns, mana, items —
+                      where every answer is on screen. New: Olaf, level 1 to 11.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
+
             {/* 3. Practice categories — train topics before the next match. */}
             <div className="mb-3" data-testid="hub-practice-section">
               <div className="mb-2 mt-1 flex items-start justify-between gap-3">
