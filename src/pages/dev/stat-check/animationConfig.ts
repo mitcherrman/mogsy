@@ -1,7 +1,10 @@
 export const STAT_CHECK_ANIMATION = {
-  handTravelMs: 380,
-  handReturnMs: 320,
-  laneMoveMs: 300,
+  pickupMs: 150,
+  handTravelMs: 460,
+  landingMs: 150,
+  acceptanceMs: 110,
+  handReturnMs: 340,
+  laneMoveMs: 420,
   opponentFlipMs: 420,
   opponentFlipStaggerMs: 260,
   laneResolveMs: 360,
@@ -19,6 +22,8 @@ export const STAT_CHECK_ANIMATION = {
     mass: 0.8,
   },
 } as const;
+export const STAT_CHECK_ANIMATION_SPEEDS = [0.25, 0.5, 1, 1.5] as const;
+export type StatCheckAnimationSpeed = (typeof STAT_CHECK_ANIMATION_SPEEDS)[number];
 
 export const REVEAL_TIMELINE = {
   opponentReveal1: 220,
@@ -32,6 +37,14 @@ export const REVEAL_TIMELINE = {
   resolved: 3_180,
 } as const;
 
-export function animationDuration(ms: number, reducedMotion: boolean) {
-  return reducedMotion ? STAT_CHECK_ANIMATION.reducedMotionMs : ms;
+export function durationAtSpeed(ms: number, speed: StatCheckAnimationSpeed) {
+  return Math.round(ms / speed);
+}
+
+export function isStatCheckAnimationSpeed(value: number): value is StatCheckAnimationSpeed {
+  return STAT_CHECK_ANIMATION_SPEEDS.includes(value as StatCheckAnimationSpeed);
+}
+
+export function animationDuration(ms: number, reducedMotion: boolean, speed: StatCheckAnimationSpeed = 1) {
+  return reducedMotion ? STAT_CHECK_ANIMATION.reducedMotionMs : durationAtSpeed(ms, speed);
 }

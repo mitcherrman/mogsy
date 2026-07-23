@@ -1,6 +1,9 @@
 export type PresentationStep =
   | "selecting"
-  | "placing-card"
+  | "placement-pickup"
+  | "placement-travel"
+  | "placement-landing"
+  | "placement-accepted"
   | "returning-card"
   | "locking"
   | "opponent-reveal-1"
@@ -18,7 +21,10 @@ export type PresentationStep =
 
 export type AnimationEvent =
   | { type: "select" }
-  | { type: "place" }
+  | { type: "pickup" }
+  | { type: "travel" }
+  | { type: "land" }
+  | { type: "accept" }
   | { type: "return" }
   | { type: "lock" }
   | { type: "opponent"; lane: 1 | 2 | 3 }
@@ -36,8 +42,14 @@ export function animationStepReducer(_step: PresentationStep, event: AnimationEv
     case "select":
     case "cancel":
       return "selecting";
-    case "place":
-      return "placing-card";
+    case "pickup":
+      return "placement-pickup";
+    case "travel":
+      return "placement-travel";
+    case "land":
+      return "placement-landing";
+    case "accept":
+      return "placement-accepted";
     case "return":
       return "returning-card";
     case "lock":
@@ -95,4 +107,8 @@ export function stepBeforeDamage(step: PresentationStep) {
     "resolve-lane-3",
     "board-result",
   ].includes(step);
+}
+
+export function allowsPreLockInteraction(step: PresentationStep) {
+  return ["selecting", "placement-pickup", "placement-travel", "returning-card"].includes(step);
 }

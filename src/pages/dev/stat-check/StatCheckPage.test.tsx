@@ -17,6 +17,11 @@ function lanes(container: HTMLElement) {
 }
 
 function place(container: HTMLElement, handIndex: number, laneIndex: number) {
+  placeWithoutSettling(container, handIndex, laneIndex);
+  act(() => vi.advanceTimersByTime(1_000));
+}
+
+function placeWithoutSettling(container: HTMLElement, handIndex: number, laneIndex: number) {
   fireEvent.click(screen.getByTestId(`stat-check-hand-${handIndex}`));
   fireEvent.click(lanes(container)[laneIndex]);
 }
@@ -47,14 +52,33 @@ function reducedMotion(matches: boolean) {
   });
 }
 
+function mockGeometry() {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function rect(this: HTMLElement) {
+    const testId = this.getAttribute("data-testid") ?? "";
+    if (testId.startsWith("stat-check-hand-")) return domRect(80, 520, 120, 160);
+    if (testId.startsWith("stat-check-lane-")) {
+      const index = testId.includes("highest-hp") ? 0 : testId.includes("movement-speed") ? 1 : 2;
+      return domRect(120 + index * 240, 140, 210, 280);
+    }
+    if (this.textContent?.includes("Place champion")) return domRect(120, 360, 180, 96);
+    return domRect(0, 0, 120, 160);
+  });
+}
+
+function domRect(x: number, y: number, width: number, height: number) {
+  return { x, y, width, height, left: x, top: y, right: x + width, bottom: y + height, toJSON: () => ({}) } as DOMRect;
+}
+
 describe("StatCheckPage tabletop presentation", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    window.sessionStorage.clear();
     reducedMotion(false);
   });
 
   afterEach(() => {
     act(() => vi.runOnlyPendingTimers());
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -62,7 +86,7 @@ describe("StatCheckPage tabletop presentation", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane, secondLane] = lanes(container);
 
-    place(container, 0, 0);
+    placeWithoutSettling(container, 0, 0);
     expect(within(firstLane).queryByText(/Place champion/i)).toBeNull();
     expect(screen.queryByText(/On table/i)).toBeNull();
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
@@ -81,7 +105,7 @@ describe("StatCheckPage tabletop presentation", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane] = lanes(container);
 
-    place(container, 0, 0);
+    placeWithoutSettling(container, 0, 0);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
 
     fireEvent.click(firstLane);
@@ -93,19 +117,114 @@ describe("StatCheckPage tabletop presentation", () => {
   it("starts and completes placement overlay travel without stale cards", () => {
     const { container } = render(<StatCheckPage />);
 
-    place(container, 0, 0);
+    placeWithoutSettling(container, 0, 0);
 
     expect(screen.getByTestId("stat-check-motion-overlay")).toBeInTheDocument();
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
 
-    act(() => vi.advanceTimersByTime(600));
+    act(() => vi.advanceTimersByTime(1_000));
 
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
   });
 
+  it("persists and applies slow-motion animation speed", () => {
+    const { container, unmount } = render(<StatCheckPage />);
+    const speed = screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement;
+
+    expect(speed.value).toBe("1");
+    fireEvent.change(speed, { target: { value: "0.5" } });
+    expect(window.sessionStorage.getItem("stat-check-animation-speed")).toBe("0.5");
+
+    placeWithoutSettling(container, 0, 0);
+    act(() => vi.advanceTimersByTime(900));
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+
+    unmount();
+    render(<StatCheckPage />);
+    expect((screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).value).toBe("0.5");
+  });
+
+  it("changing speed during active placement clears transient overlays", () => {
+    const { container } = render(<StatCheckPage />);
+    placeWithoutSettling(container, 0, 0);
+
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
+
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+  });
+
+  it("does not leave a pending drag after an ordinary card click", () => {
+    const { container } = render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 101, clientY: 541 });
+    fireEvent.click(card);
+    fireEvent.click(lanes(container)[0]);
+
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+    expect(within(lanes(container)[0]).queryByText(/Place champion/i)).toBeNull();
+  });
+
+  it("activates pointer drag after threshold and commits once over a valid lane", () => {
+    mockGeometry();
+    render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 170, clientY: 180 });
+
+    expect(screen.getAllByTestId(/^stat-check-drag-card-/)).toHaveLength(1);
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 170, clientY: 180 });
+    act(() => vi.advanceTimersByTime(0));
+
+    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+  });
+
+  it("returns a dragged card when released outside valid lanes", () => {
+    mockGeometry();
+    render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 350, clientY: 700 });
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 350, clientY: 700 });
+
+    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+  });
+
+  it("pointercancel and Escape cancel active drags without assignment", () => {
+    mockGeometry();
+    const { unmount } = render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 170, clientY: 180 });
+    fireEvent.pointerCancel(card, { pointerId: 1 });
+
+    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+
+    unmount();
+    render(<StatCheckPage />);
+    const nextCard = screen.getByTestId("stat-check-hand-0");
+    fireEvent.pointerDown(nextCard, { pointerId: 2, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(nextCard, { pointerId: 2, clientX: 170, clientY: 180 });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
   it("restart cancels active overlay travel", () => {
     const { container } = render(<StatCheckPage />);
-    place(container, 0, 0);
+    placeWithoutSettling(container, 0, 0);
 
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
 

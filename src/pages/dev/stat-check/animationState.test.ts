@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activeResolvedLane,
+  allowsPreLockInteraction,
   animationStepReducer,
   revealedOpponentCount,
   stepAfterLane,
@@ -11,8 +12,14 @@ import {
 describe("Stat Check presentation animation state", () => {
   it("steps through placement, return, reveal, damage, discard, and deal states", () => {
     let step: PresentationStep = "selecting";
-    step = animationStepReducer(step, { type: "place" });
-    expect(step).toBe("placing-card");
+    step = animationStepReducer(step, { type: "pickup" });
+    expect(step).toBe("placement-pickup");
+    step = animationStepReducer(step, { type: "travel" });
+    expect(step).toBe("placement-travel");
+    step = animationStepReducer(step, { type: "land" });
+    expect(step).toBe("placement-landing");
+    step = animationStepReducer(step, { type: "accept" });
+    expect(step).toBe("placement-accepted");
     step = animationStepReducer(step, { type: "return" });
     expect(step).toBe("returning-card");
     step = animationStepReducer(step, { type: "lock" });
@@ -51,5 +58,12 @@ describe("Stat Check presentation animation state", () => {
 
   it("cancels to selecting", () => {
     expect(animationStepReducer("damage", { type: "cancel" })).toBe("selecting");
+  });
+
+  it("allows only responsive pre-lock placement phases", () => {
+    expect(allowsPreLockInteraction("selecting")).toBe(true);
+    expect(allowsPreLockInteraction("placement-travel")).toBe(true);
+    expect(allowsPreLockInteraction("placement-landing")).toBe(false);
+    expect(allowsPreLockInteraction("locking")).toBe(false);
   });
 });

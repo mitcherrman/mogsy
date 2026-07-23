@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
@@ -23,9 +23,17 @@ import { useChampionAssets, getChampionSplash, getChampionIcon } from "@/hooks/u
 import { useChampionBaseStats } from "@/hooks/useChampionBaseStats";
 import { cn } from "@/lib/utils";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
-import { STAT_CHECK_ANIMATION, REVEAL_TIMELINE, animationDuration } from "./animationConfig";
+import {
+  STAT_CHECK_ANIMATION,
+  STAT_CHECK_ANIMATION_SPEEDS,
+  REVEAL_TIMELINE,
+  animationDuration,
+  isStatCheckAnimationSpeed,
+  type StatCheckAnimationSpeed,
+} from "./animationConfig";
 import {
   activeResolvedLane,
+  allowsPreLockInteraction,
   animationStepReducer,
   revealedOpponentCount,
   stepAfterLane,
@@ -61,6 +69,10 @@ type TravelingCardState = {
   fromRotation: number;
   toRotation: number;
   durationMs: number;
+  pickupMs?: number;
+  travelMs?: number;
+  landingMs?: number;
+  acceptanceMs?: number;
   kind: "place" | "return" | "lane-move" | "discard" | "deal";
 };
 
@@ -70,6 +82,37 @@ type DOMRectSnapshot = {
   width: number;
   height: number;
 };
+
+type DragSessionState = {
+  card: StatCheckCard;
+  imageUrl?: string | null;
+  pointerId: number;
+  status: "pending" | "dragging";
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  lastX: number;
+  lastY: number;
+  sourceRect: DOMRectSnapshot;
+  sourceRotation: number;
+  tilt: DragTilt;
+  hoverCategoryId: StatCategoryId | null;
+};
+
+type DragTilt = {
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+};
+
+type LaneReactionState = {
+  categoryId: StatCategoryId;
+  kind: "hover" | "accept" | "invalid";
+};
+
+const DRAG_THRESHOLD_PX = 7;
+const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 
 export default function StatCheckPage() {
   const { data: statRows, isLoading, isError } = useChampionBaseStats();
@@ -84,24 +127,81 @@ export default function StatCheckPage() {
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`));
   const [revealStep, dispatchRevealStep] = useReducer(animationStepReducer, "selecting" as PresentationStep);
   const [travelingCards, setTravelingCards] = useState<TravelingCardState[]>([]);
+  const [dragSession, setDragSession] = useState<DragSessionState | null>(null);
+  const [laneReaction, setLaneReaction] = useState<LaneReactionState | null>(null);
+  const [animationSpeed, setAnimationSpeed] = useSessionAnimationSpeed();
   const [damageFlashKey, setDamageFlashKey] = useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
   const timersRef = useRef<number[]>([]);
+  const previousMotionSettingsRef = useRef({ animationSpeed, prefersReducedMotion });
+  const dragSessionRef = useRef<DragSessionState | null>(null);
   const handCardRefs = useRef<Record<string, HTMLElement | null>>({});
+  const laneRefs = useRef<Record<string, HTMLElement | null>>({});
   const lanePlayerRefs = useRef<Record<string, HTMLElement | null>>({});
   const laneBotRefs = useRef<Record<string, HTMLElement | null>>({});
   const discardRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
   const hpRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
+  const suppressNextClickCardIdRef = useRef<string | null>(null);
+  const dragHoverCategoryIdRef = useRef<StatCategoryId | null>(null);
+
+  const updateDragSession = useCallback((
+    next: DragSessionState | null | ((current: DragSessionState | null) => DragSessionState | null),
+  ) => {
+    const nextSession = typeof next === "function" ? next(dragSessionRef.current) : next;
+    dragSessionRef.current = nextSession;
+    setDragSession(nextSession);
+  }, []);
 
   useEffect(() => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    updateDragSession(null);
+    setLaneReaction(null);
+    dragHoverCategoryIdRef.current = null;
     setMatch(createMatch(deck, `${SEED}:${matchKey}`));
     setSelectedCardId(null);
     dispatchRevealStep({ type: "cancel" });
-  }, [deck, matchKey]);
+  }, [deck, matchKey, updateDragSession]);
 
   useEffect(() => () => clearAnimationTimers(timersRef.current), []);
+
+  useEffect(() => {
+    const previous = previousMotionSettingsRef.current;
+    previousMotionSettingsRef.current = { animationSpeed, prefersReducedMotion };
+    if (previous.animationSpeed === animationSpeed && previous.prefersReducedMotion === prefersReducedMotion) return;
+    if (travelingCards.length === 0 && !dragSession) return;
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    updateDragSession(null);
+    setLaneReaction(null);
+    dispatchRevealStep({ type: "cancel" });
+  }, [animationSpeed, dragSession, prefersReducedMotion, travelingCards.length, updateDragSession]);
+
+  useEffect(() => {
+    const cancelActiveInteraction = () => {
+      updateDragSession(null);
+      setLaneReaction(null);
+      setTravelingCards([]);
+      suppressNextClickCardIdRef.current = null;
+    };
+    window.addEventListener("blur", cancelActiveInteraction);
+    return () => window.removeEventListener("blur", cancelActiveInteraction);
+  }, [updateDragSession]);
+
+  useEffect(() => {
+    if (!dragSession) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      returnDraggedCardToHand(dragSession);
+      updateDragSession(null);
+      setLaneReaction(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  // returnDraggedCardToHand is intentionally read from the active render so Escape mirrors pointer cancel behavior.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragSession, updateDragSession]);
 
   useEffect(() => {
     if (revealStep !== "locking" || !match.lastResolution) return;
@@ -127,12 +227,13 @@ export default function StatCheckPage() {
       }],
       [REVEAL_TIMELINE.resolved, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
     ];
-    timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion)));
-  }, [match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
+    timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion, animationSpeed)));
+  }, [animationSpeed, match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
 
   const selectedCard = match.playerHand.find((card) => card.id === selectedCardId) ?? null;
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
-  const canEdit = match.phase === "selecting" && ["selecting", "placing-card", "returning-card"].includes(revealStep);
+  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep) && !dragSession;
+  const canStartDrag = match.phase === "selecting" && revealStep === "selecting" && !dragSession;
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
@@ -142,6 +243,8 @@ export default function StatCheckPage() {
   const restart = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    updateDragSession(null);
+    setLaneReaction(null);
     setMatchKey((key) => key + 1);
   };
 
@@ -161,10 +264,11 @@ export default function StatCheckPage() {
           fromRotation: readElementRotation(fromElement),
           toRotation: 0,
           kind: current ? "lane-move" : "place",
-          durationMs: animationDuration(STAT_CHECK_ANIMATION.handTravelMs, prefersReducedMotion),
+          targetCategoryId: category.id,
+          ...placementDurations(),
         });
       }
-      dispatchRevealStep({ type: "place" });
+      dispatchRevealStep({ type: "pickup" });
       setMatch((state) => assignCard(state, category.id, selectedCardId));
       setSelectedCardId(null);
     } else if (current) {
@@ -180,7 +284,7 @@ export default function StatCheckPage() {
           fromRotation: 0,
           toRotation: 0,
           kind: "return",
-          durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion),
+          durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion, animationSpeed),
         });
       }
       dispatchRevealStep({ type: "return" });
@@ -198,12 +302,14 @@ export default function StatCheckPage() {
   const nextRound = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    updateDragSession(null);
+    setLaneReaction(null);
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
     setSelectedCardId(null);
     setMatch((state) => startNextRound(state));
-    const dealTimer = window.setTimeout(() => dispatchRevealStep({ type: "deal" }), animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion));
-    const selectTimer = window.setTimeout(() => dispatchRevealStep({ type: "select" }), animationDuration(STAT_CHECK_ANIMATION.discardMs + STAT_CHECK_ANIMATION.dealStaggerMs * 4, prefersReducedMotion));
+    const dealTimer = window.setTimeout(() => dispatchRevealStep({ type: "deal" }), animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed));
+    const selectTimer = window.setTimeout(() => dispatchRevealStep({ type: "select" }), animationDuration(STAT_CHECK_ANIMATION.discardMs + STAT_CHECK_ANIMATION.dealStaggerMs * 4, prefersReducedMotion, animationSpeed));
     timersRef.current.push(dealTimer, selectTimer);
   };
 
@@ -212,24 +318,49 @@ export default function StatCheckPage() {
     imageUrl,
     fromElement,
     toElement,
+    fromRect,
+    toRect,
     fromRotation,
     toRotation,
     kind,
     durationMs,
+    pickupMs,
+    travelMs,
+    landingMs,
+    acceptanceMs,
+    targetCategoryId,
   }: {
     card: StatCheckCard;
     imageUrl?: string | null;
     fromElement?: Element | null;
     toElement?: Element | null;
+    fromRect?: DOMRectSnapshot | null;
+    toRect?: DOMRectSnapshot | null;
     fromRotation: number;
     toRotation: number;
     kind: TravelingCardState["kind"];
     durationMs: number;
+    pickupMs?: number;
+    travelMs?: number;
+    landingMs?: number;
+    acceptanceMs?: number;
+    targetCategoryId?: StatCategoryId;
   }) => {
-    const from = snapshotElement(fromElement) ?? fallbackRect();
-    const to = snapshotElement(toElement) ?? from;
+    const from = fromRect ?? snapshotElement(fromElement) ?? fallbackRect();
+    const to = toRect ?? snapshotElement(toElement) ?? from;
     const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, kind }]);
+    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, pickupMs, travelMs, landingMs, acceptanceMs, kind }]);
+    if (pickupMs && travelMs && landingMs && acceptanceMs) {
+      timersRef.current.push(
+        window.setTimeout(() => dispatchRevealStep({ type: "travel" }), pickupMs),
+        window.setTimeout(() => {
+          if (targetCategoryId) setLaneReaction({ categoryId: targetCategoryId, kind: "accept" });
+          dispatchRevealStep({ type: "land" });
+        }, pickupMs + travelMs),
+        window.setTimeout(() => dispatchRevealStep({ type: "accept" }), pickupMs + travelMs + landingMs),
+        window.setTimeout(() => setLaneReaction(null), pickupMs + travelMs + landingMs + acceptanceMs),
+      );
+    }
     const timer = window.setTimeout(() => {
       setTravelingCards((items) => items.filter((item) => item.id !== id));
       if (["place", "return", "lane-move"].includes(kind)) dispatchRevealStep({ type: "select" });
@@ -250,7 +381,7 @@ export default function StatCheckPage() {
         fromRotation: 0,
         toRotation: -8,
         kind: "discard",
-        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion),
+        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed),
       });
       queueCardTravel({
         card: result.botCard,
@@ -260,9 +391,152 @@ export default function StatCheckPage() {
         fromRotation: 0,
         toRotation: 8,
         kind: "discard",
-        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion),
+        durationMs: animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed),
       });
     }
+  };
+
+  const placementDurations = () => {
+    const pickupMs = animationDuration(STAT_CHECK_ANIMATION.pickupMs, prefersReducedMotion, animationSpeed);
+    const travelMs = animationDuration(STAT_CHECK_ANIMATION.handTravelMs, prefersReducedMotion, animationSpeed);
+    const landingMs = animationDuration(STAT_CHECK_ANIMATION.landingMs, prefersReducedMotion, animationSpeed);
+    const acceptanceMs = animationDuration(STAT_CHECK_ANIMATION.acceptanceMs, prefersReducedMotion, animationSpeed);
+    return { pickupMs, travelMs, landingMs, acceptanceMs, durationMs: pickupMs + travelMs + landingMs + acceptanceMs };
+  };
+
+  const beginCardPointer = (card: StatCheckCard, event: ReactPointerEvent<HTMLElement>) => {
+    if (!canStartDrag || event.button > 0) return;
+    const sourceElement = handCardRefs.current[card.id];
+    const sourceRect = snapshotElement(sourceElement) ?? fallbackRect();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    updateDragSession({
+      card,
+      imageUrl: getImage(assets, card),
+      pointerId: event.pointerId,
+      status: "pending",
+      startX: event.clientX,
+      startY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      sourceRect,
+      sourceRotation: readElementRotation(sourceElement),
+      tilt: { rotateX: 0, rotateY: 0, rotateZ: 0 },
+      hoverCategoryId: null,
+    });
+  };
+
+  const moveCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
+    const activeDragSession = dragSessionRef.current;
+    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
+    const dx = event.clientX - activeDragSession.startX;
+    const dy = event.clientY - activeDragSession.startY;
+    const distance = Math.hypot(dx, dy);
+    if (activeDragSession.status === "pending" && distance < DRAG_THRESHOLD_PX) return;
+    event.preventDefault();
+    const nextHover = categoryAtPoint(event.clientX, event.clientY) ?? nearestCategoryForBoardPoint(event.clientX, event.clientY);
+    const tilt = dragTilt(event.clientX - activeDragSession.lastX, event.clientY - activeDragSession.lastY);
+    setSelectedCardId(null);
+    setLaneReaction(nextHover ? { categoryId: nextHover.id, kind: "hover" } : null);
+    dragHoverCategoryIdRef.current = nextHover?.id ?? null;
+    updateDragSession({
+      ...activeDragSession,
+      status: "dragging",
+      x: event.clientX,
+      y: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      tilt,
+      hoverCategoryId: nextHover?.id ?? null,
+    });
+  };
+
+  const endCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
+    const activeDragSession = dragSessionRef.current;
+    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (activeDragSession.status !== "dragging") {
+      updateDragSession(null);
+      setLaneReaction(null);
+      return;
+    }
+    event.preventDefault();
+    suppressNextClickCardIdRef.current = activeDragSession.card.id;
+    const releaseInBoard = event.clientY <= viewportHeight() * 0.68;
+    const hoveredCategory = match.currentCategories.find((category) => category.id === dragHoverCategoryIdRef.current || category.id === activeDragSession.hoverCategoryId);
+    const dropCategory = releaseInBoard
+      ? categoryAtPoint(event.clientX, event.clientY) ?? nearestCategoryForBoardPoint(event.clientX, event.clientY) ?? hoveredCategory ?? null
+      : null;
+    if (dropCategory) {
+      const toRect = snapshotElement(lanePlayerRefs.current[dropCategory.id]) ?? snapshotElement(laneRefs.current[dropCategory.id]) ?? fallbackRect();
+      dispatchRevealStep({ type: "pickup" });
+      queueCardTravel({
+        card: activeDragSession.card,
+        imageUrl: activeDragSession.imageUrl,
+        fromRect: dragRect(activeDragSession),
+        toRect,
+        fromRotation: activeDragSession.tilt.rotateZ,
+        toRotation: 0,
+        kind: "place",
+        targetCategoryId: dropCategory.id,
+        ...placementDurations(),
+      });
+      setMatch((state) => assignCard(state, dropCategory.id, activeDragSession.card.id));
+      setSelectedCardId(null);
+    } else {
+      returnDraggedCardToHand(activeDragSession);
+    }
+    updateDragSession(null);
+    setLaneReaction(null);
+    dragHoverCategoryIdRef.current = null;
+  };
+
+  const cancelCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
+    const activeDragSession = dragSessionRef.current;
+    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (activeDragSession.status === "dragging") returnDraggedCardToHand(activeDragSession);
+    updateDragSession(null);
+    setLaneReaction(null);
+    dragHoverCategoryIdRef.current = null;
+  };
+
+  const returnDraggedCardToHand = (session: DragSessionState) => {
+    queueCardTravel({
+      card: session.card,
+      imageUrl: session.imageUrl,
+      fromRect: dragRect(session),
+      toElement: handCardRefs.current[session.card.id],
+      toRect: snapshotElement(handCardRefs.current[session.card.id]) ?? session.sourceRect,
+      fromRotation: session.tilt.rotateZ,
+      toRotation: session.sourceRotation,
+      kind: "return",
+      durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion, animationSpeed),
+    });
+    dispatchRevealStep({ type: "return" });
+  };
+
+  const categoryAtPoint = (x: number, y: number) => {
+    if (!canStartDrag && !dragSessionRef.current) return null;
+    return match.currentCategories.find((category) => {
+      const rect = laneRefs.current[category.id]?.getBoundingClientRect();
+      return rect ? x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom : false;
+    }) ?? null;
+  };
+
+  const nearestCategoryForBoardPoint = (x: number, y: number) => {
+    if (y > viewportHeight() * 0.68) return null;
+    let nearest: { category: StatCategory; distance: number } | null = null;
+    for (const category of match.currentCategories) {
+      const rect = laneRefs.current[category.id]?.getBoundingClientRect();
+      if (!rect) continue;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.hypot(x - centerX, y - centerY);
+      if (!nearest || distance < nearest.distance) nearest = { category, distance };
+    }
+    return nearest?.category ?? null;
   };
 
   return (
@@ -282,6 +556,7 @@ export default function StatCheckPage() {
             <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
               {dataSource}
             </Badge>
+            <AnimationSpeedControl speed={animationSpeed} onSpeedChange={setAnimationSpeed} />
             {isLoading && <Badge variant="outline">Loading stats</Badge>}
             {isError && <Badge variant="outline">Fallback active</Badge>}
             <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
@@ -339,9 +614,12 @@ export default function StatCheckPage() {
                     canEdit={canEdit}
                     revealStep={revealStep}
                     active={activeLaneIndex === index}
+                    reaction={laneReaction?.categoryId === category.id ? laneReaction.kind : null}
                     revealedBotCount={revealedOpponentCount(revealStep)}
                     reducedMotion={prefersReducedMotion}
+                    animationSpeed={animationSpeed}
                     assets={assets}
+                    laneRef={(element) => { laneRefs.current[category.id] = element; }}
                     playerRef={(element) => { lanePlayerRefs.current[category.id] = element; }}
                     botRef={(element) => { laneBotRefs.current[category.id] = element; }}
                     onPlace={() => placeCard(category)}
@@ -356,9 +634,21 @@ export default function StatCheckPage() {
               selectedCardId={selectedCardId}
               assignedCardIds={assignedCardIds}
               disabled={!canEdit}
+              canDrag={canStartDrag}
               reducedMotion={prefersReducedMotion}
+              draggingCardId={dragSession?.status === "dragging" ? dragSession.card.id : null}
               cardRefs={handCardRefs}
-              onSelect={(cardId) => setSelectedCardId((current) => (current === cardId ? null : cardId))}
+              onSelect={(cardId) => {
+                if (suppressNextClickCardIdRef.current === cardId) {
+                  suppressNextClickCardIdRef.current = null;
+                  return;
+                }
+                setSelectedCardId((current) => (current === cardId ? null : cardId));
+              }}
+              onPointerDown={beginCardPointer}
+              onPointerMove={moveCardPointer}
+              onPointerUp={endCardPointer}
+              onPointerCancel={cancelCardPointer}
             />
 
             <HpDisplay
@@ -381,7 +671,7 @@ export default function StatCheckPage() {
           />
         </section>
       </div>
-      <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
+      <CardMotionOverlay travelingCards={travelingCards} dragSession={dragSession} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
   );
 }
@@ -396,9 +686,12 @@ function ArenaLane({
   canEdit,
   revealStep,
   active,
+  reaction,
   revealedBotCount,
   reducedMotion,
+  animationSpeed,
   assets,
+  laneRef,
   playerRef,
   botRef,
   onPlace,
@@ -412,9 +705,12 @@ function ArenaLane({
   canEdit: boolean;
   revealStep: PresentationStep;
   active: boolean;
+  reaction: LaneReactionState["kind"] | null;
   revealedBotCount: number;
   reducedMotion: boolean;
+  animationSpeed: StatCheckAnimationSpeed;
   assets: ReturnType<typeof useChampionAssets>["data"];
+  laneRef: (element: HTMLElement | null) => void;
   playerRef: (element: HTMLElement | null) => void;
   botRef: (element: HTMLElement | null) => void;
   onPlace: () => void;
@@ -429,6 +725,7 @@ function ArenaLane({
   return (
     <div
       data-testid={`stat-check-lane-${category.id}`}
+      ref={laneRef}
       role="button"
       tabIndex={canEdit ? 0 : -1}
       onClick={onPlace}
@@ -443,6 +740,9 @@ function ArenaLane({
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
         canEdit && selectedCard && "ring-2 ring-[#d6b55d]/55",
         active && "ring-2 ring-cyan-300/65",
+        reaction === "hover" && "ring-2 ring-cyan-200/75 before:border-cyan-200/60 before:bg-cyan-200/5",
+        reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
+        reaction === "invalid" && "ring-2 ring-red-400/60 before:border-red-300/60",
       )}
     >
       <div className="relative flex items-start justify-between gap-2">
@@ -467,6 +767,7 @@ function ArenaLane({
             value={resolution?.botValue}
             flipped={!botHidden}
             reducedMotion={reducedMotion}
+            animationSpeed={animationSpeed}
             state={botState}
           />
         </div>
@@ -502,18 +803,30 @@ function PlayerHand({
   selectedCardId,
   assignedCardIds,
   disabled,
+  canDrag,
   reducedMotion,
+  draggingCardId,
   cardRefs,
   onSelect,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: {
   cards: StatCheckCard[];
   assets: ReturnType<typeof useChampionAssets>["data"];
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
   disabled: boolean;
+  canDrag: boolean;
   reducedMotion: boolean;
+  draggingCardId: string | null;
   cardRefs: RefObject<Record<string, HTMLElement | null>>;
   onSelect: (cardId: string) => void;
+  onPointerDown: (card: StatCheckCard, event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const viewportWidth = useViewportWidth();
   const activeCards = cards.filter((card) => !assignedCardIds.has(card.id));
@@ -524,6 +837,7 @@ function PlayerHand({
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const selected = selectedCardId === card.id;
+          const dragging = draggingCardId === card.id;
           const layout = fanCardLayout(index, activeCards.length, parameters, selected);
           const style = {
             transform: `translate(-50%, 0) translate(${layout.x}px, ${layout.y}px) rotate(${layout.rotation}deg)`,
@@ -535,6 +849,8 @@ function PlayerHand({
               className={cn(
                 "absolute left-1/2 top-0 origin-bottom will-change-transform",
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
+                canDrag && "cursor-grab active:cursor-grabbing [touch-action:pan-y]",
+                dragging && "opacity-40",
               )}
               data-fan-index={index}
               ref={(element) => {
@@ -549,6 +865,10 @@ function PlayerHand({
                 state={selected ? "selected" : "idle"}
                 disabled={disabled}
                 onClick={() => onSelect(card.id)}
+                onPointerDown={(event) => onPointerDown(card, event)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
                 testId={`stat-check-hand-${index}`}
               />
             </div>
@@ -593,12 +913,43 @@ function CountPill({ label, value }: { label: string; value: number }) {
   );
 }
 
+function AnimationSpeedControl({
+  speed,
+  onSpeedChange,
+}: {
+  speed: StatCheckAnimationSpeed;
+  onSpeedChange: (speed: StatCheckAnimationSpeed) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 rounded-full border border-cyan-300/20 bg-black/30 px-2 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">
+      Anim
+      <select
+        data-testid="stat-check-animation-speed"
+        value={speed}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          if (isStatCheckAnimationSpeed(next)) onSpeedChange(next);
+        }}
+        className="rounded border border-cyan-300/20 bg-[#071018] px-1.5 py-0.5 text-xs text-[#f4d77d] outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+      >
+        {STAT_CHECK_ANIMATION_SPEEDS.map((option) => (
+          <option key={option} value={option}>
+            {option}x
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function CardMotionOverlay({
   travelingCards,
+  dragSession,
   assets,
   reducedMotion,
 }: {
   travelingCards: TravelingCardState[];
+  dragSession: DragSessionState | null;
   assets: ReturnType<typeof useChampionAssets>["data"];
   reducedMotion: boolean;
 }) {
@@ -608,6 +959,9 @@ function CardMotionOverlay({
       {travelingCards.map((item) => (
         <TravelingCard key={item.id} item={item} assets={assets} reducedMotion={reducedMotion} />
       ))}
+      {dragSession?.status === "dragging" && (
+        <DraggedCard session={dragSession} assets={assets} reducedMotion={reducedMotion} />
+      )}
     </div>,
     document.body,
   );
@@ -625,6 +979,9 @@ function TravelingCard({
   const midX = (item.from.x + item.to.x) / 2;
   const midY = (item.from.y + item.to.y) / 2 - STAT_CHECK_ANIMATION.arcLift;
   const duration = animationDuration(item.durationMs, reducedMotion) / 1000;
+  const pickupRatio = item.pickupMs ? item.pickupMs / item.durationMs : 0;
+  const travelRatio = item.pickupMs && item.travelMs ? (item.pickupMs + item.travelMs) / item.durationMs : 0.78;
+  const landingRatio = item.pickupMs && item.travelMs && item.landingMs ? (item.pickupMs + item.travelMs + item.landingMs) / item.durationMs : 0.9;
   return (
     <motion.div
       data-testid={`stat-check-travel-card-${item.card.id}`}
@@ -637,17 +994,21 @@ function TravelingCard({
         rotate: item.fromRotation,
         opacity: 0.96,
         scale: 1,
+        rotateX: 0,
+        rotateY: 0,
       }}
       animate={{
-        x: reducedMotion ? item.to.x : [item.from.x, midX, item.to.x],
-        y: reducedMotion ? item.to.y : [item.from.y, midY, item.to.y],
+        x: reducedMotion ? item.to.x : [item.from.x, item.from.x, midX, item.to.x, item.to.x],
+        y: reducedMotion ? item.to.y : [item.from.y, item.from.y - 24, midY, item.to.y + 5, item.to.y],
         width: item.to.width,
         height: item.to.height,
-        rotate: item.toRotation,
-        opacity: [0.96, 1, 0.98],
-        scale: item.kind === "discard" ? 0.45 : 1,
+        rotate: reducedMotion ? item.toRotation : [item.fromRotation, item.fromRotation, item.toRotation * 0.35, item.toRotation, item.toRotation],
+        rotateX: reducedMotion ? 0 : [0, 0, 5, -2, 0],
+        rotateY: reducedMotion ? 0 : [0, 0, -6, 1, 0],
+        opacity: [0.96, 1, 1, 0.98],
+        scale: item.kind === "discard" ? 0.45 : reducedMotion ? 1 : [1, 1.07, 1.03, 0.98, 1],
       }}
-      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing }}
+      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: [0, pickupRatio, travelRatio, landingRatio, 1] }}
     >
       <div className="h-full w-full overflow-hidden rounded-md shadow-[0_20px_48px_rgba(0,0,0,0.5)]">
         <ChampionCard
@@ -661,6 +1022,40 @@ function TravelingCard({
   );
 }
 
+function DraggedCard({
+  session,
+  assets,
+  reducedMotion,
+}: {
+  session: DragSessionState;
+  assets: ReturnType<typeof useChampionAssets>["data"];
+  reducedMotion: boolean;
+}) {
+  const x = session.x - session.sourceRect.width / 2;
+  const y = session.y - session.sourceRect.height / 2;
+  return (
+    <motion.div
+      data-testid={`stat-check-drag-card-${session.card.id}`}
+      className="fixed left-0 top-0 origin-center cursor-grabbing"
+      animate={{
+        x,
+        y,
+        width: session.sourceRect.width,
+        height: session.sourceRect.height,
+        scale: reducedMotion ? 1 : 1.08,
+        rotateX: reducedMotion ? 0 : session.tilt.rotateX,
+        rotateY: reducedMotion ? 0 : session.tilt.rotateY,
+        rotateZ: reducedMotion ? 0 : session.tilt.rotateZ,
+      }}
+      transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 720, damping: 42, mass: 0.7 }}
+    >
+      <div className="h-full w-full overflow-hidden rounded-md shadow-[0_30px_70px_rgba(0,0,0,0.65)]">
+        <ChampionCard card={session.card} imageUrl={session.imageUrl ?? getImage(assets, session.card)} mode="lane" state="selected" />
+      </div>
+    </motion.div>
+  );
+}
+
 function FlippableCard({
   card,
   imageUrl,
@@ -668,6 +1063,7 @@ function FlippableCard({
   value,
   flipped,
   reducedMotion,
+  animationSpeed,
   state,
 }: {
   card: StatCheckCard | null;
@@ -676,6 +1072,7 @@ function FlippableCard({
   value?: number;
   flipped: boolean;
   reducedMotion: boolean;
+  animationSpeed: StatCheckAnimationSpeed;
   state: "idle" | "winner" | "loser" | "decisive";
 }) {
   if (reducedMotion) {
@@ -698,7 +1095,7 @@ function FlippableCard({
         className="relative min-h-[88px] w-full md:min-h-[96px]"
         style={{ transformStyle: "preserve-3d" }}
         animate={{ rotateY: flipped ? 180 : 0, y: flipped ? -2 : 0 }}
-        transition={{ duration: STAT_CHECK_ANIMATION.opponentFlipMs / 1000, ease: STAT_CHECK_ANIMATION.easing }}
+        transition={{ duration: animationDuration(STAT_CHECK_ANIMATION.opponentFlipMs, false, animationSpeed) / 1000, ease: STAT_CHECK_ANIMATION.easing }}
       >
         <div className="absolute inset-0 [backface-visibility:hidden]">
           <ChampionCard card={null} mode="face-down" />
@@ -721,6 +1118,10 @@ function ChampionCard({
   label,
   disabled,
   onClick,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
   testId,
 }: {
   card: StatCheckCard | null;
@@ -732,6 +1133,10 @@ function ChampionCard({
   label?: string;
   disabled?: boolean;
   onClick?: () => void;
+  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp?: (event: ReactPointerEvent<HTMLElement>) => void;
+  onPointerCancel?: (event: ReactPointerEvent<HTMLElement>) => void;
   testId?: string;
 }) {
   if (mode === "empty") {
@@ -793,7 +1198,17 @@ function ChampionCard({
 
   if (onClick) {
     return (
-      <button data-testid={testId} type="button" disabled={disabled} onClick={onClick} className={cardClassName}>
+      <button
+        data-testid={testId}
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        className={cardClassName}
+      >
         {content}
       </button>
     );
@@ -816,7 +1231,7 @@ function RevealSequence({
 }: {
   match: MatchState;
   resolution: RoundResolution | null;
-  revealStep: RevealStep;
+  revealStep: PresentationStep;
   nextCategories: StatCategory[];
   onNextRound: () => void;
   onRestart: () => void;
@@ -1132,6 +1547,46 @@ function readElementRotation(element?: Element | null) {
   const values = transform.match(/matrix\(([^)]+)\)/)?.[1]?.split(",").map((value) => Number.parseFloat(value.trim()));
   if (!values || values.length < 2) return 0;
   return Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
+}
+
+function dragRect(session: DragSessionState): DOMRectSnapshot {
+  return {
+    x: session.x - session.sourceRect.width / 2,
+    y: session.y - session.sourceRect.height / 2,
+    width: session.sourceRect.width,
+    height: session.sourceRect.height,
+  };
+}
+
+function dragTilt(deltaX: number, deltaY: number): DragTilt {
+  return {
+    rotateX: clamp(deltaY * -0.18, -5, 5),
+    rotateY: clamp(deltaX * 0.26, -8, 8),
+    rotateZ: clamp(deltaX * 0.2, -6, 6),
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function viewportHeight() {
+  return typeof window === "undefined" || window.innerHeight <= 0 ? 768 : window.innerHeight;
+}
+
+function readStoredAnimationSpeed(): StatCheckAnimationSpeed {
+  if (typeof window === "undefined") return 1;
+  const stored = Number(window.sessionStorage.getItem(SPEED_STORAGE_KEY));
+  return isStatCheckAnimationSpeed(stored) ? stored : 1;
+}
+
+function useSessionAnimationSpeed() {
+  const [speed, setSpeed] = useState<StatCheckAnimationSpeed>(() => readStoredAnimationSpeed());
+  const setSessionSpeed = (next: StatCheckAnimationSpeed) => {
+    setSpeed(next);
+    if (typeof window !== "undefined") window.sessionStorage.setItem(SPEED_STORAGE_KEY, String(next));
+  };
+  return [speed, setSessionSpeed] as const;
 }
 
 function useViewportWidth() {
