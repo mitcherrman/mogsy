@@ -170,6 +170,9 @@ export interface UpdateDetail {
   /** Reviewer corrections to this (champion, ability, property) group,
    *  newest first. Absent on older backends. */
   edit_history?: EditHistoryEntry[];
+  /** Most recent patch-automation decision for this group, if the
+   *  automation has ever evaluated it. Absent on older backends. */
+  automation?: AutomationDecision | null;
 
   warnings: string[];
   recommended_action: RecommendedAction;
@@ -182,6 +185,135 @@ export interface UpdateDetail {
     proposed_value: number | string | null;
   }[];
   status?: UpdateStatus;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Patch automation (F3.2) — decisions, runs, ledger, patch report
+   ──────────────────────────────────────────────────────────────────────── */
+
+export interface AutomationCheck {
+  check: string;
+  passed: boolean;
+  detail: string;
+}
+
+/** One row of knowledge_automation_decisions (append-only audit). */
+export interface AutomationDecision {
+  id: number;
+  run_id: string;
+  patch_version: string | null;
+  entity_name: string;
+  ability_key: string | null;
+  property: string;
+  update_ids: number[];
+  mode: "decision_only" | "dry_run" | "apply" | string;
+  eligible: boolean;
+  decision_code: string;
+  explanation: string | null;
+  checks: AutomationCheck[];
+  blocking_reasons: string[];
+  warnings: string[];
+  policy_version: string;
+  outcome: "HELD" | "ELIGIBLE" | "AUTO_APPLIED" | "ROLLED_BACK"
+    | "APPLY_FAILED" | "SKIPPED_ALREADY_ACTIONED" | string;
+  before_value: string | null;
+  after_value: string | null;
+  apply_history_id: number | null;
+  downstream_actions: { consumer: string; action: string; status?: string; detail?: string }[];
+  validation_result: string | null;
+  actor: string;
+  started_at: string;
+  completed_at: string;
+  error: string | null;
+}
+
+export interface AutomationRunResponse {
+  run_id: string;
+  patch_version: string | null;
+  requested_mode: string;
+  effective_mode: string;
+  mode_cap_reason: string | null;
+  actor: string;
+  groups_evaluated: number;
+  counts: Record<string, number>;
+  results: {
+    entity_name: string;
+    ability_key: string | null;
+    property: string;
+    patch_version: string | null;
+    update_ids: number[];
+    decision: {
+      eligible: boolean;
+      decision_code: string;
+      explanation: string;
+      checks: AutomationCheck[];
+      blocking_reasons: string[];
+      warnings: string[];
+      policy_version: string;
+    };
+    outcome: string;
+    before_value: string | null;
+    after_value: string | null;
+    apply_history_id: number | null;
+    downstream_actions: { consumer: string; action: string; status?: string; detail?: string }[];
+    validation_result: string;
+    error: string | null;
+  }[];
+}
+
+export interface LedgerEvent {
+  event_type: "PROPOSED" | "EDITED" | "AUTO_APPLIED" | "MANUALLY_APPLIED"
+    | "REJECTED" | "HELD" | "APPLY_FAILED" | "VALIDATION_FAILED_ROLLED_BACK"
+    | "UNDONE" | "ELIGIBLE_DRY_RUN" | string;
+  timestamp: string | null;
+  patch_version: string | null;
+  entity_name: string | null;
+  ability_key: string | null;
+  property: string | null;
+  rank: number | null;
+  before_value: number | string | null;
+  after_value: number | string | null;
+  actor: string | null;
+  automatic: boolean;
+  reason: string | null;
+  evidence: string | null;
+  source_url: string | null;
+  update_id: number | null;
+  apply_history_id: number | null;
+  decision_id: number | null;
+  /** true = currently active apply; false = undone/held/failed; null = n/a */
+  active: boolean | null;
+}
+
+export interface LedgerResponse {
+  count: number;
+  events: LedgerEvent[];
+}
+
+export interface PatchReport {
+  patch_version: string;
+  summary: {
+    automatically_applied: number;
+    manually_applied: number;
+    held_for_review: number;
+    rejected: number;
+    validation_failed_rolled_back: number;
+    apply_failed: number;
+    undone_later: number;
+    still_active_auto: number;
+  };
+  automatically_applied: (LedgerEvent & { automation?: Partial<AutomationDecision> | null })[];
+  held_for_review: (LedgerEvent & { automation?: Partial<AutomationDecision> | null })[];
+  failed_or_rolled_back: (LedgerEvent & { automation?: Partial<AutomationDecision> | null })[];
+  undone: LedgerEvent[];
+  rejected: LedgerEvent[];
+}
+
+export interface AutomationConfig {
+  enabled: boolean;
+  forced_dry_run: boolean;
+  patch_allowlist: string[];
+  actor: string;
 }
 
 export interface HealthIssue {

@@ -176,6 +176,68 @@ export function ReviewPanel({
 }
 
 /**
+ * Automation status banner. An automatically applied group shows
+ * AUTOMATICALLY APPLIED with the eligibility explanation, validation
+ * result, and downstream actions; a held group shows REVIEW REQUIRED with
+ * the exact blocking reasons the policy recorded. Renders nothing when the
+ * automation has never evaluated this group.
+ */
+function AutomationBanner({ d }: { d: UpdateDetail }) {
+  const a = d.automation;
+  if (!a) return null;
+  const applied = a.outcome === "AUTO_APPLIED";
+  const failed = a.outcome === "ROLLED_BACK" || a.outcome === "APPLY_FAILED";
+  const held = !applied && !failed;
+  return (
+    <div className={cn(
+      "rounded-lg border p-3 space-y-1.5 text-xs",
+      applied && "border-emerald-500/40 bg-emerald-500/10",
+      failed && "border-red-500/40 bg-red-500/10",
+      held && "border-amber-500/40 bg-amber-500/10",
+    )}>
+      <div className={cn("flex items-center gap-2 font-extrabold uppercase tracking-wider",
+                         applied ? "text-emerald-300" : failed ? "text-red-300" : "text-amber-300")}>
+        {applied ? "Automatically applied" : failed
+          ? (a.outcome === "ROLLED_BACK" ? "Validation failed — rolled back" : "Automatic apply failed")
+          : "Review required"}
+        <span className="ml-auto font-mono text-[10px] normal-case text-muted-foreground">
+          {a.policy_version} · {a.actor}
+        </span>
+      </div>
+      {applied && (
+        <>
+          <div className="font-mono">
+            {a.before_value} → <span className="text-emerald-300 font-bold">{a.after_value}</span>
+          </div>
+          <div className="text-muted-foreground">{a.explanation}</div>
+          <div>
+            validation: <span className="font-bold text-foreground">{a.validation_result ?? "—"}</span>
+            {" · "}applied {a.completed_at ? relativeTime(a.completed_at) : "—"}
+          </div>
+          {a.downstream_actions.length > 0 && (
+            <ul className="text-muted-foreground space-y-0.5">
+              {a.downstream_actions.map((x, i) => (
+                <li key={i} className="font-mono text-[10px]">
+                  {x.consumer}: {x.detail ?? x.action}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {held && a.blocking_reasons.length > 0 && (
+        <ul className="list-disc pl-5 space-y-0.5 text-amber-200">
+          {a.blocking_reasons.map((b, i) => <li key={i}>{b}</li>)}
+        </ul>
+      )}
+      {failed && (
+        <div className="text-red-200">{a.error ?? a.validation_result ?? "See patch history for detail."}</div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Reviewer correction of the interpreted value, before approval.
  * PENDING updates only. Calls POST /updates/{id}/edit; the edited value
  * still requires an explicit approve to reach production. Every change is
@@ -451,6 +513,9 @@ function PanelBody({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Automation status — AUTO APPLIED vs REVIEW REQUIRED */}
+        <AutomationBanner d={d} />
+
         {/* Warnings */}
         {d.warnings.length > 0 && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1">
