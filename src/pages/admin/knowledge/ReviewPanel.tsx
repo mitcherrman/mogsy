@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ExternalLink, X, Zap } from "lucide-react";
+import { AlertTriangle, ExternalLink, Pencil, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
-import type { ApprovalResponse, UpdateDetail, ApplyHistoryEntry } from "@/lib/knowledge-admin/types";
+import type { ApprovalResponse, UpdateDetail, ApplyHistoryEntry, EditHistoryEntry } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
 import { getStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { ConfidenceBadge, ErrorBanner, ProviderBadge, SeverityBadge, actionPrimaryStyle, relativeTime } from "./shared";
@@ -121,7 +121,7 @@ export function ReviewPanel({
   });
 
   const rejectMut = useMutation({
-    mutationFn: () => knowledgeApi.reject(updateId, rejectReason.trim()),
+    mutationFn: () => knowledgeApi.reject(updateId, rejectReason.trim(), approvedBy),
     onSuccess: () => {
       toast.success("Rejected");
       qc.invalidateQueries({ queryKey: ["knowledge"] });
@@ -152,6 +152,7 @@ export function ReviewPanel({
   return (
     <PanelBody
       d={d}
+      editedBy={approvedBy}
       onClose={onClose}
       strict={strict}
       mode={mode}
@@ -174,8 +175,162 @@ export function ReviewPanel({
   );
 }
 
+/**
+ * Reviewer correction of the interpreted value, before approval.
+ * PENDING updates only. Calls POST /updates/{id}/edit; the edited value
+ * still requires an explicit approve to reach production. Every change is
+ * recorded in the backend's append-only edit history, rendered below.
+ */
+function EditValueSection({
+  d,
+  editedBy,
+  onBusyChange,
+}: {
+  d: UpdateDetail;
+  editedBy: string;
+  /** Reports in-flight edit requests so approval controls can lock. */
+  onBusyChange?: (busy: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [note, setNote] = useState("");
+
+  const status = (d.status ?? d.update?.status ?? "PENDING") as string;
+  const editable = status === "PENDING" && typeof d.update?.id === "number";
+  const editHistory: EditHistoryEntry[] = d.edit_history ?? [];
+
+  const editMut = useMutation({
+    onMutate: () => onBusyChange?.(true),
+    onSettled: () => onBusyChange?.(false),
+    mutationFn: () =>
+      knowledgeApi.editUpdate(d.update.id, {
+        proposed_value: Number(value),
+        edited_by: editedBy,
+        note: note.trim() || undefined,
+      }),
+    onSuccess: (res) => {
+      if (res.changed) {
+        toast.success(
+          `Interpretation corrected: ${String(res.old_proposed_value)} → ${String(res.new_proposed_value)}`,
+        );
+      } else {
+        toast.info("No change — value already matched");
+      }
+      setOpen(false);
+      setValue("");
+      setNote("");
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
+    onError: (err) => {
+      if (err instanceof KnowledgeApiError && err.status === 409) {
+        toast.warning("Update is no longer PENDING — refreshing");
+        qc.invalidateQueries({ queryKey: ["knowledge"] });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Edit failed");
+      }
+    },
+  });
+
+  const parsed = Number(value);
+  const valueValid = value.trim() !== "" && Number.isFinite(parsed);
+
+  return (
+    <section className="rounded-lg border border-border p-3 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+          Reviewer Edit{editHistory.length > 0 ? ` (${editHistory.length})` : ""}
+        </h3>
+        {!open && (
+          <button
+            onClick={() => {
+              setValue(String(d.update?.proposed_value ?? ""));
+              setOpen(true);
+            }}
+            disabled={!editable}
+            className="inline-flex items-center gap-1 rounded border border-border bg-card text-[11px] font-bold px-2 py-1 hover:bg-secondary disabled:opacity-40"
+            title={
+              editable
+                ? `Correct Mogzy's interpreted value for rank ${d.update?.rank ?? "?"} before approving`
+                : `Only PENDING updates are editable (status: ${status})`
+            }
+          >
+            <Pencil className="h-3 w-3" /> Edit value…
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-muted-foreground">
+              Rank {d.update?.rank ?? "?"} proposed value:
+            </label>
+            <input
+              autoFocus
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="rounded border border-border bg-background px-2 py-1 text-xs font-mono w-24"
+            />
+            <span className="text-muted-foreground">
+              (Mogzy proposed {String(d.update?.proposed_value ?? "—")})
+            </span>
+          </div>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Why? (optional, stored in the audit trail)"
+            className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => editMut.mutate()}
+              disabled={!valueValid || editMut.isPending}
+              className="rounded bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5 disabled:opacity-40"
+            >
+              {editMut.isPending ? "Saving…" : "Save correction"}
+            </button>
+            <button
+              onClick={() => { setOpen(false); setValue(""); setNote(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <span className="text-[10px] text-muted-foreground">
+              No production write — the corrected value still requires approval.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {editHistory.length > 0 && (
+        <ul className="text-xs space-y-1">
+          {editHistory.map((h) => (
+            <li key={h.id} className="flex items-center gap-2 flex-wrap">
+              <span className="tabular-nums text-muted-foreground">{relativeTime(h.edited_at)}</span>
+              <span>
+                rank {h.rank}: {String(h.old_proposed_value)} →{" "}
+                <span className="text-primary font-bold">{String(h.new_proposed_value)}</span>
+              </span>
+              <span className="text-muted-foreground">by {h.edited_by}</span>
+              {h.edit_note && <span className="text-muted-foreground italic">— {h.edit_note}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editHistory.length === 0 && !open && (
+        <p className="text-xs text-muted-foreground italic">
+          Interpretation unmodified — as parsed by Mogzy.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function PanelBody({
   d,
+  editedBy,
   onClose,
   strict,
   mode,
@@ -196,6 +351,7 @@ function PanelBody({
   rejectMut,
 }: {
   d: UpdateDetail;
+  editedBy: string;
   onClose?: () => void;
   strict: boolean;
   mode: "idle" | "progression" | "single";
@@ -216,6 +372,10 @@ function PanelBody({
   rejectMut: ReturnType<typeof useMutation<{ status: string }, unknown, void, unknown>>;
 }) {
   const primary = actionPrimaryStyle(d.recommended_action);
+
+  // True while an edit request is in flight — approval controls lock so a
+  // click can't race the pending correction.
+  const [editBusy, setEditBusy] = useState(false);
 
   // Admin-only tool: warnings never hard-block approval. Approval is only
   // disabled when the backend says the update is not actionable.
@@ -251,7 +411,7 @@ function PanelBody({
   );
 
   const directApply = (scope: "single" | "progression") => {
-    if (approvalBlocked || applyMut.isPending) return;
+    if (approvalBlocked || applyMut.isPending || editBusy) return;
     setDirectScope(scope);
     applyMut.mutate();
   };
@@ -357,7 +517,7 @@ function PanelBody({
           </div>
         </section>
 
-        {/* Evidence */}
+        {/* Evidence: official statement vs Mogzy's interpretation */}
         <section className="rounded-lg border border-border p-3 space-y-1.5 text-xs">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Evidence</h3>
@@ -367,8 +527,37 @@ function PanelBody({
               </a>
             )}
           </div>
-          <div className="font-mono text-[11px] bg-muted/40 rounded px-2 py-1 break-words">
-            {d.raw_evidence.raw_value ?? "—"}
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                Official statement
+              </div>
+              <div className="font-mono text-[11px] bg-muted/40 rounded px-2 py-1 break-words">
+                {d.raw_evidence.parsed_text ?? d.raw_evidence.raw_value ?? "—"}
+              </div>
+              {d.raw_evidence.parsed_text && d.raw_evidence.raw_value &&
+                d.raw_evidence.raw_value !== d.raw_evidence.parsed_text && (
+                <div className="font-mono text-[10px] text-muted-foreground px-2 pt-0.5 break-words">
+                  raw: {d.raw_evidence.raw_value}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                Mogzy's interpretation
+              </div>
+              <div className="font-mono text-[11px] bg-primary/10 rounded px-2 py-1 break-words">
+                {d.raw_evidence.proposed_full_progression
+                  ?? d.raw_evidence.proposed_raw_value
+                  ?? String(d.update?.proposed_value ?? "—")}
+              </div>
+              {d.raw_evidence.proposed_raw_value &&
+                d.raw_evidence.proposed_raw_value !== d.raw_evidence.proposed_full_progression && (
+                <div className="font-mono text-[10px] text-muted-foreground px-2 pt-0.5 break-words">
+                  parsed from: {d.raw_evidence.proposed_raw_value}
+                </div>
+              )}
+            </div>
           </div>
           <div className="text-muted-foreground">
             grammar: <span className="text-foreground">{d.grammar_type ?? "—"}</span>
@@ -383,6 +572,9 @@ function PanelBody({
             </div>
           )}
         </section>
+
+        {/* Reviewer edit — correct the interpreted value before approval */}
+        <EditValueSection d={d} editedBy={editedBy} onBusyChange={setEditBusy} />
 
         {/* Apply history */}
         <section className="rounded-lg border border-border p-3 space-y-1.5">
@@ -492,6 +684,7 @@ function PanelBody({
                     disabled={
                       confirmText !== "APPLY" ||
                       applyMut.isPending ||
+                      editBusy ||
                       (requiresAck && !acknowledgeWarnings)
                     }
                     className="rounded bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 disabled:opacity-40"
@@ -554,7 +747,7 @@ function PanelBody({
           {/* Preview write — always available as an optional secondary action */}
           <button
             onClick={() => setMode("progression")}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40 text-muted-foreground hover:text-foreground"
             title="Run a dry-run and show the write plan without applying."
           >
@@ -564,7 +757,7 @@ function PanelBody({
           {/* Approve single rank */}
           <button
             onClick={() => (strict ? setMode("single") : directApply("single"))}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40"
             title={notActionableReason ?? undefined}
           >
@@ -576,7 +769,7 @@ function PanelBody({
           {/* Approve all */}
           <button
             onClick={() => (strict ? setMode("progression") : directApply("progression"))}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className={cn(
               "rounded text-xs font-bold px-3 py-2 disabled:opacity-40 inline-flex items-center gap-1",
               d.recommended_action === "verify_source" || d.recommended_action === "manual_review"
