@@ -23,6 +23,7 @@ import { useChampionAssets, getChampionSplash, getChampionIcon } from "@/hooks/u
 import { useChampionBaseStats } from "@/hooks/useChampionBaseStats";
 import { cn } from "@/lib/utils";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
+import { buildMatchSummary } from "./matchSummary";
 import {
   STAT_CHECK_ANIMATION,
   STAT_CHECK_ANIMATION_SPEEDS,
@@ -309,7 +310,18 @@ export default function StatCheckPage() {
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
     setSelectedCardId(null);
-    setMatch((state) => startNextRound(state));
+    const advanced = startNextRound(match);
+    setMatch(advanced);
+    if (advanced.phase === "match-over") {
+      // Deck exhaustion ends the match during round advancement: show the
+      // match-over panel instead of dealing into an unplayable round.
+      const overTimer = window.setTimeout(
+        () => dispatchRevealStep({ type: "match-over" }),
+        animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed),
+      );
+      timersRef.current.push(overTimer);
+      return;
+    }
     const dealTimer = window.setTimeout(() => dispatchRevealStep({ type: "deal" }), animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed));
     const selectTimer = window.setTimeout(() => dispatchRevealStep({ type: "select" }), animationDuration(STAT_CHECK_ANIMATION.discardMs + STAT_CHECK_ANIMATION.dealStaggerMs * 4, prefersReducedMotion, animationSpeed));
     timersRef.current.push(dealTimer, selectTimer);
@@ -1256,8 +1268,16 @@ function RevealSequence({
       </div>
 
       {!resolution ? (
-        <div className="mt-2 rounded-md bg-black/30 p-2 text-xs text-slate-300">
-          Bot cards stay face-down until lock-in.
+        <div className="mt-2 space-y-2">
+          <div className="rounded-md bg-black/30 p-2 text-xs text-slate-300">
+            Bot cards stay face-down until lock-in.
+          </div>
+          <div data-testid="stat-check-rules-note" className="rounded-md bg-black/30 p-2 text-xs text-slate-300">
+            <div className="mb-1 font-black uppercase tracking-[0.14em] text-cyan-200 text-[10px]">How damage works</div>
+            <div>Win 2 of 3 lanes: {STAT_CHECK_RULES.boardDamage} damage. Win all 3: +{STAT_CHECK_RULES.sweepBonusDamage}.</div>
+            <div>Each lane won past its Decisive margin: +{STAT_CHECK_RULES.decisiveDamage}.</div>
+            <div className="mt-1 text-slate-400">Played cards are discarded for the whole match. Both sides redraw to {STAT_CHECK_RULES.handSize} from the same pile.</div>
+          </div>
         </div>
       ) : (
         <div className="mt-2 space-y-2">
@@ -1275,6 +1295,7 @@ function RevealSequence({
                 <div data-testid="stat-check-match-over" className="rounded-md border border-[#d6b55d]/35 bg-[#d6b55d]/10 p-3">
                   <div className="text-xl font-black">{match.outcome === "draw" ? "Match Draw" : match.outcome === "player" ? "Victory" : "Defeat"}</div>
                   <div className="text-xs text-slate-300">{match.endReason}</div>
+                  <MatchSummaryPanel match={match} />
                   <Button onClick={onRestart} className="mt-3 w-full bg-[#d6b55d] text-[#071018] hover:bg-[#f4d77d]">
                     Restart
                   </Button>
@@ -1285,6 +1306,36 @@ function RevealSequence({
         </div>
       )}
     </aside>
+  );
+}
+
+function MatchSummaryPanel({ match }: { match: MatchState }) {
+  const summary = buildMatchSummary(match);
+  const row = (label: string, value: string | number) => (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-slate-300">{label}</span>
+      <span className="font-black text-white">{value}</span>
+    </div>
+  );
+  return (
+    <details data-testid="stat-check-summary" className="mt-2 rounded-md bg-black/30 p-2 text-xs">
+      <summary className="cursor-pointer select-none font-black uppercase tracking-[0.14em] text-cyan-200 text-[10px]">
+        Playtest summary
+      </summary>
+      <div className="mt-2 space-y-1">
+        {row("Rounds", summary.rounds)}
+        {row("Final HP (you / bot)", `${summary.finalPlayerHp} / ${summary.finalBotHp}`)}
+        {row("Your damage (board / sweep / decisive)", `${summary.player.boardDamage} / ${summary.player.sweepDamage} / ${summary.player.decisiveDamage}`)}
+        {row("Bot damage (board / sweep / decisive)", `${summary.bot.boardDamage} / ${summary.bot.sweepDamage} / ${summary.bot.decisiveDamage}`)}
+        {row("Tied boards", summary.tiedBoards)}
+        {row("No-damage rounds", summary.noDamageRounds)}
+        {row("Both-sides-damage rounds", summary.simultaneousDamageRounds)}
+        {row("Strongest clue-family card retained", `${summary.clueRetainedRounds} of ${summary.clueTrackedRounds} tracked rounds`)}
+        {row("Shared pool remaining", summary.poolRemaining)}
+        {row("Discards (you / bot)", `${summary.playerDiscards} / ${summary.botDiscards}`)}
+        <div className="pt-1 text-slate-400">Clues shown: {summary.clueFamilies.join(", ") || "none"}</div>
+      </div>
+    </details>
   );
 }
 

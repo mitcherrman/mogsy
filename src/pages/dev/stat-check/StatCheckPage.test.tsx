@@ -86,6 +86,46 @@ describe("StatCheckPage tabletop presentation", () => {
     vi.useRealTimers();
   });
 
+  it("plays a full fixture match and shows a resettable playtest summary", () => {
+    const { container } = render(<StatCheckPage />);
+    expect(screen.getByTestId("stat-check-rules-note")).toHaveTextContent(/Win 2 of 3 lanes/i);
+    expect(screen.getByTestId("stat-check-rules-note")).toHaveTextContent(/discarded for the whole match/i);
+
+    const fillFirstEmptyLanes = () => {
+      for (let i = 0; i < 3; i++) {
+        const empty = lanes(container).find((lane) => within(lane).queryByText(/Place champion/i));
+        if (!empty) break;
+        fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+        fireEvent.click(empty);
+        act(() => vi.advanceTimersByTime(1_000));
+      }
+    };
+    for (let round = 0; round < 5 && !screen.queryByTestId("stat-check-match-over"); round++) {
+      fillFirstEmptyLanes();
+      fireEvent.click(screen.getByTestId("stat-check-lock"));
+      finishReveal();
+      const next = screen.queryByTestId("stat-check-next-round");
+      if (next) {
+        fireEvent.click(next);
+        act(() => vi.advanceTimersByTime(12_000));
+      }
+    }
+
+    expect(screen.getByTestId("stat-check-match-over")).toBeInTheDocument();
+    const summary = screen.getByTestId("stat-check-summary");
+    expect(summary).toHaveTextContent(/Playtest summary/i);
+    expect(summary).toHaveTextContent(/Rounds4/);
+    expect(summary).toHaveTextContent(/Shared pool remaining0/);
+    expect(summary).toHaveTextContent(/Discards \(you \/ bot\)12 \/ 12/);
+    expect(summary).toHaveTextContent(/Clues shown:/);
+
+    fireEvent.click(within(screen.getByTestId("stat-check-match-over")).getByRole("button", { name: /restart/i }));
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(screen.queryByTestId("stat-check-summary")).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent(/20 \/ 20 HP/);
+  });
+
   it("moves cards between lanes before lock-in without duplicate visual assignment", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane, secondLane] = lanes(container);

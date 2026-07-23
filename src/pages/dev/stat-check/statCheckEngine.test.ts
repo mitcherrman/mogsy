@@ -110,6 +110,24 @@ describe("Stat Check engine", () => {
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-attack-range")?.decisiveThreshold).toBe(0.2);
   });
 
+  it("records an authoritative round history with the visible clue", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "history");
+    expect(state.roundHistory).toEqual([]);
+    const visibleClue = state.nextCategories[0].family;
+    state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+    expect(state.roundHistory).toHaveLength(1);
+    expect(state.roundHistory[0]).toBe(state.lastResolution);
+    expect(state.roundHistory[0].clueFamily).toBe(visibleClue);
+    expect([true, false, null]).toContain(state.roundHistory[0].playerRetainedBestClueCard);
+    state = startNextRound(state);
+    expect(state.roundHistory).toHaveLength(1);
+    state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+    expect(state.roundHistory).toHaveLength(2);
+    expect(state.roundHistory[1].round).toBe(2);
+    // A fresh match (restart) starts with an empty history again.
+    expect(createMatch(STAT_CHECK_FIXTURE_DECK, "history").roundHistory).toEqual([]);
+  });
+
   it("owns starting HP in one authoritative constant", () => {
     expect(STAT_CHECK_RULES.startingHp).toBe(20);
     const state = createMatch(STAT_CHECK_FIXTURE_DECK, "hp-ownership");

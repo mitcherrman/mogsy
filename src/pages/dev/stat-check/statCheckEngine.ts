@@ -104,6 +104,15 @@ export type RoundResolution = {
   playerHpAfter: number;
   botHpAfter: number;
   outcome: MatchOutcome;
+  /** Broad family of the public next-round clue visible while selecting. */
+  clueFamily: StatFamily | null;
+  /**
+   * Whether the player's strongest clue-family card (by the same public
+   * scoring the bot uses) stayed in hand this round. Null when the clue
+   * carried no usable information for this hand. Describes visible state
+   * only — it does not claim intent.
+   */
+  playerRetainedBestClueCard: boolean | null;
 };
 
 export type MatchState = {
@@ -121,6 +130,8 @@ export type MatchState = {
   nextCategories: StatCategory[];
   assignments: SlotAssignments;
   lastResolution: RoundResolution | null;
+  /** Every resolved round in order, for the post-match playtest summary. */
+  roundHistory: RoundResolution[];
   outcome: MatchOutcome;
   endReason: string | null;
 };
@@ -500,20 +511,16 @@ export function selectBotAssignments(
   return analyzeBotAssignments(hand, categories, clueFamily).assignments;
 }
 
-export function analyzeBotAssignments(
-  hand: StatCheckCard[],
-  categories: StatCategory[],
-  clueFamily?: StatFamily,
-): BotAssignmentAnalysis {
-  if (hand.length < categories.length) throw new Error("Bot needs at least three cards.");
-
-  const laneTables = categories.map((category) => laneScoreTable(hand, category));
+/**
+ * Public clue-family scoring shared by the bot and the playtest summary.
+ * Each family variant (e.g. level-1 vs level-18 health) is weighted by its
+ * own hand spread so a variant with clustered values cannot dominate the
+ * clue score or unlock a sacrifice budget it does not deserve.
+ */
+function clueScoring(hand: StatCheckCard[], clueFamily?: StatFamily) {
   const clueCategories = clueFamily
     ? ACTIVE_STAT_CATEGORIES.filter((category) => category.family === clueFamily)
     : [];
-  // Each family variant (e.g. level-1 vs level-18 health) is weighted by its
-  // own hand spread so a variant with clustered values cannot dominate the
-  // clue score or unlock a sacrifice budget it does not deserve.
   const clueVariants = clueCategories.map((category) => {
     const table = laneScoreTable(hand, category);
     const values = hand.map((card) => category.getValue(card));
@@ -529,6 +536,30 @@ export function analyzeBotAssignments(
     clueCategories.length > 0
       ? hand.reduce((best, card) => (clueScoreOf(card) > clueScoreOf(best) ? card : best), hand[0])
       : null;
+  return { hasClue: clueCategories.length > 0, clueInformativeness, clueScoreOf, bestClueCard };
+}
+
+/**
+ * The hand's strongest card for a clued family under the public scoring, or
+ * null when the clue carries no usable information for this hand.
+ */
+export function strongestClueCardId(hand: StatCheckCard[], clueFamily: StatFamily | null | undefined): string | null {
+  if (!clueFamily || hand.length === 0) return null;
+  const scoring = clueScoring(hand, clueFamily);
+  if (!scoring.hasClue || scoring.clueInformativeness === 0) return null;
+  return scoring.bestClueCard?.id ?? null;
+}
+
+export function analyzeBotAssignments(
+  hand: StatCheckCard[],
+  categories: StatCategory[],
+  clueFamily?: StatFamily,
+): BotAssignmentAnalysis {
+  if (hand.length < categories.length) throw new Error("Bot needs at least three cards.");
+
+  const laneTables = categories.map((category) => laneScoreTable(hand, category));
+  const scoring = clueScoring(hand, clueFamily);
+  const { hasClue, clueInformativeness, clueScoreOf, bestClueCard } = scoring;
 
   type Candidate = { cards: StatCheckCard[]; rawScore: number[]; currentNorm: number; preservation: number };
   const candidates: Candidate[] = [];
@@ -555,7 +586,7 @@ export function analyzeBotAssignments(
   const bestCurrentScore = candidates.reduce((max, candidate) => Math.max(max, candidate.currentNorm), 0);
 
   let chosen: Candidate | null = null;
-  if (clueCategories.length === 0) {
+  if (!hasClue) {
     // Original greedy path: raw direction-signed value maximization.
     for (const candidate of candidates) {
       if (!chosen || lexicographic(candidate.rawScore, chosen.rawScore) > 0) chosen = candidate;
@@ -586,7 +617,7 @@ export function analyzeBotAssignments(
     assignments,
     currentScore: chosen!.currentNorm,
     bestCurrentScore,
-    clueInformativeness: clueCategories.length > 0 ? clueInformativeness : 0,
+    clueInformativeness: hasClue ? clueInformativeness : 0,
     bestClueCardId: bestClueCard?.id ?? null,
     preservedBestClueCard: Boolean(bestClueCard && !chosen!.cards.some((card) => card.id === bestClueCard.id)),
   };
@@ -636,6 +667,7 @@ export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1"): Matc
     nextCategories,
     assignments: emptyAssignments(currentCategories),
     lastResolution: null,
+    roundHistory: [],
     outcome: null,
     endReason: null,
   };
@@ -675,6 +707,9 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
   const playerHpAfter = Math.max(0, state.playerHp - damage.bot);
   const botHpAfter = Math.max(0, state.botHp - damage.player);
   const outcome = matchOutcome(playerHpAfter, botHpAfter);
+  const clueFamily = state.nextCategories[0]?.family ?? null;
+  const strongestClueId = strongestClueCardId(state.playerHand, clueFamily);
+  const playedPlayerIds = new Set(Object.values(playerAssignments).map((card) => card.id));
   const resolution: RoundResolution = {
     round: state.round,
     categories: state.currentCategories,
@@ -687,6 +722,8 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
     playerHpAfter,
     botHpAfter,
     outcome,
+    clueFamily,
+    playerRetainedBestClueCard: strongestClueId ? !playedPlayerIds.has(strongestClueId) : null,
   };
   return {
     ...state,
@@ -694,6 +731,7 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
     playerHp: playerHpAfter,
     botHp: botHpAfter,
     lastResolution: resolution,
+    roundHistory: [...state.roundHistory, resolution],
     outcome,
     endReason: outcome ? (outcome === "draw" ? "Simultaneous knockout." : "HP reached zero.") : null,
   };
