@@ -642,8 +642,8 @@ function ArenaLane({
         canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
         canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
         active && "ring-2 ring-cyan-300/65",
-        reaction === "charging" && "ring-2 ring-cyan-200/80 before:border-cyan-200/50 before:bg-cyan-200/5",
-        reaction === "impact" && "translate-y-[3px] ring-4 ring-[#f4d77d] before:border-[#f4d77d] before:bg-[#f4d77d]/15",
+        reaction === "charging" && "ring-1 ring-cyan-200/60 before:border-cyan-200/40 before:bg-cyan-200/5",
+        reaction === "impact" && "translate-y-[2px] ring-2 ring-[#f4d77d]/90 before:border-[#f4d77d]/80 before:bg-[#f4d77d]/10",
         reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
       )}
     >
@@ -651,7 +651,7 @@ function ArenaLane({
         <span
           aria-hidden
           data-testid="stat-check-impact-ring"
-          className="pointer-events-none absolute inset-x-6 bottom-6 top-1/2 z-20 animate-ping rounded-full border-2 border-[#f4d77d]/70 motion-reduce:hidden"
+          className="pointer-events-none absolute inset-x-12 bottom-10 top-[58%] z-20 animate-ping rounded-full border border-[#f4d77d]/55 motion-reduce:hidden"
         />
       )}
       <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
@@ -921,7 +921,7 @@ const TravelingCard = memo(function TravelingCard({
       animate={motionPlan.animate}
       transition={motionPlan.transition}
     >
-      <div className="h-full w-full overflow-hidden rounded-lg shadow-[0_26px_44px_rgba(0,0,0,0.5)]">
+      <div className="h-full w-full overflow-hidden rounded-lg shadow-[0_18px_32px_rgba(0,0,0,0.45)]">
         <ChampionCard
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
@@ -1002,11 +1002,11 @@ function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) 
       animate: {
         //          start  pickup     hold       launch                    apex       descent          approach          impact             rebound           settle
         x:      [x0,      x0,        x0,        x0 + (midX - x0) * 0.25,  midX,      x1,              x1,               x1,                x1,               x1],
-        y:      [y0,      y0 - 64,   y0 - 74,   y0 - 140,                 apexY,     y1 - 40,         y1,               y1 + 8,            y1 - 5,           y1],
-        rotate: [item.fromRotation, 0, 0,       dir * 8,                  dir * 10,  dir * 3,         0,                -dir * 2,          0,                item.toRotation],
-        scale:  [1,       1.18,      1.18,      1.3,                      apexScale, endScale * 1.15, endScale * 1.03,  endScale * 0.955,  endScale * 1.02,  endScale],
-        rotateX: [0,      2,         2,         6,                        9,         5,               0,                -4,                1,                0],
-        rotateY: [0,      0,         0,         dir * -5,                 dir * -8,  dir * -3,        0,                dir * 1.5,         0,                0],
+        y:      [y0,      y0 - 44,   y0 - 50,   y0 - 104,                 apexY,     y1 - 30,         y1,               y1 + 5,            y1 - 3,           y1],
+        rotate: [item.fromRotation, 0, 0,       dir * 5,                  dir * 6,   dir * 2,         0,                -dir * 1.5,        0,                item.toRotation],
+        scale:  [1,       1.1,       1.1,       1.18,                     apexScale, endScale * 1.08, endScale * 1.02,  endScale * 0.975,  endScale * 1.01,  endScale],
+        rotateX: [0,      1.5,       1.5,       4,                        5,         3,               0,                -2,                0.5,              0],
+        rotateY: [0,      0,         0,         dir * -3,                 dir * -5,  dir * -2,        0,                dir * 1,           0,                0],
         opacity: 1,
       },
       transition: {
@@ -1036,9 +1036,9 @@ function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) 
       initial: base,
       animate: {
         x:      [x0,     x0,       x0,       midX,           x1,               x1],
-        y:      [y0,     y0 - 44,  y0 - 50,  apexY,          y1 - 8,           y1],
-        rotate: [item.fromRotation, 0, 0,    -dir * 6,       item.toRotation,  item.toRotation],
-        scale:  [1,      1.15,     1.15,     1.2,            endScale * 1.02,  endScale],
+        y:      [y0,     y0 - 32,  y0 - 36,  apexY,          y1 - 6,           y1],
+        rotate: [item.fromRotation, 0, 0,    -dir * 4,       item.toRotation,  item.toRotation],
+        scale:  [1,      1.08,     1.08,     1.1,            endScale * 1.01,  endScale],
         rotateX: 0,
         rotateY: 0,
         opacity: 1,
@@ -1166,7 +1166,7 @@ function ChampionCard({
           emptyActive
             ? "border-[#f4d77d]/70 bg-[#d6b55d]/10 text-[#f4d77d] shadow-[0_0_18px_rgba(214,181,93,0.25)]"
             : "border-cyan-300/20 bg-black/25 text-slate-400",
-          emptyCharging && "animate-pulse border-[#f4d77d] shadow-[0_0_34px_rgba(244,215,125,0.45)] motion-reduce:animate-none",
+          emptyCharging && "animate-pulse border-[#f4d77d]/85 shadow-[0_0_22px_rgba(244,215,125,0.3)] motion-reduce:animate-none",
         )}
       >
         {emptyPrompt}
@@ -1196,7 +1196,7 @@ function ChampionCard({
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
-    state === "selected" && "-translate-y-3 scale-[1.12] border-[#f4d77d] shadow-[0_28px_60px_rgba(0,0,0,0.7),0_0_44px_rgba(244,215,125,0.5)] ring-[3px] ring-[#f4d77d]/80",
+    state === "selected" && "-translate-y-2 scale-[1.08] border-[#f4d77d] shadow-[0_22px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(244,215,125,0.4)] ring-2 ring-[#f4d77d]/75",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",

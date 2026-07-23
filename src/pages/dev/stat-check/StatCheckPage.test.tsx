@@ -23,7 +23,7 @@ function laneChampions(lane: HTMLElement) {
   );
 }
 
-// Full hero-play choreography at 1x is ~1.84s (1,760ms clone + 80ms handoff);
+// Full hero-play choreography at 1x is ~1.72s (1,635ms clone + 80ms handoff);
 // 3s settles placement plus hand reflow.
 const PLACEMENT_SETTLE_MS = 3_000;
 
@@ -284,22 +284,22 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(animPhase(container)).toBe("placement-pickup");
     act(() => vi.advanceTimersByTime(250)); // > pickup 180
     expect(animPhase(container)).toBe("placement-hold");
-    act(() => vi.advanceTimersByTime(200)); // 450 > pickup+hold 395
+    act(() => vi.advanceTimersByTime(150)); // 400 > pickup+hold 330
     expect(animPhase(container)).toBe("placement-launch");
-    act(() => vi.advanceTimersByTime(100)); // 550 > +launch 525
+    act(() => vi.advanceTimersByTime(100)); // 500 > +launch 460
     expect(animPhase(container)).toBe("placement-travel");
-    act(() => vi.advanceTimersByTime(600)); // 1150 > +travel 1100
+    act(() => vi.advanceTimersByTime(600)); // 1100 > +travel 1035
     expect(animPhase(container)).toBe("placement-approach");
-    act(() => vi.advanceTimersByTime(150)); // 1300 > +approach 1280
+    act(() => vi.advanceTimersByTime(150)); // 1250 > +approach 1215
     expect(animPhase(container)).toBe("placement-impact");
     expect(screen.getByTestId("stat-check-impact-ring")).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(150)); // 1450 > +impact 1430
+    act(() => vi.advanceTimersByTime(150)); // 1400 > +impact 1345
     expect(animPhase(container)).toBe("placement-rebound");
-    act(() => vi.advanceTimersByTime(150)); // 1600 > +rebound 1580
+    act(() => vi.advanceTimersByTime(100)); // 1500 > +rebound 1465
     expect(animPhase(container)).toBe("placement-settle");
-    act(() => vi.advanceTimersByTime(200)); // 1800 > +settle 1760
+    act(() => vi.advanceTimersByTime(150)); // 1650 > +settle 1635
     expect(animPhase(container)).toBe("placement-accepted");
-    act(() => vi.advanceTimersByTime(150)); // > 1840 clone handoff
+    act(() => vi.advanceTimersByTime(150)); // > 1715 clone handoff
     expect(animPhase(container)).toBe("selecting");
     expect(screen.queryByTestId("stat-check-impact-ring")).toBeNull();
   });
@@ -326,7 +326,7 @@ describe("StatCheckPage tabletop presentation", () => {
     const second = render(<StatCheckPage />);
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "1.5" } });
     placeWithoutSettling(second.container, 0, 0);
-    act(() => vi.advanceTimersByTime(1_200));
+    act(() => vi.advanceTimersByTime(900));
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
     act(() => vi.advanceTimersByTime(600));
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();

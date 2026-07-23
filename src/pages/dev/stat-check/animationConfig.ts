@@ -4,33 +4,34 @@
  * the staging is unmistakable; it will be tuned back later.
  */
 export const STAT_CHECK_ANIMATION = {
-  // Direction pass on 5ba6b47: whole choreography tightened ~18% (x0.82) from
-  // the over-exaggerated staging pass; clone total is now ~1.76s at 1x.
+  // Production polish pass on 275791f: same gesture and tempo, with the
+  // theatrical beats trimmed (shorter anticipation, softer strike). Clone
+  // total ~1.64s at 1x, handoff ~1.72s.
   placement: {
     /** Card rises out of the fan, straightens, scales up. */
     pickupMs: 180,
-    /** Anticipation pause: the card hovers above the fan. */
-    holdMs: 215,
+    /** Anticipation beat: brief, confident — no longer a theatrical hover. */
+    holdMs: 150,
     /** Upward launch toward the board. */
     launchMs: 130,
     /** Main flight through the apex. */
     travelMs: 575,
     /** Controlled descent into the lane. */
     approachMs: 180,
-    /** Strike: overshoot + compression, lane flash. */
-    impactMs: 150,
+    /** Strike: compact compression, restrained lane flash. */
+    impactMs: 130,
     /** Rebound off the surface. */
-    reboundMs: 150,
+    reboundMs: 120,
     /** Settle into exact board geometry. */
-    settleMs: 180,
+    settleMs: 170,
     /** Lane acceptance glow after the clone hands off. */
-    acceptanceMs: 115,
+    acceptanceMs: 100,
   },
   returnPlay: {
     /** Card lifts off the board. */
     liftMs: 150,
     /** Brief pause before flying home. */
-    holdMs: 100,
+    holdMs: 80,
     /** Flight back to the fan. */
     travelMs: 410,
     /** Settle into the reserved fan gap. */
@@ -41,7 +42,7 @@ export const STAT_CHECK_ANIMATION = {
   /** Hand re-fan transition duration (speed-scaled at the call site). */
   handReflowMs: 370,
   /** Peak scale of the travel clone at the apex, relative to hand-card size. */
-  heroApexScale: 1.45,
+  heroApexScale: 1.28,
   laneMoveMs: 420,
   opponentFlipMs: 420,
   opponentFlipStaggerMs: 260,
@@ -92,9 +93,9 @@ export function returnCloneTotalMs() {
  */
 export function heroArcLift(distancePx: number, viewportWidth: number, viewportHeight: number) {
   if (viewportWidth < 768) {
-    return Math.min(170, Math.max(110, distancePx * 0.3, viewportHeight * 0.12));
+    return Math.min(140, Math.max(90, distancePx * 0.25, viewportHeight * 0.1));
   }
-  return Math.min(260, Math.max(160, distancePx * 0.35));
+  return Math.min(190, Math.max(120, distancePx * 0.28));
 }
 
 export const STAT_CHECK_ANIMATION_SPEEDS = [0.25, 0.5, 1, 1.5] as const;
