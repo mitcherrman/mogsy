@@ -409,6 +409,10 @@ export interface MatchHistoryEntryView {
   opponentClass: string;
   opponentDisplayName: string | null;
   opponentIsBot: boolean;
+  /** Viewer's own applied rating movement (F2.2); null when the result was
+   * skipped/pending or predates rating application. */
+  ratingDelta: number | null;
+  ratingAfter: number | null;
 }
 
 export interface MatchHistoryView {
@@ -446,6 +450,9 @@ export function readMatchHistory(body: unknown): MatchHistoryView {
       opponentClass: str(e.opponent_class, `entries[${i}].opponent_class`),
       opponentDisplayName: nstr(e.opponent_display_name, `entries[${i}].opponent_display_name`),
       opponentIsBot: bool(e.opponent_is_bot, `entries[${i}].opponent_is_bot`),
+      // Absent on pre-F2.2 backends — tolerate missing as null.
+      ratingDelta: nnum(e.rating_delta, `entries[${i}].rating_delta`),
+      ratingAfter: nnum(e.rating_after, `entries[${i}].rating_after`),
     } satisfies MatchHistoryEntryView;
   });
   return {
