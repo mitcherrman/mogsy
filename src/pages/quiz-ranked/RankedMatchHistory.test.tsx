@@ -20,6 +20,8 @@ const entry = (over: Partial<MatchHistoryEntryView> = {}): MatchHistoryEntryView
   opponentClass: "mage",
   opponentDisplayName: "Rival",
   opponentIsBot: false,
+  ratingDelta: null,
+  ratingAfter: null,
   ...over,
 });
 
@@ -38,7 +40,7 @@ describe("RankedMatchHistory", () => {
 
   it("renders recent results with viewer-perspective outcomes", async () => {
     mockHistory.mockResolvedValue(view([
-      entry(),
+      entry({ ratingDelta: 16, ratingAfter: 1016 }),
       entry({ matchId: "m2", viewerOutcome: "loss", terminalReason: "forfeit" }),
       entry({ matchId: "m3", opponentIsBot: true, isBotMatch: true, opponentDisplayName: null }),
     ]));
@@ -49,9 +51,12 @@ describe("RankedMatchHistory", () => {
     expect(rows[0]).toHaveTextContent("Victory");
     expect(rows[0]).toHaveTextContent("Tank vs Rival (Mage)");
     expect(rows[0]).toHaveTextContent("R7");
+    expect(rows[0]).toHaveTextContent("+16");
     expect(rows[1]).toHaveTextContent("Defeat");
     expect(rows[1]).toHaveTextContent("Forfeit");
     expect(rows[2]).toHaveTextContent("Tank vs Bot (Mage)");
+    // Null delta (skipped/unrated result) renders no badge.
+    expect(rows[2].querySelector('[data-testid="ranked-history-rating-delta"]')).toBeNull();
   });
 
   it("renders nothing for an empty history", async () => {

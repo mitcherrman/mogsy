@@ -68,6 +68,17 @@ export function RankedMatchHistory({ limit = 5 }: { limit?: number }) {
                     ? "No contest"
                     : `R${entry.finalRoundNumber}`}
               </span>
+              {entry.ratingDelta !== null && (
+                <span data-testid="ranked-history-rating-delta"
+                  className={`shrink-0 font-semibold ${
+                    entry.ratingDelta > 0
+                      ? "text-[#e8c97a]"
+                      : entry.ratingDelta < 0
+                        ? "text-destructive"
+                        : "text-muted-foreground"}`}>
+                  {entry.ratingDelta > 0 ? `+${entry.ratingDelta}` : `${entry.ratingDelta}`}
+                </span>
+              )}
             </li>
           );
         })}

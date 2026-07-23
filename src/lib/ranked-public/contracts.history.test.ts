@@ -13,6 +13,8 @@ const entry = (over: Record<string, unknown> = {}) => ({
   opponent_class: "mage",
   opponent_display_name: "Rival",
   opponent_is_bot: false,
+  rating_delta: 16,
+  rating_after: 1016,
   ...over,
 });
 
@@ -33,8 +35,15 @@ describe("readMatchHistory", () => {
       matchId: "m1", viewerOutcome: "win", terminalReason: "combat",
       finalRoundNumber: 7, viewerClass: "tank", opponentClass: "mage",
       opponentDisplayName: "Rival", opponentIsBot: false,
+      ratingDelta: 16, ratingAfter: 1016,
     });
     expect(view.entries[1].viewerOutcome).toBe("draw");
+  });
+
+  it("tolerates absent rating fields (pre-F2.2 backend)", () => {
+    const view = readMatchHistory(body([entry({ rating_delta: undefined, rating_after: undefined })]));
+    expect(view.entries[0].ratingDelta).toBeNull();
+    expect(view.entries[0].ratingAfter).toBeNull();
   });
 
   it("accepts an empty history", () => {
