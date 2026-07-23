@@ -118,6 +118,43 @@ describe.skipIf(!hasRoster)("real roster diagnostics", () => {
   );
 
   it(
+    "compares greedy versus clue-aware bot on mirrored seeds",
+    () => {
+      const deck = rosterDeckFromResponse(payload);
+      const seeds = Array.from({ length: 500 }, (_, i) => `stat-check-roster:${i}`);
+      const greedy = runDiagnostics(deck, seeds, { botUsesClue: false });
+      const aware = runDiagnostics(deck, seeds, { botUsesClue: true });
+      const summarize = (name: string, r: typeof greedy) => {
+        const decided = r.outcomes.player + r.outcomes.bot;
+        return (
+          `${name}: botWin=${((r.outcomes.bot / decided) * 100).toFixed(1)}% (P/B/D ${r.outcomes.player}/${r.outcomes.bot}/${r.outcomes.draw}) ` +
+          `rounds mean=${(r.totalRounds / r.matches).toFixed(1)} dmg/round bot=${(r.botDamageTotal / r.totalRounds).toFixed(2)} player=${(r.playerDamageTotal / r.totalRounds).toFixed(2)} ` +
+          `botBoards=${r.boardResults.bot} sweeps=${r.sweeps}`
+        );
+      };
+      const bot = aware.botClueStats;
+      console.log(
+        `\n[BOT STRATEGY COMPARISON]\n${summarize("greedy    ", greedy)}\n${summarize("clue-aware", aware)}\n` +
+          `preservation: preservedBest=${bot.preservedBest}/${bot.cluedRounds} (${((bot.preservedBest / bot.cluedRounds) * 100).toFixed(1)}%) ` +
+          `withSacrifice=${bot.sacrificedRounds} meanSacrifice=${(bot.sacrificeTotal / (bot.preservedBest || 1)).toFixed(3)} ` +
+          `playedInCluedRound=${bot.playedInCluedRound}/${bot.preservedAndReachedNext}\n` +
+          Object.entries(bot.perFamily)
+            .sort((a, b) => b[1].clued - a[1].clued)
+            .map(([family, s]) => `  ${family}: preserved ${((s.preserved / s.clued) * 100).toFixed(1)}% of ${s.clued}`)
+            .join("\n") +
+          "\n",
+      );
+      for (const report of [greedy, aware]) {
+        expect(report.matchRecords.flatMap((m) => m.invariantIssues)).toEqual([]);
+      }
+      // The clue-aware bot preserves meaningfully but not constantly.
+      expect(bot.preservedBest).toBeGreaterThan(0);
+      expect(bot.preservedBest / bot.cluedRounds).toBeLessThan(0.9);
+    },
+    300_000,
+  );
+
+  it(
     "evaluates starting-HP candidates on the live roster",
     () => {
       const deck = rosterDeckFromResponse(payload);

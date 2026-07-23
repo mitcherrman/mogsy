@@ -1,4 +1,5 @@
 import {
+  analyzeBotAssignments,
   autoAssignBestPlayerHand,
   createMatch,
   resolveCurrentRound,
@@ -124,6 +125,7 @@ export type DiagnosticsReport = {
   roundsPerMatch: number[];
   totalDamagePerRound: number[];
   clueStats: ClueStats;
+  botClueStats: BotClueStats;
   matchRecords: MatchRecord[];
   roundRecords: RoundRecord[];
 };
@@ -164,18 +166,49 @@ export type SimulationOptions = {
    * after createMatch so production HP ownership stays in the engine.
    */
   startingHp?: number;
+  /** false = greedy baseline bot (ignores the public clue). Default true. */
+  botUsesClue?: boolean;
 };
+
+export type BotClueStats = {
+  /** Rounds where the bot had a usable clue. */
+  cluedRounds: number;
+  /** Rounds where the bot kept its best clue-family card out of the board. */
+  preservedBest: number;
+  /** Preserved-best rounds with a measurable current-value sacrifice. */
+  sacrificedRounds: number;
+  /** Sum of normalized current-value sacrifice across preserved-best rounds. */
+  sacrificeTotal: number;
+  /** Preserved best clue card was actually played in the clued next round. */
+  playedInCluedRound: number;
+  /** Preserved-best rounds where the clued round was actually reached. */
+  preservedAndReachedNext: number;
+  perFamily: Partial<Record<StatFamily, { clued: number; preserved: number }>>;
+};
+
+const emptyBotClueStats = (): BotClueStats => ({
+  cluedRounds: 0,
+  preservedBest: 0,
+  sacrificedRounds: 0,
+  sacrificeTotal: 0,
+  playedInCluedRound: 0,
+  preservedAndReachedNext: 0,
+  perFamily: {},
+});
 
 export function simulateMatch(
   deck: StatCheckCard[],
   seed: string,
   options: SimulationOptions = {},
-): { match: MatchRecord; rounds: RoundRecord[]; clue: ClueStats } {
+): { match: MatchRecord; rounds: RoundRecord[]; clue: ClueStats; botClue: BotClueStats } {
   const maxRounds = options.maxRounds ?? 100;
+  const botUsesClue = options.botUsesClue !== false;
   let state: MatchState = createMatch(deck, seed);
   if (options.startingHp !== undefined) {
     state = { ...state, playerHp: options.startingHp, botHp: options.startingHp };
   }
+  const botClue = emptyBotClueStats();
+  let pendingPreservedCardId: string | null = null;
   const rounds: RoundRecord[] = [];
   const clue: ClueStats = {
     cluedRounds: 0,
@@ -218,8 +251,33 @@ export function simulateMatch(
       }
     }
 
-    state = resolveCurrentRound(state);
+    const previousPreservedCardId = pendingPreservedCardId;
+    pendingPreservedCardId = null;
+    if (botUsesClue && clueCategory) {
+      const analysis = analyzeBotAssignments(state.botHand, state.currentCategories, clueCategory.family);
+      botClue.cluedRounds += 1;
+      const familyStats =
+        botClue.perFamily[clueCategory.family] ??
+        (botClue.perFamily[clueCategory.family] = { clued: 0, preserved: 0 });
+      familyStats.clued += 1;
+      if (analysis.preservedBestClueCard) {
+        botClue.preservedBest += 1;
+        familyStats.preserved += 1;
+        const sacrifice = analysis.bestCurrentScore - analysis.currentScore;
+        botClue.sacrificeTotal += sacrifice;
+        if (sacrifice > 1e-9) botClue.sacrificedRounds += 1;
+        pendingPreservedCardId = analysis.bestClueCardId;
+      }
+    }
+
+    state = resolveCurrentRound(state, { botUsesClue });
     const resolution = state.lastResolution!;
+    if (previousPreservedCardId) {
+      // This round is the clued round for the previous round's preservation.
+      botClue.preservedAndReachedNext += 1;
+      const playedIdsThisRound = Object.values(resolution.botAssignments).map((card) => card.id);
+      if (playedIdsThisRound.includes(previousPreservedCardId)) botClue.playedInCluedRound += 1;
+    }
     const tieCount = resolution.results.filter((r) => r.winner === "tie").length;
     const decisiveCount = resolution.results.filter((r) => r.decisive).length;
     rounds.push({
@@ -277,6 +335,7 @@ export function simulateMatch(
     },
     rounds,
     clue,
+    botClue,
   };
 }
 
@@ -334,12 +393,25 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[], options: 
       clueContested: 0,
       perFamily: {},
     },
+    botClueStats: emptyBotClueStats(),
     matchRecords: [],
     roundRecords: [],
   };
 
   for (const seed of seeds) {
-    const { match, rounds, clue } = simulateMatch(deck, seed, options);
+    const { match, rounds, clue, botClue } = simulateMatch(deck, seed, options);
+    const target = report.botClueStats;
+    target.cluedRounds += botClue.cluedRounds;
+    target.preservedBest += botClue.preservedBest;
+    target.sacrificedRounds += botClue.sacrificedRounds;
+    target.sacrificeTotal += botClue.sacrificeTotal;
+    target.playedInCluedRound += botClue.playedInCluedRound;
+    target.preservedAndReachedNext += botClue.preservedAndReachedNext;
+    for (const [family, stats] of Object.entries(botClue.perFamily) as [StatFamily, { clued: number; preserved: number }][]) {
+      const familyTarget = target.perFamily[family] ?? (target.perFamily[family] = { clued: 0, preserved: 0 });
+      familyTarget.clued += stats.clued;
+      familyTarget.preserved += stats.preserved;
+    }
     report.matchRecords.push(match);
     report.roundRecords.push(...rounds);
     report.roundsPerMatch.push(match.rounds);
@@ -518,6 +590,15 @@ export function formatDiagnosticsReport(report: DiagnosticsReport): string {
     lines.push(
       `  clue:${family.padEnd(14)} clued=${stats.clued} conflict=${pct(stats.conflicts, stats.clued)} contested=${pct(stats.contested, stats.clued)}`,
     );
+  }
+  const bot = report.botClueStats;
+  if (bot.cluedRounds > 0) {
+    lines.push(
+      `Bot clue: cluedRounds=${bot.cluedRounds} preservedBest=${bot.preservedBest} (${pct(bot.preservedBest, bot.cluedRounds)}) sacrificed=${bot.sacrificedRounds} meanSacrifice=${(bot.sacrificeTotal / (bot.preservedBest || 1)).toFixed(3)} playedInCluedRound=${bot.playedInCluedRound}/${bot.preservedAndReachedNext}`,
+    );
+    for (const [family, stats] of Object.entries(bot.perFamily).sort((a, b) => b[1].clued - a[1].clued)) {
+      lines.push(`  bot-clue:${family.padEnd(14)} clued=${stats.clued} preserved=${pct(stats.preserved, stats.clued)}`);
+    }
   }
   const issues = report.matchRecords.flatMap((m) => m.invariantIssues.map((issue) => `${m.seed}: ${issue}`));
   lines.push(`Invariant issues: ${issues.length}`);

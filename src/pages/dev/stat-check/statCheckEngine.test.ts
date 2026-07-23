@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import {
   ACTIVE_STAT_CATEGORIES,
+  analyzeBotAssignments,
   STAT_CATEGORIES,
   STAT_CHECK_RULES,
   assignCard,
@@ -550,5 +551,151 @@ describe("Stat Check engine", () => {
     expect(state.assignments[b.id]).toBe(first);
     state = assignCard(state, b.id, null);
     expect(state.assignments[b.id]).toBeNull();
+  });
+});
+
+describe("clue-aware bot", () => {
+  const sc = (name: string, stats: Partial<StatCheckCard["stats"]> = {}): StatCheckCard => ({
+    id: name,
+    name,
+    stats: {
+      hp: 600,
+      hpPerLevel: 90,
+      ad: 25,
+      adPerLevel: 3,
+      armor: 40,
+      magicResist: 30,
+      moveSpeed: 335,
+      attackRange: 150,
+      attackSpeed: 0.65,
+      attackSpeedPerLevel: 2,
+      ...stats,
+    },
+  });
+  const catById = (id: StatCategory["id"]) => STAT_CATEGORIES.find((c) => c.id === id)!;
+  const board = [catById("highest-ad-1"), catById("lowest-armor-1"), catById("highest-move-speed")];
+  const playedIds = (assignments: Record<string, StatCheckCard>) => Object.values(assignments).map((c) => c.id);
+
+  const nearEqualHand = () => [
+    sc("AdNearBest", { ad: 59 }),
+    sc("AdBestHpGiant", { ad: 60, hp: 2000 }),
+    sc("ArmorAce", { armor: 15 }),
+    sc("SpeedAce", { moveSpeed: 400, ad: 24 }),
+    sc("FillerOne", { ad: 20, armor: 60, moveSpeed: 300 }),
+    sc("FillerTwo", { ad: 21, armor: 55, moveSpeed: 305 }),
+  ];
+
+  it("preserves a superior clue-family card when current choices are near-equal", () => {
+    const assignments = selectBotAssignments(nearEqualHand(), board, "health");
+    expect(assignments["highest-ad-1"].id).toBe("AdNearBest");
+    expect(playedIds(assignments)).not.toContain("AdBestHpGiant");
+    // The greedy path (no clue) spends the giant instead.
+    expect(selectBotAssignments(nearEqualHand(), board)["highest-ad-1"].id).toBe("AdBestHpGiant");
+  });
+
+  it("spends the clue card when it materially improves the current board", () => {
+    const hand = nearEqualHand().map((card) =>
+      card.id === "AdNearBest" ? sc("AdNearBest", { ad: 30 }) : card,
+    );
+    const assignments = selectBotAssignments(hand, board, "health");
+    expect(assignments["highest-ad-1"].id).toBe("AdBestHpGiant");
+  });
+
+  it("does not sacrifice for a weak clustered move-speed clue", () => {
+    const hpBoard = [catById("highest-ad-1"), catById("lowest-armor-1"), catById("highest-hp-1")];
+    const hand = [
+      sc("Sprinter", { hp: 800, moveSpeed: 339 }),
+      sc("HpAlt", { hp: 780, moveSpeed: 335 }),
+      sc("AdAce", { ad: 60, moveSpeed: 336 }),
+      sc("ArmorAce", { armor: 15, moveSpeed: 337 }),
+      sc("FillerOne", { moveSpeed: 335 }),
+      sc("FillerTwo", { moveSpeed: 338 }),
+    ];
+    const analysis = analyzeBotAssignments(hand, hpBoard, "move-speed");
+    expect(analysis.clueInformativeness).toBeLessThan(0.1);
+    expect(analysis.assignments["highest-hp-1"].id).toBe("Sprinter");
+    expect(analysis.preservedBestClueCard).toBe(false);
+  });
+
+  it("evaluates the broad family across level variants without knowing the exact category", () => {
+    const hand = [
+      sc("AdNearBest", { ad: 59 }),
+      sc("LateBloomer", { ad: 60, hp: 595, hpPerLevel: 220 }),
+      sc("ArmorAce", { armor: 15 }),
+      sc("SpeedAce", { moveSpeed: 400, ad: 24 }),
+      sc("FillerOne", { ad: 20, armor: 60, moveSpeed: 300 }),
+      sc("FillerTwo", { ad: 21, armor: 55, moveSpeed: 305 }),
+    ];
+    // LateBloomer has the worst level-1 health but the best level-18 health;
+    // a health clue must still treat it as the family's strongest card.
+    const assignments = selectBotAssignments(hand, board, "health");
+    expect(playedIds(assignments)).not.toContain("LateBloomer");
+    expect(assignments["highest-ad-1"].id).toBe("AdNearBest");
+  });
+
+  it("matches greedy behavior when the clue offers no useful distinction", () => {
+    const hand = [
+      sc("AdAce", { ad: 70 }),
+      sc("ArmorAce", { armor: 10 }),
+      sc("SpeedAce", { moveSpeed: 400 }),
+      sc("FillerOne", { ad: 20, armor: 60, moveSpeed: 300 }),
+      sc("FillerTwo", { ad: 21, armor: 55, moveSpeed: 305 }),
+      sc("FillerThree", { ad: 22, armor: 50, moveSpeed: 310 }),
+    ];
+    // All attack ranges are identical, so the clue carries zero information.
+    const withClue = selectBotAssignments(hand, board, "attack-range");
+    const greedy = selectBotAssignments(hand, board);
+    expect(playedIds(withClue)).toEqual(playedIds(greedy));
+    const analysis = analyzeBotAssignments(hand, board, "attack-range");
+    expect(analysis.clueInformativeness).toBe(0);
+    expect(analysis.currentScore).toBeCloseTo(analysis.bestCurrentScore);
+  });
+
+  it("breaks exact score ties deterministically by hand order", () => {
+    const twin = { ad: 60 };
+    const hand = [
+      sc("TwinA", twin),
+      sc("TwinB", twin),
+      sc("ArmorAce", { armor: 15 }),
+      sc("SpeedAce", { moveSpeed: 400, ad: 24 }),
+      sc("FillerOne", { ad: 20, armor: 60, moveSpeed: 300 }),
+      sc("FillerTwo", { ad: 21, armor: 55, moveSpeed: 305 }),
+    ];
+    const first = selectBotAssignments(hand, board, "health");
+    const second = selectBotAssignments(hand, board, "health");
+    expect(playedIds(first)).toEqual(playedIds(second));
+    expect(first["highest-ad-1"].id).toBe("TwinA");
+  });
+
+  it("always submits three distinct legal cards from its hand", () => {
+    for (const family of ["health", "attack-damage", "armor", "move-speed", "attack-range"] as const) {
+      const assignments = selectBotAssignments(nearEqualHand(), board, family);
+      const ids = playedIds(assignments);
+      expect(new Set(ids).size).toBe(3);
+      const handIds = new Set(nearEqualHand().map((c) => c.id));
+      for (const id of ids) expect(handIds.has(id)).toBe(true);
+    }
+  });
+
+  it("ignores hidden future information beyond the public family clue", () => {
+    const base = autoAssignBestPlayerHand(createMatch(STAT_CHECK_FIXTURE_DECK, "hidden-info"));
+    const hp1 = catById("highest-hp-1");
+    const hp18 = catById("highest-hp-18");
+    const variantA = {
+      ...base,
+      nextCategories: [hp1, catById("highest-ad-18"), catById("lowest-armor-1")],
+    };
+    const variantB = {
+      ...base,
+      nextCategories: [hp18, catById("highest-attack-range"), catById("highest-move-speed")],
+      drawPile: base.drawPile.slice().reverse(),
+    };
+    const resolvedA = resolveCurrentRound(variantA);
+    const resolvedB = resolveCurrentRound(variantB);
+    const ids = (state: typeof resolvedA) =>
+      state.currentCategories.map((category) => state.lastResolution!.botAssignments[category.id].id);
+    // Same public family ("health") and same hand: identical bot submission
+    // despite different exact future categories and a different draw order.
+    expect(ids(resolvedA)).toEqual(ids(resolvedB));
   });
 });

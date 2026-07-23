@@ -445,10 +445,93 @@ export function calculateRoundDamage(results: CategoryResult[]): RoundDamage {
   };
 }
 
-export function selectBotAssignments(hand: StatCheckCard[], categories: StatCategory[]): Record<StatCategoryId, StatCheckCard> {
-  if (hand.length < categories.length) throw new Error("Bot needs at least three cards.");
-  let best: { cards: StatCheckCard[]; score: number[] } | null = null;
+export const BOT_STRATEGY = {
+  /**
+   * Maximum normalized current-board value (each lane spans 0..1 within the
+   * hand) the bot may sacrifice to preserve its best clue-family card.
+   */
+  maxPreservationSacrifice: 0.35,
+  /**
+   * Best-versus-worst relative hand spread at which a clue family counts as
+   * fully informative. Tighter spreads (e.g. clustered move speed) scale the
+   * sacrifice budget toward zero so weak clues never cost the current board.
+   */
+  clueSpreadReference: 0.15,
+} as const;
 
+export type BotAssignmentAnalysis = {
+  assignments: Record<StatCategoryId, StatCheckCard>;
+  /** Normalized current-board value of the chosen assignment (0..lanes). */
+  currentScore: number;
+  /** Best achievable normalized current-board value with this hand. */
+  bestCurrentScore: number;
+  /** 0..1 informativeness of the clue family for this hand (0 = no clue). */
+  clueInformativeness: number;
+  /** Hand card with the highest clue-family score, if a usable clue exists. */
+  bestClueCardId: string | null;
+  /** True when the best clue-family card was kept out of the current board. */
+  preservedBestClueCard: boolean;
+};
+
+/** Normalized 0..1 (direction-aware) per-card scores for one category within a hand. */
+function laneScoreTable(hand: StatCheckCard[], category: StatCategory): Map<string, number> {
+  const values = hand.map((card) => category.getValue(card));
+  const best = category.direction === "higher" ? Math.max(...values) : Math.min(...values);
+  const worst = category.direction === "higher" ? Math.min(...values) : Math.max(...values);
+  const span = Math.abs(best - worst);
+  const table = new Map<string, number>();
+  hand.forEach((card, index) => {
+    table.set(card.id, span === 0 ? 0.5 : Math.abs(values[index] - worst) / span);
+  });
+  return table;
+}
+
+/**
+ * Deterministic bot selection. Without a clue this is the original greedy
+ * raw-value maximizer. With the public next-round family clue, the bot keeps
+ * its best clue-family card when doing so costs at most a bounded, clue-
+ * informativeness-scaled amount of normalized current-board value.
+ */
+export function selectBotAssignments(
+  hand: StatCheckCard[],
+  categories: StatCategory[],
+  clueFamily?: StatFamily,
+): Record<StatCategoryId, StatCheckCard> {
+  return analyzeBotAssignments(hand, categories, clueFamily).assignments;
+}
+
+export function analyzeBotAssignments(
+  hand: StatCheckCard[],
+  categories: StatCategory[],
+  clueFamily?: StatFamily,
+): BotAssignmentAnalysis {
+  if (hand.length < categories.length) throw new Error("Bot needs at least three cards.");
+
+  const laneTables = categories.map((category) => laneScoreTable(hand, category));
+  const clueCategories = clueFamily
+    ? ACTIVE_STAT_CATEGORIES.filter((category) => category.family === clueFamily)
+    : [];
+  // Each family variant (e.g. level-1 vs level-18 health) is weighted by its
+  // own hand spread so a variant with clustered values cannot dominate the
+  // clue score or unlock a sacrifice budget it does not deserve.
+  const clueVariants = clueCategories.map((category) => {
+    const table = laneScoreTable(hand, category);
+    const values = hand.map((card) => category.getValue(card));
+    const best = category.direction === "higher" ? Math.max(...values) : Math.min(...values);
+    const worst = category.direction === "higher" ? Math.min(...values) : Math.max(...values);
+    const spread = relativeMarginForCategory(category, best, worst);
+    return { table, weight: Math.min(1, spread / BOT_STRATEGY.clueSpreadReference) };
+  });
+  const clueInformativeness = clueVariants.reduce((max, variant) => Math.max(max, variant.weight), 0);
+  const clueScoreOf = (card: StatCheckCard) =>
+    clueVariants.reduce((score, variant) => Math.max(score, (variant.table.get(card.id) ?? 0) * variant.weight), 0);
+  const bestClueCard =
+    clueCategories.length > 0
+      ? hand.reduce((best, card) => (clueScoreOf(card) > clueScoreOf(best) ? card : best), hand[0])
+      : null;
+
+  type Candidate = { cards: StatCheckCard[]; rawScore: number[]; currentNorm: number; preservation: number };
+  const candidates: Candidate[] = [];
   for (const a of hand) {
     for (const b of hand) {
       if (b.id === a.id) continue;
@@ -461,18 +544,52 @@ export function selectBotAssignments(hand: StatCheckCard[], categories: StatCate
         });
         const total = normalized.reduce((sum, value) => sum + value, 0);
         const tieBreak = cards.map((card) => -hand.findIndex((item) => item.id === card.id));
-        const candidateScore = [total, ...normalized, ...tieBreak];
-        if (!best || lexicographic(candidateScore, best.score) > 0) {
-          best = { cards, score: candidateScore };
-        }
+        const currentNorm = cards.reduce((sum, card, index) => sum + (laneTables[index].get(card.id) ?? 0), 0);
+        const remaining = hand.filter((card) => !cards.some((played) => played.id === card.id));
+        const preservation = remaining.reduce((score, card) => Math.max(score, clueScoreOf(card)), 0);
+        candidates.push({ cards, rawScore: [total, ...normalized, ...tieBreak], currentNorm, preservation });
       }
     }
   }
 
-  return categories.reduce((acc, category, index) => {
-    acc[category.id] = best!.cards[index];
+  const bestCurrentScore = candidates.reduce((max, candidate) => Math.max(max, candidate.currentNorm), 0);
+
+  let chosen: Candidate | null = null;
+  if (clueCategories.length === 0) {
+    // Original greedy path: raw direction-signed value maximization.
+    for (const candidate of candidates) {
+      if (!chosen || lexicographic(candidate.rawScore, chosen.rawScore) > 0) chosen = candidate;
+    }
+  } else {
+    const budget = BOT_STRATEGY.maxPreservationSacrifice * clueInformativeness;
+    const eligible = candidates.filter((candidate) => candidate.currentNorm >= bestCurrentScore - budget - 1e-9);
+    for (const candidate of eligible) {
+      if (
+        !chosen ||
+        candidate.preservation > chosen.preservation + 1e-9 ||
+        (Math.abs(candidate.preservation - chosen.preservation) <= 1e-9 &&
+          (candidate.currentNorm > chosen.currentNorm + 1e-9 ||
+            (Math.abs(candidate.currentNorm - chosen.currentNorm) <= 1e-9 &&
+              lexicographic(candidate.rawScore, chosen.rawScore) > 0)))
+      ) {
+        chosen = candidate;
+      }
+    }
+  }
+
+  const assignments = categories.reduce((acc, category, index) => {
+    acc[category.id] = chosen!.cards[index];
     return acc;
   }, {} as Record<StatCategoryId, StatCheckCard>);
+
+  return {
+    assignments,
+    currentScore: chosen!.currentNorm,
+    bestCurrentScore,
+    clueInformativeness: clueCategories.length > 0 ? clueInformativeness : 0,
+    bestClueCardId: bestClueCard?.id ?? null,
+    preservedBestClueCard: Boolean(bestClueCard && !chosen!.cards.some((card) => card.id === bestClueCard.id)),
+  };
 }
 
 function lexicographic(a: number[], b: number[]): number {
@@ -539,15 +656,18 @@ export function isReadyToLock(state: MatchState): boolean {
   return state.currentCategories.every((category) => Boolean(state.assignments[category.id]));
 }
 
-export function resolveCurrentRound(state: MatchState): MatchState {
+export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: boolean } = {}): MatchState {
   if (state.phase !== "selecting" || !isReadyToLock(state)) return state;
+  // The bot only ever sees the same public clue the player sees: the broad
+  // family of nextCategories[0]. Exact future categories and draw order stay hidden.
+  const botClueFamily = options.botUsesClue === false ? undefined : state.nextCategories[0]?.family;
   const playerAssignments = state.currentCategories.reduce((acc, category) => {
     const card = state.playerHand.find((item) => item.id === state.assignments[category.id]);
     if (!card) throw new Error(`Missing player card for ${category.id}`);
     acc[category.id] = card;
     return acc;
   }, {} as Record<StatCategoryId, StatCheckCard>);
-  const botAssignments = selectBotAssignments(state.botHand, state.currentCategories);
+  const botAssignments = selectBotAssignments(state.botHand, state.currentCategories, botClueFamily);
   const results = state.currentCategories.map((category) =>
     compareCategory(category, playerAssignments[category.id], botAssignments[category.id]),
   );
