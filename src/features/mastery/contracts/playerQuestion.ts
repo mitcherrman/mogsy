@@ -50,6 +50,16 @@ export interface NumericInputConstraints {
   readonly max: number | null;
   readonly step: number | null;
   readonly integerOnly: boolean;
+  /**
+   * Decimal places the backend grades at. The UI uses this only to shape and
+   * describe the input — correctness is still decided solely on the backend.
+   * Optional so a response predating the precision contract still parses.
+   */
+  readonly decimalPlaces: number | null;
+  readonly roundingMode: string | null;
+  /** Player-facing rounding hint, or null when the question needs none. */
+  readonly precisionInstruction: string | null;
+  readonly precisionContractVersion: string | null;
 }
 
 interface MasteryPlayerQuestionBase {
@@ -111,6 +121,11 @@ function readNumericConstraints(value: unknown, label: string): NumericInputCons
     max: nnum(c.max, `${label}.max`),
     step: nnum(c.step, `${label}.step`),
     integerOnly: bool(c.integer_only, `${label}.integer_only`),
+    decimalPlaces: nnum(c.decimal_places, `${label}.decimal_places`),
+    roundingMode: nstr(c.rounding_mode, `${label}.rounding_mode`),
+    precisionInstruction: nstr(c.precision_instruction, `${label}.precision_instruction`),
+    precisionContractVersion: nstr(
+      c.precision_contract_version, `${label}.precision_contract_version`),
   };
 }
 
