@@ -31,12 +31,22 @@ export type CategoryStats = {
   playerWins: number;
   botWins: number;
   decisiveWins: number;
+  /** Relative margin of every non-tie result, for spread analysis. */
+  winningMargins: number[];
+};
+
+export type RoundCategoryOutcome = {
+  id: StatCategoryId;
+  winner: "player" | "bot" | "tie";
+  margin: number;
+  decisive: boolean;
 };
 
 export type RoundRecord = {
   seed: string;
   round: number;
   categoryIds: StatCategoryId[];
+  results: RoundCategoryOutcome[];
   boardWinner: "player" | "bot" | "tie";
   sweep: boolean;
   playerDamage: number;
@@ -54,7 +64,16 @@ export type MatchRecord = {
   exhausted: boolean;
   finalPlayerHp: number;
   finalBotHp: number;
+  /** Shared draw pile size when the match ended. */
+  endPoolSize: number;
   invariantIssues: string[];
+};
+
+export type ClueFamilyStats = {
+  clued: number;
+  conflicts: number;
+  /** Clued rounds where 2+ hand cards sit within 5% of the best clue value. */
+  contested: number;
 };
 
 export type ClueStats = {
@@ -70,6 +89,9 @@ export type ClueStats = {
   clueConflicts: number;
   /** Clued rounds where the best clue card was naturally preserved by greedy play. */
   cluePreservedFree: number;
+  /** Clued rounds where 2+ hand cards sit within 5% of the best clue value. */
+  clueContested: number;
+  perFamily: Partial<Record<StatFamily, ClueFamilyStats>>;
 };
 
 export type DiagnosticsReport = {
@@ -86,6 +108,12 @@ export type DiagnosticsReport = {
   sweeps: number;
   tiedBoards: number;
   simultaneousDamageRounds: number;
+  noDamageRounds: number;
+  playerDamageTotal: number;
+  botDamageTotal: number;
+  finalPlayerHps: number[];
+  finalBotHps: number[];
+  endPoolSizes: number[];
   outcomes: { player: number; bot: number; draw: number };
   exhaustedMatches: number;
   hpEndedMatches: number;
@@ -132,7 +160,14 @@ export function simulateMatch(
 ): { match: MatchRecord; rounds: RoundRecord[]; clue: ClueStats } {
   let state: MatchState = createMatch(deck, seed);
   const rounds: RoundRecord[] = [];
-  const clue: ClueStats = { cluedRounds: 0, cluedRoundsReached: 0, clueConflicts: 0, cluePreservedFree: 0 };
+  const clue: ClueStats = {
+    cluedRounds: 0,
+    cluedRoundsReached: 0,
+    clueConflicts: 0,
+    cluePreservedFree: 0,
+    clueContested: 0,
+    perFamily: {},
+  };
   const invariantIssues: string[] = [];
 
   while (state.phase === "selecting" && state.round <= maxRounds) {
@@ -144,8 +179,26 @@ export function simulateMatch(
 
     if (clueCategory && bestClueCard) {
       clue.cluedRounds += 1;
-      if (playedIds.has(bestClueCard.id)) clue.clueConflicts += 1;
-      else clue.cluePreservedFree += 1;
+      const familyStats =
+        clue.perFamily[clueCategory.family] ??
+        (clue.perFamily[clueCategory.family] = { clued: 0, conflicts: 0, contested: 0 });
+      familyStats.clued += 1;
+      const bestValue = clueCategory.getValue(bestClueCard);
+      const nearBest = state.playerHand.filter((cardInHand) => {
+        const value = clueCategory.getValue(cardInHand);
+        const gap = Math.abs(bestValue - value) / (Math.abs(bestValue) || 1);
+        return gap <= 0.05;
+      }).length;
+      if (nearBest >= 2) {
+        clue.clueContested += 1;
+        familyStats.contested += 1;
+      }
+      if (playedIds.has(bestClueCard.id)) {
+        clue.clueConflicts += 1;
+        familyStats.conflicts += 1;
+      } else {
+        clue.cluePreservedFree += 1;
+      }
     }
 
     state = resolveCurrentRound(state);
@@ -156,6 +209,12 @@ export function simulateMatch(
       seed,
       round: resolution.round,
       categoryIds: resolution.categories.map((c) => c.id),
+      results: resolution.results.map((r) => ({
+        id: r.category.id,
+        winner: r.winner,
+        margin: r.margin,
+        decisive: r.decisive,
+      })),
       boardWinner: resolution.damage.boardWinner,
       sweep: resolution.damage.playerCategoryWins === 3 || resolution.damage.botCategoryWins === 3,
       playerDamage: resolution.damage.player,
@@ -184,6 +243,7 @@ export function simulateMatch(
       exhausted: (state.endReason ?? "").includes("Deck exhausted"),
       finalPlayerHp: state.playerHp,
       finalBotHp: state.botHp,
+      endPoolSize: state.drawPile.length,
       invariantIssues,
     },
     rounds,
@@ -220,12 +280,25 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
     sweeps: 0,
     tiedBoards: 0,
     simultaneousDamageRounds: 0,
+    noDamageRounds: 0,
+    playerDamageTotal: 0,
+    botDamageTotal: 0,
+    finalPlayerHps: [],
+    finalBotHps: [],
+    endPoolSizes: [],
     outcomes,
     exhaustedMatches: 0,
     hpEndedMatches: 0,
     roundsPerMatch: [],
     totalDamagePerRound: [],
-    clueStats: { cluedRounds: 0, cluedRoundsReached: 0, clueConflicts: 0, cluePreservedFree: 0 },
+    clueStats: {
+      cluedRounds: 0,
+      cluedRoundsReached: 0,
+      clueConflicts: 0,
+      cluePreservedFree: 0,
+      clueContested: 0,
+      perFamily: {},
+    },
     matchRecords: [],
     roundRecords: [],
   };
@@ -239,17 +312,51 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
     if (match.exhausted) report.exhaustedMatches += 1;
     else if (match.outcome) report.hpEndedMatches += 1;
     if (match.outcome) outcomes[match.outcome] += 1;
+    report.finalPlayerHps.push(match.finalPlayerHp);
+    report.finalBotHps.push(match.finalBotHp);
+    report.endPoolSizes.push(match.endPoolSize);
     report.clueStats.cluedRounds += clue.cluedRounds;
     report.clueStats.cluedRoundsReached += clue.cluedRoundsReached;
     report.clueStats.clueConflicts += clue.clueConflicts;
     report.clueStats.cluePreservedFree += clue.cluePreservedFree;
+    report.clueStats.clueContested += clue.clueContested;
+    for (const [family, stats] of Object.entries(clue.perFamily) as [StatFamily, ClueFamilyStats][]) {
+      const target =
+        report.clueStats.perFamily[family] ??
+        (report.clueStats.perFamily[family] = { clued: 0, conflicts: 0, contested: 0 });
+      target.clued += stats.clued;
+      target.conflicts += stats.conflicts;
+      target.contested += stats.contested;
+    }
 
     for (const round of rounds) {
       report.totalDamagePerRound.push(round.playerDamage + round.botDamage);
+      report.playerDamageTotal += round.playerDamage;
+      report.botDamageTotal += round.botDamage;
       boardResults[round.boardWinner] += 1;
       if (round.sweep) report.sweeps += 1;
       if (round.boardWinner === "tie") report.tiedBoards += 1;
       if (round.bothDamaged) report.simultaneousDamageRounds += 1;
+      if (round.playerDamage === 0 && round.botDamage === 0) report.noDamageRounds += 1;
+
+      for (const result of round.results) {
+        const stats =
+          categoryStats[result.id] ??
+          (categoryStats[result.id] = {
+            appearances: 0,
+            ties: 0,
+            playerWins: 0,
+            botWins: 0,
+            decisiveWins: 0,
+            winningMargins: [],
+          });
+        stats.appearances += 1;
+        if (result.winner === "tie") stats.ties += 1;
+        else if (result.winner === "player") stats.playerWins += 1;
+        else stats.botWins += 1;
+        if (result.decisive) stats.decisiveWins += 1;
+        if (result.winner !== "tie") stats.winningMargins.push(result.margin);
+      }
 
       const families = round.categoryIds.map(familyOfCategory);
       if (new Set(families).size < families.length) report.repeatedFamilyBoards += 1;
@@ -267,27 +374,6 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
     }
   }
 
-  // Per-category tallies come from round records replayed against resolutions:
-  // recompute from roundRecords is insufficient (no per-category winners), so
-  // gather them in a second deterministic pass over the same seeds.
-  for (const seed of seeds) {
-    let state: MatchState = createMatch(deck, seed);
-    while (state.phase === "selecting") {
-      state = resolveCurrentRound(autoAssignBestPlayerHand(state));
-      for (const result of state.lastResolution!.results) {
-        const stats =
-          categoryStats[result.category.id] ??
-          (categoryStats[result.category.id] = { appearances: 0, ties: 0, playerWins: 0, botWins: 0, decisiveWins: 0 });
-        stats.appearances += 1;
-        if (result.winner === "tie") stats.ties += 1;
-        else if (result.winner === "player") stats.playerWins += 1;
-        else stats.botWins += 1;
-        if (result.decisive) stats.decisiveWins += 1;
-      }
-      if (state.phase === "resolved") state = startNextRound(state);
-    }
-  }
-
   return report;
 }
 
@@ -298,8 +384,15 @@ export function formatDiagnosticsReport(report: DiagnosticsReport): string {
   lines.push(`matches=${report.matches} deckSize=${report.deckSize} totalRounds=${report.totalRounds}`);
   lines.push(`seeds: ${report.seeds.slice(0, 5).join(", ")}${report.seeds.length > 5 ? ` … (+${report.seeds.length - 5})` : ""}`);
   lines.push("");
-  lines.push(`Rounds/match: mean=${mean(report.roundsPerMatch).toFixed(2)} median=${median(report.roundsPerMatch)}`);
-  lines.push(`Total damage/round: mean=${mean(report.totalDamagePerRound).toFixed(2)} median=${median(report.totalDamagePerRound)}`);
+  lines.push(
+    `Rounds/match: mean=${mean(report.roundsPerMatch).toFixed(2)} median=${median(report.roundsPerMatch)} min=${Math.min(...report.roundsPerMatch)} max=${Math.max(...report.roundsPerMatch)}`,
+  );
+  lines.push(
+    `Total damage/round: mean=${mean(report.totalDamagePerRound).toFixed(2)} median=${median(report.totalDamagePerRound)} | per-side mean: player=${(report.playerDamageTotal / (report.totalRounds || 1)).toFixed(2)} bot=${(report.botDamageTotal / (report.totalRounds || 1)).toFixed(2)} | no-damage rounds=${pct(report.noDamageRounds, report.totalRounds)}`,
+  );
+  lines.push(
+    `Final HP: player mean=${mean(report.finalPlayerHps).toFixed(1)} median=${median(report.finalPlayerHps)} | bot mean=${mean(report.finalBotHps).toFixed(1)} median=${median(report.finalBotHps)} | end pool size mean=${mean(report.endPoolSizes).toFixed(1)} median=${median(report.endPoolSizes)}`,
+  );
   lines.push(
     `Endings: exhausted=${report.exhaustedMatches} (${pct(report.exhaustedMatches, report.matches)}) hp=${report.hpEndedMatches} (${pct(report.hpEndedMatches, report.matches)})`,
   );
@@ -309,10 +402,12 @@ export function formatDiagnosticsReport(report: DiagnosticsReport): string {
   );
   lines.push(`Repeated-family boards: ${report.repeatedFamilyBoards} (${pct(report.repeatedFamilyBoards, report.totalRounds)})`);
   lines.push("");
-  lines.push("Per-category (appearances | tie% | decisive-win% of appearances):");
+  lines.push("Per-category (appearances | P/B wins | tie% | decisive% | margin mean/median/p90):");
   for (const [id, stats] of Object.entries(report.categoryStats).sort((a, b) => b[1].appearances - a[1].appearances)) {
+    const margins = stats.winningMargins.slice().sort((a, b) => a - b);
+    const p90 = margins.length ? margins[Math.min(margins.length - 1, Math.floor(margins.length * 0.9))] : 0;
     lines.push(
-      `  ${id.padEnd(22)} n=${String(stats.appearances).padStart(4)} tie=${pct(stats.ties, stats.appearances).padStart(6)} decisive=${pct(stats.decisiveWins, stats.appearances).padStart(6)}`,
+      `  ${id.padEnd(22)} n=${String(stats.appearances).padStart(5)} P=${stats.playerWins} B=${stats.botWins} tie=${pct(stats.ties, stats.appearances).padStart(6)} decisive=${pct(stats.decisiveWins, stats.appearances).padStart(6)} margin=${(mean(margins) * 100).toFixed(1)}%/${(median(margins) * 100).toFixed(1)}%/${(p90 * 100).toFixed(1)}%`,
     );
   }
   lines.push("");
@@ -331,8 +426,13 @@ export function formatDiagnosticsReport(report: DiagnosticsReport): string {
   lines.push("");
   const clue = report.clueStats;
   lines.push(
-    `Clue: cluedRounds=${clue.cluedRounds} reachedNext=${clue.cluedRoundsReached} conflicts=${clue.clueConflicts} (${pct(clue.clueConflicts, clue.cluedRounds)}) preservedFree=${clue.cluePreservedFree}`,
+    `Clue: cluedRounds=${clue.cluedRounds} reachedNext=${clue.cluedRoundsReached} conflicts=${clue.clueConflicts} (${pct(clue.clueConflicts, clue.cluedRounds)}) preservedFree=${clue.cluePreservedFree} contested=${clue.clueContested} (${pct(clue.clueContested, clue.cluedRounds)})`,
   );
+  for (const [family, stats] of Object.entries(clue.perFamily).sort((a, b) => b[1].clued - a[1].clued)) {
+    lines.push(
+      `  clue:${family.padEnd(14)} clued=${stats.clued} conflict=${pct(stats.conflicts, stats.clued)} contested=${pct(stats.contested, stats.clued)}`,
+    );
+  }
   const issues = report.matchRecords.flatMap((m) => m.invariantIssues.map((issue) => `${m.seed}: ${issue}`));
   lines.push(`Invariant issues: ${issues.length}`);
   for (const issue of issues.slice(0, 10)) lines.push(`  ${issue}`);
