@@ -13,6 +13,7 @@ import {
   BotDifficulty, createBotMatch, getActiveMatch, isAborted, RankedApiError,
 } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
+import { RankedMatchHistory } from "./RankedMatchHistory";
 import { RankedClass, useRankedQueue } from "./useRankedQueue";
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
@@ -217,6 +218,9 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
             </Button>
             {botError && <p data-testid="ranked-bot-error" className="text-xs text-destructive">{botError}</p>}
           </div>
+
+          {/* Best-effort recent results; renders nothing when empty/unavailable. */}
+          <RankedMatchHistory />
         </section>
       )}
 

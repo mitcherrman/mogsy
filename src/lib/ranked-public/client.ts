@@ -12,6 +12,7 @@
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
 import {
   readHeartbeat,
+  readMatchHistory,
   readMatchResult,
   readPrivatePlayer,
   readPublicRound,
@@ -19,6 +20,7 @@ import {
   readResolvedEnvelope,
   readResume,
   HeartbeatView,
+  MatchHistoryView,
   MatchResultView,
   PrivatePlayerView,
   PublicRoundView,
@@ -223,3 +225,7 @@ export const sendPresence = (matchId: string, signal?: AbortSignal): Promise<Hea
 
 export const getMatchResult = (matchId: string, signal?: AbortSignal): Promise<MatchResultView> =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/result`, readMatchResult, { signal });
+
+/** The caller's own completed matches, newest first (limit clamped server-side). */
+export const getMatchHistory = (limit?: number, signal?: AbortSignal): Promise<MatchHistoryView> =>
+  request(`/api/ranked/history${limit ? `?limit=${limit}` : ""}`, readMatchHistory, { signal });

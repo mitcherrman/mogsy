@@ -397,6 +397,63 @@ export function readMatchResult(body: unknown): MatchResultView {
   };
 }
 
+export interface MatchHistoryEntryView {
+  matchId: string;
+  viewerOutcome: "win" | "loss" | "draw";
+  terminalReason: TerminalReason;
+  completionReason: string | null;
+  finalRoundNumber: number;
+  completedAt: string;
+  isBotMatch: boolean;
+  viewerClass: string;
+  opponentClass: string;
+  opponentDisplayName: string | null;
+  opponentIsBot: boolean;
+}
+
+export interface MatchHistoryView {
+  schemaVersion: string;
+  serverTime: string;
+  entries: MatchHistoryEntryView[];
+  count: number;
+}
+
+/** Match history (ranked_duel.match_history.v1): the caller's own terminal
+ * results only. The backend never sends raw account ids here — opponents are
+ * display name + class + bot flag; a stray user-id-like field is rejected. */
+export function readMatchHistory(body: unknown): MatchHistoryView {
+  const env = envelope(body, "match_history", "ranked_duel.match_history.v1");
+  const p = env.payload;
+  if (!Array.isArray(p.entries)) throw new RankedPublicParseError("entries must be an array");
+  const entries = p.entries.map((raw, i) => {
+    const e = rec(raw, `entries[${i}]`);
+    if ("winner_user_id" in e || "opponent_user_id" in e) {
+      throw new RankedPublicParseError(`entries[${i}] leaked a raw account id`);
+    }
+    const outcome = str(e.viewer_outcome, `entries[${i}].viewer_outcome`);
+    if (outcome !== "win" && outcome !== "loss" && outcome !== "draw") {
+      throw new RankedPublicParseError(`entries[${i}].viewer_outcome is invalid`);
+    }
+    return {
+      matchId: str(e.match_id, `entries[${i}].match_id`),
+      viewerOutcome: outcome,
+      terminalReason: str(e.terminal_reason, `entries[${i}].terminal_reason`) as TerminalReason,
+      completionReason: nstr(e.completion_reason, `entries[${i}].completion_reason`),
+      finalRoundNumber: num(e.final_round_number, `entries[${i}].final_round_number`),
+      completedAt: str(e.completed_at, `entries[${i}].completed_at`),
+      isBotMatch: bool(e.is_bot_match, `entries[${i}].is_bot_match`),
+      viewerClass: str(e.viewer_class, `entries[${i}].viewer_class`),
+      opponentClass: str(e.opponent_class, `entries[${i}].opponent_class`),
+      opponentDisplayName: nstr(e.opponent_display_name, `entries[${i}].opponent_display_name`),
+      opponentIsBot: bool(e.opponent_is_bot, `entries[${i}].opponent_is_bot`),
+    } satisfies MatchHistoryEntryView;
+  });
+  return {
+    schemaVersion: env.schemaVersion, serverTime: env.serverTime,
+    entries, count: num(p.count, "count"),
+  };
+}
+
 export function readHeartbeat(body: unknown): HeartbeatView {
   const b = rec(body, "heartbeat");
   return {
