@@ -237,6 +237,55 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByTestId(/^stat-check-hand-/).map((card) => card.getAttribute("data-card-champion"))).not.toContain(champion);
   });
 
+  it("holds the fan slot open and defers the board card while the clone travels", () => {
+    const { container } = render(<StatCheckPage />);
+    const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
+
+    placeWithoutSettling(container, 0, 0);
+
+    // During flight: an invisible placeholder keeps the hand gap open, exactly one
+    // travel clone exists, and the destination card has not appeared in the lane.
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    expect(laneChampions(lanes(container)[0])).toHaveLength(0);
+    expect(within(lanes(container)[0]).queryByText(/Place champion|Place here/i)).toBeNull();
+
+    act(() => vi.advanceTimersByTime(1_000));
+
+    // After landing: placeholder gone, clone gone, the same champion is on the board.
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(laneChampions(lanes(container)[0])).toEqual([champion]);
+  });
+
+  it("hides a returning card in the fan until its travel clone arrives", () => {
+    const { container } = render(<StatCheckPage />);
+    place(container, 0, 0);
+
+    fireEvent.click(lanes(container)[0]);
+
+    expect(container.querySelectorAll('[data-hand-returning="true"]')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(container.querySelectorAll('[data-hand-returning="true"]')).toHaveLength(0);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("restart during flight clears placeholders and receiving slots", () => {
+    const { container } = render(<StatCheckPage />);
+    placeWithoutSettling(container, 0, 0);
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /restart/i }));
+    act(() => vi.advanceTimersByTime(2_000));
+
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+  });
+
   it("rapid repeated lane clicks place exactly one card and do not bounce it back", () => {
     const { container } = render(<StatCheckPage />);
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));

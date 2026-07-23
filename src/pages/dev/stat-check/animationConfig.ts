@@ -1,8 +1,10 @@
 export const STAT_CHECK_ANIMATION = {
-  pickupMs: 150,
-  handTravelMs: 460,
-  landingMs: 150,
-  acceptanceMs: 110,
+  pickupMs: 130,
+  handTravelMs: 430,
+  landingMs: 170,
+  acceptanceMs: 130,
+  /** Fraction of the travel phase after which the hand gap starts closing. */
+  handGapHoldRatio: 0.45,
   handReturnMs: 340,
   laneMoveMs: 420,
   opponentFlipMs: 420,
@@ -13,7 +15,7 @@ export const STAT_CHECK_ANIMATION = {
   discardMs: 280,
   dealStaggerMs: 80,
   reducedMotionMs: 1,
-  arcLift: 72,
+  arcLift: 92,
   easing: [0.22, 1, 0.36, 1] as const,
   spring: {
     type: "spring",

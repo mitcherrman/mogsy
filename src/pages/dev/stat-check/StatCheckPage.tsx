@@ -106,6 +106,9 @@ export default function StatCheckPage() {
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`));
   const [revealStep, dispatchRevealStep] = useReducer(animationStepReducer, "selecting" as PresentationStep);
   const [travelingCards, setTravelingCards] = useState<TravelingCardState[]>([]);
+  // Cards that still hold their fan slot (invisibly) while their travel clone departs,
+  // so the hand gap closes only after the card has visibly left.
+  const [handGapIds, setHandGapIds] = useState<string[]>([]);
   const [laneReaction, setLaneReaction] = useState<LaneReactionState | null>(null);
   const [animationSpeed, setAnimationSpeed] = useSessionAnimationSpeed();
   const [damageFlashKey, setDamageFlashKey] = useState(0);
@@ -122,6 +125,7 @@ export default function StatCheckPage() {
   useEffect(() => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    setHandGapIds([]);
     setLaneReaction(null);
     setMatch(createMatch(deck, `${SEED}:${matchKey}`));
     setSelectedCardId(null);
@@ -137,6 +141,7 @@ export default function StatCheckPage() {
     if (travelingCards.length === 0) return;
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    setHandGapIds([]);
     setLaneReaction(null);
     dispatchRevealStep({ type: "cancel" });
   }, [animationSpeed, prefersReducedMotion, travelingCards.length]);
@@ -181,6 +186,13 @@ export default function StatCheckPage() {
 
   const selectedCard = match.playerHand.find((card) => card.id === selectedCardId) ?? null;
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
+  // Cards currently flying toward a lane: the real board card stays hidden under a
+  // receiving slot until the clone lands exactly on top of it.
+  const inFlightToLaneIds = new Set(
+    travelingCards.filter((item) => item.kind === "place" || item.kind === "lane-move").map((item) => item.card.id),
+  );
+  const returningIds = new Set(travelingCards.filter((item) => item.kind === "return").map((item) => item.card.id));
+  const departingIds = new Set(handGapIds);
   const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep);
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
@@ -191,6 +203,7 @@ export default function StatCheckPage() {
   const restart = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    setHandGapIds([]);
     setLaneReaction(null);
     setMatchKey((key) => key + 1);
   };
@@ -203,6 +216,7 @@ export default function StatCheckPage() {
       const fromElement = handCardRefs.current[selectedCardId];
       const toElement = lanePlayerRefs.current[category.id];
       if (card) {
+        const durations = placementDurations();
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
@@ -212,8 +226,18 @@ export default function StatCheckPage() {
           toRotation: 0,
           kind: current ? "lane-move" : "place",
           targetCategoryId: category.id,
-          ...placementDurations(),
+          ...durations,
         });
+        // Hold the fan slot open until the card has visibly departed, then let
+        // the remaining hand re-fan while the clone is still mid-flight.
+        const cardId = card.id;
+        setHandGapIds((ids) => (ids.includes(cardId) ? ids : [...ids, cardId]));
+        timersRef.current.push(
+          window.setTimeout(
+            () => setHandGapIds((ids) => ids.filter((id) => id !== cardId)),
+            durations.pickupMs + Math.round(durations.travelMs * STAT_CHECK_ANIMATION.handGapHoldRatio),
+          ),
+        );
       }
       dispatchRevealStep({ type: "pickup" });
       setMatch((state) => assignCard(state, category.id, selectedCardId));
@@ -252,6 +276,7 @@ export default function StatCheckPage() {
   const nextRound = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
+    setHandGapIds([]);
     setLaneReaction(null);
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
@@ -365,7 +390,7 @@ export default function StatCheckPage() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 lg:h-[calc(100svh-56px)] lg:min-h-[640px]">
+    <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
@@ -436,6 +461,7 @@ export default function StatCheckPage() {
                     index={index}
                     selectedCard={selectedCard}
                     playerCard={resolution?.playerCard ?? assigned}
+                    playerCardInFlight={Boolean(assigned && inFlightToLaneIds.has(assigned.id))}
                     botCard={resolution?.botCard ?? null}
                     resolution={resolution}
                     canEdit={canEdit}
@@ -460,6 +486,8 @@ export default function StatCheckPage() {
               assets={assets}
               selectedCardId={selectedCardId}
               assignedCardIds={assignedCardIds}
+              departingIds={departingIds}
+              returningIds={returningIds}
               disabled={!canEdit}
               reducedMotion={prefersReducedMotion}
               cardRefs={handCardRefs}
@@ -499,6 +527,7 @@ function ArenaLane({
   index,
   selectedCard,
   playerCard,
+  playerCardInFlight,
   botCard,
   resolution,
   canEdit,
@@ -518,6 +547,7 @@ function ArenaLane({
   index: number;
   selectedCard: StatCheckCard | null;
   playerCard: StatCheckCard | null;
+  playerCardInFlight: boolean;
   botCard: StatCheckCard | null;
   resolution?: CategoryResult;
   canEdit: boolean;
@@ -562,7 +592,7 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[300px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-0 md:p-2.5",
+        "group relative flex min-h-[420px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px] md:p-2.5",
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
         canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
         canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
@@ -570,8 +600,8 @@ function ArenaLane({
         reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
       )}
     >
-      <div className="relative grid flex-1 grid-rows-[1fr_auto_1fr] items-center gap-1.5">
-        <div ref={botRef} className="flex items-end justify-center">
+      <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+        <div ref={botRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
             card={botCard}
             imageUrl={getImage(assets, botCard)}
@@ -583,24 +613,24 @@ function ArenaLane({
             state={botState}
           />
         </div>
-        <div className="flex min-h-[46px] items-center justify-center">
+        <div className="flex min-h-[76px] min-w-0 items-center justify-center">
           {showResult && resolution ? (
             <LaneResult result={resolution} />
           ) : (
             <CategoryMarker category={category} />
           )}
         </div>
-        <div ref={playerRef} className="flex items-start justify-center">
+        <div ref={playerRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <ChampionCard
-            card={playerCard}
-            imageUrl={getImage(assets, playerCard)}
+            card={playerCardInFlight ? null : playerCard}
+            imageUrl={getImage(assets, playerCardInFlight ? null : playerCard)}
             category={category}
             value={resolution?.playerValue}
-            mode={playerCard ? "board" : "empty"}
+            mode={playerCard && !playerCardInFlight ? "board" : "empty"}
             state={playerState}
             label="You"
-            emptyPrompt={canEdit && selectedCard ? "Place here" : "Place champion"}
-            emptyActive={Boolean(canEdit && selectedCard)}
+            emptyPrompt={playerCardInFlight ? "" : canEdit && selectedCard ? "Place here" : "Place champion"}
+            emptyActive={Boolean(canEdit && selectedCard) || playerCardInFlight}
           />
         </div>
       </div>
@@ -614,18 +644,31 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
     <div
       data-testid={`stat-check-marker-${category.id}`}
       data-direction={category.direction}
-      className="z-10 flex items-center gap-1.5 rounded-full border border-[#d6b55d]/40 bg-black/70 py-1 pl-1 pr-2.5 shadow-xl"
+      className="z-10 flex w-full items-center gap-2"
     >
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]" aria-hidden>
-        <CategoryGlyph category={category} className="h-3.5 w-3.5" />
-      </span>
-      <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100" aria-hidden>
-        {higher ? <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d]" /> : <ArrowDown className="h-3.5 w-3.5 text-cyan-300" />}
-        {category.shortLabel}
-      </span>
-      <span className="rounded-full bg-[#d6b55d]/15 px-1.5 py-0.5 text-[10px] font-black text-[#f4d77d]" aria-hidden>
-        {formatThreshold(category.decisiveThreshold)}
-      </span>
+      <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
+      <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:px-4">
+        <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
+          {higher ? (
+            <ArrowUp className="h-6 w-6 text-[#f4d77d] sm:h-7 sm:w-7" strokeWidth={2.75} />
+          ) : (
+            <ArrowDown className="h-6 w-6 text-cyan-300 sm:h-7 sm:w-7" strokeWidth={2.75} />
+          )}
+          <CategoryGlyph category={category} className="h-5 w-5 text-[#f4d77d]" />
+          <span className="whitespace-nowrap text-base font-black uppercase tracking-[0.06em] text-white sm:text-lg">
+            {category.shortLabel}
+          </span>
+        </span>
+        <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5" aria-hidden>
+          <span className="rounded bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
+            {scopeLabel(category)}
+          </span>
+          <span className="text-[11px] font-black uppercase tracking-[0.1em] text-[#f4d77d]">
+            Decisive {formatThreshold(category.decisiveThreshold)}
+          </span>
+        </span>
+      </div>
+      <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
       <span className="sr-only">{categoryAccessibleLabel(category)}</span>
     </div>
   );
@@ -641,6 +684,8 @@ function PlayerHand({
   assets,
   selectedCardId,
   assignedCardIds,
+  departingIds,
+  returningIds,
   disabled,
   reducedMotion,
   cardRefs,
@@ -650,19 +695,28 @@ function PlayerHand({
   assets: ReturnType<typeof useChampionAssets>["data"];
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
+  departingIds: Set<string>;
+  returningIds: Set<string>;
   disabled: boolean;
   reducedMotion: boolean;
   cardRefs: RefObject<Record<string, HTMLElement | null>>;
   onSelect: (cardId: string) => void;
 }) {
   const viewportWidth = useViewportWidth();
-  const activeCards = cards.filter((card) => !assignedCardIds.has(card.id));
+  // Departing cards keep their fan slot (as an invisible placeholder) until
+  // mid-flight, so the gap closes only after the card has visibly left the hand.
+  const activeCards = cards.filter((card) => !assignedCardIds.has(card.id) || departingIds.has(card.id));
   const parameters = responsiveFanParameters(activeCards.length, viewportWidth);
+  let visibleIndex = -1;
 
   return (
     <div className="relative mx-auto h-[190px] w-full max-w-5xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[190px] 2xl:h-[210px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
+          const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
+          const returning = returningIds.has(card.id);
+          const hidden = departing || returning;
+          if (!departing) visibleIndex += 1;
           const selected = selectedCardId === card.id;
           const layout = fanCardLayout(index, activeCards.length, parameters, selected);
           const style = {
@@ -675,8 +729,12 @@ function PlayerHand({
               className={cn(
                 "absolute left-1/2 top-0 origin-bottom will-change-transform hover:!z-[400] focus-within:!z-[400]",
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
+                hidden && "pointer-events-none opacity-0",
               )}
               data-fan-index={index}
+              data-hand-placeholder={departing ? "true" : undefined}
+              data-hand-returning={returning ? "true" : undefined}
+              aria-hidden={hidden || undefined}
               ref={(element) => {
                 if (cardRefs.current) cardRefs.current[card.id] = element;
               }}
@@ -687,10 +745,10 @@ function PlayerHand({
                 imageUrl={getImage(assets, card)}
                 mode="hand"
                 state={selected ? "selected" : "idle"}
-                disabled={disabled}
+                disabled={disabled || departing}
                 selected={selected}
-                onClick={() => onSelect(card.id)}
-                testId={`stat-check-hand-${index}`}
+                onClick={departing ? undefined : () => onSelect(card.id)}
+                testId={departing ? undefined : `stat-check-hand-${visibleIndex}`}
               />
             </div>
           );
@@ -793,6 +851,7 @@ function TravelingCard({
 }) {
   const midX = (item.from.x + item.to.x) / 2;
   const midY = (item.from.y + item.to.y) / 2 - STAT_CHECK_ANIMATION.arcLift;
+  const horizontalDirection = Math.sign(item.to.x - item.from.x) || 1;
   const duration = animationDuration(item.durationMs, reducedMotion) / 1000;
   const pickupRatio = item.pickupMs ? item.pickupMs / item.durationMs : 0;
   const travelRatio = item.pickupMs && item.travelMs ? (item.pickupMs + item.travelMs) / item.durationMs : 0.78;
@@ -807,25 +866,40 @@ function TravelingCard({
         width: item.from.width,
         height: item.from.height,
         rotate: item.fromRotation,
-        opacity: 0.96,
+        opacity: 1,
         scale: 1,
         rotateX: 0,
         rotateY: 0,
+        filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.4))",
       }}
       animate={{
+        // Keyframes map onto the pickup / travel / landing / settle phases:
+        // lift straight up out of the fan, arc across the tabletop, touch down
+        // with a slight overshoot, then settle into exact board geometry.
         x: reducedMotion ? item.to.x : [item.from.x, item.from.x, midX, item.to.x, item.to.x],
-        y: reducedMotion ? item.to.y : [item.from.y, item.from.y - 24, midY, item.to.y + 5, item.to.y],
+        y: reducedMotion ? item.to.y : [item.from.y, item.from.y - 34, midY, item.to.y + 7, item.to.y],
         width: item.to.width,
         height: item.to.height,
-        rotate: reducedMotion ? item.toRotation : [item.fromRotation, item.fromRotation, item.toRotation * 0.35, item.toRotation, item.toRotation],
-        rotateX: reducedMotion ? 0 : [0, 0, 5, -2, 0],
-        rotateY: reducedMotion ? 0 : [0, 0, -6, 1, 0],
-        opacity: [0.96, 1, 1, 0.98],
-        scale: item.kind === "discard" ? 0.45 : reducedMotion ? 1 : [1, 1.07, 1.03, 0.98, 1],
+        rotate: reducedMotion
+          ? item.toRotation
+          : [item.fromRotation, item.fromRotation * 0.7, item.toRotation + horizontalDirection * 4, item.toRotation, item.toRotation],
+        rotateX: reducedMotion ? 0 : [0, 2, 7, -3, 0],
+        rotateY: reducedMotion ? 0 : [0, 0, horizontalDirection * -7, horizontalDirection * 1.5, 0],
+        opacity: 1,
+        scale: item.kind === "discard" ? 0.45 : reducedMotion ? 1 : [1, 1.08, 1.05, 0.975, 1],
+        filter: reducedMotion
+          ? "drop-shadow(0 8px 12px rgba(0,0,0,0.4))"
+          : [
+              "drop-shadow(0 8px 12px rgba(0,0,0,0.4))",
+              "drop-shadow(0 20px 24px rgba(0,0,0,0.5))",
+              "drop-shadow(0 30px 34px rgba(0,0,0,0.55))",
+              "drop-shadow(0 10px 14px rgba(0,0,0,0.45))",
+              "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
+            ],
       }}
       transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: [0, pickupRatio, travelRatio, landingRatio, 1] }}
     >
-      <div className="h-full w-full overflow-hidden rounded-lg shadow-[0_20px_48px_rgba(0,0,0,0.5)]">
+      <div className="h-full w-full overflow-hidden rounded-lg">
         <ChampionCard
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
@@ -876,7 +950,7 @@ function FlippableCard({
       <motion.div
         className="relative h-full w-full"
         style={{ transformStyle: "preserve-3d" }}
-        animate={{ rotateY: flipped ? 180 : 0, y: flipped ? -2 : 0 }}
+        animate={{ rotateY: flipped ? 180 : 0, y: flipped ? -2 : 0, scale: flipped ? [1, 1.05, 1] : 1 }}
         transition={{ duration: animationDuration(STAT_CHECK_ANIMATION.opponentFlipMs, false, animationSpeed) / 1000, ease: STAT_CHECK_ANIMATION.easing }}
       >
         <div className="absolute inset-0 [backface-visibility:hidden]">
@@ -892,8 +966,12 @@ function FlippableCard({
   );
 }
 
-/** Single source of truth for the physical board-card footprint (portrait, 7:10). */
-const BOARD_CARD_SIZE = "h-[124px] w-[87px] shrink-0 xl:h-[140px] xl:w-[98px]";
+/**
+ * Single source of truth for the physical board-card footprint (portrait, 7:10).
+ * Fluid: fills the lane's flexible row so cards dominate the tabletop on large
+ * screens instead of floating undersized in empty lane space.
+ */
+const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,22vh,250px)]";
 
 function ChampionCard({
   card,
@@ -965,7 +1043,7 @@ function ChampionCard({
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
-    state === "selected" && "-translate-y-1 border-[#f4d77d] shadow-[0_18px_44px_rgba(0,0,0,0.6),0_0_28px_rgba(244,215,125,0.35)] ring-2 ring-[#f4d77d]/60",
+    state === "selected" && "-translate-y-2 scale-[1.06] border-[#f4d77d] shadow-[0_22px_52px_rgba(0,0,0,0.65),0_0_34px_rgba(244,215,125,0.4)] ring-2 ring-[#f4d77d]/70",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -977,14 +1055,14 @@ function ChampionCard({
     <>
       {card && <ChampionArt card={card} imageUrl={imageUrl} />}
       <div className={cn("absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent", mode === "board" ? "p-1.5" : "p-2")}>
-        {label && <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
-        <div className={cn("truncate font-black text-white", mode === "board" ? "text-xs" : "text-sm")}>{card?.name}</div>
+        {label && <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
+        <div className={cn("truncate font-black text-white", mode === "board" ? "text-sm" : "text-sm")}>{card?.name}</div>
         {relevant ? (
           <>
-            <div className="mt-0.5 inline-flex rounded-full bg-[#d6b55d] px-1.5 py-0.5 text-[11px] font-black text-black">{relevant}</div>
-            <div className="mt-0.5 hidden flex-wrap gap-0.5 opacity-70 xl:flex">
+            <div className="mt-0.5 inline-flex rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black">{relevant}</div>
+            <div className="mt-1 flex flex-wrap gap-0.5 opacity-70">
               {chips.slice(0, 3).map((chip) => (
-                <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[8px] font-semibold text-slate-300">
+                <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[9px] font-semibold text-slate-300">
                   {chip.label} {chip.value}
                 </span>
               ))}
@@ -1234,18 +1312,32 @@ function DiscardPile({
 
 export function LaneResult({ result }: { result: CategoryResult }) {
   const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? "Bot wins" : "Lane tied";
+  const accent = result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200";
+  const lineAccent = result.winner === "player" ? "via-[#f4d77d]/60" : result.winner === "bot" ? "via-cyan-300/50" : "via-slate-400/40";
   return (
-    <div className="z-20 w-full max-w-[190px] rounded-md border border-[#d6b55d]/45 bg-black/82 px-2 py-1.5 text-center shadow-2xl">
-      <div className={cn("text-sm font-black uppercase tracking-[0.08em]", result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200")}>
-        {headline}
+    <div className="z-20 flex w-full items-center gap-2">
+      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
+      <div
+        className={cn(
+          "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[0_10px_34px_rgba(0,0,0,0.6)] sm:px-4",
+          result.decisive ? "border-[#f4d77d]/80 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/45",
+        )}
+      >
+        <div className={cn("whitespace-nowrap text-lg font-black uppercase tracking-[0.08em]", accent)}>{headline}</div>
+        <div className="whitespace-nowrap text-base font-black text-white">
+          {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
+        </div>
+        {result.decisive && (
+          <div className="rounded bg-[#d6b55d]/20 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em] text-[#f4d77d]">
+            Decisive +1
+          </div>
+        )}
+        <div className="text-[10px] font-semibold text-slate-400">
+          {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
+          {result.category.direction === "lower" ? " - Lower wins" : ""}
+        </div>
       </div>
-      <div className="mt-0.5 text-sm font-black text-white">
-        {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
-      </div>
-      {result.decisive && <div className="text-xs font-black uppercase text-[#f4d77d]">Decisive +1</div>}
-      <div className="text-[10px] font-semibold text-slate-400">
-        {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
-      </div>
+      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-l from-transparent to-white/30", lineAccent)} />
     </div>
   );
 }
