@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { motion } from "framer-motion";
 import {
   ArrowDown,
@@ -267,9 +267,15 @@ export default function StatCheckPage() {
       // rapid double-click cannot place a card and immediately bounce it back.
       if (travelingCards.some((item) => item.card.id === current && item.kind !== "return")) return;
       const card = match.playerHand.find((item) => item.id === current);
-      const fromElement = slotElement(lanePlayerRefs.current[category.id]);
-      const toElement = handFallbackElement();
+      // Capture the board-slot geometry BEFORE the return commits (the card
+      // unmounts from the lane on commit), then flush the state change so the
+      // card's own fan slot is mounted (hidden) and we can fly the clone into
+      // its exact final position and rotation — no near-hand pause or pop.
+      const fromRect = snapshotElement(slotElement(lanePlayerRefs.current[category.id]));
+      dispatchRevealStep({ type: "return" });
+      flushSync(() => setMatch((state) => assignCard(state, category.id, null)));
       if (card) {
+        const toElement = handCardRefs.current[card.id] ?? handFallbackElement();
         const r = STAT_CHECK_ANIMATION.returnPlay;
         const phaseDurations = prefersReducedMotion
           ? [...REDUCED_MOTION_CHOREO.return]
@@ -277,17 +283,15 @@ export default function StatCheckPage() {
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
-          fromElement,
+          fromRect,
           toElement,
           fromRotation: 0,
-          toRotation: 0,
+          toRotation: readElementRotation(toElement),
           kind: "return",
           phaseDurations,
           durationMs: phaseDurations.reduce((sum, ms) => sum + ms, 0),
         });
       }
-      dispatchRevealStep({ type: "return" });
-      setMatch((state) => assignCard(state, category.id, null));
     }
   };
 
@@ -1002,7 +1006,7 @@ function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) 
       animate: {
         //          start  pickup     hold       launch                    apex       descent          approach          impact             rebound           settle
         x:      [x0,      x0,        x0,        x0 + (midX - x0) * 0.25,  midX,      x1,              x1,               x1,                x1,               x1],
-        y:      [y0,      y0 - 44,   y0 - 50,   y0 - 104,                 apexY,     y1 - 30,         y1,               y1 + 5,            y1 - 3,           y1],
+        y:      [y0,      y0 - 44,   y0 - 50,   y0 - 84,                  apexY,     y1 - 24,         y1,               y1 + 5,            y1 - 3,           y1],
         rotate: [item.fromRotation, 0, 0,       dir * 5,                  dir * 6,   dir * 2,         0,                -dir * 1.5,        0,                item.toRotation],
         scale:  [1,       1.1,       1.1,       1.18,                     apexScale, endScale * 1.08, endScale * 1.02,  endScale * 0.975,  endScale * 1.01,  endScale],
         rotateX: [0,      1.5,       1.5,       4,                        5,         3,               0,                -2,                0.5,              0],

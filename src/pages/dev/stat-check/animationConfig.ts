@@ -92,10 +92,12 @@ export function returnCloneTotalMs() {
  * the apex is dramatic on desktop yet contained on mobile.
  */
 export function heroArcLift(distancePx: number, viewportWidth: number, viewportHeight: number) {
+  // Low poker-style toss: a clear curve that stays close to the table, as if an
+  // invisible hand lays the card onto the board.
   if (viewportWidth < 768) {
-    return Math.min(140, Math.max(90, distancePx * 0.25, viewportHeight * 0.1));
+    return Math.min(70, Math.max(40, distancePx * 0.12, viewportHeight * 0.05));
   }
-  return Math.min(190, Math.max(120, distancePx * 0.28));
+  return Math.min(100, Math.max(55, distancePx * 0.15));
 }
 
 export const STAT_CHECK_ANIMATION_SPEEDS = [0.25, 0.5, 1, 1.5] as const;
