@@ -9,6 +9,7 @@ import {
   createMatch,
   generateCategoryBoard,
   relativeMargin,
+  relativeMarginForCategory,
   resolveCurrentRound,
   selectBotAssignments,
   shuffleDeterministic,
@@ -78,6 +79,16 @@ describe("Stat Check engine", () => {
     expect(relativeMargin(0, 8)).toBe(1);
   });
 
+  it("uses the canonical decisive margin denominator for higher and lower categories", () => {
+    expect(relativeMarginForCategory(cat("highest-hp-1", "higher"), 100, 80)).toBeCloseTo(0.2);
+    expect(relativeMarginForCategory(cat("lowest-armor-1", "lower"), 20, 25)).toBeCloseTo(0.2);
+
+    const lowerResult = compareCategory(cat("lowest-armor-1", "lower", 0.2), card("Soft", 20), card("Hard", 25));
+    expect(lowerResult.winner).toBe("player");
+    expect(lowerResult.margin).toBeCloseTo(0.2);
+    expect(lowerResult.decisive).toBe(true);
+  });
+
   it("uses adaptive decisive thresholds from category definitions", () => {
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-move-speed")?.decisiveThreshold).toBe(0.05);
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-attack-range")?.decisiveThreshold).toBe(0.2);
@@ -90,9 +101,55 @@ describe("Stat Check engine", () => {
     expect(damage.bot).toBe(0);
   });
 
+  it("awards board wins for 2-0 with one tie and 1-0 with two ties", () => {
+    expect(calculateRoundDamage([result("player"), result("player"), result("tie")]).boardWinner).toBe("player");
+    expect(calculateRoundDamage([result("bot"), result("tie"), result("tie")]).boardWinner).toBe("bot");
+  });
+
+  it("keeps 1-1 and 0-0 boards tied", () => {
+    expect(calculateRoundDamage([result("player"), result("bot"), result("tie")]).boardWinner).toBe("tie");
+    expect(calculateRoundDamage([result("tie"), result("tie"), result("tie")]).boardWinner).toBe("tie");
+  });
+
+  it("calculates narrow 2-1 and decisive 2-1 damage", () => {
+    expect(calculateRoundDamage([result("player"), result("player"), result("bot")]).player).toBe(2);
+
+    const decisive = calculateRoundDamage([result("player", true), result("player"), result("bot")]);
+    expect(decisive.player).toBe(3);
+    expect(decisive.bot).toBe(0);
+  });
+
+  it("calculates contested 2-1 damage with both sides dealing", () => {
+    const damage = calculateRoundDamage([result("player", true), result("player"), result("bot", true)]);
+    expect(damage.boardWinner).toBe("player");
+    expect(damage.player).toBe(3);
+    expect(damage.bot).toBe(1);
+  });
+
   it("adds sweep damage for 3-0 boards", () => {
     const damage = calculateRoundDamage([result("player"), result("player"), result("player")]);
     expect(damage.player).toBe(3);
+  });
+
+  it("caps a fully decisive 3-0 sweep at 6 damage", () => {
+    const damage = calculateRoundDamage([result("player", true), result("player", true), result("player", true)]);
+    expect(damage.player).toBe(6);
+    expect(damage.bot).toBe(0);
+  });
+
+  it("awards decisive category damage on tied boards without board-win damage", () => {
+    const damage = calculateRoundDamage([result("player", true), result("bot", true), result("tie")]);
+    expect(damage.boardWinner).toBe("tie");
+    expect(damage.playerBoardDamage).toBe(0);
+    expect(damage.botBoardDamage).toBe(0);
+    expect(damage.player).toBe(1);
+    expect(damage.bot).toBe(1);
+  });
+
+  it("never awards decisive damage for tied categories", () => {
+    const damage = calculateRoundDamage([result("tie", true), result("tie", true), result("tie", true)]);
+    expect(damage.player).toBe(0);
+    expect(damage.bot).toBe(0);
   });
 
   it("allows losing the board while still dealing decisive category damage", () => {
@@ -164,6 +221,14 @@ describe("Stat Check engine", () => {
     expect(next.currentCategories.map((c) => c.id)).toContain(preview);
   });
 
+  it("resolves one-sided lethal damage as the matching winner", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "lethal");
+    state = resolveCurrentRound(autoAssignBestPlayerHand({ ...state, botHp: 1 }));
+    expect(state.phase).toBe("match-over");
+    expect(state.outcome).toBe("player");
+    expect(state.botHp).toBe(0);
+  });
+
   it("clears the cached round result when entering a new selecting round", () => {
     let state = createMatch(STAT_CHECK_FIXTURE_DECK, "clear-result");
     state = resolveCurrentRound(autoAssignBestPlayerHand(state));
@@ -199,6 +264,31 @@ describe("Stat Check engine", () => {
     const next = startNextRound(state);
     expect(next.playerDiscard.map((c) => c.id).sort()).toEqual([...playedIds].sort());
     expect(next.playerHand).toHaveLength(6);
+  });
+
+  it("starts with unique six-card hands and no overlap between sides", () => {
+    const state = createMatch(STAT_CHECK_FIXTURE_DECK, "unique-hands");
+    expect(state.playerHand).toHaveLength(6);
+    expect(state.botHand).toHaveLength(6);
+    expect(new Set(state.playerHand.map((card) => card.id)).size).toBe(6);
+    expect(new Set(state.botHand.map((card) => card.id)).size).toBe(6);
+    expect(state.playerHand.some((card) => state.botHand.some((botCard) => botCard.id === card.id))).toBe(false);
+  });
+
+  it("preserves unplayed cards, permanently discards played cards, and draws replacements", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "preserve-three");
+    state = autoAssignBestPlayerHand(state);
+    const playedIds = new Set(Object.values(state.assignments));
+    const preservedIds = state.playerHand.filter((card) => !playedIds.has(card.id)).map((card) => card.id);
+
+    state = resolveCurrentRound(state);
+    const next = startNextRound(state);
+
+    expect(next.playerDiscard.map((card) => card.id).sort()).toEqual([...playedIds].sort());
+    expect(next.playerHand.map((card) => card.id).slice(0, 3)).toEqual(preservedIds);
+    expect(next.playerHand).toHaveLength(6);
+    expect(next.playerHand.some((card) => playedIds.has(card.id))).toBe(false);
+    expect(next.playerDeck.some((card) => playedIds.has(card.id))).toBe(false);
   });
 
   it("resolves deck exhaustion by remaining HP", () => {

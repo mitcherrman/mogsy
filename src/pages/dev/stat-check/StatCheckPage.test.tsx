@@ -32,6 +32,10 @@ function fillBoard(container: HTMLElement) {
   place(container, 2, 2);
 }
 
+function laneTextIncludesFamily(container: HTMLElement, family: string) {
+  return lanes(container).some((lane) => lane.textContent?.toLowerCase().includes(family.toLowerCase()));
+}
+
 function finishReveal() {
   act(() => vi.advanceTimersByTime(4_000));
 }
@@ -159,8 +163,8 @@ describe("StatCheckPage tabletop presentation", () => {
     const card = screen.getByTestId("stat-check-hand-0");
 
     fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.pointerUp(card, { pointerId: 1, clientX: 101, clientY: 541 });
     fireEvent.click(card);
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 101, clientY: 541 });
     fireEvent.click(lanes(container)[0]);
 
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
@@ -236,6 +240,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
     const { container } = render(<StatCheckPage />);
+    expect(lanes(container).some((lane) => /Decisive \d+%/.test(lane.textContent ?? ""))).toBe(true);
     fillBoard(container);
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
@@ -248,6 +253,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-board-result")).toHaveTextContent(/board/i);
     expect(screen.getByTestId("stat-check-damage-player")).toHaveTextContent(/Total:/);
     expect(screen.getByTestId("stat-check-damage-bot")).toHaveTextContent(/Total:/);
+    expect(lanes(container).some((lane) => /Decisive at \d+%/.test(lane.textContent ?? ""))).toBe(true);
   });
 
   it("uses the reduced-motion path without waiting through the staged reveal", () => {
@@ -275,6 +281,8 @@ describe("StatCheckPage tabletop presentation", () => {
   it("updates discards after next round and keeps visible intel continuous", () => {
     const { container } = render(<StatCheckPage />);
     const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
+    expect(screen.getByTestId("stat-check-next-intel")).toHaveTextContent(/One upcoming stat family/i);
+    expect(screen.getByTestId("stat-check-next-intel")).not.toHaveTextContent(/Higher wins|Lower wins|Level 1|Level 18/i);
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     finishReveal();
@@ -283,7 +291,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
     expect(screen.getByTestId("stat-check-player-discard")).toHaveTextContent(/3/);
     expect(screen.getByTestId("stat-check-bot-discard")).toHaveTextContent(/3/);
-    expect(lanes(container).some((lane) => lane.textContent?.includes(firstIntel))).toBe(true);
+    expect(laneTextIncludesFamily(container, firstIntel)).toBe(true);
   });
 
   it("clears resolved presentation state when advancing to the next round", () => {
@@ -314,7 +322,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
     expect(screen.getByTestId("stat-check-player-discard")).toHaveTextContent(/3/);
     expect(screen.getByTestId("stat-check-bot-discard")).toHaveTextContent(/3/);
-    expect(lanes(container).some((lane) => lane.textContent?.includes(firstIntel))).toBe(true);
+    expect(laneTextIncludesFamily(container, firstIntel)).toBe(true);
   });
 
   it("restart after resolution clears cached results, pending timers, and staged UI", () => {

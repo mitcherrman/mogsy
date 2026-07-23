@@ -232,7 +232,8 @@ export default function StatCheckPage() {
 
   const selectedCard = match.playerHand.find((card) => card.id === selectedCardId) ?? null;
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
-  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep) && !dragSession;
+  const activelyDragging = dragSession?.status === "dragging";
+  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep) && !activelyDragging;
   const canStartDrag = match.phase === "selecting" && revealStep === "selecting" && !dragSession;
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
@@ -750,7 +751,9 @@ function ArenaLane({
           <CategoryIcon category={category} />
           <div className="min-w-0">
             <div className="truncate text-sm font-black">{compactCategoryLabel(category)}</div>
-            <div className="truncate text-[11px] text-slate-400">{scopeLabel(category)}</div>
+            <div className="truncate text-[11px] text-slate-400">
+              {scopeLabel(category)} - Decisive {formatThreshold(category.decisiveThreshold)}
+            </div>
           </div>
         </div>
         <div className="shrink-0 rounded-full border border-[#d6b55d]/30 bg-[#d6b55d]/10 px-2 py-1 text-[10px] font-black uppercase text-[#f4d77d]">
@@ -1334,8 +1337,8 @@ function NextRoundIntel({ categories, compact = false }: { categories: StatCateg
         <div className="flex items-center gap-2">
           <CategoryIcon category={visible} />
           <div className="min-w-0">
-            <div data-testid="stat-check-next-intel-label" className="truncate text-sm font-black">{compactCategoryLabel(visible)}</div>
-            <div className="text-[11px] text-slate-300">{visible.direction === "higher" ? "Higher wins" : "Lower wins"}</div>
+            <div data-testid="stat-check-next-intel-label" className="truncate text-sm font-black">{statFamilyLabel(visible)}</div>
+            <div className="text-[11px] text-slate-300">One upcoming stat family</div>
           </div>
         </div>
       </div>
@@ -1392,6 +1395,7 @@ function LaneResult({ result }: { result: CategoryResult }) {
         {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
       </div>
       <div className="text-xs font-semibold text-cyan-100">{(result.margin * 100).toFixed(1)}% margin</div>
+      <div className="text-[11px] font-semibold text-slate-300">Decisive at {formatThreshold(result.category.decisiveThreshold)}</div>
       {result.decisive && <div className="mt-1 text-xs font-black uppercase text-[#f4d77d]">Decisive +1</div>}
     </div>
   );
@@ -1508,6 +1512,21 @@ function compactCategoryLabel(category: StatCategory) {
     .replace("attack range", "Range")
     .replace("attack speed", "Attack Speed");
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function statFamilyLabel(category: StatCategory) {
+  if (category.id.includes("hp")) return "Health";
+  if (category.id.includes("ad")) return "Attack Damage";
+  if (category.id.includes("armor")) return "Armor";
+  if (category.id.includes("mr")) return "Magic Resist";
+  if (category.id.includes("move")) return "Move Speed";
+  if (category.id.includes("range")) return "Attack Range";
+  if (category.id.includes("attack-speed")) return "Attack Speed";
+  return "Champion Stats";
+}
+
+function formatThreshold(threshold: number) {
+  return `${Math.round(threshold * 100)}%`;
 }
 
 function scopeLabel(category: StatCategory) {

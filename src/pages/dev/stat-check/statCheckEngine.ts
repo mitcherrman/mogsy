@@ -311,7 +311,11 @@ export function compareCategory(category: StatCategory, playerCard: StatCheckCar
   const margin =
     winner === "tie"
       ? 0
-      : relativeMargin(winner === "player" ? playerValue : botValue, winner === "player" ? botValue : playerValue);
+      : relativeMarginForCategory(
+        category,
+        winner === "player" ? playerValue : botValue,
+        winner === "player" ? botValue : playerValue,
+      );
   return {
     category,
     playerCard,
@@ -324,15 +328,21 @@ export function compareCategory(category: StatCategory, playerCard: StatCheckCar
   };
 }
 
+export function relativeMarginForCategory(category: Pick<StatCategory, "direction">, winningValue: number, losingValue: number): number {
+  return category.direction === "higher"
+    ? relativeMargin(winningValue, losingValue)
+    : relativeMargin(losingValue, winningValue);
+}
+
 /**
- * Relative stat margin. The denominator is the winning value so a 700 vs 630
- * higher-wins result is (700 - 630) / 700 = 10%. If the winning value is zero,
- * any non-zero gap is treated as a full 100% margin to avoid division by zero.
+ * Relative stat margin using the first argument as denominator. Higher-wins
+ * categories pass the winning value; lower-wins categories pass the losing
+ * value so a 20 vs 25 lower-wins result is (25 - 20) / 25 = 20%.
  */
-export function relativeMargin(winningValue: number, losingValue: number): number {
-  const diff = Math.abs(winningValue - losingValue);
+export function relativeMargin(denominatorValue: number, comparedValue: number): number {
+  const diff = Math.abs(denominatorValue - comparedValue);
   if (diff === 0) return 0;
-  const denominator = Math.abs(winningValue);
+  const denominator = Math.abs(denominatorValue);
   if (denominator === 0) return 1;
   return diff / denominator;
 }
