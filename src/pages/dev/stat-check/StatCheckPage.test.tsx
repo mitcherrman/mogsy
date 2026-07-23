@@ -90,6 +90,10 @@ describe("StatCheckPage tabletop presentation", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane, secondLane] = lanes(container);
 
+    expect(screen.getByText(/Shared pool/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Your deck/i)).toBeNull();
+    expect(screen.queryByText(/Bot deck/i)).toBeNull();
+
     placeWithoutSettling(container, 0, 0);
     expect(within(firstLane).queryByText(/Place champion/i)).toBeNull();
     expect(screen.queryByText(/On table/i)).toBeNull();

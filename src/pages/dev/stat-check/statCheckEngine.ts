@@ -88,8 +88,7 @@ export type MatchState = {
   round: number;
   playerHp: number;
   botHp: number;
-  playerDeck: StatCheckCard[];
-  botDeck: StatCheckCard[];
+  drawPile: StatCheckCard[];
   playerHand: StatCheckCard[];
   botHand: StatCheckCard[];
   playerDiscard: StatCheckCard[];
@@ -422,12 +421,13 @@ function drawUpTo(hand: StatCheckCard[], deck: StatCheckCard[], size = HAND_SIZE
 }
 
 export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1"): MatchState {
-  if (deck.length < HAND_SIZE * 2 + ROUND_SLOTS * 2) {
+  const eligibleDeck = uniqueCardsById(deck);
+  if (eligibleDeck.length < HAND_SIZE * 2 + ROUND_SLOTS * 2) {
     throw new Error("Stat Check needs at least 18 supported champion cards.");
   }
-  const shuffled = shuffleDeterministic(deck, seed);
-  const playerDraw = drawUpTo([], shuffled.filter((_, index) => index % 2 === 0), HAND_SIZE);
-  const botDraw = drawUpTo([], shuffled.filter((_, index) => index % 2 === 1), HAND_SIZE);
+  const shuffled = shuffleDeterministic(eligibleDeck, seed);
+  const playerDraw = drawUpTo([], shuffled, HAND_SIZE);
+  const botDraw = drawUpTo([], playerDraw.deck, HAND_SIZE);
   const currentCategories = generateCategoryBoard(seed, 1);
   const nextCategories = generateCategoryBoard(seed, 2, currentCategories);
   return {
@@ -436,8 +436,7 @@ export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1"): Matc
     round: 1,
     playerHp: STARTING_HP,
     botHp: STARTING_HP,
-    playerDeck: playerDraw.deck,
-    botDeck: botDraw.deck,
+    drawPile: botDraw.deck,
     playerHand: playerDraw.hand,
     botHand: botDraw.hand,
     playerDiscard: [],
@@ -512,8 +511,8 @@ export function startNextRound(state: MatchState): MatchState {
   const botPlayed = new Set(Object.values(state.lastResolution.botAssignments).map((card) => card.id));
   const playerHandRemaining = state.playerHand.filter((card) => !playerPlayed.has(card.id));
   const botHandRemaining = state.botHand.filter((card) => !botPlayed.has(card.id));
-  const playerDraw = drawUpTo(playerHandRemaining, state.playerDeck);
-  const botDraw = drawUpTo(botHandRemaining, state.botDeck);
+  const playerDraw = drawUpTo(playerHandRemaining, state.drawPile);
+  const botDraw = drawUpTo(botHandRemaining, playerDraw.deck);
   const playerDiscard = [
     ...state.playerDiscard,
     ...state.currentCategories.map((category) => state.lastResolution!.playerAssignments[category.id]),
@@ -530,10 +529,10 @@ export function startNextRound(state: MatchState): MatchState {
       phase: "match-over",
       playerHand: playerDraw.hand,
       botHand: botDraw.hand,
-      playerDeck: playerDraw.deck,
-      botDeck: botDraw.deck,
+      drawPile: botDraw.deck,
       playerDiscard,
       botDiscard,
+      assignments: emptyAssignments(state.currentCategories),
       outcome,
       endReason: "Deck exhausted before either side could field three cards.",
     };
@@ -547,8 +546,7 @@ export function startNextRound(state: MatchState): MatchState {
     round: state.round + 1,
     playerHand: playerDraw.hand,
     botHand: botDraw.hand,
-    playerDeck: playerDraw.deck,
-    botDeck: botDraw.deck,
+    drawPile: botDraw.deck,
     playerDiscard,
     botDiscard,
     currentCategories,
@@ -572,4 +570,112 @@ export function autoAssignBestPlayerHand(state: MatchState): MatchState {
     next = assignCard(next, category.id, botLike[category.id].id);
   }
   return next;
+}
+
+export type MatchInvariantIssue = {
+  code: string;
+  message: string;
+};
+
+export function validateMatchInvariants(state: MatchState, originalDeck?: StatCheckCard[]): MatchInvariantIssue[] {
+  const issues: MatchInvariantIssue[] = [];
+  const expectedIds = originalDeck ? new Set(uniqueCardsById(originalDeck).map((card) => card.id)) : null;
+  const locations = [
+    { name: "drawPile", cards: state.drawPile },
+    { name: "playerHand", cards: state.playerHand },
+    { name: "botHand", cards: state.botHand },
+    { name: "playerDiscard", cards: state.playerDiscard },
+    { name: "botDiscard", cards: state.botDiscard },
+  ];
+
+  for (const location of locations) {
+    const seen = new Set<string>();
+    for (const card of location.cards) {
+      if (seen.has(card.id)) {
+        issues.push({ code: "duplicate-in-location", message: `${card.id} appears more than once in ${location.name}.` });
+      }
+      seen.add(card.id);
+    }
+  }
+
+  const activeLocations = locations.slice(0, 3);
+  const allActiveIds = new Map<string, string>();
+  for (const location of activeLocations) {
+    for (const card of location.cards) {
+      const previous = allActiveIds.get(card.id);
+      if (previous) {
+        issues.push({ code: "duplicate-active-card", message: `${card.id} appears in both ${previous} and ${location.name}.` });
+      } else {
+        allActiveIds.set(card.id, location.name);
+      }
+    }
+  }
+
+  const discardedIds = new Map<string, string>();
+  for (const location of locations.slice(3)) {
+    for (const card of location.cards) {
+      const previous = discardedIds.get(card.id);
+      if (previous) {
+        issues.push({ code: "duplicate-discarded-card", message: `${card.id} appears in both ${previous} and ${location.name}.` });
+      } else {
+        discardedIds.set(card.id, location.name);
+      }
+      const active = allActiveIds.get(card.id);
+      if (active) {
+        issues.push({ code: "discarded-card-active", message: `${card.id} appears in ${location.name} and active ${active}.` });
+      }
+    }
+  }
+
+  const assignedIds = Object.values(state.assignments).filter((id): id is string => Boolean(id));
+  for (const id of assignedIds) {
+    if (!discardedIds.has(id) && !state.playerHand.some((card) => card.id === id)) {
+      issues.push({ code: "missing-player-assignment", message: `${id} is assigned but is not owned by the player.` });
+    }
+  }
+  if (new Set(assignedIds).size !== assignedIds.length) {
+    issues.push({ code: "duplicate-player-assignment", message: "A player card is assigned to more than one lane." });
+  }
+  if (state.lastResolution) {
+    const botAssignedIds = Object.values(state.lastResolution.botAssignments).map((card) => card.id);
+    if (new Set(botAssignedIds).size !== botAssignedIds.length) {
+      issues.push({ code: "duplicate-bot-assignment", message: "A bot card is assigned to more than one lane." });
+    }
+    for (const id of botAssignedIds) {
+      if (!discardedIds.has(id) && !state.botHand.some((card) => card.id === id)) {
+        issues.push({ code: "missing-bot-assignment", message: `${id} is assigned but is not owned by the bot.` });
+      }
+    }
+  }
+
+  if (expectedIds) {
+    const locatedIds = new Set<string>();
+    for (const location of locations) {
+      for (const card of location.cards) {
+        locatedIds.add(card.id);
+        if (!expectedIds.has(card.id)) {
+          issues.push({ code: "unknown-card", message: `${card.id} is not in the original eligible roster.` });
+        }
+      }
+    }
+    for (const id of expectedIds) {
+      if (!locatedIds.has(id)) {
+        issues.push({ code: "missing-card", message: `${id} is missing from all deck, hand, and discard locations.` });
+      }
+    }
+    if (locatedIds.size !== expectedIds.size) {
+      issues.push({ code: "roster-size-mismatch", message: "Located champion identity count does not match the original eligible roster." });
+    }
+  }
+
+  return issues;
+}
+
+function uniqueCardsById(deck: StatCheckCard[]): StatCheckCard[] {
+  const seen = new Set<string>();
+  return deck.filter((card) => {
+    if (seen.has(card.id)) return false;
+    seen.add(card.id);
+    return true;
+  });
 }

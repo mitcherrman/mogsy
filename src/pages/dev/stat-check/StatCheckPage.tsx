@@ -896,8 +896,7 @@ function MatchUtilityRail({
   return (
     <aside className="order-3 grid gap-2 rounded-md border border-cyan-300/12 bg-black/20 p-2 shadow-2xl lg:order-none lg:h-full lg:min-h-0 lg:content-start lg:overflow-y-auto">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-        <CountPill label="Your deck" value={match.playerDeck.length} />
-        <CountPill label="Bot deck" value={match.botDeck.length} />
+        <CountPill label="Shared pool" value={match.drawPile.length} />
         <CountPill label="Your hand" value={match.playerHand.length} />
         <CountPill label="Bot hand" value={match.botHand.length} />
       </div>
