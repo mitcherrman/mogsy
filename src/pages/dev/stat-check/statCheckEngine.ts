@@ -25,6 +25,7 @@ export type StatCheckCard = {
 export type StatCategoryId =
   | "highest-hp-1"
   | "highest-hp-18"
+  | "highest-ad-1"
   | "highest-ad-18"
   | "lowest-armor-1"
   | "lowest-mr-1"
@@ -32,10 +33,33 @@ export type StatCategoryId =
   | "highest-attack-range"
   | "lowest-attack-speed-1";
 
+export type StatFamily =
+  | "health"
+  | "attack-damage"
+  | "armor"
+  | "magic-resist"
+  | "move-speed"
+  | "attack-range"
+  | "attack-speed";
+
+export const STAT_FAMILY_LABELS: Record<StatFamily, string> = {
+  health: "Health",
+  "attack-damage": "Attack Damage",
+  armor: "Armor",
+  "magic-resist": "Magic Resist",
+  "move-speed": "Move Speed",
+  "attack-range": "Attack Range",
+  "attack-speed": "Attack Speed",
+};
+
 export type StatCategory = {
   id: StatCategoryId;
   label: string;
   shortLabel: string;
+  /** Broad stat family; boards never repeat a family and the future clue reveals only this. */
+  family: StatFamily;
+  /** Retired categories stay defined for compatibility but are never generated. */
+  active: boolean;
   direction: StatDirection;
   decisiveThreshold: number;
   explanation: string;
@@ -125,6 +149,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "highest-hp-1",
     label: "Highest level-1 health",
     shortLabel: "L1 HP",
+    family: "health",
+    active: true,
     direction: "higher",
     decisiveThreshold: 0.12,
     explanation: "Health spread is meaningful but not massive, so 12% is a prototype tuning value.",
@@ -135,6 +161,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "highest-hp-18",
     label: "Highest level-18 health",
     shortLabel: "L18 HP",
+    family: "health",
+    active: true,
     direction: "higher",
     decisiveThreshold: 0.12,
     explanation: "Uses Riot's level scaling formula through the shared League Docs stat helpers.",
@@ -142,9 +170,23 @@ export const STAT_CATEGORIES: StatCategory[] = [
     formatValue: whole,
   },
   {
+    id: "highest-ad-1",
+    label: "Highest level-1 attack damage",
+    shortLabel: "L1 AD",
+    family: "attack-damage",
+    active: true,
+    direction: "higher",
+    decisiveThreshold: 0.12,
+    explanation: "Base attack damage separates early-game stat checks; 12% matches the other damage stats.",
+    getValue: (card) => card.stats.ad,
+    formatValue: number,
+  },
+  {
     id: "highest-ad-18",
     label: "Highest level-18 attack damage",
     shortLabel: "L18 AD",
+    family: "attack-damage",
+    active: true,
     direction: "higher",
     decisiveThreshold: 0.12,
     explanation: "Attack damage growth varies enough that 12% catches clear stat-check wins.",
@@ -155,6 +197,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "lowest-armor-1",
     label: "Lowest base armor",
     shortLabel: "Low armor",
+    family: "armor",
+    active: true,
     direction: "lower",
     decisiveThreshold: 0.15,
     explanation: "A 15% lower-armor margin is treated as a decisive prototype mismatch.",
@@ -165,6 +209,10 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "lowest-mr-1",
     label: "Lowest base magic resistance",
     shortLabel: "Low MR",
+    family: "magic-resist",
+    // Retired: MR values cluster so tightly that ~62% of appearances tied and
+    // none were decisive in simulation. Kept for compatibility, never generated.
+    active: false,
     direction: "lower",
     decisiveThreshold: 0.15,
     explanation: "Magic-resist values cluster tightly, so this only fires on clearer gaps.",
@@ -175,6 +223,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "highest-move-speed",
     label: "Highest movement speed",
     shortLabel: "Move speed",
+    family: "move-speed",
+    active: true,
     direction: "higher",
     decisiveThreshold: 0.05,
     explanation: "Movement speed has a small range, making 5% a notable prototype edge.",
@@ -185,6 +235,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "highest-attack-range",
     label: "Highest attack range",
     shortLabel: "Range",
+    family: "attack-range",
+    active: true,
     direction: "higher",
     decisiveThreshold: 0.2,
     explanation: "Range has large class breaks, so 20% avoids constant bonus damage.",
@@ -195,6 +247,10 @@ export const STAT_CATEGORIES: StatCategory[] = [
     id: "lowest-attack-speed-1",
     label: "Lowest level-1 attack speed",
     shortLabel: "Low AS",
+    family: "attack-speed",
+    // Retired: ~62% tie rate and near-zero decisive rate in simulation made
+    // this lane a coin flip. Kept for compatibility, never generated.
+    active: false,
     direction: "lower",
     decisiveThreshold: 0.12,
     explanation: "Lower attack speed is intentionally weird; this helps test save-or-spend choices.",
@@ -278,21 +334,34 @@ export function shuffleDeterministic<T>(items: T[], seed: string): T[] {
   return out;
 }
 
+export const ACTIVE_STAT_CATEGORIES: StatCategory[] = STAT_CATEGORIES.filter((category) => category.active);
+
 export function generateCategoryBoard(seed: string, round: number, previous?: StatCategory[]): StatCategory[] {
+  const activeFamilies = new Set(ACTIVE_STAT_CATEGORIES.map((category) => category.family));
+  if (activeFamilies.size < ROUND_SLOTS) {
+    throw new Error("Stat Check needs at least three active stat families to build a board.");
+  }
   const random = createSeededRandom(`${seed}:categories:${round}`);
-  const pool = STAT_CATEGORIES.slice();
+  const pool = ACTIVE_STAT_CATEGORIES.slice();
   const board: StatCategory[] = [];
+  const usedFamilies = new Set<StatFamily>();
+  // Bounded: every iteration removes one candidate from the pool.
   while (board.length < ROUND_SLOTS && pool.length > 0) {
     const index = Math.floor(random() * pool.length);
-    board.push(pool.splice(index, 1)[0]);
+    const candidate = pool.splice(index, 1)[0];
+    if (usedFamilies.has(candidate.family)) continue;
+    board.push(candidate);
+    usedFamilies.add(candidate.family);
   }
   if (
     previous &&
     previous.length === board.length &&
     previous.every((category, index) => category.id === board[index].id)
   ) {
-    const replacement = STAT_CATEGORIES.find(
-      (category) => !board.some((existing) => existing.id === category.id),
+    const replacement = ACTIVE_STAT_CATEGORIES.find(
+      (category) =>
+        !board.some((existing) => existing.id === category.id) &&
+        !board.slice(0, ROUND_SLOTS - 1).some((existing) => existing.family === category.family),
     );
     if (replacement) board[2] = replacement;
   }

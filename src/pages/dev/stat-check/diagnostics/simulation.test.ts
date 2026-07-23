@@ -25,6 +25,13 @@ describe("stat check simulation diagnostics", () => {
     expect(report.totalRounds).toBe(report.roundsPerMatch.reduce((a, b) => a + b, 0));
     const issues = report.matchRecords.flatMap((m) => m.invariantIssues);
     expect(issues).toEqual([]);
+    // Retired categories never appear and boards never repeat a family.
+    expect(report.categoryStats["lowest-mr-1"]).toBeUndefined();
+    expect(report.categoryStats["lowest-attack-speed-1"]).toBeUndefined();
+    expect(report.familyFrequency["magic-resist"]).toBe(0);
+    expect(report.familyFrequency["attack-speed"]).toBe(0);
+    expect(report.repeatedFamilyBoards).toBe(0);
+    expect(Object.keys(report.categoryStats).length).toBeGreaterThan(0);
     // Every match must terminate (exhaustion or HP), never hang.
     for (const match of report.matchRecords) {
       expect(match.exhausted || match.outcome !== null).toBe(true);

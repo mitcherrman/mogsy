@@ -3,35 +3,26 @@ import {
   createMatch,
   resolveCurrentRound,
   startNextRound,
+  STAT_CATEGORIES,
   validateMatchInvariants,
   type MatchOutcome,
   type MatchState,
   type StatCategory,
   type StatCategoryId,
   type StatCheckCard,
+  type StatFamily,
 } from "../statCheckEngine";
 
 // Deterministic, engine-consuming simulation diagnostics. This module is
 // intentionally pure logic with no UI, timers, or randomness of its own:
 // all randomness flows through the engine's seeded helpers via the seed list.
 
-export type StatFamily =
-  | "health"
-  | "attack-damage"
-  | "armor"
-  | "magic-resist"
-  | "move-speed"
-  | "attack-range"
-  | "attack-speed";
+export type { StatFamily };
 
 export function familyOfCategory(id: StatCategoryId): StatFamily {
-  if (id.includes("hp")) return "health";
-  if (id.includes("ad")) return "attack-damage";
-  if (id.includes("armor")) return "armor";
-  if (id.includes("mr")) return "magic-resist";
-  if (id.includes("move")) return "move-speed";
-  if (id.includes("range")) return "attack-range";
-  return "attack-speed";
+  const category = STAT_CATEGORIES.find((entry) => entry.id === id);
+  if (!category) throw new Error(`Unknown Stat Check category id: ${id}`);
+  return category.family;
 }
 
 export type CategoryStats = {

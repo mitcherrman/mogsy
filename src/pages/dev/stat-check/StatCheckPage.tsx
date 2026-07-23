@@ -49,6 +49,7 @@ import {
   isReadyToLock,
   resolveCurrentRound,
   startNextRound,
+  STAT_FAMILY_LABELS,
   type CategoryResult,
   type MatchState,
   type RoundDamage,
@@ -1514,14 +1515,7 @@ function compactCategoryLabel(category: StatCategory) {
 }
 
 function statFamilyLabel(category: StatCategory) {
-  if (category.id.includes("hp")) return "Health";
-  if (category.id.includes("ad")) return "Attack Damage";
-  if (category.id.includes("armor")) return "Armor";
-  if (category.id.includes("mr")) return "Magic Resist";
-  if (category.id.includes("move")) return "Move Speed";
-  if (category.id.includes("range")) return "Attack Range";
-  if (category.id.includes("attack-speed")) return "Attack Speed";
-  return "Champion Stats";
+  return STAT_FAMILY_LABELS[category.family] ?? "Champion Stats";
 }
 
 function formatThreshold(threshold: number) {

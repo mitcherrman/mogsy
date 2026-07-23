@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import {
+  ACTIVE_STAT_CATEGORIES,
   STAT_CATEGORIES,
   assignCard,
   autoAssignBestPlayerHand,
@@ -41,6 +42,8 @@ const cat = (id: string, direction: "higher" | "lower", threshold = 0.12): StatC
   id: id as StatCategory["id"],
   label: id,
   shortLabel: id,
+  family: "health",
+  active: true,
   direction,
   decisiveThreshold: threshold,
   explanation: "test",
@@ -222,6 +225,45 @@ describe("Stat Check engine", () => {
     const b = generateCategoryBoard("seed", 1);
     expect(a.map((c) => c.id)).toEqual(b.map((c) => c.id));
     expect(new Set(a.map((c) => c.id)).size).toBe(3);
+  });
+
+  it("only generates active categories and never retired ones", () => {
+    const retired = new Set(STAT_CATEGORIES.filter((c) => !c.active).map((c) => c.id));
+    expect(retired).toEqual(new Set(["lowest-mr-1", "lowest-attack-speed-1"]));
+    const seen = new Set<string>();
+    for (let seedIndex = 0; seedIndex < 100; seedIndex++) {
+      for (let round = 1; round <= 6; round++) {
+        for (const category of generateCategoryBoard(`pool:${seedIndex}`, round)) {
+          expect(retired.has(category.id)).toBe(false);
+          seen.add(category.id);
+        }
+      }
+    }
+    expect(seen).toEqual(new Set(ACTIVE_STAT_CATEGORIES.map((c) => c.id)));
+    expect(seen.has("highest-move-speed")).toBe(true);
+    expect(seen.has("highest-attack-range")).toBe(true);
+  });
+
+  it("never repeats a broad stat family on one board", () => {
+    for (let seedIndex = 0; seedIndex < 100; seedIndex++) {
+      let previous: ReturnType<typeof generateCategoryBoard> | undefined;
+      for (let round = 1; round <= 6; round++) {
+        const board = generateCategoryBoard(`family:${seedIndex}`, round, previous);
+        expect(board).toHaveLength(3);
+        expect(new Set(board.map((c) => c.family)).size).toBe(3);
+        previous = board;
+      }
+    }
+  });
+
+  it("exposes only active broad families through the next-round clue slot", () => {
+    const activeFamilies = new Set(ACTIVE_STAT_CATEGORIES.map((c) => c.family));
+    expect(activeFamilies.has("magic-resist")).toBe(false);
+    expect(activeFamilies.has("attack-speed")).toBe(false);
+    for (let seedIndex = 0; seedIndex < 50; seedIndex++) {
+      const state = createMatch(STAT_CHECK_FIXTURE_DECK, `clue:${seedIndex}`);
+      expect(activeFamilies.has(state.nextCategories[0].family)).toBe(true);
+    }
   });
 
   it("keeps upcoming preview matched to the next round", () => {
