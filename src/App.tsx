@@ -94,6 +94,7 @@ const KnowledgeReviewPage = lazy(() => import("./pages/admin/knowledge/Knowledge
 const KnowledgeHealth = lazy(() => import("./pages/admin/knowledge/KnowledgeHealth"));
 const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/KnowledgeChampionDetail"));
 const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
+const KnowledgeHistory = lazy(() => import("./pages/admin/knowledge/KnowledgeHistory"));
 
 // Admin Directory — private grouped index of admin destinations (E3).
 const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
@@ -258,6 +259,7 @@ const App = () => (
                     <Route path="health" element={<Suspense fallback={<RouteFallback />}><KnowledgeHealth /></Suspense>} />
                     <Route path="health/:champion" element={<Suspense fallback={<RouteFallback />}><KnowledgeChampionDetail /></Suspense>} />
                     <Route path="rundown" element={<Suspense fallback={<RouteFallback />}><KnowledgeRundown /></Suspense>} />
+                    <Route path="history" element={<Suspense fallback={<RouteFallback />}><KnowledgeHistory /></Suspense>} />
                   </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />

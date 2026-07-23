@@ -29,6 +29,16 @@ export default function KnowledgeDashboard() {
     enabled: !!healthQ.data,
   });
 
+  const automationCfgQ = useQuery({
+    queryKey: ["knowledge", "automation-config"],
+    queryFn: () => knowledgeApi.automationConfig(),
+  });
+  const reportQ = useQuery({
+    queryKey: ["knowledge", "automation-report", latestPatch],
+    queryFn: () => knowledgeApi.automationReport(latestPatch!),
+    enabled: !!latestPatch,
+  });
+
   const summary = healthQ.data?.summary;
   const worst = (healthQ.data?.champions ?? []).filter((c) => !c.parser_gap).slice(0, 6);
   const gaps = (healthQ.data?.champions ?? []).filter((c) => c.parser_gap);
@@ -70,6 +80,47 @@ export default function KnowledgeDashboard() {
       </div>
 
       {healthQ.error && <ErrorBanner error={healthQ.error} onRetry={() => healthQ.refetch()} />}
+
+      {/* Patch automation summary — the primary CTA is exceptions, not the full queue */}
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">Patch Automation</div>
+            <div className="text-sm font-extrabold text-foreground">
+              {latestPatch ? `Patch ${latestPatch}` : "No patch detected"}
+              <span className={automationCfgQ.data?.enabled
+                ? "ml-2 text-[10px] font-bold uppercase text-emerald-300"
+                : "ml-2 text-[10px] font-bold uppercase text-muted-foreground"}>
+                {automationCfgQ.data
+                  ? (automationCfgQ.data.enabled
+                      ? (automationCfgQ.data.forced_dry_run ? "dry-run mode" : "enabled")
+                      : "automation disabled")
+                  : "…"}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/admin/knowledge/queue"
+                  className="rounded-lg bg-primary text-primary-foreground text-xs font-bold px-3 py-1.5">
+              Review exceptions{reportQ.data ? ` (${reportQ.data.summary.held_for_review})` : ""}
+            </Link>
+            <Link to="/admin/knowledge/history"
+                  className="rounded-lg border border-border bg-background text-xs font-bold px-3 py-1.5 text-muted-foreground hover:text-foreground">
+              Full report
+            </Link>
+          </div>
+        </div>
+        {reportQ.data && (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <MiniStat label="Auto applied" value={reportQ.data.summary.automatically_applied} tone="text-emerald-300" />
+            <MiniStat label="Held" value={reportQ.data.summary.held_for_review} tone="text-amber-300" />
+            <MiniStat label="Failed" value={reportQ.data.summary.apply_failed} tone="text-red-300" />
+            <MiniStat label="Rolled back" value={reportQ.data.summary.validation_failed_rolled_back} tone="text-red-300" />
+            <MiniStat label="Undone" value={reportQ.data.summary.undone_later} tone="text-sky-300" />
+            <MiniStat label="Active (auto)" value={reportQ.data.summary.still_active_auto} tone="text-foreground" />
+          </div>
+        )}
+      </div>
 
       <div className="rounded-xl border border-border bg-card p-3 sm:p-4 flex items-center gap-3 text-sm">
         <div>
@@ -188,6 +239,15 @@ export default function KnowledgeDashboard() {
           </Link>
         )}
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/60 px-2 py-1.5 text-center">
+      <div className={`text-base font-extrabold tabular-nums ${tone}`}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Activity, ClipboardList, GaugeCircle, LayoutDashboard, Newspaper, ShieldCheck } from "lucide-react";
+import { Activity, ClipboardList, GaugeCircle, History, LayoutDashboard, Newspaper, ShieldCheck } from "lucide-react";
 import { getStrictApproval, setStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
 import { cn } from "@/lib/utils";
 import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
@@ -24,6 +24,7 @@ export default function KnowledgeAdminLayout() {
     { to: "/admin/knowledge/queue", label: "Review Queue", icon: ClipboardList },
     { to: "/admin/knowledge/health", label: "Champion Health", icon: GaugeCircle },
     { to: "/admin/knowledge/rundown", label: "Patch Intel", icon: Newspaper },
+    { to: "/admin/knowledge/history", label: "Patch History", icon: History },
   ];
 
   return (

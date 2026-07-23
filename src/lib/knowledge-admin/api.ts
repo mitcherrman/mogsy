@@ -20,6 +20,10 @@ import type {
   PatchIntelligenceResponse,
   GameplayImpactResponse,
   ApplyHistoryResponse,
+  AutomationRunResponse,
+  AutomationConfig,
+  LedgerResponse,
+  PatchReport,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -164,6 +168,31 @@ export const knowledgeApi = {
    * the applied new value. Otherwise responds with a descriptive error
    * (surfaced verbatim in the UI).
    */
+  /**
+   * Patch automation (F3.2). Real writes require BOTH mode:"apply" here
+   * AND KNOWLEDGE_AUTO_APPLY_ENABLED at backend deployment config — the
+   * backend caps over-privileged requests to dry_run, never escalates.
+   */
+  runAutomation: (opts: { patch_version?: string; mode: "decision_only" | "dry_run" | "apply" }) =>
+    request<AutomationRunResponse>("/automation/run", {
+      method: "POST",
+      body: JSON.stringify(opts),
+    }),
+
+  automationReport: (patchVersion: string) =>
+    request<PatchReport>("/automation/report", { query: { patch_version: patchVersion } }),
+
+  automationConfig: () =>
+    request<AutomationConfig>("/automation/config"),
+
+  /** Unified chronological ledger (newest first) over proposals, edits,
+   *  applies, undos, and automation decisions. */
+  ledger: (q: {
+    patch_version?: string; champion?: string; property?: string;
+    actor_type?: "automatic" | "manual"; event_type?: string; limit?: number;
+  } = {}) =>
+    request<LedgerResponse>("/ledger", { query: q as QueryLike }),
+
   undoApply: (historyId: number) =>
     request<UndoResponse>(`/apply-history/${historyId}/undo`, {
       method: "POST",
