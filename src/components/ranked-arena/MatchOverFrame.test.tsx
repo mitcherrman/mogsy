@@ -88,6 +88,22 @@ describe("MatchOverFrame", () => {
     expect(primary).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["victory", "cheering"],
+    ["defeat", "defeated"],
+    ["draw", "base"],
+  ] as const)("shows the decorative %s mascot pose (%s)", (result, pose) => {
+    const { container } = render(
+      <MatchOverFrame result={result} player={combatant()} opponent={opponent} />,
+    );
+    const art = container.querySelector('[data-mogzy-art-category="mascot"]');
+    expect(art).not.toBeNull();
+    expect(art).toHaveAttribute("data-mogzy-art-name", pose);
+    // Decorative: the heading text carries the result for assistive tech.
+    expect(art).toHaveAttribute("alt", "");
+    expect(art).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("embeds no rating, persistence, or tutorial assumptions", () => {
     const { container } = render(
       <MatchOverFrame result="victory" player={combatant()} opponent={opponent} />,

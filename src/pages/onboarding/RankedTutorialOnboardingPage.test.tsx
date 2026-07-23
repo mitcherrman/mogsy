@@ -59,6 +59,12 @@ describe("combined welcome entry screen", () => {
       screen.getAllByRole("heading", { name: "Welcome to Ranked training" }),
     ).toHaveLength(1);
     expect(screen.getAllByTestId("start-tutorial")).toHaveLength(1);
+    // Mogzy teaches the tutorial: decorative "explaining" pose on the welcome.
+    const art = screen
+      .getByTestId("onboarding-welcome")
+      .querySelector('[data-mogzy-art-category="mascot"]');
+    expect(art).toHaveAttribute("data-mogzy-art-name", "explaining");
+    expect(art).toHaveAttribute("aria-hidden", "true");
     // The numbered tutorial (and its Continue/progress) is not shown yet.
     expect(screen.queryByTestId("tutorial-progress")).toBeNull();
     expect(screen.queryByTestId("continue-step")).toBeNull();

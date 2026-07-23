@@ -9,8 +9,8 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { RANKED_TUTORIAL_RETURN_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import RankedTutorialPage from "@/pages/dev/ranked-tutorial/RankedTutorialPage";
@@ -57,9 +57,9 @@ export default function RankedTutorialOnboardingPage() {
           className="rounded-xl border bg-card p-6 space-y-4 text-center"
         >
           <div className="flex justify-center">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/10">
-              <GraduationCap className="h-6 w-6 text-emerald-600" aria-hidden />
-            </span>
+            {/* Mogzy is the tutorial's teacher; the heading carries the meaning. */}
+            <MogzyMascot pose="explaining" decorative
+              className="h-24 w-24 sm:h-28 sm:w-28" />
           </div>
           <h1 className="text-2xl font-bold">Welcome to Ranked training</h1>
           <p className="text-sm text-muted-foreground">
