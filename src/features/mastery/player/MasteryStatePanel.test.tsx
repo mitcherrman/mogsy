@@ -245,3 +245,36 @@ describe("MasteryStatePanel progression display", () => {
     expect(screen.queryByTestId("mastery-progression-syndra")).toBeNull();
   });
 });
+
+describe("ability haste (J3 cooldown sets)", () => {
+  function stateWith(abilityHaste: number | null, inventory: string[] = []) {
+    return JSON.parse(JSON.stringify({
+      ...RECALL_STATE,
+      champion_a: {
+        ...RECALL_STATE.champion_a,
+        champion_id: "lux",
+        display_name: "Lux",
+        ability_haste: abilityHaste,
+        inventory_summary: inventory,
+        inventory_items: inventory.map((n) => ({ name: n, item_id: 3108 })),
+      },
+    }));
+  }
+
+  it("shows Haste when a set grants ability haste", () => {
+    render(<MasteryStatePanel state={readStateView(stateWith(10, ["Fiendish Codex"]))} heading="After" />);
+    const badge = screen.getByTestId("mastery-haste-lux");
+    expect(badge).toHaveTextContent("Haste");
+    expect(badge).toHaveTextContent("10");
+  });
+
+  it("hides Haste before any haste item is bought", () => {
+    render(<MasteryStatePanel state={readStateView(stateWith(0))} heading="Before" />);
+    expect(screen.queryByTestId("mastery-haste-lux")).toBeNull();
+  });
+
+  it("hides Haste for sets that never expose it", () => {
+    render(<MasteryStatePanel state={readStateView(stateWith(null))} heading="Before" />);
+    expect(screen.queryByTestId("mastery-haste-lux")).toBeNull();
+  });
+});

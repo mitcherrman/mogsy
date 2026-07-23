@@ -24,6 +24,7 @@ import { effectLabel, humanizeResource } from "./playerFormat";
 function hasProgression(c: MasteryChampionView): boolean {
   return (
     c.abilityPower !== null ||
+    c.abilityHaste !== null ||
     c.totalAttackDamage !== null ||
     c.gold !== null ||
     c.archetype !== null ||
@@ -85,6 +86,13 @@ function ProgressionDetails({ champion }: { champion: MasteryChampionView }) {
         )}
         {champion.abilityPower !== null && champion.abilityPower > 0 && (
           <span>AP <span className="font-medium text-foreground">{champion.abilityPower}</span></span>
+        )}
+        {/* Ability Haste is the visible input for every cooldown question, so it
+            is shown whenever a set grants any. */}
+        {champion.abilityHaste !== null && champion.abilityHaste > 0 && (
+          <span data-testid={`mastery-haste-${champion.championId}`}>
+            Haste <span className="font-medium text-foreground">{champion.abilityHaste}</span>
+          </span>
         )}
         {champion.totalAttackDamage !== null && (
           <span data-testid={`mastery-ad-${champion.championId}`}>
