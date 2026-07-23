@@ -69,6 +69,10 @@ describe("LolHistory", () => {
     renderPage();
     await waitFor(() => expect(screen.getByText("No completed quizzes yet.")).toBeTruthy());
     expect(screen.getByRole("link", { name: /Play a quiz/ }).getAttribute("href")).toBe("/quiz");
+    // Mascot is decorative: present in the DOM, hidden from assistive tech.
+    const mascot = document.querySelector('[data-mogzy-art-name="sleeping"]');
+    expect(mascot?.getAttribute("aria-hidden")).toBe("true");
+    expect(mascot?.getAttribute("alt")).toBe("");
   });
 
   it("shows a session error, not the empty state, on 401", async () => {
@@ -87,6 +91,8 @@ describe("LolHistory", () => {
     await waitFor(() => expect(screen.getByText(/Quiz API 500/)).toBeTruthy());
     expect(screen.queryByText("No completed quizzes yet.")).toBeNull();
     expect(screen.getByRole("button", { name: /Try again/ })).toBeTruthy();
+    const mascot = document.querySelector('[data-mogzy-art-name="awkwardSmile"]');
+    expect(mascot?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("treats an ok:false payload as an error, not empty history", async () => {
