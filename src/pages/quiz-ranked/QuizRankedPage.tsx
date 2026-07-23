@@ -27,9 +27,10 @@ const CLASSES: { id: RankedClass; label: string; blurb: string }[] = [
   { id: "marksman", label: "Marksman", blurb: "Tempo — pressure the opponent's clock." },
 ];
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ children, size = "default" }: { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
-    <div className="ranked-shell mx-auto max-w-3xl p-4 space-y-4" data-testid="quiz-ranked">
+    <div className={`ranked-shell mx-auto p-4 space-y-4 ${size === "wide" ? "max-w-6xl" : "max-w-3xl"}`}
+      data-testid="quiz-ranked">
       <header className="flex items-end justify-between gap-3">
         <div className="space-y-1">
           <div className="ranked-eyebrow">Competitive Mode</div>
@@ -111,7 +112,7 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
 
   // A launched / recovered / queued match reuses the exact live-match view.
   if (liveMatchId) {
-    return <Frame><QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId} /></Frame>;
+    return <Frame size="wide"><QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId} /></Frame>;
   }
 
   // Don't flash the menu before the account-bound active-match check resolves.

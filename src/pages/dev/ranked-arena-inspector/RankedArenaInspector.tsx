@@ -220,6 +220,53 @@ function Combatants({ p, o }: { p: CombatantView; o: CombatantView }) {
   );
 }
 
+/**
+ * Full arena composition — mirrors QuizRankedMatch's shared layout (top strip +
+ * You⚔Question⚔Opponent grid + ability-hotbar/submission HUD) from static
+ * fixtures, so the no-scroll desktop composition and responsive stack can be QA'd
+ * without a live match. Presentation only; no controller/engine import.
+ */
+function ArenaComposition({ selected = "0", locked = false }: { selected?: string | null; locked?: boolean }) {
+  const perms = locked ? NO_INTERACTIONS : OPEN;
+  return (
+    <div className="ranked-shell space-y-3">
+      <section className="ranked-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+        <div>
+          <div className="ranked-eyebrow">Ranked Duel · vs Bot</div>
+          <h3 className="ranked-title text-lg font-bold leading-tight">Round 7</h3>
+        </div>
+        <TimerDisplay timer={TIMER({ remainingSeconds: 18 })} label="Shared round timer" />
+      </section>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:items-start">
+        <div className="lg:col-start-1 lg:row-start-1">
+          <CombatantPanel combatant={player()} />
+        </div>
+        <div className="lg:col-start-3 lg:row-start-1">
+          <CombatantPanel combatant={opponent()} />
+        </div>
+        <section data-testid="ranked-question"
+          className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          <InteractiveScenarioSurface question={ITEM_Q} selectedOptionId={selected} permissions={perms}
+            onSelectOption={() => {}} variant="competitive" scenarioSource={ITEM_SCENARIO} />
+        </section>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
+        <section className="ranked-panel p-3 sm:p-4">
+          <AbilityTray abilities={ABILITIES([{ selected: true }])} selectedAbilityId="tank.fortify"
+            permissions={perms} onSelectAbility={() => {}} />
+        </section>
+        <section className="ranked-panel p-3 sm:p-4">
+          <SubmissionReview flow="direct"
+            submission={{ selectedOptionId: selected, selectedAbilityId: "tank.fortify",
+              phase: locked ? "locked" : "selecting" }}
+            answerLabel={selected ? "Rabadon's Deathcap" : null} abilityName="Fortify"
+            permissions={perms} onReview={() => {}} onEdit={() => {}} onConfirm={() => {}} />
+        </section>
+      </div>
+    </div>
+  );
+}
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -307,6 +354,12 @@ const STATES: InspectorState[] = [
     render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
       subheading="No contest — both players left."
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+
+  // --- full arena composition (layout QA) ---
+  { key: "arena-full", label: "Arena — full composition",
+    render: () => <ArenaComposition /> },
+  { key: "arena-locked", label: "Arena — sealed / locked",
+    render: () => <ArenaComposition locked /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",
