@@ -1,13 +1,14 @@
 // Public battle index — lifecycle-grouped cards. Server-provided effective
 // status is authoritative; the client only groups and counts down for display.
 import { useEffect } from "react";
-import { AlertTriangle, Swords } from "lucide-react";
+import { Swords } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import ArenaScoreCard from "@/components/combat-battles/ArenaScoreCard";
 import BattleCard from "@/components/combat-battles/BattleCard";
 import { useBattleList } from "@/hooks/useCombatBattles";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/combat-battles/lifecycle";
 import type { BattleListItem, PublicBattleStatus } from "@/lib/combat-battles/types";
 
@@ -57,7 +58,7 @@ export default function CombatBattlesIndex() {
       {isError && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <AlertTriangle className="h-8 w-8 text-destructive" aria-hidden />
+            <MogzyMascot pose="awkwardSmile" decorative className="h-24 w-24" />
             <p className="font-medium">We couldn't load battles right now.</p>
             <button onClick={() => refetch()} className="text-sm font-medium text-primary underline">
               Try again
