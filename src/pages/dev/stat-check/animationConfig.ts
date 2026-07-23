@@ -58,6 +58,20 @@ export const STAT_CHECK_ANIMATION = {
   },
 } as const;
 
+/**
+ * Compact reduced-motion choreography: placement still *communicates* (small
+ * lift, short slide, soft settle over ~240ms) instead of teleporting, while
+ * skipping the dramatic arc, hero scaling, and anticipation theatrics.
+ * Arrays mirror the full phase lists so the same scheduling path is used.
+ */
+export const REDUCED_MOTION_CHOREO = {
+  /** [pickup, hold, launch, travel, approach, impact, rebound, settle] */
+  placement: [60, 0, 0, 90, 30, 20, 20, 20] as number[],
+  placementAcceptanceMs: 40,
+  /** [lift, hold, travel, settle] */
+  return: [40, 0, 140, 60] as number[],
+} as const;
+
 /** Total clone flight time for a placement (excludes post-handoff acceptance glow). */
 export function placementCloneTotalMs() {
   const p = STAT_CHECK_ANIMATION.placement;

@@ -355,16 +355,59 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
   });
 
-  it("completes placement immediately under reduced motion", () => {
+  it("uses a compact communicating slide (not a teleport) under reduced motion", () => {
     reducedMotion(true);
     const { container } = render(<StatCheckPage />);
     placeWithoutSettling(container, 0, 0);
-    act(() => vi.advanceTimersByTime(200));
 
+    // Reduced motion still shows a short lift/slide/settle (~240ms): a clone
+    // exists briefly instead of the card teleporting to the board.
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(100));
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+
+    act(() => vi.advanceTimersByTime(400));
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
     expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
     expect(laneChampions(lanes(container)[0])).toHaveLength(1);
     expect(animPhase(container)).toBe("selecting");
+  });
+
+  it("dev-only forceMotion override restores the full choreography despite reduced motion", () => {
+    reducedMotion(true);
+    window.history.pushState({}, "", "/?forceMotion=1");
+    try {
+      const { container } = render(<StatCheckPage />);
+      placeWithoutSettling(container, 0, 0);
+
+      // Full hero play: placeholder held, clone still airborne after the
+      // compact reduced-motion flight would long be finished.
+      expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
+      act(() => vi.advanceTimersByTime(1_000));
+      expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+      expect(laneChampions(lanes(container)[0])).toHaveLength(0);
+
+      act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
+      expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+      expect(laneChampions(lanes(container)[0])).toHaveLength(1);
+    } finally {
+      window.history.pushState({}, "", "/");
+    }
+  });
+
+  it("keeps the travel clone as one persistent DOM node across every phase", () => {
+    const { container } = render(<StatCheckPage />);
+    placeWithoutSettling(container, 0, 0);
+    const node = screen.getAllByTestId(/^stat-check-travel-card-/)[0];
+
+    // Sample through hold, travel, approach, impact, rebound: same element,
+    // never remounted or recreated by phase re-renders.
+    for (const step of [300, 400, 700, 300, 200]) {
+      act(() => vi.advanceTimersByTime(step));
+      expect(screen.getAllByTestId(/^stat-check-travel-card-/)[0]).toBe(node);
+    }
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
   });
 
   it("hides a returning card in the fan until its travel clone arrives", () => {

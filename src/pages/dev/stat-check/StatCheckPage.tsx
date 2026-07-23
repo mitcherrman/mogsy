@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { memo, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
@@ -26,10 +26,12 @@ import { cn } from "@/lib/utils";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { buildMatchSummary } from "./matchSummary";
 import {
+  REDUCED_MOTION_CHOREO,
   STAT_CHECK_ANIMATION,
   STAT_CHECK_ANIMATION_SPEEDS,
   REVEAL_TIMELINE,
   animationDuration,
+  durationAtSpeed,
   heroArcLift,
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
@@ -116,7 +118,9 @@ export default function StatCheckPage() {
   const [laneReaction, setLaneReaction] = useState<LaneReactionState | null>(null);
   const [animationSpeed, setAnimationSpeed] = useSessionAnimationSpeed();
   const [damageFlashKey, setDamageFlashKey] = useState(0);
-  const prefersReducedMotion = usePrefersReducedMotion();
+  // Dev-only ?forceMotion=1 overrides the OS reduced-motion preference so the
+  // full choreography can be inspected during animation development.
+  const prefersReducedMotion = usePrefersReducedMotion() && !isForceMotionEnabled();
   const timersRef = useRef<number[]>([]);
   const previousMotionSettingsRef = useRef({ animationSpeed, prefersReducedMotion });
   const handCardRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -220,9 +224,13 @@ export default function StatCheckPage() {
       const fromElement = handCardRefs.current[selectedCardId];
       const toElement = lanePlayerRefs.current[category.id];
       if (card) {
-        const scale = (ms: number) => animationDuration(ms, prefersReducedMotion, animationSpeed);
         const p = STAT_CHECK_ANIMATION.placement;
-        const phaseDurations = [p.pickupMs, p.holdMs, p.launchMs, p.travelMs, p.approachMs, p.impactMs, p.reboundMs, p.settleMs].map(scale);
+        // Reduced motion still communicates the placement with a compact authored
+        // slide instead of a teleport; full motion scales with the ANIM control.
+        const phaseDurations = prefersReducedMotion
+          ? [...REDUCED_MOTION_CHOREO.placement]
+          : [p.pickupMs, p.holdMs, p.launchMs, p.travelMs, p.approachMs, p.impactMs, p.reboundMs, p.settleMs]
+              .map((ms) => durationAtSpeed(ms, animationSpeed));
         const durationMs = phaseDurations.reduce((sum, ms) => sum + ms, 0);
         queueCardTravel({
           card,
@@ -235,7 +243,9 @@ export default function StatCheckPage() {
           targetCategoryId: category.id,
           phaseDurations,
           durationMs,
-          acceptanceMs: scale(p.acceptanceMs),
+          acceptanceMs: prefersReducedMotion
+            ? REDUCED_MOTION_CHOREO.placementAcceptanceMs
+            : durationAtSpeed(p.acceptanceMs, animationSpeed),
         });
         // Hold the fan slot open through pickup, the anticipation hold, and the
         // launch; only start closing the gap 40% into the main flight.
@@ -260,9 +270,10 @@ export default function StatCheckPage() {
       const fromElement = lanePlayerRefs.current[category.id];
       const toElement = handFallbackElement();
       if (card) {
-        const scale = (ms: number) => animationDuration(ms, prefersReducedMotion, animationSpeed);
         const r = STAT_CHECK_ANIMATION.returnPlay;
-        const phaseDurations = [r.liftMs, r.holdMs, r.travelMs, r.settleMs].map(scale);
+        const phaseDurations = prefersReducedMotion
+          ? [...REDUCED_MOTION_CHOREO.return]
+          : [r.liftMs, r.holdMs, r.travelMs, r.settleMs].map((ms) => durationAtSpeed(ms, animationSpeed));
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
@@ -887,7 +898,7 @@ function CardMotionOverlay({
   );
 }
 
-function TravelingCard({
+const TravelingCard = memo(function TravelingCard({
   item,
   assets,
   reducedMotion,
@@ -896,17 +907,21 @@ function TravelingCard({
   assets: ReturnType<typeof useChampionAssets>["data"];
   reducedMotion: boolean;
 }) {
-  const keyframes = buildTravelKeyframes(item, reducedMotion);
-  const duration = animationDuration(item.durationMs, reducedMotion) / 1000;
+  // The clone must remain ONE persistent animation: the motion plan is memoized
+  // against the stable travel item so parent re-renders (phase dispatches, lane
+  // reactions, hand-gap release) can never rebuild the keyframe arrays and make
+  // framer-motion restart mid-flight — that restart was the visible "stepping".
+  const motionPlan = useMemo(() => buildTravelKeyframes(item, reducedMotion), [item, reducedMotion]);
   return (
     <motion.div
       data-testid={`stat-check-travel-card-${item.card.id}`}
-      className="fixed left-0 top-0 origin-center"
-      initial={keyframes.initial}
-      animate={keyframes.animate}
-      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: keyframes.times }}
+      className="fixed left-0 top-0 origin-center will-change-transform"
+      style={{ width: item.from.width, height: item.from.height }}
+      initial={motionPlan.initial}
+      animate={motionPlan.animate}
+      transition={motionPlan.transition}
     >
-      <div className="h-full w-full overflow-hidden rounded-lg">
+      <div className="h-full w-full overflow-hidden rounded-lg shadow-[0_26px_44px_rgba(0,0,0,0.5)]">
         <ChampionCard
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
@@ -917,56 +932,57 @@ function TravelingCard({
       </div>
     </motion.div>
   );
-}
+});
 
-const SHADOW_SM = "drop-shadow(0 8px 12px rgba(0,0,0,0.4))";
-const SHADOW_MD = "drop-shadow(0 18px 24px rgba(0,0,0,0.5))";
-const SHADOW_LG = "drop-shadow(0 30px 36px rgba(0,0,0,0.55))";
-const SHADOW_XL = "drop-shadow(0 44px 52px rgba(0,0,0,0.6))";
-const SHADOW_FLAT = "drop-shadow(0 3px 5px rgba(0,0,0,0.5))";
+type TravelEase = "linear" | "easeIn" | "easeOut" | "easeInOut";
 
 /**
- * Authored keyframe stations for the travel clone.
+ * Authored keyframe stations for the travel clone — transform-only.
  *
- * place/lane-move (hero play, 10 stations over 9 segments — the travel phase is
- * split at the apex): rise out of the fan, hover in anticipation, launch, arc
- * through an oversized apex at heroApexScale, descend, strike the lane with
- * compression, rebound, settle into exact board geometry.
+ * The element box is fixed at the SOURCE size (set once as static style); all
+ * motion is x/y/rotate/scale around the center, so the whole flight runs on the
+ * compositor (no width/height layout or animated drop-shadow paints). Stations
+ * align the visual center with each target rect's center; the final board size
+ * is reached via `endScale = to.width / from.width`.
  *
- * return: lift off the board, brief hold, arc back to the fan, settle.
- * Other kinds keep a simple two-point flight.
+ * Per-segment easing keeps the motion continuous: decelerating eases only where
+ * the choreography *intends* a pause (pickup, hold, settle); the flight itself
+ * uses easeIn → linear → easeOut so the card never dead-stops between stations.
  */
 function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) {
   const { from, to } = item;
-  const base = {
-    x: from.x,
-    y: from.y,
-    width: from.width,
-    height: from.height,
-    rotate: item.fromRotation,
-    opacity: 1,
-    scale: 1,
-    rotateX: 0,
-    rotateY: 0,
-    filter: SHADOW_SM,
-  };
+  const px = (r: DOMRectSnapshot) => r.x + r.width / 2 - from.width / 2;
+  const py = (r: DOMRectSnapshot) => r.y + r.height / 2 - from.height / 2;
+  const x0 = px(from);
+  const y0 = py(from);
+  const x1 = px(to);
+  const y1 = py(to);
+  const endScale = to.width / Math.max(1, from.width);
+  const duration = item.durationMs / 1000;
+  const base = { x: x0, y: y0, rotate: item.fromRotation, scale: 1, opacity: 1, rotateX: 0, rotateY: 0 };
+
   if (reducedMotion) {
+    // Compact reduced-motion communication: small lift, short slide, soft settle.
     return {
       initial: base,
       animate: {
-        x: to.x, y: to.y, width: to.width, height: to.height,
-        rotate: item.toRotation, opacity: 1, scale: item.kind === "discard" ? 0.45 : 1,
-        rotateX: 0, rotateY: 0, filter: SHADOW_SM,
+        x: [x0, x0, x1, x1],
+        y: [y0, y0 - 12, y1 - 4, y1],
+        rotate: [item.fromRotation, 0, 0, item.toRotation],
+        scale: [1, 1.02, endScale, endScale],
+        opacity: 1,
+        rotateX: 0,
+        rotateY: 0,
       },
-      times: undefined as number[] | undefined,
+      transition: { duration, times: [0, 0.25, 0.88, 1], ease: ["easeOut", "easeInOut", "easeOut"] as TravelEase[] },
     };
   }
 
   const viewportW = typeof window === "undefined" ? 1280 : window.innerWidth;
   const viewportH = typeof window === "undefined" ? 800 : window.innerHeight;
-  const distance = Math.hypot(to.x - from.x, to.y - from.y);
-  const dir = Math.sign(to.x + to.width / 2 - (from.x + from.width / 2)) || 1;
-  const midX = (from.x + to.x) / 2;
+  const distance = Math.hypot(x1 - x0, y1 - y0);
+  const dir = Math.sign(x1 - x0) || 1;
+  const midX = (x0 + x1) / 2;
 
   if ((item.kind === "place" || item.kind === "lane-move") && item.phaseDurations?.length === 8) {
     const [pickupMs, holdMs, launchMs, travelMs, approachMs, impactMs, reboundMs, settleMs] = item.phaseDurations;
@@ -979,26 +995,28 @@ function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) 
       times.push(Math.min(1, at / total));
     }
     const arc = heroArcLift(distance, viewportW, viewportH);
-    const apexY = Math.min(from.y, to.y) - arc;
+    const apexY = Math.min(y0, y1) - arc;
     const apexScale = STAT_CHECK_ANIMATION.heroApexScale;
-    const midW = (from.width + to.width) / 2;
-    const midH = (from.height + to.height) / 2;
     return {
       initial: base,
       animate: {
-        //          start      pickup      hold        launch                     apex          descent      approach   impact      rebound     settle
-        x:      [from.x,     from.x,     from.x,     from.x + (midX - from.x) * 0.25, midX,     to.x,        to.x,      to.x,       to.x,       to.x],
-        y:      [from.y,     from.y - 64, from.y - 74, from.y - 140,             apexY,        to.y - 40,   to.y,      to.y + 8,   to.y - 5,   to.y],
-        width:  [from.width, from.width, from.width, from.width,                 midW,         to.width,    to.width,  to.width,   to.width,   to.width],
-        height: [from.height, from.height, from.height, from.height,             midH,         to.height,   to.height, to.height,  to.height,  to.height],
-        rotate: [item.fromRotation, 0,   0,          dir * 8,                    dir * 10,     dir * 3,     0,         -dir * 2,   0,          item.toRotation],
-        scale:  [1,          1.18,       1.18,       1.3,                        apexScale,    1.18,        1.03,      0.955,      1.02,       1],
-        rotateX: [0,         2,          2,          6,                          9,            5,           0,         -4,         1,          0],
-        rotateY: [0,         0,          0,          dir * -5,                   dir * -8,     dir * -3,    0,         dir * 1.5,  0,          0],
+        //          start  pickup     hold       launch                    apex       descent          approach          impact             rebound           settle
+        x:      [x0,      x0,        x0,        x0 + (midX - x0) * 0.25,  midX,      x1,              x1,               x1,                x1,               x1],
+        y:      [y0,      y0 - 64,   y0 - 74,   y0 - 140,                 apexY,     y1 - 40,         y1,               y1 + 8,            y1 - 5,           y1],
+        rotate: [item.fromRotation, 0, 0,       dir * 8,                  dir * 10,  dir * 3,         0,                -dir * 2,          0,                item.toRotation],
+        scale:  [1,       1.18,      1.18,      1.3,                      apexScale, endScale * 1.15, endScale * 1.03,  endScale * 0.955,  endScale * 1.02,  endScale],
+        rotateX: [0,      2,         2,         6,                        9,         5,               0,                -4,                1,                0],
+        rotateY: [0,      0,         0,         dir * -5,                 dir * -8,  dir * -3,        0,                dir * 1.5,         0,                0],
         opacity: 1,
-        filter: [SHADOW_SM,  SHADOW_MD,  SHADOW_MD,  SHADOW_LG,                  SHADOW_XL,    SHADOW_LG,   SHADOW_MD, SHADOW_FLAT, SHADOW_MD, SHADOW_SM],
       },
-      times,
+      transition: {
+        duration,
+        times,
+        // pickup rises then eases; hold floats; launch accelerates; flight is
+        // linear through the apex; approach decelerates; impact accelerates into
+        // the strike; rebound eases off; settle comes to rest.
+        ease: ["easeOut", "easeInOut", "easeIn", "linear", "linear", "easeOut", "easeIn", "easeOut", "easeInOut"] as TravelEase[],
+      },
     };
   }
 
@@ -1013,40 +1031,34 @@ function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) 
       times.push(Math.min(1, at / total));
     }
     const arc = heroArcLift(distance, viewportW, viewportH) * 0.6;
-    const apexY = Math.min(from.y, to.y) - arc;
+    const apexY = Math.min(y0, y1) - arc;
     return {
       initial: base,
       animate: {
-        x:      [from.x, from.x,      from.x,      midX,        to.x,        to.x],
-        y:      [from.y, from.y - 44, from.y - 50, apexY,       to.y - 8,    to.y],
-        width:  [from.width, from.width, from.width, (from.width + to.width) / 2, to.width, to.width],
-        height: [from.height, from.height, from.height, (from.height + to.height) / 2, to.height, to.height],
-        rotate: [item.fromRotation, 0, 0,          -dir * 6,    item.toRotation, item.toRotation],
-        scale:  [1,      1.15,       1.15,         1.2,         1.02,        1],
+        x:      [x0,     x0,       x0,       midX,           x1,               x1],
+        y:      [y0,     y0 - 44,  y0 - 50,  apexY,          y1 - 8,           y1],
+        rotate: [item.fromRotation, 0, 0,    -dir * 6,       item.toRotation,  item.toRotation],
+        scale:  [1,      1.15,     1.15,     1.2,            endScale * 1.02,  endScale],
         rotateX: 0,
         rotateY: 0,
         opacity: 1,
-        filter: [SHADOW_SM, SHADOW_MD, SHADOW_MD,  SHADOW_LG,   SHADOW_MD,   SHADOW_SM],
       },
-      times,
+      transition: { duration, times, ease: ["easeOut", "easeInOut", "easeIn", "linear", "easeOut"] as TravelEase[] },
     };
   }
 
   return {
     initial: base,
     animate: {
-      x: [from.x, midX, to.x],
-      y: [from.y, Math.min(from.y, to.y) - 40, to.y],
-      width: to.width,
-      height: to.height,
+      x: [x0, midX, x1],
+      y: [y0, Math.min(y0, y1) - 40, y1],
       rotate: item.toRotation,
+      scale: [1, 1, endScale],
       opacity: 1,
-      scale: item.kind === "discard" ? 0.45 : 1,
       rotateX: 0,
       rotateY: 0,
-      filter: [SHADOW_SM, SHADOW_MD, SHADOW_SM],
     },
-    times: [0, 0.5, 1],
+    transition: { duration, times: [0, 0.5, 1], ease: ["easeIn", "easeOut"] as TravelEase[] },
   };
 }
 
@@ -1614,6 +1626,17 @@ function phaseLabel(step: PresentationStep) {
 function isAnimDebugEnabled() {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).has("animDebug");
+}
+
+/**
+ * Dev-only: `?forceMotion=1` forces the full choreography regardless of the OS
+ * prefers-reduced-motion setting, for animation development. Production builds
+ * keep standards-compliant reduced-motion behavior.
+ */
+function isForceMotionEnabled() {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("forceMotion");
 }
 
 function clearAnimationTimers(timers: number[]) {
