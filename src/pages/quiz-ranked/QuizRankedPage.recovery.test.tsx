@@ -35,6 +35,7 @@ vi.mock("./useRankedQueue", () => ({
 vi.mock("@/lib/ranked-public/client", () => ({
   getActiveMatch: h.getActiveMatch,
   createBotMatch: vi.fn(),
+  getMatchHistory: vi.fn().mockResolvedValue({ entries: [], count: 0 }),
   isAborted: (e: unknown) => (e as { name?: string })?.name === "AbortError",
   RankedApiError: class extends Error {},
 }));
