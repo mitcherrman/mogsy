@@ -144,6 +144,9 @@ export const STAT_CHECK_RULES = {
 const number = (value: number) => Number(value.toFixed(2)).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const whole = (value: number) => Math.round(value).toLocaleString();
 
+// Decisive thresholds are initial calibrated values from the 500-match
+// real-roster diagnostic (172 champions, July 2026) — see diagnostics/
+// thresholdCandidateTable. Versioned constants, not runtime calibration.
 export const STAT_CATEGORIES: StatCategory[] = [
   {
     id: "highest-hp-1",
@@ -152,8 +155,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     family: "health",
     active: true,
     direction: "higher",
-    decisiveThreshold: 0.12,
-    explanation: "Health spread is meaningful but not massive, so 12% is a prototype tuning value.",
+    decisiveThreshold: 0.05,
+    explanation: "Level-1 health clusters tightly, so a 5% gap (30+ HP) is already a real stat check.",
     getValue: (card) => card.stats.hp,
     formatValue: whole,
   },
@@ -164,8 +167,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     family: "health",
     active: true,
     direction: "higher",
-    decisiveThreshold: 0.12,
-    explanation: "Uses Riot's level scaling formula through the shared League Docs stat helpers.",
+    decisiveThreshold: 0.075,
+    explanation: "Growth spreads level-18 health, so 7.5% marks a clearly tankier champion.",
     getValue: (card) => statAtLevel(card.stats.hp, card.stats.hpPerLevel, 18),
     formatValue: whole,
   },
@@ -176,8 +179,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     family: "attack-damage",
     active: true,
     direction: "higher",
-    decisiveThreshold: 0.12,
-    explanation: "Base attack damage separates early-game stat checks; 12% matches the other damage stats.",
+    decisiveThreshold: 0.1,
+    explanation: "Base attack damage spreads moderately; a 10% edge is a clear early-game win.",
     getValue: (card) => card.stats.ad,
     formatValue: number,
   },
@@ -188,8 +191,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     family: "attack-damage",
     active: true,
     direction: "higher",
-    decisiveThreshold: 0.12,
-    explanation: "Attack damage growth varies enough that 12% catches clear stat-check wins.",
+    decisiveThreshold: 0.15,
+    explanation: "Growth makes level-18 AD gaps common, so only a 15%+ edge counts as decisive.",
     getValue: (card) => statAtLevel(card.stats.ad, card.stats.adPerLevel, 18),
     formatValue: number,
   },
@@ -200,8 +203,8 @@ export const STAT_CATEGORIES: StatCategory[] = [
     family: "armor",
     active: true,
     direction: "lower",
-    decisiveThreshold: 0.15,
-    explanation: "A 15% lower-armor margin is treated as a decisive prototype mismatch.",
+    decisiveThreshold: 0.25,
+    explanation: "Base armor varies widely, so only a 25%+ lower-armor gap is a decisive mismatch.",
     getValue: (card) => card.stats.armor,
     formatValue: number,
   },

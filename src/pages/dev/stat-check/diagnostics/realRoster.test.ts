@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ChampionBaseStats } from "@/lib/league-docs/api";
 import { ACTIVE_STAT_CATEGORIES, STAT_CATEGORIES } from "../statCheckEngine";
 import { parseChampionStatsResponse, rosterDeckFromResponse } from "./rosterAdapter";
-import { formatDiagnosticsReport, runDiagnostics } from "./simulation";
+import { formatDiagnosticsReport, runDiagnostics, thresholdCandidateTable } from "./simulation";
 
 const row = (name: string, overrides: Partial<ChampionBaseStats> = {}): ChampionBaseStats => ({
   champion_name: name,
@@ -81,7 +81,29 @@ describe.skipIf(!hasRoster)("real roster diagnostics", () => {
       for (const match of report.matchRecords) {
         expect(match.exhausted || match.outcome !== null).toBe(true);
       }
-      console.log(`\n[REAL ROSTER n=${deck.length}]\n${formatDiagnosticsReport(report)}\n`);
+
+      // Calibration guards: bounded ranges, not exact percentages. Armor and
+      // AD-18 must stay well below their pre-calibration 38%/34% rates, HP
+      // lanes must no longer be effectively zero, and nothing may dominate.
+      const decisiveRate = (id: string) => {
+        const stats = report.categoryStats[id as keyof typeof report.categoryStats];
+        return stats ? stats.decisiveWins / stats.appearances : 0;
+      };
+      expect(decisiveRate("lowest-armor-1")).toBeGreaterThan(0.05);
+      expect(decisiveRate("lowest-armor-1")).toBeLessThan(0.25);
+      expect(decisiveRate("highest-ad-18")).toBeGreaterThan(0.05);
+      expect(decisiveRate("highest-ad-18")).toBeLessThan(0.3);
+      expect(decisiveRate("highest-hp-1")).toBeGreaterThan(0.05);
+      expect(decisiveRate("highest-hp-18")).toBeGreaterThan(0.05);
+      expect(decisiveRate("highest-ad-1")).toBeGreaterThan(0.05);
+      for (const category of ACTIVE_STAT_CATEGORIES) {
+        expect(decisiveRate(category.id)).toBeLessThan(0.3);
+      }
+      // Ties never count as decisive: decisive wins can never exceed non-ties.
+      for (const stats of Object.values(report.categoryStats)) {
+        expect(stats.decisiveWins).toBeLessThanOrEqual(stats.appearances - stats.ties);
+      }
+      console.log(`\n[REAL ROSTER n=${deck.length}]\n${formatDiagnosticsReport(report)}\n\n${thresholdCandidateTable(report)}\n`);
     },
     180_000,
   );

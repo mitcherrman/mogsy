@@ -377,6 +377,31 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
   return report;
 }
 
+/**
+ * Candidate-threshold table for calibration passes. Winning margins are
+ * threshold-independent, so decisive rates for any candidate threshold can be
+ * read straight off the recorded margin distribution without re-simulating.
+ */
+export function thresholdCandidateTable(
+  report: DiagnosticsReport,
+  candidates: number[] = [0.03, 0.05, 0.075, 0.1, 0.125, 0.15, 0.2, 0.25, 0.3],
+): string {
+  const lines: string[] = [];
+  lines.push(`Candidate decisive rates (per appearance | per non-tied lane):`);
+  lines.push(`  ${"category".padEnd(22)}${candidates.map((c) => `${(c * 100).toFixed(1)}%`.padStart(13)).join("")}`);
+  for (const [id, stats] of Object.entries(report.categoryStats).sort((a, b) => a[0].localeCompare(b[0]))) {
+    const nonTied = stats.appearances - stats.ties;
+    const cells = candidates.map((candidate) => {
+      const hits = stats.winningMargins.filter((margin) => margin >= candidate).length;
+      const perAppearance = stats.appearances ? (hits / stats.appearances) * 100 : 0;
+      const perNonTied = nonTied ? (hits / nonTied) * 100 : 0;
+      return `${perAppearance.toFixed(1)}|${perNonTied.toFixed(1)}`.padStart(13);
+    });
+    lines.push(`  ${id.padEnd(22)}${cells.join("")}`);
+  }
+  return lines.join("\n");
+}
+
 export function formatDiagnosticsReport(report: DiagnosticsReport): string {
   const lines: string[] = [];
   const pct = (n: number, d: number) => (d === 0 ? "0%" : `${((n / d) * 100).toFixed(1)}%`);

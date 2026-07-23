@@ -1519,7 +1519,8 @@ function statFamilyLabel(category: StatCategory) {
 }
 
 function formatThreshold(threshold: number) {
-  return `${Math.round(threshold * 100)}%`;
+  const percent = threshold * 100;
+  return Number.isInteger(percent) ? `${percent}%` : `${percent.toFixed(1)}%`;
 }
 
 function scopeLabel(category: StatCategory) {

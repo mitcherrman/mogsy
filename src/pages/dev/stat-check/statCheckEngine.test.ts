@@ -108,6 +108,32 @@ describe("Stat Check engine", () => {
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-attack-range")?.decisiveThreshold).toBe(0.2);
   });
 
+  it("gives every active category an explicit calibrated threshold", () => {
+    const expected: Record<string, number> = {
+      "highest-hp-1": 0.05,
+      "highest-hp-18": 0.075,
+      "highest-ad-1": 0.1,
+      "highest-ad-18": 0.15,
+      "lowest-armor-1": 0.25,
+      "highest-move-speed": 0.05,
+      "highest-attack-range": 0.2,
+    };
+    expect(Object.fromEntries(ACTIVE_STAT_CATEGORIES.map((c) => [c.id, c.decisiveThreshold]))).toEqual(expected);
+    for (const category of ACTIVE_STAT_CATEGORIES) {
+      expect(category.decisiveThreshold).toBeGreaterThan(0);
+      expect(category.decisiveThreshold).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  it("treats the exact threshold as decisive and just-below as not", () => {
+    const higher = cat("highest-hp-1", "higher", 0.1);
+    expect(compareCategory(higher, card("Big", 100), card("Small", 90)).decisive).toBe(true);
+    expect(compareCategory(higher, card("Big", 100), card("Small", 91)).decisive).toBe(false);
+    const lower = cat("lowest-armor-1", "lower", 0.25);
+    expect(compareCategory(lower, card("Soft", 75), card("Hard", 100)).decisive).toBe(true);
+    expect(compareCategory(lower, card("Soft", 76), card("Hard", 100)).decisive).toBe(false);
+  });
+
   it("calculates 2-1 board damage", () => {
     const damage = calculateRoundDamage([result("player"), result("player"), result("bot")]);
     expect(damage.boardWinner).toBe("player");

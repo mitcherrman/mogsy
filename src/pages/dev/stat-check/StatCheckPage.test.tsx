@@ -244,7 +244,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
     const { container } = render(<StatCheckPage />);
-    expect(lanes(container).some((lane) => /Decisive \d+%/.test(lane.textContent ?? ""))).toBe(true);
+    expect(lanes(container).some((lane) => /Decisive [\d.]+%/.test(lane.textContent ?? ""))).toBe(true);
     fillBoard(container);
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
@@ -257,7 +257,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-board-result")).toHaveTextContent(/board/i);
     expect(screen.getByTestId("stat-check-damage-player")).toHaveTextContent(/Total:/);
     expect(screen.getByTestId("stat-check-damage-bot")).toHaveTextContent(/Total:/);
-    expect(lanes(container).some((lane) => /Decisive at \d+%/.test(lane.textContent ?? ""))).toBe(true);
+    expect(lanes(container).some((lane) => /Decisive at [\d.]+%/.test(lane.textContent ?? ""))).toBe(true);
   });
 
   it("uses the reduced-motion path without waiting through the staged reveal", () => {
