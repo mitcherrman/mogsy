@@ -14,6 +14,7 @@ import {
   bool,
   intIndex,
   nonEmptyStr,
+  nstr,
   num,
   oneOf,
   rec,
@@ -60,6 +61,13 @@ export interface MasteryPlayerReveal {
   readonly playerAnswer: string | number | boolean;
   readonly authoritativeCorrectness: boolean;
   readonly correctAnswer: string | number | boolean;
+  /**
+   * The correct answer pre-formatted by the backend at the precision it grades
+   * at. Prefer this over re-formatting `correctAnswer` locally: rounding it here
+   * would show a different number than the grader accepts. Null on responses
+   * that predate the precision contract.
+   */
+  readonly correctAnswerDisplay: string | null;
   readonly explanation: string;
   readonly calculationSteps: readonly MasteryCalculationStep[];
   readonly beforeState: MasteryStateView;
@@ -110,6 +118,7 @@ export function readPlayerReveal(value: unknown, label = "data"): MasteryPlayerR
     playerAnswer: scalar(d.player_answer, `${label}.player_answer`),
     authoritativeCorrectness: bool(d.authoritative_correctness, `${label}.authoritative_correctness`),
     correctAnswer: scalar(d.correct_answer, `${label}.correct_answer`),
+    correctAnswerDisplay: nstr(d.correct_answer_display, `${label}.correct_answer_display`),
     explanation: str(d.explanation, `${label}.explanation`),
     calculationSteps: steps.map((s, i) => readCalcStep(s, `${label}.calculation_steps[${i}]`)),
     beforeState: readStateView(d.before_state, `${label}.before_state`),

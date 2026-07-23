@@ -17,7 +17,14 @@ export interface NumericValidation {
   readonly message: string | null;
 }
 
-/** Pure input-shape validation. Never determines correctness. */
+/**
+ * Pure input-shape validation. Never determines correctness.
+ *
+ * Note this deliberately does NOT reject extra decimal places: the backend
+ * accepts any answer that rounds to the displayed value, so truncating or
+ * blocking a more precise entry here would reject answers the grader calls
+ * correct. The value is always submitted verbatim.
+ */
 export function validateNumeric(raw: string, c: NumericInputConstraints): NumericValidation {
   const trimmed = raw.trim();
   if (trimmed === "") return { valid: false, value: null, message: "Enter a value." };
@@ -45,6 +52,13 @@ export function MasteryNumericInput({
   const id = useId();
   const validation = validateNumeric(value, constraints);
   const showError = value.trim() !== "" && !validation.valid;
+  const hint = constraints.precisionInstruction;
+  const hintId = `${id}-hint`;
+  // Whole-number questions get a numeric keypad; decimals need the decimal key.
+  const inputMode = constraints.integerOnly ? "numeric" : "decimal";
+  const describedBy = [showError ? `${id}-err` : null, hint ? hintId : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-medium">
@@ -53,11 +67,12 @@ export function MasteryNumericInput({
       <Input
         id={id}
         type="text"
-        inputMode="decimal"
+        inputMode={inputMode}
         autoComplete="off"
         disabled={disabled}
         value={value}
-        aria-describedby={showError ? `${id}-err` : undefined}
+        step={constraints.step ?? undefined}
+        aria-describedby={describedBy || undefined}
         aria-invalid={showError || undefined}
         data-testid="mastery-numeric-input"
         onChange={(e) => onValueChange(e.target.value)}
@@ -68,6 +83,12 @@ export function MasteryNumericInput({
           }
         }}
       />
+      {hint && (
+        <p id={hintId} className="text-xs text-muted-foreground"
+           data-testid="mastery-precision-hint">
+          {hint}
+        </p>
+      )}
       {showError && (
         <p id={`${id}-err`} role="alert" className="text-xs text-destructive">
           {validation.message}

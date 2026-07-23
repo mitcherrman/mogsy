@@ -97,7 +97,9 @@ export function MasteryRevealView({
         <div className="flex gap-2">
           <dt className="font-medium">Correct answer:</dt>
           <dd data-testid="mastery-correct-answer" className="tabular-nums">
-            {formatAnswer(reveal.correctAnswer, question)}
+            {/* Backend-formatted at the precision it grades at. Re-rounding here
+                would display a number the grader does not accept. */}
+            {reveal.correctAnswerDisplay ?? formatAnswer(reveal.correctAnswer, question)}
           </dd>
         </div>
       </dl>
