@@ -1,8 +1,13 @@
 export type PresentationStep =
   | "selecting"
   | "placement-pickup"
+  | "placement-hold"
+  | "placement-launch"
   | "placement-travel"
-  | "placement-landing"
+  | "placement-approach"
+  | "placement-impact"
+  | "placement-rebound"
+  | "placement-settle"
   | "placement-accepted"
   | "returning-card"
   | "locking"
@@ -22,8 +27,13 @@ export type PresentationStep =
 export type AnimationEvent =
   | { type: "select" }
   | { type: "pickup" }
+  | { type: "hold" }
+  | { type: "launch" }
   | { type: "travel" }
-  | { type: "land" }
+  | { type: "approach" }
+  | { type: "impact" }
+  | { type: "rebound" }
+  | { type: "settle" }
   | { type: "accept" }
   | { type: "return" }
   | { type: "lock" }
@@ -37,6 +47,19 @@ export type AnimationEvent =
   | { type: "deal" }
   | { type: "cancel" };
 
+/** Ordered hero-play phases; used by the page to schedule phase dispatches. */
+export const PLACEMENT_PHASES = [
+  "placement-pickup",
+  "placement-hold",
+  "placement-launch",
+  "placement-travel",
+  "placement-approach",
+  "placement-impact",
+  "placement-rebound",
+  "placement-settle",
+  "placement-accepted",
+] as const satisfies readonly PresentationStep[];
+
 export function animationStepReducer(_step: PresentationStep, event: AnimationEvent): PresentationStep {
   switch (event.type) {
     case "select":
@@ -44,10 +67,20 @@ export function animationStepReducer(_step: PresentationStep, event: AnimationEv
       return "selecting";
     case "pickup":
       return "placement-pickup";
+    case "hold":
+      return "placement-hold";
+    case "launch":
+      return "placement-launch";
     case "travel":
       return "placement-travel";
-    case "land":
-      return "placement-landing";
+    case "approach":
+      return "placement-approach";
+    case "impact":
+      return "placement-impact";
+    case "rebound":
+      return "placement-rebound";
+    case "settle":
+      return "placement-settle";
     case "accept":
       return "placement-accepted";
     case "return":
@@ -110,5 +143,12 @@ export function stepBeforeDamage(step: PresentationStep) {
 }
 
 export function allowsPreLockInteraction(step: PresentationStep) {
-  return ["selecting", "placement-pickup", "placement-travel", "returning-card"].includes(step);
+  // The whole hero-play choreography stays interactive: the player can queue the
+  // next placement while a previous card is still in flight. Only lock/reveal
+  // phases block pre-lock editing.
+  return (
+    step === "selecting" ||
+    step === "returning-card" ||
+    (PLACEMENT_PHASES as readonly string[]).includes(step)
+  );
 }

@@ -30,6 +30,7 @@ import {
   STAT_CHECK_ANIMATION_SPEEDS,
   REVEAL_TIMELINE,
   animationDuration,
+  heroArcLift,
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
 } from "./animationConfig";
@@ -71,11 +72,14 @@ type TravelingCardState = {
   to: DOMRectSnapshot;
   fromRotation: number;
   toRotation: number;
+  /** Total clone flight time, already speed-scaled. */
   durationMs: number;
-  pickupMs?: number;
-  travelMs?: number;
-  landingMs?: number;
-  acceptanceMs?: number;
+  /**
+   * Speed-scaled per-phase durations for authored choreography.
+   * place/lane-move: [pickup, hold, launch, travel, approach, impact, rebound, settle]
+   * return: [lift, hold, travel, settle]
+   */
+  phaseDurations?: number[];
   kind: "place" | "return" | "lane-move" | "discard" | "deal";
 };
 
@@ -88,7 +92,7 @@ type DOMRectSnapshot = {
 
 type LaneReactionState = {
   categoryId: StatCategoryId;
-  kind: "accept";
+  kind: "charging" | "impact" | "accept";
 };
 
 const SPEED_STORAGE_KEY = "stat-check-animation-speed";
@@ -216,7 +220,10 @@ export default function StatCheckPage() {
       const fromElement = handCardRefs.current[selectedCardId];
       const toElement = lanePlayerRefs.current[category.id];
       if (card) {
-        const durations = placementDurations();
+        const scale = (ms: number) => animationDuration(ms, prefersReducedMotion, animationSpeed);
+        const p = STAT_CHECK_ANIMATION.placement;
+        const phaseDurations = [p.pickupMs, p.holdMs, p.launchMs, p.travelMs, p.approachMs, p.impactMs, p.reboundMs, p.settleMs].map(scale);
+        const durationMs = phaseDurations.reduce((sum, ms) => sum + ms, 0);
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
@@ -226,16 +233,19 @@ export default function StatCheckPage() {
           toRotation: 0,
           kind: current ? "lane-move" : "place",
           targetCategoryId: category.id,
-          ...durations,
+          phaseDurations,
+          durationMs,
+          acceptanceMs: scale(p.acceptanceMs),
         });
-        // Hold the fan slot open until the card has visibly departed, then let
-        // the remaining hand re-fan while the clone is still mid-flight.
+        // Hold the fan slot open through pickup, the anticipation hold, and the
+        // launch; only start closing the gap 40% into the main flight.
         const cardId = card.id;
+        const [pickupMs, holdMs, launchMs, travelMs] = phaseDurations;
         setHandGapIds((ids) => (ids.includes(cardId) ? ids : [...ids, cardId]));
         timersRef.current.push(
           window.setTimeout(
             () => setHandGapIds((ids) => ids.filter((id) => id !== cardId)),
-            durations.pickupMs + Math.round(durations.travelMs * STAT_CHECK_ANIMATION.handGapHoldRatio),
+            pickupMs + holdMs + launchMs + Math.round(travelMs * STAT_CHECK_ANIMATION.handGapHoldTravelRatio),
           ),
         );
       }
@@ -250,6 +260,9 @@ export default function StatCheckPage() {
       const fromElement = lanePlayerRefs.current[category.id];
       const toElement = handFallbackElement();
       if (card) {
+        const scale = (ms: number) => animationDuration(ms, prefersReducedMotion, animationSpeed);
+        const r = STAT_CHECK_ANIMATION.returnPlay;
+        const phaseDurations = [r.liftMs, r.holdMs, r.travelMs, r.settleMs].map(scale);
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
@@ -258,7 +271,8 @@ export default function StatCheckPage() {
           fromRotation: 0,
           toRotation: 0,
           kind: "return",
-          durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion, animationSpeed),
+          phaseDurations,
+          durationMs: phaseDurations.reduce((sum, ms) => sum + ms, 0),
         });
       }
       dispatchRevealStep({ type: "return" });
@@ -268,6 +282,12 @@ export default function StatCheckPage() {
 
   const lockIn = () => {
     if (!isReadyToLock(match) || !canEdit) return;
+    // Locking finalizes placement presentation instantly: cancel any in-flight
+    // clones and their pending phase timers so they cannot clobber the reveal.
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    setHandGapIds([]);
+    setLaneReaction(null);
     setSelectedCardId(null);
     dispatchRevealStep({ type: "lock" });
     setMatch((state) => resolveCurrentRound(state));
@@ -309,9 +329,7 @@ export default function StatCheckPage() {
     toRotation,
     kind,
     durationMs,
-    pickupMs,
-    travelMs,
-    landingMs,
+    phaseDurations,
     acceptanceMs,
     targetCategoryId,
   }: {
@@ -325,26 +343,37 @@ export default function StatCheckPage() {
     toRotation: number;
     kind: TravelingCardState["kind"];
     durationMs: number;
-    pickupMs?: number;
-    travelMs?: number;
-    landingMs?: number;
+    phaseDurations?: number[];
     acceptanceMs?: number;
     targetCategoryId?: StatCategoryId;
   }) => {
     const from = fromRect ?? snapshotElement(fromElement) ?? fallbackRect();
     const to = toRect ?? snapshotElement(toElement) ?? from;
     const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, pickupMs, travelMs, landingMs, acceptanceMs, kind }]);
-    if (pickupMs && travelMs && landingMs && acceptanceMs) {
-      timersRef.current.push(
-        window.setTimeout(() => dispatchRevealStep({ type: "travel" }), pickupMs),
-        window.setTimeout(() => {
-          if (targetCategoryId) setLaneReaction({ categoryId: targetCategoryId, kind: "accept" });
-          dispatchRevealStep({ type: "land" });
-        }, pickupMs + travelMs),
-        window.setTimeout(() => dispatchRevealStep({ type: "accept" }), pickupMs + travelMs + landingMs),
-        window.setTimeout(() => setLaneReaction(null), pickupMs + travelMs + landingMs + acceptanceMs),
-      );
+    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
+    if ((kind === "place" || kind === "lane-move") && phaseDurations?.length === 8) {
+      // Schedule the hero-play phase machine: each dispatch fires at the end of
+      // the previous phase; the lane charges immediately, flashes at impact, and
+      // glows in acceptance after the clone hands off.
+      const [pickupMs, holdMs, launchMs, travelMs, approachMs, impactMs, reboundMs, settleMs] = phaseDurations;
+      if (targetCategoryId) setLaneReaction({ categoryId: targetCategoryId, kind: "charging" });
+      let at = pickupMs;
+      const schedule = (delay: number, action: () => void) => timersRef.current.push(window.setTimeout(action, delay));
+      schedule(at, () => dispatchRevealStep({ type: "hold" }));
+      schedule((at += holdMs), () => dispatchRevealStep({ type: "launch" }));
+      schedule((at += launchMs), () => dispatchRevealStep({ type: "travel" }));
+      schedule((at += travelMs), () => dispatchRevealStep({ type: "approach" }));
+      schedule((at += approachMs), () => {
+        if (targetCategoryId) setLaneReaction({ categoryId: targetCategoryId, kind: "impact" });
+        dispatchRevealStep({ type: "impact" });
+      });
+      schedule((at += impactMs), () => dispatchRevealStep({ type: "rebound" }));
+      schedule((at += reboundMs), () => dispatchRevealStep({ type: "settle" }));
+      schedule((at += settleMs), () => {
+        if (targetCategoryId) setLaneReaction({ categoryId: targetCategoryId, kind: "accept" });
+        dispatchRevealStep({ type: "accept" });
+      });
+      schedule(at + (acceptanceMs ?? 0), () => setLaneReaction((reaction) => (reaction?.categoryId === targetCategoryId ? null : reaction)));
     }
     const timer = window.setTimeout(() => {
       setTravelingCards((items) => items.filter((item) => item.id !== id));
@@ -381,16 +410,20 @@ export default function StatCheckPage() {
     }
   };
 
-  const placementDurations = () => {
-    const pickupMs = animationDuration(STAT_CHECK_ANIMATION.pickupMs, prefersReducedMotion, animationSpeed);
-    const travelMs = animationDuration(STAT_CHECK_ANIMATION.handTravelMs, prefersReducedMotion, animationSpeed);
-    const landingMs = animationDuration(STAT_CHECK_ANIMATION.landingMs, prefersReducedMotion, animationSpeed);
-    const acceptanceMs = animationDuration(STAT_CHECK_ANIMATION.acceptanceMs, prefersReducedMotion, animationSpeed);
-    return { pickupMs, travelMs, landingMs, acceptanceMs, durationMs: pickupMs + travelMs + landingMs + acceptanceMs };
-  };
-
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)]">
+    <main
+      data-anim-phase={revealStep}
+      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)]"
+    >
+      {isAnimDebugEnabled() && (
+        <div
+          data-testid="stat-check-phase-indicator"
+          className="fixed bottom-2 left-2 z-[10000] rounded bg-black/85 px-2 py-1 font-mono text-[11px] text-lime-300"
+        >
+          {revealStep}
+          {laneReaction ? ` | ${laneReaction.kind}:${laneReaction.categoryId}` : ""}
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
@@ -490,6 +523,7 @@ export default function StatCheckPage() {
               returningIds={returningIds}
               disabled={!canEdit}
               reducedMotion={prefersReducedMotion}
+              reflowMs={animationDuration(STAT_CHECK_ANIMATION.handReflowMs, prefersReducedMotion, animationSpeed)}
               cardRefs={handCardRefs}
               onSelect={(cardId) => {
                 if (!canEdit) return;
@@ -597,9 +631,18 @@ function ArenaLane({
         canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
         canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
         active && "ring-2 ring-cyan-300/65",
+        reaction === "charging" && "ring-2 ring-cyan-200/80 before:border-cyan-200/50 before:bg-cyan-200/5",
+        reaction === "impact" && "translate-y-[3px] ring-4 ring-[#f4d77d] before:border-[#f4d77d] before:bg-[#f4d77d]/15",
         reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
       )}
     >
+      {reaction === "impact" && (
+        <span
+          aria-hidden
+          data-testid="stat-check-impact-ring"
+          className="pointer-events-none absolute inset-x-6 bottom-6 top-1/2 z-20 animate-ping rounded-full border-2 border-[#f4d77d]/70 motion-reduce:hidden"
+        />
+      )}
       <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
         <div ref={botRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
@@ -631,6 +674,7 @@ function ArenaLane({
             label="You"
             emptyPrompt={playerCardInFlight ? "" : canEdit && selectedCard ? "Place here" : "Place champion"}
             emptyActive={Boolean(canEdit && selectedCard) || playerCardInFlight}
+            emptyCharging={playerCardInFlight || reaction === "charging"}
           />
         </div>
       </div>
@@ -688,6 +732,7 @@ function PlayerHand({
   returningIds,
   disabled,
   reducedMotion,
+  reflowMs,
   cardRefs,
   onSelect,
 }: {
@@ -699,6 +744,7 @@ function PlayerHand({
   returningIds: Set<string>;
   disabled: boolean;
   reducedMotion: boolean;
+  reflowMs: number;
   cardRefs: RefObject<Record<string, HTMLElement | null>>;
   onSelect: (cardId: string) => void;
 }) {
@@ -722,13 +768,14 @@ function PlayerHand({
           const style = {
             transform: `translate(-50%, 0) translate(${layout.x}px, ${layout.y}px) rotate(${layout.rotation}deg)`,
             zIndex: layout.zIndex,
+            transitionDuration: reducedMotion ? undefined : `${reflowMs}ms`,
           } as CSSProperties;
           return (
             <div
               key={card.id}
               className={cn(
                 "absolute left-1/2 top-0 origin-bottom will-change-transform hover:!z-[400] focus-within:!z-[400]",
-                reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
+                reducedMotion ? "transition-none" : "transition-[transform,opacity] ease-out motion-reduce:transition-none",
                 hidden && "pointer-events-none opacity-0",
               )}
               data-fan-index={index}
@@ -849,55 +896,15 @@ function TravelingCard({
   assets: ReturnType<typeof useChampionAssets>["data"];
   reducedMotion: boolean;
 }) {
-  const midX = (item.from.x + item.to.x) / 2;
-  const midY = (item.from.y + item.to.y) / 2 - STAT_CHECK_ANIMATION.arcLift;
-  const horizontalDirection = Math.sign(item.to.x - item.from.x) || 1;
+  const keyframes = buildTravelKeyframes(item, reducedMotion);
   const duration = animationDuration(item.durationMs, reducedMotion) / 1000;
-  const pickupRatio = item.pickupMs ? item.pickupMs / item.durationMs : 0;
-  const travelRatio = item.pickupMs && item.travelMs ? (item.pickupMs + item.travelMs) / item.durationMs : 0.78;
-  const landingRatio = item.pickupMs && item.travelMs && item.landingMs ? (item.pickupMs + item.travelMs + item.landingMs) / item.durationMs : 0.9;
   return (
     <motion.div
       data-testid={`stat-check-travel-card-${item.card.id}`}
-      className="fixed left-0 top-0 origin-top-left"
-      initial={{
-        x: item.from.x,
-        y: item.from.y,
-        width: item.from.width,
-        height: item.from.height,
-        rotate: item.fromRotation,
-        opacity: 1,
-        scale: 1,
-        rotateX: 0,
-        rotateY: 0,
-        filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.4))",
-      }}
-      animate={{
-        // Keyframes map onto the pickup / travel / landing / settle phases:
-        // lift straight up out of the fan, arc across the tabletop, touch down
-        // with a slight overshoot, then settle into exact board geometry.
-        x: reducedMotion ? item.to.x : [item.from.x, item.from.x, midX, item.to.x, item.to.x],
-        y: reducedMotion ? item.to.y : [item.from.y, item.from.y - 34, midY, item.to.y + 7, item.to.y],
-        width: item.to.width,
-        height: item.to.height,
-        rotate: reducedMotion
-          ? item.toRotation
-          : [item.fromRotation, item.fromRotation * 0.7, item.toRotation + horizontalDirection * 4, item.toRotation, item.toRotation],
-        rotateX: reducedMotion ? 0 : [0, 2, 7, -3, 0],
-        rotateY: reducedMotion ? 0 : [0, 0, horizontalDirection * -7, horizontalDirection * 1.5, 0],
-        opacity: 1,
-        scale: item.kind === "discard" ? 0.45 : reducedMotion ? 1 : [1, 1.08, 1.05, 0.975, 1],
-        filter: reducedMotion
-          ? "drop-shadow(0 8px 12px rgba(0,0,0,0.4))"
-          : [
-              "drop-shadow(0 8px 12px rgba(0,0,0,0.4))",
-              "drop-shadow(0 20px 24px rgba(0,0,0,0.5))",
-              "drop-shadow(0 30px 34px rgba(0,0,0,0.55))",
-              "drop-shadow(0 10px 14px rgba(0,0,0,0.45))",
-              "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
-            ],
-      }}
-      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: [0, pickupRatio, travelRatio, landingRatio, 1] }}
+      className="fixed left-0 top-0 origin-center"
+      initial={keyframes.initial}
+      animate={keyframes.animate}
+      transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: keyframes.times }}
     >
       <div className="h-full w-full overflow-hidden rounded-lg">
         <ChampionCard
@@ -910,6 +917,137 @@ function TravelingCard({
       </div>
     </motion.div>
   );
+}
+
+const SHADOW_SM = "drop-shadow(0 8px 12px rgba(0,0,0,0.4))";
+const SHADOW_MD = "drop-shadow(0 18px 24px rgba(0,0,0,0.5))";
+const SHADOW_LG = "drop-shadow(0 30px 36px rgba(0,0,0,0.55))";
+const SHADOW_XL = "drop-shadow(0 44px 52px rgba(0,0,0,0.6))";
+const SHADOW_FLAT = "drop-shadow(0 3px 5px rgba(0,0,0,0.5))";
+
+/**
+ * Authored keyframe stations for the travel clone.
+ *
+ * place/lane-move (hero play, 10 stations over 9 segments — the travel phase is
+ * split at the apex): rise out of the fan, hover in anticipation, launch, arc
+ * through an oversized apex at heroApexScale, descend, strike the lane with
+ * compression, rebound, settle into exact board geometry.
+ *
+ * return: lift off the board, brief hold, arc back to the fan, settle.
+ * Other kinds keep a simple two-point flight.
+ */
+function buildTravelKeyframes(item: TravelingCardState, reducedMotion: boolean) {
+  const { from, to } = item;
+  const base = {
+    x: from.x,
+    y: from.y,
+    width: from.width,
+    height: from.height,
+    rotate: item.fromRotation,
+    opacity: 1,
+    scale: 1,
+    rotateX: 0,
+    rotateY: 0,
+    filter: SHADOW_SM,
+  };
+  if (reducedMotion) {
+    return {
+      initial: base,
+      animate: {
+        x: to.x, y: to.y, width: to.width, height: to.height,
+        rotate: item.toRotation, opacity: 1, scale: item.kind === "discard" ? 0.45 : 1,
+        rotateX: 0, rotateY: 0, filter: SHADOW_SM,
+      },
+      times: undefined as number[] | undefined,
+    };
+  }
+
+  const viewportW = typeof window === "undefined" ? 1280 : window.innerWidth;
+  const viewportH = typeof window === "undefined" ? 800 : window.innerHeight;
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  const dir = Math.sign(to.x + to.width / 2 - (from.x + from.width / 2)) || 1;
+  const midX = (from.x + to.x) / 2;
+
+  if ((item.kind === "place" || item.kind === "lane-move") && item.phaseDurations?.length === 8) {
+    const [pickupMs, holdMs, launchMs, travelMs, approachMs, impactMs, reboundMs, settleMs] = item.phaseDurations;
+    const total = item.durationMs;
+    const apexSplit = travelMs * 0.55;
+    let at = 0;
+    const times = [0];
+    for (const ms of [pickupMs, holdMs, launchMs, apexSplit, travelMs - apexSplit, approachMs, impactMs, reboundMs, settleMs]) {
+      at += ms;
+      times.push(Math.min(1, at / total));
+    }
+    const arc = heroArcLift(distance, viewportW, viewportH);
+    const apexY = Math.min(from.y, to.y) - arc;
+    const apexScale = STAT_CHECK_ANIMATION.heroApexScale;
+    const midW = (from.width + to.width) / 2;
+    const midH = (from.height + to.height) / 2;
+    return {
+      initial: base,
+      animate: {
+        //          start      pickup      hold        launch                     apex          descent      approach   impact      rebound     settle
+        x:      [from.x,     from.x,     from.x,     from.x + (midX - from.x) * 0.25, midX,     to.x,        to.x,      to.x,       to.x,       to.x],
+        y:      [from.y,     from.y - 64, from.y - 74, from.y - 140,             apexY,        to.y - 40,   to.y,      to.y + 8,   to.y - 5,   to.y],
+        width:  [from.width, from.width, from.width, from.width,                 midW,         to.width,    to.width,  to.width,   to.width,   to.width],
+        height: [from.height, from.height, from.height, from.height,             midH,         to.height,   to.height, to.height,  to.height,  to.height],
+        rotate: [item.fromRotation, 0,   0,          dir * 8,                    dir * 10,     dir * 3,     0,         -dir * 2,   0,          item.toRotation],
+        scale:  [1,          1.18,       1.18,       1.3,                        apexScale,    1.18,        1.03,      0.955,      1.02,       1],
+        rotateX: [0,         2,          2,          6,                          9,            5,           0,         -4,         1,          0],
+        rotateY: [0,         0,          0,          dir * -5,                   dir * -8,     dir * -3,    0,         dir * 1.5,  0,          0],
+        opacity: 1,
+        filter: [SHADOW_SM,  SHADOW_MD,  SHADOW_MD,  SHADOW_LG,                  SHADOW_XL,    SHADOW_LG,   SHADOW_MD, SHADOW_FLAT, SHADOW_MD, SHADOW_SM],
+      },
+      times,
+    };
+  }
+
+  if (item.kind === "return" && item.phaseDurations?.length === 4) {
+    const [liftMs, holdMs, travelMs, settleMs] = item.phaseDurations;
+    const total = item.durationMs;
+    const half = travelMs / 2;
+    let at = 0;
+    const times = [0];
+    for (const ms of [liftMs, holdMs, half, half, settleMs]) {
+      at += ms;
+      times.push(Math.min(1, at / total));
+    }
+    const arc = heroArcLift(distance, viewportW, viewportH) * 0.6;
+    const apexY = Math.min(from.y, to.y) - arc;
+    return {
+      initial: base,
+      animate: {
+        x:      [from.x, from.x,      from.x,      midX,        to.x,        to.x],
+        y:      [from.y, from.y - 44, from.y - 50, apexY,       to.y - 8,    to.y],
+        width:  [from.width, from.width, from.width, (from.width + to.width) / 2, to.width, to.width],
+        height: [from.height, from.height, from.height, (from.height + to.height) / 2, to.height, to.height],
+        rotate: [item.fromRotation, 0, 0,          -dir * 6,    item.toRotation, item.toRotation],
+        scale:  [1,      1.15,       1.15,         1.2,         1.02,        1],
+        rotateX: 0,
+        rotateY: 0,
+        opacity: 1,
+        filter: [SHADOW_SM, SHADOW_MD, SHADOW_MD,  SHADOW_LG,   SHADOW_MD,   SHADOW_SM],
+      },
+      times,
+    };
+  }
+
+  return {
+    initial: base,
+    animate: {
+      x: [from.x, midX, to.x],
+      y: [from.y, Math.min(from.y, to.y) - 40, to.y],
+      width: to.width,
+      height: to.height,
+      rotate: item.toRotation,
+      opacity: 1,
+      scale: item.kind === "discard" ? 0.45 : 1,
+      rotateX: 0,
+      rotateY: 0,
+      filter: [SHADOW_SM, SHADOW_MD, SHADOW_SM],
+    },
+    times: [0, 0.5, 1],
+  };
 }
 
 function FlippableCard({
@@ -988,6 +1126,7 @@ function ChampionCard({
   fill,
   emptyPrompt = "Place champion",
   emptyActive = false,
+  emptyCharging = false,
 }: {
   card: StatCheckCard | null;
   imageUrl?: string | null;
@@ -1004,6 +1143,7 @@ function ChampionCard({
   fill?: boolean;
   emptyPrompt?: string;
   emptyActive?: boolean;
+  emptyCharging?: boolean;
 }) {
   if (mode === "empty") {
     return (
@@ -1014,6 +1154,7 @@ function ChampionCard({
           emptyActive
             ? "border-[#f4d77d]/70 bg-[#d6b55d]/10 text-[#f4d77d] shadow-[0_0_18px_rgba(214,181,93,0.25)]"
             : "border-cyan-300/20 bg-black/25 text-slate-400",
+          emptyCharging && "animate-pulse border-[#f4d77d] shadow-[0_0_34px_rgba(244,215,125,0.45)] motion-reduce:animate-none",
         )}
       >
         {emptyPrompt}
@@ -1043,7 +1184,7 @@ function ChampionCard({
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
-    state === "selected" && "-translate-y-2 scale-[1.06] border-[#f4d77d] shadow-[0_22px_52px_rgba(0,0,0,0.65),0_0_34px_rgba(244,215,125,0.4)] ring-2 ring-[#f4d77d]/70",
+    state === "selected" && "-translate-y-3 scale-[1.12] border-[#f4d77d] shadow-[0_28px_60px_rgba(0,0,0,0.7),0_0_44px_rgba(244,215,125,0.5)] ring-[3px] ring-[#f4d77d]/80",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -1467,6 +1608,12 @@ function phaseLabel(step: PresentationStep) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+/** Dev-only: `?animDebug=1` shows a live phase indicator on the dev route. */
+function isAnimDebugEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("animDebug");
 }
 
 function clearAnimationTimers(timers: number[]) {

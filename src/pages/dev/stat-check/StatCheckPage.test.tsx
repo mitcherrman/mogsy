@@ -23,9 +23,17 @@ function laneChampions(lane: HTMLElement) {
   );
 }
 
+// Full hero-play choreography at 1x is ~2.22s (2,140ms clone + 80ms handoff);
+// 3s settles placement plus hand reflow.
+const PLACEMENT_SETTLE_MS = 3_000;
+
 function place(container: HTMLElement, handIndex: number, laneIndex: number) {
   placeWithoutSettling(container, handIndex, laneIndex);
-  act(() => vi.advanceTimersByTime(1_000));
+  act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
+}
+
+function animPhase(container: HTMLElement) {
+  return container.querySelector("main")?.getAttribute("data-anim-phase");
 }
 
 function placeWithoutSettling(container: HTMLElement, handIndex: number, laneIndex: number) {
@@ -145,7 +153,7 @@ describe("StatCheckPage tabletop presentation", () => {
         if (!empty) break;
         fireEvent.click(screen.getByTestId("stat-check-hand-0"));
         fireEvent.click(empty);
-        act(() => vi.advanceTimersByTime(1_000));
+        act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
       }
     };
     for (let round = 0; round < 5 && !screen.queryByTestId("stat-check-match-over"); round++) {
@@ -243,19 +251,120 @@ describe("StatCheckPage tabletop presentation", () => {
 
     placeWithoutSettling(container, 0, 0);
 
-    // During flight: an invisible placeholder keeps the hand gap open, exactly one
-    // travel clone exists, and the destination card has not appeared in the lane.
+    // During pickup/hold: an invisible placeholder keeps the hand gap open, exactly
+    // one travel clone exists, and the destination card has not appeared in the lane.
     expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
     expect(laneChampions(lanes(container)[0])).toHaveLength(0);
     expect(within(lanes(container)[0]).queryByText(/Place champion|Place here/i)).toBeNull();
 
-    act(() => vi.advanceTimersByTime(1_000));
+    // Through the anticipation hold (gap releases at 920ms: pickup+hold+launch+40% travel).
+    act(() => vi.advanceTimersByTime(500));
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
 
-    // After landing: placeholder gone, clone gone, the same champion is on the board.
+    // Mid-flight: the gap has released for reflow while the clone is still airborne
+    // and the destination is still deferred.
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    expect(laneChampions(lanes(container)[0])).toHaveLength(0);
+
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
+
+    // After settlement: placeholder gone, clone gone, the same champion is on the board.
     expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
     expect(laneChampions(lanes(container)[0])).toEqual([champion]);
+  });
+
+  it("steps through every hero-play phase in order at 1x", () => {
+    const { container } = render(<StatCheckPage />);
+    placeWithoutSettling(container, 0, 0);
+
+    expect(animPhase(container)).toBe("placement-pickup");
+    act(() => vi.advanceTimersByTime(300)); // > pickup 220
+    expect(animPhase(container)).toBe("placement-hold");
+    act(() => vi.advanceTimersByTime(250)); // 550 > pickup+hold 480
+    expect(animPhase(container)).toBe("placement-launch");
+    act(() => vi.advanceTimersByTime(150)); // 700 > +launch 640
+    expect(animPhase(container)).toBe("placement-travel");
+    act(() => vi.advanceTimersByTime(700)); // 1400 > +travel 1340
+    expect(animPhase(container)).toBe("placement-approach");
+    act(() => vi.advanceTimersByTime(200)); // 1600 > +approach 1560
+    expect(animPhase(container)).toBe("placement-impact");
+    expect(screen.getByTestId("stat-check-impact-ring")).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(180)); // 1780 > +impact 1740
+    expect(animPhase(container)).toBe("placement-rebound");
+    act(() => vi.advanceTimersByTime(180)); // 1960 > +rebound 1920
+    expect(animPhase(container)).toBe("placement-settle");
+    act(() => vi.advanceTimersByTime(200)); // 2160 > +settle 2140
+    expect(animPhase(container)).toBe("placement-accepted");
+    act(() => vi.advanceTimersByTime(200)); // > 2220 clone handoff
+    expect(animPhase(container)).toBe("selecting");
+    expect(screen.queryByTestId("stat-check-impact-ring")).toBeNull();
+  });
+
+  it("scales every placement phase with the ANIM speed control", () => {
+    const { container, unmount } = render(<StatCheckPage />);
+    fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
+    placeWithoutSettling(container, 0, 0);
+
+    // At 0.25x the whole choreography is 4x longer (~8.9s): still airborne where
+    // the 1x flight would long be finished, and still pre-hold at 4x pickup.
+    act(() => vi.advanceTimersByTime(700));
+    expect(animPhase(container)).toBe("placement-pickup");
+    act(() => vi.advanceTimersByTime(2_300));
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    expect(laneChampions(lanes(container)[0])).toHaveLength(0);
+    act(() => vi.advanceTimersByTime(7_000));
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(laneChampions(lanes(container)[0])).toHaveLength(1);
+    unmount();
+
+    // At 1.5x the flight compresses to ~1.5s.
+    window.sessionStorage.clear();
+    const second = render(<StatCheckPage />);
+    fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "1.5" } });
+    placeWithoutSettling(second.container, 0, 0);
+    act(() => vi.advanceTimersByTime(1_200));
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(600));
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(laneChampions(lanes(second.container)[0])).toHaveLength(1);
+  });
+
+  it("scales the hand reflow transition with the ANIM speed control", () => {
+    const { container } = render(<StatCheckPage />);
+    const wrapper = () => container.querySelector<HTMLElement>("[data-fan-index]");
+    expect(wrapper()?.style.transitionDuration).toBe("450ms");
+    fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
+    expect(wrapper()?.style.transitionDuration).toBe("1800ms");
+  });
+
+  it("scales the return flight with the ANIM speed control", () => {
+    const { container } = render(<StatCheckPage />);
+    place(container, 0, 0);
+    fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
+    fireEvent.click(lanes(container)[0]);
+
+    // Return total at 0.25x is ~4s; still traveling after the 1x duration.
+    act(() => vi.advanceTimersByTime(1_500));
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(3_500));
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("completes placement immediately under reduced motion", () => {
+    reducedMotion(true);
+    const { container } = render(<StatCheckPage />);
+    placeWithoutSettling(container, 0, 0);
+    act(() => vi.advanceTimersByTime(200));
+
+    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
+    expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(0);
+    expect(laneChampions(lanes(container)[0])).toHaveLength(1);
+    expect(animPhase(container)).toBe("selecting");
   });
 
   it("hides a returning card in the fan until its travel clone arrives", () => {
@@ -267,7 +376,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(container.querySelectorAll('[data-hand-returning="true"]')).toHaveLength(1);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
 
-    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(1_500));
     expect(container.querySelectorAll('[data-hand-returning="true"]')).toHaveLength(0);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
   });
@@ -292,7 +401,7 @@ describe("StatCheckPage tabletop presentation", () => {
     fireEvent.click(lanes(container)[0]);
     fireEvent.click(lanes(container)[0]);
     fireEvent.click(lanes(container)[0]);
-    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
 
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
     expect(laneChampions(lanes(container)[0])).toHaveLength(1);
@@ -308,7 +417,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(lanes(container)[0]);
-    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
 
     expect(laneChampions(lanes(container)[0])).toEqual([secondChampion]);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
@@ -328,7 +437,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.queryByText(/On table/i)).toBeNull();
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
 
-    act(() => vi.advanceTimersByTime(1_000));
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
     fireEvent.click(firstLane);
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(secondLane);
@@ -389,8 +498,10 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-motion-overlay")).toBeInTheDocument();
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
 
+    // Still airborne mid-choreography, gone after full settlement.
     act(() => vi.advanceTimersByTime(1_000));
-
+    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(PLACEMENT_SETTLE_MS));
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
   });
 

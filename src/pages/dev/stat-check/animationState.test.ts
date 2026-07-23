@@ -14,10 +14,20 @@ describe("Stat Check presentation animation state", () => {
     let step: PresentationStep = "selecting";
     step = animationStepReducer(step, { type: "pickup" });
     expect(step).toBe("placement-pickup");
+    step = animationStepReducer(step, { type: "hold" });
+    expect(step).toBe("placement-hold");
+    step = animationStepReducer(step, { type: "launch" });
+    expect(step).toBe("placement-launch");
     step = animationStepReducer(step, { type: "travel" });
     expect(step).toBe("placement-travel");
-    step = animationStepReducer(step, { type: "land" });
-    expect(step).toBe("placement-landing");
+    step = animationStepReducer(step, { type: "approach" });
+    expect(step).toBe("placement-approach");
+    step = animationStepReducer(step, { type: "impact" });
+    expect(step).toBe("placement-impact");
+    step = animationStepReducer(step, { type: "rebound" });
+    expect(step).toBe("placement-rebound");
+    step = animationStepReducer(step, { type: "settle" });
+    expect(step).toBe("placement-settle");
     step = animationStepReducer(step, { type: "accept" });
     expect(step).toBe("placement-accepted");
     step = animationStepReducer(step, { type: "return" });
@@ -60,10 +70,14 @@ describe("Stat Check presentation animation state", () => {
     expect(animationStepReducer("damage", { type: "cancel" })).toBe("selecting");
   });
 
-  it("allows only responsive pre-lock placement phases", () => {
+  it("keeps every hero-play phase interactive but blocks lock/reveal phases", () => {
     expect(allowsPreLockInteraction("selecting")).toBe(true);
+    expect(allowsPreLockInteraction("placement-hold")).toBe(true);
     expect(allowsPreLockInteraction("placement-travel")).toBe(true);
-    expect(allowsPreLockInteraction("placement-landing")).toBe(false);
+    expect(allowsPreLockInteraction("placement-impact")).toBe(true);
+    expect(allowsPreLockInteraction("placement-settle")).toBe(true);
+    expect(allowsPreLockInteraction("returning-card")).toBe(true);
     expect(allowsPreLockInteraction("locking")).toBe(false);
+    expect(allowsPreLockInteraction("opponent-reveal-1")).toBe(false);
   });
 });
