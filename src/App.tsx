@@ -137,6 +137,11 @@ const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage
 // server (npm run content-studio). Inert without it; not linked anywhere.
 const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentStudioPage"));
 
+// Public Mastery journeys (J4 launch) — catalog + parameterized player.
+// Authenticated; the backend catalog is the only source of listed sets.
+const MasteryJourneysPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneysPage"));
+const MasteryJourneyPlayerPage = lazy(() => import("./pages/quiz-mastery/MasteryJourneyPlayerPage"));
+
 // Live Mastery (H1/G7) — gated dev player + admin reviewer. Not linked from
 // navigation and absent from the sitemap; authenticated / admin-gated routes only.
 const MasteryAhriVsSyndraPage = lazy(() => import("./pages/dev/mastery/AhriVsSyndraPage"));
@@ -301,6 +306,8 @@ const App = () => (
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
+                  <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/syndra-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasterySyndraProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/syndra-branching" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasterySyndraBranchingPage /></Suspense></ProtectedRoute>} />
