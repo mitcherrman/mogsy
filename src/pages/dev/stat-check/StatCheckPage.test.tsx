@@ -23,7 +23,7 @@ function laneChampions(lane: HTMLElement) {
   );
 }
 
-// Full hero-play choreography at 1x is ~2.22s (2,140ms clone + 80ms handoff);
+// Full hero-play choreography at 1x is ~1.84s (1,760ms clone + 80ms handoff);
 // 3s settles placement plus hand reflow.
 const PLACEMENT_SETTLE_MS = 3_000;
 
@@ -282,24 +282,24 @@ describe("StatCheckPage tabletop presentation", () => {
     placeWithoutSettling(container, 0, 0);
 
     expect(animPhase(container)).toBe("placement-pickup");
-    act(() => vi.advanceTimersByTime(300)); // > pickup 220
+    act(() => vi.advanceTimersByTime(250)); // > pickup 180
     expect(animPhase(container)).toBe("placement-hold");
-    act(() => vi.advanceTimersByTime(250)); // 550 > pickup+hold 480
+    act(() => vi.advanceTimersByTime(200)); // 450 > pickup+hold 395
     expect(animPhase(container)).toBe("placement-launch");
-    act(() => vi.advanceTimersByTime(150)); // 700 > +launch 640
+    act(() => vi.advanceTimersByTime(100)); // 550 > +launch 525
     expect(animPhase(container)).toBe("placement-travel");
-    act(() => vi.advanceTimersByTime(700)); // 1400 > +travel 1340
+    act(() => vi.advanceTimersByTime(600)); // 1150 > +travel 1100
     expect(animPhase(container)).toBe("placement-approach");
-    act(() => vi.advanceTimersByTime(200)); // 1600 > +approach 1560
+    act(() => vi.advanceTimersByTime(150)); // 1300 > +approach 1280
     expect(animPhase(container)).toBe("placement-impact");
     expect(screen.getByTestId("stat-check-impact-ring")).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(180)); // 1780 > +impact 1740
+    act(() => vi.advanceTimersByTime(150)); // 1450 > +impact 1430
     expect(animPhase(container)).toBe("placement-rebound");
-    act(() => vi.advanceTimersByTime(180)); // 1960 > +rebound 1920
+    act(() => vi.advanceTimersByTime(150)); // 1600 > +rebound 1580
     expect(animPhase(container)).toBe("placement-settle");
-    act(() => vi.advanceTimersByTime(200)); // 2160 > +settle 2140
+    act(() => vi.advanceTimersByTime(200)); // 1800 > +settle 1760
     expect(animPhase(container)).toBe("placement-accepted");
-    act(() => vi.advanceTimersByTime(200)); // > 2220 clone handoff
+    act(() => vi.advanceTimersByTime(150)); // > 1840 clone handoff
     expect(animPhase(container)).toBe("selecting");
     expect(screen.queryByTestId("stat-check-impact-ring")).toBeNull();
   });
@@ -336,9 +336,9 @@ describe("StatCheckPage tabletop presentation", () => {
   it("scales the hand reflow transition with the ANIM speed control", () => {
     const { container } = render(<StatCheckPage />);
     const wrapper = () => container.querySelector<HTMLElement>("[data-fan-index]");
-    expect(wrapper()?.style.transitionDuration).toBe("450ms");
+    expect(wrapper()?.style.transitionDuration).toBe("370ms");
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
-    expect(wrapper()?.style.transitionDuration).toBe("1800ms");
+    expect(wrapper()?.style.transitionDuration).toBe("1480ms");
   });
 
   it("scales the return flight with the ANIM speed control", () => {
@@ -402,7 +402,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
     // Sample through hold, travel, approach, impact, rebound: same element,
     // never remounted or recreated by phase re-renders.
-    for (const step of [300, 400, 700, 300, 200]) {
+    for (const step of [250, 300, 500, 300, 200]) {
       act(() => vi.advanceTimersByTime(step));
       expect(screen.getAllByTestId(/^stat-check-travel-card-/)[0]).toBe(node);
     }

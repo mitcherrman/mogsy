@@ -222,7 +222,7 @@ export default function StatCheckPage() {
     if (selectedCardId) {
       const card = match.playerHand.find((item) => item.id === selectedCardId);
       const fromElement = handCardRefs.current[selectedCardId];
-      const toElement = lanePlayerRefs.current[category.id];
+      const toElement = slotElement(lanePlayerRefs.current[category.id]);
       if (card) {
         const p = STAT_CHECK_ANIMATION.placement;
         // Reduced motion still communicates the placement with a compact authored
@@ -267,7 +267,7 @@ export default function StatCheckPage() {
       // rapid double-click cannot place a card and immediately bounce it back.
       if (travelingCards.some((item) => item.card.id === current && item.kind !== "return")) return;
       const card = match.playerHand.find((item) => item.id === current);
-      const fromElement = lanePlayerRefs.current[category.id];
+      const fromElement = slotElement(lanePlayerRefs.current[category.id]);
       const toElement = handFallbackElement();
       if (card) {
         const r = STAT_CHECK_ANIMATION.returnPlay;
@@ -401,7 +401,7 @@ export default function StatCheckPage() {
       queueCardTravel({
         card: result.playerCard,
         imageUrl: getImage(assets, result.playerCard),
-        fromElement: lanePlayerRefs.current[result.category.id],
+        fromElement: slotElement(lanePlayerRefs.current[result.category.id]),
         toElement: discardRefs.current.player,
         fromRotation: 0,
         toRotation: -8,
@@ -411,7 +411,7 @@ export default function StatCheckPage() {
       queueCardTravel({
         card: result.botCard,
         imageUrl: getImage(assets, result.botCard),
-        fromElement: laneBotRefs.current[result.category.id],
+        fromElement: slotElement(laneBotRefs.current[result.category.id]),
         toElement: discardRefs.current.bot,
         fromRotation: 0,
         toRotation: 8,
@@ -1644,11 +1644,35 @@ function clearAnimationTimers(timers: number[]) {
   timers.length = 0;
 }
 
+/**
+ * Snapshot an element's TRUE layout box, not its rotated bounding box.
+ * getBoundingClientRect() on a fan-rotated wrapper returns an axis-aligned box
+ * inflated by the rotation, which skewed the clone's size, aspect ratio, and
+ * therefore its final landing scale. Using offsetWidth/offsetHeight (layout
+ * size, unaffected by transforms) centered on the AABB center gives the exact
+ * card geometry at both endpoints.
+ */
 function snapshotElement(element?: Element | null): DOMRectSnapshot | null {
   if (!element) return null;
   const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
-  return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+  const layoutWidth = (element as HTMLElement).offsetWidth || rect.width;
+  const layoutHeight = (element as HTMLElement).offsetHeight || rect.height;
+  return {
+    x: rect.left + rect.width / 2 - layoutWidth / 2,
+    y: rect.top + rect.height / 2 - layoutHeight / 2,
+    width: layoutWidth,
+    height: layoutHeight,
+  };
+}
+
+/**
+ * The lane refs point at the full-width row containers; the physical card slot
+ * is their only child. Landing on the row made the clone finish larger and
+ * off-center relative to the authoritative board card.
+ */
+function slotElement(row?: HTMLElement | null): Element | null {
+  return row?.firstElementChild ?? row ?? null;
 }
 
 function fallbackRect(): DOMRectSnapshot {

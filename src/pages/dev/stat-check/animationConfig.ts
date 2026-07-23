@@ -4,40 +4,42 @@
  * the staging is unmistakable; it will be tuned back later.
  */
 export const STAT_CHECK_ANIMATION = {
+  // Direction pass on 5ba6b47: whole choreography tightened ~18% (x0.82) from
+  // the over-exaggerated staging pass; clone total is now ~1.76s at 1x.
   placement: {
     /** Card rises out of the fan, straightens, scales up. */
-    pickupMs: 220,
+    pickupMs: 180,
     /** Anticipation pause: the card hovers above the fan. */
-    holdMs: 260,
+    holdMs: 215,
     /** Upward launch toward the board. */
-    launchMs: 160,
+    launchMs: 130,
     /** Main flight through the apex. */
-    travelMs: 700,
+    travelMs: 575,
     /** Controlled descent into the lane. */
-    approachMs: 220,
+    approachMs: 180,
     /** Strike: overshoot + compression, lane flash. */
-    impactMs: 180,
+    impactMs: 150,
     /** Rebound off the surface. */
-    reboundMs: 180,
+    reboundMs: 150,
     /** Settle into exact board geometry. */
-    settleMs: 220,
+    settleMs: 180,
     /** Lane acceptance glow after the clone hands off. */
-    acceptanceMs: 140,
+    acceptanceMs: 115,
   },
   returnPlay: {
     /** Card lifts off the board. */
-    liftMs: 180,
+    liftMs: 150,
     /** Brief pause before flying home. */
-    holdMs: 120,
+    holdMs: 100,
     /** Flight back to the fan. */
-    travelMs: 500,
+    travelMs: 410,
     /** Settle into the reserved fan gap. */
-    settleMs: 200,
+    settleMs: 165,
   },
   /** Fraction of the main travel after which the hand gap starts closing. */
   handGapHoldTravelRatio: 0.4,
   /** Hand re-fan transition duration (speed-scaled at the call site). */
-  handReflowMs: 450,
+  handReflowMs: 370,
   /** Peak scale of the travel clone at the apex, relative to hand-card size. */
   heroApexScale: 1.45,
   laneMoveMs: 420,
