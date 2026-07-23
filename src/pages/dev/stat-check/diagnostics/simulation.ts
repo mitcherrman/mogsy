@@ -62,6 +62,10 @@ export type MatchRecord = {
   outcome: MatchOutcome;
   endReason: string | null;
   exhausted: boolean;
+  /** Both sides hit zero on the same resolved round (HP draw, not exhaustion). */
+  simultaneousLethal: boolean;
+  /** Damage dealt beyond what was needed for lethal on the final round. */
+  overkill: number;
   finalPlayerHp: number;
   finalBotHp: number;
   /** Shared draw pile size when the match ended. */
@@ -153,12 +157,25 @@ function bestCardForCategory(hand: StatCheckCard[], category: StatCategory): Sta
   return best;
 }
 
+export type SimulationOptions = {
+  maxRounds?: number;
+  /**
+   * Diagnostics-only starting-HP override for candidate calibration. Applied
+   * after createMatch so production HP ownership stays in the engine.
+   */
+  startingHp?: number;
+};
+
 export function simulateMatch(
   deck: StatCheckCard[],
   seed: string,
-  maxRounds = 100,
+  options: SimulationOptions = {},
 ): { match: MatchRecord; rounds: RoundRecord[]; clue: ClueStats } {
+  const maxRounds = options.maxRounds ?? 100;
   let state: MatchState = createMatch(deck, seed);
+  if (options.startingHp !== undefined) {
+    state = { ...state, playerHp: options.startingHp, botHp: options.startingHp };
+  }
   const rounds: RoundRecord[] = [];
   const clue: ClueStats = {
     cluedRounds: 0,
@@ -241,6 +258,18 @@ export function simulateMatch(
       outcome: state.outcome,
       endReason: state.endReason,
       exhausted: (state.endReason ?? "").includes("Deck exhausted"),
+      simultaneousLethal:
+        state.outcome === "draw" &&
+        !(state.endReason ?? "").includes("Deck exhausted") &&
+        state.playerHp === 0 &&
+        state.botHp === 0,
+      overkill: (() => {
+        const final = state.lastResolution;
+        if (!final || !state.outcome) return 0;
+        return (
+          Math.max(0, final.damage.bot - final.playerHpBefore) + Math.max(0, final.damage.player - final.botHpBefore)
+        );
+      })(),
       finalPlayerHp: state.playerHp,
       finalBotHp: state.botHp,
       endPoolSize: state.drawPile.length,
@@ -251,7 +280,13 @@ export function simulateMatch(
   };
 }
 
-export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): DiagnosticsReport {
+export function percentile(values: number[], q: number): number {
+  if (values.length === 0) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(sorted.length * q)))];
+}
+
+export function runDiagnostics(deck: StatCheckCard[], seeds: string[], options: SimulationOptions = {}): DiagnosticsReport {
   const categoryStats = {} as Record<StatCategoryId, CategoryStats>;
   const familyFrequency = {
     health: 0,
@@ -304,7 +339,7 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
   };
 
   for (const seed of seeds) {
-    const { match, rounds, clue } = simulateMatch(deck, seed);
+    const { match, rounds, clue } = simulateMatch(deck, seed, options);
     report.matchRecords.push(match);
     report.roundRecords.push(...rounds);
     report.roundsPerMatch.push(match.rounds);
@@ -375,6 +410,32 @@ export function runDiagnostics(deck: StatCheckCard[], seeds: string[]): Diagnost
   }
 
   return report;
+}
+
+/**
+ * Starting-HP candidate table for match-length calibration. Runs the full
+ * deterministic diagnostic per candidate via the diagnostics-only HP override.
+ */
+export function hpCandidateTable(deck: StatCheckCard[], seeds: string[], candidates: number[]): string {
+  const lines: string[] = [];
+  lines.push("Starting-HP candidates (same deck + seeds per candidate):");
+  lines.push(
+    `  ${"hp".padEnd(4)}${"mean".padStart(6)}${"med".padStart(5)}${"p10".padStart(5)}${"p90".padStart(5)}${"min".padStart(5)}${"max".padStart(5)}${"hpEnd".padStart(7)}${"exh".padStart(6)}${"<10r".padStart(6)}${">18r".padStart(6)}${"simul".padStart(6)}${"P/B/D".padStart(12)}${"pool".padStart(6)}${"overk".padStart(6)}${"inv".padStart(4)}`,
+  );
+  for (const hp of candidates) {
+    const report = runDiagnostics(deck, seeds, { startingHp: hp });
+    const rounds = report.roundsPerMatch;
+    const matches = report.matches;
+    const simultaneous = report.matchRecords.filter((m) => m.simultaneousLethal).length;
+    const under10 = rounds.filter((r) => r < 10).length;
+    const over18 = rounds.filter((r) => r > 18).length;
+    const overkill = mean(report.matchRecords.map((m) => m.overkill));
+    const invariants = report.matchRecords.reduce((sum, m) => sum + m.invariantIssues.length, 0);
+    lines.push(
+      `  ${String(hp).padEnd(4)}${mean(rounds).toFixed(1).padStart(6)}${String(median(rounds)).padStart(5)}${String(percentile(rounds, 0.1)).padStart(5)}${String(percentile(rounds, 0.9)).padStart(5)}${String(Math.min(...rounds)).padStart(5)}${String(Math.max(...rounds)).padStart(5)}${`${((report.hpEndedMatches / matches) * 100).toFixed(0)}%`.padStart(7)}${`${((report.exhaustedMatches / matches) * 100).toFixed(0)}%`.padStart(6)}${`${((under10 / matches) * 100).toFixed(0)}%`.padStart(6)}${`${((over18 / matches) * 100).toFixed(0)}%`.padStart(6)}${String(simultaneous).padStart(6)}${`${report.outcomes.player}/${report.outcomes.bot}/${report.outcomes.draw}`.padStart(12)}${String(median(report.endPoolSizes)).padStart(6)}${overkill.toFixed(2).padStart(6)}${String(invariants).padStart(4)}`,
+    );
+  }
+  return lines.join("\n");
 }
 
 /**

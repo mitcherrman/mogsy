@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ChampionBaseStats } from "@/lib/league-docs/api";
 import { ACTIVE_STAT_CATEGORIES, STAT_CATEGORIES } from "../statCheckEngine";
 import { parseChampionStatsResponse, rosterDeckFromResponse } from "./rosterAdapter";
-import { formatDiagnosticsReport, runDiagnostics, thresholdCandidateTable } from "./simulation";
+import { formatDiagnosticsReport, hpCandidateTable, runDiagnostics, thresholdCandidateTable } from "./simulation";
 
 const row = (name: string, overrides: Partial<ChampionBaseStats> = {}): ChampionBaseStats => ({
   champion_name: name,
@@ -103,8 +103,27 @@ describe.skipIf(!hasRoster)("real roster diagnostics", () => {
       for (const stats of Object.values(report.categoryStats)) {
         expect(stats.decisiveWins).toBeLessThanOrEqual(stats.appearances - stats.ties);
       }
+
+      // Match-length calibration guard at production starting HP (broad bounds).
+      const medianRounds = [...report.roundsPerMatch].sort((a, b) => a - b)[Math.floor(report.matches / 2)];
+      expect(medianRounds).toBeGreaterThanOrEqual(11);
+      expect(medianRounds).toBeLessThanOrEqual(18);
+      expect(report.exhaustedMatches / report.matches).toBeLessThan(0.1);
+      const decided = report.outcomes.player + report.outcomes.bot;
+      expect(report.outcomes.player / decided).toBeGreaterThan(0.35);
+      expect(report.outcomes.player / decided).toBeLessThan(0.65);
       console.log(`\n[REAL ROSTER n=${deck.length}]\n${formatDiagnosticsReport(report)}\n\n${thresholdCandidateTable(report)}\n`);
     },
     180_000,
+  );
+
+  it(
+    "evaluates starting-HP candidates on the live roster",
+    () => {
+      const deck = rosterDeckFromResponse(payload);
+      const seeds = Array.from({ length: 500 }, (_, i) => `stat-check-roster:${i}`);
+      console.log(`\n${hpCandidateTable(deck, seeds, [16, 18, 20, 22, 24, 30])}\n`);
+    },
+    300_000,
   );
 });

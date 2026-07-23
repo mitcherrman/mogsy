@@ -3,6 +3,7 @@ import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import {
   ACTIVE_STAT_CATEGORIES,
   STAT_CATEGORIES,
+  STAT_CHECK_RULES,
   assignCard,
   autoAssignBestPlayerHand,
   calculateRoundDamage,
@@ -106,6 +107,37 @@ describe("Stat Check engine", () => {
   it("uses adaptive decisive thresholds from category definitions", () => {
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-move-speed")?.decisiveThreshold).toBe(0.05);
     expect(STAT_CATEGORIES.find((c) => c.id === "highest-attack-range")?.decisiveThreshold).toBe(0.2);
+  });
+
+  it("owns starting HP in one authoritative constant", () => {
+    expect(STAT_CHECK_RULES.startingHp).toBe(20);
+    const state = createMatch(STAT_CHECK_FIXTURE_DECK, "hp-ownership");
+    expect(state.playerHp).toBe(STAT_CHECK_RULES.startingHp);
+    expect(state.botHp).toBe(STAT_CHECK_RULES.startingHp);
+    const restarted = createMatch(STAT_CHECK_FIXTURE_DECK, "hp-ownership:restart");
+    expect(restarted.playerHp).toBe(STAT_CHECK_RULES.startingHp);
+    expect(restarted.botHp).toBe(STAT_CHECK_RULES.startingHp);
+  });
+
+  it("documents simultaneous-lethal and overkill endings", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "lethal");
+    // Overkill: damage beyond remaining HP clamps to zero and ends the match.
+    state = { ...state, playerHp: 2, botHp: STAT_CHECK_RULES.startingHp };
+    state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+    if (state.lastResolution!.damage.bot >= 2) {
+      expect(state.playerHp).toBe(0);
+      expect(state.phase).toBe("match-over");
+      expect(state.outcome).toBe("bot");
+    } else {
+      expect(state.playerHp).toBeGreaterThan(0);
+      expect(state.outcome).toBeNull();
+    }
+    // No premature ending above zero.
+    let fresh = createMatch(STAT_CHECK_FIXTURE_DECK, "lethal:fresh");
+    fresh = resolveCurrentRound(autoAssignBestPlayerHand(fresh));
+    expect(fresh.playerHp).toBeGreaterThan(0);
+    expect(fresh.botHp).toBeGreaterThan(0);
+    expect(fresh.outcome).toBeNull();
   });
 
   it("gives every active category an explicit calibrated threshold", () => {

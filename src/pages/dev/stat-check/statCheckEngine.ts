@@ -125,7 +125,9 @@ export type MatchState = {
   endReason: string | null;
 };
 
-const STARTING_HP = 30;
+// Real-roster calibrated (500-match diagnostic, July 2026): ~15-round median,
+// HP endings decide matches well before shared-pool exhaustion.
+const STARTING_HP = 20;
 const HAND_SIZE = 6;
 const BOARD_DAMAGE = 2;
 const SWEEP_BONUS_DAMAGE = 1;
