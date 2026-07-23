@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
+  ArrowDown,
+  ArrowUp,
   Bot,
   ChevronsRight,
   Crosshair,
-  Eye,
   Footprints,
   Gauge,
   Heart,
@@ -85,35 +86,11 @@ type DOMRectSnapshot = {
   height: number;
 };
 
-type DragSessionState = {
-  card: StatCheckCard;
-  imageUrl?: string | null;
-  pointerId: number;
-  status: "pending" | "dragging";
-  startX: number;
-  startY: number;
-  x: number;
-  y: number;
-  lastX: number;
-  lastY: number;
-  sourceRect: DOMRectSnapshot;
-  sourceRotation: number;
-  tilt: DragTilt;
-  hoverCategoryId: StatCategoryId | null;
-};
-
-type DragTilt = {
-  rotateX: number;
-  rotateY: number;
-  rotateZ: number;
-};
-
 type LaneReactionState = {
   categoryId: StatCategoryId;
-  kind: "hover" | "accept" | "invalid";
+  kind: "accept";
 };
 
-const DRAG_THRESHOLD_PX = 7;
 const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 
 export default function StatCheckPage() {
@@ -129,41 +106,27 @@ export default function StatCheckPage() {
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`));
   const [revealStep, dispatchRevealStep] = useReducer(animationStepReducer, "selecting" as PresentationStep);
   const [travelingCards, setTravelingCards] = useState<TravelingCardState[]>([]);
-  const [dragSession, setDragSession] = useState<DragSessionState | null>(null);
   const [laneReaction, setLaneReaction] = useState<LaneReactionState | null>(null);
   const [animationSpeed, setAnimationSpeed] = useSessionAnimationSpeed();
   const [damageFlashKey, setDamageFlashKey] = useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
   const timersRef = useRef<number[]>([]);
   const previousMotionSettingsRef = useRef({ animationSpeed, prefersReducedMotion });
-  const dragSessionRef = useRef<DragSessionState | null>(null);
   const handCardRefs = useRef<Record<string, HTMLElement | null>>({});
   const laneRefs = useRef<Record<string, HTMLElement | null>>({});
   const lanePlayerRefs = useRef<Record<string, HTMLElement | null>>({});
   const laneBotRefs = useRef<Record<string, HTMLElement | null>>({});
   const discardRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
   const hpRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
-  const suppressNextClickCardIdRef = useRef<string | null>(null);
-  const dragHoverCategoryIdRef = useRef<StatCategoryId | null>(null);
-
-  const updateDragSession = useCallback((
-    next: DragSessionState | null | ((current: DragSessionState | null) => DragSessionState | null),
-  ) => {
-    const nextSession = typeof next === "function" ? next(dragSessionRef.current) : next;
-    dragSessionRef.current = nextSession;
-    setDragSession(nextSession);
-  }, []);
 
   useEffect(() => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
-    updateDragSession(null);
     setLaneReaction(null);
-    dragHoverCategoryIdRef.current = null;
     setMatch(createMatch(deck, `${SEED}:${matchKey}`));
     setSelectedCardId(null);
     dispatchRevealStep({ type: "cancel" });
-  }, [deck, matchKey, updateDragSession]);
+  }, [deck, matchKey]);
 
   useEffect(() => () => clearAnimationTimers(timersRef.current), []);
 
@@ -171,39 +134,23 @@ export default function StatCheckPage() {
     const previous = previousMotionSettingsRef.current;
     previousMotionSettingsRef.current = { animationSpeed, prefersReducedMotion };
     if (previous.animationSpeed === animationSpeed && previous.prefersReducedMotion === prefersReducedMotion) return;
-    if (travelingCards.length === 0 && !dragSession) return;
+    if (travelingCards.length === 0) return;
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
-    updateDragSession(null);
     setLaneReaction(null);
     dispatchRevealStep({ type: "cancel" });
-  }, [animationSpeed, dragSession, prefersReducedMotion, travelingCards.length, updateDragSession]);
+  }, [animationSpeed, prefersReducedMotion, travelingCards.length]);
 
   useEffect(() => {
-    const cancelActiveInteraction = () => {
-      updateDragSession(null);
-      setLaneReaction(null);
-      setTravelingCards([]);
-      suppressNextClickCardIdRef.current = null;
-    };
-    window.addEventListener("blur", cancelActiveInteraction);
-    return () => window.removeEventListener("blur", cancelActiveInteraction);
-  }, [updateDragSession]);
-
-  useEffect(() => {
-    if (!dragSession) return;
+    if (!selectedCardId) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      returnDraggedCardToHand(dragSession);
-      updateDragSession(null);
-      setLaneReaction(null);
+      setSelectedCardId(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  // returnDraggedCardToHand is intentionally read from the active render so Escape mirrors pointer cancel behavior.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragSession, updateDragSession]);
+  }, [selectedCardId]);
 
   useEffect(() => {
     if (revealStep !== "locking" || !match.lastResolution) return;
@@ -234,9 +181,7 @@ export default function StatCheckPage() {
 
   const selectedCard = match.playerHand.find((card) => card.id === selectedCardId) ?? null;
   const assignedCardIds = new Set(Object.values(match.assignments).filter(Boolean));
-  const activelyDragging = dragSession?.status === "dragging";
-  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep) && !activelyDragging;
-  const canStartDrag = match.phase === "selecting" && revealStep === "selecting" && !dragSession;
+  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep);
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
@@ -246,7 +191,6 @@ export default function StatCheckPage() {
   const restart = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
-    updateDragSession(null);
     setLaneReaction(null);
     setMatchKey((key) => key + 1);
   };
@@ -275,6 +219,9 @@ export default function StatCheckPage() {
       setMatch((state) => assignCard(state, category.id, selectedCardId));
       setSelectedCardId(null);
     } else if (current) {
+      // Ignore clicks on a lane whose card is still traveling toward it, so a
+      // rapid double-click cannot place a card and immediately bounce it back.
+      if (travelingCards.some((item) => item.card.id === current && item.kind !== "return")) return;
       const card = match.playerHand.find((item) => item.id === current);
       const fromElement = lanePlayerRefs.current[category.id];
       const toElement = handFallbackElement();
@@ -305,7 +252,6 @@ export default function StatCheckPage() {
   const nextRound = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
-    updateDragSession(null);
     setLaneReaction(null);
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
@@ -418,141 +364,6 @@ export default function StatCheckPage() {
     return { pickupMs, travelMs, landingMs, acceptanceMs, durationMs: pickupMs + travelMs + landingMs + acceptanceMs };
   };
 
-  const beginCardPointer = (card: StatCheckCard, event: ReactPointerEvent<HTMLElement>) => {
-    if (!canStartDrag || event.button > 0) return;
-    const sourceElement = handCardRefs.current[card.id];
-    const sourceRect = snapshotElement(sourceElement) ?? fallbackRect();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    updateDragSession({
-      card,
-      imageUrl: getImage(assets, card),
-      pointerId: event.pointerId,
-      status: "pending",
-      startX: event.clientX,
-      startY: event.clientY,
-      x: event.clientX,
-      y: event.clientY,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      sourceRect,
-      sourceRotation: readElementRotation(sourceElement),
-      tilt: { rotateX: 0, rotateY: 0, rotateZ: 0 },
-      hoverCategoryId: null,
-    });
-  };
-
-  const moveCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
-    const activeDragSession = dragSessionRef.current;
-    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
-    const dx = event.clientX - activeDragSession.startX;
-    const dy = event.clientY - activeDragSession.startY;
-    const distance = Math.hypot(dx, dy);
-    if (activeDragSession.status === "pending" && distance < DRAG_THRESHOLD_PX) return;
-    event.preventDefault();
-    const nextHover = categoryAtPoint(event.clientX, event.clientY) ?? nearestCategoryForBoardPoint(event.clientX, event.clientY);
-    const tilt = dragTilt(event.clientX - activeDragSession.lastX, event.clientY - activeDragSession.lastY);
-    setSelectedCardId(null);
-    setLaneReaction(nextHover ? { categoryId: nextHover.id, kind: "hover" } : null);
-    dragHoverCategoryIdRef.current = nextHover?.id ?? null;
-    updateDragSession({
-      ...activeDragSession,
-      status: "dragging",
-      x: event.clientX,
-      y: event.clientY,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      tilt,
-      hoverCategoryId: nextHover?.id ?? null,
-    });
-  };
-
-  const endCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
-    const activeDragSession = dragSessionRef.current;
-    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (activeDragSession.status !== "dragging") {
-      updateDragSession(null);
-      setLaneReaction(null);
-      return;
-    }
-    event.preventDefault();
-    suppressNextClickCardIdRef.current = activeDragSession.card.id;
-    const releaseInBoard = event.clientY <= viewportHeight() * 0.68;
-    const hoveredCategory = match.currentCategories.find((category) => category.id === dragHoverCategoryIdRef.current || category.id === activeDragSession.hoverCategoryId);
-    const dropCategory = releaseInBoard
-      ? categoryAtPoint(event.clientX, event.clientY) ?? nearestCategoryForBoardPoint(event.clientX, event.clientY) ?? hoveredCategory ?? null
-      : null;
-    if (dropCategory) {
-      const toRect = snapshotElement(lanePlayerRefs.current[dropCategory.id]) ?? snapshotElement(laneRefs.current[dropCategory.id]) ?? fallbackRect();
-      dispatchRevealStep({ type: "pickup" });
-      queueCardTravel({
-        card: activeDragSession.card,
-        imageUrl: activeDragSession.imageUrl,
-        fromRect: dragRect(activeDragSession),
-        toRect,
-        fromRotation: activeDragSession.tilt.rotateZ,
-        toRotation: 0,
-        kind: "place",
-        targetCategoryId: dropCategory.id,
-        ...placementDurations(),
-      });
-      setMatch((state) => assignCard(state, dropCategory.id, activeDragSession.card.id));
-      setSelectedCardId(null);
-    } else {
-      returnDraggedCardToHand(activeDragSession);
-    }
-    updateDragSession(null);
-    setLaneReaction(null);
-    dragHoverCategoryIdRef.current = null;
-  };
-
-  const cancelCardPointer = (event: ReactPointerEvent<HTMLElement>) => {
-    const activeDragSession = dragSessionRef.current;
-    if (!activeDragSession || activeDragSession.pointerId !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    if (activeDragSession.status === "dragging") returnDraggedCardToHand(activeDragSession);
-    updateDragSession(null);
-    setLaneReaction(null);
-    dragHoverCategoryIdRef.current = null;
-  };
-
-  const returnDraggedCardToHand = (session: DragSessionState) => {
-    queueCardTravel({
-      card: session.card,
-      imageUrl: session.imageUrl,
-      fromRect: dragRect(session),
-      toElement: handCardRefs.current[session.card.id],
-      toRect: snapshotElement(handCardRefs.current[session.card.id]) ?? session.sourceRect,
-      fromRotation: session.tilt.rotateZ,
-      toRotation: session.sourceRotation,
-      kind: "return",
-      durationMs: animationDuration(STAT_CHECK_ANIMATION.handReturnMs, prefersReducedMotion, animationSpeed),
-    });
-    dispatchRevealStep({ type: "return" });
-  };
-
-  const categoryAtPoint = (x: number, y: number) => {
-    if (!canStartDrag && !dragSessionRef.current) return null;
-    return match.currentCategories.find((category) => {
-      const rect = laneRefs.current[category.id]?.getBoundingClientRect();
-      return rect ? x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom : false;
-    }) ?? null;
-  };
-
-  const nearestCategoryForBoardPoint = (x: number, y: number) => {
-    if (y > viewportHeight() * 0.68) return null;
-    let nearest: { category: StatCategory; distance: number } | null = null;
-    for (const category of match.currentCategories) {
-      const rect = laneRefs.current[category.id]?.getBoundingClientRect();
-      if (!rect) continue;
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const distance = Math.hypot(x - centerX, y - centerY);
-      if (!nearest || distance < nearest.distance) nearest = { category, distance };
-    }
-    return nearest?.category ?? null;
-  };
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 lg:h-[calc(100svh-56px)] lg:min-h-[640px]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
@@ -598,7 +409,9 @@ export default function StatCheckPage() {
             />
 
             <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
-              <p className="text-sm font-semibold text-cyan-100">Choose a champion, then place it in a lane.</p>
+              <p className="text-sm font-semibold text-cyan-100" data-testid="stat-check-instruction">
+                {selectedCard ? `Click a lane to play ${selectedCard.name}.` : "Click a champion, then click a lane."}
+              </p>
               <Button
                 data-testid="stat-check-lock"
                 onClick={lockIn}
@@ -612,7 +425,7 @@ export default function StatCheckPage() {
               </Button>
             </div>
 
-            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(214px,74vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
+            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                 const assigned = assignedCard(match, category.id);
@@ -648,21 +461,12 @@ export default function StatCheckPage() {
               selectedCardId={selectedCardId}
               assignedCardIds={assignedCardIds}
               disabled={!canEdit}
-              canDrag={canStartDrag}
               reducedMotion={prefersReducedMotion}
-              draggingCardId={dragSession?.status === "dragging" ? dragSession.card.id : null}
               cardRefs={handCardRefs}
               onSelect={(cardId) => {
-                if (suppressNextClickCardIdRef.current === cardId) {
-                  suppressNextClickCardIdRef.current = null;
-                  return;
-                }
+                if (!canEdit) return;
                 setSelectedCardId((current) => (current === cardId ? null : cardId));
               }}
-              onPointerDown={beginCardPointer}
-              onPointerMove={moveCardPointer}
-              onPointerUp={endCardPointer}
-              onPointerCancel={cancelCardPointer}
             />
 
             <HpDisplay
@@ -685,7 +489,7 @@ export default function StatCheckPage() {
           />
         </section>
       </div>
-      <CardMotionOverlay travelingCards={travelingCards} dragSession={dragSession} assets={assets} reducedMotion={prefersReducedMotion} />
+      <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
   );
 }
@@ -735,6 +539,13 @@ function ArenaLane({
   const botWon = resolution?.winner === "bot";
   const botState = showResult && botWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && playerWon ? "loser" : "idle";
   const playerState = showResult && playerWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && botWon ? "loser" : "idle";
+  const placementHint = canEdit && selectedCard
+    ? playerCard
+      ? `Swap in ${selectedCard.name}.`
+      : `Place ${selectedCard.name} here.`
+    : playerCard && canEdit
+      ? "Click to return your card to hand."
+      : "";
 
   return (
     <div
@@ -742,6 +553,7 @@ function ArenaLane({
       ref={laneRef}
       role="button"
       tabIndex={canEdit ? 0 : -1}
+      aria-label={`Lane ${index + 1}: ${categoryAccessibleLabel(category)} ${placementHint}`.trim()}
       onClick={onPlace}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -750,32 +562,16 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[278px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition md:min-h-0 md:p-2.5",
+        "group relative flex min-h-[300px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-0 md:p-2.5",
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
-        canEdit && selectedCard && "ring-2 ring-[#d6b55d]/55",
+        canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
+        canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
         active && "ring-2 ring-cyan-300/65",
-        reaction === "hover" && "ring-2 ring-cyan-200/75 before:border-cyan-200/60 before:bg-cyan-200/5",
         reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
-        reaction === "invalid" && "ring-2 ring-red-400/60 before:border-red-300/60",
       )}
     >
-      <div className="relative flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <CategoryIcon category={category} />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-black">{compactCategoryLabel(category)}</div>
-            <div className="truncate text-[11px] text-slate-400">
-              {scopeLabel(category)} - Decisive {formatThreshold(category.decisiveThreshold)}
-            </div>
-          </div>
-        </div>
-        <div className="shrink-0 rounded-full border border-[#d6b55d]/30 bg-[#d6b55d]/10 px-2 py-1 text-[10px] font-black uppercase text-[#f4d77d]">
-          {category.direction === "higher" ? "High" : "Low"}
-        </div>
-      </div>
-
-      <div className="relative mt-2 grid flex-1 grid-rows-[minmax(78px,1fr)_auto_minmax(78px,1fr)] gap-1.5">
-        <div ref={botRef}>
+      <div className="relative grid flex-1 grid-rows-[1fr_auto_1fr] items-center gap-1.5">
+        <div ref={botRef} className="flex items-end justify-center">
           <FlippableCard
             card={botCard}
             imageUrl={getImage(assets, botCard)}
@@ -787,30 +583,57 @@ function ArenaLane({
             state={botState}
           />
         </div>
-        <div className="flex min-h-[42px] items-center justify-center md:min-h-[50px]">
+        <div className="flex min-h-[46px] items-center justify-center">
           {showResult && resolution ? (
             <LaneResult result={resolution} />
           ) : (
-            <div className="rounded-full border border-cyan-300/20 bg-black/40 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-cyan-100">
-              Lane {index + 1}
-            </div>
+            <CategoryMarker category={category} />
           )}
         </div>
-        <div ref={playerRef}>
+        <div ref={playerRef} className="flex items-start justify-center">
           <ChampionCard
             card={playerCard}
             imageUrl={getImage(assets, playerCard)}
             category={category}
             value={resolution?.playerValue}
-            mode={playerCard ? "lane" : "empty"}
+            mode={playerCard ? "board" : "empty"}
             state={playerState}
             label="You"
+            emptyPrompt={canEdit && selectedCard ? "Place here" : "Place champion"}
+            emptyActive={Boolean(canEdit && selectedCard)}
           />
         </div>
       </div>
-
     </div>
   );
+}
+
+export function CategoryMarker({ category }: { category: StatCategory }) {
+  const higher = category.direction === "higher";
+  return (
+    <div
+      data-testid={`stat-check-marker-${category.id}`}
+      data-direction={category.direction}
+      className="z-10 flex items-center gap-1.5 rounded-full border border-[#d6b55d]/40 bg-black/70 py-1 pl-1 pr-2.5 shadow-xl"
+    >
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]" aria-hidden>
+        <CategoryGlyph category={category} className="h-3.5 w-3.5" />
+      </span>
+      <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100" aria-hidden>
+        {higher ? <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d]" /> : <ArrowDown className="h-3.5 w-3.5 text-cyan-300" />}
+        {category.shortLabel}
+      </span>
+      <span className="rounded-full bg-[#d6b55d]/15 px-1.5 py-0.5 text-[10px] font-black text-[#f4d77d]" aria-hidden>
+        {formatThreshold(category.decisiveThreshold)}
+      </span>
+      <span className="sr-only">{categoryAccessibleLabel(category)}</span>
+    </div>
+  );
+}
+
+function categoryAccessibleLabel(category: StatCategory) {
+  const direction = category.direction === "higher" ? "Higher value wins" : "Lower value wins";
+  return `${capitalize(category.label)}. ${statFamilyLabel(category)}. ${scopeLabel(category)}. ${direction}. Decisive ${formatThreshold(category.decisiveThreshold)} for bonus damage.`;
 }
 
 function PlayerHand({
@@ -819,30 +642,18 @@ function PlayerHand({
   selectedCardId,
   assignedCardIds,
   disabled,
-  canDrag,
   reducedMotion,
-  draggingCardId,
   cardRefs,
   onSelect,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onPointerCancel,
 }: {
   cards: StatCheckCard[];
   assets: ReturnType<typeof useChampionAssets>["data"];
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
   disabled: boolean;
-  canDrag: boolean;
   reducedMotion: boolean;
-  draggingCardId: string | null;
   cardRefs: RefObject<Record<string, HTMLElement | null>>;
   onSelect: (cardId: string) => void;
-  onPointerDown: (card: StatCheckCard, event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const viewportWidth = useViewportWidth();
   const activeCards = cards.filter((card) => !assignedCardIds.has(card.id));
@@ -853,7 +664,6 @@ function PlayerHand({
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const selected = selectedCardId === card.id;
-          const dragging = draggingCardId === card.id;
           const layout = fanCardLayout(index, activeCards.length, parameters, selected);
           const style = {
             transform: `translate(-50%, 0) translate(${layout.x}px, ${layout.y}px) rotate(${layout.rotation}deg)`,
@@ -863,10 +673,8 @@ function PlayerHand({
             <div
               key={card.id}
               className={cn(
-                "absolute left-1/2 top-0 origin-bottom will-change-transform",
+                "absolute left-1/2 top-0 origin-bottom will-change-transform hover:!z-[400] focus-within:!z-[400]",
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
-                canDrag && "cursor-grab active:cursor-grabbing [touch-action:pan-y]",
-                dragging && "opacity-40",
               )}
               data-fan-index={index}
               ref={(element) => {
@@ -880,11 +688,8 @@ function PlayerHand({
                 mode="hand"
                 state={selected ? "selected" : "idle"}
                 disabled={disabled}
+                selected={selected}
                 onClick={() => onSelect(card.id)}
-                onPointerDown={(event) => onPointerDown(card, event)}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerCancel}
                 testId={`stat-check-hand-${index}`}
               />
             </div>
@@ -959,12 +764,10 @@ function AnimationSpeedControl({
 
 function CardMotionOverlay({
   travelingCards,
-  dragSession,
   assets,
   reducedMotion,
 }: {
   travelingCards: TravelingCardState[];
-  dragSession: DragSessionState | null;
   assets: ReturnType<typeof useChampionAssets>["data"];
   reducedMotion: boolean;
 }) {
@@ -974,9 +777,6 @@ function CardMotionOverlay({
       {travelingCards.map((item) => (
         <TravelingCard key={item.id} item={item} assets={assets} reducedMotion={reducedMotion} />
       ))}
-      {dragSession?.status === "dragging" && (
-        <DraggedCard session={dragSession} assets={assets} reducedMotion={reducedMotion} />
-      )}
     </div>,
     document.body,
   );
@@ -1025,47 +825,14 @@ function TravelingCard({
       }}
       transition={{ duration, ease: STAT_CHECK_ANIMATION.easing, times: [0, pickupRatio, travelRatio, landingRatio, 1] }}
     >
-      <div className="h-full w-full overflow-hidden rounded-md shadow-[0_20px_48px_rgba(0,0,0,0.5)]">
+      <div className="h-full w-full overflow-hidden rounded-lg shadow-[0_20px_48px_rgba(0,0,0,0.5)]">
         <ChampionCard
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
-          mode="lane"
+          mode="board"
           state="idle"
+          fill
         />
-      </div>
-    </motion.div>
-  );
-}
-
-function DraggedCard({
-  session,
-  assets,
-  reducedMotion,
-}: {
-  session: DragSessionState;
-  assets: ReturnType<typeof useChampionAssets>["data"];
-  reducedMotion: boolean;
-}) {
-  const x = session.x - session.sourceRect.width / 2;
-  const y = session.y - session.sourceRect.height / 2;
-  return (
-    <motion.div
-      data-testid={`stat-check-drag-card-${session.card.id}`}
-      className="fixed left-0 top-0 origin-center cursor-grabbing"
-      animate={{
-        x,
-        y,
-        width: session.sourceRect.width,
-        height: session.sourceRect.height,
-        scale: reducedMotion ? 1 : 1.08,
-        rotateX: reducedMotion ? 0 : session.tilt.rotateX,
-        rotateY: reducedMotion ? 0 : session.tilt.rotateY,
-        rotateZ: reducedMotion ? 0 : session.tilt.rotateZ,
-      }}
-      transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 720, damping: 42, mass: 0.7 }}
-    >
-      <div className="h-full w-full overflow-hidden rounded-md shadow-[0_30px_70px_rgba(0,0,0,0.65)]">
-        <ChampionCard card={session.card} imageUrl={session.imageUrl ?? getImage(assets, session.card)} mode="lane" state="selected" />
       </div>
     </motion.div>
   );
@@ -1093,11 +860,11 @@ function FlippableCard({
   if (reducedMotion) {
     return (
       <ChampionCard
-        card={card}
+        card={flipped ? card : null}
         imageUrl={imageUrl}
         category={category}
         value={value}
-        mode={flipped ? "lane" : "face-down"}
+        mode={flipped ? "board" : "face-down"}
         state={state}
         label={flipped ? "Bot" : undefined}
       />
@@ -1105,23 +872,28 @@ function FlippableCard({
   }
 
   return (
-    <div className="relative min-h-[88px] w-full md:min-h-[96px]" style={{ perspective: "900px" }}>
+    <div className={BOARD_CARD_SIZE} style={{ perspective: "900px" }}>
       <motion.div
-        className="relative min-h-[88px] w-full md:min-h-[96px]"
+        className="relative h-full w-full"
         style={{ transformStyle: "preserve-3d" }}
         animate={{ rotateY: flipped ? 180 : 0, y: flipped ? -2 : 0 }}
         transition={{ duration: animationDuration(STAT_CHECK_ANIMATION.opponentFlipMs, false, animationSpeed) / 1000, ease: STAT_CHECK_ANIMATION.easing }}
       >
         <div className="absolute inset-0 [backface-visibility:hidden]">
-          <ChampionCard card={null} mode="face-down" />
+          <ChampionCard card={null} mode="face-down" fill />
         </div>
-        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="lane" state={state} label="Bot" />
+        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden={!flipped}>
+          {/* The face-up front mounts only once the flip starts, so the concealed
+              champion never appears in the DOM or accessibility tree early. */}
+          {flipped && <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="board" state={state} label="Bot" fill />}
         </div>
       </motion.div>
     </div>
   );
 }
+
+/** Single source of truth for the physical board-card footprint (portrait, 7:10). */
+const BOARD_CARD_SIZE = "h-[124px] w-[87px] shrink-0 xl:h-[140px] xl:w-[98px]";
 
 function ChampionCard({
   card,
@@ -1132,44 +904,56 @@ function ChampionCard({
   state = "idle",
   label,
   disabled,
+  selected,
   onClick,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onPointerCancel,
   testId,
+  fill,
+  emptyPrompt = "Place champion",
+  emptyActive = false,
 }: {
   card: StatCheckCard | null;
   imageUrl?: string | null;
   category?: StatCategory;
   value?: number;
-  mode: "hand" | "lane" | "face-down" | "empty";
+  mode: "hand" | "board" | "face-down" | "empty";
   state?: "idle" | "selected" | "assigned" | "winner" | "loser" | "decisive";
   label?: string;
   disabled?: boolean;
+  selected?: boolean;
   onClick?: () => void;
-  onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerMove?: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp?: (event: ReactPointerEvent<HTMLElement>) => void;
-  onPointerCancel?: (event: ReactPointerEvent<HTMLElement>) => void;
   testId?: string;
+  /** Fill the parent box (used by flip faces and the motion overlay) instead of self-sizing. */
+  fill?: boolean;
+  emptyPrompt?: string;
+  emptyActive?: boolean;
 }) {
   if (mode === "empty") {
     return (
-      <div className="flex min-h-[88px] items-center justify-center rounded-md border border-dashed border-cyan-300/20 bg-black/25 px-3 text-center text-xs font-semibold text-slate-400 md:min-h-[96px]">
-        Place champion
+      <div
+        className={cn(
+          BOARD_CARD_SIZE,
+          "flex items-center justify-center rounded-lg border border-dashed px-2 text-center text-[11px] font-semibold transition",
+          emptyActive
+            ? "border-[#f4d77d]/70 bg-[#d6b55d]/10 text-[#f4d77d] shadow-[0_0_18px_rgba(214,181,93,0.25)]"
+            : "border-cyan-300/20 bg-black/25 text-slate-400",
+        )}
+      >
+        {emptyPrompt}
       </div>
     );
   }
 
   if (mode === "face-down") {
     return (
-      <div className="relative min-h-[88px] overflow-hidden rounded-md border border-cyan-300/20 bg-[linear-gradient(135deg,#0b2032,#071018_45%,#1c1730)] shadow-xl md:min-h-[96px]">
-        <div className="absolute inset-2 rounded border border-[#d6b55d]/30" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(34,211,238,0.25),transparent_32%)]" />
-        <div className="relative flex h-full min-h-[88px] flex-col items-center justify-center gap-2 text-cyan-100 md:min-h-[96px]">
-          <Eye className="h-7 w-7 animate-pulse motion-reduce:animate-none" />
-          <span className="text-[10px] font-black uppercase tracking-[0.18em]">Concealed</span>
+      <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border border-cyan-300/25 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-xl")}>
+        <div className="absolute inset-[5px] rounded-md border border-[#d6b55d]/35" />
+        <div className="absolute inset-[9px] rounded border border-[#d6b55d]/15" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.22),transparent_46%)]" />
+        <div className="relative flex h-full flex-col items-center justify-center gap-1.5 text-cyan-100">
+          <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d6b55d]/40 bg-black/40 text-[#f4d77d]">
+            <Swords className="h-5 w-5" />
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-200/80">Concealed</span>
         </div>
       </div>
     );
@@ -1178,10 +962,10 @@ function ChampionCard({
   const relevant = card && category ? category.formatValue(value ?? category.getValue(card)) : null;
   const chips = card ? statChips(card) : [];
   const cardClassName = cn(
-    "relative block overflow-hidden rounded-md border bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
-    mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[108px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
-    mode === "lane" && "min-h-[88px] w-full md:min-h-[96px]",
-    state === "selected" && "border-[#f4d77d] ring-2 ring-[#f4d77d]/45",
+    "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
+    mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
+    mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
+    state === "selected" && "-translate-y-1 border-[#f4d77d] shadow-[0_18px_44px_rgba(0,0,0,0.6),0_0_28px_rgba(244,215,125,0.35)] ring-2 ring-[#f4d77d]/60",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -1192,11 +976,20 @@ function ChampionCard({
   const content = (
     <>
       {card && <ChampionArt card={card} imageUrl={imageUrl} />}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent p-2">
-        {label && <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
-        <div className="truncate text-sm font-black text-white">{card?.name}</div>
+      <div className={cn("absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent", mode === "board" ? "p-1.5" : "p-2")}>
+        {label && <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
+        <div className={cn("truncate font-black text-white", mode === "board" ? "text-xs" : "text-sm")}>{card?.name}</div>
         {relevant ? (
-          <div className="mt-1 inline-flex rounded-full bg-[#d6b55d] px-2 py-0.5 text-xs font-black text-black">{relevant}</div>
+          <>
+            <div className="mt-0.5 inline-flex rounded-full bg-[#d6b55d] px-1.5 py-0.5 text-[11px] font-black text-black">{relevant}</div>
+            <div className="mt-0.5 hidden flex-wrap gap-0.5 opacity-70 xl:flex">
+              {chips.slice(0, 3).map((chip) => (
+                <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[8px] font-semibold text-slate-300">
+                  {chip.label} {chip.value}
+                </span>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="mt-1 flex flex-wrap gap-1">
             {chips.map((chip) => (
@@ -1215,13 +1008,12 @@ function ChampionCard({
     return (
       <button
         data-testid={testId}
+        data-card-champion={card?.name}
         type="button"
         disabled={disabled}
+        aria-pressed={selected ?? false}
+        aria-label={card ? handCardAccessibleLabel(card, selected) : undefined}
         onClick={onClick}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
         className={cardClassName}
       >
         {content}
@@ -1230,10 +1022,15 @@ function ChampionCard({
   }
 
   return (
-    <div data-testid={testId} className={cardClassName}>
+    <div data-testid={testId} data-card-champion={card?.name} className={cardClassName}>
       {content}
     </div>
   );
+}
+
+function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean) {
+  const stats = statChips(card).map((chip) => `${chip.label} ${chip.value}`).join(", ");
+  return `${card.name}. ${stats}.${selected ? " Selected. Click a lane to play it." : ""}`;
 }
 
 function RevealSequence({
@@ -1435,19 +1232,20 @@ function DiscardPile({
   );
 }
 
-function LaneResult({ result }: { result: CategoryResult }) {
-  const winnerCard = result.winner === "player" ? result.playerCard : result.winner === "bot" ? result.botCard : null;
+export function LaneResult({ result }: { result: CategoryResult }) {
+  const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? "Bot wins" : "Lane tied";
   return (
-    <div className="z-20 w-full rounded-md border border-[#d6b55d]/45 bg-black/82 px-3 py-2 text-center shadow-2xl">
-      <div className="truncate text-base font-black text-white">
-        {winnerCard ? `${winnerCard.name} wins` : "Lane tied"}
+    <div className="z-20 w-full max-w-[190px] rounded-md border border-[#d6b55d]/45 bg-black/82 px-2 py-1.5 text-center shadow-2xl">
+      <div className={cn("text-sm font-black uppercase tracking-[0.08em]", result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200")}>
+        {headline}
       </div>
-      <div className="mt-0.5 text-sm font-black text-[#f4d77d]">
+      <div className="mt-0.5 text-sm font-black text-white">
         {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
       </div>
-      <div className="text-xs font-semibold text-cyan-100">{(result.margin * 100).toFixed(1)}% margin</div>
-      <div className="text-[11px] font-semibold text-slate-300">Decisive at {formatThreshold(result.category.decisiveThreshold)}</div>
-      {result.decisive && <div className="mt-1 text-xs font-black uppercase text-[#f4d77d]">Decisive +1</div>}
+      {result.decisive && <div className="text-xs font-black uppercase text-[#f4d77d]">Decisive +1</div>}
+      <div className="text-[10px] font-semibold text-slate-400">
+        {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
+      </div>
     </div>
   );
 }
@@ -1508,20 +1306,20 @@ function DamageBreakdown({ title, amount, side, damage }: { title: string; amoun
   );
 }
 
+function CategoryGlyph({ category, className }: { category: StatCategory; className?: string }) {
+  if (category.id.includes("hp")) return <Heart className={className} />;
+  if (category.id.includes("ad")) return <Sword className={className} />;
+  if (category.id.includes("armor")) return <Shield className={className} />;
+  if (category.id.includes("mr")) return <Sparkles className={className} />;
+  if (category.id.includes("move")) return <Footprints className={className} />;
+  if (category.id.includes("range")) return <Crosshair className={className} />;
+  return <Gauge className={className} />;
+}
+
 function CategoryIcon({ category }: { category: StatCategory }) {
-  const className = "h-4 w-4";
-  const icon = (() => {
-    if (category.id.includes("hp")) return <Heart className={className} />;
-    if (category.id.includes("ad")) return <Sword className={className} />;
-    if (category.id.includes("armor")) return <Shield className={className} />;
-    if (category.id.includes("mr")) return <Sparkles className={className} />;
-    if (category.id.includes("move")) return <Footprints className={className} />;
-    if (category.id.includes("range")) return <Crosshair className={className} />;
-    return <Gauge className={className} />;
-  })();
   return (
     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]">
-      {icon}
+      <CategoryGlyph category={category} className="h-4 w-4" />
     </span>
   );
 }
@@ -1529,7 +1327,7 @@ function CategoryIcon({ category }: { category: StatCategory }) {
 function ChampionArt({ card, imageUrl }: { card: StatCheckCard; imageUrl?: string | null }) {
   if (imageUrl) return <img src={imageUrl} alt={card.name} className="h-full w-full object-cover" loading="lazy" />;
   return (
-    <div className="flex h-full min-h-[128px] w-full items-center justify-center bg-gradient-to-br from-cyan-950 via-slate-900 to-amber-950 text-xl font-black text-[#f4d77d]">
+    <div className="flex h-full min-h-[88px] w-full items-center justify-center bg-gradient-to-br from-cyan-950 via-slate-900 to-amber-950 text-xl font-black text-[#f4d77d]">
       {card.name.slice(0, 2).toUpperCase()}
     </div>
   );
@@ -1548,21 +1346,9 @@ function statChips(card: StatCheckCard) {
   return [
     { label: "HP", value: Math.round(card.stats.hp) },
     { label: "AD", value: Math.round(card.stats.ad) },
+    { label: "AR", value: Math.round(card.stats.armor) },
     { label: "RNG", value: Math.round(card.stats.attackRange) },
   ];
-}
-
-function compactCategoryLabel(category: StatCategory) {
-  const label = category.label
-    .replace("level-1 ", "")
-    .replace("level-18 ", "")
-    .replace("base ", "")
-    .replace("attack damage", "Attack Damage")
-    .replace("magic resistance", "Magic Resist")
-    .replace("movement speed", "Move Speed")
-    .replace("attack range", "Range")
-    .replace("attack speed", "Attack Speed");
-  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function statFamilyLabel(category: StatCategory) {
@@ -1578,6 +1364,10 @@ function scopeLabel(category: StatCategory) {
   if (category.id.includes("-18")) return "Level 18";
   if (category.id.includes("-1")) return "Level 1";
   return "Base";
+}
+
+function capitalize(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function phaseLabel(step: PresentationStep) {
@@ -1611,31 +1401,6 @@ function readElementRotation(element?: Element | null) {
   const values = transform.match(/matrix\(([^)]+)\)/)?.[1]?.split(",").map((value) => Number.parseFloat(value.trim()));
   if (!values || values.length < 2) return 0;
   return Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
-}
-
-function dragRect(session: DragSessionState): DOMRectSnapshot {
-  return {
-    x: session.x - session.sourceRect.width / 2,
-    y: session.y - session.sourceRect.height / 2,
-    width: session.sourceRect.width,
-    height: session.sourceRect.height,
-  };
-}
-
-function dragTilt(deltaX: number, deltaY: number): DragTilt {
-  return {
-    rotateX: clamp(deltaY * -0.18, -5, 5),
-    rotateY: clamp(deltaX * 0.26, -8, 8),
-    rotateZ: clamp(deltaX * 0.2, -6, 6),
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function viewportHeight() {
-  return typeof window === "undefined" || window.innerHeight <= 0 ? 768 : window.innerHeight;
 }
 
 function readStoredAnimationSpeed(): StatCheckAnimationSpeed {

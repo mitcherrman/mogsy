@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import StatCheckPage from "./StatCheckPage";
+import StatCheckPage, { CategoryMarker, LaneResult } from "./StatCheckPage";
+import type { CategoryResult, StatCategory, StatCheckCard } from "./statCheckEngine";
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
   useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -14,6 +15,12 @@ vi.mock("@/hooks/useChampionAssets", () => ({
 
 function lanes(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-lane-"]'));
+}
+
+function laneChampions(lane: HTMLElement) {
+  return Array.from(lane.querySelectorAll<HTMLElement>("[data-card-champion]")).map(
+    (element) => element.getAttribute("data-card-champion"),
+  );
 }
 
 function place(container: HTMLElement, handIndex: number, laneIndex: number) {
@@ -56,21 +63,62 @@ function reducedMotion(matches: boolean) {
   });
 }
 
-function mockGeometry() {
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function rect(this: HTMLElement) {
-    const testId = this.getAttribute("data-testid") ?? "";
-    if (testId.startsWith("stat-check-hand-")) return domRect(80, 520, 120, 160);
-    if (testId.startsWith("stat-check-lane-")) {
-      const index = testId.includes("highest-hp") ? 0 : testId.includes("movement-speed") ? 1 : 2;
-      return domRect(120 + index * 240, 140, 210, 280);
-    }
-    if (this.textContent?.includes("Place champion")) return domRect(120, 360, 180, 96);
-    return domRect(0, 0, 120, 160);
-  });
-}
+const markerCategoryBase = {
+  active: true,
+  explanation: "",
+  getValue: (card: StatCheckCard) => card.stats.hp,
+  formatValue: (value: number) => String(Math.round(value)),
+};
 
-function domRect(x: number, y: number, width: number, height: number) {
-  return { x, y, width, height, left: x, top: y, right: x + width, bottom: y + height, toJSON: () => ({}) } as DOMRect;
+const higherHp18Category: StatCategory = {
+  ...markerCategoryBase,
+  id: "highest-hp-18",
+  label: "Highest level-18 health",
+  shortLabel: "L18 HP",
+  family: "health",
+  direction: "higher",
+  decisiveThreshold: 0.075,
+};
+
+const lowerArmorCategory: StatCategory = {
+  ...markerCategoryBase,
+  id: "lowest-armor-1",
+  label: "Lowest base armor",
+  shortLabel: "Low armor",
+  family: "armor",
+  direction: "lower",
+  decisiveThreshold: 0.25,
+};
+
+const sampleCard = (name: string): StatCheckCard => ({
+  id: name.toLowerCase(),
+  name,
+  stats: {
+    hp: 600,
+    hpPerLevel: 90,
+    ad: 60,
+    adPerLevel: 3,
+    armor: 30,
+    magicResist: 32,
+    moveSpeed: 340,
+    attackRange: 175,
+    attackSpeed: 0.65,
+    attackSpeedPerLevel: 2,
+  },
+});
+
+function sampleResult(overrides: Partial<CategoryResult>): CategoryResult {
+  return {
+    category: higherHp18Category,
+    playerCard: sampleCard("Garen"),
+    botCard: sampleCard("Lux"),
+    playerValue: 625,
+    botValue: 604,
+    winner: "player",
+    margin: 0.034,
+    decisive: false,
+    ...overrides,
+  };
 }
 
 describe("StatCheckPage tabletop presentation", () => {
@@ -126,6 +174,98 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent(/20 \/ 20 HP/);
   });
 
+  it("selects, deselects, and switches hand-card selection with clicks", () => {
+    render(<StatCheckPage />);
+    const first = screen.getByTestId("stat-check-hand-0");
+    const second = screen.getByTestId("stat-check-hand-1");
+
+    expect(first).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(first);
+    expect(first).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("stat-check-instruction")).toHaveTextContent(/Click a lane to play/i);
+
+    fireEvent.click(second);
+    expect(first).toHaveAttribute("aria-pressed", "false");
+    expect(second).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(second);
+    expect(second).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("stat-check-instruction")).toHaveTextContent(/Click a champion/i);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("Escape clears the current selection", () => {
+    render(<StatCheckPage />);
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+    expect(screen.getByTestId("stat-check-hand-0")).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByTestId("stat-check-hand-0")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("marks empty lanes as active placement targets only while a card is selected", () => {
+    const { container } = render(<StatCheckPage />);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+    expect(screen.queryByText(/Place here/i)).toBeNull();
+
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+    expect(screen.getAllByText(/Place here/i)).toHaveLength(3);
+
+    fireEvent.click(lanes(container)[0]);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(2);
+    expect(screen.queryByText(/Place here/i)).toBeNull();
+  });
+
+  it("does not place anything when a lane is clicked with no selection", () => {
+    const { container } = render(<StatCheckPage />);
+    fireEvent.click(lanes(container)[0]);
+
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
+  });
+
+  it("keeps the same physical champion card from hand to board", () => {
+    const { container } = render(<StatCheckPage />);
+    const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
+    expect(champion).toBeTruthy();
+
+    place(container, 0, 0);
+
+    const lane = lanes(container)[0];
+    expect(laneChampions(lane)).toEqual([champion]);
+    expect(screen.getAllByTestId(/^stat-check-hand-/).map((card) => card.getAttribute("data-card-champion"))).not.toContain(champion);
+  });
+
+  it("rapid repeated lane clicks place exactly one card and do not bounce it back", () => {
+    const { container } = render(<StatCheckPage />);
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+    fireEvent.click(lanes(container)[0]);
+    fireEvent.click(lanes(container)[0]);
+    fireEvent.click(lanes(container)[0]);
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+    expect(laneChampions(lanes(container)[0])).toHaveLength(1);
+    expect(within(lanes(container)[0]).queryByText(/Place champion/i)).toBeNull();
+  });
+
+  it("swaps the placed card when an occupied lane is clicked with a new selection", () => {
+    const { container } = render(<StatCheckPage />);
+    const firstChampion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
+    place(container, 0, 0);
+    const secondChampion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
+    expect(secondChampion).not.toBe(firstChampion);
+
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+    fireEvent.click(lanes(container)[0]);
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(laneChampions(lanes(container)[0])).toEqual([secondChampion]);
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+    expect(screen.getAllByTestId(/^stat-check-hand-/).map((card) => card.getAttribute("data-card-champion"))).toContain(firstChampion);
+  });
+
   it("moves cards between lanes before lock-in without duplicate visual assignment", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane, secondLane] = lanes(container);
@@ -139,6 +279,7 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.queryByText(/On table/i)).toBeNull();
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
 
+    act(() => vi.advanceTimersByTime(1_000));
     fireEvent.click(firstLane);
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(secondLane);
@@ -153,12 +294,41 @@ describe("StatCheckPage tabletop presentation", () => {
     const { container } = render(<StatCheckPage />);
     const [firstLane] = lanes(container);
 
-    placeWithoutSettling(container, 0, 0);
+    place(container, 0, 0);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
 
     fireEvent.click(firstLane);
 
     expect(within(firstLane).getByText(/Place champion/i)).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("pointer movement between press and release does not cancel click placement", () => {
+    const { container } = render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 170, clientY: 300 });
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 170, clientY: 300 });
+    fireEvent.click(card);
+    fireEvent.click(lanes(container)[0]);
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
+    expect(within(lanes(container)[0]).queryByText(/Place champion/i)).toBeNull();
+  });
+
+  it("does not render a drag ghost or instruct users to drag", () => {
+    const { container } = render(<StatCheckPage />);
+    const card = screen.getByTestId("stat-check-hand-0");
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 300, clientY: 200 });
+
+    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain("drag");
+
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 300, clientY: 200 });
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
   });
 
@@ -202,74 +372,6 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
   });
 
-  it("does not leave a pending drag after an ordinary card click", () => {
-    const { container } = render(<StatCheckPage />);
-    const card = screen.getByTestId("stat-check-hand-0");
-
-    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.click(card);
-    fireEvent.pointerUp(card, { pointerId: 1, clientX: 101, clientY: 541 });
-    fireEvent.click(lanes(container)[0]);
-
-    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(5);
-    expect(within(lanes(container)[0]).queryByText(/Place champion/i)).toBeNull();
-  });
-
-  it("activates pointer drag after threshold and commits once over a valid lane", () => {
-    mockGeometry();
-    render(<StatCheckPage />);
-    const card = screen.getByTestId("stat-check-hand-0");
-
-    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.pointerMove(card, { pointerId: 1, clientX: 170, clientY: 180 });
-
-    expect(screen.getAllByTestId(/^stat-check-drag-card-/)).toHaveLength(1);
-    fireEvent.pointerUp(card, { pointerId: 1, clientX: 170, clientY: 180 });
-    act(() => vi.advanceTimersByTime(0));
-
-    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
-    expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
-    act(() => vi.advanceTimersByTime(1_000));
-    expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
-  });
-
-  it("returns a dragged card when released outside valid lanes", () => {
-    mockGeometry();
-    render(<StatCheckPage />);
-    const card = screen.getByTestId("stat-check-hand-0");
-
-    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.pointerMove(card, { pointerId: 1, clientX: 350, clientY: 700 });
-    fireEvent.pointerUp(card, { pointerId: 1, clientX: 350, clientY: 700 });
-
-    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
-    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
-    expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
-  });
-
-  it("pointercancel and Escape cancel active drags without assignment", () => {
-    mockGeometry();
-    const { unmount } = render(<StatCheckPage />);
-    const card = screen.getByTestId("stat-check-hand-0");
-
-    fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.pointerMove(card, { pointerId: 1, clientX: 170, clientY: 180 });
-    fireEvent.pointerCancel(card, { pointerId: 1 });
-
-    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
-    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
-
-    unmount();
-    render(<StatCheckPage />);
-    const nextCard = screen.getByTestId("stat-check-hand-0");
-    fireEvent.pointerDown(nextCard, { pointerId: 2, clientX: 100, clientY: 540, button: 0 });
-    fireEvent.pointerMove(nextCard, { pointerId: 2, clientX: 170, clientY: 180 });
-    fireEvent.keyDown(window, { key: "Escape" });
-
-    expect(screen.queryByTestId(/^stat-check-drag-card-/)).toBeNull();
-    expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
-  });
-
   it("restart cancels active overlay travel", () => {
     const { container } = render(<StatCheckPage />);
     placeWithoutSettling(container, 0, 0);
@@ -280,6 +382,44 @@ describe("StatCheckPage tabletop presentation", () => {
 
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("shows a comparison marker per lane with direction, family, and decisive threshold", () => {
+    const { container } = render(<StatCheckPage />);
+    const markers = container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]');
+    expect(markers).toHaveLength(3);
+    for (const marker of markers) {
+      expect(["higher", "lower"]).toContain(marker.getAttribute("data-direction"));
+      expect(marker.textContent).toMatch(/Decisive [\d.]+%/);
+      expect(marker.textContent).toMatch(/value wins/i);
+    }
+    for (const lane of lanes(container)) {
+      expect(within(lane).getByText(/Concealed/i)).toBeInTheDocument();
+    }
+  });
+
+  it("conceals bot identity until the reveal flip and resolves lanes only afterwards", () => {
+    const { container } = render(<StatCheckPage />);
+    fillBoard(container);
+    const placedChampions = lanes(container).flatMap(laneChampions).sort();
+    expect(placedChampions).toHaveLength(3);
+
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // Locked but before any opponent flip fires: still only the player's cards.
+    expect(lanes(container).flatMap(laneChampions).sort()).toEqual(placedChampions);
+    expect(screen.getAllByText(/Concealed/i).length).toBeGreaterThanOrEqual(3);
+
+    // After all flips but before lane resolution: six physical cards, no results yet.
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(lanes(container).flatMap(laneChampions)).toHaveLength(6);
+    expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
+
+    finishReveal();
+    const results = lanes(container).map((lane) => lane.textContent ?? "");
+    expect(results.every((text) => /You win|Bot wins|Lane tied/i.test(text))).toBe(true);
+    expect(results.some((text) => /Decisive at [\d.]+%/.test(text))).toBe(true);
+    expect(results.every((text) => / vs /.test(text))).toBe(true);
   });
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
@@ -308,6 +448,7 @@ describe("StatCheckPage tabletop presentation", () => {
     fireEvent.click(screen.getByTestId("stat-check-lock"));
 
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+    expect(screen.queryByText(/Concealed/i)).toBeNull();
   });
 
   it("restart clears pending reveal state", () => {
@@ -389,5 +530,51 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByText(/Concealed/i)).toHaveLength(3);
     expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+});
+
+describe("CategoryMarker", () => {
+  it("renders higher-wins direction with level and fractional decisive threshold", () => {
+    const { container } = render(<CategoryMarker category={higherHp18Category} />);
+    const marker = container.querySelector('[data-testid="stat-check-marker-highest-hp-18"]');
+    expect(marker).toHaveAttribute("data-direction", "higher");
+    expect(marker).toHaveTextContent("L18 HP");
+    expect(marker).toHaveTextContent("7.5%");
+    expect(marker).toHaveTextContent(/Highest level-18 health/i);
+    expect(marker).toHaveTextContent(/Health/);
+    expect(marker).toHaveTextContent(/Level 18/);
+    expect(marker).toHaveTextContent(/Higher value wins/i);
+    expect(marker).toHaveTextContent(/Decisive 7.5% for bonus damage/i);
+  });
+
+  it("renders lower-wins direction accessibly for lower-is-better categories", () => {
+    const { container } = render(<CategoryMarker category={lowerArmorCategory} />);
+    const marker = container.querySelector('[data-testid="stat-check-marker-lowest-armor-1"]');
+    expect(marker).toHaveAttribute("data-direction", "lower");
+    expect(marker).toHaveTextContent(/Lower value wins/i);
+    expect(marker).toHaveTextContent("25%");
+    expect(marker).toHaveTextContent(/Armor/);
+  });
+});
+
+describe("LaneResult", () => {
+  it("shows a player win with both values", () => {
+    render(<LaneResult result={sampleResult({})} />);
+    expect(screen.getByText(/You win/i)).toBeInTheDocument();
+    expect(screen.getByText(/625 vs 604/)).toBeInTheDocument();
+    expect(screen.queryByText(/Decisive \+1/i)).toBeNull();
+  });
+
+  it("shows a decisive bot win", () => {
+    render(<LaneResult result={sampleResult({ winner: "bot", playerValue: 480, botValue: 620, margin: 0.29, decisive: true })} />);
+    expect(screen.getByText(/Bot wins/i)).toBeInTheDocument();
+    expect(screen.getByText(/480 vs 620/)).toBeInTheDocument();
+    expect(screen.getByText(/Decisive \+1/i)).toBeInTheDocument();
+  });
+
+  it("shows a tie", () => {
+    render(<LaneResult result={sampleResult({ winner: "tie", playerValue: 550, botValue: 550, margin: 0 })} />);
+    expect(screen.getByText(/Lane tied/i)).toBeInTheDocument();
+    expect(screen.getByText(/550 vs 550/)).toBeInTheDocument();
   });
 });
