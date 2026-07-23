@@ -1,7 +1,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
-import mogsyIcon from "@/assets/mogsy-icon.png";
 import SEOHead from "@/components/SEOHead";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 
 const NotFound = () => {
   const location = useLocation();
@@ -19,7 +19,7 @@ const NotFound = () => {
         description="The page you’re looking for doesn’t exist on Mogzy."
         noindex
       />
-      <img src={mogsyIcon} alt="Mogzy" className="h-16 w-16 rounded-2xl" />
+      <MogzyMascot pose="peeking" decorative className="h-32 w-32 sm:h-40 sm:w-40" />
       <h1 className="text-4xl font-bold text-foreground">Page not found</h1>
       <p className="text-xl text-muted-foreground">That page doesn’t exist (404).</p>
       <div className="flex flex-wrap items-center justify-center gap-4 text-sm font-semibold">

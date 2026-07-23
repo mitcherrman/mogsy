@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { quizApi, type QuizHistoryResponse } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 
 function formatDate(iso?: string): string {
   if (!iso) return "";
@@ -123,6 +124,7 @@ export default function LolHistory() {
       {!loading && error && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
+            <MogzyMascot pose="awkwardSmile" decorative className="mx-auto mb-4 h-24 w-24" />
             <p>{error}</p>
             <Button variant="outline" className="mt-4" onClick={() => setReloadKey((k) => k + 1)}>
               Try again
@@ -134,6 +136,7 @@ export default function LolHistory() {
       {!loading && !error && results.length === 0 && (
         <Card>
           <CardContent className="py-10 text-center">
+            <MogzyMascot pose="sleeping" decorative className="mx-auto mb-4 h-24 w-24" />
             <p className="text-muted-foreground">No completed quizzes yet.</p>
             <Button asChild className="mt-4">
               <Link to="/quiz">Play a quiz</Link>
