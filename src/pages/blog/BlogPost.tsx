@@ -130,7 +130,7 @@ export default function BlogPost() {
             <img src={post.cover_url} alt={post.title} className="w-full max-w-xl mx-auto rounded-2xl mt-8 aspect-[16/9] object-cover border-4 border-black opacity-60" />
           )}
           <div className="mt-10">
-            <BlogRenderer content={post.content as BlogContent} />
+            <BlogRenderer content={post.content as BlogContent} showEmptyMascot />
           </div>
           <BlogShareButtons slug={post.slug} title={post.title} description={post.seo_description || post.subtitle} />
           <div className="mt-6">

@@ -1,11 +1,25 @@
 import type { BlogContent, BlogBlock, CanvasNode } from "@/lib/blog/types";
 import BlockRenderer from "./BlockRenderer";
 import { safeHref } from "@/lib/safe-url";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+
+interface BlogRendererProps {
+  content: BlogContent | Record<string, never> | null | undefined;
+  /** Opt-in decorative mascot for the empty-content state. Only intended for finished/published surfaces (e.g. the public post page) — not for in-progress editor previews. Defaults to false. */
+  showEmptyMascot?: boolean;
+}
 
 /** Renders any of the three editor modes back to read-only HTML. */
-export default function BlogRenderer({ content }: { content: BlogContent | Record<string, never> | null | undefined }) {
+export default function BlogRenderer({ content, showEmptyMascot = false }: BlogRendererProps) {
   if (!content || !(content as any).mode) {
-    return <div className="blog-muted text-center py-12">Nothing here yet.</div>;
+    return (
+      <div className="blog-muted text-center py-12">
+        {showEmptyMascot && (
+          <MogzyMascot pose="sleeping" decorative className="mx-auto mb-4 h-24 w-24" />
+        )}
+        Nothing here yet.
+      </div>
+    );
   }
   const c = content as BlogContent;
 
