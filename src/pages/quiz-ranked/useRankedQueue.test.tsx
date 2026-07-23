@@ -80,11 +80,22 @@ describe("useRankedQueue", () => {
     expect(result.current.state).toBe("selecting_class");
   });
 
-  it("an ineligible account becomes unavailable and stops polling", async () => {
+  it("an ineligible account becomes unavailable with player-facing copy", async () => {
     state.statusError = new FakeApiError("RANKED_QUEUE_NOT_ELIGIBLE");
     const { result } = renderHook(() => useRankedQueue());
     await flush();
     expect(result.current.state).toBe("unavailable");
-    expect(result.current.unavailableReason).toContain("RANKED_QUEUE_NOT_ELIGIBLE");
+    // Friendly copy, not the raw backend/code text.
+    expect(result.current.unavailableReason).toContain("invite-only");
+    expect(result.current.unavailableReason).not.toContain("RANKED_QUEUE_NOT_ELIGIBLE");
+  });
+
+  it("question-pool unavailability explains what happened and what to do", async () => {
+    state.statusError = new FakeApiError("RANKED_QUESTION_POOL_UNAVAILABLE");
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    expect(result.current.state).toBe("unavailable");
+    expect(result.current.unavailableReason).toContain("question pool");
+    expect(result.current.unavailableReason).toContain("Try again later");
   });
 });

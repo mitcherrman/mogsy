@@ -23,6 +23,22 @@ const UNAVAILABLE_CODES = new Set([
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_QUESTION_POOL_UNAVAILABLE",
 ]);
 
+// Player-facing copy per gate code. Backend messages are operator-precise
+// ("this account is not in the ranked alpha"); players need what happened
+// and what to do next. Unknown codes fall back to the backend message.
+const UNAVAILABLE_MESSAGES: Record<string, string> = {
+  FEATURE_DISABLED:
+    "Ranked isn't open yet. Check back soon — no action needed on your side.",
+  RANKED_QUEUE_DISABLED:
+    "Ranked matchmaking is paused right now. Check back soon.",
+  RANKED_QUEUE_NOT_ELIGIBLE:
+    "Ranked is currently invite-only. Your account isn't in the playtest yet — public access is coming.",
+  RANKED_QUESTION_POOL_UNAVAILABLE:
+    "Ranked is temporarily unavailable while the question pool is being prepared. Try again later.",
+  AUTH_REQUIRED: "Your session expired. Sign in again to play Ranked.",
+  ACCOUNT_REQUIRED: "Ranked needs a full (non-guest) account. Sign in to play.",
+};
+
 export interface QueueController {
   state: QueueState;
   status: QueueStatusView | null;
@@ -78,7 +94,7 @@ export function useRankedQueue(): QueueController {
       return;
     }
     if (e instanceof RankedApiError && e.code && UNAVAILABLE_CODES.has(e.code)) {
-      setUnavailableReason(e.message);
+      setUnavailableReason(UNAVAILABLE_MESSAGES[e.code] ?? e.message);
       setState("unavailable");
       clearTimer();
       return;
