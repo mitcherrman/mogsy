@@ -181,7 +181,16 @@ export function ReviewPanel({
  * still requires an explicit approve to reach production. Every change is
  * recorded in the backend's append-only edit history, rendered below.
  */
-function EditValueSection({ d, editedBy }: { d: UpdateDetail; editedBy: string }) {
+function EditValueSection({
+  d,
+  editedBy,
+  onBusyChange,
+}: {
+  d: UpdateDetail;
+  editedBy: string;
+  /** Reports in-flight edit requests so approval controls can lock. */
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
@@ -192,6 +201,8 @@ function EditValueSection({ d, editedBy }: { d: UpdateDetail; editedBy: string }
   const editHistory: EditHistoryEntry[] = d.edit_history ?? [];
 
   const editMut = useMutation({
+    onMutate: () => onBusyChange?.(true),
+    onSettled: () => onBusyChange?.(false),
     mutationFn: () =>
       knowledgeApi.editUpdate(d.update.id, {
         proposed_value: Number(value),
@@ -362,6 +373,10 @@ function PanelBody({
 }) {
   const primary = actionPrimaryStyle(d.recommended_action);
 
+  // True while an edit request is in flight — approval controls lock so a
+  // click can't race the pending correction.
+  const [editBusy, setEditBusy] = useState(false);
+
   // Admin-only tool: warnings never hard-block approval. Approval is only
   // disabled when the backend says the update is not actionable.
   const status = (d.status ?? d.update?.status ?? "PENDING") as string;
@@ -396,7 +411,7 @@ function PanelBody({
   );
 
   const directApply = (scope: "single" | "progression") => {
-    if (approvalBlocked || applyMut.isPending) return;
+    if (approvalBlocked || applyMut.isPending || editBusy) return;
     setDirectScope(scope);
     applyMut.mutate();
   };
@@ -559,7 +574,7 @@ function PanelBody({
         </section>
 
         {/* Reviewer edit — correct the interpreted value before approval */}
-        <EditValueSection d={d} editedBy={editedBy} />
+        <EditValueSection d={d} editedBy={editedBy} onBusyChange={setEditBusy} />
 
         {/* Apply history */}
         <section className="rounded-lg border border-border p-3 space-y-1.5">
@@ -669,6 +684,7 @@ function PanelBody({
                     disabled={
                       confirmText !== "APPLY" ||
                       applyMut.isPending ||
+                      editBusy ||
                       (requiresAck && !acknowledgeWarnings)
                     }
                     className="rounded bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 disabled:opacity-40"
@@ -731,7 +747,7 @@ function PanelBody({
           {/* Preview write — always available as an optional secondary action */}
           <button
             onClick={() => setMode("progression")}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40 text-muted-foreground hover:text-foreground"
             title="Run a dry-run and show the write plan without applying."
           >
@@ -741,7 +757,7 @@ function PanelBody({
           {/* Approve single rank */}
           <button
             onClick={() => (strict ? setMode("single") : directApply("single"))}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40"
             title={notActionableReason ?? undefined}
           >
@@ -753,7 +769,7 @@ function PanelBody({
           {/* Approve all */}
           <button
             onClick={() => (strict ? setMode("progression") : directApply("progression"))}
-            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+            disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className={cn(
               "rounded text-xs font-bold px-3 py-2 disabled:opacity-40 inline-flex items-center gap-1",
               d.recommended_action === "verify_source" || d.recommended_action === "manual_review"
