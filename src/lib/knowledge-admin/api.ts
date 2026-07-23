@@ -12,6 +12,7 @@ import type {
   ApprovalResponse,
   HealthResponse,
   PatchRundownResponse,
+  EditResponse,
   UpdateDetail,
   UpdatesListResponse,
   UndoResponse,
@@ -100,10 +101,22 @@ export const knowledgeApi = {
       body: JSON.stringify(opts),
     }),
 
-  reject: (id: number, reason: string) =>
+  reject: (id: number, reason: string, rejectedBy?: string) =>
     request<{ status: string }>(`/updates/${id}/reject`, {
       method: "POST",
-      body: JSON.stringify({ reason }),
+      body: JSON.stringify(rejectedBy ? { reason, rejected_by: rejectedBy } : { reason }),
+    }),
+
+  /**
+   * Correct Mogzy's interpreted value on a PENDING update before approval.
+   * No production write occurs — the edited value still requires explicit
+   * approval. The change is recorded in the append-only edit history and
+   * the original parser evidence is preserved untouched.
+   */
+  editUpdate: (id: number, opts: { proposed_value: number; edited_by?: string; note?: string }) =>
+    request<EditResponse>(`/updates/${id}/edit`, {
+      method: "POST",
+      body: JSON.stringify(opts),
     }),
 
   health: (q: { category?: string; champion?: string; health_below?: number } = {}) =>

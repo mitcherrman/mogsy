@@ -99,6 +99,37 @@ export interface ApplyHistoryEntry {
   undone_by?: string | null;
 }
 
+/** One append-only reviewer edit (knowledge_update_edit_history row). */
+export interface EditHistoryEntry {
+  id: number;
+  proposed_update_id: number;
+  entity_name: string;
+  ability_key: string | null;
+  property: string;
+  rank: number | null;
+  old_proposed_value: number | null;
+  new_proposed_value: number | null;
+  edited_by: string;
+  edited_at: string;
+  edit_note: string | null;
+}
+
+/** POST /updates/{id}/edit response. */
+export interface EditResponse {
+  success: boolean;
+  /** false = no-op (value already matched); nothing was recorded. */
+  changed: boolean;
+  update_id: number;
+  rank: number | null;
+  old_proposed_value: number | null;
+  new_proposed_value: number | null;
+  proposed_full_progression: string | null;
+  edit_history_id: number | null;
+  edited_by?: string;
+  edited_at?: string;
+  [k: string]: unknown;
+}
+
 export interface UpdateDetail {
   champion: string;
   ability: { key: string | null; name: string | null };
@@ -136,6 +167,9 @@ export interface UpdateDetail {
   } | null;
 
   apply_history: ApplyHistoryEntry[];
+  /** Reviewer corrections to this (champion, ability, property) group,
+   *  newest first. Absent on older backends. */
+  edit_history?: EditHistoryEntry[];
 
   warnings: string[];
   recommended_action: RecommendedAction;
