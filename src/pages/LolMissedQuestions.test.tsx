@@ -89,6 +89,10 @@ describe("LolMissedQuestions", () => {
       expect(screen.getByText(/No missed questions — flawless so far!/)).toBeTruthy(),
     );
     expect(screen.queryByText(/Upgrade to Mogsy Pro/)).toBeNull();
+    // Mascot is decorative: present in the DOM, hidden from assistive tech.
+    const mascot = document.querySelector('[data-mogzy-art-name="sleeping"]');
+    expect(mascot?.getAttribute("aria-hidden")).toBe("true");
+    expect(mascot?.getAttribute("alt")).toBe("");
   });
 
   it("shows the paywall for Free users, with the result-screen note", async () => {
@@ -108,6 +112,9 @@ describe("LolMissedQuestions", () => {
     await waitFor(() => expect(screen.getByText(/Quiz API 500/)).toBeTruthy());
     expect(screen.queryByText(/Upgrade to Mogsy Pro/)).toBeNull();
     expect(screen.getByRole("button", { name: /Try again/ })).toBeTruthy();
+    const mascot = document.querySelector('[data-mogzy-art-name="awkwardSmile"]');
+    expect(mascot?.getAttribute("aria-hidden")).toBe("true");
+    expect(mascot?.getAttribute("alt")).toBe("");
   });
 
   it("shows a session error, never the paywall, on 401", async () => {

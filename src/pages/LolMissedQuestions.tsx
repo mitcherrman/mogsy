@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { quizApi, type MissedQuestionsResponse, type MissedQuestion } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 
 const GUEST_SESSION_ERROR = "We couldn’t start a guest session. Please try again.";
 const PAGE_SIZE = 25;
@@ -140,6 +141,7 @@ export default function LolMissedQuestions() {
       {!loading && error && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
+            <MogzyMascot pose="awkwardSmile" decorative className="mx-auto mb-4 h-24 w-24" />
             <p>{error}</p>
             <Button variant="outline" className="mt-4" onClick={() => setReloadKey((k) => k + 1)}>
               Try again
@@ -171,6 +173,7 @@ export default function LolMissedQuestions() {
           {items.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center">
+                <MogzyMascot pose="sleeping" decorative className="mx-auto mb-4 h-24 w-24" />
                 <p className="text-muted-foreground">No missed questions — flawless so far!</p>
                 <Button asChild className="mt-4">
                   <Link to="/quiz">Play a quiz</Link>
