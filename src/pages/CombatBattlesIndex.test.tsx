@@ -61,5 +61,9 @@ describe("CombatBattlesIndex", () => {
     listState = { isLoading: false, isError: true };
     renderIndex();
     expect(screen.getByText(/couldn't load battles/i)).toBeTruthy();
+    // Mascot is decorative: present in the DOM, hidden from assistive tech.
+    const mascot = document.querySelector('[data-mogzy-art-name="awkwardSmile"]');
+    expect(mascot?.getAttribute("aria-hidden")).toBe("true");
+    expect(mascot?.getAttribute("alt")).toBe("");
   });
 });
