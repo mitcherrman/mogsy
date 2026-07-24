@@ -73,6 +73,42 @@ describe("MasteryTransitionPanel is player-safe", () => {
     expect(document.body.textContent ?? "").not.toContain("ability_haste");
   });
 
+  it("renders a gold_set progression step from the backend label (Olaf incident shape)", () => {
+    const t = readTransitionView({
+      classification: "gold_set", origin: "authored_inter_step",
+      transition_id: "txn_g", target: "A", label: "Olaf recalls with 1,100 gold",
+      after_value: 1100, unit: "gold", applied: true,
+    });
+    render(<MasteryTransitionPanel transition={t} championA="Olaf" championB="Olaf" />);
+    const text = document.body.textContent ?? "";
+    expect(text).toMatch(/olaf recalls with 1,100 gold/i);
+    expect(text).not.toMatch(/target:/i);
+    expect(text).not.toContain("txn_g");
+    expect(text).not.toMatch(/authored_inter_step|question_proposed/);
+  });
+
+  it("renders an item_acquire progression step in plain language", () => {
+    const t = readTransitionView({
+      classification: "item_acquire", origin: "authored_inter_step",
+      transition_id: "txn_i", target: "A",
+      label: "Olaf acquires Caulfield's Warhammer", item: "Caulfield's Warhammer", applied: true,
+    });
+    render(<MasteryTransitionPanel transition={t} championA="Olaf" championB="Olaf" />);
+    expect(document.body.textContent ?? "").toMatch(/olaf acquires caulfield's warhammer/i);
+  });
+
+  it("renders a level_change with a before → after line", () => {
+    const t = readTransitionView({
+      classification: "level_change", origin: "authored_inter_step",
+      transition_id: "txn_l", target: "A", label: "Olaf reaches level 6",
+      before_value: 1, after_value: 6, unit: "level", applied: true,
+    });
+    render(<MasteryTransitionPanel transition={t} championA="Olaf" championB="Olaf" />);
+    const text = document.body.textContent ?? "";
+    expect(text).toMatch(/olaf reaches level 6/i);
+    expect(text).toMatch(/1 → 6/);
+  });
+
   it("renders 'No state change' for a read-only step", () => {
     const t = readTransitionView({ classification: "state_unchanged", label: "" });
     render(<MasteryTransitionPanel transition={t} championA="Ahri" championB="Syndra" />);
