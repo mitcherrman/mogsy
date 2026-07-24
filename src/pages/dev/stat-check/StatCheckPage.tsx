@@ -427,7 +427,7 @@ export default function StatCheckPage() {
   return (
     <main
       data-anim-phase={revealStep}
-      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)]"
+      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)] [@media(min-width:1024px)_and_(min-height:840px)]:min-h-0"
     >
       {isAnimDebugEnabled() && (
         <div
@@ -470,25 +470,8 @@ export default function StatCheckPage() {
             flashKey={damageFlashKey}
           />
 
-          <section className="order-1 grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-2 lg:order-none">
-            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
-              <p className="text-sm font-semibold text-cyan-100" data-testid="stat-check-instruction">
-                {selectedCard ? `Click a lane to play ${selectedCard.name}.` : "Click a champion, then click a lane."}
-              </p>
-              <Button
-                data-testid="stat-check-lock"
-                onClick={lockIn}
-                disabled={!isReadyToLock(match) || !canEdit}
-                className={cn(
-                  "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
-                  revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
-                )}
-              >
-                <Zap className="mr-1.5 h-4 w-4" /> Lock in
-              </Button>
-            </div>
-
-            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:pb-0">
+          <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
+            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,300px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                 const assigned = assignedCard(match, category.id);
@@ -535,6 +518,24 @@ export default function StatCheckPage() {
                 setSelectedCardId((current) => (current === cardId ? null : cardId));
               }}
             />
+
+            <div className="flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
+                {selectedCard ? `Click a lane to play ${selectedCard.name}.` : "Click a champion, then click a lane."}
+              </p>
+              <Button
+                size="sm"
+                data-testid="stat-check-lock"
+                onClick={lockIn}
+                disabled={!isReadyToLock(match) || !canEdit}
+                className={cn(
+                  "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
+                  revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
+                )}
+              >
+                <Zap className="mr-1.5 h-4 w-4" /> Lock in
+              </Button>
+            </div>
           </section>
 
           <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto lg:p-1.5">
@@ -630,7 +631,7 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[420px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px] md:p-2.5",
+        "group relative flex min-h-[420px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
         "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
         canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
         canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
@@ -647,7 +648,7 @@ function ArenaLane({
           className="pointer-events-none absolute inset-x-12 bottom-10 top-[58%] z-20 animate-ping rounded-full border border-[#f4d77d]/55 motion-reduce:hidden"
         />
       )}
-      <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+      <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
         <div ref={botRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
             card={botCard}
@@ -660,7 +661,7 @@ function ArenaLane({
             state={botState}
           />
         </div>
-        <div className="flex min-h-[76px] min-w-0 items-center justify-center">
+        <div className="flex min-h-[64px] min-w-0 items-center justify-center">
           {showResult && resolution ? (
             <LaneResult result={resolution} />
           ) : (
@@ -760,7 +761,7 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[190px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[186px] xl:h-[200px] 2xl:h-[218px]" data-testid="stat-check-hand">
+    <div className="relative mx-auto h-[190px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
@@ -1112,7 +1113,12 @@ function FlippableCard({
  * Fluid: fills the lane's flexible row so cards dominate the tabletop on large
  * screens instead of floating undersized in empty lane space.
  */
-const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,27vh,310px)]";
+/**
+ * Board-card height is budgeted from the viewport minus fixed chrome (nav,
+ * header, hand band, bottom bar, gaps, marker) so two cards + marker always
+ * fit the locked table height: (100svh - ~480px chrome) / 2 per card.
+ */
+const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,calc(50svh_-_240px),340px)]";
 
 function ChampionCard({
   card,
