@@ -58,6 +58,11 @@ export default function Layout() {
   // so nothing competes with the dedicated theme.
   const themingActive = isEnabled && !isLolSection;
 
+  // Full-bleed routes escape the centered max-w-7xl reading column so a game
+  // table can use the whole viewport. The page supplies its own background
+  // and gutters. Currently only the Stat Check tabletop prototype.
+  const isFullBleed = pathname === "/dev/stat-check";
+
   // After first paint, warm the chunks the user is most likely to visit next.
   useEffect(() => {
     if (loading || settingsLoading) return;
@@ -101,7 +106,13 @@ export default function Layout() {
       {isLolSection && <HextechAmbience />}
       {/* Bottom-nav clearance lives once on the shell (.pb-bottom-nav above) so
           the footer clears the fixed bar too — never re-apply it per page. */}
-      <main className="pt-[var(--app-header-h)] relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8">
+      <main
+        className={
+          isFullBleed
+            ? "pt-[var(--app-header-h)] relative z-20 w-full"
+            : "pt-[var(--app-header-h)] relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8"
+        }
+      >
         {isLolSection && pathname !== "/lol" && (
           /* Mobile: back control in normal flow so it reserves space and never
              overlays cards. Desktop keeps the floating pill (see below). */
