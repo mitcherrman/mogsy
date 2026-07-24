@@ -160,6 +160,9 @@ const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryRevi
 // definitions bundle only loads when the page is visited.
 const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
 
+// Patch Reports — public per-patch change reports with Mogzy data comparison.
+const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
+
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -297,6 +300,7 @@ const App = () => (
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
                   <Route path="/lol/pro" element={<Suspense fallback={<RouteFallback />}><LolPro /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
+                  <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
                   <Route path="/privacy" element={<Suspense fallback={<RouteFallback />}><Privacy /></Suspense>} />
                   <Route path="/terms" element={<Suspense fallback={<RouteFallback />}><Terms /></Suspense>} />
