@@ -481,7 +481,18 @@ export default function StatCheckPage() {
                 "shadow-[inset_0_1px_0_rgba(214,181,93,0.12),inset_0_0_60px_rgba(0,0,0,0.65),0_24px_60px_rgba(0,0,0,0.45)]",
               )}
             >
-              <ArenaAmbience reducedMotion={prefersReducedMotion} />
+              <ArenaAmbience
+                reducedMotion={prefersReducedMotion}
+                intense={
+                  revealStep === "locking" ||
+                  revealStep.startsWith("opponent-reveal") ||
+                  revealStep.startsWith("resolve-lane") ||
+                  revealStep === "board-result" ||
+                  revealStep === "damage"
+                }
+                verdict={revealStep === "damage" || revealStep === "resolved" || revealStep === "match-over"}
+                verdictKey={damageFlashKey}
+              />
               <div className="relative z-10 grid h-full min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,340px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
@@ -514,22 +525,31 @@ export default function StatCheckPage() {
               </div>
             </div>
 
-            <PlayerHand
-              cards={match.playerHand}
-              assets={assets}
-              selectedCardId={selectedCardId}
-              assignedCardIds={assignedCardIds}
-              departingIds={departingIds}
-              returningIds={returningIds}
-              disabled={!canEdit}
-              reducedMotion={prefersReducedMotion}
-              reflowMs={animationDuration(STAT_CHECK_ANIMATION.handReflowMs, prefersReducedMotion, animationSpeed)}
-              cardRefs={handCardRefs}
-              onSelect={(cardId) => {
-                if (!canEdit) return;
-                setSelectedCardId((current) => (current === cardId ? null : cardId));
-              }}
-            />
+            <div className="relative">
+              {/* player apron: a receiving structure that docks the hand onto
+                  the arena's player edge instead of floating below it */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-[8%] -top-3 bottom-1 rounded-b-[34px] border-x border-b border-[#d6b55d]/15 bg-[linear-gradient(180deg,rgba(10,19,34,0.85),rgba(4,7,13,0.35))] shadow-[inset_0_1px_0_rgba(214,181,93,0.14),inset_0_12px_26px_rgba(0,0,0,0.5)] sm:inset-x-[16%]"
+              />
+              <div aria-hidden className="pointer-events-none absolute -top-3 left-1/2 h-2.5 w-48 -translate-x-1/2 rounded-b-md bg-gradient-to-b from-[#d6b55d]/30 to-transparent" />
+              <PlayerHand
+                cards={match.playerHand}
+                assets={assets}
+                selectedCardId={selectedCardId}
+                assignedCardIds={assignedCardIds}
+                departingIds={departingIds}
+                returningIds={returningIds}
+                disabled={!canEdit}
+                reducedMotion={prefersReducedMotion}
+                reflowMs={animationDuration(STAT_CHECK_ANIMATION.handReflowMs, prefersReducedMotion, animationSpeed)}
+                cardRefs={handCardRefs}
+                onSelect={(cardId) => {
+                  if (!canEdit) return;
+                  setSelectedCardId((current) => (current === cardId ? null : cardId));
+                }}
+              />
+            </div>
 
             <div className="flex items-center justify-between gap-3 px-1">
               <p className="text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
@@ -586,40 +606,78 @@ const ARENA_PARTICLES = [
 ] as const;
 
 /**
- * Shared hextech-arena atmosphere: haze, faint stone striations, the central
- * comparison spine (gold energy rail + slowly turning sigil the middle plaque
- * mounts onto), and slow arcane motes. Pure decoration — pointer-events-none,
- * behind the lanes, and fully static under reduced motion.
+ * Shared hextech-arena atmosphere: haze, striations, perimeter construction
+ * (corner brackets, edge ring), the comparison MECHANISM (brass rail with a
+ * flowing energy channel and end caps), a layered rotating core the middle
+ * plaque mounts onto, and slow arcane motes. `intense` brightens the core and
+ * speeds the energy flow during reveal/resolution; `verdictKey`/`verdict`
+ * fire a one-shot gold perimeter flash when damage lands. Pure decoration —
+ * pointer-events-none, behind the lanes, static under reduced motion.
  */
-function ArenaAmbience({ reducedMotion }: { reducedMotion: boolean }) {
+function ArenaAmbience({
+  reducedMotion,
+  intense,
+  verdict,
+  verdictKey,
+}: {
+  reducedMotion: boolean;
+  intense: boolean;
+  verdict: boolean;
+  verdictKey: number;
+}) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
       <style>{`
         @keyframes sc-drift { 0%,100% { transform: translateY(0); opacity: .12 } 50% { transform: translateY(-30px); opacity: .4 } }
-        @keyframes sc-core-pulse { 0%,100% { opacity: .55; transform: scale(1) } 50% { opacity: .95; transform: scale(1.05) } }
+        @keyframes sc-core-pulse { 0%,100% { opacity: .6; transform: scale(1) } 50% { opacity: 1; transform: scale(1.04) } }
+        @keyframes sc-flow { from { background-position: 0 0 } to { background-position: 220px 0 } }
+        @keyframes sc-verdict { 0% { opacity: .55; transform: scale(.995) } 100% { opacity: 0; transform: scale(1.012) } }
       `}</style>
       {/* magical haze */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.07),transparent_56%),radial-gradient(ellipse_at_18%_100%,rgba(124,92,246,0.08),transparent_45%),radial-gradient(ellipse_at_82%_100%,rgba(124,92,246,0.08),transparent_45%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.08),transparent_56%),radial-gradient(ellipse_at_18%_100%,rgba(124,92,246,0.09),transparent_45%),radial-gradient(ellipse_at_82%_100%,rgba(124,92,246,0.09),transparent_45%)]" />
       {/* faint carved striations */}
       <div className="absolute inset-0 opacity-50 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.014)_0px,rgba(255,255,255,0.014)_2px,transparent_2px,transparent_10px)]" />
-      {/* engraved edge ring */}
-      <div className="absolute inset-2 rounded-xl border border-cyan-200/[0.05]" />
-      {/* comparison spine: energy rail across the arena midline */}
-      <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2">
-        <div className="h-px bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-transparent" />
-        <div className="-mt-[2px] h-[3px] bg-gradient-to-r from-transparent via-cyan-300/20 to-transparent blur-[2px]" />
+      {/* engraved edge ring + corner architecture */}
+      <div className="absolute inset-2 rounded-xl border border-cyan-200/[0.06]" />
+      <div className="absolute left-2 top-2 h-9 w-9 rounded-tl-xl border-l-2 border-t-2 border-[#d6b55d]/35" />
+      <div className="absolute right-2 top-2 h-9 w-9 rounded-tr-xl border-r-2 border-t-2 border-[#d6b55d]/35" />
+      <div className="absolute bottom-2 left-2 h-9 w-9 rounded-bl-xl border-b-2 border-l-2 border-[#d6b55d]/35" />
+      <div className="absolute bottom-2 right-2 h-9 w-9 rounded-br-xl border-b-2 border-r-2 border-[#d6b55d]/35" />
+      {/* comparison mechanism: brass rail with flowing energy channel */}
+      <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2">
+        <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,transparent,rgba(214,181,93,0.45)_10%,rgba(214,181,93,0.6)_50%,rgba(214,181,93,0.45)_90%,transparent)] shadow-[0_1px_0_rgba(0,0,0,0.6),0_0_12px_rgba(214,181,93,0.16)]" />
+        <div
+          className={cn("mt-[1px] h-[2px]", intense ? "opacity-90" : "opacity-60", !reducedMotion && (intense ? "animate-[sc-flow_2.2s_linear_infinite]" : "animate-[sc-flow_5s_linear_infinite]"))}
+          style={{
+            backgroundImage: "repeating-linear-gradient(90deg, rgba(34,211,238,0) 0px, rgba(34,211,238,0.55) 12px, rgba(34,211,238,0) 28px)",
+            backgroundSize: "220px 100%",
+          }}
+        />
+        <div className="absolute -left-1 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
+        <div className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
       </div>
-      {/* central hextech core the middle plaque mounts onto */}
+      {/* layered hextech core the middle plaque mounts onto */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className={cn("absolute -inset-14 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.14),transparent_62%)]", intense && "bg-[radial-gradient(circle,rgba(34,211,238,0.22),transparent_62%)]")} />
         <div
           className={cn(
-            "grid h-28 w-28 place-items-center rounded-full border border-[#d6b55d]/30 shadow-[0_0_34px_rgba(34,211,238,0.12)]",
-            !reducedMotion && "animate-[sc-core-pulse_5.5s_ease-in-out_infinite]",
+            "relative grid h-36 w-36 place-items-center rounded-full border-2 shadow-[0_0_44px_rgba(34,211,238,0.16),inset_0_0_26px_rgba(0,0,0,0.55)]",
+            intense ? "border-[#d6b55d]/60" : "border-[#d6b55d]/40",
+            !reducedMotion && (intense ? "animate-[sc-core-pulse_2.6s_ease-in-out_infinite]" : "animate-[sc-core-pulse_5.5s_ease-in-out_infinite]"),
           )}
         >
-          <div className={cn("h-[72px] w-[72px] rotate-45 rounded-[6px] border border-cyan-300/25", !reducedMotion && "animate-[spin_30s_linear_infinite]")} />
+          <div className="absolute inset-2 rounded-full border border-cyan-300/15" />
+          <div className={cn("absolute h-24 w-24 rotate-45 rounded-[8px] border border-cyan-300/30", !reducedMotion && "animate-[spin_30s_linear_infinite]")} />
+          <div
+            className="absolute h-16 w-16 rotate-45 rounded-[4px] border border-[#d6b55d]/35"
+            style={!reducedMotion ? { animation: "spin 22s linear infinite reverse" } : undefined}
+          />
         </div>
       </div>
+      {/* one-shot gold perimeter flash when damage lands */}
+      {verdict && !reducedMotion && (
+        <div key={verdictKey} className="absolute inset-1 rounded-2xl border-2 border-[#f4d77d]/50" style={{ animation: "sc-verdict 700ms ease-out forwards" }} />
+      )}
       {/* arcane motes */}
       {!reducedMotion &&
         ARENA_PARTICLES.map((particle, index) => (
@@ -709,17 +767,16 @@ function ArenaLane({
         }
       }}
       className={cn(
-        // Lanes are open zones on the shared arena floor: no boxed background,
-        // just a faint engraved outline plus low-contrast light when the zone
-        // is targeted or reacting. Materials and sockets do the separation.
+        // Lanes are open light zones on the shared arena floor: no rectangles
+        // at all — a faint vertical light column plus low-contrast washes when
+        // the zone is targeted or reacting. Sockets and lighting separate them.
         "group relative flex min-h-[420px] flex-col rounded-xl p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
-        "before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:border before:border-cyan-200/[0.07] before:content-['']",
-        canEdit && selectedCard && !playerCard && "bg-[#d6b55d]/[0.04] before:border-[#d6b55d]/35",
-        canEdit && selectedCard && playerCard && "before:border-[#d6b55d]/20",
-        active && "bg-cyan-300/[0.05] before:border-cyan-300/35",
-        reaction === "charging" && "bg-cyan-200/[0.04] before:border-cyan-200/30",
-        reaction === "impact" && "translate-y-[2px] bg-[#f4d77d]/[0.07] before:border-[#f4d77d]/70",
-        reaction === "accept" && "bg-[#d6b55d]/[0.06] before:border-[#f4d77d]/55",
+        "bg-[radial-gradient(ellipse_62%_52%_at_50%_50%,rgba(56,189,248,0.035),transparent_74%)]",
+        canEdit && selectedCard && !playerCard && "bg-[#d6b55d]/[0.05]",
+        active && "bg-cyan-300/[0.06]",
+        reaction === "charging" && "bg-cyan-200/[0.05]",
+        reaction === "impact" && "translate-y-[2px] bg-[#f4d77d]/[0.08]",
+        reaction === "accept" && "bg-[#d6b55d]/[0.07]",
       )}
     >
       {reaction === "impact" && (
@@ -777,7 +834,9 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
       className="z-10 flex w-full items-center gap-2"
     >
       <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
-      <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
+      <div className="relative flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
+        <span aria-hidden className="absolute -left-[5px] top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
+        <span aria-hidden className="absolute -right-[5px] top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
         <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
           {higher ? (
             <ArrowUp className="h-6 w-6 text-[#f4d77d] sm:h-7 sm:w-7" strokeWidth={2.75} />
@@ -1243,24 +1302,32 @@ function ChampionCard({
         className={cn(
           BOARD_CARD_SIZE,
           "relative flex items-center justify-center overflow-hidden rounded-lg border px-2 text-center text-[11px] font-semibold transition",
-          "bg-[linear-gradient(180deg,rgba(2,6,11,0.9),rgba(9,18,30,0.55))] shadow-[inset_0_3px_18px_rgba(0,0,0,0.7),inset_0_-1px_0_rgba(214,181,93,0.06)]",
+          "bg-[radial-gradient(ellipse_at_50%_42%,rgba(24,48,74,0.55),transparent_72%),linear-gradient(180deg,rgba(6,12,20,0.85),rgba(12,24,38,0.5))] shadow-[inset_0_3px_16px_rgba(0,0,0,0.6),inset_0_-1px_0_rgba(214,181,93,0.08)]",
           emptyActive
-            ? "border-[#f4d77d]/55 text-[#f4d77d] shadow-[inset_0_3px_18px_rgba(0,0,0,0.6),0_0_24px_rgba(214,181,93,0.22)]"
-            : "border-cyan-200/10 text-slate-500 group-hover:border-cyan-200/30 group-hover:text-slate-400",
+            ? "border-[#f4d77d]/55 text-[#f4d77d] shadow-[inset_0_3px_16px_rgba(0,0,0,0.55),0_0_26px_rgba(214,181,93,0.24)]"
+            : "border-cyan-200/15 text-slate-400 group-hover:border-cyan-200/35 group-hover:text-slate-300",
           emptyCharging && "animate-pulse border-[#f4d77d]/75 motion-reduce:animate-none",
         )}
       >
+        {/* dormant summoning ring + rune */}
         <span aria-hidden className="absolute inset-0 grid place-items-center">
-          <Swords className={cn("h-10 w-10 transition", emptyActive ? "text-[#f4d77d]/25" : "text-cyan-200/10 group-hover:text-cyan-200/20")} />
+          <span className={cn("grid h-20 w-20 place-items-center rounded-full border transition", emptyActive ? "border-[#f4d77d]/30" : "border-cyan-200/15 group-hover:border-cyan-200/25")}>
+            <Swords className={cn("h-9 w-9 transition", emptyActive ? "text-[#f4d77d]/35" : "text-cyan-200/20 group-hover:text-cyan-200/30")} />
+          </span>
         </span>
+        {/* engraved socket corners */}
+        <span aria-hidden className="absolute left-1.5 top-1.5 h-3.5 w-3.5 rounded-tl border-l border-t border-[#d6b55d]/25" />
+        <span aria-hidden className="absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-tr border-r border-t border-[#d6b55d]/25" />
+        <span aria-hidden className="absolute bottom-1.5 left-1.5 h-3.5 w-3.5 rounded-bl border-b border-l border-[#d6b55d]/25" />
+        <span aria-hidden className="absolute bottom-1.5 right-1.5 h-3.5 w-3.5 rounded-br border-b border-r border-[#d6b55d]/25" />
         <span
           aria-hidden
           className={cn(
-            "absolute inset-x-4 bottom-3 h-8 rounded-full blur-md transition",
-            emptyActive ? "bg-[#d6b55d]/20" : "bg-cyan-400/[0.07]",
+            "absolute inset-x-4 bottom-3 h-9 rounded-full blur-md transition",
+            emptyActive ? "bg-[#d6b55d]/25" : "bg-cyan-400/10",
           )}
         />
-        <span className="relative z-10">{emptyPrompt}</span>
+        {emptyPrompt && <span className="relative z-10 rounded bg-black/40 px-1.5 py-0.5">{emptyPrompt}</span>}
       </div>
     );
   }
@@ -1290,7 +1357,7 @@ function ChampionCard({
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
-    state === "loser" && "opacity-55 grayscale",
+    state === "loser" && "opacity-80 brightness-90 saturate-[0.6]",
     disabled && "cursor-not-allowed",
   );
 
@@ -1690,10 +1757,12 @@ export function LaneResult({ result }: { result: CategoryResult }) {
       <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
       <div
         className={cn(
-          "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[0_10px_34px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
+          "relative flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[0_10px_34px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
           result.decisive ? "border-[#f4d77d]/80 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/45",
         )}
       >
+        <span aria-hidden className="absolute -left-[5px] top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
+        <span aria-hidden className="absolute -right-[5px] top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
         <div className={cn("whitespace-nowrap text-lg font-black uppercase tracking-[0.08em]", accent)}>{headline}</div>
         <div className="whitespace-nowrap text-base font-black text-white">
           {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
