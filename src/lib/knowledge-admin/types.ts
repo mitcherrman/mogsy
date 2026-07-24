@@ -46,6 +46,11 @@ export interface UpdateRow {
   severity: Severity;
   flags: string[];
   group_key: string;
+
+  /** Structural proposals (property "structural:<kind>") carry their JSON
+   *  payload here; numeric rows may carry a progression string. Absent on
+   *  older backends — render as absent, never as an error. */
+  proposed_full_progression?: string | null;
 }
 
 export interface GroupRow {
@@ -417,6 +422,18 @@ export interface ApprovalPlan {
 export interface ApprovalResponse {
   success?: boolean;
   dry_run: boolean;
+  /** true when the backend routed this approval to the structural writer
+   *  (champion onboarding). The plan then follows the structural shape
+   *  (kind / champion / slot / action / before) instead of rank writes. */
+  structural?: boolean;
+  /** Structural applies: knowledge_structural_apply_history id — pass to
+   *  knowledgeApi.undoStructural(), NOT undoApply(). */
+  history_id?: number | null;
+  /** Structural applies: insert | upsert | replace | unchanged. */
+  action?: string;
+  kind?: string;
+  before?: unknown;
+  after?: unknown;
   /** All apply_history row ids written by this call (empty on dry_run). */
   history_ids?: number[];
   /** Present on successful writes so the UI can offer Undo — pass to

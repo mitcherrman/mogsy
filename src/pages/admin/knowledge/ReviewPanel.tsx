@@ -6,7 +6,9 @@ import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
 import type { ApprovalResponse, UpdateDetail, ApplyHistoryEntry, EditHistoryEntry } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
 import { getStrictApproval, subscribeStrictApproval } from "@/lib/knowledge-admin/strict";
+import { isStructuralProperty, parseStructuralPayload, structuralPlanFrom } from "@/lib/knowledge-admin/structural";
 import { ConfidenceBadge, ErrorBanner, ProviderBadge, SeverityBadge, actionPrimaryStyle, relativeTime } from "./shared";
+import { StructuralDetailSection, StructuralKindBadge, StructuralPlanView } from "./StructuralSection";
 import { cn } from "@/lib/utils";
 
 /**
@@ -76,18 +78,34 @@ export function ReviewPanel({
         : knowledgeApi.approve(updateId, { dry_run: false, approved_by: approvedBy });
     },
     onSuccess: (res) => {
+      // Structural applies return a structural-history id which undoes via a
+      // different endpoint than numeric apply-history ids.
+      const structuralHistoryId =
+        res.structural === true && typeof res.history_id === "number" ? res.history_id : null;
       const historyId = typeof res.apply_history_id === "number" ? res.apply_history_id : null;
+      const message =
+        res.structural === true
+          ? `Applied structural change${typeof res.action === "string" ? ` (${res.action})` : ""}`
+          : `Applied successfully${res.after_value ? `: ${res.after_value}` : ""}`;
       toast.success(
-        `Applied successfully${res.after_value ? `: ${res.after_value}` : ""}`,
-        historyId !== null
+        message,
+        structuralHistoryId !== null
           ? {
               duration: 12000,
               action: {
                 label: "Undo",
-                onClick: () => undoMut.mutate(historyId),
+                onClick: () => undoStructuralMut.mutate(structuralHistoryId),
               },
             }
-          : undefined,
+          : historyId !== null
+            ? {
+                duration: 12000,
+                action: {
+                  label: "Undo",
+                  onClick: () => undoMut.mutate(historyId),
+                },
+              }
+            : undefined,
       );
       qc.invalidateQueries({ queryKey: ["knowledge"] });
       onApplied?.();
@@ -116,6 +134,19 @@ export function ReviewPanel({
     onError: (err) => {
       // Surface backend error verbatim — includes the "value changed after
       // approval" safety message when applicable.
+      toast.error(err instanceof Error ? err.message : "Undo failed");
+    },
+  });
+
+  const undoStructuralMut = useMutation({
+    mutationFn: (historyId: number) => knowledgeApi.undoStructural(historyId),
+    onSuccess: () => {
+      toast.success("Structural change undone — record restored");
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+      onApplied?.();
+    },
+    onError: (err) => {
+      // Backend refuses on drift/double-undo; surface its message verbatim.
       toast.error(err instanceof Error ? err.message : "Undo failed");
     },
   });
@@ -439,8 +470,22 @@ function PanelBody({
   // click can't race the pending correction.
   const [editBusy, setEditBusy] = useState(false);
 
+  // Structural proposals (champion onboarding) render a labeled payload view
+  // instead of the numeric progression diff. A payload we cannot fully
+  // understand hard-blocks approval — never guess at a production write.
+  const isStructural = isStructuralProperty(d.property);
+  const structuralParse = useMemo(
+    () =>
+      isStructural
+        ? parseStructuralPayload(d.property, d.raw_evidence?.proposed_full_progression ?? null)
+        : null,
+    [isStructural, d.property, d.raw_evidence?.proposed_full_progression],
+  );
+  const structuralMalformed = structuralParse !== null && !structuralParse.ok;
+
   // Admin-only tool: warnings never hard-block approval. Approval is only
-  // disabled when the backend says the update is not actionable.
+  // disabled when the backend says the update is not actionable — or when a
+  // structural payload is malformed (unsafe to apply).
   const status = (d.status ?? d.update?.status ?? "PENDING") as string;
   const isPending = status === "PENDING";
   const hasPendingId =
@@ -450,7 +495,9 @@ function PanelBody({
     ? "No pending_update_id from backend"
     : !isPending
       ? `Update status is ${status}, not PENDING`
-      : null;
+      : structuralMalformed
+        ? "Structural payload is malformed or cannot be understood — approval disabled"
+        : null;
   const approvalBlocked = notActionableReason !== null;
 
   // Soft-warning signal: shown prominently in the dry-run confirmation so the
@@ -497,6 +544,7 @@ function PanelBody({
             {d.providers.map((p) => <ProviderBadge key={p} provider={p} />)}
             <ConfidenceBadge value={d.confidence} />
             <span>· {d.update?.change_type ?? "—"}</span>
+            {structuralParse?.ok && <StructuralKindBadge kind={structuralParse.payload.kind} />}
           </div>
           <div className="mt-2 text-xs">
             <span className="text-muted-foreground">Recommended:</span>{" "}
@@ -528,7 +576,14 @@ function PanelBody({
           </div>
         )}
 
+        {/* Structural change — labeled payload view (replaces the numeric
+            progression diff, which is meaningless for structural rows) */}
+        {isStructural && structuralParse && (
+          <StructuralDetailSection d={d} parse={structuralParse} />
+        )}
+
         {/* Progression diff */}
+        {!isStructural && (
         <section>
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground mb-2">Progression Diff</h3>
           <div className="overflow-x-auto rounded-lg border border-border">
@@ -581,6 +636,7 @@ function PanelBody({
             </table>
           </div>
         </section>
+        )}
 
         {/* Evidence: official statement vs Mogzy's interpretation */}
         <section className="rounded-lg border border-border p-3 space-y-1.5 text-xs">
@@ -612,9 +668,11 @@ function PanelBody({
                 Mogzy's interpretation
               </div>
               <div className="font-mono text-[11px] bg-primary/10 rounded px-2 py-1 break-words">
-                {d.raw_evidence.proposed_full_progression
-                  ?? d.raw_evidence.proposed_raw_value
-                  ?? String(d.update?.proposed_value ?? "—")}
+                {isStructural
+                  ? "Structured payload — see the Structural Change section above."
+                  : d.raw_evidence.proposed_full_progression
+                    ?? d.raw_evidence.proposed_raw_value
+                    ?? String(d.update?.proposed_value ?? "—")}
               </div>
               {d.raw_evidence.proposed_raw_value &&
                 d.raw_evidence.proposed_raw_value !== d.raw_evidence.proposed_full_progression && (
@@ -638,8 +696,12 @@ function PanelBody({
           )}
         </section>
 
-        {/* Reviewer edit — correct the interpreted value before approval */}
-        <EditValueSection d={d} editedBy={editedBy} onBusyChange={setEditBusy} />
+        {/* Reviewer edit — correct the interpreted value before approval.
+            Structural payload fields have no backend edit contract, so the
+            numeric edit control is hidden for structural proposals. */}
+        {!isStructural && (
+          <EditValueSection d={d} editedBy={editedBy} onBusyChange={setEditBusy} />
+        )}
 
         {/* Apply history */}
         <section className="rounded-lg border border-border p-3 space-y-1.5">
@@ -696,7 +758,34 @@ function PanelBody({
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-primary">Dry Run Plan</h3>
             {dryRunQ.isLoading && <div className="text-xs text-muted-foreground">Computing plan…</div>}
             {dryRunQ.error && <ErrorBanner error={dryRunQ.error} onRetry={() => dryRunQ.refetch()} />}
-            {dryRunQ.data && (
+            {dryRunQ.data && structuralPlanFrom(dryRunQ.data) ? (
+              <div className="space-y-2 text-xs">
+                <StructuralPlanView plan={structuralPlanFrom(dryRunQ.data)!} />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground">Type <span className="font-mono font-bold text-foreground">APPLY</span> to confirm:</label>
+                  <input
+                    autoFocus
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    aria-label="Type APPLY to confirm the structural write"
+                    className="rounded border border-border bg-background px-2 py-1 text-xs font-mono w-24"
+                  />
+                  <button
+                    onClick={() => applyMut.mutate()}
+                    disabled={confirmText !== "APPLY" || applyMut.isPending || approvalBlocked}
+                    className="rounded bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 disabled:opacity-40"
+                  >
+                    {applyMut.isPending ? "Applying…" : "Confirm write"}
+                  </button>
+                  <button
+                    onClick={() => { setMode("idle"); setConfirmText(""); }}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : dryRunQ.data && (
               <div className="space-y-2 text-xs">
                 <div className="font-mono bg-background/60 rounded p-2">
                   {dryRunQ.data.plan.old_full_progression && (
@@ -809,9 +898,10 @@ function PanelBody({
         </button>
 
         <div className="ml-auto flex items-center gap-2 flex-wrap">
-          {/* Preview write — always available as an optional secondary action */}
+          {/* Preview write — always available as an optional secondary action.
+              Structural approvals only exist on the single-update endpoint. */}
           <button
-            onClick={() => setMode("progression")}
+            onClick={() => setMode(isStructural ? "single" : "progression")}
             disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
             className="rounded border border-border bg-card text-xs font-bold px-3 py-2 disabled:opacity-40 text-muted-foreground hover:text-foreground"
             title="Run a dry-run and show the write plan without applying."
@@ -819,7 +909,24 @@ function PanelBody({
             Preview write
           </button>
 
+          {/* Structural: one approve button (rank/progression are meaningless;
+              the progression endpoint has no structural route). */}
+          {isStructural && (
+            <button
+              onClick={() => (strict ? setMode("single") : directApply("single"))}
+              disabled={approvalBlocked || mode !== "idle" || applyMut.isPending}
+              className="rounded bg-primary text-primary-foreground text-xs font-bold px-3 py-2 disabled:opacity-40 inline-flex items-center gap-1"
+              title={notActionableReason ?? "Apply this structural change"}
+            >
+              {!strict && <Zap className="h-3 w-3" />}
+              {!strict && applyMut.isPending && directScope === "single"
+                ? "Applying…"
+                : "✓ Approve structural change"}
+            </button>
+          )}
+
           {/* Approve single rank */}
+          {!isStructural && (
           <button
             onClick={() => (strict ? setMode("single") : directApply("single"))}
             disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
@@ -830,8 +937,10 @@ function PanelBody({
               ? "Applying…"
               : `Approve rank ${d.update?.rank ?? ""} only`}
           </button>
+          )}
 
           {/* Approve all */}
+          {!isStructural && (
           <button
             onClick={() => (strict ? setMode("progression") : directApply("progression"))}
             disabled={approvalBlocked || mode !== "idle" || applyMut.isPending || editBusy}
@@ -848,6 +957,7 @@ function PanelBody({
               ? "Applying…"
               : `✓ Approve all ${affectedRankCount || d.affected_ranks.length}`}
           </button>
+          )}
         </div>
       </div>
     </div>
