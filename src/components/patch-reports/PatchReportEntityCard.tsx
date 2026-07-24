@@ -124,7 +124,13 @@ const ChangeRow = ({ change }: { change: PatchReportChange }) => (
   </li>
 );
 
-export const PatchReportEntityCard = ({ card }: { card: PatchReportCard }) => {
+export const PatchReportEntityCard = ({
+  card,
+  hideSectionBadge = false,
+}: {
+  card: PatchReportCard;
+  hideSectionBadge?: boolean;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const groups = new Map<string, PatchReportChange[]>();
   for (const change of card.changes) {
@@ -148,7 +154,8 @@ export const PatchReportEntityCard = ({ card }: { card: PatchReportCard }) => {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-bold">{card.entity_name}</h3>
             <StatusBadge status={card.aggregate_status} />
-            {card.section_title !== "Champions" &&
+            {!hideSectionBadge &&
+              card.section_title !== "Champions" &&
               card.section_title !== "Items" &&
               card.section_title !== "Runes" && (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">

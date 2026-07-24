@@ -177,11 +177,31 @@ const PatchReports = () => {
                   {cards.length}
                 </span>
               </h2>
-              <div className="flex flex-col gap-4">
-                {cards.map((card) => (
-                  <PatchReportEntityCard key={card.id} card={card} />
-                ))}
-              </div>
+              {t === "system" ? (
+                // Mode/system cards read best grouped by their official section
+                // (Systems, ARAM: Mayhem, Arena, …) instead of one flat list.
+                groupBySection(cards).map(([sectionTitle, sectionCards]) => (
+                  <div key={sectionTitle} className="mb-6">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      {sectionTitle}
+                      <span className="ml-2 font-normal normal-case">
+                        {sectionCards.length}
+                      </span>
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                      {sectionCards.map((card) => (
+                        <PatchReportEntityCard key={card.id} card={card} hideSectionBadge />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {cards.map((card) => (
+                    <PatchReportEntityCard key={card.id} card={card} />
+                  ))}
+                </div>
+              )}
             </section>
           );
         })}
@@ -207,6 +227,15 @@ const PatchReports = () => {
     </div>
   );
 };
+
+function groupBySection(cards: PatchReportCard[]): Array<[string, PatchReportCard[]]> {
+  const groups = new Map<string, PatchReportCard[]>();
+  for (const card of cards) {
+    if (!groups.has(card.section_title)) groups.set(card.section_title, []);
+    groups.get(card.section_title)!.push(card);
+  }
+  return [...groups.entries()];
+}
 
 const SummaryTile = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-lg border border-border bg-card px-3 py-2">
