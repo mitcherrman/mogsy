@@ -18,9 +18,12 @@ function lanes(container: HTMLElement) {
 }
 
 function laneChampions(lane: HTMLElement) {
-  return Array.from(lane.querySelectorAll<HTMLElement>("[data-card-champion]")).map(
-    (element) => element.getAttribute("data-card-champion"),
-  );
+  // The destination board card pre-mounts invisibly (visibility: hidden) while
+  // its travel clone is in flight so the champion image is decoded before the
+  // handoff; only cards outside that hidden pre-mount are visibly on the board.
+  return Array.from(lane.querySelectorAll<HTMLElement>("[data-card-champion]"))
+    .filter((element) => !element.closest('[data-board-premount="true"]'))
+    .map((element) => element.getAttribute("data-card-champion"));
 }
 
 // Full hero-play choreography at 1x is ~1.72s (1,635ms clone + 80ms handoff);

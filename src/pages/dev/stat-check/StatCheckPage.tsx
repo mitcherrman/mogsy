@@ -70,6 +70,10 @@ type TravelingCardState = {
   id: string;
   card: StatCheckCard;
   imageUrl?: string | null;
+  /** Category + label of the destination slot, so the clone's final frame is
+      pixel-identical to the real board card it hands off to. */
+  category?: StatCategory;
+  label?: string;
   from: DOMRectSnapshot;
   to: DOMRectSnapshot;
   fromRotation: number;
@@ -234,6 +238,8 @@ export default function StatCheckPage() {
         queueCardTravel({
           card,
           imageUrl: getImage(assets, card),
+          category,
+          label: "You",
           fromElement,
           toElement,
           fromRotation: readElementRotation(fromElement),
@@ -335,6 +341,8 @@ export default function StatCheckPage() {
   const queueCardTravel = ({
     card,
     imageUrl,
+    category,
+    label,
     fromElement,
     toElement,
     fromRect,
@@ -349,6 +357,8 @@ export default function StatCheckPage() {
   }: {
     card: StatCheckCard;
     imageUrl?: string | null;
+    category?: StatCategory;
+    label?: string;
     fromElement?: Element | null;
     toElement?: Element | null;
     fromRect?: DOMRectSnapshot | null;
@@ -364,7 +374,7 @@ export default function StatCheckPage() {
     const from = fromRect ?? snapshotElement(fromElement) ?? fallbackRect();
     const to = toRect ?? snapshotElement(toElement) ?? from;
     const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    setTravelingCards((items) => [...items, { id, card, imageUrl, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
+    setTravelingCards((items) => [...items, { id, card, imageUrl, category, label, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
     if ((kind === "place" || kind === "lane-move") && phaseDurations?.length === 8) {
       // Schedule the hero-play phase machine: each dispatch fires at the end of
       // the previous phase; the lane charges immediately, flashes at impact, and
@@ -473,12 +483,14 @@ export default function StatCheckPage() {
           <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
             <div
               className={cn(
-                "relative min-h-0 rounded-2xl border border-[#d6b55d]/20 p-2 md:p-3",
-                // Carved-stone arena floor: layered dark gradients with a brass
-                // hairline and deep inset lighting so it reads as constructed
-                // material rather than a flat panel.
-                "bg-[radial-gradient(ellipse_at_50%_18%,rgba(30,58,92,0.55),transparent_62%),radial-gradient(ellipse_at_50%_108%,rgba(76,50,150,0.32),transparent_55%),linear-gradient(180deg,#0b1526_0%,#070d18_48%,#05080f_100%)]",
-                "shadow-[inset_0_2px_0_rgba(214,181,93,0.18),inset_0_-1px_0_rgba(34,211,238,0.08),inset_0_0_60px_rgba(0,0,0,0.65),0_24px_60px_rgba(0,0,0,0.45)]",
+                "relative min-h-0 rounded-2xl p-2 md:p-3",
+                // The slab itself: a thick carved blue-gray stone block held by a
+                // raised brass perimeter frame. The frame is a real border with a
+                // lit top edge and a dark under-edge; the drop shadows below give
+                // the block visible thickness on the table.
+                "border-2 border-[#7d6430]",
+                "bg-[radial-gradient(ellipse_at_50%_16%,rgba(52,74,104,0.5),transparent_60%),radial-gradient(ellipse_at_18%_92%,rgba(38,52,78,0.45),transparent_50%),radial-gradient(ellipse_at_82%_92%,rgba(38,52,78,0.45),transparent_50%),linear-gradient(180deg,#1b2536_0%,#141d2c_46%,#0e1522_100%)]",
+                "shadow-[inset_0_2px_0_rgba(244,215,125,0.28),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_70px_rgba(0,0,0,0.55),0_6px_0_-2px_#241d0e,0_10px_0_-4px_#0a0d14,0_30px_60px_rgba(0,0,0,0.6)]",
               )}
             >
               <ArenaAmbience
@@ -526,22 +538,25 @@ export default function StatCheckPage() {
             </div>
 
             <div className="relative">
-              {/* player dock: a shallow curved receiving platform extending from
-                  the arena's player edge — tapered sides, brass lip, and a soft
-                  projection pool under the fan instead of a flat panel */}
+              {/* hand dock: a carved stone tray extending from the slab's lower
+                  edge, in the same stone-and-brass construction — the hand is
+                  held by the board, not floating on a panel */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-[12%] -top-3 bottom-3 border-x border-b border-[#d6b55d]/20 bg-[linear-gradient(180deg,rgba(11,21,38,0.9),rgba(5,9,16,0.4)_70%,rgba(4,7,13,0.15))] shadow-[inset_0_2px_0_rgba(214,181,93,0.16),inset_0_14px_30px_rgba(0,0,0,0.55)] sm:inset-x-[20%]"
+                className="pointer-events-none absolute inset-x-[12%] -top-3 bottom-3 overflow-hidden border-x-2 border-b-2 border-[#7d6430]/70 bg-[radial-gradient(ellipse_at_50%_0%,rgba(52,74,104,0.4),transparent_65%),linear-gradient(180deg,#18202f_0%,#111827_55%,#0c1220_100%)] shadow-[inset_0_2px_0_rgba(244,215,125,0.2),inset_0_14px_30px_rgba(0,0,0,0.55),0_8px_0_-3px_#0a0d14,0_18px_36px_rgba(0,0,0,0.5)] sm:inset-x-[20%]"
                 style={{ borderRadius: "14px 14px 50% 50% / 14px 14px 130px 130px" }}
-              />
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-[26%] bottom-1 h-2 rounded-b-full border-b border-[#d6b55d]/15 bg-[#0a1322]/70 sm:inset-x-[32%]"
-              />
-              {/* brass lip joining arena to dock, with the center keystone tab */}
-              <div aria-hidden className="pointer-events-none absolute -top-3 left-1/2 h-px w-[70%] -translate-x-1/2 bg-gradient-to-r from-transparent via-[#d6b55d]/35 to-transparent" />
-              <div aria-hidden className="pointer-events-none absolute -top-3 left-1/2 h-2.5 w-48 -translate-x-1/2 rounded-b-md bg-gradient-to-b from-[#d6b55d]/35 to-transparent" />
-              {/* cyan projection pool the fan appears to rise from */}
+              >
+                {/* stone grain + recessed tray floor */}
+                <span className="absolute inset-0 opacity-[0.18] mix-blend-overlay" style={{ backgroundImage: STONE_NOISE_URL }} />
+                <span className="absolute inset-x-4 top-3 bottom-2 rounded-[12px_12px_50%_50%/12px_12px_110px_110px] border border-black/40 shadow-[inset_0_3px_12px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.04)]" />
+              </div>
+              {/* brass lip joining slab to dock, with the center keystone tab */}
+              <div aria-hidden className="pointer-events-none absolute -top-3 left-1/2 h-[3px] w-[70%] -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.7)_18%,rgba(168,137,75,0.85)_50%,rgba(138,111,53,0.7)_82%,transparent)] shadow-[inset_0_1px_0_rgba(244,215,125,0.4)]" />
+              <div aria-hidden className="pointer-events-none absolute -top-3 left-1/2 h-2.5 w-48 -translate-x-1/2 rounded-b-md bg-gradient-to-b from-[#8a6f35]/60 to-transparent" />
+              {/* small power cores where the tray meets the slab */}
+              <HextechCore className="pointer-events-none -top-[13px] left-[13%] sm:left-[21%]" />
+              <HextechCore className="pointer-events-none -top-[13px] right-[13%] sm:right-[21%]" />
+              {/* restrained energy feed under the fan */}
               <div aria-hidden className="pointer-events-none absolute left-1/2 top-2 h-16 w-[46%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1),transparent_70%)]" />
               <PlayerHand
                 cards={match.playerHand}
@@ -615,6 +630,36 @@ const ARENA_PARTICLES = [
   { left: "92%", top: "70%", size: 2, duration: 12, delay: 4.2 },
 ] as const;
 
+/** Flat-top hexagon for the central engine housing and crystal chamber. */
+const HEX_CLIP = "polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%)";
+/** Octagonal brass housing silhouette for the perimeter power cores. */
+const OCTAGON_CLIP = "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)";
+/** Fine fractal-noise grain overlaid on the slab so it reads as stone. */
+const STONE_NOISE_URL =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E\")";
+
+/**
+ * A perimeter power core: an octagonal brass housing with a recessed chamber
+ * and a glowing blue gem, mounted on the slab's conduit circuit.
+ */
+function HextechCore({ className, size = "md", bright = false }: { className?: string; size?: "md" | "lg"; bright?: boolean }) {
+  return (
+    <span aria-hidden className={cn("absolute grid place-items-center", size === "lg" ? "h-7 w-7" : "h-[22px] w-[22px]", className)}>
+      <span className="absolute inset-0 bg-[linear-gradient(160deg,#8a6f35,#4a3a1c_55%,#6a5429)] shadow-[0_2px_4px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(244,215,125,0.5)]" style={{ clipPath: OCTAGON_CLIP }} />
+      <span className="absolute inset-[3px] bg-[#0a121f] shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]" style={{ clipPath: OCTAGON_CLIP }} />
+      <span
+        className={cn(
+          "relative rotate-45 rounded-[1px]",
+          size === "lg" ? "h-2.5 w-2.5" : "h-2 w-2",
+          bright
+            ? "bg-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.95),0_0_24px_rgba(34,211,238,0.55)]"
+            : "bg-cyan-300/90 shadow-[0_0_8px_rgba(34,211,238,0.75),0_0_18px_rgba(34,211,238,0.35)]",
+        )}
+      />
+    </span>
+  );
+}
+
 /**
  * Shared hextech-arena atmosphere: haze, striations, perimeter construction
  * (corner brackets, edge ring), the comparison MECHANISM (brass rail with a
@@ -635,70 +680,92 @@ function ArenaAmbience({
   verdict: boolean;
   verdictKey: number;
 }) {
+  const flowAnim = !reducedMotion && (intense ? "animate-[sc-flow_2.2s_linear_infinite]" : "animate-[sc-flow_5s_linear_infinite]");
+  const flowStyle: CSSProperties = {
+    backgroundImage: "repeating-linear-gradient(90deg, rgba(34,211,238,0) 0px, rgba(34,211,238,0.5) 12px, rgba(34,211,238,0) 28px)",
+    backgroundSize: "220px 100%",
+  };
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
       <style>{`
         @keyframes sc-drift { 0%,100% { transform: translateY(0); opacity: .12 } 50% { transform: translateY(-30px); opacity: .4 } }
         @keyframes sc-core-pulse { 0%,100% { opacity: .6; transform: scale(1) } 50% { opacity: 1; transform: scale(1.04) } }
         @keyframes sc-flow { from { background-position: 0 0 } to { background-position: 220px 0 } }
         @keyframes sc-verdict { 0% { opacity: .55; transform: scale(.995) } 100% { opacity: 0; transform: scale(1.012) } }
       `}</style>
-      {/* magical haze */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.08),transparent_56%),radial-gradient(ellipse_at_18%_100%,rgba(124,92,246,0.09),transparent_45%),radial-gradient(ellipse_at_82%_100%,rgba(124,92,246,0.09),transparent_45%)]" />
-      {/* faint carved striations */}
-      <div className="absolute inset-0 opacity-50 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.014)_0px,rgba(255,255,255,0.014)_2px,transparent_2px,transparent_10px)]" />
-      {/* engraved edge ring + corner architecture */}
-      <div className="absolute inset-2 rounded-xl border border-cyan-200/[0.06]" />
-      <div className="absolute left-2 top-2 h-9 w-9 rounded-tl-xl border-l-2 border-t-2 border-[#d6b55d]/35" />
-      <div className="absolute right-2 top-2 h-9 w-9 rounded-tr-xl border-r-2 border-t-2 border-[#d6b55d]/35" />
-      <div className="absolute bottom-2 left-2 h-9 w-9 rounded-bl-xl border-b-2 border-l-2 border-[#d6b55d]/35" />
-      <div className="absolute bottom-2 right-2 h-9 w-9 rounded-br-xl border-b-2 border-r-2 border-[#d6b55d]/35" />
-      {/* comparison mechanism: brass rail with flowing energy channel */}
-      <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2">
-        <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,transparent,rgba(214,181,93,0.45)_10%,rgba(214,181,93,0.6)_50%,rgba(214,181,93,0.45)_90%,transparent)] shadow-[0_1px_0_rgba(0,0,0,0.6),0_0_12px_rgba(214,181,93,0.16)]" />
+      {/* stone grain: fine turbulence noise + carved striations + faint seams so
+          the surface reads as worked rock rather than a smooth gradient */}
+      <div className="absolute inset-0 opacity-[0.22] mix-blend-overlay" style={{ backgroundImage: STONE_NOISE_URL }} />
+      <div className="absolute inset-0 opacity-60 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.016)_0px,rgba(255,255,255,0.016)_2px,transparent_2px,transparent_11px)]" />
+      {/* magical haze pooling low on the slab */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.06),transparent_56%),radial-gradient(ellipse_at_50%_100%,rgba(70,86,140,0.08),transparent_50%)]" />
+      {/* recessed inner playing surface: a step carved below the perimeter */}
+      <div className="absolute inset-[26px] rounded-lg border border-black/45 shadow-[inset_0_3px_14px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.04)]" />
+      {/* perimeter conduit groove routed between the cores: an inset dark
+          channel with a live cyan line, one continuous circuit around the slab */}
+      <div className="absolute inset-[13px] rounded-[10px] border-[3px] border-[#0a0f1a] shadow-[0_1px_0_rgba(244,215,125,0.1),inset_0_1px_0_rgba(244,215,125,0.08)]" />
+      <div className={cn("absolute inset-x-9 top-[14px] h-px", intense ? "opacity-90" : "opacity-55", flowAnim)} style={flowStyle} />
+      <div className={cn("absolute inset-x-9 bottom-[14px] h-px", intense ? "opacity-90" : "opacity-55", flowAnim)} style={flowStyle} />
+      <div className="absolute inset-y-9 left-[14px] w-px bg-gradient-to-b from-cyan-300/10 via-cyan-300/40 to-cyan-300/10" />
+      <div className="absolute inset-y-9 right-[14px] w-px bg-gradient-to-b from-cyan-300/10 via-cyan-300/40 to-cyan-300/10" />
+      {/* perimeter power cores: corners, rail junctions, and center taps — the
+          brass housings sit ON the conduit so the border reads as one circuit */}
+      <HextechCore className="left-1 top-1" />
+      <HextechCore className="right-1 top-1" />
+      <HextechCore className="bottom-1 left-1" />
+      <HextechCore className="bottom-1 right-1" />
+      <HextechCore className="left-[3px] top-1/2 -translate-y-1/2" size="lg" bright={intense} />
+      <HextechCore className="right-[3px] top-1/2 -translate-y-1/2" size="lg" bright={intense} />
+      <HextechCore className="left-1/2 top-[3px] -translate-x-1/2" />
+      <HextechCore className="bottom-[3px] left-1/2 -translate-x-1/2" />
+      {/* comparison rail: brass structure fed by the side cores, carrying the
+          flowing energy channel the three plaques mount onto */}
+      <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2">
+        <div className="h-[5px] rounded-full bg-[linear-gradient(180deg,#8a6f35,#5f4c26_55%,#3c2f16)] shadow-[0_2px_3px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4),0_0_12px_rgba(214,181,93,0.14)]" />
+        <div className={cn("absolute inset-x-1 top-[2px] h-px", intense ? "opacity-95" : "opacity-70", flowAnim)} style={flowStyle} />
+      </div>
+      {/* vertical comparison shaft feeding the engine from the top/bottom taps */}
+      <div className="absolute bottom-4 left-1/2 top-4 w-px -translate-x-1/2 bg-gradient-to-b from-cyan-300/25 via-cyan-300/10 to-cyan-300/25" />
+      {/* central comparison engine: one manufactured brass-and-crystal core the
+          center plaque mounts over — engraved calibration ring, hex housing,
+          and paired crystals left clear above/below the plaque footprint */}
+      <div className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center">
+        <div className={cn("absolute h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.14),transparent_60%)]", intense && "bg-[radial-gradient(circle,rgba(34,211,238,0.24),transparent_60%)]")} />
+        {/* engraved calibration ring: carved into the stone, wide enough that
+            its arcs surface in the open floor between the three lane columns */}
         <div
-          className={cn("mt-[1px] h-[2px]", intense ? "opacity-90" : "opacity-60", !reducedMotion && (intense ? "animate-[sc-flow_2.2s_linear_infinite]" : "animate-[sc-flow_5s_linear_infinite]"))}
+          className="absolute h-[460px] w-[460px] rounded-full"
           style={{
-            backgroundImage: "repeating-linear-gradient(90deg, rgba(34,211,238,0) 0px, rgba(34,211,238,0.55) 12px, rgba(34,211,238,0) 28px)",
-            backgroundSize: "220px 100%",
+            backgroundImage:
+              "repeating-conic-gradient(from 0deg, rgba(214,181,93,0.5) 0deg 1.4deg, transparent 1.4deg 12deg), radial-gradient(circle, transparent 0 47.2%, rgba(0,0,0,0.55) 47.6% 48%, rgba(214,181,93,0.22) 48.2% 48.6%, transparent 49%)",
+            WebkitMaskImage: "radial-gradient(circle, transparent 0 45.5%, black 46.5% 49%, transparent 50%)",
+            maskImage: "radial-gradient(circle, transparent 0 45.5%, black 46.5% 49%, transparent 50%)",
           }}
         />
-        <div className="absolute -left-1 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
-        <div className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#d6b55d]/60 bg-[#0b1526]" />
-      </div>
-      {/* vertical comparison shaft through the center of the board */}
-      <div className="absolute bottom-6 left-1/2 top-6 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-cyan-300/15 to-transparent" />
-      {/* layered hextech core: sized to CLEAR the mounted center plaque so its
-          arcs, rotating frames, and cardinal crystals stay visible around it */}
-      <div className="absolute left-1/2 top-1/2 grid h-56 w-80 -translate-x-1/2 -translate-y-1/2 place-items-center">
-        <div className={cn("absolute -inset-16 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.16),transparent_60%)]", intense && "bg-[radial-gradient(circle,rgba(34,211,238,0.26),transparent_60%)]")} />
-        <div
-          className={cn(
-            "relative grid h-56 w-56 place-items-center rounded-full border-2 shadow-[0_0_54px_rgba(34,211,238,0.18),inset_0_0_30px_rgba(0,0,0,0.55)]",
-            intense ? "border-[#d6b55d]/60" : "border-[#d6b55d]/45",
-            !reducedMotion && (intense ? "animate-[sc-core-pulse_2.6s_ease-in-out_infinite]" : "animate-[sc-core-pulse_5.5s_ease-in-out_infinite]"),
-          )}
-        >
-          <div className="absolute inset-3 rounded-full border border-cyan-300/20" />
-          <div className={cn("absolute h-40 w-40 rotate-45 rounded-[10px] border border-cyan-300/30", !reducedMotion && "animate-[spin_30s_linear_infinite]")} />
-          <div
-            className="absolute h-28 w-28 rotate-45 rounded-[6px] border border-[#d6b55d]/40"
-            style={!reducedMotion ? { animation: "spin 22s linear infinite reverse" } : undefined}
+        {/* brass hex housing with a recessed dark chamber */}
+        <div className="relative grid h-52 w-52 place-items-center">
+          <span className="absolute inset-0 bg-[linear-gradient(160deg,#7d6430,#4a3a1c_55%,#6a5429)] shadow-[0_4px_10px_rgba(0,0,0,0.6)]" style={{ clipPath: HEX_CLIP }} />
+          <span className="absolute inset-[7px] bg-[linear-gradient(180deg,#101a2b,#0a121f)] shadow-[inset_0_4px_14px_rgba(0,0,0,0.7)]" style={{ clipPath: HEX_CLIP }} />
+          <span className="absolute inset-[16px] opacity-70" style={{ clipPath: HEX_CLIP, backgroundImage: "linear-gradient(180deg, rgba(34,211,238,0.06), transparent 40%)" }} />
+          {/* inner crystal chamber breathing behind the plaque */}
+          <span
+            className={cn(
+              "absolute h-24 w-24 bg-[radial-gradient(circle,rgba(103,232,249,0.5),rgba(34,211,238,0.18)_55%,transparent_75%)]",
+              !reducedMotion && (intense ? "animate-[sc-core-pulse_2.6s_ease-in-out_infinite]" : "animate-[sc-core-pulse_5.5s_ease-in-out_infinite]"),
+            )}
+            style={{ clipPath: HEX_CLIP }}
           />
-          {/* cyan crystals above and below the plaque, on the outer ring */}
-          <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border border-cyan-200/70 bg-cyan-300/50 shadow-[0_0_12px_rgba(34,211,238,0.5)]" />
-          <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border border-cyan-200/70 bg-cyan-300/50 shadow-[0_0_12px_rgba(34,211,238,0.5)]" />
+          {/* exposed crystal points above and below the mounted plaque */}
+          <span className="absolute -top-1 left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 border border-cyan-200/80 bg-cyan-300/60 shadow-[0_0_14px_rgba(34,211,238,0.6)]" />
+          <span className="absolute -bottom-1 left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 border border-cyan-200/80 bg-cyan-300/60 shadow-[0_0_14px_rgba(34,211,238,0.6)]" />
+          {/* brass couplings where the rail enters the housing */}
+          <span className="absolute -left-2 top-1/2 h-4 w-3 -translate-y-1/2 rounded-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
+          <span className="absolute -right-2 top-1/2 h-4 w-3 -translate-y-1/2 rounded-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
         </div>
-        {/* gold crystals seated on the rail, clear of the plaque's footprint */}
-        <span className="absolute left-0 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#f4d77d]/70 bg-[#d6b55d]/50 shadow-[0_0_12px_rgba(214,181,93,0.5)]" />
-        <span className="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border border-[#f4d77d]/70 bg-[#d6b55d]/50 shadow-[0_0_12px_rgba(214,181,93,0.5)]" />
       </div>
-      {/* side conduits: restrained vertical energy near the arena edges */}
-      <div className="absolute inset-y-10 left-3 w-px bg-gradient-to-b from-transparent via-cyan-300/12 to-transparent" />
-      <div className="absolute inset-y-10 right-3 w-px bg-gradient-to-b from-transparent via-cyan-300/12 to-transparent" />
       {/* one-shot gold perimeter flash when damage lands */}
       {verdict && !reducedMotion && (
-        <div key={verdictKey} className="absolute inset-1 rounded-2xl border-2 border-[#f4d77d]/50" style={{ animation: "sc-verdict 700ms ease-out forwards" }} />
+        <div key={verdictKey} className="absolute inset-1 rounded-xl border-2 border-[#f4d77d]/50" style={{ animation: "sc-verdict 700ms ease-out forwards" }} />
       )}
       {/* arcane motes */}
       {!reducedMotion &&
@@ -829,18 +896,40 @@ function ArenaLane({
           )}
         </div>
         <div ref={playerRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
-          <ChampionCard
-            card={playerCardInFlight ? null : playerCard}
-            imageUrl={getImage(assets, playerCardInFlight ? null : playerCard)}
-            category={category}
-            value={resolution?.playerValue}
-            mode={playerCard && !playerCardInFlight ? "board" : "empty"}
-            state={playerState}
-            label="You"
-            emptyPrompt={playerCardInFlight ? "" : canEdit && selectedCard ? "Place here" : "Place champion"}
-            emptyActive={Boolean(canEdit && selectedCard) || playerCardInFlight}
-            emptyCharging={playerCardInFlight || reaction === "charging"}
-          />
+          {/* The real board card mounts (invisibly) as soon as its clone takes
+              flight so the champion image is decoded before the handoff — the
+              clone-to-card swap is then a pure visibility flip with no darker
+              first-paint blink. The receiving socket overlays it meanwhile. */}
+          <div className="relative">
+            {playerCard && (
+              <div
+                data-board-premount={playerCardInFlight ? "true" : undefined}
+                aria-hidden={playerCardInFlight || undefined}
+                className={cn(playerCardInFlight && "invisible")}
+              >
+                <ChampionCard
+                  card={playerCard}
+                  imageUrl={getImage(assets, playerCard)}
+                  category={category}
+                  value={resolution?.playerValue}
+                  mode="board"
+                  state={playerState}
+                  label="You"
+                />
+              </div>
+            )}
+            {(!playerCard || playerCardInFlight) && (
+              <div className={cn(playerCardInFlight && "absolute inset-0")}>
+                <ChampionCard
+                  card={null}
+                  mode="empty"
+                  emptyPrompt={playerCardInFlight ? "" : canEdit && selectedCard ? "Place here" : "Place champion"}
+                  emptyActive={Boolean(canEdit && selectedCard) || playerCardInFlight}
+                  emptyCharging={playerCardInFlight || reaction === "charging"}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -855,10 +944,16 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
       data-direction={category.direction}
       className="z-10 flex w-full items-center gap-2"
     >
-      <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
-      <div className="relative max-w-full rounded-xl border border-[#d6b55d]/30 bg-[linear-gradient(180deg,rgba(52,42,18,0.55),rgba(6,10,16,0.85))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.22)]">
-        <span aria-hidden className="absolute -left-[6px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border border-[#d6b55d]/70 bg-[#0b1526]" />
-        <span aria-hidden className="absolute -right-[6px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border border-[#d6b55d]/70 bg-[#0b1526]" />
+      <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
+      <div className="relative max-w-full rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
+        {/* rail clamps bolting the plaque onto the comparison rail */}
+        <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
+        <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
+        {/* corner bolts on the backing plate */}
+        <span aria-hidden className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
+        <span aria-hidden className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
+        <span aria-hidden className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
+        <span aria-hidden className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
         <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
           {higher ? (
@@ -881,7 +976,7 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
         </span>
         </div>
       </div>
-      <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
+      <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
       <span className="sr-only">{categoryAccessibleLabel(category)}</span>
     </div>
   );
@@ -1081,6 +1176,8 @@ const TravelingCard = memo(function TravelingCard({
         <ChampionCard
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
+          category={item.category}
+          label={item.label}
           mode="board"
           state="idle"
           fill
@@ -1319,34 +1416,48 @@ function ChampionCard({
   emptyCharging?: boolean;
 }) {
   if (mode === "empty") {
-    // In-world receiving socket: a recessed card-shaped pad carved into the
-    // arena floor with a dormant rune, waking up when a card is selected.
+    // Receiving socket carved into the slab: a full card-shaped recess with a
+    // brass rim, mirroring the framing and footprint of the opponent's card
+    // positions above. Dormant blue light wakes when a hand card is selected;
+    // the landed champion card fits it exactly.
     return (
       <div
         className={cn(
           BOARD_CARD_SIZE,
           "relative flex items-center justify-center overflow-hidden rounded-lg border px-2 text-center text-[11px] font-semibold transition",
-          // Light-well recess: the socket reads as a carved depression with
-          // corner hardware, not a bordered card-sized box. The complete gold
-          // ring appears only when the socket is an active target.
-          "bg-[radial-gradient(ellipse_at_50%_42%,rgba(26,52,80,0.6),transparent_70%),radial-gradient(ellipse_at_50%_95%,rgba(76,50,150,0.18),transparent_60%)] shadow-[inset_0_4px_18px_rgba(0,0,0,0.55)]",
+          "bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(11,18,31,0.9)_55%,rgba(7,11,19,0.96))]",
+          "shadow-[inset_0_6px_20px_rgba(0,0,0,0.75),inset_0_-2px_8px_rgba(0,0,0,0.55),0_1px_0_rgba(244,215,125,0.1)]",
           emptyActive
-            ? "border-[#f4d77d]/55 text-[#f4d77d] shadow-[inset_0_4px_18px_rgba(0,0,0,0.5),0_0_28px_rgba(214,181,93,0.26)]"
-            : "border-transparent text-slate-400 group-hover:text-slate-300",
-          emptyCharging && "animate-pulse border-[#f4d77d]/75 motion-reduce:animate-none",
+            ? "border-[#f4d77d]/60 text-[#f4d77d] shadow-[inset_0_6px_20px_rgba(0,0,0,0.7),0_0_30px_rgba(214,181,93,0.3)]"
+            : "border-[#8a6f35]/45 text-slate-400 group-hover:border-[#a8894b]/60 group-hover:text-slate-300",
+          emptyCharging && "animate-pulse border-[#f4d77d]/80 motion-reduce:animate-none",
         )}
       >
-        {/* dormant summoning ring + rune */}
-        <span aria-hidden className="absolute inset-0 grid place-items-center">
-          <span className={cn("grid h-20 w-20 place-items-center rounded-full border transition", emptyActive ? "border-[#f4d77d]/35" : "border-cyan-200/20 group-hover:border-cyan-200/35")}>
-            <Swords className={cn("h-9 w-9 transition", emptyActive ? "text-[#f4d77d]/40" : "text-cyan-200/25 group-hover:text-cyan-200/35")} />
-          </span>
+        {/* engraved inner line tracing the card silhouette */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-[5px] rounded-md border transition",
+            emptyActive ? "border-cyan-200/30" : "border-cyan-200/12 group-hover:border-cyan-200/20",
+          )}
+        />
+        {/* runic side notches on the recess wall */}
+        <span aria-hidden className={cn("absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-sm transition", emptyActive ? "bg-[#d6b55d]/60" : "bg-[#8a6f35]/45")} />
+        <span aria-hidden className={cn("absolute right-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-sm transition", emptyActive ? "bg-[#d6b55d]/60" : "bg-[#8a6f35]/45")} />
+        {/* dormant hextech node set into the socket floor */}
+        <span aria-hidden className="absolute left-1/2 top-1/2 grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center">
+          <span className="absolute inset-0 bg-[linear-gradient(160deg,#6a5429,#3c2f16_55%,#55431f)] opacity-70 shadow-[0_1px_3px_rgba(0,0,0,0.7)]" style={{ clipPath: OCTAGON_CLIP }} />
+          <span className="absolute inset-[3px] bg-[#0a121f]" style={{ clipPath: OCTAGON_CLIP }} />
+          <span
+            className={cn(
+              "relative h-2 w-2 rotate-45 rounded-[1px] transition",
+              emptyActive
+                ? "bg-[#f4d77d]/80 shadow-[0_0_10px_rgba(244,215,125,0.6)]"
+                : "bg-cyan-300/45 shadow-[0_0_8px_rgba(34,211,238,0.35)] group-hover:bg-cyan-300/65",
+            )}
+          />
         </span>
-        {/* brass corner hardware carries the socket shape */}
-        <span aria-hidden className={cn("absolute left-1 top-1 h-4 w-4 rounded-tl-md border-l-2 border-t-2 transition", emptyActive ? "border-[#f4d77d]/50" : "border-[#d6b55d]/35 group-hover:border-[#d6b55d]/55")} />
-        <span aria-hidden className={cn("absolute right-1 top-1 h-4 w-4 rounded-tr-md border-r-2 border-t-2 transition", emptyActive ? "border-[#f4d77d]/50" : "border-[#d6b55d]/35 group-hover:border-[#d6b55d]/55")} />
-        <span aria-hidden className={cn("absolute bottom-1 left-1 h-4 w-4 rounded-bl-md border-b-2 border-l-2 transition", emptyActive ? "border-[#f4d77d]/50" : "border-[#d6b55d]/35 group-hover:border-[#d6b55d]/55")} />
-        <span aria-hidden className={cn("absolute bottom-1 right-1 h-4 w-4 rounded-br-md border-b-2 border-r-2 transition", emptyActive ? "border-[#f4d77d]/50" : "border-[#d6b55d]/35 group-hover:border-[#d6b55d]/55")} />
+        {/* faint dormant light pooling at the socket floor */}
         <span
           aria-hidden
           className={cn(
@@ -1354,7 +1465,7 @@ function ChampionCard({
             emptyActive ? "bg-[#d6b55d]/25" : "bg-cyan-400/[0.14]",
           )}
         />
-        {emptyPrompt && <span className="relative z-10 rounded bg-black/40 px-1.5 py-0.5">{emptyPrompt}</span>}
+        {emptyPrompt && <span className="relative z-10 mt-16 rounded bg-black/45 px-1.5 py-0.5">{emptyPrompt}</span>}
       </div>
     );
   }
@@ -1789,8 +1900,8 @@ export function LaneResult({ result }: { result: CategoryResult }) {
           result.decisive ? "border-[#f4d77d]/50 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/30",
         )}
       >
-        <span aria-hidden className="absolute -left-[6px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border border-[#d6b55d]/70 bg-[#0b1526]" />
-        <span aria-hidden className="absolute -right-[6px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border border-[#d6b55d]/70 bg-[#0b1526]" />
+        <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
+        <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
         <div
           className={cn(
             "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
