@@ -33,8 +33,8 @@ export const FAN_LAYOUT_TUNING = {
   },
   desktop: {
     minWidth: 180,
-    maxWidth: 470,
-    widthPerGap: 78,
+    maxWidth: 540,
+    widthPerGap: 86,
     maxRotation: 13,
     outerDrop: 34,
     centerLift: 12,
@@ -54,7 +54,7 @@ export function centeredNormalizedPosition(index: number, cardCount: number) {
 export function responsiveFanParameters(cardCount: number, viewportWidth: number): FanLayoutParameters {
   const mode: FanLayoutMode = viewportWidth < FAN_LAYOUT_TUNING.mobileBreakpoint ? "mobile" : "desktop";
   const tuning = FAN_LAYOUT_TUNING[mode];
-  const usableWidth = Math.max(0, viewportWidth - (mode === "mobile" ? 72 : 520));
+  const usableWidth = Math.max(0, viewportWidth - (mode === "mobile" ? 72 : 680));
   const countWidth = Math.max(0, cardCount - 1) * tuning.widthPerGap;
   const fanWidth = clamp(Math.min(countWidth, usableWidth), tuning.minWidth, tuning.maxWidth);
 

@@ -15,7 +15,7 @@ import {
   Sparkles,
   Sword,
   Swords,
-  Trophy,
+  User,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,6 @@ export default function StatCheckPage() {
   const lanePlayerRefs = useRef<Record<string, HTMLElement | null>>({});
   const laneBotRefs = useRef<Record<string, HTMLElement | null>>({});
   const discardRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
-  const hpRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
 
   useEffect(() => {
     clearAnimationTimers(timersRef.current);
@@ -463,25 +462,16 @@ export default function StatCheckPage() {
           </div>
         </header>
 
-        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[172px_minmax(0,1fr)_260px] xl:grid-cols-[188px_minmax(0,1fr)_280px]">
-          <MatchUtilityRail
+        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)_300px] xl:grid-cols-[300px_minmax(0,1fr)_320px]">
+          <MatchupRail
             match={match}
-            assets={assets}
-            botDiscardRef={(element) => { discardRefs.current.bot = element; }}
-            playerDiscardRef={(element) => { discardRefs.current.player = element; }}
+            displayHp={displayHp}
+            resolution={activeResolution}
+            flashKey={damageFlashKey}
           />
 
-          <section className="order-1 grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
-            <HpDisplay
-              side="bot"
-              hp={displayHp.bot}
-              previousHp={activeResolution?.botHpBefore}
-              damage={activeResolution?.damage.player ?? 0}
-              flashKey={damageFlashKey}
-              elementRef={(element) => { hpRefs.current.bot = element; }}
-            />
-
-            <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
+          <section className="order-1 grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-2 lg:order-none">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-full border border-cyan-300/15 bg-black/25 px-3 py-1.5 shadow-xl">
               <p className="text-sm font-semibold text-cyan-100" data-testid="stat-check-instruction">
                 {selectedCard ? `Click a lane to play ${selectedCard.name}.` : "Click a champion, then click a lane."}
               </p>
@@ -545,25 +535,24 @@ export default function StatCheckPage() {
                 setSelectedCardId((current) => (current === cardId ? null : cardId));
               }}
             />
-
-            <HpDisplay
-              side="player"
-              hp={displayHp.player}
-              previousHp={activeResolution?.playerHpBefore}
-              damage={activeResolution?.damage.bot ?? 0}
-              flashKey={damageFlashKey}
-              elementRef={(element) => { hpRefs.current.player = element; }}
-            />
           </section>
 
-          <RevealSequence
-            match={match}
-            resolution={activeResolution}
-            revealStep={revealStep}
-            nextCategories={match.nextCategories}
-            onNextRound={nextRound}
-            onRestart={restart}
-          />
+          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto">
+            <RevealSequence
+              match={match}
+              resolution={activeResolution}
+              revealStep={revealStep}
+              nextCategories={match.nextCategories}
+              onNextRound={nextRound}
+              onRestart={restart}
+            />
+            <UtilityStack
+              match={match}
+              assets={assets}
+              botDiscardRef={(element) => { discardRefs.current.bot = element; }}
+              playerDiscardRef={(element) => { discardRefs.current.player = element; }}
+            />
+          </aside>
         </section>
       </div>
       <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
@@ -771,7 +760,7 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[190px] w-full max-w-5xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[190px] 2xl:h-[210px]" data-testid="stat-check-hand">
+    <div className="relative mx-auto h-[190px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[186px] xl:h-[200px] 2xl:h-[218px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
@@ -820,7 +809,7 @@ function PlayerHand({
   );
 }
 
-function MatchUtilityRail({
+function UtilityStack({
   match,
   assets,
   botDiscardRef,
@@ -832,21 +821,19 @@ function MatchUtilityRail({
   playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
   return (
-    <aside className="order-3 grid gap-2 rounded-md border border-cyan-300/12 bg-black/20 p-2 shadow-2xl lg:order-none lg:h-full lg:min-h-0 lg:content-start lg:overflow-y-auto">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-        <CountPill label="Shared pool" value={match.drawPile.length} />
-        <CountPill label="Your hand" value={match.playerHand.length} />
-        <CountPill label="Bot hand" value={match.botHand.length} />
-      </div>
+    <div className="grid gap-2">
+      <CountPill label="Shared pool" value={match.drawPile.length} />
+      <CountPill label="Your hand" value={match.playerHand.length} />
+      <CountPill label="Bot hand" value={match.botHand.length} />
       <DiscardPile side="bot" cards={match.botDiscard} assets={assets} elementRef={botDiscardRef} />
       <DiscardPile side="player" cards={match.playerDiscard} assets={assets} elementRef={playerDiscardRef} />
-    </aside>
+    </div>
   );
 }
 
 function CountPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-cyan-300/12 bg-black/28 px-2 py-1.5">
+    <div className="flex items-center justify-between rounded-md border border-cyan-300/12 bg-black/28 px-3 py-1.5">
       <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</div>
       <div className="text-lg font-black text-cyan-100">{value}</div>
     </div>
@@ -1125,7 +1112,7 @@ function FlippableCard({
  * Fluid: fills the lane's flexible row so cards dominate the tabletop on large
  * screens instead of floating undersized in empty lane space.
  */
-const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,22vh,250px)]";
+const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,26vh,290px)]";
 
 function ChampionCard({
   card,
@@ -1284,7 +1271,7 @@ function RevealSequence({
   onRestart: () => void;
 }) {
   return (
-    <aside className="order-2 relative min-h-0 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto">
+    <div>
       <NextRoundIntel categories={nextCategories} compact />
 
       <div className="mt-2 h-px bg-cyan-300/10" />
@@ -1337,7 +1324,7 @@ function RevealSequence({
           )}
         </div>
       )}
-    </aside>
+    </div>
   );
 }
 
@@ -1371,42 +1358,170 @@ function MatchSummaryPanel({ match }: { match: MatchState }) {
   );
 }
 
-function HpDisplay({
+function MatchupRail({
+  match,
+  displayHp,
+  resolution,
+  flashKey,
+}: {
+  match: MatchState;
+  displayHp: { player: number; bot: number };
+  resolution: RoundResolution | null;
+  flashKey: number;
+}) {
+  const lastRound = match.roundHistory[match.roundHistory.length - 1] ?? null;
+  return (
+    <aside className="order-3 flex min-h-0 flex-col gap-2 lg:order-none lg:h-full lg:overflow-y-auto">
+      <ProfilePanel side="bot" />
+      <HpBar
+        side="bot"
+        hp={displayHp.bot}
+        previousHp={resolution?.botHpBefore}
+        damage={resolution?.damage.player ?? 0}
+        flashKey={flashKey}
+      />
+      <div className="flex items-center gap-3 px-1" aria-hidden>
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d6b55d]/50" />
+        <span className="text-xs font-black uppercase tracking-[0.3em] text-[#f4d77d]">vs</span>
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#d6b55d]/50" />
+      </div>
+      <HpBar
+        side="player"
+        hp={displayHp.player}
+        previousHp={resolution?.playerHpBefore}
+        damage={resolution?.damage.bot ?? 0}
+        flashKey={flashKey}
+      />
+      <ProfilePanel side="player" />
+      <LastRoundDamage resolution={lastRound} />
+      <MatchHistoryPanel history={match.roundHistory} />
+    </aside>
+  );
+}
+
+function ProfilePanel({ side }: { side: "player" | "bot" }) {
+  // Cosmetic matchup dressing for the dev prototype (mock rank/record flavor).
+  const bot = side === "bot";
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
+      <span
+        className={cn(
+          "grid h-11 w-11 shrink-0 place-items-center rounded-full border-2",
+          bot ? "border-red-400/50 bg-red-950/60 text-red-300" : "border-[#d6b55d]/60 bg-[#1c1730] text-[#f4d77d]",
+        )}
+      >
+        {bot ? <Bot className="h-6 w-6" /> : <User className="h-6 w-6" />}
+      </span>
+      <div className="min-w-0">
+        <div className={cn("text-[10px] font-black uppercase tracking-[0.2em]", bot ? "text-red-300/80" : "text-cyan-200/80")}>
+          {bot ? "Opponent" : "You"}
+        </div>
+        <div className="truncate text-sm font-black text-white">{bot ? "Deterministic Bot" : "mogsy"}</div>
+        <div className="truncate text-[11px] text-slate-400">
+          {bot ? "Platinum IV - 63% WR - 412 games" : "Diamond II - 57% WR - 892 games"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HpBar({
   side,
   hp,
   previousHp,
   damage,
   flashKey,
-  elementRef,
 }: {
   side: "player" | "bot";
   hp: number;
   previousHp?: number;
   damage: number;
   flashKey: number;
-  elementRef?: (element: HTMLElement | null) => void;
 }) {
   const pct = Math.max(0, Math.min(100, (hp / STAT_CHECK_RULES.startingHp) * 100));
   const damaged = previousHp != null && damage > 0 && hp < previousHp;
   return (
-    <div ref={elementRef} className="relative mx-auto w-full max-w-4xl rounded-md border border-cyan-300/15 bg-black/32 px-3 py-1.5 shadow-xl">
+    <div className="relative rounded-md border border-cyan-300/12 bg-black/28 px-3 py-1.5 shadow-xl">
       {damaged && (
-        <div key={flashKey} className="pointer-events-none absolute right-4 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-1 text-xs font-black text-white motion-reduce:animate-none">
+        <div key={flashKey} className="pointer-events-none absolute right-3 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white motion-reduce:animate-none">
           -{damage}
         </div>
       )}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {side === "bot" ? <Bot className="h-4 w-4 text-cyan-200" /> : <Trophy className="h-4 w-4 text-[#f4d77d]" />}
-          <div className="text-sm font-black">{side === "player" ? "You" : "Deterministic Bot"}</div>
-        </div>
-        <div data-testid={`stat-check-${side}-hp`} className="text-sm font-black">
-          {Math.max(0, hp)} / {STAT_CHECK_RULES.startingHp} HP
-        </div>
+      <div data-testid={`stat-check-${side}-hp`} className="text-sm font-black">
+        {Math.max(0, hp)} / {STAT_CHECK_RULES.startingHp} HP
       </div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-900">
-        <div className="h-full bg-gradient-to-r from-red-500 via-[#d6b55d] to-cyan-300 transition-all duration-500 motion-reduce:transition-none" style={{ width: `${pct}%` }} />
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-900">
+        <div
+          className={cn(
+            "h-full transition-all duration-500 motion-reduce:transition-none",
+            side === "bot" ? "bg-gradient-to-r from-red-600 to-red-400" : "bg-gradient-to-r from-cyan-500 to-cyan-300",
+          )}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+    </div>
+  );
+}
+
+function LastRoundDamage({ resolution }: { resolution: RoundResolution | null }) {
+  return (
+    <div className="rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Last round damage</div>
+      {resolution ? (
+        <div className="mt-1.5 space-y-1.5">
+          <div className="flex items-center justify-between rounded bg-black/30 px-2 py-1 text-xs">
+            <span className="font-semibold text-slate-300">Bot dealt</span>
+            <span className={cn("font-black", resolution.damage.bot > 0 ? "text-red-300" : "text-slate-500")}>
+              {resolution.damage.bot} damage
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded bg-black/30 px-2 py-1 text-xs">
+            <span className="font-semibold text-slate-300">You dealt</span>
+            <span className={cn("font-black", resolution.damage.player > 0 ? "text-[#f4d77d]" : "text-slate-500")}>
+              {resolution.damage.player} damage
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-1.5 text-xs text-slate-500">No rounds resolved yet.</div>
+      )}
+    </div>
+  );
+}
+
+function MatchHistoryPanel({ history }: { history: RoundResolution[] }) {
+  return (
+    <div className="min-h-0 rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Match history</div>
+      {history.length === 0 ? (
+        <div className="mt-1.5 text-xs text-slate-500">No rounds played yet.</div>
+      ) : (
+        <div data-testid="stat-check-match-history" className="mt-1.5 max-h-56 space-y-1 overflow-y-auto pr-0.5">
+          {history.map((round) => {
+            const winner = round.damage.boardWinner;
+            return (
+              <div
+                key={round.round}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded px-2 py-1 text-xs",
+                  winner === "player" && "bg-emerald-950/50 text-emerald-200",
+                  winner === "bot" && "bg-red-950/50 text-red-200",
+                  winner === "tie" && "bg-black/30 text-slate-300",
+                )}
+              >
+                <span className="font-black">R{round.round}</span>
+                <span className="flex-1 font-semibold">
+                  {winner === "player" ? "You won" : winner === "bot" ? "Bot won" : "Tied"}
+                </span>
+                <span className="font-black">{round.damage.playerCategoryWins} - {round.damage.botCategoryWins}</span>
+                <span className="w-14 text-right font-semibold text-slate-400">
+                  {round.damage.bot > 0 ? `-${round.damage.bot} HP` : "-"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1574,7 +1689,9 @@ function CategoryIcon({ category }: { category: StatCategory }) {
 }
 
 function ChampionArt({ card, imageUrl }: { card: StatCheckCard; imageUrl?: string | null }) {
-  if (imageUrl) return <img src={imageUrl} alt={card.name} className="h-full w-full object-cover" loading="lazy" />;
+  // Crop biased right-of-center: champion splashes place the subject right of
+  // the frame midline, so this keeps the champion centered in portrait crops.
+  if (imageUrl) return <img src={imageUrl} alt={card.name} className="h-full w-full object-cover object-[65%_30%]" loading="lazy" />;
   return (
     <div className="flex h-full min-h-[88px] w-full items-center justify-center bg-gradient-to-br from-cyan-950 via-slate-900 to-amber-950 text-xl font-black text-[#f4d77d]">
       {card.name.slice(0, 2).toUpperCase()}
