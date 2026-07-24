@@ -7,8 +7,13 @@
  * no A/B target codes, no snapshot ids, no stat slugs. A `state_unchanged` view
  * reads "No state change".
  */
-import type { MasteryTransitionView } from "../contracts/transitionView";
+import type { MasteryTransitionView, ProgressionTransitionView } from "../contracts/transitionView";
+import { PROGRESSION_CLASSIFICATIONS } from "../contracts/transitionView";
 import { championForTarget, formatNumber, humanizeUnit } from "./playerFormat";
+
+function isProgression(t: MasteryTransitionView): t is ProgressionTransitionView {
+  return (PROGRESSION_CLASSIFICATIONS as readonly string[]).includes(t.classification);
+}
 
 export function MasteryTransitionPanel({
   transition,
@@ -58,6 +63,20 @@ export function MasteryTransitionPanel({
           {transition.beforeValue !== null && transition.afterValue !== null && (
             <p className="text-xs tabular-nums text-muted-foreground">
               {formatNumber(transition.beforeValue)} → {formatNumber(transition.afterValue)} HP
+            </p>
+          )}
+        </div>
+      )}
+
+      {isProgression(transition) && (
+        <div data-testid="transition-progression" className="space-y-0.5">
+          {/* The backend label is the authoritative player-facing sentence for
+              progression steps (already champion-named and player-safe). */}
+          <p className="text-sm font-medium">{transition.label}</p>
+          {transition.beforeValue !== null && transition.afterValue !== null && (
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {formatNumber(transition.beforeValue)} → {formatNumber(transition.afterValue)}{" "}
+              {humanizeUnit(transition.unit)}
             </p>
           )}
         </div>
