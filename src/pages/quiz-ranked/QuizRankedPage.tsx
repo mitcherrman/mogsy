@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { MogzyClass } from "@/components/mascot/MogzyMascot";
+import { isMogzyClassCharacter } from "@/components/mascot/mascot-assets";
 import {
   BotDifficulty, createBotMatch, getActiveMatch, isAborted, RankedApiError,
 } from "@/lib/ranked-public/client";
@@ -85,6 +87,10 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
     return () => controller.abort();
   }, []);
 
+  // The class shown while queued: server-confirmed class first, local pick as
+  // fallback (mirrors the "Queued as" copy below).
+  const queuedClass = q.status?.classId ?? q.selectedClass;
+
   // A freshly created bot match wins; otherwise re-enter a rediscovered active
   // match (bot or human), then a live queue match.
   const liveMatchId = botMatchId ?? recoveredMatchId
@@ -159,10 +165,13 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
                 data-testid={`ranked-class-${c.id}`}
                 aria-pressed={q.selectedClass === c.id}
                 onClick={() => q.setSelectedClass(c.id)}
-                className={`min-h-[44px] rounded-lg border-2 p-3 text-left transition-colors motion-reduce:transition-none ${
+                className={`min-h-[44px] rounded-lg border-2 p-3 text-center transition-colors motion-reduce:transition-none ${
                   q.selectedClass === c.id
                     ? "border-[#c9a84c] bg-[#c9a84c]/10 shadow-[0_0_18px_-6px_rgba(201,168,76,0.6)]"
                     : "border-white/10 bg-white/[0.03] hover:border-[#c9a84c]/40"}`}>
+                {/* Card label carries the class name; the art is combat identity. */}
+                <MogzyClass character={c.id} decorative
+                  className="mx-auto mb-1.5 h-16 w-16 sm:h-20 sm:w-20" />
                 <div className="font-semibold">{c.label}</div>
                 <div className="text-xs text-muted-foreground">{c.blurb}</div>
               </button>
@@ -227,6 +236,9 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
       {(q.state === "waiting" || q.state === "cancelling") && (
         <section data-testid="ranked-waiting" className="ranked-panel p-5 space-y-3">
           <div role="status" className="space-y-1">
+            {queuedClass && isMogzyClassCharacter(queuedClass) && (
+              <MogzyClass character={queuedClass} decorative className="h-16 w-16" />
+            )}
             <div className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
               Matchmaking
             </div>

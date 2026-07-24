@@ -7,6 +7,8 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CombatantView } from "@/lib/ranked-core/viewTypes";
+import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import type { MogzyMascotPose } from "@/components/mascot/mascot-assets";
 import { CombatantPanel } from "./CombatantPanel";
 
 export type MatchResult = "victory" | "defeat" | "draw";
@@ -45,6 +47,13 @@ const RESULT_STYLE: Record<MatchResult, { eyebrow: string; heading: string }> = 
   draw: { eyebrow: "text-[#7fd6ef]", heading: "text-slate-100" },
 };
 
+// Decorative emotional payoff only — the heading text carries the result.
+const RESULT_POSE: Record<MatchResult, MogzyMascotPose> = {
+  victory: "cheering",
+  defeat: "defeated",
+  draw: "base",
+};
+
 export function MatchOverFrame({
   result,
   player,
@@ -63,6 +72,8 @@ export function MatchOverFrame({
       className="space-y-4"
     >
       <header className="ranked-panel px-4 py-6 text-center space-y-1">
+        <MogzyMascot pose={RESULT_POSE[result]} decorative
+          className="mx-auto mb-2 h-20 w-20 sm:h-24 sm:w-24" />
         <div className={`ranked-eyebrow ${RESULT_STYLE[result].eyebrow}`}>Match Complete</div>
         <h2 className={`text-3xl font-black uppercase tracking-[0.06em] ${RESULT_STYLE[result].heading}`}
           data-testid="match-over-heading">
