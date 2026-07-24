@@ -12,9 +12,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const listSets = vi.fn();
+const getProgress = vi.fn();
 
 vi.mock("@/features/mastery/live", () => ({
   listSets: (...args: unknown[]) => listSets(...args),
+  getProgress: (...args: unknown[]) => getProgress(...args),
   MasteryPlayerLive: ({ masterySetId }: { masterySetId: string }) => (
     <div data-testid="player-live" data-set-id={masterySetId} />
   ),
@@ -41,15 +43,36 @@ const SUMMARIES = [
     displaySummary: "Cooldowns and mana.", totalSteps: 16 },
 ];
 
+const notStarted = (id: string, total: number) => ({
+  masterySetId: id, state: "not_started", totalSteps: total, attempts: 0,
+  completedCount: 0, lastPlayedAt: null, latestCompletedAt: null,
+  latestScore: null, bestScore: null, activeSession: null,
+});
+const inProgress = (id: string, total: number, step: number) => ({
+  ...notStarted(id, total), state: "in_progress", attempts: 1,
+  lastPlayedAt: new Date().toISOString(),
+  activeSession: { sessionId: "msess_active", currentSequenceIndex: step,
+    totalSteps: total, lastPlayedAt: new Date().toISOString() },
+});
+const completed = (id: string, total: number, latest: number, best: number, attempts = 1) => ({
+  ...notStarted(id, total), state: "completed", attempts, completedCount: attempts,
+  lastPlayedAt: new Date().toISOString(), latestCompletedAt: new Date().toISOString(),
+  latestScore: { correct: latest, total, percent: Math.round(1000 * latest / total) / 10 },
+  bestScore: { correct: best, total, percent: Math.round(1000 * best / total) / 10 },
+});
+
 // NOTE: clearAllMocks, NOT mockReset — vi.fn().mockReset() breaks vitest's
 // settled-result tracking for later rejected results, surfacing a
 // component-handled rejection as a spurious test failure.
 afterEach(() => vi.clearAllMocks());
 
 describe("MasteryJourneysPage", () => {
+  const renderCatalog = () => render(<MemoryRouter><MasteryJourneysPage /></MemoryRouter>);
+
   it("renders every catalog set as a link to the shared player route", async () => {
     listSets.mockResolvedValue(SUMMARIES);
-    render(<MemoryRouter><MasteryJourneysPage /></MemoryRouter>);
+    getProgress.mockResolvedValue([notStarted(AHRI, 6), notStarted(OLAF, 16)]);
+    renderCatalog();
     await waitFor(() => expect(screen.getByTestId("mastery-catalog-list")).toBeInTheDocument());
     const olaf = screen.getByTestId(`mastery-catalog-card-${OLAF}`);
     expect(olaf).toHaveAttribute("href", `/quiz/mastery/${OLAF}`);
@@ -61,6 +84,79 @@ describe("MasteryJourneysPage", () => {
     expect(screen.queryByTestId(`mastery-catalog-card-${LUX_PROTO}`)).toBeNull();
   });
 
+  it("shows Start for never-started journeys and recommends the first one", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockResolvedValue([notStarted(AHRI, 6), notStarted(OLAF, 16)]);
+    renderCatalog();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("mastery-card-action")).toHaveLength(2));
+    for (const el of screen.getAllByTestId("mastery-card-action")) {
+      expect(el).toHaveTextContent("Start journey");
+    }
+    expect(screen.queryAllByTestId("mastery-card-badge")).toHaveLength(0);
+    const rec = screen.getByTestId("mastery-recommended");
+    expect(rec).toHaveTextContent("Up next");
+    expect(rec).toHaveTextContent("Ahri E vs Syndra E");
+  });
+
+  it("shows Resume with step and progress bar for an in-progress journey", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockResolvedValue([inProgress(AHRI, 6, 2), notStarted(OLAF, 16)]);
+    renderCatalog();
+    await waitFor(() => expect(screen.getByText("Resume journey →")).toBeInTheDocument());
+    expect(screen.getByTestId("mastery-card-badge")).toHaveTextContent("In progress");
+    expect(screen.getByTestId("mastery-card-detail")).toHaveTextContent("Step 3 of 6");
+    expect(screen.getByTestId("mastery-card-progress")).toBeInTheDocument();
+    // Recommendation points at the in-progress journey.
+    expect(screen.getByTestId("mastery-recommended"))
+      .toHaveTextContent("Pick up where you left off");
+  });
+
+  it("shows Replay with latest/best/attempts for a completed journey", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockResolvedValue([completed(AHRI, 6, 4, 6, 2), notStarted(OLAF, 16)]);
+    renderCatalog();
+    await waitFor(() => expect(screen.getByText("Replay journey →")).toBeInTheDocument());
+    expect(screen.getByTestId("mastery-card-badge")).toHaveTextContent("Completed");
+    const detail = screen.getByTestId("mastery-card-detail");
+    expect(detail).toHaveTextContent("Latest 4/6");
+    expect(detail).toHaveTextContent("Best 6/6");
+    expect(detail).toHaveTextContent("2 attempts");
+    // Next incomplete journey (Olaf) is recommended.
+    expect(screen.getByTestId("mastery-recommended")).toHaveTextContent("Olaf");
+  });
+
+  it("recommends the weakest journey when all are completed imperfectly", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockResolvedValue([completed(AHRI, 6, 6, 6), completed(OLAF, 16, 12, 12)]);
+    renderCatalog();
+    await waitFor(() => expect(screen.getByTestId("mastery-recommended")).toBeInTheDocument());
+    const rec = screen.getByTestId("mastery-recommended");
+    expect(rec).toHaveTextContent("Sharpen your weakest journey");
+    expect(rec).toHaveTextContent("Olaf");
+  });
+
+  it("shows the all-complete state for perfect completion everywhere", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockResolvedValue([completed(AHRI, 6, 6, 6), completed(OLAF, 16, 16, 16)]);
+    renderCatalog();
+    await waitFor(() => expect(screen.getByTestId("mastery-all-complete")).toBeInTheDocument());
+    expect(screen.queryByTestId("mastery-recommended")).toBeNull();
+  });
+
+  it("fails open to neutral actions (no fabricated progress) when progress fails", async () => {
+    listSets.mockResolvedValue(SUMMARIES);
+    getProgress.mockRejectedValue(new Error("progress unavailable"));
+    renderCatalog();
+    await waitFor(() =>
+      expect(screen.getByTestId("mastery-progress-unavailable")).toBeInTheDocument());
+    for (const el of screen.getAllByTestId("mastery-card-action")) {
+      expect(el).toHaveTextContent("Open journey");
+    }
+    expect(screen.queryByTestId("mastery-recommended")).toBeNull();
+    expect(screen.queryByTestId("mastery-all-complete")).toBeNull();
+  });
+
   it("shows the error state (not an empty catalog) when the API fails", async () => {
     listSets.mockRejectedValue(new Error("a verified session is required"));
     render(<MemoryRouter><MasteryJourneysPage /></MemoryRouter>);
@@ -70,6 +166,7 @@ describe("MasteryJourneysPage", () => {
 
   it("shows the empty state for an empty catalog", async () => {
     listSets.mockResolvedValue([]);
+    getProgress.mockResolvedValue([]);
     render(<MemoryRouter><MasteryJourneysPage /></MemoryRouter>);
     await waitFor(() => expect(screen.getByTestId("mastery-catalog-empty")).toBeInTheDocument());
   });

@@ -177,10 +177,93 @@ function readSessionView(json: unknown): MasterySessionView {
   };
 }
 
+// ---- learner progress (public catalog) --------------------------------------
+export type MasteryProgressState = "not_started" | "in_progress" | "completed";
+
+export interface MasteryScore {
+  readonly correct: number;
+  readonly total: number;
+  readonly percent: number;
+}
+
+export interface MasteryActiveSession {
+  readonly sessionId: string;
+  readonly currentSequenceIndex: number;
+  readonly totalSteps: number;
+  readonly lastPlayedAt: string;
+}
+
+export interface MasterySetProgress {
+  readonly masterySetId: string;
+  readonly state: MasteryProgressState;
+  readonly totalSteps: number;
+  readonly attempts: number;
+  readonly completedCount: number;
+  readonly lastPlayedAt: string | null;
+  readonly latestCompletedAt: string | null;
+  readonly latestScore: MasteryScore | null;
+  readonly bestScore: MasteryScore | null;
+  readonly activeSession: MasteryActiveSession | null;
+}
+
+function num(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+  return value;
+}
+
+function readScore(value: unknown, label: string): MasteryScore {
+  const s = rec(value, label);
+  return {
+    correct: intIndex(s.correct, `${label}.correct`),
+    total: intIndex(s.total, `${label}.total`),
+    percent: num(s.percent, `${label}.percent`),
+  };
+}
+
+function readProgress(value: unknown, label: string): MasterySetProgress {
+  const p = rec(value, label);
+  const state = str(p.state, `${label}.state`);
+  if (state !== "not_started" && state !== "in_progress" && state !== "completed") {
+    throw new Error(`${label}.state is not a known progress state`);
+  }
+  let active: MasteryActiveSession | null = null;
+  if (p.active_session != null) {
+    const a = rec(p.active_session, `${label}.active_session`);
+    active = {
+      sessionId: nonEmptyStr(a.session_id, `${label}.active_session.session_id`),
+      currentSequenceIndex: intIndex(a.current_sequence_index,
+        `${label}.active_session.current_sequence_index`),
+      totalSteps: intIndex(a.total_steps, `${label}.active_session.total_steps`),
+      lastPlayedAt: nonEmptyStr(a.last_played_at, `${label}.active_session.last_played_at`),
+    };
+  }
+  return {
+    masterySetId: nonEmptyStr(p.mastery_set_id, `${label}.mastery_set_id`),
+    state,
+    totalSteps: intIndex(p.total_steps, `${label}.total_steps`),
+    attempts: intIndex(p.attempts, `${label}.attempts`),
+    completedCount: intIndex(p.completed_count, `${label}.completed_count`),
+    lastPlayedAt: p.last_played_at == null ? null
+      : nonEmptyStr(p.last_played_at, `${label}.last_played_at`),
+    latestCompletedAt: p.latest_completed_at == null ? null
+      : nonEmptyStr(p.latest_completed_at, `${label}.latest_completed_at`),
+    latestScore: p.latest_score == null ? null : readScore(p.latest_score, `${label}.latest_score`),
+    bestScore: p.best_score == null ? null : readScore(p.best_score, `${label}.best_score`),
+    activeSession: active,
+  };
+}
+
 // ---- public methods --------------------------------------------------------
 export const listSets = (signal?: AbortSignal): Promise<MasterySetSummary[]> =>
   request("/api/mastery/sets",
     (j) => (rec(j, "body").sets as unknown[]).map((s, i) => readSetSummary(s, `sets[${i}]`)),
+    { signal });
+
+export const getProgress = (signal?: AbortSignal): Promise<MasterySetProgress[]> =>
+  request("/api/mastery/progress",
+    (j) => (rec(j, "body").progress as unknown[]).map((p, i) => readProgress(p, `progress[${i}]`)),
     { signal });
 
 export const startSession = (masterySetId: string, signal?: AbortSignal): Promise<MasterySessionView> =>
