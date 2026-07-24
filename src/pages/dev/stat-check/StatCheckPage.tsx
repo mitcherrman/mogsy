@@ -441,7 +441,7 @@ export default function StatCheckPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 lg:h-full lg:min-h-0">
+      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 lg:h-full lg:min-h-0 lg:px-2">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d]">
@@ -462,7 +462,7 @@ export default function StatCheckPage() {
           </div>
         </header>
 
-        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)_300px] xl:grid-cols-[300px_minmax(0,1fr)_320px]">
+        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]">
           <MatchupRail
             match={match}
             displayHp={displayHp}
@@ -537,7 +537,7 @@ export default function StatCheckPage() {
             />
           </section>
 
-          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto">
+          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto lg:p-1.5">
             <RevealSequence
               match={match}
               resolution={activeResolution}
@@ -833,9 +833,9 @@ function UtilityStack({
 
 function CountPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-cyan-300/12 bg-black/28 px-3 py-1.5">
-      <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</div>
-      <div className="text-lg font-black text-cyan-100">{value}</div>
+    <div className="flex items-center justify-between gap-1 rounded-md border border-cyan-300/12 bg-black/28 px-2 py-1">
+      <div className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</div>
+      <div className="text-base font-black text-cyan-100">{value}</div>
     </div>
   );
 }
@@ -1112,7 +1112,7 @@ function FlippableCard({
  * Fluid: fills the lane's flexible row so cards dominate the tabletop on large
  * screens instead of floating undersized in empty lane space.
  */
-const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,26vh,290px)]";
+const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,27vh,310px)]";
 
 function ChampionCard({
   card,
@@ -1276,12 +1276,12 @@ function RevealSequence({
 
       <div className="mt-2 h-px bg-cyan-300/10" />
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div>
-          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200">Round {match.round}</div>
-          <div className="text-base font-black">Resolution</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Round {match.round}</div>
+          <div className="text-sm font-black">Resolution</div>
         </div>
-        <Badge variant="outline" className="border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]">
+        <Badge variant="outline" className="border-[#d6b55d]/35 bg-[#d6b55d]/10 px-1.5 text-[10px] text-[#f4d77d]">
           {phaseLabel(revealStep)}
         </Badge>
       </div>
@@ -1311,8 +1311,8 @@ function RevealSequence({
                 </Button>
               )}
               {match.phase === "match-over" && (
-                <div data-testid="stat-check-match-over" className="rounded-md border border-[#d6b55d]/35 bg-[#d6b55d]/10 p-3">
-                  <div className="text-xl font-black">{match.outcome === "draw" ? "Match Draw" : match.outcome === "player" ? "Victory" : "Defeat"}</div>
+                <div data-testid="stat-check-match-over" className="rounded-md border border-[#d6b55d]/35 bg-[#d6b55d]/10 p-2">
+                  <div className="text-lg font-black">{match.outcome === "draw" ? "Match Draw" : match.outcome === "player" ? "Victory" : "Defeat"}</div>
                   <div className="text-xs text-slate-300">{match.endReason}</div>
                   <MatchSummaryPanel match={match} />
                   <Button onClick={onRestart} className="mt-3 w-full bg-[#d6b55d] text-[#071018] hover:bg-[#f4d77d]">
@@ -1531,12 +1531,12 @@ function NextRoundIntel({ categories, compact = false }: { categories: StatCateg
   return (
     <div className={cn("rounded-md border border-[#d6b55d]/25 bg-black/28 shadow-xl", compact ? "p-2" : "p-3")}>
       <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4d77d]">Next Round Intel</div>
-      <div data-testid="stat-check-next-intel" className="mt-2 rounded-md border border-[#d6b55d]/30 bg-[#d6b55d]/10 p-2">
-        <div className="flex items-center gap-2">
+      <div data-testid="stat-check-next-intel" className="mt-1.5 rounded-md border border-[#d6b55d]/30 bg-[#d6b55d]/10 p-1.5">
+        <div className="flex items-center gap-1.5">
           <CategoryIcon category={visible} />
           <div className="min-w-0">
-            <div data-testid="stat-check-next-intel-label" className="truncate text-sm font-black">{statFamilyLabel(visible)}</div>
-            <div className="text-[11px] text-slate-300">One upcoming stat family</div>
+            <div data-testid="stat-check-next-intel-label" className="truncate text-xs font-black">{statFamilyLabel(visible)}</div>
+            <div className="text-[10px] text-slate-300">One upcoming stat family</div>
           </div>
         </div>
       </div>
@@ -1634,8 +1634,8 @@ function BoardResult({ resolution }: { resolution: RoundResolution }) {
           ? "Player knocked out"
           : null;
   return (
-    <div data-testid="stat-check-board-result" className="rounded-md border border-white/10 bg-black/35 p-3">
-      <div className="text-sm font-black">{label}</div>
+    <div data-testid="stat-check-board-result" className="rounded-md border border-white/10 bg-black/35 p-2">
+      <div className="text-xs font-black">{label}</div>
       <div className="mt-1 text-xs text-slate-300">
         Lanes: You {resolution.damage.playerCategoryWins}, Bot {resolution.damage.botCategoryWins}
       </div>
@@ -1657,12 +1657,12 @@ function DamageBreakdown({ title, amount, side, damage }: { title: string; amoun
   }
   if (lines.length === 0) lines.push("No damage");
   return (
-    <div data-testid={`stat-check-damage-${side}`} className="rounded-md bg-black/30 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-black">{title}</span>
-        <span className="text-lg font-black text-[#f4d77d]">{amount}</span>
+    <div data-testid={`stat-check-damage-${side}`} className="rounded-md bg-black/30 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-black">{title}</span>
+        <span className="text-base font-black text-[#f4d77d]">{amount}</span>
       </div>
-      <div className="mt-2 space-y-1 text-xs text-slate-300">
+      <div className="mt-1.5 space-y-1 text-[11px] text-slate-300">
         {lines.map((line) => <div key={line}>{line}</div>)}
         <div className="font-black text-white">Total: {amount}</div>
       </div>
@@ -1682,7 +1682,7 @@ function CategoryGlyph({ category, className }: { category: StatCategory; classN
 
 function CategoryIcon({ category }: { category: StatCategory }) {
   return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]">
+    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[#d6b55d]/35 bg-[#d6b55d]/10 text-[#f4d77d]">
       <CategoryGlyph category={category} className="h-4 w-4" />
     </span>
   );
