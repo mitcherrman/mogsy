@@ -471,7 +471,18 @@ export default function StatCheckPage() {
           />
 
           <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
-            <div className="grid min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,300px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
+            <div
+              className={cn(
+                "relative min-h-0 rounded-2xl border border-[#d6b55d]/20 p-2 md:p-3",
+                // Carved-stone arena floor: layered dark gradients with a brass
+                // hairline and deep inset lighting so it reads as constructed
+                // material rather than a flat panel.
+                "bg-[radial-gradient(ellipse_at_50%_18%,rgba(30,58,92,0.55),transparent_62%),radial-gradient(ellipse_at_50%_108%,rgba(76,50,150,0.32),transparent_55%),linear-gradient(180deg,#0b1526_0%,#070d18_48%,#05080f_100%)]",
+                "shadow-[inset_0_1px_0_rgba(214,181,93,0.12),inset_0_0_60px_rgba(0,0,0,0.65),0_24px_60px_rgba(0,0,0,0.45)]",
+              )}
+            >
+              <ArenaAmbience reducedMotion={prefersReducedMotion} />
+              <div className="relative z-10 grid h-full min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,340px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                 const assigned = assignedCard(match, category.id);
@@ -500,6 +511,7 @@ export default function StatCheckPage() {
                   />
                 );
               })}
+              </div>
             </div>
 
             <PlayerHand
@@ -558,6 +570,72 @@ export default function StatCheckPage() {
       </div>
       <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
+  );
+}
+
+/** Deterministic ambient motes drifting over the arena floor. */
+const ARENA_PARTICLES = [
+  { left: "9%", top: "22%", size: 3, duration: 16, delay: 0 },
+  { left: "18%", top: "68%", size: 2, duration: 13, delay: 2.5 },
+  { left: "31%", top: "38%", size: 2, duration: 18, delay: 5 },
+  { left: "46%", top: "76%", size: 3, duration: 14, delay: 1.2 },
+  { left: "57%", top: "24%", size: 2, duration: 17, delay: 7 },
+  { left: "69%", top: "62%", size: 3, duration: 15, delay: 3.4 },
+  { left: "82%", top: "34%", size: 2, duration: 19, delay: 6 },
+  { left: "92%", top: "70%", size: 2, duration: 12, delay: 4.2 },
+] as const;
+
+/**
+ * Shared hextech-arena atmosphere: haze, faint stone striations, the central
+ * comparison spine (gold energy rail + slowly turning sigil the middle plaque
+ * mounts onto), and slow arcane motes. Pure decoration — pointer-events-none,
+ * behind the lanes, and fully static under reduced motion.
+ */
+function ArenaAmbience({ reducedMotion }: { reducedMotion: boolean }) {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+      <style>{`
+        @keyframes sc-drift { 0%,100% { transform: translateY(0); opacity: .12 } 50% { transform: translateY(-30px); opacity: .4 } }
+        @keyframes sc-core-pulse { 0%,100% { opacity: .55; transform: scale(1) } 50% { opacity: .95; transform: scale(1.05) } }
+      `}</style>
+      {/* magical haze */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.07),transparent_56%),radial-gradient(ellipse_at_18%_100%,rgba(124,92,246,0.08),transparent_45%),radial-gradient(ellipse_at_82%_100%,rgba(124,92,246,0.08),transparent_45%)]" />
+      {/* faint carved striations */}
+      <div className="absolute inset-0 opacity-50 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.014)_0px,rgba(255,255,255,0.014)_2px,transparent_2px,transparent_10px)]" />
+      {/* engraved edge ring */}
+      <div className="absolute inset-2 rounded-xl border border-cyan-200/[0.05]" />
+      {/* comparison spine: energy rail across the arena midline */}
+      <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2">
+        <div className="h-px bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-transparent" />
+        <div className="-mt-[2px] h-[3px] bg-gradient-to-r from-transparent via-cyan-300/20 to-transparent blur-[2px]" />
+      </div>
+      {/* central hextech core the middle plaque mounts onto */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div
+          className={cn(
+            "grid h-28 w-28 place-items-center rounded-full border border-[#d6b55d]/30 shadow-[0_0_34px_rgba(34,211,238,0.12)]",
+            !reducedMotion && "animate-[sc-core-pulse_5.5s_ease-in-out_infinite]",
+          )}
+        >
+          <div className={cn("h-[72px] w-[72px] rotate-45 rounded-[6px] border border-cyan-300/25", !reducedMotion && "animate-[spin_30s_linear_infinite]")} />
+        </div>
+      </div>
+      {/* arcane motes */}
+      {!reducedMotion &&
+        ARENA_PARTICLES.map((particle, index) => (
+          <span
+            key={index}
+            className="absolute rounded-full bg-cyan-200/40 blur-[1px]"
+            style={{
+              left: particle.left,
+              top: particle.top,
+              width: particle.size,
+              height: particle.size,
+              animation: `sc-drift ${particle.duration}s ease-in-out ${particle.delay}s infinite`,
+            }}
+          />
+        ))}
+    </div>
   );
 }
 
@@ -631,14 +709,17 @@ function ArenaLane({
         }
       }}
       className={cn(
-        "group relative flex min-h-[420px] flex-col overflow-hidden rounded-md bg-[linear-gradient(180deg,rgba(12,28,43,0.82),rgba(5,9,14,0.9))] p-2 shadow-[0_22px_55px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
-        "before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:border before:border-cyan-300/14 before:content-['']",
-        canEdit && selectedCard && !playerCard && "ring-2 ring-[#d6b55d]/60 before:border-[#d6b55d]/35",
-        canEdit && selectedCard && playerCard && "ring-1 ring-[#d6b55d]/30",
-        active && "ring-2 ring-cyan-300/65",
-        reaction === "charging" && "ring-1 ring-cyan-200/60 before:border-cyan-200/40 before:bg-cyan-200/5",
-        reaction === "impact" && "translate-y-[2px] ring-2 ring-[#f4d77d]/90 before:border-[#f4d77d]/80 before:bg-[#f4d77d]/10",
-        reaction === "accept" && "scale-[1.01] ring-2 ring-[#f4d77d]/85 before:border-[#f4d77d]/75 before:bg-[#d6b55d]/10",
+        // Lanes are open zones on the shared arena floor: no boxed background,
+        // just a faint engraved outline plus low-contrast light when the zone
+        // is targeted or reacting. Materials and sockets do the separation.
+        "group relative flex min-h-[420px] flex-col rounded-xl p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
+        "before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:border before:border-cyan-200/[0.07] before:content-['']",
+        canEdit && selectedCard && !playerCard && "bg-[#d6b55d]/[0.04] before:border-[#d6b55d]/35",
+        canEdit && selectedCard && playerCard && "before:border-[#d6b55d]/20",
+        active && "bg-cyan-300/[0.05] before:border-cyan-300/35",
+        reaction === "charging" && "bg-cyan-200/[0.04] before:border-cyan-200/30",
+        reaction === "impact" && "translate-y-[2px] bg-[#f4d77d]/[0.07] before:border-[#f4d77d]/70",
+        reaction === "accept" && "bg-[#d6b55d]/[0.06] before:border-[#f4d77d]/55",
       )}
     >
       {reaction === "impact" && (
@@ -696,7 +777,7 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
       className="z-10 flex w-full items-center gap-2"
     >
       <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6b55d]/45 to-[#d6b55d]/70" />
-      <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:px-4">
+      <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
         <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
           {higher ? (
             <ArrowUp className="h-6 w-6 text-[#f4d77d] sm:h-7 sm:w-7" strokeWidth={2.75} />
@@ -1155,27 +1236,39 @@ function ChampionCard({
   emptyCharging?: boolean;
 }) {
   if (mode === "empty") {
+    // In-world receiving socket: a recessed card-shaped pad carved into the
+    // arena floor with a dormant rune, waking up when a card is selected.
     return (
       <div
         className={cn(
           BOARD_CARD_SIZE,
-          "flex items-center justify-center rounded-lg border border-dashed px-2 text-center text-[11px] font-semibold transition",
+          "relative flex items-center justify-center overflow-hidden rounded-lg border px-2 text-center text-[11px] font-semibold transition",
+          "bg-[linear-gradient(180deg,rgba(2,6,11,0.9),rgba(9,18,30,0.55))] shadow-[inset_0_3px_18px_rgba(0,0,0,0.7),inset_0_-1px_0_rgba(214,181,93,0.06)]",
           emptyActive
-            ? "border-[#f4d77d]/70 bg-[#d6b55d]/10 text-[#f4d77d] shadow-[0_0_18px_rgba(214,181,93,0.25)]"
-            : "border-cyan-300/20 bg-black/25 text-slate-400",
-          emptyCharging && "animate-pulse border-[#f4d77d]/85 shadow-[0_0_22px_rgba(244,215,125,0.3)] motion-reduce:animate-none",
+            ? "border-[#f4d77d]/55 text-[#f4d77d] shadow-[inset_0_3px_18px_rgba(0,0,0,0.6),0_0_24px_rgba(214,181,93,0.22)]"
+            : "border-cyan-200/10 text-slate-500 group-hover:border-cyan-200/30 group-hover:text-slate-400",
+          emptyCharging && "animate-pulse border-[#f4d77d]/75 motion-reduce:animate-none",
         )}
       >
-        {emptyPrompt}
+        <span aria-hidden className="absolute inset-0 grid place-items-center">
+          <Swords className={cn("h-10 w-10 transition", emptyActive ? "text-[#f4d77d]/25" : "text-cyan-200/10 group-hover:text-cyan-200/20")} />
+        </span>
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-x-4 bottom-3 h-8 rounded-full blur-md transition",
+            emptyActive ? "bg-[#d6b55d]/20" : "bg-cyan-400/[0.07]",
+          )}
+        />
+        <span className="relative z-10">{emptyPrompt}</span>
       </div>
     );
   }
 
   if (mode === "face-down") {
     return (
-      <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border border-cyan-300/25 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-xl")}>
-        <div className="absolute inset-[5px] rounded-md border border-[#d6b55d]/35" />
-        <div className="absolute inset-[9px] rounded border border-[#d6b55d]/15" />
+      <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border border-cyan-300/20 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-xl")}>
+        <div className="absolute inset-[6px] rounded-md border border-[#d6b55d]/30" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.22),transparent_46%)]" />
         <div className="relative flex h-full flex-col items-center justify-center gap-1.5 text-cyan-100">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d6b55d]/40 bg-black/40 text-[#f4d77d]">
@@ -1597,7 +1690,7 @@ export function LaneResult({ result }: { result: CategoryResult }) {
       <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
       <div
         className={cn(
-          "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[0_10px_34px_rgba(0,0,0,0.6)] sm:px-4",
+          "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[0_10px_34px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
           result.decisive ? "border-[#f4d77d]/80 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/45",
         )}
       >
