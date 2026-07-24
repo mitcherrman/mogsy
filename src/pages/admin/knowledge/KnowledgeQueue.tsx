@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { KnowledgeApiError, knowledgeApi } from "@/lib/knowledge-admin/api";
 import type { GroupRow, UpdateRow } from "@/lib/knowledge-admin/types";
 import { useAuth } from "@/hooks/useAuth";
+import { isStructuralProperty } from "@/lib/knowledge-admin/structural";
 import { ConfidenceBadge, ErrorBanner, FlagChip, ProviderBadge, SkeletonRow } from "./shared";
+import { StructuralQueueSummary } from "./StructuralSection";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ReviewPanel } from "./ReviewPanel";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,7 @@ export default function KnowledgeQueue() {
     provider: params.get("provider") ?? "",
     champion: params.get("champion") ?? "",
     property: params.get("property") ?? "",
+    change_type: params.get("change_type") ?? "",
     patch_version: params.get("patch_version") ?? "",
     confidence_min: params.get("confidence_min") ? Number(params.get("confidence_min")) : undefined,
   };
@@ -45,6 +48,7 @@ export default function KnowledgeQueue() {
         provider: q.provider || undefined,
         champion: q.champion || undefined,
         property: q.property || undefined,
+        change_type: q.change_type || undefined,
         patch_version: q.patch_version || undefined,
         confidence_min: q.confidence_min,
         limit,
@@ -69,8 +73,14 @@ export default function KnowledgeQueue() {
   const bulkEnabled = q.status === "PENDING";
 
   // ── Selection state (visible groups only) ──────────────────────────────────
+  // Structural proposals are excluded from bulk selection: bulk approve uses
+  // the progression endpoint, which has no structural route, and structural
+  // changes deserve individual review anyway.
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const visibleKeys = useMemo(() => new Set(groups.map((g) => g.group_key)), [groups]);
+  const visibleKeys = useMemo(
+    () => new Set(groups.filter((g) => !isStructuralProperty(g.property)).map((g) => g.group_key)),
+    [groups],
+  );
 
   // Reconcile after any refresh/filter change: drop selected keys that are no
   // longer visible so we never act on a stale group_key.
@@ -180,6 +190,7 @@ export default function KnowledgeQueue() {
         <FilterSelect label="Provider" value={q.provider} onChange={(v) => setFilter("provider", v)} options={["", "patch_notes", "wiki"]} />
         <FilterText label="Champion" value={q.champion} onChange={(v) => setFilter("champion", v)} placeholder="e.g. Draven" />
         <FilterSelect label="Property" value={q.property} onChange={(v) => setFilter("property", v)} options={["", "cooldown", "mana_cost", "range"]} />
+        <FilterSelect label="Type" value={q.change_type} onChange={(v) => setFilter("change_type", v)} options={["", "STAT_CHANGE", "STRUCTURAL", "UNKNOWN_FIELD", "NOT_SUPPORTED"]} />
         <FilterText label="Patch" value={q.patch_version} onChange={(v) => setFilter("patch_version", v)} placeholder="26.13" />
         <FilterText label="Conf ≥" value={q.confidence_min ? String(q.confidence_min) : ""} onChange={(v) => setFilter("confidence_min", v)} placeholder="0.70" />
         <FilterSelect label="Status" value={q.status} onChange={(v) => setFilter("status", v)} options={["PENDING", "APPROVED", "REJECTED", "ALL"]} />
@@ -233,7 +244,7 @@ export default function KnowledgeQueue() {
             group={g}
             updates={updatesByGroup.get(g.group_key) ?? []}
             onReview={(id) => setOpenId(id)}
-            selectable={bulkEnabled}
+            selectable={bulkEnabled && !isStructuralProperty(g.property)}
             selected={selected.has(g.group_key)}
             onToggleSelect={() => toggle(g.group_key)}
           />
@@ -430,16 +441,22 @@ function GroupItem({
       </div>
       {open && (
         <div className="border-t border-border px-3 py-2 space-y-2">
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            {updates.map((u) => (
-              <span key={u.id} className="rounded bg-muted px-2 py-0.5 tabular-nums">
-                r{u.rank}: <span className="text-muted-foreground">{String(u.current_value)}</span> → <span className="text-emerald-300 font-bold">{String(u.proposed_value)}</span>
-                {u.delta_pct !== null && u.delta_pct !== 0 && (
-                  <span className="ml-1 text-[10px] text-muted-foreground">({u.delta_pct > 0 ? "+" : ""}{u.delta_pct.toFixed(1)}%)</span>
-                )}
-              </span>
-            ))}
-          </div>
+          {isStructuralProperty(group.property) ? (
+            // Structural rows carry no numeric cur→new pair (both null) —
+            // summarise the parsed payload instead of printing "null → null".
+            <StructuralQueueSummary updates={updates} />
+          ) : (
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {updates.map((u) => (
+                <span key={u.id} className="rounded bg-muted px-2 py-0.5 tabular-nums">
+                  r{u.rank}: <span className="text-muted-foreground">{String(u.current_value)}</span> → <span className="text-emerald-300 font-bold">{String(u.proposed_value)}</span>
+                  {u.delta_pct !== null && u.delta_pct !== 0 && (
+                    <span className="ml-1 text-[10px] text-muted-foreground">({u.delta_pct > 0 ? "+" : ""}{u.delta_pct.toFixed(1)}%)</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={() => first && onReview(first.id)}

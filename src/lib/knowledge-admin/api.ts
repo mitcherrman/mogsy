@@ -197,6 +197,15 @@ export const knowledgeApi = {
     request<UndoResponse>(`/apply-history/${historyId}/undo`, {
       method: "POST",
     }),
+
+  /** Undo one STRUCTURAL apply (champion identity / ability creation /
+   *  role tags). historyId comes from ApprovalResponse.history_id on a
+   *  structural apply — distinct from numeric apply-history ids. Backend
+   *  refuses (409) on drift or double-undo. */
+  undoStructural: (historyId: number) =>
+    request<UndoResponse>(`/structural-history/${historyId}/undo`, {
+      method: "POST",
+    }),
 };
 
 export const knowledgeApiBase = BASE;
