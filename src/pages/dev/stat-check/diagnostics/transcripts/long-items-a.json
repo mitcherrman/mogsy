@@ -1,0 +1,2834 @@
+{
+ "formatVersion": "stat-check-transcript.v1",
+ "seed": "sc-golden:long:a",
+ "itemsEnabled": true,
+ "deck": [
+  {
+   "id": "Aatrox",
+   "name": "Aatrox",
+   "stats": {
+    "hp": 650,
+    "hpPerLevel": 114,
+    "ad": 60,
+    "adPerLevel": 5,
+    "armor": 38,
+    "armorPerLevel": 4.45,
+    "magicResist": 32,
+    "moveSpeed": 345,
+    "attackRange": 175,
+    "attackSpeed": 0.651,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "Ahri",
+   "name": "Ahri",
+   "stats": {
+    "hp": 590,
+    "hpPerLevel": 104,
+    "ad": 53,
+    "adPerLevel": 3,
+    "armor": 21,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.668,
+    "attackSpeedPerLevel": 2.2
+   }
+  },
+  {
+   "id": "Akali",
+   "name": "Akali",
+   "stats": {
+    "hp": 600,
+    "hpPerLevel": 119,
+    "ad": 62,
+    "adPerLevel": 3.3,
+    "armor": 23,
+    "armorPerLevel": 5,
+    "magicResist": 37,
+    "moveSpeed": 345,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 3.2
+   }
+  },
+  {
+   "id": "Alistar",
+   "name": "Alistar",
+   "stats": {
+    "hp": 685,
+    "hpPerLevel": 120,
+    "ad": 62,
+    "adPerLevel": 3.75,
+    "armor": 47,
+    "armorPerLevel": 4.7,
+    "magicResist": 32,
+    "moveSpeed": 330,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.1
+   }
+  },
+  {
+   "id": "Annie",
+   "name": "Annie",
+   "stats": {
+    "hp": 560,
+    "hpPerLevel": 96,
+    "ad": 50,
+    "adPerLevel": 2.6,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 30,
+    "moveSpeed": 335,
+    "attackRange": 625,
+    "attackSpeed": 0.579,
+    "attackSpeedPerLevel": 1.36
+   }
+  },
+  {
+   "id": "Ashe",
+   "name": "Ashe",
+   "stats": {
+    "hp": 610,
+    "hpPerLevel": 101,
+    "ad": 59,
+    "adPerLevel": 2.95,
+    "armor": 26,
+    "armorPerLevel": 4.6,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 600,
+    "attackSpeed": 0.658,
+    "attackSpeedPerLevel": 3.33
+   }
+  },
+  {
+   "id": "Blitzcrank",
+   "name": "Blitzcrank",
+   "stats": {
+    "hp": 650,
+    "hpPerLevel": 109,
+    "ad": 62,
+    "adPerLevel": 3.5,
+    "armor": 40,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 325,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.13
+   }
+  },
+  {
+   "id": "Braum",
+   "name": "Braum",
+   "stats": {
+    "hp": 610,
+    "hpPerLevel": 112,
+    "ad": 55,
+    "adPerLevel": 3.2,
+    "armor": 47,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.644,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "Caitlyn",
+   "name": "Caitlyn",
+   "stats": {
+    "hp": 580,
+    "hpPerLevel": 107,
+    "ad": 62,
+    "adPerLevel": 3.8,
+    "armor": 28,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 650,
+    "attackSpeed": 0.681,
+    "attackSpeedPerLevel": 4
+   }
+  },
+  {
+   "id": "Darius",
+   "name": "Darius",
+   "stats": {
+    "hp": 652,
+    "hpPerLevel": 114,
+    "ad": 64,
+    "adPerLevel": 5,
+    "armor": 39,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 175,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "Ezreal",
+   "name": "Ezreal",
+   "stats": {
+    "hp": 600,
+    "hpPerLevel": 102,
+    "ad": 60,
+    "adPerLevel": 2.5,
+    "armor": 24,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 550,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "Fiora",
+   "name": "Fiora",
+   "stats": {
+    "hp": 620,
+    "hpPerLevel": 99,
+    "ad": 68,
+    "adPerLevel": 3.3,
+    "armor": 33,
+    "armorPerLevel": 4.7,
+    "magicResist": 32,
+    "moveSpeed": 345,
+    "attackRange": 150,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 3.2
+   }
+  },
+  {
+   "id": "Garen",
+   "name": "Garen",
+   "stats": {
+    "hp": 690,
+    "hpPerLevel": 98,
+    "ad": 69,
+    "adPerLevel": 4.5,
+    "armor": 38,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 175,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 3.65
+   }
+  },
+  {
+   "id": "Janna",
+   "name": "Janna",
+   "stats": {
+    "hp": 570,
+    "hpPerLevel": 84,
+    "ad": 52,
+    "adPerLevel": 3,
+    "armor": 28,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 500,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.95
+   }
+  },
+  {
+   "id": "Jhin",
+   "name": "Jhin",
+   "stats": {
+    "hp": 655,
+    "hpPerLevel": 107,
+    "ad": 59,
+    "adPerLevel": 4.4,
+    "armor": 24,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 4.7
+   }
+  },
+  {
+   "id": "Jinx",
+   "name": "Jinx",
+   "stats": {
+    "hp": 630,
+    "hpPerLevel": 100,
+    "ad": 59,
+    "adPerLevel": 3.15,
+    "armor": 26,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 525,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.4
+   }
+  },
+  {
+   "id": "Leona",
+   "name": "Leona",
+   "stats": {
+    "hp": 646,
+    "hpPerLevel": 101,
+    "ad": 60,
+    "adPerLevel": 3,
+    "armor": 43,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.9
+   }
+  },
+  {
+   "id": "Lux",
+   "name": "Lux",
+   "stats": {
+    "hp": 580,
+    "hpPerLevel": 99,
+    "ad": 54,
+    "adPerLevel": 3.3,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.669,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "Malphite",
+   "name": "Malphite",
+   "stats": {
+    "hp": 644,
+    "hpPerLevel": 104,
+    "ad": 62,
+    "adPerLevel": 4,
+    "armor": 37,
+    "armorPerLevel": 4.75,
+    "magicResist": 28,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.736,
+    "attackSpeedPerLevel": 3.4
+   }
+  },
+  {
+   "id": "Master Yi",
+   "name": "Master Yi",
+   "stats": {
+    "hp": 669,
+    "hpPerLevel": 100,
+    "ad": 66,
+    "adPerLevel": 3,
+    "armor": 33,
+    "armorPerLevel": 4.2,
+    "magicResist": 32,
+    "moveSpeed": 355,
+    "attackRange": 175,
+    "attackSpeed": 0.679,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "Morgana",
+   "name": "Morgana",
+   "stats": {
+    "hp": 630,
+    "hpPerLevel": 104,
+    "ad": 56,
+    "adPerLevel": 3.5,
+    "armor": 25,
+    "armorPerLevel": 4.3,
+    "magicResist": 30,
+    "moveSpeed": 335,
+    "attackRange": 450,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.53
+   }
+  },
+  {
+   "id": "Rammus",
+   "name": "Rammus",
+   "stats": {
+    "hp": 675,
+    "hpPerLevel": 94,
+    "ad": 56,
+    "adPerLevel": 3.5,
+    "armor": 40,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.656,
+    "attackSpeedPerLevel": 2.22
+   }
+  },
+  {
+   "id": "Sona",
+   "name": "Sona",
+   "stats": {
+    "hp": 550,
+    "hpPerLevel": 91,
+    "ad": 49,
+    "adPerLevel": 3,
+    "armor": 26,
+    "armorPerLevel": 4.3,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 550,
+    "attackSpeed": 0.644,
+    "attackSpeedPerLevel": 2.3
+   }
+  },
+  {
+   "id": "Vayne",
+   "name": "Vayne",
+   "stats": {
+    "hp": 550,
+    "hpPerLevel": 103,
+    "ad": 60,
+    "adPerLevel": 2.35,
+    "armor": 23,
+    "armorPerLevel": 4.6,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.658,
+    "attackSpeedPerLevel": 3.3
+   }
+  },
+  {
+   "id": "T1",
+   "name": "T1",
+   "stats": {
+    "hp": 480,
+    "hpPerLevel": 80,
+    "ad": 45,
+    "adPerLevel": 2,
+    "armor": 18,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 320,
+    "attackRange": 125,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T2",
+   "name": "T2",
+   "stats": {
+    "hp": 484,
+    "hpPerLevel": 85,
+    "ad": 46,
+    "adPerLevel": 2.5,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 325,
+    "attackRange": 175,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T3",
+   "name": "T3",
+   "stats": {
+    "hp": 488,
+    "hpPerLevel": 90,
+    "ad": 47,
+    "adPerLevel": 3,
+    "armor": 20,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 225,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T4",
+   "name": "T4",
+   "stats": {
+    "hp": 492,
+    "hpPerLevel": 95,
+    "ad": 48,
+    "adPerLevel": 3.5,
+    "armor": 21,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 335,
+    "attackRange": 275,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T5",
+   "name": "T5",
+   "stats": {
+    "hp": 496,
+    "hpPerLevel": 100,
+    "ad": 49,
+    "adPerLevel": 4,
+    "armor": 22,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 325,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T6",
+   "name": "T6",
+   "stats": {
+    "hp": 500,
+    "hpPerLevel": 105,
+    "ad": 50,
+    "adPerLevel": 4.5,
+    "armor": 23,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 345,
+    "attackRange": 375,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T7",
+   "name": "T7",
+   "stats": {
+    "hp": 504,
+    "hpPerLevel": 110,
+    "ad": 51,
+    "adPerLevel": 5,
+    "armor": 24,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 350,
+    "attackRange": 425,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T8",
+   "name": "T8",
+   "stats": {
+    "hp": 508,
+    "hpPerLevel": 115,
+    "ad": 52,
+    "adPerLevel": 2,
+    "armor": 25,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 355,
+    "attackRange": 475,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T9",
+   "name": "T9",
+   "stats": {
+    "hp": 512,
+    "hpPerLevel": 120,
+    "ad": 53,
+    "adPerLevel": 2.5,
+    "armor": 26,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 360,
+    "attackRange": 525,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T10",
+   "name": "T10",
+   "stats": {
+    "hp": 516,
+    "hpPerLevel": 80,
+    "ad": 54,
+    "adPerLevel": 3,
+    "armor": 27,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 365,
+    "attackRange": 575,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T11",
+   "name": "T11",
+   "stats": {
+    "hp": 520,
+    "hpPerLevel": 85,
+    "ad": 55,
+    "adPerLevel": 3.5,
+    "armor": 28,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 370,
+    "attackRange": 625,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T12",
+   "name": "T12",
+   "stats": {
+    "hp": 524,
+    "hpPerLevel": 90,
+    "ad": 56,
+    "adPerLevel": 4,
+    "armor": 29,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 375,
+    "attackRange": 125,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T13",
+   "name": "T13",
+   "stats": {
+    "hp": 528,
+    "hpPerLevel": 95,
+    "ad": 57,
+    "adPerLevel": 4.5,
+    "armor": 30,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 320,
+    "attackRange": 175,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T14",
+   "name": "T14",
+   "stats": {
+    "hp": 532,
+    "hpPerLevel": 100,
+    "ad": 58,
+    "adPerLevel": 5,
+    "armor": 31,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 325,
+    "attackRange": 225,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T15",
+   "name": "T15",
+   "stats": {
+    "hp": 536,
+    "hpPerLevel": 105,
+    "ad": 59,
+    "adPerLevel": 2,
+    "armor": 32,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 330,
+    "attackRange": 275,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T16",
+   "name": "T16",
+   "stats": {
+    "hp": 540,
+    "hpPerLevel": 110,
+    "ad": 60,
+    "adPerLevel": 2.5,
+    "armor": 33,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 335,
+    "attackRange": 325,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T17",
+   "name": "T17",
+   "stats": {
+    "hp": 544,
+    "hpPerLevel": 115,
+    "ad": 61,
+    "adPerLevel": 3,
+    "armor": 34,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 340,
+    "attackRange": 375,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T18",
+   "name": "T18",
+   "stats": {
+    "hp": 548,
+    "hpPerLevel": 120,
+    "ad": 62,
+    "adPerLevel": 3.5,
+    "armor": 35,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 345,
+    "attackRange": 425,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T19",
+   "name": "T19",
+   "stats": {
+    "hp": 552,
+    "hpPerLevel": 80,
+    "ad": 63,
+    "adPerLevel": 4,
+    "armor": 36,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 350,
+    "attackRange": 475,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T20",
+   "name": "T20",
+   "stats": {
+    "hp": 556,
+    "hpPerLevel": 85,
+    "ad": 64,
+    "adPerLevel": 4.5,
+    "armor": 37,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 355,
+    "attackRange": 525,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T21",
+   "name": "T21",
+   "stats": {
+    "hp": 560,
+    "hpPerLevel": 90,
+    "ad": 65,
+    "adPerLevel": 5,
+    "armor": 38,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 360,
+    "attackRange": 575,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T22",
+   "name": "T22",
+   "stats": {
+    "hp": 564,
+    "hpPerLevel": 95,
+    "ad": 66,
+    "adPerLevel": 2,
+    "armor": 39,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 365,
+    "attackRange": 625,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T23",
+   "name": "T23",
+   "stats": {
+    "hp": 568,
+    "hpPerLevel": 100,
+    "ad": 67,
+    "adPerLevel": 2.5,
+    "armor": 40,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 370,
+    "attackRange": 125,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T24",
+   "name": "T24",
+   "stats": {
+    "hp": 572,
+    "hpPerLevel": 105,
+    "ad": 68,
+    "adPerLevel": 3,
+    "armor": 41,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 375,
+    "attackRange": 175,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T25",
+   "name": "T25",
+   "stats": {
+    "hp": 576,
+    "hpPerLevel": 110,
+    "ad": 69,
+    "adPerLevel": 3.5,
+    "armor": 42,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 320,
+    "attackRange": 225,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T26",
+   "name": "T26",
+   "stats": {
+    "hp": 580,
+    "hpPerLevel": 115,
+    "ad": 45,
+    "adPerLevel": 4,
+    "armor": 43,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 325,
+    "attackRange": 275,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T27",
+   "name": "T27",
+   "stats": {
+    "hp": 584,
+    "hpPerLevel": 120,
+    "ad": 46,
+    "adPerLevel": 4.5,
+    "armor": 44,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 325,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T28",
+   "name": "T28",
+   "stats": {
+    "hp": 588,
+    "hpPerLevel": 80,
+    "ad": 47,
+    "adPerLevel": 5,
+    "armor": 45,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 335,
+    "attackRange": 375,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T29",
+   "name": "T29",
+   "stats": {
+    "hp": 592,
+    "hpPerLevel": 85,
+    "ad": 48,
+    "adPerLevel": 2,
+    "armor": 46,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 425,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T30",
+   "name": "T30",
+   "stats": {
+    "hp": 596,
+    "hpPerLevel": 90,
+    "ad": 49,
+    "adPerLevel": 2.5,
+    "armor": 47,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 345,
+    "attackRange": 475,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T31",
+   "name": "T31",
+   "stats": {
+    "hp": 600,
+    "hpPerLevel": 95,
+    "ad": 50,
+    "adPerLevel": 3,
+    "armor": 18,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 350,
+    "attackRange": 525,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T32",
+   "name": "T32",
+   "stats": {
+    "hp": 604,
+    "hpPerLevel": 100,
+    "ad": 51,
+    "adPerLevel": 3.5,
+    "armor": 19,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 355,
+    "attackRange": 575,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T33",
+   "name": "T33",
+   "stats": {
+    "hp": 608,
+    "hpPerLevel": 105,
+    "ad": 52,
+    "adPerLevel": 4,
+    "armor": 20,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 360,
+    "attackRange": 625,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T34",
+   "name": "T34",
+   "stats": {
+    "hp": 612,
+    "hpPerLevel": 110,
+    "ad": 53,
+    "adPerLevel": 4.5,
+    "armor": 21,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 365,
+    "attackRange": 125,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T35",
+   "name": "T35",
+   "stats": {
+    "hp": 616,
+    "hpPerLevel": 115,
+    "ad": 54,
+    "adPerLevel": 5,
+    "armor": 22,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 370,
+    "attackRange": 175,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T36",
+   "name": "T36",
+   "stats": {
+    "hp": 620,
+    "hpPerLevel": 120,
+    "ad": 55,
+    "adPerLevel": 2,
+    "armor": 23,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 375,
+    "attackRange": 225,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T37",
+   "name": "T37",
+   "stats": {
+    "hp": 624,
+    "hpPerLevel": 80,
+    "ad": 56,
+    "adPerLevel": 2.5,
+    "armor": 24,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 320,
+    "attackRange": 275,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T38",
+   "name": "T38",
+   "stats": {
+    "hp": 628,
+    "hpPerLevel": 85,
+    "ad": 57,
+    "adPerLevel": 3,
+    "armor": 25,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 325,
+    "attackRange": 325,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T39",
+   "name": "T39",
+   "stats": {
+    "hp": 632,
+    "hpPerLevel": 90,
+    "ad": 58,
+    "adPerLevel": 3.5,
+    "armor": 26,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 330,
+    "attackRange": 375,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T40",
+   "name": "T40",
+   "stats": {
+    "hp": 636,
+    "hpPerLevel": 95,
+    "ad": 59,
+    "adPerLevel": 4,
+    "armor": 27,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 335,
+    "attackRange": 425,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T41",
+   "name": "T41",
+   "stats": {
+    "hp": 640,
+    "hpPerLevel": 100,
+    "ad": 60,
+    "adPerLevel": 4.5,
+    "armor": 28,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 340,
+    "attackRange": 475,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T42",
+   "name": "T42",
+   "stats": {
+    "hp": 644,
+    "hpPerLevel": 105,
+    "ad": 61,
+    "adPerLevel": 5,
+    "armor": 29,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 345,
+    "attackRange": 525,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T43",
+   "name": "T43",
+   "stats": {
+    "hp": 648,
+    "hpPerLevel": 110,
+    "ad": 62,
+    "adPerLevel": 2,
+    "armor": 30,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 350,
+    "attackRange": 575,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T44",
+   "name": "T44",
+   "stats": {
+    "hp": 652,
+    "hpPerLevel": 115,
+    "ad": 63,
+    "adPerLevel": 2.5,
+    "armor": 31,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 355,
+    "attackRange": 625,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T45",
+   "name": "T45",
+   "stats": {
+    "hp": 656,
+    "hpPerLevel": 120,
+    "ad": 64,
+    "adPerLevel": 3,
+    "armor": 32,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 360,
+    "attackRange": 125,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T46",
+   "name": "T46",
+   "stats": {
+    "hp": 660,
+    "hpPerLevel": 80,
+    "ad": 65,
+    "adPerLevel": 3.5,
+    "armor": 33,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 365,
+    "attackRange": 175,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T47",
+   "name": "T47",
+   "stats": {
+    "hp": 664,
+    "hpPerLevel": 85,
+    "ad": 66,
+    "adPerLevel": 4,
+    "armor": 34,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 370,
+    "attackRange": 225,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T48",
+   "name": "T48",
+   "stats": {
+    "hp": 668,
+    "hpPerLevel": 90,
+    "ad": 67,
+    "adPerLevel": 4.5,
+    "armor": 35,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 375,
+    "attackRange": 275,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T49",
+   "name": "T49",
+   "stats": {
+    "hp": 672,
+    "hpPerLevel": 95,
+    "ad": 68,
+    "adPerLevel": 5,
+    "armor": 36,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 320,
+    "attackRange": 325,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T50",
+   "name": "T50",
+   "stats": {
+    "hp": 676,
+    "hpPerLevel": 100,
+    "ad": 69,
+    "adPerLevel": 2,
+    "armor": 37,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 325,
+    "attackRange": 375,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T51",
+   "name": "T51",
+   "stats": {
+    "hp": 680,
+    "hpPerLevel": 105,
+    "ad": 45,
+    "adPerLevel": 2.5,
+    "armor": 38,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 425,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T52",
+   "name": "T52",
+   "stats": {
+    "hp": 684,
+    "hpPerLevel": 110,
+    "ad": 46,
+    "adPerLevel": 3,
+    "armor": 39,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 335,
+    "attackRange": 475,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T53",
+   "name": "T53",
+   "stats": {
+    "hp": 688,
+    "hpPerLevel": 115,
+    "ad": 47,
+    "adPerLevel": 3.5,
+    "armor": 40,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 525,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T54",
+   "name": "T54",
+   "stats": {
+    "hp": 692,
+    "hpPerLevel": 120,
+    "ad": 48,
+    "adPerLevel": 4,
+    "armor": 41,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 345,
+    "attackRange": 575,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T55",
+   "name": "T55",
+   "stats": {
+    "hp": 696,
+    "hpPerLevel": 80,
+    "ad": 49,
+    "adPerLevel": 4.5,
+    "armor": 42,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 350,
+    "attackRange": 625,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T56",
+   "name": "T56",
+   "stats": {
+    "hp": 700,
+    "hpPerLevel": 85,
+    "ad": 50,
+    "adPerLevel": 5,
+    "armor": 43,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 355,
+    "attackRange": 125,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T57",
+   "name": "T57",
+   "stats": {
+    "hp": 704,
+    "hpPerLevel": 90,
+    "ad": 51,
+    "adPerLevel": 2,
+    "armor": 44,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 360,
+    "attackRange": 175,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T58",
+   "name": "T58",
+   "stats": {
+    "hp": 708,
+    "hpPerLevel": 95,
+    "ad": 52,
+    "adPerLevel": 2.5,
+    "armor": 45,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 365,
+    "attackRange": 225,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T59",
+   "name": "T59",
+   "stats": {
+    "hp": 712,
+    "hpPerLevel": 100,
+    "ad": 53,
+    "adPerLevel": 3,
+    "armor": 46,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 370,
+    "attackRange": 275,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T60",
+   "name": "T60",
+   "stats": {
+    "hp": 716,
+    "hpPerLevel": 105,
+    "ad": 54,
+    "adPerLevel": 3.5,
+    "armor": 47,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 375,
+    "attackRange": 325,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T61",
+   "name": "T61",
+   "stats": {
+    "hp": 720,
+    "hpPerLevel": 110,
+    "ad": 55,
+    "adPerLevel": 4,
+    "armor": 18,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 320,
+    "attackRange": 375,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T62",
+   "name": "T62",
+   "stats": {
+    "hp": 724,
+    "hpPerLevel": 115,
+    "ad": 56,
+    "adPerLevel": 4.5,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 325,
+    "attackRange": 425,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T63",
+   "name": "T63",
+   "stats": {
+    "hp": 728,
+    "hpPerLevel": 120,
+    "ad": 57,
+    "adPerLevel": 5,
+    "armor": 20,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 330,
+    "attackRange": 475,
+    "attackSpeed": 0.62,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T64",
+   "name": "T64",
+   "stats": {
+    "hp": 732,
+    "hpPerLevel": 80,
+    "ad": 58,
+    "adPerLevel": 2,
+    "armor": 21,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 335,
+    "attackRange": 525,
+    "attackSpeed": 0.63,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T65",
+   "name": "T65",
+   "stats": {
+    "hp": 736,
+    "hpPerLevel": 85,
+    "ad": 59,
+    "adPerLevel": 2.5,
+    "armor": 22,
+    "armorPerLevel": 3.5,
+    "magicResist": 28,
+    "moveSpeed": 340,
+    "attackRange": 575,
+    "attackSpeed": 0.64,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T66",
+   "name": "T66",
+   "stats": {
+    "hp": 740,
+    "hpPerLevel": 90,
+    "ad": 60,
+    "adPerLevel": 3,
+    "armor": 23,
+    "armorPerLevel": 4,
+    "magicResist": 29,
+    "moveSpeed": 345,
+    "attackRange": 625,
+    "attackSpeed": 0.65,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "T67",
+   "name": "T67",
+   "stats": {
+    "hp": 744,
+    "hpPerLevel": 95,
+    "ad": 61,
+    "adPerLevel": 3.5,
+    "armor": 24,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 350,
+    "attackRange": 125,
+    "attackSpeed": 0.6599999999999999,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "T68",
+   "name": "T68",
+   "stats": {
+    "hp": 748,
+    "hpPerLevel": 100,
+    "ad": 62,
+    "adPerLevel": 4,
+    "armor": 25,
+    "armorPerLevel": 5,
+    "magicResist": 31,
+    "moveSpeed": 355,
+    "attackRange": 175,
+    "attackSpeed": 0.6699999999999999,
+    "attackSpeedPerLevel": 1.5
+   }
+  },
+  {
+   "id": "T69",
+   "name": "T69",
+   "stats": {
+    "hp": 752,
+    "hpPerLevel": 105,
+    "ad": 63,
+    "adPerLevel": 4.5,
+    "armor": 26,
+    "armorPerLevel": 3.5,
+    "magicResist": 32,
+    "moveSpeed": 360,
+    "attackRange": 225,
+    "attackSpeed": 0.6799999999999999,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "T70",
+   "name": "T70",
+   "stats": {
+    "hp": 756,
+    "hpPerLevel": 110,
+    "ad": 64,
+    "adPerLevel": 5,
+    "armor": 27,
+    "armorPerLevel": 4,
+    "magicResist": 33,
+    "moveSpeed": 365,
+    "attackRange": 275,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "T71",
+   "name": "T71",
+   "stats": {
+    "hp": 760,
+    "hpPerLevel": 115,
+    "ad": 65,
+    "adPerLevel": 2,
+    "armor": 28,
+    "armorPerLevel": 4.5,
+    "magicResist": 34,
+    "moveSpeed": 370,
+    "attackRange": 325,
+    "attackSpeed": 0.6,
+    "attackSpeedPerLevel": 3
+   }
+  },
+  {
+   "id": "T72",
+   "name": "T72",
+   "stats": {
+    "hp": 764,
+    "hpPerLevel": 120,
+    "ad": 66,
+    "adPerLevel": 2.5,
+    "armor": 29,
+    "armorPerLevel": 5,
+    "magicResist": 35,
+    "moveSpeed": 375,
+    "attackRange": 375,
+    "attackSpeed": 0.61,
+    "attackSpeedPerLevel": 3.5
+   }
+  }
+ ],
+ "initialShuffleIds": [
+  "T51",
+  "T29",
+  "T49",
+  "T68",
+  "T26",
+  "T22",
+  "Alistar",
+  "T30",
+  "T41",
+  "Vayne",
+  "T70",
+  "T3",
+  "T25",
+  "T8",
+  "T59",
+  "T72",
+  "T27",
+  "Caitlyn",
+  "T15",
+  "T57",
+  "T52",
+  "T62",
+  "Akali",
+  "T54",
+  "Leona",
+  "T60",
+  "T2",
+  "T50",
+  "T55",
+  "Jinx",
+  "Blitzcrank",
+  "T21",
+  "T36",
+  "T65",
+  "T34",
+  "T1",
+  "T14",
+  "T40",
+  "T42",
+  "Aatrox",
+  "Braum",
+  "T43",
+  "Garen",
+  "T56",
+  "T32",
+  "Annie",
+  "T45",
+  "T48",
+  "T69",
+  "T58",
+  "Lux",
+  "T35",
+  "T7",
+  "T28",
+  "T39",
+  "Janna",
+  "T63",
+  "T18",
+  "Morgana",
+  "T37",
+  "T64",
+  "T38",
+  "Ezreal",
+  "T71",
+  "Darius",
+  "T6",
+  "T4",
+  "T33",
+  "T5",
+  "Fiora",
+  "T44",
+  "T11",
+  "Ashe",
+  "T16",
+  "T23",
+  "T19",
+  "T12",
+  "T24",
+  "Sona",
+  "T10",
+  "T67",
+  "T47",
+  "T46",
+  "T66",
+  "Rammus",
+  "T17",
+  "Jhin",
+  "T53",
+  "Master Yi",
+  "T61",
+  "T9",
+  "T13",
+  "Ahri",
+  "T31",
+  "T20",
+  "Malphite"
+ ],
+ "itemChoices": [
+  {
+   "choiceIndex": 0,
+   "completedRounds": 0,
+   "p1Pick": "cloth-armor",
+   "p2Pick": "mogzy-snack"
+  },
+  {
+   "choiceIndex": 1,
+   "completedRounds": 3,
+   "p1Pick": "ruby-crystal",
+   "p2Pick": "ruby-crystal"
+  },
+  {
+   "choiceIndex": 2,
+   "completedRounds": 6,
+   "p1Pick": "mogzy-snack",
+   "p2Pick": "long-sword"
+  },
+  {
+   "choiceIndex": 3,
+   "completedRounds": 9,
+   "p1Pick": "long-sword",
+   "p2Pick": "cloth-armor"
+  }
+ ],
+ "rounds": [
+  {
+   "round": 1,
+   "boardCategoryIds": [
+    "lowest-hp-1",
+    "lowest-ad-1",
+    "highest-attack-range"
+   ],
+   "hintFamily": "health",
+   "p1HandIds": [
+    "T51",
+    "T29",
+    "T49",
+    "T68",
+    "T26",
+    "T22"
+   ],
+   "p2HandIds": [
+    "Alistar",
+    "T30",
+    "T41",
+    "Vayne",
+    "T70",
+    "T3"
+   ],
+   "drawPileCount": 84,
+   "p1": {
+    "assignments": {
+     "lowest-hp-1": "T26",
+     "lowest-ad-1": "T51",
+     "highest-attack-range": "T22"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-hp-1": "T3",
+     "lowest-ad-1": "T30",
+     "highest-attack-range": "Vayne"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-hp-1",
+     "p1CardId": "T26",
+     "p2CardId": "T3",
+     "p1Natural": 580,
+     "p2Natural": 488,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 580,
+     "p2Final": 488,
+     "winner": "p2",
+     "margin": 0.15862068965517243,
+     "decisive": true
+    },
+    {
+     "categoryId": "lowest-ad-1",
+     "p1CardId": "T51",
+     "p2CardId": "T30",
+     "p1Natural": 45,
+     "p2Natural": 49,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 45,
+     "p2Final": 49,
+     "winner": "p1",
+     "margin": 0.08163265306122448,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-attack-range",
+     "p1CardId": "T22",
+     "p2CardId": "Vayne",
+     "p1Natural": 625,
+     "p2Natural": 550,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 625,
+     "p2Final": 550,
+     "winner": "p1",
+     "margin": 0.12,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 2,
+    "p2Dealt": 1,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 1
+   },
+   "p1HpAfter": 19,
+   "p2HpAfter": 18
+  },
+  {
+   "round": 2,
+   "boardCategoryIds": [
+    "highest-hp-1",
+    "highest-armor-18",
+    "highest-ad-1"
+   ],
+   "hintFamily": "attack-damage",
+   "p1HandIds": [
+    "T29",
+    "T49",
+    "T68",
+    "T25",
+    "T8",
+    "T59"
+   ],
+   "p2HandIds": [
+    "Alistar",
+    "T41",
+    "T70",
+    "T72",
+    "T27",
+    "Caitlyn"
+   ],
+   "drawPileCount": 78,
+   "p1": {
+    "assignments": {
+     "highest-hp-1": "T68",
+     "highest-armor-18": "T59",
+     "highest-ad-1": "T25"
+    },
+    "item": {
+     "categoryId": "highest-armor-18",
+     "itemId": "cloth-armor"
+    }
+   },
+   "p2": {
+    "assignments": {
+     "highest-hp-1": "T72",
+     "highest-armor-18": "Alistar",
+     "highest-ad-1": "Caitlyn"
+    },
+    "item": {
+     "categoryId": "highest-hp-1",
+     "itemId": "mogzy-snack"
+    }
+   },
+   "results": [
+    {
+     "categoryId": "highest-hp-1",
+     "p1CardId": "T68",
+     "p2CardId": "T72",
+     "p1Natural": 748,
+     "p2Natural": 764,
+     "p1Item": null,
+     "p2Item": "mogzy-snack",
+     "p1Bonus": 0,
+     "p2Bonus": 75,
+     "p1Final": 748,
+     "p2Final": 839,
+     "winner": "p2",
+     "margin": 0.10846245530393325,
+     "decisive": true
+    },
+    {
+     "categoryId": "highest-armor-18",
+     "p1CardId": "T59",
+     "p2CardId": "Alistar",
+     "p1Natural": 122.5,
+     "p2Natural": 126.9,
+     "p1Item": "cloth-armor",
+     "p2Item": null,
+     "p1Bonus": 15,
+     "p2Bonus": 0,
+     "p1Final": 137.5,
+     "p2Final": 126.9,
+     "winner": "p1",
+     "margin": 0.07709090909090904,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-ad-1",
+     "p1CardId": "T25",
+     "p2CardId": "Caitlyn",
+     "p1Natural": 69,
+     "p2Natural": 62,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 69,
+     "p2Final": 62,
+     "winner": "p1",
+     "margin": 0.10144927536231885,
+     "decisive": true
+    }
+   ],
+   "damage": {
+    "p1Dealt": 3,
+    "p2Dealt": 1,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 1,
+    "p2DecisiveDamage": 1
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 15
+  },
+  {
+   "round": 3,
+   "boardCategoryIds": [
+    "lowest-ad-1",
+    "highest-move-speed",
+    "lowest-hp-18"
+   ],
+   "hintFamily": "armor",
+   "p1HandIds": [
+    "T29",
+    "T49",
+    "T8",
+    "T15",
+    "T57",
+    "T52"
+   ],
+   "p2HandIds": [
+    "T41",
+    "T70",
+    "T27",
+    "T62",
+    "Akali",
+    "T54"
+   ],
+   "drawPileCount": 72,
+   "p1": {
+    "assignments": {
+     "lowest-ad-1": "T52",
+     "highest-move-speed": "T57",
+     "lowest-hp-18": "T29"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-ad-1": "T54",
+     "highest-move-speed": "T70",
+     "lowest-hp-18": "T41"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-ad-1",
+     "p1CardId": "T52",
+     "p2CardId": "T54",
+     "p1Natural": 46,
+     "p2Natural": 48,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 46,
+     "p2Final": 48,
+     "winner": "p1",
+     "margin": 0.041666666666666664,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-move-speed",
+     "p1CardId": "T57",
+     "p2CardId": "T70",
+     "p1Natural": 360,
+     "p2Natural": 365,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 360,
+     "p2Final": 365,
+     "winner": "p2",
+     "margin": 0.0136986301369863,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-hp-18",
+     "p1CardId": "T29",
+     "p2CardId": "T41",
+     "p1Natural": 2037,
+     "p2Natural": 2340,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 2037,
+     "p2Final": 2340,
+     "winner": "p1",
+     "margin": 0.1294871794871795,
+     "decisive": true
+    }
+   ],
+   "damage": {
+    "p1Dealt": 3,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 1,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 12
+  },
+  {
+   "round": 4,
+   "boardCategoryIds": [
+    "lowest-armor-18",
+    "lowest-ad-18",
+    "lowest-hp-1"
+   ],
+   "hintFamily": "attack-damage",
+   "p1HandIds": [
+    "T49",
+    "T8",
+    "T15",
+    "Leona",
+    "T60",
+    "T2"
+   ],
+   "p2HandIds": [
+    "T27",
+    "T62",
+    "Akali",
+    "T50",
+    "T55",
+    "Jinx"
+   ],
+   "drawPileCount": 66,
+   "p1": {
+    "assignments": {
+     "lowest-armor-18": "T49",
+     "lowest-ad-18": "T8",
+     "lowest-hp-1": "T2"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-armor-18": "T62",
+     "lowest-ad-18": "Jinx",
+     "lowest-hp-1": "T27"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-armor-18",
+     "p1CardId": "T49",
+     "p2CardId": "T62",
+     "p1Natural": 95.5,
+     "p2Natural": 87,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 95.5,
+     "p2Final": 87,
+     "winner": "p2",
+     "margin": 0.08900523560209424,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-ad-18",
+     "p1CardId": "T8",
+     "p2CardId": "Jinx",
+     "p1Natural": 86,
+     "p2Natural": 112.55,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 86,
+     "p2Final": 112.55,
+     "winner": "p1",
+     "margin": 0.23589515770768546,
+     "decisive": true
+    },
+    {
+     "categoryId": "lowest-hp-1",
+     "p1CardId": "T2",
+     "p2CardId": "T27",
+     "p1Natural": 484,
+     "p2Natural": 584,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 484,
+     "p2Final": 584,
+     "winner": "p1",
+     "margin": 0.17123287671232876,
+     "decisive": true
+    }
+   ],
+   "damage": {
+    "p1Dealt": 4,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 2,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 8
+  },
+  {
+   "round": 5,
+   "boardCategoryIds": [
+    "highest-ad-1",
+    "highest-armor-1",
+    "highest-hp-1"
+   ],
+   "hintFamily": "move-speed",
+   "p1HandIds": [
+    "T15",
+    "Leona",
+    "T60",
+    "Blitzcrank",
+    "T21",
+    "T36"
+   ],
+   "p2HandIds": [
+    "Akali",
+    "T50",
+    "T55",
+    "T65",
+    "T34",
+    "T1"
+   ],
+   "drawPileCount": 60,
+   "p1": {
+    "assignments": {
+     "highest-ad-1": "T21",
+     "highest-armor-1": "Leona",
+     "highest-hp-1": "T60"
+    },
+    "item": {
+     "categoryId": "highest-hp-1",
+     "itemId": "ruby-crystal"
+    }
+   },
+   "p2": {
+    "assignments": {
+     "highest-ad-1": "T50",
+     "highest-armor-1": "T55",
+     "highest-hp-1": "T65"
+    },
+    "item": {
+     "categoryId": "highest-hp-1",
+     "itemId": "ruby-crystal"
+    }
+   },
+   "results": [
+    {
+     "categoryId": "highest-ad-1",
+     "p1CardId": "T21",
+     "p2CardId": "T50",
+     "p1Natural": 65,
+     "p2Natural": 69,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 65,
+     "p2Final": 69,
+     "winner": "p2",
+     "margin": 0.057971014492753624,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-armor-1",
+     "p1CardId": "Leona",
+     "p2CardId": "T55",
+     "p1Natural": 43,
+     "p2Natural": 42,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 43,
+     "p2Final": 42,
+     "winner": "p1",
+     "margin": 0.023255813953488372,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-hp-1",
+     "p1CardId": "T60",
+     "p2CardId": "T65",
+     "p1Natural": 716,
+     "p2Natural": 736,
+     "p1Item": "ruby-crystal",
+     "p2Item": "ruby-crystal",
+     "p1Bonus": 150,
+     "p2Bonus": 150,
+     "p1Final": 866,
+     "p2Final": 886,
+     "winner": "p2",
+     "margin": 0.022573363431151242,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 0,
+    "p2Dealt": 2,
+    "boardWinner": "p2",
+    "p1CategoryWins": 1,
+    "p2CategoryWins": 2,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 16,
+   "p2HpAfter": 8
+  },
+  {
+   "round": 6,
+   "boardCategoryIds": [
+    "lowest-move-speed",
+    "highest-hp-18",
+    "lowest-ad-1"
+   ],
+   "hintFamily": "health",
+   "p1HandIds": [
+    "T15",
+    "Blitzcrank",
+    "T36",
+    "T14",
+    "T40",
+    "T42"
+   ],
+   "p2HandIds": [
+    "Akali",
+    "T34",
+    "T1",
+    "Aatrox",
+    "Braum",
+    "T43"
+   ],
+   "drawPileCount": 54,
+   "p1": {
+    "assignments": {
+     "lowest-move-speed": "Blitzcrank",
+     "highest-hp-18": "T36",
+     "lowest-ad-1": "T14"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-move-speed": "Braum",
+     "highest-hp-18": "Akali",
+     "lowest-ad-1": "T1"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-move-speed",
+     "p1CardId": "Blitzcrank",
+     "p2CardId": "Braum",
+     "p1Natural": 325,
+     "p2Natural": 335,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 325,
+     "p2Final": 335,
+     "winner": "p1",
+     "margin": 0.029850746268656716,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-hp-18",
+     "p1CardId": "T36",
+     "p2CardId": "Akali",
+     "p1Natural": 2660,
+     "p2Natural": 2623,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 2660,
+     "p2Final": 2623,
+     "winner": "p1",
+     "margin": 0.013909774436090226,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-ad-1",
+     "p1CardId": "T14",
+     "p2CardId": "T1",
+     "p1Natural": 58,
+     "p2Natural": 45,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 58,
+     "p2Final": 45,
+     "winner": "p2",
+     "margin": 0.22413793103448276,
+     "decisive": true
+    }
+   ],
+   "damage": {
+    "p1Dealt": 2,
+    "p2Dealt": 1,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 1
+   },
+   "p1HpAfter": 15,
+   "p2HpAfter": 6
+  },
+  {
+   "round": 7,
+   "boardCategoryIds": [
+    "lowest-hp-1",
+    "highest-attack-range",
+    "lowest-armor-1"
+   ],
+   "hintFamily": "attack-range",
+   "p1HandIds": [
+    "T15",
+    "T40",
+    "T42",
+    "Garen",
+    "T56",
+    "T32"
+   ],
+   "p2HandIds": [
+    "T34",
+    "Aatrox",
+    "T43",
+    "Annie",
+    "T45",
+    "T48"
+   ],
+   "drawPileCount": 48,
+   "p1": {
+    "assignments": {
+     "lowest-hp-1": "T15",
+     "highest-attack-range": "T32",
+     "lowest-armor-1": "T40"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-hp-1": "Annie",
+     "highest-attack-range": "T43",
+     "lowest-armor-1": "T34"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-hp-1",
+     "p1CardId": "T15",
+     "p2CardId": "Annie",
+     "p1Natural": 536,
+     "p2Natural": 560,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 536,
+     "p2Final": 560,
+     "winner": "p1",
+     "margin": 0.04285714285714286,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-attack-range",
+     "p1CardId": "T32",
+     "p2CardId": "T43",
+     "p1Natural": 575,
+     "p2Natural": 575,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 575,
+     "p2Final": 575,
+     "winner": "tie",
+     "margin": 0,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-armor-1",
+     "p1CardId": "T40",
+     "p2CardId": "T34",
+     "p1Natural": 27,
+     "p2Natural": 21,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 27,
+     "p2Final": 21,
+     "winner": "p2",
+     "margin": 0.2222222222222222,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 0,
+    "p2Dealt": 0,
+    "boardWinner": "tie",
+    "p1CategoryWins": 1,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 15,
+   "p2HpAfter": 6
+  },
+  {
+   "round": 8,
+   "boardCategoryIds": [
+    "lowest-attack-range",
+    "highest-move-speed",
+    "lowest-armor-18"
+   ],
+   "hintFamily": "health",
+   "p1HandIds": [
+    "T42",
+    "Garen",
+    "T56",
+    "T69",
+    "T58",
+    "Lux"
+   ],
+   "p2HandIds": [
+    "Aatrox",
+    "T45",
+    "T48",
+    "T35",
+    "T7",
+    "T28"
+   ],
+   "drawPileCount": 42,
+   "p1": {
+    "assignments": {
+     "lowest-attack-range": "T56",
+     "highest-move-speed": "T58",
+     "lowest-armor-18": "T69"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-attack-range": "Aatrox",
+     "highest-move-speed": "T35",
+     "lowest-armor-18": "T45"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-attack-range",
+     "p1CardId": "T56",
+     "p2CardId": "Aatrox",
+     "p1Natural": 125,
+     "p2Natural": 175,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 125,
+     "p2Final": 175,
+     "winner": "p1",
+     "margin": 0.2857142857142857,
+     "decisive": true
+    },
+    {
+     "categoryId": "highest-move-speed",
+     "p1CardId": "T58",
+     "p2CardId": "T35",
+     "p1Natural": 365,
+     "p2Natural": 370,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 365,
+     "p2Final": 370,
+     "winner": "p2",
+     "margin": 0.013513513513513514,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-armor-18",
+     "p1CardId": "T69",
+     "p2CardId": "T45",
+     "p1Natural": 85.5,
+     "p2Natural": 91.5,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 85.5,
+     "p2Final": 91.5,
+     "winner": "p1",
+     "margin": 0.06557377049180328,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 3,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 1,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 15,
+   "p2HpAfter": 3
+  },
+  {
+   "round": 9,
+   "boardCategoryIds": [
+    "lowest-hp-18",
+    "highest-attack-range",
+    "highest-armor-1"
+   ],
+   "hintFamily": "attack-damage",
+   "p1HandIds": [
+    "T42",
+    "Garen",
+    "Lux",
+    "T39",
+    "Janna",
+    "T63"
+   ],
+   "p2HandIds": [
+    "T48",
+    "T7",
+    "T28",
+    "T18",
+    "Morgana",
+    "T37"
+   ],
+   "drawPileCount": 36,
+   "p1": {
+    "assignments": {
+     "lowest-hp-18": "Janna",
+     "highest-attack-range": "Lux",
+     "highest-armor-1": "Garen"
+    },
+    "item": {
+     "categoryId": "highest-armor-1",
+     "itemId": "mogzy-snack"
+    }
+   },
+   "p2": {
+    "assignments": {
+     "lowest-hp-18": "T37",
+     "highest-attack-range": "Morgana",
+     "highest-armor-1": "T28"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-hp-18",
+     "p1CardId": "Janna",
+     "p2CardId": "T37",
+     "p1Natural": 1998,
+     "p2Natural": 1984,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 1998,
+     "p2Final": 1984,
+     "winner": "p2",
+     "margin": 0.007007007007007007,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-attack-range",
+     "p1CardId": "Lux",
+     "p2CardId": "Morgana",
+     "p1Natural": 550,
+     "p2Natural": 450,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 550,
+     "p2Final": 450,
+     "winner": "p1",
+     "margin": 0.18181818181818182,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-armor-1",
+     "p1CardId": "Garen",
+     "p2CardId": "T28",
+     "p1Natural": 38,
+     "p2Natural": 45,
+     "p1Item": "mogzy-snack",
+     "p2Item": null,
+     "p1Bonus": 8,
+     "p2Bonus": 0,
+     "p1Final": 46,
+     "p2Final": 45,
+     "winner": "p1",
+     "margin": 0.021739130434782608,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 2,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 15,
+   "p2HpAfter": 1
+  },
+  {
+   "round": 10,
+   "boardCategoryIds": [
+    "highest-ad-18",
+    "highest-armor-18",
+    "highest-hp-18"
+   ],
+   "hintFamily": "attack-range",
+   "p1HandIds": [
+    "T42",
+    "T39",
+    "T63",
+    "T64",
+    "T38",
+    "Ezreal"
+   ],
+   "p2HandIds": [
+    "T48",
+    "T7",
+    "T18",
+    "T71",
+    "Darius",
+    "T6"
+   ],
+   "drawPileCount": 30,
+   "p1": {
+    "assignments": {
+     "highest-ad-18": "T42",
+     "highest-armor-18": "T64",
+     "highest-hp-18": "T63"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "highest-ad-18": "T48",
+     "highest-armor-18": "Darius",
+     "highest-hp-18": "T71"
+    },
+    "item": {
+     "categoryId": "highest-armor-18",
+     "itemId": "cloth-armor"
+    }
+   },
+   "results": [
+    {
+     "categoryId": "highest-ad-18",
+     "p1CardId": "T42",
+     "p2CardId": "T48",
+     "p1Natural": 146,
+     "p2Natural": 143.5,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 146,
+     "p2Final": 143.5,
+     "winner": "p1",
+     "margin": 0.017123287671232876,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-armor-18",
+     "p1CardId": "T64",
+     "p2CardId": "Darius",
+     "p1Natural": 106,
+     "p2Natural": 127.4,
+     "p1Item": null,
+     "p2Item": "cloth-armor",
+     "p1Bonus": 0,
+     "p2Bonus": 15,
+     "p1Final": 106,
+     "p2Final": 142.4,
+     "winner": "p2",
+     "margin": 0.2556179775280899,
+     "decisive": true
+    },
+    {
+     "categoryId": "highest-hp-18",
+     "p1CardId": "T63",
+     "p2CardId": "T71",
+     "p1Natural": 2768,
+     "p2Natural": 2715,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 2768,
+     "p2Final": 2715,
+     "winner": "p1",
+     "margin": 0.019147398843930637,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 2,
+    "p2Dealt": 1,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 1
+   },
+   "p1HpAfter": 14,
+   "p2HpAfter": 0
+  }
+ ],
+ "final": {
+  "outcome": "p1",
+  "endReason": "HP reached zero.",
+  "roundsPlayed": 10,
+  "p1Hp": 14,
+  "p2Hp": 0,
+  "drawPileCount": 30,
+  "p1Inventory": {
+   "long-sword": 1,
+   "cloth-armor": 0,
+   "ruby-crystal": 0,
+   "mogzy-snack": 0
+  },
+  "p2Inventory": {
+   "long-sword": 1,
+   "cloth-armor": 0,
+   "ruby-crystal": 0,
+   "mogzy-snack": 0
+  },
+  "invariantIssues": []
+ }
+}

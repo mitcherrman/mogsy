@@ -106,6 +106,8 @@ const CombatBattlesAdmin = lazy(() => import("./pages/admin/CombatBattlesAdmin")
 
 // Dev-only prototype — local mock state, not linked from any navigation.
 const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype/RankedDuelPrototype"));
+const StatCheckPage = lazy(() => import("./pages/dev/stat-check/StatCheckPage"));
+const StatCheckRoomPage = lazy(() => import("./pages/dev/stat-check/online/StatCheckRoomPage"));
 
 // Dev-only prototype — Daily Score Attack against the feature-flagged
 // backend; not linked from any navigation.
@@ -307,6 +309,9 @@ const App = () => (
                   <Route path="/security" element={<Suspense fallback={<RouteFallback />}><Security /></Suspense>} />
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
+                  <Route path="/dev/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckPage /></Suspense>} />
+                  <Route path="/quiz/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />

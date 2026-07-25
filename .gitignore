@@ -27,6 +27,10 @@ dist-ssr
 out
 .remotion
 
+# Stat Check diagnostics: local snapshot of the live champion-stats payload
+# (acquired outside tests; never commit live stat values)
+roster.local.json
+
 # Quiz screenshot factory output (scripts/quiz-screenshots)
 quiz_content_exports
 
