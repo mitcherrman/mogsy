@@ -1,0 +1,890 @@
+{
+ "formatVersion": "stat-check-transcript.v1",
+ "seed": "sc-golden:items:b",
+ "itemsEnabled": true,
+ "deck": [
+  {
+   "id": "Aatrox",
+   "name": "Aatrox",
+   "stats": {
+    "hp": 650,
+    "hpPerLevel": 114,
+    "ad": 60,
+    "adPerLevel": 5,
+    "armor": 38,
+    "armorPerLevel": 4.45,
+    "magicResist": 32,
+    "moveSpeed": 345,
+    "attackRange": 175,
+    "attackSpeed": 0.651,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "Ahri",
+   "name": "Ahri",
+   "stats": {
+    "hp": 590,
+    "hpPerLevel": 104,
+    "ad": 53,
+    "adPerLevel": 3,
+    "armor": 21,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.668,
+    "attackSpeedPerLevel": 2.2
+   }
+  },
+  {
+   "id": "Akali",
+   "name": "Akali",
+   "stats": {
+    "hp": 600,
+    "hpPerLevel": 119,
+    "ad": 62,
+    "adPerLevel": 3.3,
+    "armor": 23,
+    "armorPerLevel": 5,
+    "magicResist": 37,
+    "moveSpeed": 345,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 3.2
+   }
+  },
+  {
+   "id": "Alistar",
+   "name": "Alistar",
+   "stats": {
+    "hp": 685,
+    "hpPerLevel": 120,
+    "ad": 62,
+    "adPerLevel": 3.75,
+    "armor": 47,
+    "armorPerLevel": 4.7,
+    "magicResist": 32,
+    "moveSpeed": 330,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.1
+   }
+  },
+  {
+   "id": "Annie",
+   "name": "Annie",
+   "stats": {
+    "hp": 560,
+    "hpPerLevel": 96,
+    "ad": 50,
+    "adPerLevel": 2.6,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 30,
+    "moveSpeed": 335,
+    "attackRange": 625,
+    "attackSpeed": 0.579,
+    "attackSpeedPerLevel": 1.36
+   }
+  },
+  {
+   "id": "Ashe",
+   "name": "Ashe",
+   "stats": {
+    "hp": 610,
+    "hpPerLevel": 101,
+    "ad": 59,
+    "adPerLevel": 2.95,
+    "armor": 26,
+    "armorPerLevel": 4.6,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 600,
+    "attackSpeed": 0.658,
+    "attackSpeedPerLevel": 3.33
+   }
+  },
+  {
+   "id": "Blitzcrank",
+   "name": "Blitzcrank",
+   "stats": {
+    "hp": 650,
+    "hpPerLevel": 109,
+    "ad": 62,
+    "adPerLevel": 3.5,
+    "armor": 40,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 325,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.13
+   }
+  },
+  {
+   "id": "Braum",
+   "name": "Braum",
+   "stats": {
+    "hp": 610,
+    "hpPerLevel": 112,
+    "ad": 55,
+    "adPerLevel": 3.2,
+    "armor": 47,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.644,
+    "attackSpeedPerLevel": 3.5
+   }
+  },
+  {
+   "id": "Caitlyn",
+   "name": "Caitlyn",
+   "stats": {
+    "hp": 580,
+    "hpPerLevel": 107,
+    "ad": 62,
+    "adPerLevel": 3.8,
+    "armor": 28,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 650,
+    "attackSpeed": 0.681,
+    "attackSpeedPerLevel": 4
+   }
+  },
+  {
+   "id": "Darius",
+   "name": "Darius",
+   "stats": {
+    "hp": 652,
+    "hpPerLevel": 114,
+    "ad": 64,
+    "adPerLevel": 5,
+    "armor": 39,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 175,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1
+   }
+  },
+  {
+   "id": "Ezreal",
+   "name": "Ezreal",
+   "stats": {
+    "hp": 600,
+    "hpPerLevel": 102,
+    "ad": 60,
+    "adPerLevel": 2.5,
+    "armor": 24,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 550,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.5
+   }
+  },
+  {
+   "id": "Fiora",
+   "name": "Fiora",
+   "stats": {
+    "hp": 620,
+    "hpPerLevel": 99,
+    "ad": 68,
+    "adPerLevel": 3.3,
+    "armor": 33,
+    "armorPerLevel": 4.7,
+    "magicResist": 32,
+    "moveSpeed": 345,
+    "attackRange": 150,
+    "attackSpeed": 0.69,
+    "attackSpeedPerLevel": 3.2
+   }
+  },
+  {
+   "id": "Garen",
+   "name": "Garen",
+   "stats": {
+    "hp": 690,
+    "hpPerLevel": 98,
+    "ad": 69,
+    "adPerLevel": 4.5,
+    "armor": 38,
+    "armorPerLevel": 5,
+    "magicResist": 32,
+    "moveSpeed": 340,
+    "attackRange": 175,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 3.65
+   }
+  },
+  {
+   "id": "Janna",
+   "name": "Janna",
+   "stats": {
+    "hp": 570,
+    "hpPerLevel": 84,
+    "ad": 52,
+    "adPerLevel": 3,
+    "armor": 28,
+    "armorPerLevel": 4.5,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 500,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.95
+   }
+  },
+  {
+   "id": "Jhin",
+   "name": "Jhin",
+   "stats": {
+    "hp": 655,
+    "hpPerLevel": 107,
+    "ad": 59,
+    "adPerLevel": 4.4,
+    "armor": 24,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 4.7
+   }
+  },
+  {
+   "id": "Jinx",
+   "name": "Jinx",
+   "stats": {
+    "hp": 630,
+    "hpPerLevel": 100,
+    "ad": 59,
+    "adPerLevel": 3.15,
+    "armor": 26,
+    "armorPerLevel": 4.7,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 525,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.4
+   }
+  },
+  {
+   "id": "Leona",
+   "name": "Leona",
+   "stats": {
+    "hp": 646,
+    "hpPerLevel": 101,
+    "ad": 60,
+    "adPerLevel": 3,
+    "armor": 43,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 2.9
+   }
+  },
+  {
+   "id": "Lux",
+   "name": "Lux",
+   "stats": {
+    "hp": 580,
+    "hpPerLevel": 99,
+    "ad": 54,
+    "adPerLevel": 3.3,
+    "armor": 19,
+    "armorPerLevel": 4,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.669,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "Malphite",
+   "name": "Malphite",
+   "stats": {
+    "hp": 644,
+    "hpPerLevel": 104,
+    "ad": 62,
+    "adPerLevel": 4,
+    "armor": 37,
+    "armorPerLevel": 4.75,
+    "magicResist": 28,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.736,
+    "attackSpeedPerLevel": 3.4
+   }
+  },
+  {
+   "id": "Master Yi",
+   "name": "Master Yi",
+   "stats": {
+    "hp": 669,
+    "hpPerLevel": 100,
+    "ad": 66,
+    "adPerLevel": 3,
+    "armor": 33,
+    "armorPerLevel": 4.2,
+    "magicResist": 32,
+    "moveSpeed": 355,
+    "attackRange": 175,
+    "attackSpeed": 0.679,
+    "attackSpeedPerLevel": 2
+   }
+  },
+  {
+   "id": "Morgana",
+   "name": "Morgana",
+   "stats": {
+    "hp": 630,
+    "hpPerLevel": 104,
+    "ad": 56,
+    "adPerLevel": 3.5,
+    "armor": 25,
+    "armorPerLevel": 4.3,
+    "magicResist": 30,
+    "moveSpeed": 335,
+    "attackRange": 450,
+    "attackSpeed": 0.625,
+    "attackSpeedPerLevel": 1.53
+   }
+  },
+  {
+   "id": "Rammus",
+   "name": "Rammus",
+   "stats": {
+    "hp": 675,
+    "hpPerLevel": 94,
+    "ad": 56,
+    "adPerLevel": 3.5,
+    "armor": 40,
+    "armorPerLevel": 5.2,
+    "magicResist": 32,
+    "moveSpeed": 335,
+    "attackRange": 125,
+    "attackSpeed": 0.656,
+    "attackSpeedPerLevel": 2.22
+   }
+  },
+  {
+   "id": "Sona",
+   "name": "Sona",
+   "stats": {
+    "hp": 550,
+    "hpPerLevel": 91,
+    "ad": 49,
+    "adPerLevel": 3,
+    "armor": 26,
+    "armorPerLevel": 4.3,
+    "magicResist": 30,
+    "moveSpeed": 325,
+    "attackRange": 550,
+    "attackSpeed": 0.644,
+    "attackSpeedPerLevel": 2.3
+   }
+  },
+  {
+   "id": "Vayne",
+   "name": "Vayne",
+   "stats": {
+    "hp": 550,
+    "hpPerLevel": 103,
+    "ad": 60,
+    "adPerLevel": 2.35,
+    "armor": 23,
+    "armorPerLevel": 4.6,
+    "magicResist": 30,
+    "moveSpeed": 330,
+    "attackRange": 550,
+    "attackSpeed": 0.658,
+    "attackSpeedPerLevel": 3.3
+   }
+  }
+ ],
+ "initialShuffleIds": [
+  "Morgana",
+  "Garen",
+  "Leona",
+  "Akali",
+  "Vayne",
+  "Sona",
+  "Jinx",
+  "Ashe",
+  "Annie",
+  "Jhin",
+  "Janna",
+  "Lux",
+  "Malphite",
+  "Darius",
+  "Fiora",
+  "Master Yi",
+  "Alistar",
+  "Ezreal",
+  "Aatrox",
+  "Ahri",
+  "Caitlyn",
+  "Blitzcrank",
+  "Braum",
+  "Rammus"
+ ],
+ "itemChoices": [
+  {
+   "choiceIndex": 0,
+   "completedRounds": 0,
+   "p1Pick": "cloth-armor",
+   "p2Pick": "mogzy-snack"
+  },
+  {
+   "choiceIndex": 1,
+   "completedRounds": 3,
+   "p1Pick": "ruby-crystal",
+   "p2Pick": "ruby-crystal"
+  }
+ ],
+ "rounds": [
+  {
+   "round": 1,
+   "boardCategoryIds": [
+    "highest-armor-18",
+    "lowest-hp-1",
+    "highest-move-speed"
+   ],
+   "hintFamily": "move-speed",
+   "p1HandIds": [
+    "Morgana",
+    "Garen",
+    "Leona",
+    "Akali",
+    "Vayne",
+    "Sona"
+   ],
+   "p2HandIds": [
+    "Jinx",
+    "Ashe",
+    "Annie",
+    "Jhin",
+    "Janna",
+    "Lux"
+   ],
+   "drawPileCount": 12,
+   "p1": {
+    "assignments": {
+     "highest-armor-18": "Leona",
+     "lowest-hp-1": "Vayne",
+     "highest-move-speed": "Akali"
+    },
+    "item": {
+     "categoryId": "highest-armor-18",
+     "itemId": "cloth-armor"
+    }
+   },
+   "p2": {
+    "assignments": {
+     "highest-armor-18": "Jinx",
+     "lowest-hp-1": "Janna",
+     "highest-move-speed": "Annie"
+    },
+    "item": {
+     "categoryId": "highest-armor-18",
+     "itemId": "mogzy-snack"
+    }
+   },
+   "results": [
+    {
+     "categoryId": "highest-armor-18",
+     "p1CardId": "Leona",
+     "p2CardId": "Jinx",
+     "p1Natural": 131.4,
+     "p2Natural": 105.9,
+     "p1Item": "cloth-armor",
+     "p2Item": "mogzy-snack",
+     "p1Bonus": 15,
+     "p2Bonus": 8,
+     "p1Final": 146.4,
+     "p2Final": 113.9,
+     "winner": "p1",
+     "margin": 0.22199453551912568,
+     "decisive": true
+    },
+    {
+     "categoryId": "lowest-hp-1",
+     "p1CardId": "Vayne",
+     "p2CardId": "Janna",
+     "p1Natural": 550,
+     "p2Natural": 570,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 550,
+     "p2Final": 570,
+     "winner": "p1",
+     "margin": 0.03508771929824561,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-move-speed",
+     "p1CardId": "Akali",
+     "p2CardId": "Annie",
+     "p1Natural": 345,
+     "p2Natural": 335,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 345,
+     "p2Final": 335,
+     "winner": "p1",
+     "margin": 0.028985507246376812,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 4,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 3,
+    "p2CategoryWins": 0,
+    "p1DecisiveDamage": 1,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 20,
+   "p2HpAfter": 16
+  },
+  {
+   "round": 2,
+   "boardCategoryIds": [
+    "lowest-move-speed",
+    "highest-attack-range",
+    "highest-hp-1"
+   ],
+   "hintFamily": "move-speed",
+   "p1HandIds": [
+    "Morgana",
+    "Garen",
+    "Sona",
+    "Malphite",
+    "Darius",
+    "Fiora"
+   ],
+   "p2HandIds": [
+    "Ashe",
+    "Jhin",
+    "Lux",
+    "Master Yi",
+    "Alistar",
+    "Ezreal"
+   ],
+   "drawPileCount": 6,
+   "p1": {
+    "assignments": {
+     "lowest-move-speed": "Morgana",
+     "highest-attack-range": "Sona",
+     "highest-hp-1": "Garen"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "lowest-move-speed": "Ezreal",
+     "highest-attack-range": "Ashe",
+     "highest-hp-1": "Alistar"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "lowest-move-speed",
+     "p1CardId": "Morgana",
+     "p2CardId": "Ezreal",
+     "p1Natural": 335,
+     "p2Natural": 325,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 335,
+     "p2Final": 325,
+     "winner": "p2",
+     "margin": 0.029850746268656716,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-attack-range",
+     "p1CardId": "Sona",
+     "p2CardId": "Ashe",
+     "p1Natural": 550,
+     "p2Natural": 600,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 550,
+     "p2Final": 600,
+     "winner": "p2",
+     "margin": 0.08333333333333333,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-hp-1",
+     "p1CardId": "Garen",
+     "p2CardId": "Alistar",
+     "p1Natural": 690,
+     "p2Natural": 685,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 690,
+     "p2Final": 685,
+     "winner": "p1",
+     "margin": 0.007246376811594203,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 0,
+    "p2Dealt": 2,
+    "boardWinner": "p2",
+    "p1CategoryWins": 1,
+    "p2CategoryWins": 2,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 16
+  },
+  {
+   "round": 3,
+   "boardCategoryIds": [
+    "highest-move-speed",
+    "highest-ad-18",
+    "lowest-hp-1"
+   ],
+   "hintFamily": "attack-damage",
+   "p1HandIds": [
+    "Malphite",
+    "Darius",
+    "Fiora",
+    "Aatrox",
+    "Ahri",
+    "Caitlyn"
+   ],
+   "p2HandIds": [
+    "Jhin",
+    "Lux",
+    "Master Yi",
+    "Blitzcrank",
+    "Braum",
+    "Rammus"
+   ],
+   "drawPileCount": 0,
+   "p1": {
+    "assignments": {
+     "highest-move-speed": "Fiora",
+     "highest-ad-18": "Darius",
+     "lowest-hp-1": "Caitlyn"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "highest-move-speed": "Master Yi",
+     "highest-ad-18": "Jhin",
+     "lowest-hp-1": "Lux"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "highest-move-speed",
+     "p1CardId": "Fiora",
+     "p2CardId": "Master Yi",
+     "p1Natural": 345,
+     "p2Natural": 355,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 345,
+     "p2Final": 355,
+     "winner": "p2",
+     "margin": 0.028169014084507043,
+     "decisive": false
+    },
+    {
+     "categoryId": "highest-ad-18",
+     "p1CardId": "Darius",
+     "p2CardId": "Jhin",
+     "p1Natural": 149,
+     "p2Natural": 133.8,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 149,
+     "p2Final": 133.8,
+     "winner": "p1",
+     "margin": 0.10201342281879187,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-hp-1",
+     "p1CardId": "Caitlyn",
+     "p2CardId": "Lux",
+     "p1Natural": 580,
+     "p2Natural": 580,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 580,
+     "p2Final": 580,
+     "winner": "tie",
+     "margin": 0,
+     "decisive": false
+    }
+   ],
+   "damage": {
+    "p1Dealt": 0,
+    "p2Dealt": 0,
+    "boardWinner": "tie",
+    "p1CategoryWins": 1,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 0,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 16
+  },
+  {
+   "round": 4,
+   "boardCategoryIds": [
+    "highest-ad-1",
+    "lowest-move-speed",
+    "lowest-armor-18"
+   ],
+   "hintFamily": "attack-range",
+   "p1HandIds": [
+    "Malphite",
+    "Aatrox",
+    "Ahri"
+   ],
+   "p2HandIds": [
+    "Blitzcrank",
+    "Braum",
+    "Rammus"
+   ],
+   "drawPileCount": 0,
+   "p1": {
+    "assignments": {
+     "highest-ad-1": "Aatrox",
+     "lowest-move-speed": "Malphite",
+     "lowest-armor-18": "Ahri"
+    },
+    "item": null
+   },
+   "p2": {
+    "assignments": {
+     "highest-ad-1": "Braum",
+     "lowest-move-speed": "Blitzcrank",
+     "lowest-armor-18": "Rammus"
+    },
+    "item": null
+   },
+   "results": [
+    {
+     "categoryId": "highest-ad-1",
+     "p1CardId": "Aatrox",
+     "p2CardId": "Braum",
+     "p1Natural": 60,
+     "p2Natural": 55,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 60,
+     "p2Final": 55,
+     "winner": "p1",
+     "margin": 0.08333333333333333,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-move-speed",
+     "p1CardId": "Malphite",
+     "p2CardId": "Blitzcrank",
+     "p1Natural": 335,
+     "p2Natural": 325,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 335,
+     "p2Final": 325,
+     "winner": "p2",
+     "margin": 0.029850746268656716,
+     "decisive": false
+    },
+    {
+     "categoryId": "lowest-armor-18",
+     "p1CardId": "Ahri",
+     "p2CardId": "Rammus",
+     "p1Natural": 100.9,
+     "p2Natural": 128.4,
+     "p1Item": null,
+     "p2Item": null,
+     "p1Bonus": 0,
+     "p2Bonus": 0,
+     "p1Final": 100.9,
+     "p2Final": 128.4,
+     "winner": "p1",
+     "margin": 0.21417445482866043,
+     "decisive": true
+    }
+   ],
+   "damage": {
+    "p1Dealt": 3,
+    "p2Dealt": 0,
+    "boardWinner": "p1",
+    "p1CategoryWins": 2,
+    "p2CategoryWins": 1,
+    "p1DecisiveDamage": 1,
+    "p2DecisiveDamage": 0
+   },
+   "p1HpAfter": 18,
+   "p2HpAfter": 13
+  }
+ ],
+ "final": {
+  "outcome": "p1",
+  "endReason": "Deck exhausted before either side could field three cards.",
+  "roundsPlayed": 4,
+  "p1Hp": 18,
+  "p2Hp": 13,
+  "drawPileCount": 0,
+  "p1Inventory": {
+   "long-sword": 0,
+   "cloth-armor": 0,
+   "ruby-crystal": 1,
+   "mogzy-snack": 0
+  },
+  "p2Inventory": {
+   "long-sword": 0,
+   "cloth-armor": 0,
+   "ruby-crystal": 1,
+   "mogzy-snack": 0
+  },
+  "invariantIssues": []
+ }
+}
