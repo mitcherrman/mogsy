@@ -40,6 +40,10 @@ function publicView(overrides: Partial<MatchPublicView> = {}): MatchPublicView {
       p1: { seat: "p1", hp: 20, handCount: 6, discardCardIds: [], chosen: false, locked: false },
       p2: { seat: "p2", hp: 20, handCount: 6, discardCardIds: [], chosen: false, locked: false },
     },
+    presence: {
+      p1: { connected: true, reconnectDeadline: null },
+      p2: { connected: true, reconnectDeadline: null },
+    },
     outcome: null,
     endReason: null,
     latestResolvedRound: null,
@@ -130,10 +134,13 @@ function controller(overrides: Partial<OnlineMatchController> = {}): OnlineMatch
     youLocked: false,
     opponentChosen: false,
     opponentLocked: false,
+    opponentConnected: true,
+    opponentReconnectDeadline: null,
     result: null,
     errorCode: null,
     submitLock: vi.fn().mockResolvedValue(true),
     submitItemChoice: vi.fn().mockResolvedValue(true),
+    concede: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -232,6 +239,28 @@ describe("StatCheckPage online driver", () => {
     expect(equipped).toBeNull();
     // No local resolution: the board stays pre-reveal.
     expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
+  });
+
+  it("shows the disconnect banner and submits an explicit concede", () => {
+    const online = controller({ opponentConnected: false, opponentReconnectDeadline: "2026-07-25T12:01:00+00:00" });
+    render(<StatCheckPage online={online} />);
+    expect(screen.getByTestId("sc-online-disconnected")).toHaveTextContent(/reconnect/i);
+    fireEvent.click(screen.getByTestId("sc-online-concede"));
+    expect(online.concede).toHaveBeenCalledTimes(1);
+  });
+
+  it("adopts a non-combat terminal state (concede/forfeit) immediately", () => {
+    const online = controller();
+    const { rerender } = render(<StatCheckPage online={online} />);
+    const over = synthesizeMatchState(
+      publicView({ phase: "match-over", status: "complete", outcome: "p1", endReason: "Opponent conceded." }),
+      privateView(),
+      [],
+    );
+    rerender(<StatCheckPage online={{ ...online, live: over, liveKey: 2, status: "complete" }} />);
+    expect(screen.getByTestId("stat-check-match-over")).toHaveTextContent(/Victory/i);
+    expect(screen.getByTestId("stat-check-match-over")).toHaveTextContent(/Opponent conceded/i);
+    expect(screen.getByText(/Leave match/i)).toBeInTheDocument();
   });
 
   it("plays the existing reveal from a server resolution event and shows the opponent only then", () => {

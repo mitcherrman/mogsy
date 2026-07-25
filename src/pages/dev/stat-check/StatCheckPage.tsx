@@ -254,7 +254,6 @@ export default function StatCheckPage({
             : "player",
     }));
     dispatchRevealStep({ type: "lock" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online?.resolutionEvent]);
 
   // Online boundary adoption: initial snapshot, post-cadence item choice
@@ -283,6 +282,12 @@ export default function StatCheckPage({
     }
     if (presented.phase === "item-choice" && live.phase === "selecting") {
       advanceAdoptOnline(live);
+      return;
+    }
+    if (live.phase === "match-over" && presented.phase !== "match-over" && presented.phase !== "resolved") {
+      // Non-combat terminal (concede / disconnect forfeit / no-contest)
+      // arriving outside a reveal: adopt immediately.
+      hardAdoptOnline(live);
       return;
     }
     if (presented.phase === "item-choice" && presented.roundHistory.length === 0 && live.phase === "item-choice") {
@@ -875,6 +880,9 @@ export default function StatCheckPage({
                       youLocked: online.youLocked,
                       opponentChosen: online.opponentChosen,
                       opponentLocked: online.opponentLocked,
+                      opponentConnected: online.opponentConnected,
+                      opponentReconnectDeadline: online.opponentReconnectDeadline,
+                      onConcede: () => void online.concede(),
                     }
                   : null
               }
@@ -2114,6 +2122,9 @@ type RevealSequenceOnlineState = {
   youLocked: boolean;
   opponentChosen: boolean;
   opponentLocked: boolean;
+  opponentConnected: boolean;
+  opponentReconnectDeadline: string | null;
+  onConcede: () => void;
 };
 
 function OnlineOpponentStatus({
@@ -2135,19 +2146,40 @@ function OnlineOpponentStatus({
           ? "Opponent locked in"
           : "Opponent is placing…"
         : null;
-  if (!label) return null;
   return (
-    <div
-      data-testid="sc-online-opponent-status"
-      data-opponent-locked={online.opponentLocked ? "true" : "false"}
-      data-opponent-chosen={online.opponentChosen ? "true" : "false"}
-      className="mt-2 flex items-center justify-between rounded-md border border-cyan-300/15 bg-black/30 px-2 py-1.5 text-[11px] font-semibold text-cyan-100/80"
-    >
-      <span>{label}</span>
-      {phase === "selecting" && online.youLocked && (
-        <span data-testid="sc-online-you-locked" className="font-black text-[#f4d77d]">
-          You locked — waiting…
-        </span>
+    <div className="mt-2 space-y-1.5">
+      {!online.opponentConnected && phase !== "match-over" && (
+        <div
+          data-testid="sc-online-disconnected"
+          className="rounded-md border border-red-400/40 bg-red-950/40 px-2 py-1.5 text-[11px] font-semibold text-red-200"
+        >
+          Opponent disconnected — waiting for them to reconnect…
+        </div>
+      )}
+      {label && (
+        <div
+          data-testid="sc-online-opponent-status"
+          data-opponent-locked={online.opponentLocked ? "true" : "false"}
+          data-opponent-chosen={online.opponentChosen ? "true" : "false"}
+          className="flex items-center justify-between rounded-md border border-cyan-300/15 bg-black/30 px-2 py-1.5 text-[11px] font-semibold text-cyan-100/80"
+        >
+          <span>{label}</span>
+          {phase === "selecting" && online.youLocked && (
+            <span data-testid="sc-online-you-locked" className="font-black text-[#f4d77d]">
+              You locked — waiting…
+            </span>
+          )}
+        </div>
+      )}
+      {phase !== "match-over" && (
+        <button
+          type="button"
+          data-testid="sc-online-concede"
+          onClick={online.onConcede}
+          className="w-full rounded-md border border-red-400/25 bg-black/25 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-300/80 transition hover:border-red-400/50 hover:text-red-200"
+        >
+          Concede match
+        </button>
       )}
     </div>
   );
@@ -2220,7 +2252,20 @@ function RevealSequence({
 
       {online && <OnlineOpponentStatus online={online} phase={match.phase} />}
 
-      {!resolution ? (
+      {!resolution && match.phase === "match-over" && (revealStep === "resolved" || revealStep === "match-over") ? (
+        // Non-combat endings (concede / disconnect forfeit / no-contest)
+        // terminate without a same-round resolution to display.
+        <div className="mt-2 space-y-2">
+          <div data-testid="stat-check-match-over" className="rounded-md border border-[#d6b55d]/35 bg-[#d6b55d]/10 p-2">
+            <div className="text-lg font-black">{match.outcome === "draw" ? "Match Draw" : match.outcome === "player" ? "Victory" : "Defeat"}</div>
+            <div className="text-xs text-slate-300">{match.endReason}</div>
+            <MatchSummaryPanel match={match} />
+            <Button onClick={onRestart} className="mt-3 w-full bg-[#d6b55d] text-[#071018] hover:bg-[#f4d77d]">
+              {online ? "Leave match" : "Restart"}
+            </Button>
+          </div>
+        </div>
+      ) : !resolution ? (
         <div className="mt-2 space-y-2">
           <div className="rounded-md bg-black/30 p-2 text-xs text-slate-300">
             {online

@@ -165,6 +165,16 @@ export const statCheckOnlineApi = {
     }),
   getMatchResult: (matchId: string, signal?: AbortSignal): Promise<MatchResultView> =>
     request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/result`, readMatchResult, { signal }),
+  sendPresence: (matchId: string, signal?: AbortSignal): Promise<unknown> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/presence`, (raw) => raw, {
+      method: "POST",
+      signal,
+    }),
+  concede: (matchId: string, signal?: AbortSignal): Promise<unknown> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/concede`, (raw) => raw, {
+      method: "POST",
+      signal,
+    }),
 };
 
 export type StatCheckOnlineApi = typeof statCheckOnlineApi;

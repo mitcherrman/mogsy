@@ -13,6 +13,7 @@ import { synthesizeMatchState, toRoundResolution } from "./onlineMatchModel";
 
 const POLL_MS = 1_500;
 const MAX_BACKOFF_MS = 8_000;
+const HEARTBEAT_MS = 10_000;
 
 export type ResolutionEvent = { key: number; resolution: RoundResolution };
 
@@ -29,10 +30,14 @@ export type OnlineMatchController = {
   youLocked: boolean;
   opponentChosen: boolean;
   opponentLocked: boolean;
+  /** Opponent connection state + reconnect deadline (public presence). */
+  opponentConnected: boolean;
+  opponentReconnectDeadline: string | null;
   result: MatchResultView | null;
   errorCode: string | null;
   submitLock: (assignments: SlotAssignments, equipped: EquippedItem | null) => Promise<boolean>;
   submitItemChoice: (itemId: ItemId) => Promise<boolean>;
+  concede: () => Promise<boolean>;
 };
 
 /**
@@ -46,7 +51,9 @@ export function useStatCheckMatch(
   matchId: string | null,
   api: StatCheckOnlineApi = statCheckOnlineApi,
 ): OnlineMatchController {
-  const [state, setState] = useState<Omit<OnlineMatchController, "submitLock" | "submitItemChoice">>({
+  const [state, setState] = useState<
+    Omit<OnlineMatchController, "submitLock" | "submitItemChoice" | "concede">
+  >({
     status: "connecting",
     live: null,
     liveKey: 0,
@@ -56,6 +63,8 @@ export function useStatCheckMatch(
     youLocked: false,
     opponentChosen: false,
     opponentLocked: false,
+    opponentConnected: true,
+    opponentReconnectDeadline: null,
     result: null,
     errorCode: null,
   });
@@ -132,6 +141,8 @@ export function useStatCheckMatch(
           (live.phase === "selecting" && localLockRef.current === publicView.round),
         opponentChosen: publicView.seats[other].chosen,
         opponentLocked: publicView.seats[other].locked,
+        opponentConnected: publicView.presence[other]?.connected ?? true,
+        opponentReconnectDeadline: publicView.presence[other]?.reconnectDeadline ?? null,
         result,
         errorCode: null,
       }));
@@ -178,6 +189,15 @@ export function useStatCheckMatch(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
+  // Heartbeat: independent of the poll loop, mirrors useRankedMatch cadence.
+  useEffect(() => {
+    if (!matchId) return;
+    const beat = () => void Promise.resolve(api.sendPresence(matchId)).catch(() => undefined);
+    const interval = window.setInterval(beat, HEARTBEAT_MS);
+    beat();
+    return () => window.clearInterval(interval);
+  }, [api, matchId]);
+
   const submitLock = useCallback(
     async (assignments: SlotAssignments, equipped: EquippedItem | null): Promise<boolean> => {
       if (!matchId) return false;
@@ -222,5 +242,17 @@ export function useStatCheckMatch(
     [api, fail, matchId, poll, state.live?.itemChoicesCompleted],
   );
 
-  return { ...state, submitLock, submitItemChoice };
+  const concede = useCallback(async (): Promise<boolean> => {
+    if (!matchId) return false;
+    try {
+      await api.concede(matchId);
+      void poll();
+      return true;
+    } catch (error) {
+      if (isFatal(error)) fail(error);
+      return false;
+    }
+  }, [api, fail, matchId, poll]);
+
+  return { ...state, submitLock, submitItemChoice, concede };
 }

@@ -163,6 +163,8 @@ export type MatchSeatPublicView = {
   locked: boolean;
 };
 
+export type SeatPresenceView = { connected: boolean; reconnectDeadline: string | null };
+
 export type MatchPublicView = {
   matchId: string;
   roomId: string;
@@ -175,6 +177,7 @@ export type MatchPublicView = {
   hintFamily: string | null;
   drawPileCount: number;
   seats: Record<OnlineSeat, MatchSeatPublicView>;
+  presence: Partial<Record<OnlineSeat, SeatPresenceView>>;
   outcome: OnlineSeat | "draw" | null;
   endReason: string | null;
   latestResolvedRound: number | null;
@@ -273,7 +276,7 @@ export function readMatchPublic(raw: unknown): MatchPublicView {
       "schema_version", "match_id", "room_id", "status", "phase", "round",
       "completed_rounds", "item_choices_completed", "board_category_ids",
       "hint_family", "draw_pile_count", "seats", "outcome", "end_reason",
-      "latest_resolved_round", "server_time",
+      "latest_resolved_round", "presence", "server_time",
     ],
     [],
     "match-public",
@@ -320,6 +323,18 @@ export function readMatchPublic(raw: unknown): MatchPublicView {
     };
   }
   if (!seats.p1 || !seats.p2) throw new StatCheckContractError("match-public: missing seat");
+  const presenceRaw = asObject(record.presence ?? {}, "match-public.presence");
+  const presence: Partial<Record<OnlineSeat, SeatPresenceView>> = {};
+  for (const [seatId, entry] of Object.entries(presenceRaw)) {
+    if (seatId !== "p1" && seatId !== "p2") throw new StatCheckContractError("match-public: bad presence seat");
+    const presenceRecord = asObject(entry, "match-public.presence.seat");
+    requireExactKeys(presenceRecord, ["connected", "reconnect_deadline"], [], "match-public.presence.seat");
+    presence[seatId] = {
+      connected: presenceRecord.connected === true,
+      reconnectDeadline:
+        typeof presenceRecord.reconnect_deadline === "string" ? presenceRecord.reconnect_deadline : null,
+    };
+  }
   return {
     matchId: String(record.match_id),
     roomId: String(record.room_id),
@@ -332,6 +347,7 @@ export function readMatchPublic(raw: unknown): MatchPublicView {
     hintFamily: typeof record.hint_family === "string" ? record.hint_family : null,
     drawPileCount: Number(record.draw_pile_count),
     seats,
+    presence,
     outcome:
       record.outcome === "p1" || record.outcome === "p2" || record.outcome === "draw"
         ? record.outcome

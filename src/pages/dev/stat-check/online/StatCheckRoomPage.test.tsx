@@ -18,6 +18,8 @@ const api = vi.hoisted(() => ({
   getResolvedRound: vi.fn(),
   resumeMatch: vi.fn(),
   getMatchResult: vi.fn(),
+  sendPresence: vi.fn().mockResolvedValue({}),
+  concede: vi.fn(),
 }));
 
 vi.mock("@/lib/stat-check-online/client", async (importOriginal) => {
