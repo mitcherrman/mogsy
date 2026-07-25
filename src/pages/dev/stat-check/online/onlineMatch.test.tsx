@@ -238,7 +238,7 @@ describe("StatCheckPage online driver", () => {
     expect(Object.values(assignments).filter(Boolean)).toHaveLength(3);
     expect(equipped).toBeNull();
     // No local resolution: the board stays pre-reveal.
-    expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
+    expect(screen.queryByText(/You win|Opponent wins|Lane tied/i)).toBeNull();
   });
 
   it("shows the disconnect banner and submits an explicit concede", () => {
@@ -286,7 +286,7 @@ describe("StatCheckPage online driver", () => {
       />,
     );
     act(() => vi.advanceTimersByTime(6_000));
-    expect(screen.getAllByText(/You win|Bot wins|Lane tied/i).length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText(/You win|Opponent wins|Lane tied/i).length).toBeGreaterThanOrEqual(3);
     expect(container.textContent).toContain(OPP_CARDS[0].name);
     // Natural + bonus → final breakdown from the server payload.
     expect(screen.getByTestId("stat-check-result-item-player")).toHaveTextContent(/\+ 150 →/);

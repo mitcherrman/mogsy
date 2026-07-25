@@ -391,6 +391,7 @@ export default function StatCheckPage({
   // board must stay concealed (only the single-family hint may show).
   const preRoundItemChoice = itemChoiceOpen && !match.lastResolution;
   const armedItem = selectedItemId && canEdit ? selectedItemId : null;
+  const opponentLabel = online ? "Opponent" : "Bot";
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
     ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
     : { player: match.playerHp, bot: match.botHp };
@@ -729,6 +730,8 @@ export default function StatCheckPage({
             displayHp={displayHp}
             resolution={activeResolution}
             flashKey={damageFlashKey}
+            isOnline={Boolean(online)}
+            opponentLabel={opponentLabel}
           />
 
           <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
@@ -787,6 +790,7 @@ export default function StatCheckPage({
                     armedItem={armedItem}
                     pendingItem={match.equippedItem?.categoryId === category.id ? match.equippedItem : null}
                     onRemovePendingItem={removePendingItem}
+                    opponentLabel={opponentLabel}
                     laneRef={(element) => { laneRefs.current[category.id] = element; }}
                     playerRef={(element) => { lanePlayerRefs.current[category.id] = element; }}
                     botRef={(element) => { laneBotRefs.current[category.id] = element; }}
@@ -873,6 +877,7 @@ export default function StatCheckPage({
               onConfirmChoice={confirmItemChoice}
               onNextRound={nextRound}
               onRestart={online ? (onOnlineExit ?? restart) : restart}
+              opponentLabel={opponentLabel}
               online={
                 online
                   ? {
@@ -893,6 +898,7 @@ export default function StatCheckPage({
               selectedItemId={selectedItemId}
               inventoryDisabled={!canEdit}
               onToggleItem={toggleInventoryItem}
+              opponentLabel={opponentLabel}
               botDiscardRef={(element) => { discardRefs.current.bot = element; }}
               playerDiscardRef={(element) => { discardRefs.current.player = element; }}
             />
@@ -1093,6 +1099,7 @@ function ArenaLane({
   armedItem,
   pendingItem,
   onRemovePendingItem,
+  opponentLabel = "Bot",
   laneRef,
   playerRef,
   botRef,
@@ -1121,6 +1128,7 @@ function ArenaLane({
   armedItem: ItemId | null;
   /** The player's own pending equip on this lane (hidden from no one — it is theirs). */
   pendingItem: EquippedItem | null;
+  opponentLabel?: string;
   onRemovePendingItem: () => void;
   laneRef: (element: HTMLElement | null) => void;
   playerRef: (element: HTMLElement | null) => void;
@@ -1205,6 +1213,7 @@ function ArenaLane({
             reducedMotion={reducedMotion}
             animationSpeed={animationSpeed}
             state={botState}
+            opponentLabel={opponentLabel}
           />
           {/* Opponent item: mounted ONLY at/after the item-reveal beat. */}
           {botLaneItem?.botItem && !botHidden && (
@@ -1220,7 +1229,7 @@ function ArenaLane({
           {concealed ? (
             <HiddenCategoryMarker index={index} />
           ) : showResult && resolution ? (
-            <LaneResult result={resolution} />
+            <LaneResult result={resolution} opponentLabel={opponentLabel} />
           ) : (
             <CategoryMarker category={category} />
           )}
@@ -1672,6 +1681,7 @@ function UtilityStack({
   selectedItemId,
   inventoryDisabled,
   onToggleItem,
+  opponentLabel = "Bot",
   botDiscardRef,
   playerDiscardRef,
 }: {
@@ -1680,6 +1690,7 @@ function UtilityStack({
   selectedItemId: ItemId | null;
   inventoryDisabled: boolean;
   onToggleItem: (itemId: ItemId) => void;
+  opponentLabel?: string;
   botDiscardRef: (element: HTMLElement | null) => void;
   playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
@@ -1693,9 +1704,9 @@ function UtilityStack({
       />
       <CountPill label="Shared pool" value={match.drawPile.length} />
       <CountPill label="Your hand" value={match.playerHand.length} />
-      <CountPill label="Bot hand" value={match.botHand.length} />
-      <DiscardPile side="bot" cards={match.botDiscard} assets={assets} elementRef={botDiscardRef} />
-      <DiscardPile side="player" cards={match.playerDiscard} assets={assets} elementRef={playerDiscardRef} />
+      <CountPill label={`${opponentLabel} hand`} value={match.botHand.length} />
+      <DiscardPile side="bot" cards={match.botDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={botDiscardRef} />
+      <DiscardPile side="player" cards={match.playerDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={playerDiscardRef} />
     </div>
   );
 }
@@ -1933,6 +1944,7 @@ function FlippableCard({
   reducedMotion,
   animationSpeed,
   state,
+  opponentLabel = "Bot",
 }: {
   card: StatCheckCard | null;
   imageUrl?: string | null;
@@ -1942,6 +1954,7 @@ function FlippableCard({
   reducedMotion: boolean;
   animationSpeed: StatCheckAnimationSpeed;
   state: "idle" | "winner" | "loser" | "decisive";
+  opponentLabel?: string;
 }) {
   if (reducedMotion) {
     return (
@@ -1952,7 +1965,7 @@ function FlippableCard({
         value={value}
         mode={flipped ? "board" : "face-down"}
         state={state}
-        label={flipped ? "Bot" : undefined}
+        label={flipped ? opponentLabel : undefined}
       />
     );
   }
@@ -1971,7 +1984,7 @@ function FlippableCard({
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden={!flipped}>
           {/* The face-up front mounts only once the flip starts, so the concealed
               champion never appears in the DOM or accessibility tree early. */}
-          {flipped && <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="board" state={state} label="Bot" fill />}
+          {flipped && <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="board" state={state} label={opponentLabel} fill />}
         </div>
       </motion.div>
     </div>
@@ -2196,6 +2209,7 @@ function RevealSequence({
   onNextRound,
   onRestart,
   online = null,
+  opponentLabel = "Bot",
 }: {
   match: MatchState;
   resolution: RoundResolution | null;
@@ -2207,6 +2221,7 @@ function RevealSequence({
   onNextRound: () => void;
   onRestart: () => void;
   online?: RevealSequenceOnlineState | null;
+  opponentLabel?: string;
 }) {
   const itemChoiceOpen = match.phase === "item-choice";
   const preRoundChoice = itemChoiceOpen && !match.lastResolution;
@@ -2281,9 +2296,9 @@ function RevealSequence({
         </div>
       ) : (
         <div className="mt-2 space-y-2">
-          <BoardResult resolution={resolution} />
+          <BoardResult resolution={resolution} opponentLabel={opponentLabel} />
           <DamageBreakdown title="You deal" amount={resolution.damage.player} side="player" damage={resolution.damage} />
-          <DamageBreakdown title="Bot deals" amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
+          <DamageBreakdown title={`${opponentLabel} deals`} amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
           {(revealStep === "resolved" || revealStep === "match-over") && (
             <div className="space-y-2 pt-2">
               {itemChoiceOpen && resolution && (
@@ -2358,16 +2373,20 @@ function MatchupRail({
   displayHp,
   resolution,
   flashKey,
+  isOnline = false,
+  opponentLabel = "Bot",
 }: {
   match: MatchState;
   displayHp: { player: number; bot: number };
   resolution: RoundResolution | null;
   flashKey: number;
+  isOnline?: boolean;
+  opponentLabel?: string;
 }) {
   const lastRound = match.roundHistory[match.roundHistory.length - 1] ?? null;
   return (
     <aside className="order-3 flex min-h-0 flex-col gap-2 lg:order-none lg:h-full lg:overflow-y-auto">
-      <ProfilePanel side="bot" />
+      <ProfilePanel side="bot" isOnline={isOnline} />
       <HpBar
         side="bot"
         hp={displayHp.bot}
@@ -2387,15 +2406,16 @@ function MatchupRail({
         damage={resolution?.damage.bot ?? 0}
         flashKey={flashKey}
       />
-      <ProfilePanel side="player" />
-      <LastRoundDamage resolution={lastRound} />
-      <MatchHistoryPanel history={match.roundHistory} />
+      <ProfilePanel side="player" isOnline={isOnline} />
+      <LastRoundDamage resolution={lastRound} opponentLabel={opponentLabel} />
+      <MatchHistoryPanel history={match.roundHistory} opponentLabel={opponentLabel} />
     </aside>
   );
 }
 
-function ProfilePanel({ side }: { side: "player" | "bot" }) {
-  // Cosmetic matchup dressing for the dev prototype (mock rank/record flavor).
+function ProfilePanel({ side, isOnline = false }: { side: "player" | "bot"; isOnline?: boolean }) {
+  // Cosmetic matchup dressing for the dev prototype (mock rank/record flavor);
+  // online private matches show neutral seat identities instead.
   const bot = side === "bot";
   return (
     <div className="flex items-center gap-3 rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
@@ -2411,9 +2431,11 @@ function ProfilePanel({ side }: { side: "player" | "bot" }) {
         <div className={cn("text-[10px] font-black uppercase tracking-[0.2em]", bot ? "text-red-300/80" : "text-cyan-200/80")}>
           {bot ? "Opponent" : "You"}
         </div>
-        <div className="truncate text-sm font-black text-white">{bot ? "Deterministic Bot" : "mogsy"}</div>
+        <div className="truncate text-sm font-black text-white">
+          {isOnline ? (bot ? "Opponent" : "You") : bot ? "Deterministic Bot" : "mogsy"}
+        </div>
         <div className="truncate text-[11px] text-slate-400">
-          {bot ? "Platinum IV - 63% WR - 412 games" : "Diamond II - 57% WR - 892 games"}
+          {isOnline ? "Private match" : bot ? "Platinum IV - 63% WR - 412 games" : "Diamond II - 57% WR - 892 games"}
         </div>
       </div>
     </div>
@@ -2458,14 +2480,14 @@ function HpBar({
   );
 }
 
-function LastRoundDamage({ resolution }: { resolution: RoundResolution | null }) {
+function LastRoundDamage({ resolution, opponentLabel = "Bot" }: { resolution: RoundResolution | null; opponentLabel?: string }) {
   return (
     <div className="rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Last round damage</div>
       {resolution ? (
         <div className="mt-1.5 space-y-1.5">
           <div className="flex items-center justify-between rounded bg-black/30 px-2 py-1 text-xs">
-            <span className="font-semibold text-slate-300">Bot dealt</span>
+            <span className="font-semibold text-slate-300">{opponentLabel} dealt</span>
             <span className={cn("font-black", resolution.damage.bot > 0 ? "text-red-300" : "text-slate-500")}>
               {resolution.damage.bot} damage
             </span>
@@ -2484,7 +2506,7 @@ function LastRoundDamage({ resolution }: { resolution: RoundResolution | null })
   );
 }
 
-function MatchHistoryPanel({ history }: { history: RoundResolution[] }) {
+function MatchHistoryPanel({ history, opponentLabel = "Bot" }: { history: RoundResolution[]; opponentLabel?: string }) {
   return (
     <div className="min-h-0 rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Match history</div>
@@ -2506,7 +2528,7 @@ function MatchHistoryPanel({ history }: { history: RoundResolution[] }) {
               >
                 <span className="font-black">R{round.round}</span>
                 <span className="flex-1 font-semibold">
-                  {winner === "player" ? "You won" : winner === "bot" ? "Bot won" : "Tied"}
+                  {winner === "player" ? "You won" : winner === "bot" ? `${opponentLabel} won` : "Tied"}
                 </span>
                 <span className="font-black">{round.damage.playerCategoryWins} - {round.damage.botCategoryWins}</span>
                 <span className="w-14 text-right font-semibold text-slate-400">
@@ -2558,17 +2580,19 @@ function DiscardPile({
   side,
   cards,
   assets,
+  opponentLabel = "Bot",
   elementRef,
 }: {
   side: "player" | "bot";
   cards: StatCheckCard[];
   assets: ReturnType<typeof useChampionAssets>["data"];
+  opponentLabel?: string;
   elementRef?: (element: HTMLElement | null) => void;
 }) {
   return (
     <details ref={elementRef} className="rounded-md border border-cyan-300/12 bg-black/25 p-2 shadow-xl" data-testid={`stat-check-${side}-discard`}>
       <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
-        {side === "player" ? "Your" : "Bot"} discard - {cards.length}
+        {side === "player" ? "Your" : opponentLabel} discard - {cards.length}
       </summary>
       <div className="mt-2 flex min-h-10 flex-wrap gap-1">
         {cards.length === 0 ? (
@@ -2585,8 +2609,8 @@ function DiscardPile({
   );
 }
 
-export function LaneResult({ result }: { result: CategoryResult }) {
-  const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? "Bot wins" : "Lane tied";
+export function LaneResult({ result, opponentLabel = "Bot" }: { result: CategoryResult; opponentLabel?: string }) {
+  const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
   const accent = result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200";
   const lineAccent = result.winner === "player" ? "via-[#f4d77d]/60" : result.winner === "bot" ? "via-cyan-300/50" : "via-slate-400/40";
   return (
@@ -2621,7 +2645,7 @@ export function LaneResult({ result }: { result: CategoryResult }) {
         {result.botItem && (
           <div data-testid="stat-check-result-item-bot" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-red-200">
             <ItemGlyph itemId={result.botItem} className="h-3 w-3" />
-            Bot: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
+            {opponentLabel}: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
           </div>
         )}
         {result.decisive && (
@@ -2640,7 +2664,7 @@ export function LaneResult({ result }: { result: CategoryResult }) {
   );
 }
 
-function BoardResult({ resolution }: { resolution: RoundResolution }) {
+function BoardResult({ resolution, opponentLabel = "Bot" }: { resolution: RoundResolution; opponentLabel?: string }) {
   const label =
     resolution.damage.boardWinner === "tie"
       ? "Board tied"
@@ -2649,13 +2673,13 @@ function BoardResult({ resolution }: { resolution: RoundResolution }) {
           ? "Player won board - Sweep"
           : "Player won board"
         : resolution.damage.botCategoryWins === 3
-          ? "Bot won board - Sweep"
-          : "Bot won board";
+          ? `${opponentLabel} won board - Sweep`
+          : `${opponentLabel} won board`;
   const matchEnding =
     resolution.outcome === "draw"
       ? "Simultaneous knockout - Match draw"
       : resolution.outcome === "player"
-        ? "Bot knocked out"
+        ? `${opponentLabel} knocked out`
         : resolution.outcome === "bot"
           ? "Player knocked out"
           : null;
