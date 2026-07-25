@@ -90,6 +90,15 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
     championName: "Viktor",
     cutoutOffsetPct: -2,
   },
+  {
+    to: "/lol/patch-reports",
+    title: "Patch Reports",
+    description: "Every gameplay change from the latest patches, compared against Mogzy's data.",
+    Icon: Newspaper,
+    side: "left",
+    championName: "Jayce",
+    cutoutOffsetPct: 0,
+  },
 ];
 
 // League Swipe MVP games surfaced on the hub (see /league-swipe).
