@@ -864,16 +864,12 @@ function ArenaLane({
         }
       }}
       className={cn(
-        // Lanes are open light zones on the shared arena floor: no rectangles
-        // at all — a faint vertical light column plus low-contrast washes when
-        // the zone is targeted or reacting. Sockets and lighting separate them.
+        // Lanes are open zones on the shared slab: no column washes at all.
+        // Target and reaction feedback lives in the socket itself (rim, recess
+        // glow, gem status light), so selecting a card never lights the lane.
         "group relative flex min-h-[420px] flex-col rounded-xl p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
         "bg-[radial-gradient(ellipse_62%_52%_at_50%_50%,rgba(56,189,248,0.035),transparent_74%)]",
-        canEdit && selectedCard && !playerCard && "bg-[#d6b55d]/[0.05]",
-        active && "bg-cyan-300/[0.06]",
-        reaction === "charging" && "bg-cyan-200/[0.05]",
-        reaction === "impact" && "translate-y-[2px] bg-[#f4d77d]/[0.08]",
-        reaction === "accept" && "bg-[#d6b55d]/[0.07]",
+        reaction === "impact" && "translate-y-[2px]",
       )}
     >
       {reaction === "impact" && (
@@ -912,8 +908,20 @@ function ArenaLane({
           <div className="relative">
             <SocketFrame
               active={Boolean(canEdit && selectedCard) || playerCardInFlight}
-              charging={playerCardInFlight || reaction === "charging"}
               occupied={Boolean(playerCard) && !playerCardInFlight}
+              gem={
+                showResult && resolution
+                  ? playerWon
+                    ? "win"
+                    : botWon
+                      ? "lose"
+                      : "tie"
+                  : playerCardInFlight || (canEdit && selectedCard && !playerCard)
+                    ? "target"
+                    : playerCard
+                      ? "placed"
+                      : "idle"
+              }
             />
             {playerCard && (
               <div
@@ -964,14 +972,37 @@ const SOCKET_FRAME_SRC = { w: 1024, h: 1536, ring: { x0: 148, x1: 876, y0: 138, 
 /** Rendered ring overhang past the card box on each side (fraction of card). */
 const SOCKET_RING_OVERHANG = 0.04;
 
+/** Pointy-top hexagon matching the frame asset's bottom gem silhouette. */
+const GEM_CLIP = "polygon(50% 0%, 96% 26%, 96% 74%, 50% 100%, 4% 74%, 4% 26%)";
+
+type SocketGemState = "idle" | "target" | "placed" | "win" | "lose" | "tie";
+
+/** Status-light lens styles laid over the frame asset's baked blue gem. */
+const GEM_LENS: Record<SocketGemState, { lens: string; glow: string }> = {
+  idle: { lens: "bg-[radial-gradient(circle_at_50%_38%,#5a6472,#2e3540_70%)] opacity-95", glow: "opacity-0" },
+  target: { lens: "bg-[radial-gradient(circle_at_50%_38%,#9fb6c8,#41586e_70%)] opacity-90", glow: "opacity-40 bg-[radial-gradient(circle,rgba(148,197,222,0.55),transparent_65%)]" },
+  placed: { lens: "bg-[radial-gradient(circle_at_50%_38%,#64748b,#334155_70%)] opacity-90", glow: "opacity-0" },
+  win: { lens: "bg-[radial-gradient(circle_at_50%_38%,#a5f3fc,#0891b2_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(34,211,238,0.7),transparent_65%)]" },
+  lose: { lens: "bg-[radial-gradient(circle_at_50%_38%,#fca5a5,#b91c1c_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(248,113,113,0.65),transparent_65%)]" },
+  tie: { lens: "bg-[radial-gradient(circle_at_50%_38%,#e7e5e4,#a8a29e_70%)] opacity-90", glow: "opacity-45 bg-[radial-gradient(circle,rgba(231,229,228,0.5),transparent_65%)]" },
+};
+
 /**
  * The receiving socket: the approved frame asset mounted on the slab, scaled so
  * its gold ring sits just outside the fixed card footprint — a landed card sits
  * inside the ring with the rim visibly framing it. The frame stays mounted
- * beneath the card layer at all times so the clone-to-card handoff never
- * changes the socket's pixels.
+ * beneath the card layer at all times and never pulses or restyles at the
+ * clone-to-card handoff; the bottom gem doubles as the lane's status light.
  */
-function SocketFrame({ active, charging, occupied }: { active: boolean; charging: boolean; occupied: boolean }) {
+function SocketFrame({
+  active,
+  occupied,
+  gem,
+}: {
+  active: boolean;
+  occupied: boolean;
+  gem: SocketGemState;
+}) {
   const { w, h, ring } = SOCKET_FRAME_SRC;
   const scaleX = (1 + SOCKET_RING_OVERHANG * 2) / (ring.x1 - ring.x0);
   const scaleY = (1 + SOCKET_RING_OVERHANG * 2) / (ring.y1 - ring.y0);
@@ -981,36 +1012,57 @@ function SocketFrame({ active, charging, occupied }: { active: boolean; charging
     left: `${-(SOCKET_RING_OVERHANG + ring.x0 * scaleX) * 100}%`,
     top: `${-(SOCKET_RING_OVERHANG + ring.y0 * scaleY) * 100}%`,
   };
+  const lens = GEM_LENS[gem];
   return (
     <>
+      {/* small local bloom around the socket when it is the live target */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -inset-5 rounded-[20px] bg-[radial-gradient(ellipse_at_center,rgba(214,181,93,0.16),transparent_70%)] transition-opacity duration-300",
+          active ? "opacity-100" : "opacity-0",
+        )}
+      />
       <img
         src={socketFrameUrl}
         alt=""
         aria-hidden
         draggable={false}
         className={cn(
+          // The frame is deliberately dimmed (~20% under its previous levels) so
+          // it frames cards without competing with them; state changes are slow
+          // brightness fades only — the frame itself never pulses or blinks.
           "pointer-events-none absolute max-w-none select-none transition duration-300",
-          charging && "animate-pulse motion-reduce:animate-none",
           active
-            ? "brightness-110 drop-shadow-[0_0_18px_rgba(214,181,93,0.4)]"
+            ? "brightness-[0.88] drop-shadow-[0_0_14px_rgba(214,181,93,0.32)]"
             : occupied
-              ? "brightness-100"
-              : "brightness-[0.8] saturate-[0.85]",
+              ? "brightness-[0.85]"
+              : "brightness-[0.66] saturate-[0.8]",
         )}
         style={style}
       />
-      {/* dormant shade over the socket's stone bed; sits under the card layer */}
+      {/* recess treatment: tint the socket's stone bed toward the slab material
+          and shade its walls so it reads as carved INTO the board, not laid on
+          top. Fully covered by a landed card, so the handoff never shows it. */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-lg bg-[#1c2637] mix-blend-color opacity-80" />
       <span
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-0 rounded-lg transition duration-300",
-          occupied
-            ? "opacity-0"
-            : active
-              ? "bg-[radial-gradient(ellipse_at_50%_45%,rgba(12,26,44,0.25),rgba(9,15,26,0.5))]"
-              : "bg-[radial-gradient(ellipse_at_50%_45%,rgba(12,26,44,0.5),rgba(9,15,26,0.72))]",
+          "shadow-[inset_0_10px_22px_rgba(0,0,0,0.55),inset_0_-6px_14px_rgba(0,0,0,0.45)]",
+          active
+            ? "bg-[radial-gradient(ellipse_at_50%_45%,rgba(15,26,42,0.3),rgba(9,15,26,0.55))]"
+            : "bg-[radial-gradient(ellipse_at_50%_45%,rgba(15,26,42,0.52),rgba(9,15,26,0.74))]",
         )}
       />
+      {/* status-light lens seated over the asset's baked gem core */}
+      <span aria-hidden className="pointer-events-none absolute left-1/2 top-[100%] z-[5] h-[10.5%] w-[15%] -translate-x-1/2 -translate-y-1/2">
+        <span className={cn("absolute -inset-[70%] rounded-full transition-opacity duration-500", lens.glow)} />
+        <span
+          className={cn("absolute inset-0 transition duration-500", lens.lens)}
+          style={{ clipPath: GEM_CLIP }}
+        />
+      </span>
     </>
   );
 }
@@ -1489,9 +1541,17 @@ function ChampionCard({
   fill?: boolean;
 }) {
   if (mode === "face-down") {
+    // Restrained echo of the player-socket frame language: brass edge, inner
+    // gold line, beveled corner cues, and a small dormant gem at bottom center
+    // — kept far quieter than the ornate player-side frame asset.
     return (
-      <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border border-cyan-300/20 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-xl")}>
+      <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border-2 border-[#8a6f35]/45 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-[0_10px_24px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.16)]")}>
         <div className="absolute inset-[6px] rounded-md border border-[#d6b55d]/30" />
+        {/* beveled corner cues matching the socket frame's cut corners */}
+        <span aria-hidden className="absolute -left-2 -top-2 h-4 w-4 rotate-45 border-b border-[#8a6f35]/60 bg-[#0d1524]" />
+        <span aria-hidden className="absolute -right-2 -top-2 h-4 w-4 rotate-45 border-l border-[#8a6f35]/60 bg-[#0d1524]" />
+        <span aria-hidden className="absolute -bottom-2 -left-2 h-4 w-4 rotate-45 border-t border-[#8a6f35]/60 bg-[#0d1524]" />
+        <span aria-hidden className="absolute -bottom-2 -right-2 h-4 w-4 rotate-45 border-r border-[#8a6f35]/60 bg-[#0d1524]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.22),transparent_46%)]" />
         <div className="relative flex h-full flex-col items-center justify-center gap-1.5 text-cyan-100">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-[#d6b55d]/40 bg-black/40 text-[#f4d77d]">
@@ -1499,6 +1559,8 @@ function ChampionCard({
           </span>
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-200/80">Concealed</span>
         </div>
+        {/* dormant gem echoing the player socket's status light */}
+        <span aria-hidden className="absolute bottom-[3px] left-1/2 h-2.5 w-3 -translate-x-1/2 bg-[radial-gradient(circle_at_50%_38%,#5a6472,#2e3540_70%)] opacity-80" style={{ clipPath: GEM_CLIP }} />
       </div>
     );
   }
