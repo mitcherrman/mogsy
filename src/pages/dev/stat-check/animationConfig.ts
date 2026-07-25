@@ -107,6 +107,13 @@ export const REVEAL_TIMELINE = {
   opponentReveal1: 220,
   opponentReveal2: 520,
   opponentReveal3: 820,
+  /** Item-reveal beat, inserted only on rounds where an item was played. */
+  itemReveal: 1_140,
+  /**
+   * How much every step after the item beat shifts on item rounds, giving the
+   * equipped item + bonus a readable moment before lane winners resolve.
+   */
+  itemRevealShiftMs: 520,
   resolveLane1: 1_220,
   resolveLane2: 1_620,
   resolveLane3: 2_020,

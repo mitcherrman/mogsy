@@ -3,6 +3,7 @@ import {
   activeResolvedLane,
   allowsPreLockInteraction,
   animationStepReducer,
+  itemsRevealedAtStep,
   revealedOpponentCount,
   stepAfterLane,
   stepBeforeDamage,
@@ -64,6 +65,27 @@ describe("Stat Check presentation animation state", () => {
   it("keeps HP display on pre-damage values until damage phase", () => {
     expect(stepBeforeDamage("board-result")).toBe(true);
     expect(stepBeforeDamage("damage")).toBe(false);
+  });
+
+  it("inserts the item-reveal beat between opponent flips and lane resolution", () => {
+    let step: PresentationStep = "opponent-reveal-3";
+    step = animationStepReducer(step, { type: "item-reveal" });
+    expect(step).toBe("item-reveal");
+    // All opponents stay revealed, no lane result shows yet, and HP still
+    // displays pre-damage values during the item beat.
+    expect(revealedOpponentCount("item-reveal")).toBe(3);
+    expect(stepAfterLane("item-reveal", 0)).toBe(false);
+    expect(stepBeforeDamage("item-reveal")).toBe(true);
+  });
+
+  it("reveals items exactly from the item beat onward", () => {
+    expect(itemsRevealedAtStep("selecting")).toBe(false);
+    expect(itemsRevealedAtStep("locking")).toBe(false);
+    expect(itemsRevealedAtStep("opponent-reveal-3")).toBe(false);
+    expect(itemsRevealedAtStep("item-reveal")).toBe(true);
+    expect(itemsRevealedAtStep("resolve-lane-1")).toBe(true);
+    expect(itemsRevealedAtStep("resolved")).toBe(true);
+    expect(itemsRevealedAtStep("match-over")).toBe(true);
   });
 
   it("cancels to selecting", () => {

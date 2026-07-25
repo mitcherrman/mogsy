@@ -42,22 +42,31 @@ import {
   activeResolvedLane,
   allowsPreLockInteraction,
   animationStepReducer,
+  itemsRevealedAtStep,
   revealedOpponentCount,
   stepAfterLane,
   stepBeforeDamage,
   type PresentationStep,
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
+import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
+import { ItemChoicePanel, ItemGlyph, ItemInventoryStrip } from "./StatCheckItems";
 import {
   STAT_CHECK_RULES,
   assignCard,
+  beginItemChoice,
   buildCardsFromBaseStats,
+  chooseItem,
   createMatch,
+  equipItem,
   isReadyToLock,
+  itemChoiceDue,
   resolveCurrentRound,
   startNextRound,
+  unequipItem,
   STAT_FAMILY_LABELS,
   type CategoryResult,
+  type EquippedItem,
   type MatchState,
   type RoundDamage,
   type RoundResolution,
@@ -115,7 +124,11 @@ export default function StatCheckPage() {
   const dataSource = buildCardsFromBaseStats(statRows).length >= 24 ? "League Docs stats" : "Fixture deck";
   const [matchKey, setMatchKey] = useState(0);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`));
+  // Armed inventory item awaiting a lane click (click item, then click lane).
+  const [selectedItemId, setSelectedItemId] = useState<ItemId | null>(null);
+  // Highlighted-but-unconfirmed pick inside the item-choice panel.
+  const [pendingChoiceId, setPendingChoiceId] = useState<ItemId | null>(null);
+  const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`, { items: true }));
   const [revealStep, dispatchRevealStep] = useReducer(animationStepReducer, "selecting" as PresentationStep);
   const [travelingCards, setTravelingCards] = useState<TravelingCardState[]>([]);
   // Cards that still hold their fan slot (invisibly) while their travel clone departs,
@@ -140,8 +153,10 @@ export default function StatCheckPage() {
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
-    setMatch(createMatch(deck, `${SEED}:${matchKey}`));
+    setMatch(createMatch(deck, `${SEED}:${matchKey}`, { items: true }));
     setSelectedCardId(null);
+    setSelectedItemId(null);
+    setPendingChoiceId(null);
     dispatchRevealStep({ type: "cancel" });
   }, [deck, matchKey]);
 
@@ -160,15 +175,26 @@ export default function StatCheckPage() {
   }, [animationSpeed, prefersReducedMotion, travelingCards.length]);
 
   useEffect(() => {
-    if (!selectedCardId) return;
+    if (!selectedCardId && !selectedItemId) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       setSelectedCardId(null);
+      setSelectedItemId(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedCardId]);
+  }, [selectedCardId, selectedItemId]);
+
+  // Post-cadence rounds enter the item-choice phase automatically once the
+  // resolved presentation has fully played out. The resolved board, damage,
+  // and next-round hint all stay mounted; only the Next Round control is
+  // replaced by the choice panel until the pick is confirmed.
+  useEffect(() => {
+    if (revealStep !== "resolved" && revealStep !== "match-over") return;
+    if (match.phase !== "resolved" || !itemChoiceDue(match)) return;
+    setMatch((state) => beginItemChoice(state));
+  }, [match, revealStep]);
 
   useEffect(() => {
     if (revealStep !== "locking" || !match.lastResolution) return;
@@ -180,19 +206,28 @@ export default function StatCheckPage() {
       return;
     }
 
+    // Rounds where an item was played get an extra item-reveal beat between
+    // the opponent flips and lane resolution; every later step shifts by the
+    // same amount so the bonus lands readably. Item-free rounds keep the
+    // original timeline exactly.
+    const roundHasItems = match.lastResolution.results.some((result) => result.playerItem || result.botItem);
+    const shift = roundHasItems ? REVEAL_TIMELINE.itemRevealShiftMs : 0;
     const timeline: Array<[number, () => void]> = [
       [REVEAL_TIMELINE.opponentReveal1, () => dispatchRevealStep({ type: "opponent", lane: 1 })],
       [REVEAL_TIMELINE.opponentReveal2, () => dispatchRevealStep({ type: "opponent", lane: 2 })],
       [REVEAL_TIMELINE.opponentReveal3, () => dispatchRevealStep({ type: "opponent", lane: 3 })],
-      [REVEAL_TIMELINE.resolveLane1, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
-      [REVEAL_TIMELINE.resolveLane2, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
-      [REVEAL_TIMELINE.resolveLane3, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
-      [REVEAL_TIMELINE.boardResult, () => dispatchRevealStep({ type: "board-result" })],
-      [REVEAL_TIMELINE.damage, () => {
+      ...(roundHasItems
+        ? [[REVEAL_TIMELINE.itemReveal, () => dispatchRevealStep({ type: "item-reveal" })] as [number, () => void]]
+        : []),
+      [REVEAL_TIMELINE.resolveLane1 + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
+      [REVEAL_TIMELINE.resolveLane2 + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
+      [REVEAL_TIMELINE.resolveLane3 + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
+      [REVEAL_TIMELINE.boardResult + shift, () => dispatchRevealStep({ type: "board-result" })],
+      [REVEAL_TIMELINE.damage + shift, () => {
         dispatchRevealStep({ type: "damage" });
         setDamageFlashKey((key) => key + 1);
       }],
-      [REVEAL_TIMELINE.resolved, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
+      [REVEAL_TIMELINE.resolved + shift, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
     ];
     timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion, animationSpeed)));
   }, [animationSpeed, match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
@@ -209,6 +244,14 @@ export default function StatCheckPage() {
   const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep);
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
+  // Whether the reveal has reached the item beat: before it, lanes show only
+  // natural values and the opponent's item stays hidden.
+  const itemsRevealed = itemsRevealedAtStep(revealStep);
+  const itemChoiceOpen = match.phase === "item-choice";
+  // Pre-Round-1 opening choice: no resolution exists yet, and the full Round 1
+  // board must stay concealed (only the single-family hint may show).
+  const preRoundItemChoice = itemChoiceOpen && !match.lastResolution;
+  const armedItem = selectedItemId && canEdit ? selectedItemId : null;
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
     ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
     : { player: match.playerHp, bot: match.botHp };
@@ -221,8 +264,39 @@ export default function StatCheckPage() {
     setMatchKey((key) => key + 1);
   };
 
+  const confirmItemChoice = () => {
+    if (!pendingChoiceId || match.phase !== "item-choice") return;
+    setMatch((state) => chooseItem(state, pendingChoiceId));
+    setPendingChoiceId(null);
+  };
+
+  const toggleInventoryItem = (itemId: ItemId) => {
+    if (!canEdit) return;
+    setSelectedCardId(null);
+    setSelectedItemId((current) => (current === itemId ? null : itemId));
+  };
+
+  // Item-to-lane attachment shares the click-lane gesture with card placement:
+  // an armed inventory item takes priority and never falls through to the
+  // card place/return paths, so champion movement stays untouched.
+  const tryEquipSelectedItem = (category: StatCategory): boolean => {
+    if (!armedItem) return false;
+    const next = equipItem(match, category.id, armedItem);
+    if (next !== match) {
+      setMatch(next);
+      setSelectedItemId(null);
+    }
+    return true;
+  };
+
+  const removePendingItem = () => {
+    if (!canEdit) return;
+    setMatch((state) => unequipItem(state));
+  };
+
   const placeCard = (category: StatCategory) => {
     if (!canEdit) return;
+    if (tryEquipSelectedItem(category)) return;
     const current = match.assignments[category.id];
     if (selectedCardId) {
       const card = match.playerHand.find((item) => item.id === selectedCardId);
@@ -311,11 +385,15 @@ export default function StatCheckPage() {
     setHandGapIds([]);
     setLaneReaction(null);
     setSelectedCardId(null);
+    setSelectedItemId(null);
     dispatchRevealStep({ type: "lock" });
     setMatch((state) => resolveCurrentRound(state));
   };
 
   const nextRound = () => {
+    // A due item choice must complete first; the auto-begin effect and the
+    // choice panel own that path, so this control is inert until then.
+    if (match.phase !== "resolved" || itemChoiceDue(match)) return;
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
     setHandGapIds([]);
@@ -533,6 +611,11 @@ export default function StatCheckPage() {
                     reducedMotion={prefersReducedMotion}
                     animationSpeed={animationSpeed}
                     assets={assets}
+                    concealed={preRoundItemChoice}
+                    itemsRevealed={itemsRevealed}
+                    armedItem={armedItem}
+                    pendingItem={match.equippedItem?.categoryId === category.id ? match.equippedItem : null}
+                    onRemovePendingItem={removePendingItem}
                     laneRef={(element) => { laneRefs.current[category.id] = element; }}
                     playerRef={(element) => { lanePlayerRefs.current[category.id] = element; }}
                     botRef={(element) => { laneBotRefs.current[category.id] = element; }}
@@ -579,6 +662,7 @@ export default function StatCheckPage() {
                 cardRefs={handCardRefs}
                 onSelect={(cardId) => {
                   if (!canEdit) return;
+                  setSelectedItemId(null);
                   setSelectedCardId((current) => (current === cardId ? null : cardId));
                 }}
               />
@@ -586,7 +670,11 @@ export default function StatCheckPage() {
 
             <div className="flex items-center justify-between gap-3 px-1">
               <p className="text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
-                {selectedCard ? `Click a lane to play ${selectedCard.name}.` : "Click a champion, then click a lane."}
+                {armedItem
+                  ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
+                  : selectedCard
+                    ? `Click a lane to play ${selectedCard.name}.`
+                    : "Click a champion, then click a lane."}
               </p>
               <Button
                 size="sm"
@@ -609,12 +697,18 @@ export default function StatCheckPage() {
               resolution={activeResolution}
               revealStep={revealStep}
               nextCategories={match.nextCategories}
+              pendingChoiceId={pendingChoiceId}
+              onSelectChoice={setPendingChoiceId}
+              onConfirmChoice={confirmItemChoice}
               onNextRound={nextRound}
               onRestart={restart}
             />
             <UtilityStack
               match={match}
               assets={assets}
+              selectedItemId={selectedItemId}
+              inventoryDisabled={!canEdit}
+              onToggleItem={toggleInventoryItem}
               botDiscardRef={(element) => { discardRefs.current.bot = element; }}
               playerDiscardRef={(element) => { discardRefs.current.player = element; }}
             />
@@ -810,6 +904,11 @@ function ArenaLane({
   reducedMotion,
   animationSpeed,
   assets,
+  concealed,
+  itemsRevealed,
+  armedItem,
+  pendingItem,
+  onRemovePendingItem,
   laneRef,
   playerRef,
   botRef,
@@ -830,6 +929,15 @@ function ArenaLane({
   reducedMotion: boolean;
   animationSpeed: StatCheckAnimationSpeed;
   assets: ReturnType<typeof useChampionAssets>["data"];
+  /** Pre-Round-1 item choice: the lane's category plaque stays hidden. */
+  concealed: boolean;
+  /** Reveal has reached the item beat: bonuses and final values may show. */
+  itemsRevealed: boolean;
+  /** Inventory item armed for lane assignment, if any. */
+  armedItem: ItemId | null;
+  /** The player's own pending equip on this lane (hidden from no one — it is theirs). */
+  pendingItem: EquippedItem | null;
+  onRemovePendingItem: () => void;
   laneRef: (element: HTMLElement | null) => void;
   playerRef: (element: HTMLElement | null) => void;
   botRef: (element: HTMLElement | null) => void;
@@ -841,13 +949,31 @@ function ArenaLane({
   const botWon = resolution?.winner === "bot";
   const botState = showResult && botWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && playerWon ? "loser" : "idle";
   const playerState = showResult && playerWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && botWon ? "loser" : "idle";
-  const placementHint = canEdit && selectedCard
-    ? playerCard
-      ? `Swap in ${selectedCard.name}.`
-      : `Place ${selectedCard.name} here.`
-    : playerCard && canEdit
-      ? "Click to return your card to hand."
-      : "";
+  // Natural values only until the item-reveal beat; final values afterwards.
+  const playerShownValue = resolution
+    ? itemsRevealed
+      ? resolution.playerValue
+      : resolution.playerNaturalValue
+    : undefined;
+  const botShownValue = resolution
+    ? itemsRevealed
+      ? resolution.botValue
+      : resolution.botNaturalValue
+    : undefined;
+  const playerLaneItem = itemsRevealed && resolution?.playerItem ? resolution : null;
+  const botLaneItem = itemsRevealed && resolution?.botItem ? resolution : null;
+  const armedCompatible = armedItem ? isItemCompatible(armedItem, category.family) : false;
+  const placementHint = canEdit && armedItem
+    ? armedCompatible && playerCard
+      ? `Attach ${ITEMS[armedItem].label} here.`
+      : `${ITEMS[armedItem].label} cannot be used here.`
+    : canEdit && selectedCard
+      ? playerCard
+        ? `Swap in ${selectedCard.name}.`
+        : `Place ${selectedCard.name} here.`
+      : playerCard && canEdit
+        ? "Click to return your card to hand."
+        : "";
 
   return (
     <div
@@ -855,7 +981,12 @@ function ArenaLane({
       ref={laneRef}
       role="button"
       tabIndex={canEdit ? 0 : -1}
-      aria-label={`Lane ${index + 1}: ${categoryAccessibleLabel(category)} ${placementHint}`.trim()}
+      aria-label={
+        concealed
+          ? `Lane ${index + 1}: category hidden until the opening item choice completes.`
+          : `Lane ${index + 1}: ${categoryAccessibleLabel(category)} ${placementHint}`.trim()
+      }
+      data-armed-item={armedItem ? (armedCompatible && playerCard ? "compatible" : "blocked") : undefined}
       onClick={onPlace}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -880,23 +1011,39 @@ function ArenaLane({
         />
       )}
       <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
-        <div ref={botRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
+        <div ref={botRef} className="relative flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
             card={botCard}
             imageUrl={getImage(assets, botCard)}
             category={category}
-            value={resolution?.botValue}
+            value={botShownValue}
             flipped={!botHidden}
             reducedMotion={reducedMotion}
             animationSpeed={animationSpeed}
             state={botState}
           />
+          {/* Opponent item: mounted ONLY at/after the item-reveal beat. */}
+          {botLaneItem?.botItem && !botHidden && (
+            <LaneItemChip
+              testId="stat-check-reveal-item-bot"
+              itemId={botLaneItem.botItem}
+              bonus={botLaneItem.botBonus}
+              side="bot"
+            />
+          )}
         </div>
-        <div className="flex min-h-[64px] min-w-0 items-center justify-center">
-          {showResult && resolution ? (
+        <div className="flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
+          {concealed ? (
+            <HiddenCategoryMarker index={index} />
+          ) : showResult && resolution ? (
             <LaneResult result={resolution} />
           ) : (
             <CategoryMarker category={category} />
+          )}
+          {/* Context tooltip for an armed item: exact bonus, natural → final,
+              and which direction wins — or why the item is unusable here. */}
+          {!concealed && canEdit && armedItem && (
+            <ItemLanePreview category={category} itemId={armedItem} playerCard={playerCard} />
           )}
         </div>
         <div ref={playerRef} className="flex min-h-0 min-w-0 items-center justify-center py-0.5">
@@ -933,11 +1080,36 @@ function ArenaLane({
                   card={playerCard}
                   imageUrl={getImage(assets, playerCard)}
                   category={category}
-                  value={resolution?.playerValue}
+                  value={playerShownValue}
                   mode="board"
                   state={playerState}
                   label="You"
                 />
+                {/* The player's own pending equip (pre-lock, click to remove). */}
+                {pendingItem && !resolution && (
+                  <button
+                    type="button"
+                    data-testid="stat-check-pending-item"
+                    aria-label={`${ITEMS[pendingItem.itemId].label} attached. Click to remove it.`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemovePendingItem();
+                    }}
+                    className="absolute -right-2 -top-2 z-30 flex items-center gap-1 rounded-full border border-[#f4d77d]/70 bg-[#1c1730] px-1.5 py-0.5 text-[10px] font-black text-[#f4d77d] shadow-[0_0_12px_rgba(244,215,125,0.4)] outline-none transition hover:bg-[#2a2344] focus-visible:ring-2 focus-visible:ring-cyan-200"
+                  >
+                    <ItemGlyph itemId={pendingItem.itemId} className="h-3 w-3" />
+                    {`+${itemBonusFor(pendingItem.itemId, category.family)}`}
+                  </button>
+                )}
+                {/* Consumed item, revealed at the item beat of the reveal. */}
+                {playerLaneItem?.playerItem && (
+                  <LaneItemChip
+                    testId="stat-check-reveal-item-player"
+                    itemId={playerLaneItem.playerItem}
+                    bonus={playerLaneItem.playerBonus}
+                    side="player"
+                  />
+                )}
               </div>
             )}
             {(!playerCard || playerCardInFlight) && (
@@ -1132,6 +1304,97 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
   );
 }
 
+/**
+ * Pre-Round-1 stand-in plaque: keeps the physical plaque footprint without
+ * revealing any of the opening board's categories.
+ */
+function HiddenCategoryMarker({ index }: { index: number }) {
+  return (
+    <div data-testid={`stat-check-hidden-category-${index}`} className="z-10 flex w-full items-center gap-2">
+      <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
+      <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
+        <div className="flex min-w-[112px] flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
+          <span className="text-base font-black uppercase tracking-[0.14em] text-slate-500">Hidden</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Choose an item first</span>
+        </div>
+      </div>
+      <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
+    </div>
+  );
+}
+
+/** Revealed consumed-item chip on a resolved lane card. */
+function LaneItemChip({
+  testId,
+  itemId,
+  bonus,
+  side,
+}: {
+  testId: string;
+  itemId: ItemId;
+  bonus: number;
+  side: "player" | "bot";
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className={cn(
+        "absolute -right-2 z-30 flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-black shadow-lg",
+        side === "player"
+          ? "-top-2 border-[#f4d77d]/70 bg-[#1c1730] text-[#f4d77d]"
+          : "-top-2 border-red-400/60 bg-[#2a0f14] text-red-200",
+      )}
+    >
+      <ItemGlyph itemId={itemId} className="h-3 w-3" />
+      {`${ITEMS[itemId].label} +${bonus}`}
+    </span>
+  );
+}
+
+/**
+ * Context tooltip while an inventory item is armed: for a compatible occupied
+ * lane it spells out the exact bonus, natural → final values, and which
+ * direction wins; otherwise it states exactly why the item cannot be used.
+ */
+function ItemLanePreview({
+  category,
+  itemId,
+  playerCard,
+}: {
+  category: StatCategory;
+  itemId: ItemId;
+  playerCard: StatCheckCard | null;
+}) {
+  const bonus = itemBonusFor(itemId, category.family);
+  const compatible = bonus > 0;
+  const directionLine = category.direction === "higher" ? "Highest value wins." : "Lowest value wins.";
+  let body: string;
+  if (!compatible) {
+    body = `Can't be used on ${statFamilyLabel(category)}.`;
+  } else if (!playerCard) {
+    body = "Place a champion here first.";
+  } else {
+    const natural = category.getValue(playerCard);
+    body = `${playerCard.name}: ${category.formatValue(natural)} → ${category.formatValue(natural + bonus)} ${statFamilyLabel(category)}. ${directionLine}`;
+  }
+  return (
+    <div
+      data-testid={`stat-check-item-preview-${category.id}`}
+      data-preview-state={compatible ? (playerCard ? "ready" : "empty") : "incompatible"}
+      className={cn(
+        "z-20 max-w-full rounded-md border px-2 py-1 text-center text-[10px] font-semibold shadow-lg",
+        compatible && playerCard
+          ? "border-[#f4d77d]/60 bg-black/80 text-[#f4d77d]"
+          : "border-slate-500/40 bg-black/75 text-slate-400",
+      )}
+    >
+      <span className="font-black">{`${ITEMS[itemId].label} `}</span>
+      {compatible && <span className="text-cyan-100/90">{`Grants +${bonus} ${statFamilyLabel(category)}. `}</span>}
+      <span>{body}</span>
+    </div>
+  );
+}
+
 function categoryAccessibleLabel(category: StatCategory) {
   const direction = category.direction === "higher" ? "Higher value wins" : "Lower value wins";
   return `${capitalize(category.label)}. ${statFamilyLabel(category)}. ${scopeLabel(category)}. ${direction}. Decisive ${formatThreshold(category.decisiveThreshold)} for bonus damage.`;
@@ -1222,16 +1485,28 @@ function PlayerHand({
 function UtilityStack({
   match,
   assets,
+  selectedItemId,
+  inventoryDisabled,
+  onToggleItem,
   botDiscardRef,
   playerDiscardRef,
 }: {
   match: MatchState;
   assets: ReturnType<typeof useChampionAssets>["data"];
+  selectedItemId: ItemId | null;
+  inventoryDisabled: boolean;
+  onToggleItem: (itemId: ItemId) => void;
   botDiscardRef: (element: HTMLElement | null) => void;
   playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
   return (
     <div className="grid gap-2">
+      <ItemInventoryStrip
+        inventory={match.playerInventory}
+        selectedItemId={selectedItemId}
+        disabled={inventoryDisabled}
+        onToggle={onToggleItem}
+      />
       <CountPill label="Shared pool" value={match.drawPile.length} />
       <CountPill label="Your hand" value={match.playerHand.length} />
       <CountPill label="Bot hand" value={match.botHand.length} />
@@ -1663,6 +1938,9 @@ function RevealSequence({
   resolution,
   revealStep,
   nextCategories,
+  pendingChoiceId,
+  onSelectChoice,
+  onConfirmChoice,
   onNextRound,
   onRestart,
 }: {
@@ -1670,9 +1948,35 @@ function RevealSequence({
   resolution: RoundResolution | null;
   revealStep: PresentationStep;
   nextCategories: StatCategory[];
+  pendingChoiceId: ItemId | null;
+  onSelectChoice: (itemId: ItemId | null) => void;
+  onConfirmChoice: () => void;
   onNextRound: () => void;
   onRestart: () => void;
 }) {
+  const itemChoiceOpen = match.phase === "item-choice";
+  const preRoundChoice = itemChoiceOpen && !match.lastResolution;
+
+  if (preRoundChoice) {
+    // Opening item choice: only the single-family hint for Round 1 may show —
+    // never the full three-category board (which stays concealed on the slab).
+    return (
+      <div>
+        <NextRoundIntel categories={match.currentCategories} heading="Round 1 Intel" compact />
+        <div className="mt-2">
+          <ItemChoicePanel
+            title="Choose your starting item"
+            subtitle="Both sides pick one item in secret before Round 1 begins."
+            inventory={match.playerInventory}
+            selectedItemId={pendingChoiceId}
+            onSelect={(itemId) => onSelectChoice(itemId)}
+            onConfirm={onConfirmChoice}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <NextRoundIntel categories={nextCategories} compact />
@@ -1708,6 +2012,19 @@ function RevealSequence({
           <DamageBreakdown title="Bot deals" amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
           {(revealStep === "resolved" || revealStep === "match-over") && (
             <div className="space-y-2 pt-2">
+              {itemChoiceOpen && resolution && (
+                // Post-cadence choice: the resolved board, lane results,
+                // damage, completed categories, and the next-round hint all
+                // stay visible; only this control area changes.
+                <ItemChoicePanel
+                  title={`Item choice — ${resolution.round} rounds complete`}
+                  subtitle="Both sides pick one item in secret before the next round begins."
+                  inventory={match.playerInventory}
+                  selectedItemId={pendingChoiceId}
+                  onSelect={(itemId) => onSelectChoice(itemId)}
+                  onConfirm={onConfirmChoice}
+                />
+              )}
               {match.phase === "resolved" && (
                 <Button data-testid="stat-check-next-round" onClick={onNextRound} className="w-full bg-cyan-300 text-[#06111f] hover:bg-cyan-200">
                   Next Round <ChevronsRight className="ml-1.5 h-4 w-4" />
@@ -1929,11 +2246,19 @@ function MatchHistoryPanel({ history }: { history: RoundResolution[] }) {
   );
 }
 
-function NextRoundIntel({ categories, compact = false }: { categories: StatCategory[]; compact?: boolean }) {
-  const [visible, ...hidden] = categories;
+function NextRoundIntel({
+  categories,
+  heading = "Next Round Intel",
+  compact = false,
+}: {
+  categories: StatCategory[];
+  heading?: string;
+  compact?: boolean;
+}) {
+  const [visible, ...hiddenSlots] = categories;
   return (
     <div className={cn("rounded-md border border-[#d6b55d]/25 bg-black/28 shadow-xl", compact ? "p-2" : "p-3")}>
-      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4d77d]">Next Round Intel</div>
+      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f4d77d]">{heading}</div>
       <div data-testid="stat-check-next-intel" className="mt-1.5 rounded-md border border-[#d6b55d]/30 bg-[#d6b55d]/10 p-1.5">
         <div className="flex items-center gap-1.5">
           <CategoryIcon category={visible} />
@@ -1944,7 +2269,7 @@ function NextRoundIntel({ categories, compact = false }: { categories: StatCateg
         </div>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1.5">
-        {hidden.map((category) => (
+        {hiddenSlots.map((category) => (
           <div key={category.id} className="rounded-md border border-white/10 bg-black/25 p-1.5 text-center text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
             Hidden
           </div>
@@ -2011,6 +2336,19 @@ export function LaneResult({ result }: { result: CategoryResult }) {
         <div className="whitespace-nowrap text-base font-black text-white">
           {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
         </div>
+        {/* Item breakdown: natural + bonus → final, per side that used one. */}
+        {result.playerItem && (
+          <div data-testid="stat-check-result-item-player" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-[#f4d77d]">
+            <ItemGlyph itemId={result.playerItem} className="h-3 w-3" />
+            You: {result.category.formatValue(result.playerNaturalValue)} + {result.playerBonus} → {result.category.formatValue(result.playerValue)}
+          </div>
+        )}
+        {result.botItem && (
+          <div data-testid="stat-check-result-item-bot" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-red-200">
+            <ItemGlyph itemId={result.botItem} className="h-3 w-3" />
+            Bot: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
+          </div>
+        )}
         {result.decisive && (
           <div className="rounded bg-[#d6b55d]/20 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em] text-[#f4d77d]">
             Decisive +1

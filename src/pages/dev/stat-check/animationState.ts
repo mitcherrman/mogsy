@@ -14,6 +14,7 @@ export type PresentationStep =
   | "opponent-reveal-1"
   | "opponent-reveal-2"
   | "opponent-reveal-3"
+  | "item-reveal"
   | "resolve-lane-1"
   | "resolve-lane-2"
   | "resolve-lane-3"
@@ -38,6 +39,7 @@ export type AnimationEvent =
   | { type: "return" }
   | { type: "lock" }
   | { type: "opponent"; lane: 1 | 2 | 3 }
+  | { type: "item-reveal" }
   | { type: "resolve"; lane: 1 | 2 | 3 }
   | { type: "board-result" }
   | { type: "damage" }
@@ -89,6 +91,8 @@ export function animationStepReducer(_step: PresentationStep, event: AnimationEv
       return "locking";
     case "opponent":
       return `opponent-reveal-${event.lane}` as PresentationStep;
+    case "item-reveal":
+      return "item-reveal";
     case "resolve":
       return `resolve-lane-${event.lane}` as PresentationStep;
     case "board-result":
@@ -112,8 +116,30 @@ export function revealedOpponentCount(step: PresentationStep) {
   if (step === "opponent-reveal-1") return 1;
   if (step === "opponent-reveal-2") return 2;
   if (step === "opponent-reveal-3") return 3;
-  if (["resolve-lane-1", "resolve-lane-2", "resolve-lane-3", "board-result", "damage", "resolved", "discarding", "dealing", "match-over"].includes(step)) return 3;
+  if (["item-reveal", "resolve-lane-1", "resolve-lane-2", "resolve-lane-3", "board-result", "damage", "resolved", "discarding", "dealing", "match-over"].includes(step)) return 3;
   return 0;
+}
+
+/**
+ * True once the reveal has reached (or passed) the item-reveal beat: equipped
+ * items, their bonuses, and FINAL contest values may be shown. Before this,
+ * only natural champion values are visible and the opponent's item stays
+ * hidden. Rounds with no items skip the beat; every at-or-after step here
+ * still reports true so the final values render.
+ */
+export function itemsRevealedAtStep(step: PresentationStep) {
+  return [
+    "item-reveal",
+    "resolve-lane-1",
+    "resolve-lane-2",
+    "resolve-lane-3",
+    "board-result",
+    "damage",
+    "resolved",
+    "discarding",
+    "dealing",
+    "match-over",
+  ].includes(step);
 }
 
 export function activeResolvedLane(step: PresentationStep) {
@@ -135,6 +161,7 @@ export function stepBeforeDamage(step: PresentationStep) {
     "opponent-reveal-1",
     "opponent-reveal-2",
     "opponent-reveal-3",
+    "item-reveal",
     "resolve-lane-1",
     "resolve-lane-2",
     "resolve-lane-3",

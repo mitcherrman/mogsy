@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StatCheckPage, { CategoryMarker, LaneResult } from "./StatCheckPage";
-import type { CategoryResult, StatCategory, StatCheckCard } from "./statCheckEngine";
+import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
+import { generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
   useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -56,6 +57,28 @@ function laneTextIncludesFamily(container: HTMLElement, family: string) {
 
 function finishReveal() {
   act(() => vi.advanceTimersByTime(4_000));
+}
+
+/** Complete an open item-choice phase (opening or post-cadence), if present. */
+function completeItemChoiceIfPresent(itemId = "ruby-crystal") {
+  const option = screen.queryByTestId(`stat-check-item-option-${itemId}`);
+  if (!option) return false;
+  fireEvent.click(option);
+  fireEvent.click(screen.getByTestId("stat-check-item-confirm"));
+  return true;
+}
+
+/**
+ * Render the page and complete the mandatory pre-Round-1 item choice so the
+ * classic placement flow tests start from the selecting phase, exactly as
+ * before the item system existed.
+ */
+function renderPage(options: { skipItemChoice?: boolean; item?: string } = {}) {
+  const view = render(<StatCheckPage />);
+  if (!options.skipItemChoice) {
+    expect(completeItemChoiceIfPresent(options.item)).toBe(true);
+  }
+  return view;
 }
 
 function reducedMotion(matches: boolean) {
@@ -155,7 +178,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("plays a full fixture match and shows a resettable playtest summary", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     expect(screen.getByTestId("stat-check-rules-note")).toHaveTextContent(/Win 2 of 3 lanes/i);
     expect(screen.getByTestId("stat-check-rules-note")).toHaveTextContent(/discarded for the whole match/i);
 
@@ -172,6 +195,8 @@ describe("StatCheckPage tabletop presentation", () => {
       fillFirstEmptyLanes();
       fireEvent.click(screen.getByTestId("stat-check-lock"));
       finishReveal();
+      // Cadence rounds open an item choice before Next Round becomes available.
+      completeItemChoiceIfPresent();
       const next = screen.queryByTestId("stat-check-next-round");
       if (next) {
         fireEvent.click(next);
@@ -195,7 +220,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("selects, deselects, and switches hand-card selection with clicks", () => {
-    render(<StatCheckPage />);
+    renderPage();
     const first = screen.getByTestId("stat-check-hand-0");
     const second = screen.getByTestId("stat-check-hand-1");
 
@@ -215,7 +240,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("Escape clears the current selection", () => {
-    render(<StatCheckPage />);
+    renderPage();
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     expect(screen.getByTestId("stat-check-hand-0")).toHaveAttribute("aria-pressed", "true");
 
@@ -224,7 +249,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("marks empty lanes as active placement targets only while a card is selected", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     expect(screen.getAllByText(/Place champion/i)).toHaveLength(3);
     expect(screen.queryByText(/Place here/i)).toBeNull();
 
@@ -238,7 +263,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("does not place anything when a lane is clicked with no selection", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fireEvent.click(lanes(container)[0]);
 
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
@@ -246,7 +271,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("keeps the same physical champion card from hand to board", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
     expect(champion).toBeTruthy();
 
@@ -258,7 +283,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("holds the fan slot open and defers the board card while the clone travels", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
 
     placeWithoutSettling(container, 0, 0);
@@ -290,7 +315,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("steps through every hero-play phase in order at 1x", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
 
     expect(animPhase(container)).toBe("placement-pickup");
@@ -317,7 +342,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("scales every placement phase with the ANIM speed control", () => {
-    const { container, unmount } = render(<StatCheckPage />);
+    const { container, unmount } = renderPage();
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
     placeWithoutSettling(container, 0, 0);
 
@@ -335,7 +360,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
     // At 1.5x the flight compresses to ~1.5s.
     window.sessionStorage.clear();
-    const second = render(<StatCheckPage />);
+    const second = renderPage();
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "1.5" } });
     placeWithoutSettling(second.container, 0, 0);
     act(() => vi.advanceTimersByTime(900));
@@ -346,7 +371,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("scales the hand reflow transition with the ANIM speed control", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const wrapper = () => container.querySelector<HTMLElement>("[data-fan-index]");
     expect(wrapper()?.style.transitionDuration).toBe("370ms");
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
@@ -354,7 +379,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("scales the return flight with the ANIM speed control", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     place(container, 0, 0);
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
     fireEvent.click(lanes(container)[0]);
@@ -369,7 +394,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("uses a compact communicating slide (not a teleport) under reduced motion", () => {
     reducedMotion(true);
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
 
     // Reduced motion still shows a short lift/slide/settle (~240ms): a clone
@@ -389,7 +414,7 @@ describe("StatCheckPage tabletop presentation", () => {
     reducedMotion(true);
     window.history.pushState({}, "", "/?forceMotion=1");
     try {
-      const { container } = render(<StatCheckPage />);
+      const { container } = renderPage();
       placeWithoutSettling(container, 0, 0);
 
       // Full hero play: placeholder held, clone still airborne after the
@@ -408,7 +433,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("keeps the travel clone as one persistent DOM node across every phase", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
     const node = screen.getAllByTestId(/^stat-check-travel-card-/)[0];
 
@@ -423,7 +448,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("hides a returning card in the fan until its travel clone arrives", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     place(container, 0, 0);
 
     fireEvent.click(lanes(container)[0]);
@@ -437,7 +462,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("restart during flight clears placeholders and receiving slots", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
     expect(container.querySelectorAll('[data-hand-placeholder="true"]')).toHaveLength(1);
 
@@ -451,7 +476,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("rapid repeated lane clicks place exactly one card and do not bounce it back", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fireEvent.click(screen.getByTestId("stat-check-hand-0"));
     fireEvent.click(lanes(container)[0]);
     fireEvent.click(lanes(container)[0]);
@@ -464,7 +489,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("swaps the placed card when an occupied lane is clicked with a new selection", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const firstChampion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
     place(container, 0, 0);
     const secondChampion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
@@ -480,7 +505,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("moves cards between lanes before lock-in without duplicate visual assignment", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const [firstLane, secondLane] = lanes(container);
 
     expect(screen.getByText(/Shared pool/i)).toBeInTheDocument();
@@ -504,7 +529,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("returns a placed card to the normalized hand fan", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const [firstLane] = lanes(container);
 
     place(container, 0, 0);
@@ -517,7 +542,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("pointer movement between press and release does not cancel click placement", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const card = screen.getByTestId("stat-check-hand-0");
 
     fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
@@ -532,7 +557,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("does not render a drag ghost or instruct users to drag", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const card = screen.getByTestId("stat-check-hand-0");
 
     fireEvent.pointerDown(card, { pointerId: 1, clientX: 100, clientY: 540, button: 0 });
@@ -546,7 +571,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("starts and completes placement overlay travel without stale cards", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
 
     placeWithoutSettling(container, 0, 0);
 
@@ -561,7 +586,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("persists and applies slow-motion animation speed", () => {
-    const { container, unmount } = render(<StatCheckPage />);
+    const { container, unmount } = renderPage();
     const speed = screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement;
 
     expect(speed.value).toBe("1");
@@ -573,12 +598,12 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
 
     unmount();
-    render(<StatCheckPage />);
+    renderPage();
     expect((screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).value).toBe("0.5");
   });
 
   it("changing speed during active placement clears transient overlays", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
 
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
@@ -588,7 +613,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("restart cancels active overlay travel", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     placeWithoutSettling(container, 0, 0);
 
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
@@ -600,7 +625,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("shows a comparison marker per lane with direction, family, and decisive threshold", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const markers = container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]');
     expect(markers).toHaveLength(3);
     for (const marker of markers) {
@@ -614,7 +639,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("conceals bot identity until the reveal flip and resolves lanes only afterwards", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fillBoard(container);
     const placedChampions = lanes(container).flatMap(laneChampions).sort();
     expect(placedChampions).toHaveLength(3);
@@ -638,7 +663,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     expect(lanes(container).some((lane) => /Decisive [\d.]+%/.test(lane.textContent ?? ""))).toBe(true);
     fillBoard(container);
 
@@ -657,7 +682,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("uses the reduced-motion path without waiting through the staged reveal", () => {
     reducedMotion(true);
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fillBoard(container);
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
@@ -667,19 +692,23 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("restart clears pending reveal state", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fillBoard(container);
 
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     fireEvent.click(screen.getByRole("button", { name: /restart/i }));
     finishReveal();
 
+    // A restarted match re-enters the opening item choice before selecting.
+    expect(screen.getByTestId("stat-check-item-choice")).toBeInTheDocument();
+    completeItemChoiceIfPresent();
+
     expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
     expect(screen.getByText(/Bot cards stay face-down/i)).toBeInTheDocument();
   });
 
   it("updates discards after next round and keeps visible intel continuous", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
     expect(screen.getByTestId("stat-check-next-intel")).toHaveTextContent(/One upcoming stat family/i);
     expect(screen.getByTestId("stat-check-next-intel")).not.toHaveTextContent(/Higher wins|Lower wins|Level 1|Level 18/i);
@@ -695,7 +724,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("clears resolved presentation state when advancing to the next round", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
@@ -726,7 +755,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("restart after resolution clears cached results, pending timers, and staged UI", () => {
-    const { container } = render(<StatCheckPage />);
+    const { container } = renderPage();
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     finishReveal();
@@ -735,6 +764,8 @@ describe("StatCheckPage tabletop presentation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /restart/i }));
     finishReveal();
+    // The restarted match owes its opening item choice again.
+    completeItemChoiceIfPresent();
 
     expect(screen.getByText(/Round 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Selecting/i)).toBeInTheDocument();
@@ -791,5 +822,206 @@ describe("LaneResult", () => {
     render(<LaneResult result={sampleResult({ winner: "tie", playerValue: 550, botValue: 550, margin: 0 })} />);
     expect(screen.getByText(/Lane tied/i)).toBeInTheDocument();
     expect(screen.getByText(/550 vs 550/)).toBeInTheDocument();
+  });
+});
+
+describe("StatCheckPage item system UI", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.sessionStorage.clear();
+    reducedMotion(false);
+  });
+
+  afterEach(() => {
+    act(() => vi.runOnlyPendingTimers());
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  // Deterministic Round 1 board for the page seed (verified via the engine):
+  // lane 0 = highest-hp-1 (health), lane 1 = lowest-armor-1 (armor),
+  // lane 2 = lowest-ad-1 (attack damage).
+  const round1Board = () => generateCategoryBoard("stat-check-tabletop-v2:0", 1);
+
+  function armItem(itemId: string) {
+    fireEvent.click(screen.getByTestId(`stat-check-inventory-${itemId}`));
+  }
+
+  function inventoryCountText(itemId: string) {
+    const chip = screen.getByTestId(`stat-check-inventory-${itemId}`);
+    return chip.textContent?.trim().slice(-1);
+  }
+
+  function playRound(container: HTMLElement) {
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    finishReveal();
+  }
+
+  it("conceals the full Round 1 board during the opening item choice and reveals it after", () => {
+    const { container } = renderPage({ skipItemChoice: true });
+
+    // Choice surface: four fixed options, confirm gated on a selection.
+    expect(screen.getByTestId("stat-check-item-choice")).toBeInTheDocument();
+    for (const id of ["long-sword", "cloth-armor", "ruby-crystal", "mogzy-snack"]) {
+      expect(screen.getByTestId(`stat-check-item-option-${id}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("stat-check-item-confirm")).toBeDisabled();
+
+    // The full three-category board stays hidden: no category plaques, three
+    // concealed stand-ins, and locking is unavailable.
+    expect(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).toHaveLength(0);
+    expect(screen.getAllByTestId(/^stat-check-hidden-category-/)).toHaveLength(3);
+    expect(screen.getByTestId("stat-check-lock")).toBeDisabled();
+
+    // Only the single-family hint shows, matching the real Round 1 board.
+    expect(screen.getByText(/Round 1 Intel/i)).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-next-intel-label")).toHaveTextContent(/^Health$/);
+
+    // Confirming reveals the complete Round 1 categories.
+    fireEvent.click(screen.getByTestId("stat-check-item-option-ruby-crystal"));
+    fireEvent.click(screen.getByTestId("stat-check-item-confirm"));
+    expect(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).toHaveLength(3);
+    expect(screen.queryAllByTestId(/^stat-check-hidden-category-/)).toHaveLength(0);
+    expect(inventoryCountText("ruby-crystal")).toBe("1");
+  });
+
+  it("after round 3 keeps the resolved board visible, hides the next full board, and blocks Next Round until the pick", () => {
+    const { container } = renderPage();
+    for (let round = 1; round <= 2; round++) {
+      playRound(container);
+      fireEvent.click(screen.getByTestId("stat-check-next-round"));
+      act(() => vi.advanceTimersByTime(2_000));
+    }
+    playRound(container);
+
+    // Third completed round: the item choice opens automatically...
+    expect(screen.getByTestId("stat-check-item-choice")).toBeInTheDocument();
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
+    // ...while every piece of resolved-round feedback stays mounted.
+    expect(screen.getByTestId("stat-check-board-result")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-damage-bot")).toBeInTheDocument();
+    const results = lanes(container).map((lane) => lane.textContent ?? "");
+    expect(results.every((text) => /You win|Bot wins|Lane tied/i.test(text))).toBe(true);
+    // The next-round hint stays: exactly one family label plus hidden slots.
+    const intel = screen.getByTestId("stat-check-next-intel");
+    expect(intel).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-next-intel-label").textContent).toMatch(/\w/);
+
+    fireEvent.click(screen.getByTestId("stat-check-item-option-mogzy-snack"));
+    fireEvent.click(screen.getByTestId("stat-check-item-confirm"));
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(screen.getByText(/Round 4/i)).toBeInTheDocument();
+  });
+
+  it("arms an item, previews natural to final values, keeps one pending equip, and supports change and removal", () => {
+    const { container } = renderPage({ item: "mogzy-snack" });
+    fillBoard(container);
+
+    armItem("mogzy-snack");
+    expect(screen.getByTestId("stat-check-inventory-mogzy-snack")).toHaveAttribute("aria-pressed", "true");
+    // All three Round 1 lanes are snack-compatible and occupied: every preview
+    // is ready and spells out natural → final plus the winning direction.
+    const board = round1Board();
+    for (const [index, category] of board.entries()) {
+      const preview = screen.getByTestId(`stat-check-item-preview-${category.id}`);
+      expect(preview).toHaveAttribute("data-preview-state", "ready");
+      expect(preview.textContent).toMatch(/→/);
+      expect(preview.textContent).toMatch(category.direction === "higher" ? /Highest value wins/i : /Lowest value wins/i);
+      expect(lanes(container)[index]).toHaveAttribute("data-armed-item", "compatible");
+    }
+    // Lowest lanes accept the positive bonus (intentionally self-harmful).
+    expect(board.some((category) => category.direction === "lower")).toBe(true);
+
+    // Attach to lane 0, then change to lane 1: exactly one pending equip.
+    fireEvent.click(lanes(container)[0]);
+    expect(screen.getAllByTestId("stat-check-pending-item")).toHaveLength(1);
+    expect(inventoryCountText("mogzy-snack")).toBe("1"); // pending, not consumed
+    armItem("mogzy-snack");
+    fireEvent.click(lanes(container)[1]);
+    const pendings = screen.getAllByTestId("stat-check-pending-item");
+    expect(pendings).toHaveLength(1);
+    expect(lanes(container)[1].contains(pendings[0])).toBe(true);
+
+    // Removing the pending item returns it without consumption.
+    fireEvent.click(pendings[0]);
+    expect(screen.queryByTestId("stat-check-pending-item")).toBeNull();
+    expect(inventoryCountText("mogzy-snack")).toBe("1");
+  });
+
+  it("blocks incompatible lanes with an explanatory tooltip and never wastes the item", () => {
+    const { container } = renderPage(); // ruby-crystal: health only
+    fillBoard(container);
+    armItem("ruby-crystal");
+
+    // Lane 1 (armor) and lane 2 (attack damage) are stat-family mismatches.
+    expect(lanes(container)[0]).toHaveAttribute("data-armed-item", "compatible");
+    for (const index of [1, 2]) {
+      expect(lanes(container)[index]).toHaveAttribute("data-armed-item", "blocked");
+    }
+    const armorPreview = screen.getByTestId("stat-check-item-preview-lowest-armor-1");
+    expect(armorPreview).toHaveAttribute("data-preview-state", "incompatible");
+    expect(armorPreview.textContent).toMatch(/Can't be used on Armor/i);
+
+    fireEvent.click(lanes(container)[1]);
+    expect(screen.queryByTestId("stat-check-pending-item")).toBeNull();
+    expect(inventoryCountText("ruby-crystal")).toBe("1");
+  });
+
+  it("rejects equipping to an empty lane", () => {
+    const { container } = renderPage();
+    armItem("ruby-crystal");
+    const preview = screen.getByTestId("stat-check-item-preview-highest-hp-1");
+    expect(preview).toHaveAttribute("data-preview-state", "empty");
+    expect(preview.textContent).toMatch(/Place a champion here first/i);
+    fireEvent.click(lanes(container)[0]);
+    expect(screen.queryByTestId("stat-check-pending-item")).toBeNull();
+  });
+
+  it("reveals natural values, then items and bonuses, then finals and winners; consumes exactly once", () => {
+    const { container } = renderPage(); // ruby-crystal
+    fillBoard(container);
+
+    const laneZeroChampion = laneChampions(lanes(container)[0])[0];
+    const placedCard = STAT_CHECK_FIXTURE_DECK.find((card) => card.name === laneZeroChampion)!;
+    const natural = Math.round(placedCard.stats.hp).toLocaleString();
+    const final = Math.round(placedCard.stats.hp + 150).toLocaleString();
+
+    armItem("ruby-crystal");
+    fireEvent.click(lanes(container)[0]);
+    expect(screen.getByTestId("stat-check-pending-item")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // All opponent flips done (820ms), before the item beat (1,140ms):
+    // natural value only, no item chips anywhere, no lane winners.
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(lanes(container)[0].textContent).toContain(natural);
+    expect(lanes(container)[0].textContent).not.toContain(final);
+    expect(screen.queryByTestId("stat-check-reveal-item-player")).toBeNull();
+    expect(screen.queryByTestId("stat-check-reveal-item-bot")).toBeNull();
+    expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
+
+    // Item beat (1,140ms): the equipped item and its bonus appear, the final
+    // value replaces the natural one, and winners still have not resolved.
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.getByTestId("stat-check-reveal-item-player")).toHaveTextContent(/Ruby Crystal \+150/);
+    expect(lanes(container)[0].textContent).toContain(final);
+    expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
+
+    // Lane winners resolve only after the shifted resolve beat (1,740ms+).
+    act(() => vi.advanceTimersByTime(700));
+    expect(lanes(container)[0].textContent).toMatch(/You win|Bot wins|Lane tied/i);
+
+    finishReveal();
+    // The lane plaque shows the natural + bonus → final breakdown.
+    expect(screen.getByTestId("stat-check-result-item-player")).toHaveTextContent(
+      new RegExp(`${natural} \\+ 150 → ${final}`),
+    );
+    // Consumed exactly once: the inventory copy is gone and stays gone.
+    expect(inventoryCountText("ruby-crystal")).toBe("0");
+    expect(screen.queryByTestId("stat-check-pending-item")).toBeNull();
   });
 });
