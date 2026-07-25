@@ -1013,10 +1013,14 @@ function SocketFrame({
     left: `${-(SOCKET_RING_OVERHANG + ring.x0 * scaleX) * 100}%`,
     top: `${-(SOCKET_RING_OVERHANG + ring.y0 * scaleY) * 100}%`,
   };
-  const lens = GEM_LENS[gem];
+
+  const showStatusLight =
+    gem === "target" || gem === "win" || gem === "lose" || gem === "tie";
+  const lens = showStatusLight ? GEM_LENS[gem] : undefined;
+
   return (
     <>
-      {/* small local bloom around the socket when it is the live target */}
+      {/* Small local bloom around the socket when it is the live target. */}
       <span
         aria-hidden
         className={cn(
@@ -1024,15 +1028,13 @@ function SocketFrame({
           active ? "opacity-100" : "opacity-0",
         )}
       />
+
       <img
         src={socketFrameUrl}
         alt=""
         aria-hidden
         draggable={false}
         className={cn(
-          // The frame is deliberately dimmed (~20% under its previous levels) so
-          // it frames cards without competing with them; state changes are slow
-          // brightness fades only — the frame itself never pulses or blinks.
           "pointer-events-none absolute max-w-none select-none transition duration-300",
           active
             ? "brightness-[0.88] drop-shadow-[0_0_14px_rgba(214,181,93,0.32)]"
@@ -1042,10 +1044,12 @@ function SocketFrame({
         )}
         style={style}
       />
-      {/* recess treatment: tint the socket's stone bed toward the slab material
-          and shade its walls so it reads as carved INTO the board, not laid on
-          top. Fully covered by a landed card, so the handoff never shows it. */}
-      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-lg bg-[#1c2637] mix-blend-color opacity-80" />
+
+      {/* Recess treatment. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-lg bg-[#1c2637] mix-blend-color opacity-80"
+      />
       <span
         aria-hidden
         className={cn(
@@ -1056,22 +1060,38 @@ function SocketFrame({
             : "bg-[radial-gradient(ellipse_at_50%_45%,rgba(15,26,42,0.52),rgba(9,15,26,0.74))]",
         )}
       />
-      {/* Cover the asset's baked gem with the same near-black cavity used by
-          the housing. Idle and placed-unresolved sockets show no lens or dot. */}
-      {!lens && (
+
+      {/* The source PNG contains a baked blue gem. In idle and placed states,
+          cover the entire lens cavity with one flat housing-colored insert so
+          no circular or hexagonal grey dot remains visible. */}
+      {!showStatusLight && (
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[11%] w-[16%] -translate-x-1/2 -translate-y-1/2 bg-[#090e17]"
-          style={{ clipPath: GEM_CLIP }}
+          className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[13%] w-[22%] -translate-x-1/2 -translate-y-[52%] bg-[#0a101a]"
+          style={{
+            clipPath:
+              "polygon(18% 8%, 82% 8%, 100% 36%, 88% 92%, 12% 92%, 0% 36%)",
+          }}
         />
       )}
-      {/* Render the status light only when the socket is targeting or resolved.
-          It sits above the z-10 card layer so the win/loss light stays visible. */}
-      {lens && (
-        <span aria-hidden className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[10.5%] w-[15%] -translate-x-1/2 -translate-y-1/2">
-          <span className={cn("absolute -inset-[70%] rounded-full transition-opacity duration-500", lens.glow)} />
+
+      {/* Active and resolved lights render above the z-10 card layer. */}
+      {showStatusLight && lens && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[10.5%] w-[15%] -translate-x-1/2 -translate-y-1/2"
+        >
           <span
-            className={cn("absolute inset-0 transition duration-500", lens.lens)}
+            className={cn(
+              "absolute -inset-[70%] rounded-full transition-opacity duration-500",
+              lens.glow,
+            )}
+          />
+          <span
+            className={cn(
+              "absolute inset-0 transition duration-500",
+              lens.lens,
+            )}
             style={{ clipPath: GEM_CLIP }}
           />
         </span>
