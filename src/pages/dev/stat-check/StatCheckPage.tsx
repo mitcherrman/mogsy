@@ -979,9 +979,12 @@ type SocketGemState = "idle" | "target" | "placed" | "win" | "lose" | "tie";
 
 /** Status-light lens styles laid over the frame asset's baked blue gem. */
 const GEM_LENS: Record<SocketGemState, { lens: string; glow: string }> = {
-  idle: { lens: "bg-[radial-gradient(circle_at_50%_38%,#5a6472,#2e3540_70%)] opacity-95", glow: "opacity-0" },
-  target: { lens: "bg-[radial-gradient(circle_at_50%_38%,#9fb6c8,#41586e_70%)] opacity-90", glow: "opacity-40 bg-[radial-gradient(circle,rgba(148,197,222,0.55),transparent_65%)]" },
-  placed: { lens: "bg-[radial-gradient(circle_at_50%_38%,#64748b,#334155_70%)] opacity-90", glow: "opacity-0" },
+  // Idle/placed lenses are dark socket-cavity tones (no highlight), so the
+  // dormant housing reads as empty hardware rather than a grey button; the
+  // light only "exists" once the lane wakes or resolves.
+  idle: { lens: "bg-[radial-gradient(circle_at_50%_45%,#151c29,#0d1320_75%)] opacity-95", glow: "opacity-0" },
+  target: { lens: "bg-[radial-gradient(circle_at_50%_38%,#7c96ab,#2c3f52_70%)] opacity-85", glow: "opacity-35 bg-[radial-gradient(circle,rgba(148,197,222,0.5),transparent_65%)]" },
+  placed: { lens: "bg-[radial-gradient(circle_at_50%_42%,#232e40,#111927_75%)] opacity-95", glow: "opacity-0" },
   win: { lens: "bg-[radial-gradient(circle_at_50%_38%,#a5f3fc,#0891b2_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(34,211,238,0.7),transparent_65%)]" },
   lose: { lens: "bg-[radial-gradient(circle_at_50%_38%,#fca5a5,#b91c1c_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(248,113,113,0.65),transparent_65%)]" },
   tie: { lens: "bg-[radial-gradient(circle_at_50%_38%,#e7e5e4,#a8a29e_70%)] opacity-90", glow: "opacity-45 bg-[radial-gradient(circle,rgba(231,229,228,0.5),transparent_65%)]" },
@@ -1560,7 +1563,7 @@ function ChampionCard({
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-200/80">Concealed</span>
         </div>
         {/* dormant gem echoing the player socket's status light */}
-        <span aria-hidden className="absolute bottom-[3px] left-1/2 h-2.5 w-3 -translate-x-1/2 bg-[radial-gradient(circle_at_50%_38%,#5a6472,#2e3540_70%)] opacity-80" style={{ clipPath: GEM_CLIP }} />
+        <span aria-hidden className="absolute bottom-[3px] left-1/2 h-2.5 w-3 -translate-x-1/2 bg-[radial-gradient(circle_at_50%_45%,#151c29,#0d1320_75%)] opacity-90" style={{ clipPath: GEM_CLIP }} />
       </div>
     );
   }
