@@ -977,14 +977,12 @@ const GEM_CLIP = "polygon(50% 0%, 96% 26%, 96% 74%, 50% 100%, 4% 74%, 4% 26%)";
 
 type SocketGemState = "idle" | "target" | "placed" | "win" | "lose" | "tie";
 
-/** Status-light lens styles laid over the frame asset's baked blue gem. */
-const GEM_LENS: Record<SocketGemState, { lens: string; glow: string }> = {
-  // Idle/placed lenses are dark socket-cavity tones (no highlight), so the
-  // dormant housing reads as empty hardware rather than a grey button; the
-  // light only "exists" once the lane wakes or resolves.
-  idle: { lens: "bg-[radial-gradient(circle_at_50%_45%,#151c29,#0d1320_75%)] opacity-95", glow: "opacity-0" },
+/**
+ * Status-light styles for states where the socket is actually illuminated.
+ * Idle and placed-unresolved sockets render no lens at all.
+ */
+const GEM_LENS: Partial<Record<SocketGemState, { lens: string; glow: string }>> = {
   target: { lens: "bg-[radial-gradient(circle_at_50%_38%,#7c96ab,#2c3f52_70%)] opacity-85", glow: "opacity-35 bg-[radial-gradient(circle,rgba(148,197,222,0.5),transparent_65%)]" },
-  placed: { lens: "bg-[radial-gradient(circle_at_50%_42%,#232e40,#111927_75%)] opacity-95", glow: "opacity-0" },
   win: { lens: "bg-[radial-gradient(circle_at_50%_38%,#a5f3fc,#0891b2_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(34,211,238,0.7),transparent_65%)]" },
   lose: { lens: "bg-[radial-gradient(circle_at_50%_38%,#fca5a5,#b91c1c_70%)] opacity-95", glow: "opacity-80 bg-[radial-gradient(circle,rgba(248,113,113,0.65),transparent_65%)]" },
   tie: { lens: "bg-[radial-gradient(circle_at_50%_38%,#e7e5e4,#a8a29e_70%)] opacity-90", glow: "opacity-45 bg-[radial-gradient(circle,rgba(231,229,228,0.5),transparent_65%)]" },
@@ -1058,14 +1056,26 @@ function SocketFrame({
             : "bg-[radial-gradient(ellipse_at_50%_45%,rgba(15,26,42,0.52),rgba(9,15,26,0.74))]",
         )}
       />
-      {/* status-light lens seated over the asset's baked gem core */}
-      <span aria-hidden className="pointer-events-none absolute left-1/2 top-[100%] z-[5] h-[10.5%] w-[15%] -translate-x-1/2 -translate-y-1/2">
-        <span className={cn("absolute -inset-[70%] rounded-full transition-opacity duration-500", lens.glow)} />
+      {/* Cover the asset's baked gem with the same near-black cavity used by
+          the housing. Idle and placed-unresolved sockets show no lens or dot. */}
+      {!lens && (
         <span
-          className={cn("absolute inset-0 transition duration-500", lens.lens)}
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[11%] w-[16%] -translate-x-1/2 -translate-y-1/2 bg-[#090e17]"
           style={{ clipPath: GEM_CLIP }}
         />
-      </span>
+      )}
+      {/* Render the status light only when the socket is targeting or resolved.
+          It sits above the z-10 card layer so the win/loss light stays visible. */}
+      {lens && (
+        <span aria-hidden className="pointer-events-none absolute left-1/2 top-[100%] z-[20] h-[10.5%] w-[15%] -translate-x-1/2 -translate-y-1/2">
+          <span className={cn("absolute -inset-[70%] rounded-full transition-opacity duration-500", lens.glow)} />
+          <span
+            className={cn("absolute inset-0 transition duration-500", lens.lens)}
+            style={{ clipPath: GEM_CLIP }}
+          />
+        </span>
+      )}
     </>
   );
 }
