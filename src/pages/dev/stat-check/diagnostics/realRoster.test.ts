@@ -118,6 +118,31 @@ describe.skipIf(!hasRoster)("real roster diagnostics", () => {
   );
 
   it(
+    "runs 500 deterministic items-enabled matches on the live roster with zero violations",
+    () => {
+      const deck = rosterDeckFromResponse(payload);
+      const seeds = Array.from({ length: 500 }, (_, i) => `stat-check-roster:${i}`);
+      const report = runDiagnostics(deck, seeds, { items: true });
+      expect(report.matchRecords.flatMap((m) => m.invariantIssues)).toEqual([]);
+      expect(report.repeatedFamilyBoards).toBe(0);
+      for (const match of report.matchRecords) {
+        // A match that dies by HP exactly on a cadence round never reaches
+        // that acquisition; every other path completes it before advancing.
+        const hpEndedOnCadence = !match.exhausted && match.outcome !== null && match.rounds % 3 === 0;
+        expect(match.itemChoicesCompleted).toBe(Math.floor(match.rounds / 3) + (hpEndedOnCadence ? 0 : 1));
+      }
+      for (const round of report.roundRecords) {
+        expect(round.playerItemsUsed).toBeLessThanOrEqual(1);
+        expect(round.botItemsUsed).toBeLessThanOrEqual(1);
+      }
+      const used = report.matchRecords.reduce((sum, m) => sum + m.playerItemsUsed + m.botItemsUsed, 0);
+      expect(used).toBeGreaterThan(0);
+      console.log(`\n[REAL ROSTER + ITEMS]\n${formatDiagnosticsReport(report)}\n`);
+    },
+    300_000,
+  );
+
+  it(
     "compares greedy versus clue-aware bot on mirrored seeds",
     () => {
       const deck = rosterDeckFromResponse(payload);

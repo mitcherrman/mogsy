@@ -1,8 +1,21 @@
 import { attackSpeedAtLevel, statAtLevel, type ChampionBaseStats } from "@/lib/league-docs/api";
+import {
+  ITEM_IDS,
+  addInventoryItem,
+  emptyItemInventory,
+  expectedItemChoices,
+  inventoryCount,
+  isItemCompatible,
+  itemBonusFor,
+  removeInventoryItem,
+  totalInventoryCount,
+  type ItemId,
+  type ItemInventory,
+} from "./items";
 
 export type Side = "player" | "bot";
 export type StatDirection = "higher" | "lower";
-export type GamePhase = "selecting" | "locked" | "revealing" | "resolved" | "match-over";
+export type GamePhase = "item-choice" | "selecting" | "locked" | "revealing" | "resolved" | "match-over";
 export type MatchOutcome = "player" | "bot" | "draw" | null;
 
 export type StatCheckCard = {
@@ -14,6 +27,7 @@ export type StatCheckCard = {
     ad: number;
     adPerLevel: number;
     armor: number;
+    armorPerLevel: number;
     magicResist: number;
     moveSpeed: number;
     attackRange: number;
@@ -24,13 +38,22 @@ export type StatCheckCard = {
 
 export type StatCategoryId =
   | "highest-hp-1"
+  | "lowest-hp-1"
   | "highest-hp-18"
+  | "lowest-hp-18"
   | "highest-ad-1"
+  | "lowest-ad-1"
   | "highest-ad-18"
+  | "lowest-ad-18"
+  | "highest-armor-1"
   | "lowest-armor-1"
+  | "highest-armor-18"
+  | "lowest-armor-18"
   | "lowest-mr-1"
   | "highest-move-speed"
+  | "lowest-move-speed"
   | "highest-attack-range"
+  | "lowest-attack-range"
   | "lowest-attack-speed-1";
 
 export type StatFamily =
@@ -60,6 +83,13 @@ export type StatCategory = {
   family: StatFamily;
   /** Retired categories stay defined for compatibility but are never generated. */
   active: boolean;
+  /**
+   * Champion level the contest is evaluated at, or null for unscaled stats
+   * (move speed, attack range). Exact category identity is stat family +
+   * direction + level; future curated levels (6/11/16/20) become new entries
+   * with their own level value without changing this contract.
+   */
+  level: number | null;
   direction: StatDirection;
   decisiveThreshold: number;
   explanation: string;
@@ -73,6 +103,16 @@ export type CategoryResult = {
   category: StatCategory;
   playerCard: StatCheckCard;
   botCard: StatCheckCard;
+  /** Champion-only values before any item bonus. */
+  playerNaturalValue: number;
+  botNaturalValue: number;
+  /** Item consumed on this lane this round, if any. */
+  playerItem: ItemId | null;
+  botItem: ItemId | null;
+  /** Flat item bonus applied to this lane's contest (0 when no item). */
+  playerBonus: number;
+  botBonus: number;
+  /** FINAL contest values (natural + bonus); winner/margin/decisive use these. */
   playerValue: number;
   botValue: number;
   winner: Side | "tie";
@@ -115,10 +155,24 @@ export type RoundResolution = {
   playerRetainedBestClueCard: boolean | null;
 };
 
+/** A pending, not-yet-consumed item attachment to one placed champion. */
+export type EquippedItem = {
+  categoryId: StatCategoryId;
+  itemId: ItemId;
+};
+
 export type MatchState = {
   seed: string;
   phase: GamePhase;
   round: number;
+  /** Item system master switch; false preserves exact pre-item behavior. */
+  itemsEnabled: boolean;
+  playerInventory: ItemInventory;
+  botInventory: ItemInventory;
+  /** Completed simultaneous item-choice phases (both sides pick one item each). */
+  itemChoicesCompleted: number;
+  /** Player's pending equip for the current selecting round; consumed at resolve. */
+  equippedItem: EquippedItem | null;
   playerHp: number;
   botHp: number;
   drawPile: StatCheckCard[];
@@ -160,6 +214,9 @@ const whole = (value: number) => Math.round(value).toLocaleString();
 // Decisive thresholds are initial calibrated values from the 500-match
 // real-roster diagnostic (172 champions, July 2026) — see diagnostics/
 // thresholdCandidateTable. Versioned constants, not runtime calibration.
+// Lowest-direction and L18-armor variants carry their own calibration: both
+// sides dump weak cards into Lowest lanes (widening margins) and armor growth
+// compresses relative level-18 spreads, so mirrored thresholds misfire there.
 export const STAT_CATEGORIES: StatCategory[] = [
   {
     id: "highest-hp-1",
@@ -167,9 +224,23 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "L1 HP",
     family: "health",
     active: true,
+    level: 1,
     direction: "higher",
     decisiveThreshold: 0.05,
     explanation: "Level-1 health clusters tightly, so a 5% gap (30+ HP) is already a real stat check.",
+    getValue: (card) => card.stats.hp,
+    formatValue: whole,
+  },
+  {
+    id: "lowest-hp-1",
+    label: "Lowest level-1 health",
+    shortLabel: "Low L1 HP",
+    family: "health",
+    active: true,
+    level: 1,
+    direction: "lower",
+    decisiveThreshold: 0.075,
+    explanation: "Both sides shed their squishiest card here, so only a 7.5%+ gap is a real mismatch.",
     getValue: (card) => card.stats.hp,
     formatValue: whole,
   },
@@ -179,9 +250,23 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "L18 HP",
     family: "health",
     active: true,
+    level: 18,
     direction: "higher",
     decisiveThreshold: 0.075,
     explanation: "Growth spreads level-18 health, so 7.5% marks a clearly tankier champion.",
+    getValue: (card) => statAtLevel(card.stats.hp, card.stats.hpPerLevel, 18),
+    formatValue: whole,
+  },
+  {
+    id: "lowest-hp-18",
+    label: "Lowest level-18 health",
+    shortLabel: "Low L18 HP",
+    family: "health",
+    active: true,
+    level: 18,
+    direction: "lower",
+    decisiveThreshold: 0.1,
+    explanation: "Worst-card dumping widens low-HP gaps at 18, so decisive needs a 10%+ margin.",
     getValue: (card) => statAtLevel(card.stats.hp, card.stats.hpPerLevel, 18),
     formatValue: whole,
   },
@@ -191,9 +276,23 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "L1 AD",
     family: "attack-damage",
     active: true,
+    level: 1,
     direction: "higher",
     decisiveThreshold: 0.1,
     explanation: "Base attack damage spreads moderately; a 10% edge is a clear early-game win.",
+    getValue: (card) => card.stats.ad,
+    formatValue: number,
+  },
+  {
+    id: "lowest-ad-1",
+    label: "Lowest level-1 attack damage",
+    shortLabel: "Low L1 AD",
+    family: "attack-damage",
+    active: true,
+    level: 1,
+    direction: "lower",
+    decisiveThreshold: 0.125,
+    explanation: "Worst-card dumping widens low-AD gaps, so decisive needs a 12.5%+ margin.",
     getValue: (card) => card.stats.ad,
     formatValue: number,
   },
@@ -203,6 +302,7 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "L18 AD",
     family: "attack-damage",
     active: true,
+    level: 18,
     direction: "higher",
     decisiveThreshold: 0.15,
     explanation: "Growth makes level-18 AD gaps common, so only a 15%+ edge counts as decisive.",
@@ -210,15 +310,68 @@ export const STAT_CATEGORIES: StatCategory[] = [
     formatValue: number,
   },
   {
+    id: "lowest-ad-18",
+    label: "Lowest level-18 attack damage",
+    shortLabel: "Low L18 AD",
+    family: "attack-damage",
+    active: true,
+    level: 18,
+    direction: "lower",
+    decisiveThreshold: 0.15,
+    explanation: "Growth makes level-18 AD gaps common, so only a 15%+ gap counts as decisive.",
+    getValue: (card) => statAtLevel(card.stats.ad, card.stats.adPerLevel, 18),
+    formatValue: number,
+  },
+  {
+    id: "highest-armor-1",
+    label: "Highest level-1 armor",
+    shortLabel: "L1 Armor",
+    family: "armor",
+    active: true,
+    level: 1,
+    direction: "higher",
+    decisiveThreshold: 0.25,
+    explanation: "Base armor varies widely, so only a 25%+ higher-armor gap is a decisive mismatch.",
+    getValue: (card) => card.stats.armor,
+    formatValue: number,
+  },
+  {
     id: "lowest-armor-1",
-    label: "Lowest base armor",
+    label: "Lowest level-1 armor",
     shortLabel: "Low armor",
     family: "armor",
     active: true,
+    level: 1,
     direction: "lower",
     decisiveThreshold: 0.25,
     explanation: "Base armor varies widely, so only a 25%+ lower-armor gap is a decisive mismatch.",
     getValue: (card) => card.stats.armor,
+    formatValue: number,
+  },
+  {
+    id: "highest-armor-18",
+    label: "Highest level-18 armor",
+    shortLabel: "L18 Armor",
+    family: "armor",
+    active: true,
+    level: 18,
+    direction: "higher",
+    decisiveThreshold: 0.1,
+    explanation: "Armor growth compresses relative level-18 spreads, so 10% already marks a clear tank.",
+    getValue: (card) => statAtLevel(card.stats.armor, card.stats.armorPerLevel, 18),
+    formatValue: number,
+  },
+  {
+    id: "lowest-armor-18",
+    label: "Lowest level-18 armor",
+    shortLabel: "Low L18 Armor",
+    family: "armor",
+    active: true,
+    level: 18,
+    direction: "lower",
+    decisiveThreshold: 0.15,
+    explanation: "Compressed level-18 armor spreads make 15%+ the clearly softer target.",
+    getValue: (card) => statAtLevel(card.stats.armor, card.stats.armorPerLevel, 18),
     formatValue: number,
   },
   {
@@ -229,6 +382,7 @@ export const STAT_CATEGORIES: StatCategory[] = [
     // Retired: MR values cluster so tightly that ~62% of appearances tied and
     // none were decisive in simulation. Kept for compatibility, never generated.
     active: false,
+    level: 1,
     direction: "lower",
     decisiveThreshold: 0.15,
     explanation: "Magic-resist values cluster tightly, so this only fires on clearer gaps.",
@@ -241,9 +395,23 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "Move speed",
     family: "move-speed",
     active: true,
+    level: null,
     direction: "higher",
     decisiveThreshold: 0.05,
     explanation: "Movement speed has a small range, making 5% a notable prototype edge.",
+    getValue: (card) => card.stats.moveSpeed,
+    formatValue: whole,
+  },
+  {
+    id: "lowest-move-speed",
+    label: "Lowest movement speed",
+    shortLabel: "Low speed",
+    family: "move-speed",
+    active: true,
+    level: null,
+    direction: "lower",
+    decisiveThreshold: 0.05,
+    explanation: "Movement speed has a small range, making a 5% deficit a notable prototype edge.",
     getValue: (card) => card.stats.moveSpeed,
     formatValue: whole,
   },
@@ -253,7 +421,21 @@ export const STAT_CATEGORIES: StatCategory[] = [
     shortLabel: "Range",
     family: "attack-range",
     active: true,
+    level: null,
     direction: "higher",
+    decisiveThreshold: 0.2,
+    explanation: "Range has large class breaks, so 20% avoids constant bonus damage.",
+    getValue: (card) => card.stats.attackRange,
+    formatValue: whole,
+  },
+  {
+    id: "lowest-attack-range",
+    label: "Lowest attack range",
+    shortLabel: "Low range",
+    family: "attack-range",
+    active: true,
+    level: null,
+    direction: "lower",
     decisiveThreshold: 0.2,
     explanation: "Range has large class breaks, so 20% avoids constant bonus damage.",
     getValue: (card) => card.stats.attackRange,
@@ -267,6 +449,7 @@ export const STAT_CATEGORIES: StatCategory[] = [
     // Retired: ~62% tie rate and near-zero decisive rate in simulation made
     // this lane a coin flip. Kept for compatibility, never generated.
     active: false,
+    level: 1,
     direction: "lower",
     decisiveThreshold: 0.12,
     explanation: "Lower attack speed is intentionally weird; this helps test save-or-spend choices.",
@@ -288,6 +471,7 @@ export function buildCardFromBaseStats(row: ChampionBaseStats): StatCheckCard | 
     row.ad,
     row.ad_per_level,
     row.armor,
+    row.armor_per_level,
     row.magic_resist,
     row.move_speed,
     row.attack_range,
@@ -304,6 +488,7 @@ export function buildCardFromBaseStats(row: ChampionBaseStats): StatCheckCard | 
       ad: row.ad,
       adPerLevel: row.ad_per_level,
       armor: row.armor,
+      armorPerLevel: row.armor_per_level,
       magicResist: row.magic_resist,
       moveSpeed: row.move_speed,
       attackRange: row.attack_range,
@@ -352,13 +537,24 @@ export function shuffleDeterministic<T>(items: T[], seed: string): T[] {
 
 export const ACTIVE_STAT_CATEGORIES: StatCategory[] = STAT_CATEGORIES.filter((category) => category.active);
 
+/**
+ * Deterministic seeded board generation. Two structural rules:
+ * - within one board, all three exact categories are unique AND no broad stat
+ *   family repeats (family diversity, preserved from the original design);
+ * - no exact category (stat + direction + level identity, i.e. the id) from
+ *   the immediately preceding round may appear anywhere on this board.
+ *   Different direction or level of the same stat stays legal.
+ * The previous-board exclusion subsumes the old whole-board repeat patch.
+ */
 export function generateCategoryBoard(seed: string, round: number, previous?: StatCategory[]): StatCategory[] {
-  const activeFamilies = new Set(ACTIVE_STAT_CATEGORIES.map((category) => category.family));
-  if (activeFamilies.size < ROUND_SLOTS) {
-    throw new Error("Stat Check needs at least three active stat families to build a board.");
+  const excludedIds = new Set((previous ?? []).map((category) => category.id));
+  const eligible = ACTIVE_STAT_CATEGORIES.filter((category) => !excludedIds.has(category.id));
+  const eligibleFamilies = new Set(eligible.map((category) => category.family));
+  if (eligibleFamilies.size < ROUND_SLOTS) {
+    throw new Error("Stat Check needs at least three eligible stat families to build a board.");
   }
   const random = createSeededRandom(`${seed}:categories:${round}`);
-  const pool = ACTIVE_STAT_CATEGORIES.slice();
+  const pool = eligible.slice();
   const board: StatCategory[] = [];
   const usedFamilies = new Set<StatFamily>();
   // Bounded: every iteration removes one candidate from the pool.
@@ -369,24 +565,24 @@ export function generateCategoryBoard(seed: string, round: number, previous?: St
     board.push(candidate);
     usedFamilies.add(candidate.family);
   }
-  if (
-    previous &&
-    previous.length === board.length &&
-    previous.every((category, index) => category.id === board[index].id)
-  ) {
-    const replacement = ACTIVE_STAT_CATEGORIES.find(
-      (category) =>
-        !board.some((existing) => existing.id === category.id) &&
-        !board.slice(0, ROUND_SLOTS - 1).some((existing) => existing.family === category.family),
-    );
-    if (replacement) board[2] = replacement;
-  }
   return board;
 }
 
-export function compareCategory(category: StatCategory, playerCard: StatCheckCard, botCard: StatCheckCard): CategoryResult {
-  const playerValue = category.getValue(playerCard);
-  const botValue = category.getValue(botCard);
+export function compareCategory(
+  category: StatCategory,
+  playerCard: StatCheckCard,
+  botCard: StatCheckCard,
+  playerItem: ItemId | null = null,
+  botItem: ItemId | null = null,
+): CategoryResult {
+  const playerNaturalValue = category.getValue(playerCard);
+  const botNaturalValue = category.getValue(botCard);
+  // Family-based bonus lookup; a positive bonus applies identically in Lowest
+  // lanes (where it worsens the contest) — direction never gates the effect.
+  const playerBonus = itemBonusFor(playerItem, category.family);
+  const botBonus = itemBonusFor(botItem, category.family);
+  const playerValue = playerNaturalValue + playerBonus;
+  const botValue = botNaturalValue + botBonus;
   const winner = (() => {
     if (playerValue === botValue) return "tie";
     if (category.direction === "higher") return playerValue > botValue ? "player" : "bot";
@@ -404,6 +600,12 @@ export function compareCategory(category: StatCategory, playerCard: StatCheckCar
     category,
     playerCard,
     botCard,
+    playerNaturalValue,
+    botNaturalValue,
+    playerItem,
+    botItem,
+    playerBonus,
+    botBonus,
     playerValue,
     botValue,
     winner,
@@ -468,6 +670,14 @@ export const BOT_STRATEGY = {
    * sacrifice budget toward zero so weak clues never cost the current board.
    */
   clueSpreadReference: 0.15,
+  /**
+   * Slight discount on lower-direction clue variants when valuing which card
+   * to preserve. With Highest AND Lowest variants active in every family, a
+   * hand's top-stat and bottom-stat cards would tie on raw clue value; the
+   * bot prefers protecting the high extreme (rarer in a shared pool and the
+   * only direction item bonuses can help) and breaks such ties toward it.
+   */
+  lowerDirectionClueWeight: 0.9,
 } as const;
 
 export type BotAssignmentAnalysis = {
@@ -527,7 +737,8 @@ function clueScoring(hand: StatCheckCard[], clueFamily?: StatFamily) {
     const best = category.direction === "higher" ? Math.max(...values) : Math.min(...values);
     const worst = category.direction === "higher" ? Math.min(...values) : Math.max(...values);
     const spread = relativeMarginForCategory(category, best, worst);
-    return { table, weight: Math.min(1, spread / BOT_STRATEGY.clueSpreadReference) };
+    const directionWeight = category.direction === "higher" ? 1 : BOT_STRATEGY.lowerDirectionClueWeight;
+    return { table, weight: Math.min(1, spread / BOT_STRATEGY.clueSpreadReference) * directionWeight };
   });
   const clueInformativeness = clueVariants.reduce((max, variant) => Math.max(max, variant.weight), 0);
   const clueScoreOf = (card: StatCheckCard) =>
@@ -642,7 +853,17 @@ function drawUpTo(hand: StatCheckCard[], deck: StatCheckCard[], size = HAND_SIZE
   return { hand: nextHand, deck: nextDeck };
 }
 
-export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1"): MatchState {
+export type CreateMatchOptions = {
+  /**
+   * Enable the item system: the match opens in the pre-Round-1 item-choice
+   * phase and item cadence/equipment rules apply. Default false so every
+   * pre-item consumer and test keeps its exact historical behavior.
+   */
+  items?: boolean;
+};
+
+export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1", options: CreateMatchOptions = {}): MatchState {
+  const itemsEnabled = options.items ?? false;
   const eligibleDeck = uniqueCardsById(deck);
   if (eligibleDeck.length < HAND_SIZE * 2 + ROUND_SLOTS * 2) {
     throw new Error("Stat Check needs at least 18 supported champion cards.");
@@ -654,8 +875,15 @@ export function createMatch(deck: StatCheckCard[], seed = "stat-check-v1"): Matc
   const nextCategories = generateCategoryBoard(seed, 2, currentCategories);
   return {
     seed,
-    phase: "selecting",
+    // Round 1 categories exist internally for determinism; with items enabled
+    // the UI must keep them hidden until the opening item choice completes.
+    phase: itemsEnabled ? "item-choice" : "selecting",
     round: 1,
+    itemsEnabled,
+    playerInventory: emptyItemInventory(),
+    botInventory: emptyItemInventory(),
+    itemChoicesCompleted: 0,
+    equippedItem: null,
     playerHp: STARTING_HP,
     botHp: STARTING_HP,
     drawPile: botDraw.deck,
@@ -681,7 +909,125 @@ export function assignCard(state: MatchState, categoryId: StatCategoryId, cardId
     if (assignments[key] === cardId) assignments[key] = null;
   }
   assignments[categoryId] = cardId;
-  return { ...state, assignments };
+  // A pending item may only ride on a lane that still holds a champion; card
+  // removal or a lane move that empties the equipped lane releases the item
+  // back to inventory-pending status (it was never consumed).
+  const equippedItem =
+    state.equippedItem && assignments[state.equippedItem.categoryId] ? state.equippedItem : null;
+  return { ...state, assignments, equippedItem };
+}
+
+/** True when this state owes the players an item-choice phase. */
+export function itemChoiceDue(state: MatchState): boolean {
+  return state.itemsEnabled && state.itemChoicesCompleted < expectedItemChoices(state.roundHistory.length);
+}
+
+export const BOT_ITEM_STRATEGY = {
+  /**
+   * Deterministic acquisition rotation: the bot values the flexible snack
+   * first, then cycles the specialist components. Indexed by completed item
+   * choices, so duplicates accumulate naturally on long matches.
+   */
+  acquisitionCycle: ["mogzy-snack", "ruby-crystal", "long-sword", "cloth-armor"] as ItemId[],
+  /**
+   * Minimum fraction of a lane's decisive threshold the item's relative value
+   * gain must buy before the bot spends it; below this the bot holds the item.
+   */
+  minDecisiveFraction: 0.5,
+} as const;
+
+/** Deterministic bot item acquisition for the given completed-choice index. */
+export function selectBotItemAcquisition(choiceIndex: number): ItemId {
+  const cycle = BOT_ITEM_STRATEGY.acquisitionCycle;
+  return cycle[((choiceIndex % cycle.length) + cycle.length) % cycle.length];
+}
+
+/**
+ * Complete one simultaneous item-choice phase: the player takes `itemId`, the
+ * bot takes its deterministic rotation pick (never exposed via any pre-reveal
+ * surface). Returns to "selecting" before Round 1 and to "resolved" after a
+ * cadence round, so the normal next-round transition can proceed.
+ */
+export function chooseItem(state: MatchState, itemId: ItemId): MatchState {
+  if (state.phase !== "item-choice" || !itemChoiceDue(state)) return state;
+  const botPick = selectBotItemAcquisition(state.itemChoicesCompleted);
+  return {
+    ...state,
+    phase: state.lastResolution ? "resolved" : "selecting",
+    playerInventory: addInventoryItem(state.playerInventory, itemId),
+    botInventory: addInventoryItem(state.botInventory, botPick),
+    itemChoicesCompleted: state.itemChoicesCompleted + 1,
+  };
+}
+
+/**
+ * Enter the post-round item-choice phase. Legal only from "resolved" on a
+ * cadence round; the resolved presentation (results, damage, categories, next
+ * -round hint) stays in state untouched so it remains visible throughout.
+ */
+export function beginItemChoice(state: MatchState): MatchState {
+  if (state.phase !== "resolved" || !itemChoiceDue(state)) return state;
+  return { ...state, phase: "item-choice" };
+}
+
+/**
+ * Attach an owned item to the player's placed champion in one lane. At most
+ * one equip per round; re-equipping replaces the single pending assignment.
+ * Blocks: unknown lane, empty lane, unowned item, incompatible stat family
+ * (which covers move-speed/attack-range until an item supports them).
+ * Direction is never checked: a harmful bonus in a Lowest lane is legal.
+ */
+export function equipItem(state: MatchState, categoryId: StatCategoryId, itemId: ItemId): MatchState {
+  if (!state.itemsEnabled || state.phase !== "selecting") return state;
+  if (inventoryCount(state.playerInventory, itemId) <= 0) return state;
+  const category = state.currentCategories.find((entry) => entry.id === categoryId);
+  if (!category) return state;
+  if (!state.assignments[categoryId]) return state;
+  if (!isItemCompatible(itemId, category.family)) return state;
+  return { ...state, equippedItem: { categoryId, itemId } };
+}
+
+/** Remove the pending equip without consuming the item. */
+export function unequipItem(state: MatchState): MatchState {
+  if (!state.equippedItem) return state;
+  return { ...state, equippedItem: null };
+}
+
+export type BotItemPlay = EquippedItem | null;
+
+/**
+ * Deterministic bot item use for one round, decided at resolution time so no
+ * pre-reveal state ever holds the bot's choice. The bot only sees its own
+ * assignments and inventory (never the player's hidden equip). Policy: spend
+ * the owned item whose relative value gain buys the largest fraction of a
+ * lane's decisive margin, hold everything when no gain reaches the minimum
+ * fraction, and never boost a Lowest lane (a positive bonus only hurts there).
+ * Ties break by lane order then by the fixed ITEM_IDS order.
+ */
+export function selectBotItemPlay(
+  botAssignments: Record<StatCategoryId, StatCheckCard>,
+  categories: StatCategory[],
+  inventory: ItemInventory,
+): BotItemPlay {
+  let best: { play: EquippedItem; score: number } | null = null;
+  for (const category of categories) {
+    if (category.direction !== "higher") continue;
+    const assigned = botAssignments[category.id];
+    if (!assigned) continue;
+    const natural = category.getValue(assigned);
+    for (const itemId of ITEM_IDS) {
+      if (inventoryCount(inventory, itemId) <= 0) continue;
+      const bonus = itemBonusFor(itemId, category.family);
+      if (bonus <= 0) continue;
+      const relativeGain = natural > 0 ? bonus / natural : 1;
+      const score = relativeGain / category.decisiveThreshold;
+      if (score < BOT_ITEM_STRATEGY.minDecisiveFraction) continue;
+      if (!best || score > best.score + 1e-9) {
+        best = { play: { categoryId: category.id, itemId }, score };
+      }
+    }
+  }
+  return best?.play ?? null;
 }
 
 export function isReadyToLock(state: MatchState): boolean {
@@ -700,8 +1046,22 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
     return acc;
   }, {} as Record<StatCategoryId, StatCheckCard>);
   const botAssignments = selectBotAssignments(state.botHand, state.currentCategories, botClueFamily);
+  // Item plays: the player's pending equip and the bot's resolution-time
+  // decision. Both are consumed atomically inside this single transition; the
+  // phase guard above makes repeated resolve calls no-ops, so an item can
+  // never be consumed twice for one round.
+  const playerPlay = state.itemsEnabled ? state.equippedItem : null;
+  const botPlay = state.itemsEnabled
+    ? selectBotItemPlay(botAssignments, state.currentCategories, state.botInventory)
+    : null;
   const results = state.currentCategories.map((category) =>
-    compareCategory(category, playerAssignments[category.id], botAssignments[category.id]),
+    compareCategory(
+      category,
+      playerAssignments[category.id],
+      botAssignments[category.id],
+      playerPlay?.categoryId === category.id ? playerPlay.itemId : null,
+      botPlay?.categoryId === category.id ? botPlay.itemId : null,
+    ),
   );
   const damage = calculateRoundDamage(results);
   const playerHpAfter = Math.max(0, state.playerHp - damage.bot);
@@ -730,6 +1090,11 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
     phase: outcome ? "match-over" : "resolved",
     playerHp: playerHpAfter,
     botHp: botHpAfter,
+    playerInventory: playerPlay
+      ? removeInventoryItem(state.playerInventory, playerPlay.itemId)
+      : state.playerInventory,
+    botInventory: botPlay ? removeInventoryItem(state.botInventory, botPlay.itemId) : state.botInventory,
+    equippedItem: null,
     lastResolution: resolution,
     roundHistory: [...state.roundHistory, resolution],
     outcome,
@@ -739,6 +1104,8 @@ export function resolveCurrentRound(state: MatchState, options: { botUsesClue?: 
 
 export function startNextRound(state: MatchState): MatchState {
   if (state.phase !== "resolved" || !state.lastResolution) return state;
+  // A due item-choice phase must complete before the next round can begin.
+  if (itemChoiceDue(state)) return state;
   const playerPlayed = new Set(Object.values(state.assignments).filter(Boolean));
   const botPlayed = new Set(Object.values(state.lastResolution.botAssignments).map((card) => card.id));
   const playerHandRemaining = state.playerHand.filter((card) => !playerPlayed.has(card.id));
@@ -897,6 +1264,78 @@ export function validateMatchInvariants(state: MatchState, originalDeck?: StatCh
     }
     if (locatedIds.size !== expectedIds.size) {
       issues.push({ code: "roster-size-mismatch", message: "Located champion identity count does not match the original eligible roster." });
+    }
+  }
+
+  // Board-structure invariants: unique exact categories and unique families
+  // within the round, and no exact category carried over from the round that
+  // just completed (identity = stat + direction + level, i.e. the id).
+  if (new Set(state.currentCategories.map((category) => category.id)).size !== state.currentCategories.length) {
+    issues.push({ code: "duplicate-board-category", message: "The current board repeats an exact category." });
+  }
+  if (new Set(state.currentCategories.map((category) => category.family)).size !== state.currentCategories.length) {
+    issues.push({ code: "duplicate-board-family", message: "The current board repeats a stat family." });
+  }
+  const previousRound = state.roundHistory[state.roundHistory.length - 1];
+  if (previousRound && previousRound.round === state.round - 1) {
+    for (const category of state.currentCategories) {
+      if (previousRound.categories.some((prev) => prev.id === category.id)) {
+        issues.push({
+          code: "consecutive-category-repeat",
+          message: `${category.id} appeared in round ${previousRound.round} and again in round ${state.round}.`,
+        });
+      }
+    }
+  }
+
+  if (state.itemsEnabled) {
+    for (const itemId of ITEM_IDS) {
+      if (inventoryCount(state.playerInventory, itemId) < 0 || inventoryCount(state.botInventory, itemId) < 0) {
+        issues.push({ code: "negative-item-count", message: `${itemId} has a negative inventory count.` });
+      }
+    }
+    // Ledger: every acquisition is either still held or consumed in exactly
+    // one recorded round. Guards against duplicate acquisition/consumption.
+    const consumed = (side: Side) =>
+      state.roundHistory.reduce(
+        (sum, round) =>
+          sum + round.results.filter((result) => (side === "player" ? result.playerItem : result.botItem)).length,
+        0,
+      );
+    const playerLedger = totalInventoryCount(state.playerInventory) + consumed("player");
+    const botLedger = totalInventoryCount(state.botInventory) + consumed("bot");
+    if (playerLedger !== state.itemChoicesCompleted) {
+      issues.push({
+        code: "item-ledger-mismatch",
+        message: `Player holds+consumed ${playerLedger} items but completed ${state.itemChoicesCompleted} acquisitions.`,
+      });
+    }
+    if (botLedger !== state.itemChoicesCompleted) {
+      issues.push({
+        code: "item-ledger-mismatch",
+        message: `Bot holds+consumed ${botLedger} items but completed ${state.itemChoicesCompleted} acquisitions.`,
+      });
+    }
+    for (const round of state.roundHistory) {
+      if (round.results.filter((result) => result.playerItem).length > 1) {
+        issues.push({ code: "multiple-player-items", message: `Round ${round.round} consumed more than one player item.` });
+      }
+      if (round.results.filter((result) => result.botItem).length > 1) {
+        issues.push({ code: "multiple-bot-items", message: `Round ${round.round} consumed more than one bot item.` });
+      }
+    }
+    if (state.equippedItem) {
+      const { categoryId, itemId } = state.equippedItem;
+      if (inventoryCount(state.playerInventory, itemId) <= 0) {
+        issues.push({ code: "equip-not-owned", message: `${itemId} is equipped but not in the player inventory.` });
+      }
+      if (!state.assignments[categoryId]) {
+        issues.push({ code: "equip-empty-lane", message: `${itemId} is equipped to empty lane ${categoryId}.` });
+      }
+      const category = state.currentCategories.find((entry) => entry.id === categoryId);
+      if (!category || !isItemCompatible(itemId, category.family)) {
+        issues.push({ code: "equip-incompatible", message: `${itemId} is equipped to incompatible lane ${categoryId}.` });
+      }
     }
   }
 

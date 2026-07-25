@@ -1,8 +1,28 @@
 import { describe, expect, it } from "vitest";
+import { statAtLevel } from "@/lib/league-docs/api";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import {
+  ITEMS,
+  ITEM_IDS,
+  emptyItemInventory,
+  expectedItemChoices,
+  isItemChoicePoint,
+  isItemCompatible,
+  itemBonusFor,
+  totalInventoryCount,
+  type ItemId,
+} from "./items";
+import {
   ACTIVE_STAT_CATEGORIES,
+  BOT_ITEM_STRATEGY,
   analyzeBotAssignments,
+  beginItemChoice,
+  chooseItem,
+  equipItem,
+  itemChoiceDue,
+  selectBotItemAcquisition,
+  selectBotItemPlay,
+  unequipItem,
   STAT_CATEGORIES,
   STAT_CHECK_RULES,
   assignCard,
@@ -10,6 +30,7 @@ import {
   calculateRoundDamage,
   compareCategory,
   createMatch,
+  emptyAssignments,
   generateCategoryBoard,
   relativeMargin,
   relativeMarginForCategory,
@@ -32,6 +53,7 @@ const card = (name: string, value: number): StatCheckCard => ({
     ad: value,
     adPerLevel: 2,
     armor: value,
+    armorPerLevel: 4,
     magicResist: value,
     moveSpeed: value,
     attackRange: value,
@@ -40,12 +62,13 @@ const card = (name: string, value: number): StatCheckCard => ({
   },
 });
 
-const cat = (id: string, direction: "higher" | "lower", threshold = 0.12): StatCategory => ({
+const cat = (id: string, direction: "higher" | "lower", threshold = 0.12, family: StatCategory["family"] = "health"): StatCategory => ({
   id: id as StatCategory["id"],
   label: id,
   shortLabel: id,
-  family: "health",
+  family,
   active: true,
+  level: 1,
   direction,
   decisiveThreshold: threshold,
   explanation: "test",
@@ -57,6 +80,12 @@ const result = (winner: "player" | "bot" | "tie", decisive = false): CategoryRes
   category: cat(`highest-hp-1`, "higher"),
   playerCard: card("P", 10),
   botCard: card("B", 9),
+  playerNaturalValue: 10,
+  botNaturalValue: 9,
+  playerItem: null,
+  botItem: null,
+  playerBonus: 0,
+  botBonus: 0,
   playerValue: 10,
   botValue: 9,
   winner,
@@ -159,21 +188,57 @@ describe("Stat Check engine", () => {
     expect(fresh.outcome).toBeNull();
   });
 
-  it("gives every active category an explicit calibrated threshold", () => {
+  it("gives every active category an explicit calibrated threshold across the 16-category pool", () => {
     const expected: Record<string, number> = {
       "highest-hp-1": 0.05,
+      "lowest-hp-1": 0.075,
       "highest-hp-18": 0.075,
+      "lowest-hp-18": 0.1,
       "highest-ad-1": 0.1,
+      "lowest-ad-1": 0.125,
       "highest-ad-18": 0.15,
+      "lowest-ad-18": 0.15,
+      "highest-armor-1": 0.25,
       "lowest-armor-1": 0.25,
+      "highest-armor-18": 0.1,
+      "lowest-armor-18": 0.15,
       "highest-move-speed": 0.05,
+      "lowest-move-speed": 0.05,
       "highest-attack-range": 0.2,
+      "lowest-attack-range": 0.2,
     };
     expect(Object.fromEntries(ACTIVE_STAT_CATEGORIES.map((c) => [c.id, c.decisiveThreshold]))).toEqual(expected);
+    expect(ACTIVE_STAT_CATEGORIES).toHaveLength(16);
     for (const category of ACTIVE_STAT_CATEGORIES) {
       expect(category.decisiveThreshold).toBeGreaterThan(0);
       expect(category.decisiveThreshold).toBeLessThanOrEqual(0.5);
     }
+  });
+
+  it("defines exact category identity as stat family + direction + level", () => {
+    // Every active category is unique on the identity triple, and Highest/
+    // Lowest and L1/L18 variants of one stat are distinct categories.
+    const identities = ACTIVE_STAT_CATEGORIES.map((c) => `${c.family}|${c.direction}|${c.level}`);
+    expect(new Set(identities).size).toBe(ACTIVE_STAT_CATEGORIES.length);
+    const byFamily = (family: StatCategory["family"]) => ACTIVE_STAT_CATEGORIES.filter((c) => c.family === family);
+    for (const family of ["health", "attack-damage", "armor"] as const) {
+      expect(byFamily(family)).toHaveLength(4);
+      expect(new Set(byFamily(family).map((c) => `${c.direction}|${c.level}`)).size).toBe(4);
+      expect(byFamily(family).every((c) => c.level === 1 || c.level === 18)).toBe(true);
+    }
+    for (const family of ["move-speed", "attack-range"] as const) {
+      expect(byFamily(family)).toHaveLength(2);
+      expect(byFamily(family).every((c) => c.level === null)).toBe(true);
+    }
+    // No intermediate curated levels are active yet.
+    expect(ACTIVE_STAT_CATEGORIES.some((c) => c.level !== null && c.level !== 1 && c.level !== 18)).toBe(false);
+  });
+
+  it("evaluates level-18 armor through the shared statAtLevel path", () => {
+    const category = STAT_CATEGORIES.find((c) => c.id === "highest-armor-18")!;
+    const sample = card("Armored", 30);
+    expect(category.getValue(sample)).toBe(statAtLevel(30, 4, 18));
+    expect(category.getValue(sample)).toBeGreaterThan(30);
   });
 
   it("treats the exact threshold as decisive and just-below as not", () => {
@@ -582,6 +647,7 @@ describe("clue-aware bot", () => {
       ad: 25,
       adPerLevel: 3,
       armor: 40,
+      armorPerLevel: 4,
       magicResist: 30,
       moveSpeed: 335,
       attackRange: 150,
@@ -715,5 +781,451 @@ describe("clue-aware bot", () => {
     // Same public family ("health") and same hand: identical bot submission
     // despite different exact future categories and a different draw order.
     expect(ids(resolvedA)).toEqual(ids(resolvedB));
+  });
+});
+
+describe("category board adjacency", () => {
+  it("never repeats an exact category in the immediately following round", () => {
+    for (let seedIndex = 0; seedIndex < 200; seedIndex++) {
+      let previous: ReturnType<typeof generateCategoryBoard> | undefined;
+      for (let round = 1; round <= 10; round++) {
+        const board = generateCategoryBoard(`adjacent:${seedIndex}`, round, previous);
+        expect(new Set(board.map((c) => c.id)).size).toBe(3);
+        expect(new Set(board.map((c) => c.family)).size).toBe(3);
+        if (previous) {
+          for (const category of board) {
+            expect(previous.some((prev) => prev.id === category.id)).toBe(false);
+          }
+        }
+        previous = board;
+      }
+    }
+  });
+
+  it("keeps related direction/level variants legal in the following round", () => {
+    // The exclusion is exact-identity scoped: across a deterministic sweep,
+    // adjacent rounds must sometimes reuse a stat family through a different
+    // direction or level variant.
+    let relatedAdjacent = 0;
+    for (let seedIndex = 0; seedIndex < 100; seedIndex++) {
+      let previous: ReturnType<typeof generateCategoryBoard> | undefined;
+      for (let round = 1; round <= 8; round++) {
+        const board = generateCategoryBoard(`related:${seedIndex}`, round, previous);
+        if (previous) {
+          for (const category of board) {
+            if (previous.some((prev) => prev.family === category.family && prev.id !== category.id)) {
+              relatedAdjacent += 1;
+            }
+          }
+        }
+        previous = board;
+      }
+    }
+    expect(relatedAdjacent).toBeGreaterThan(0);
+  });
+
+  it("reaches all 16 active exact categories over deterministic seed coverage", () => {
+    const seen = new Set<string>();
+    for (let seedIndex = 0; seedIndex < 100; seedIndex++) {
+      let previous: ReturnType<typeof generateCategoryBoard> | undefined;
+      for (let round = 1; round <= 8; round++) {
+        const board = generateCategoryBoard(`cover:${seedIndex}`, round, previous);
+        for (const category of board) seen.add(category.id);
+        previous = board;
+      }
+    }
+    expect(seen).toEqual(new Set(ACTIVE_STAT_CATEGORIES.map((c) => c.id)));
+  });
+
+  it("enforces adjacency and board structure through live match transitions", () => {
+    let state = createMatch(STAT_CHECK_FIXTURE_DECK, "live-adjacency");
+    for (let i = 0; i < 4 && state.phase === "selecting"; i++) {
+      const currentIds = state.currentCategories.map((c) => c.id);
+      state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+      if (state.phase !== "resolved") break;
+      state = startNextRound(state);
+      if (state.phase !== "selecting") break;
+      for (const category of state.currentCategories) {
+        expect(currentIds).not.toContain(category.id);
+      }
+      expect(validateMatchInvariants(state, STAT_CHECK_FIXTURE_DECK)).toEqual([]);
+    }
+  });
+});
+
+describe("items", () => {
+  const catById = (id: string) => STAT_CATEGORIES.find((c) => c.id === id)!;
+  const withItems = (seed: string) => createMatch(STAT_CHECK_FIXTURE_DECK, seed, { items: true });
+  const bigDeck = () => [
+    ...STAT_CHECK_FIXTURE_DECK,
+    ...Array.from({ length: 72 }, (_, index) => card(`X${index + 1}`, 50 + index)),
+  ];
+
+  /** Items-enabled selecting state with a controlled board and custom hands. */
+  const controlled = (
+    playerItem: ItemId,
+    categoryIds: string[],
+    playerCards: StatCheckCard[],
+    botCards: StatCheckCard[],
+  ) => {
+    let state = chooseItem(withItems("items-controlled"), playerItem);
+    const categories = categoryIds.map(catById);
+    state = {
+      ...state,
+      currentCategories: categories,
+      playerHand: playerCards,
+      botHand: botCards,
+      assignments: emptyAssignments(categories),
+      // Bot inventory is zeroed so controlled contests are player-item-only;
+      // ledger invariants are intentionally not asserted on these states.
+      botInventory: emptyItemInventory(),
+    };
+    return state;
+  };
+
+  it("defines the four items with the exact specified bonuses", () => {
+    expect(ITEM_IDS).toEqual(["long-sword", "cloth-armor", "ruby-crystal", "mogzy-snack"]);
+    expect(ITEMS["long-sword"].bonuses).toEqual({ "attack-damage": 10 });
+    expect(ITEMS["cloth-armor"].bonuses).toEqual({ armor: 15 });
+    expect(ITEMS["ruby-crystal"].bonuses).toEqual({ health: 150 });
+    expect(ITEMS["mogzy-snack"].bonuses).toEqual({ health: 75, "attack-damage": 5, armor: 8 });
+    expect(itemBonusFor("mogzy-snack", "health")).toBe(75);
+    expect(itemBonusFor("mogzy-snack", "attack-damage")).toBe(5);
+    expect(itemBonusFor("mogzy-snack", "armor")).toBe(8);
+    // Not yet legal in move speed or attack range.
+    expect(itemBonusFor("mogzy-snack", "move-speed")).toBe(0);
+    expect(itemBonusFor("mogzy-snack", "attack-range")).toBe(0);
+    expect(isItemCompatible("mogzy-snack", "move-speed")).toBe(false);
+    expect(isItemCompatible("mogzy-snack", "attack-range")).toBe(false);
+    for (const itemId of ["long-sword", "cloth-armor", "ruby-crystal"] as const) {
+      expect(isItemCompatible(itemId, "move-speed")).toBe(false);
+      expect(isItemCompatible(itemId, "attack-range")).toBe(false);
+    }
+  });
+
+  it("owes item choices exactly at completed-round counts 0, 3, 6, 9, 12, ...", () => {
+    for (const n of [0, 3, 6, 9, 12, 15]) expect(isItemChoicePoint(n)).toBe(true);
+    for (const n of [1, 2, 4, 5, 7, 8, 10, 11]) expect(isItemChoicePoint(n)).toBe(false);
+    expect([0, 1, 2, 3, 5, 6, 8, 9, 12].map(expectedItemChoices)).toEqual([1, 1, 1, 2, 2, 3, 3, 4, 5]);
+  });
+
+  it("opens with a pre-Round-1 item choice that gates selection and locking", () => {
+    const state = withItems("pre-round");
+    expect(state.phase).toBe("item-choice");
+    expect(state.round).toBe(1);
+    expect(itemChoiceDue(state)).toBe(true);
+    // Round 1 categories exist internally for determinism but play is inert.
+    expect(state.currentCategories).toHaveLength(3);
+    expect(assignCard(state, state.currentCategories[0].id, state.playerHand[0].id)).toBe(state);
+    expect(resolveCurrentRound(state)).toBe(state);
+    const chosen = chooseItem(state, "cloth-armor");
+    expect(chosen.phase).toBe("selecting");
+    expect(chosen.playerInventory["cloth-armor"]).toBe(1);
+    expect(itemChoiceDue(chosen)).toBe(false);
+  });
+
+  it("accepts any of the four acquisition choices and mirrors a hidden bot pick", () => {
+    for (const itemId of ITEM_IDS) {
+      const state = chooseItem(withItems(`acquire:${itemId}`), itemId);
+      expect(state.playerInventory[itemId]).toBe(1);
+      expect(totalInventoryCount(state.playerInventory)).toBe(1);
+      expect(totalInventoryCount(state.botInventory)).toBe(1);
+      expect(state.botInventory[selectBotItemAcquisition(0)]).toBe(1);
+      expect(state.itemChoicesCompleted).toBe(1);
+    }
+  });
+
+  it("makes repeated chooseItem calls idempotent (no duplicate acquisition)", () => {
+    const once = chooseItem(withItems("idem"), "long-sword");
+    const twice = chooseItem(once, "long-sword");
+    expect(twice).toBe(once);
+    expect(once.playerInventory["long-sword"]).toBe(1);
+  });
+
+  it("follows the full cadence over 12 completed rounds with duplicates, persistence, and blocked transitions", () => {
+    let state = createMatch(bigDeck(), "cadence", { items: true });
+    state = { ...state, playerHp: 999, botHp: 999 };
+    expect(state.phase).toBe("item-choice");
+    state = chooseItem(state, "ruby-crystal");
+    let completed = 0;
+    let choices = 1;
+    while (state.phase === "selecting" && completed < 12) {
+      state = resolveCurrentRound(autoAssignBestPlayerHand(state));
+      expect(state.phase).toBe("resolved");
+      completed += 1;
+      expect(state.roundHistory).toHaveLength(completed);
+      if (completed % 3 === 0) {
+        expect(itemChoiceDue(state)).toBe(true);
+        // The next round may not begin before the item choice completes.
+        expect(startNextRound(state)).toBe(state);
+        state = beginItemChoice(state);
+        expect(state.phase).toBe("item-choice");
+        // Resolved-round evidence remains available during the choice.
+        expect(state.lastResolution?.round).toBe(completed);
+        state = chooseItem(state, "ruby-crystal");
+        choices += 1;
+        expect(state.phase).toBe("resolved");
+      } else {
+        expect(itemChoiceDue(state)).toBe(false);
+        expect(beginItemChoice(state)).toBe(state);
+      }
+      expect(validateMatchInvariants(state, bigDeck())).toEqual([]);
+      state = startNextRound(state);
+    }
+    expect(completed).toBe(12);
+    expect(choices).toBe(5); // before R1 and after rounds 3, 6, 9, 12
+    expect(state.itemChoicesCompleted).toBe(5);
+    // The player never equipped anything: duplicate copies persist untouched.
+    expect(state.playerInventory["ruby-crystal"]).toBe(5);
+    expect(totalInventoryCount(state.playerInventory)).toBe(5);
+  });
+
+  it("deterministic bot acquisition follows the explainable rotation", () => {
+    expect(BOT_ITEM_STRATEGY.acquisitionCycle).toEqual(["mogzy-snack", "ruby-crystal", "long-sword", "cloth-armor"]);
+    expect([0, 1, 2, 3, 4, 5].map(selectBotItemAcquisition)).toEqual([
+      "mogzy-snack",
+      "ruby-crystal",
+      "long-sword",
+      "cloth-armor",
+      "mogzy-snack",
+      "ruby-crystal",
+    ]);
+  });
+
+  it("validates equips: empty lane, unowned item, family mismatch, and no-item families", () => {
+    const player = [card("A", 100), card("B", 90), card("C", 80), card("D", 70), card("E", 60), card("F", 50)];
+    const bot = [card("Y", 40), card("Z", 30), card("W", 20)];
+    let state = controlled("ruby-crystal", ["highest-hp-1", "lowest-ad-1", "highest-move-speed"], player, bot);
+
+    // Empty lane: nothing placed yet.
+    expect(equipItem(state, "highest-hp-1", "ruby-crystal")).toBe(state);
+    state = assignCard(state, "highest-hp-1", "A");
+    state = assignCard(state, "lowest-ad-1", "B");
+    state = assignCard(state, "highest-move-speed", "C");
+
+    // Unowned item.
+    expect(equipItem(state, "highest-hp-1", "long-sword")).toBe(state);
+    // Stat-family mismatch: Ruby Crystal cannot touch an Attack Damage lane.
+    expect(equipItem(state, "lowest-ad-1", "ruby-crystal")).toBe(state);
+    // Move speed has no compatible item at all yet.
+    expect(equipItem(state, "highest-move-speed", "ruby-crystal")).toBe(state);
+
+    const equipped = equipItem(state, "highest-hp-1", "ruby-crystal");
+    expect(equipped.equippedItem).toEqual({ categoryId: "highest-hp-1", itemId: "ruby-crystal" });
+    // Equipping is pending only: nothing is consumed before resolution.
+    expect(equipped.playerInventory["ruby-crystal"]).toBe(1);
+  });
+
+  it("rejects Mogzy Snack on move-speed and attack-range lanes but accepts the stat trio", () => {
+    const player = [card("A", 100), card("B", 90), card("C", 80), card("D", 70), card("E", 60), card("F", 50)];
+    const bot = [card("Y", 40), card("Z", 30), card("W", 20)];
+    let state = controlled("mogzy-snack", ["highest-move-speed", "highest-attack-range", "lowest-armor-1"], player, bot);
+    state = assignCard(state, "highest-move-speed", "A");
+    state = assignCard(state, "highest-attack-range", "B");
+    state = assignCard(state, "lowest-armor-1", "C");
+    expect(equipItem(state, "highest-move-speed", "mogzy-snack")).toBe(state);
+    expect(equipItem(state, "highest-attack-range", "mogzy-snack")).toBe(state);
+    const armored = equipItem(state, "lowest-armor-1", "mogzy-snack");
+    expect(armored.equippedItem).toEqual({ categoryId: "lowest-armor-1", itemId: "mogzy-snack" });
+  });
+
+  it("keeps exactly one pending equip, supports changing and removing it, and clears with the card", () => {
+    const player = [card("A", 100), card("B", 90), card("C", 80), card("D", 70), card("E", 60), card("F", 50)];
+    const bot = [card("Y", 40), card("Z", 30), card("W", 20)];
+    let state = controlled("ruby-crystal", ["highest-hp-1", "lowest-hp-18", "highest-move-speed"], player, bot);
+    state = assignCard(state, "highest-hp-1", "A");
+    state = assignCard(state, "lowest-hp-18", "B");
+    state = assignCard(state, "highest-move-speed", "C");
+
+    state = equipItem(state, "highest-hp-1", "ruby-crystal");
+    // Re-equipping moves the single pending assignment; it never duplicates.
+    state = equipItem(state, "lowest-hp-18", "ruby-crystal");
+    expect(state.equippedItem).toEqual({ categoryId: "lowest-hp-18", itemId: "ruby-crystal" });
+
+    // Removing the champion releases the pending item without consuming it.
+    const removed = assignCard(state, "lowest-hp-18", null);
+    expect(removed.equippedItem).toBeNull();
+    expect(removed.playerInventory["ruby-crystal"]).toBe(1);
+
+    // Explicit unequip also releases without consuming.
+    const unequipped = unequipItem(state);
+    expect(unequipped.equippedItem).toBeNull();
+    expect(unequipped.playerInventory["ruby-crystal"]).toBe(1);
+  });
+
+  it("applies natural, bonus, and final values; winner, margin, and decisive use finals; consumption is atomic", () => {
+    const player = [card("P1", 600), card("P2", 90), card("P3", 80), card("P4", 70), card("P5", 60), card("P6", 50)];
+    const bot = [card("B1", 700), card("B2", 10), card("B3", 9)];
+    let state = controlled("ruby-crystal", ["highest-hp-1", "highest-move-speed", "highest-attack-range"], player, bot);
+    state = assignCard(state, "highest-hp-1", "P1");
+    state = assignCard(state, "highest-move-speed", "P2");
+    state = assignCard(state, "highest-attack-range", "P3");
+    state = equipItem(state, "highest-hp-1", "ruby-crystal");
+    expect(state.playerInventory["ruby-crystal"]).toBe(1);
+
+    const resolved = resolveCurrentRound(state);
+    const lane = resolved.lastResolution!.results.find((r) => r.category.id === "highest-hp-1")!;
+    expect(lane.playerNaturalValue).toBe(600);
+    expect(lane.playerItem).toBe("ruby-crystal");
+    expect(lane.playerBonus).toBe(150);
+    expect(lane.playerValue).toBe(750);
+    expect(lane.botNaturalValue).toBe(700);
+    expect(lane.botItem).toBeNull();
+    expect(lane.botBonus).toBe(0);
+    expect(lane.botValue).toBe(700);
+    // Natural 600 loses to 700; the final 750 wins: winner uses final values.
+    expect(lane.winner).toBe("player");
+    expect(lane.margin).toBeCloseTo((750 - 700) / 750);
+    expect(lane.decisive).toBe(lane.margin >= lane.category.decisiveThreshold);
+
+    // Atomic single consumption at resolution.
+    expect(resolved.playerInventory["ruby-crystal"]).toBe(0);
+    expect(resolved.equippedItem).toBeNull();
+    const otherLanes = resolved.lastResolution!.results.filter((r) => r.category.id !== "highest-hp-1");
+    for (const other of otherLanes) {
+      expect(other.playerItem).toBeNull();
+      expect(other.playerBonus).toBe(0);
+    }
+    // Repeated resolve calls are no-ops: no double consumption.
+    expect(resolveCurrentRound(resolved)).toBe(resolved);
+  });
+
+  it("never consumes an item that was unequipped before lock-in", () => {
+    const player = [card("P1", 600), card("P2", 90), card("P3", 80), card("P4", 70), card("P5", 60), card("P6", 50)];
+    const bot = [card("B1", 700), card("B2", 10), card("B3", 9)];
+    let state = controlled("ruby-crystal", ["highest-hp-1", "highest-move-speed", "highest-attack-range"], player, bot);
+    state = assignCard(state, "highest-hp-1", "P1");
+    state = assignCard(state, "highest-move-speed", "P2");
+    state = assignCard(state, "highest-attack-range", "P3");
+    state = unequipItem(equipItem(state, "highest-hp-1", "ruby-crystal"));
+
+    const resolved = resolveCurrentRound(state);
+    expect(resolved.playerInventory["ruby-crystal"]).toBe(1);
+    for (const result of resolved.lastResolution!.results) {
+      expect(result.playerItem).toBeNull();
+      expect(result.playerBonus).toBe(0);
+      expect(result.playerValue).toBe(result.playerNaturalValue);
+    }
+  });
+
+  it("keeps a positive bonus legal in Lowest categories, where it can worsen the contest", () => {
+    const category = catById("lowest-hp-1");
+    const withBonus = compareCategory(category, card("P", 500), card("B", 550), "ruby-crystal", null);
+    expect(withBonus.playerBonus).toBe(150);
+    expect(withBonus.playerValue).toBe(650);
+    // Natural 500 would have won the Lowest contest; the boosted 650 loses.
+    expect(withBonus.winner).toBe("bot");
+    const natural = compareCategory(category, card("P", 500), card("B", 550));
+    expect(natural.winner).toBe("player");
+  });
+
+  it("feeds final values into decisive thresholds and damage", () => {
+    const hp = catById("highest-hp-1"); // 5% decisive threshold
+    const narrow = compareCategory(hp, card("P", 700), card("B", 680));
+    expect(narrow.decisive).toBe(false);
+    const boosted = compareCategory(hp, card("P", 700), card("B", 680), "ruby-crystal");
+    expect(boosted.playerValue).toBe(850);
+    expect(boosted.margin).toBeCloseTo((850 - 680) / 850);
+    expect(boosted.decisive).toBe(true);
+    const damage = calculateRoundDamage([boosted, result("bot"), result("bot")]);
+    // Player lost the board 1-2 but the boosted decisive lane still deals +1.
+    expect(damage.player).toBe(1);
+    expect(damage.playerDecisiveDamage).toBe(1);
+  });
+
+  it("bot item use is deterministic, avoids Lowest lanes, prefers the strongest legal gain, and can hold", () => {
+    const inventoryAll = {
+      "long-sword": 1,
+      "cloth-armor": 1,
+      "ruby-crystal": 1,
+      "mogzy-snack": 1,
+    };
+    const assignments = {
+      "lowest-hp-1": card("LowHp", 100),
+      "highest-ad-1": card("Ad", 100),
+      "highest-move-speed": card("Fast", 400),
+    } as Record<StatCategory["id"], StatCheckCard>;
+    const categories = [catById("lowest-hp-1"), catById("highest-ad-1"), catById("highest-move-speed")];
+
+    const first = selectBotItemPlay(assignments, categories, inventoryAll);
+    const second = selectBotItemPlay(assignments, categories, inventoryAll);
+    expect(first).toEqual(second);
+    // Long Sword (+10 on 100 AD = 10% = 1.0x the 10% threshold) beats the
+    // snack (+5 = 0.5x); the harmful lowest-HP boost is never considered and
+    // move speed has no compatible item.
+    expect(first).toEqual({ categoryId: "highest-ad-1", itemId: "long-sword" });
+
+    // All-lowest board: the bot holds everything rather than hurting itself.
+    const lowBoard = [catById("lowest-hp-1"), catById("lowest-ad-1"), catById("lowest-armor-1")];
+    const lowAssignments = {
+      "lowest-hp-1": card("A", 100),
+      "lowest-ad-1": card("B", 100),
+      "lowest-armor-1": card("C", 100),
+    } as Record<StatCategory["id"], StatCheckCard>;
+    expect(selectBotItemPlay(lowAssignments, lowBoard, inventoryAll)).toBeNull();
+
+    // Gains below the spend floor are held, not wasted.
+    const hugeAssignments = {
+      "highest-hp-1": card("Huge", 40000),
+      "highest-move-speed": card("Fast", 400),
+      "highest-attack-range": card("Far", 600),
+    } as Record<StatCategory["id"], StatCheckCard>;
+    const hugeBoard = [catById("highest-hp-1"), catById("highest-move-speed"), catById("highest-attack-range")];
+    expect(selectBotItemPlay(hugeAssignments, hugeBoard, { ...inventoryAll, "long-sword": 0 })).toBeNull();
+  });
+
+  it("bot consumes its own hidden play atomically during resolution", () => {
+    const player = [card("P1", 600), card("P2", 90), card("P3", 80), card("P4", 70), card("P5", 60), card("P6", 50)];
+    const bot = [card("B1", 700), card("B2", 10), card("B3", 9)];
+    let state = controlled("ruby-crystal", ["highest-hp-1", "highest-move-speed", "highest-attack-range"], player, bot);
+    // Hand the bot one snack; its policy will spend it on the 700-HP lane
+    // (75/700 ~ 10.7% against a 5% threshold ~ 2.1x, well over the floor).
+    state = { ...state, botInventory: { ...emptyItemInventory(), "mogzy-snack": 1 } };
+    state = assignCard(state, "highest-hp-1", "P1");
+    state = assignCard(state, "highest-move-speed", "P2");
+    state = assignCard(state, "highest-attack-range", "P3");
+
+    const resolved = resolveCurrentRound(state);
+    const lane = resolved.lastResolution!.results.find((r) => r.category.id === "highest-hp-1")!;
+    expect(lane.botItem).toBe("mogzy-snack");
+    expect(lane.botBonus).toBe(75);
+    expect(lane.botValue).toBe(775);
+    expect(resolved.botInventory["mogzy-snack"]).toBe(0);
+    expect(resolveCurrentRound(resolved)).toBe(resolved);
+  });
+
+  it("keeps zero-item behavior identical to the pre-item engine", () => {
+    const legacy = createMatch(STAT_CHECK_FIXTURE_DECK, "legacy");
+    expect(legacy.itemsEnabled).toBe(false);
+    expect(legacy.phase).toBe("selecting");
+    expect(itemChoiceDue(legacy)).toBe(false);
+    expect(chooseItem(legacy, "ruby-crystal")).toBe(legacy);
+    const placedId = legacy.playerHand[0].id;
+    const placed = assignCard(legacy, legacy.currentCategories[0].id, placedId);
+    expect(equipItem(placed, legacy.currentCategories[0].id, "ruby-crystal")).toBe(placed);
+
+    const resolved = resolveCurrentRound(autoAssignBestPlayerHand(legacy));
+    for (const result of resolved.lastResolution!.results) {
+      expect(result.playerItem).toBeNull();
+      expect(result.botItem).toBeNull();
+      expect(result.playerBonus).toBe(0);
+      expect(result.botBonus).toBe(0);
+      expect(result.playerValue).toBe(result.playerNaturalValue);
+      expect(result.botValue).toBe(result.botNaturalValue);
+    }
+    expect(startNextRound(resolved).phase).toBe("selecting");
+  });
+
+  it("flags corrupted item ledgers and illegal equips through invariant validation", () => {
+    const base = chooseItem(withItems("ledger"), "ruby-crystal");
+    expect(validateMatchInvariants(base, STAT_CHECK_FIXTURE_DECK)).toEqual([]);
+
+    const inflated = { ...base, playerInventory: { ...base.playerInventory, "ruby-crystal": 5 } };
+    expect(validateMatchInvariants(inflated, STAT_CHECK_FIXTURE_DECK).map((i) => i.code)).toContain("item-ledger-mismatch");
+
+    const ghostEquip = { ...base, equippedItem: { categoryId: base.currentCategories[0].id, itemId: "long-sword" as ItemId } };
+    const codes = validateMatchInvariants(ghostEquip, STAT_CHECK_FIXTURE_DECK).map((i) => i.code);
+    expect(codes).toContain("equip-not-owned");
+    expect(codes).toContain("equip-empty-lane");
   });
 });

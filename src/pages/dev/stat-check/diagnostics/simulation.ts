@@ -1,8 +1,12 @@
 import {
   analyzeBotAssignments,
   autoAssignBestPlayerHand,
+  beginItemChoice,
+  chooseItem,
   createMatch,
+  equipItem,
   resolveCurrentRound,
+  selectBotItemPlay,
   startNextRound,
   STAT_CATEGORIES,
   validateMatchInvariants,
@@ -13,6 +17,7 @@ import {
   type StatCheckCard,
   type StatFamily,
 } from "../statCheckEngine";
+import { ITEM_IDS, type ItemId } from "../items";
 
 // Deterministic, engine-consuming simulation diagnostics. This module is
 // intentionally pure logic with no UI, timers, or randomness of its own:
@@ -55,6 +60,8 @@ export type RoundRecord = {
   bothDamaged: boolean;
   tieCount: number;
   decisiveCount: number;
+  playerItemsUsed: number;
+  botItemsUsed: number;
 };
 
 export type MatchRecord = {
@@ -71,6 +78,10 @@ export type MatchRecord = {
   finalBotHp: number;
   /** Shared draw pile size when the match ended. */
   endPoolSize: number;
+  /** Item flow (0 everywhere when the simulation runs without items). */
+  itemChoicesCompleted: number;
+  playerItemsUsed: number;
+  botItemsUsed: number;
   invariantIssues: string[];
 };
 
@@ -168,7 +179,19 @@ export type SimulationOptions = {
   startingHp?: number;
   /** false = greedy baseline bot (ignores the public clue). Default true. */
   botUsesClue?: boolean;
+  /**
+   * Enable the item system for the simulated match. The simulated human picks
+   * a deterministic acquisition rotation offset by one from the bot's cycle
+   * (covering duplicates and all four item types) and uses the same
+   * deterministic item-play policy the bot uses, applied to its own board.
+   */
+  items?: boolean;
 };
+
+/** Deterministic simulated-human acquisition pick for one choice index. */
+function simulatedPlayerItemPick(choiceIndex: number): ItemId {
+  return ITEM_IDS[(choiceIndex + 1) % ITEM_IDS.length];
+}
 
 export type BotClueStats = {
   /** Rounds where the bot had a usable clue. */
@@ -203,9 +226,14 @@ export function simulateMatch(
 ): { match: MatchRecord; rounds: RoundRecord[]; clue: ClueStats; botClue: BotClueStats } {
   const maxRounds = options.maxRounds ?? 100;
   const botUsesClue = options.botUsesClue !== false;
-  let state: MatchState = createMatch(deck, seed);
+  const items = options.items === true;
+  let state: MatchState = createMatch(deck, seed, { items });
   if (options.startingHp !== undefined) {
     state = { ...state, playerHp: options.startingHp, botHp: options.startingHp };
+  }
+  // Pre-Round-1 acquisition when items are enabled.
+  if (state.phase === "item-choice") {
+    state = chooseItem(state, simulatedPlayerItemPick(state.itemChoicesCompleted));
   }
   const botClue = emptyBotClueStats();
   let pendingPreservedCardId: string | null = null;
@@ -270,6 +298,19 @@ export function simulateMatch(
       }
     }
 
+    if (items) {
+      // The simulated human plays items with the same explainable policy the
+      // bot uses, evaluated against its OWN assignments only (no hidden info).
+      const playerCardsByCategory = {} as Record<StatCategoryId, StatCheckCard>;
+      for (const category of state.currentCategories) {
+        const assignedId = state.assignments[category.id];
+        const assignedCard = state.playerHand.find((cardInHand) => cardInHand.id === assignedId);
+        if (assignedCard) playerCardsByCategory[category.id] = assignedCard;
+      }
+      const play = selectBotItemPlay(playerCardsByCategory, state.currentCategories, state.playerInventory);
+      if (play) state = equipItem(state, play.categoryId, play.itemId);
+    }
+
     state = resolveCurrentRound(state, { botUsesClue });
     const resolution = state.lastResolution!;
     if (previousPreservedCardId) {
@@ -297,6 +338,8 @@ export function simulateMatch(
       bothDamaged: resolution.damage.player > 0 && resolution.damage.bot > 0,
       tieCount,
       decisiveCount,
+      playerItemsUsed: resolution.results.filter((r) => r.playerItem).length,
+      botItemsUsed: resolution.results.filter((r) => r.botItem).length,
     });
 
     for (const issue of validateMatchInvariants(state, deck)) {
@@ -304,6 +347,11 @@ export function simulateMatch(
     }
 
     if (state.phase === "resolved") {
+      // Cadence acquisitions complete before the next round may begin.
+      state = beginItemChoice(state);
+      if (state.phase === "item-choice") {
+        state = chooseItem(state, simulatedPlayerItemPick(state.itemChoicesCompleted));
+      }
       state = startNextRound(state);
       if (state.phase === "selecting" && clueCategory) clue.cluedRoundsReached += 1;
     }
@@ -331,6 +379,9 @@ export function simulateMatch(
       finalPlayerHp: state.playerHp,
       finalBotHp: state.botHp,
       endPoolSize: state.drawPile.length,
+      itemChoicesCompleted: state.itemChoicesCompleted,
+      playerItemsUsed: rounds.reduce((sum, round) => sum + round.playerItemsUsed, 0),
+      botItemsUsed: rounds.reduce((sum, round) => sum + round.botItemsUsed, 0),
       invariantIssues,
     },
     rounds,
@@ -555,6 +606,14 @@ export function formatDiagnosticsReport(report: DiagnosticsReport): string {
     `Endings: exhausted=${report.exhaustedMatches} (${pct(report.exhaustedMatches, report.matches)}) hp=${report.hpEndedMatches} (${pct(report.hpEndedMatches, report.matches)})`,
   );
   lines.push(`Outcomes: player=${report.outcomes.player} bot=${report.outcomes.bot} draw=${report.outcomes.draw}`);
+  const itemAcquisitions = report.matchRecords.reduce((sum, m) => sum + m.itemChoicesCompleted, 0);
+  if (itemAcquisitions > 0) {
+    const playerUsed = report.matchRecords.reduce((sum, m) => sum + m.playerItemsUsed, 0);
+    const botUsed = report.matchRecords.reduce((sum, m) => sum + m.botItemsUsed, 0);
+    lines.push(
+      `Items: acquisitions/side=${itemAcquisitions} used player=${playerUsed} (${pct(playerUsed, itemAcquisitions)}) bot=${botUsed} (${pct(botUsed, itemAcquisitions)})`,
+    );
+  }
   lines.push(
     `Boards: player=${report.boardResults.player} bot=${report.boardResults.bot} tie=${report.boardResults.tie} sweeps=${report.sweeps} (${pct(report.sweeps, report.totalRounds)}) tiedBoards=${pct(report.tiedBoards, report.totalRounds)} simultaneousDamage=${pct(report.simultaneousDamageRounds, report.totalRounds)}`,
   );

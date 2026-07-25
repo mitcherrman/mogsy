@@ -38,4 +38,34 @@ describe("stat check simulation diagnostics", () => {
     }
     console.log(`\n${formatDiagnosticsReport(report)}\n`);
   });
+
+  it("runs an items-enabled sweep with no invariant violations and live item flow", () => {
+    const report = runDiagnostics(STAT_CHECK_FIXTURE_DECK, DIAG_SEEDS, { items: true });
+    expect(report.matchRecords.flatMap((m) => m.invariantIssues)).toEqual([]);
+    // Every match completed its pre-Round-1 acquisition; cadence acquisitions
+    // follow the completed-round count exactly.
+    for (const match of report.matchRecords) {
+      // HP death exactly on a cadence round skips that final acquisition.
+      const hpEndedOnCadence = !match.exhausted && match.outcome !== null && match.rounds % 3 === 0;
+      expect(match.itemChoicesCompleted).toBe(Math.floor(match.rounds / 3) + (hpEndedOnCadence ? 0 : 1));
+      expect(match.playerItemsUsed).toBeLessThanOrEqual(match.itemChoicesCompleted);
+      expect(match.botItemsUsed).toBeLessThanOrEqual(match.itemChoicesCompleted);
+      // At most one item per side per round.
+      expect(match.playerItemsUsed).toBeLessThanOrEqual(match.rounds);
+    }
+    for (const round of report.roundRecords) {
+      expect(round.playerItemsUsed).toBeLessThanOrEqual(1);
+      expect(round.botItemsUsed).toBeLessThanOrEqual(1);
+    }
+    // Items actually flow in the sweep (used somewhere, held somewhere).
+    const used = report.matchRecords.reduce((sum, m) => sum + m.playerItemsUsed + m.botItemsUsed, 0);
+    const acquired = report.matchRecords.reduce((sum, m) => sum + m.itemChoicesCompleted * 2, 0);
+    expect(used).toBeGreaterThan(0);
+    expect(used).toBeLessThan(acquired);
+    // Determinism: the same seed reproduces the identical items-enabled match.
+    const a = simulateMatch(STAT_CHECK_FIXTURE_DECK, "stat-check-diag:0", { items: true });
+    const b = simulateMatch(STAT_CHECK_FIXTURE_DECK, "stat-check-diag:0", { items: true });
+    expect(a).toEqual(b);
+    console.log(`\n[ITEMS SWEEP]\n${formatDiagnosticsReport(report)}\n`);
+  });
 });
