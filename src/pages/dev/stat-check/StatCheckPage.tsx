@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { useChampionAssets, getChampionSplash, getChampionIcon } from "@/hooks/useChampionAssets";
 import { useChampionBaseStats } from "@/hooks/useChampionBaseStats";
 import { cn } from "@/lib/utils";
+import stoneSurfaceUrl from "@/assets/stat-check/board/stat-check-stone-surface.png";
+import socketFrameUrl from "@/assets/stat-check/board/stat-check-card-socket-frame.png";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { buildMatchSummary } from "./matchSummary";
 import {
@@ -484,14 +486,18 @@ export default function StatCheckPage() {
             <div
               className={cn(
                 "relative min-h-0 rounded-2xl p-2 md:p-3",
-                // The slab itself: a thick carved blue-gray stone block held by a
-                // raised brass perimeter frame. The frame is a real border with a
-                // lit top edge and a dark under-edge; the drop shadows below give
-                // the block visible thickness on the table.
+                // The slab itself: the approved stone-surface asset is the board
+                // material, held by a raised brass perimeter frame. Translucent
+                // light/shade gradients sit over the texture so the stone stays
+                // visible but reads as one lit object; the drop shadows below
+                // give the block visible thickness on the table.
                 "border-2 border-[#7d6430]",
-                "bg-[radial-gradient(ellipse_at_50%_16%,rgba(52,74,104,0.5),transparent_60%),radial-gradient(ellipse_at_18%_92%,rgba(38,52,78,0.45),transparent_50%),radial-gradient(ellipse_at_82%_92%,rgba(38,52,78,0.45),transparent_50%),linear-gradient(180deg,#1b2536_0%,#141d2c_46%,#0e1522_100%)]",
                 "shadow-[inset_0_2px_0_rgba(244,215,125,0.28),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_70px_rgba(0,0,0,0.55),0_6px_0_-2px_#241d0e,0_10px_0_-4px_#0a0d14,0_30px_60px_rgba(0,0,0,0.6)]",
               )}
+              style={{
+                backgroundImage: `radial-gradient(ellipse at 50% 16%, rgba(72,98,132,0.34), transparent 60%), linear-gradient(180deg, rgba(27,37,54,0.22) 0%, rgba(16,23,36,0.4) 46%, rgba(9,14,24,0.62) 100%), url(${stoneSurfaceUrl})`,
+                backgroundSize: "auto, auto, 640px 640px",
+              }}
             >
               <ArenaAmbience
                 reducedMotion={prefersReducedMotion}
@@ -543,11 +549,13 @@ export default function StatCheckPage() {
                   held by the board, not floating on a panel */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-[12%] -top-3 bottom-3 overflow-hidden border-x-2 border-b-2 border-[#7d6430]/70 bg-[radial-gradient(ellipse_at_50%_0%,rgba(52,74,104,0.4),transparent_65%),linear-gradient(180deg,#18202f_0%,#111827_55%,#0c1220_100%)] shadow-[inset_0_2px_0_rgba(244,215,125,0.2),inset_0_14px_30px_rgba(0,0,0,0.55),0_8px_0_-3px_#0a0d14,0_18px_36px_rgba(0,0,0,0.5)] sm:inset-x-[20%]"
-                style={{ borderRadius: "14px 14px 50% 50% / 14px 14px 130px 130px" }}
+                className="pointer-events-none absolute inset-x-[12%] -top-3 bottom-3 overflow-hidden border-x-2 border-b-2 border-[#7d6430]/70 shadow-[inset_0_2px_0_rgba(244,215,125,0.2),inset_0_14px_30px_rgba(0,0,0,0.55),0_8px_0_-3px_#0a0d14,0_18px_36px_rgba(0,0,0,0.5)] sm:inset-x-[20%]"
+                style={{
+                  borderRadius: "14px 14px 50% 50% / 14px 14px 130px 130px",
+                  backgroundImage: `radial-gradient(ellipse at 50% 0%, rgba(72,98,132,0.3), transparent 65%), linear-gradient(180deg, rgba(24,32,47,0.3) 0%, rgba(13,19,32,0.55) 55%, rgba(9,14,24,0.72) 100%), url(${stoneSurfaceUrl})`,
+                  backgroundSize: "auto, auto, 560px 560px",
+                }}
               >
-                {/* stone grain + recessed tray floor */}
-                <span className="absolute inset-0 opacity-[0.18] mix-blend-overlay" style={{ backgroundImage: STONE_NOISE_URL }} />
                 <span className="absolute inset-x-4 top-3 bottom-2 rounded-[12px_12px_50%_50%/12px_12px_110px_110px] border border-black/40 shadow-[inset_0_3px_12px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.04)]" />
               </div>
               {/* brass lip joining slab to dock, with the center keystone tab */}
@@ -693,10 +701,10 @@ function ArenaAmbience({
         @keyframes sc-flow { from { background-position: 0 0 } to { background-position: 220px 0 } }
         @keyframes sc-verdict { 0% { opacity: .55; transform: scale(.995) } 100% { opacity: 0; transform: scale(1.012) } }
       `}</style>
-      {/* stone grain: fine turbulence noise + carved striations + faint seams so
-          the surface reads as worked rock rather than a smooth gradient */}
-      <div className="absolute inset-0 opacity-[0.22] mix-blend-overlay" style={{ backgroundImage: STONE_NOISE_URL }} />
-      <div className="absolute inset-0 opacity-60 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.016)_0px,rgba(255,255,255,0.016)_2px,transparent_2px,transparent_11px)]" />
+      {/* light synthetic grain on top of the real stone asset, keeping the
+          carved-striation direction without competing with its cracks */}
+      <div className="absolute inset-0 opacity-[0.08] mix-blend-overlay" style={{ backgroundImage: STONE_NOISE_URL }} />
+      <div className="absolute inset-0 opacity-40 bg-[repeating-linear-gradient(115deg,rgba(255,255,255,0.014)_0px,rgba(255,255,255,0.014)_2px,transparent_2px,transparent_11px)]" />
       {/* magical haze pooling low on the slab */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_44%,rgba(56,189,248,0.06),transparent_56%),radial-gradient(ellipse_at_50%_100%,rgba(70,86,140,0.08),transparent_50%)]" />
       {/* recessed inner playing surface: a step carved below the perimeter */}
@@ -899,13 +907,19 @@ function ArenaLane({
           {/* The real board card mounts (invisibly) as soon as its clone takes
               flight so the champion image is decoded before the handoff — the
               clone-to-card swap is then a pure visibility flip with no darker
-              first-paint blink. The receiving socket overlays it meanwhile. */}
+              first-paint blink. The socket frame stays mounted beneath the card
+              layer the whole time, so the handoff never restyles the socket. */}
           <div className="relative">
+            <SocketFrame
+              active={Boolean(canEdit && selectedCard) || playerCardInFlight}
+              charging={playerCardInFlight || reaction === "charging"}
+              occupied={Boolean(playerCard) && !playerCardInFlight}
+            />
             {playerCard && (
               <div
                 data-board-premount={playerCardInFlight ? "true" : undefined}
                 aria-hidden={playerCardInFlight || undefined}
-                className={cn(playerCardInFlight && "invisible")}
+                className={cn("relative z-10", playerCardInFlight && "invisible")}
               >
                 <ChampionCard
                   card={playerCard}
@@ -919,20 +933,85 @@ function ArenaLane({
               </div>
             )}
             {(!playerCard || playerCardInFlight) && (
-              <div className={cn(playerCardInFlight && "absolute inset-0")}>
-                <ChampionCard
-                  card={null}
-                  mode="empty"
-                  emptyPrompt={playerCardInFlight ? "" : canEdit && selectedCard ? "Place here" : "Place champion"}
-                  emptyActive={Boolean(canEdit && selectedCard) || playerCardInFlight}
-                  emptyCharging={playerCardInFlight || reaction === "charging"}
-                />
+              <div
+                className={cn(
+                  "z-10 flex items-center justify-center px-2 text-center text-[11px] font-semibold",
+                  playerCardInFlight ? "absolute inset-0" : cn("relative", BOARD_CARD_SIZE),
+                  canEdit && selectedCard ? "text-[#f4d77d]" : "text-slate-400 group-hover:text-slate-300",
+                )}
+              >
+                {!playerCardInFlight && (
+                  <span className="relative rounded bg-black/45 px-1.5 py-0.5">
+                    {canEdit && selectedCard ? "Place here" : "Place champion"}
+                  </span>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Geometry of the approved socket-frame asset (1024x1536 source px), measured
+ * from its alpha channel: the opaque gold ring spans x148-876 / y138-1240, the
+ * inner stone opening x250-773 / y233-1071, and the hex-gem assembly hangs
+ * below the ring to y1304.
+ */
+const SOCKET_FRAME_SRC = { w: 1024, h: 1536, ring: { x0: 148, x1: 876, y0: 138, y1: 1240 } };
+/** Rendered ring overhang past the card box on each side (fraction of card). */
+const SOCKET_RING_OVERHANG = 0.04;
+
+/**
+ * The receiving socket: the approved frame asset mounted on the slab, scaled so
+ * its gold ring sits just outside the fixed card footprint — a landed card sits
+ * inside the ring with the rim visibly framing it. The frame stays mounted
+ * beneath the card layer at all times so the clone-to-card handoff never
+ * changes the socket's pixels.
+ */
+function SocketFrame({ active, charging, occupied }: { active: boolean; charging: boolean; occupied: boolean }) {
+  const { w, h, ring } = SOCKET_FRAME_SRC;
+  const scaleX = (1 + SOCKET_RING_OVERHANG * 2) / (ring.x1 - ring.x0);
+  const scaleY = (1 + SOCKET_RING_OVERHANG * 2) / (ring.y1 - ring.y0);
+  const style: CSSProperties = {
+    width: `${w * scaleX * 100}%`,
+    height: `${h * scaleY * 100}%`,
+    left: `${-(SOCKET_RING_OVERHANG + ring.x0 * scaleX) * 100}%`,
+    top: `${-(SOCKET_RING_OVERHANG + ring.y0 * scaleY) * 100}%`,
+  };
+  return (
+    <>
+      <img
+        src={socketFrameUrl}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className={cn(
+          "pointer-events-none absolute max-w-none select-none transition duration-300",
+          charging && "animate-pulse motion-reduce:animate-none",
+          active
+            ? "brightness-110 drop-shadow-[0_0_18px_rgba(214,181,93,0.4)]"
+            : occupied
+              ? "brightness-100"
+              : "brightness-[0.8] saturate-[0.85]",
+        )}
+        style={style}
+      />
+      {/* dormant shade over the socket's stone bed; sits under the card layer */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 rounded-lg transition duration-300",
+          occupied
+            ? "opacity-0"
+            : active
+              ? "bg-[radial-gradient(ellipse_at_50%_45%,rgba(12,26,44,0.25),rgba(9,15,26,0.5))]"
+              : "bg-[radial-gradient(ellipse_at_50%_45%,rgba(12,26,44,0.5),rgba(9,15,26,0.72))]",
+        )}
+      />
+    </>
   );
 }
 
@@ -1394,15 +1473,12 @@ function ChampionCard({
   onClick,
   testId,
   fill,
-  emptyPrompt = "Place champion",
-  emptyActive = false,
-  emptyCharging = false,
 }: {
   card: StatCheckCard | null;
   imageUrl?: string | null;
   category?: StatCategory;
   value?: number;
-  mode: "hand" | "board" | "face-down" | "empty";
+  mode: "hand" | "board" | "face-down";
   state?: "idle" | "selected" | "assigned" | "winner" | "loser" | "decisive";
   label?: string;
   disabled?: boolean;
@@ -1411,65 +1487,7 @@ function ChampionCard({
   testId?: string;
   /** Fill the parent box (used by flip faces and the motion overlay) instead of self-sizing. */
   fill?: boolean;
-  emptyPrompt?: string;
-  emptyActive?: boolean;
-  emptyCharging?: boolean;
 }) {
-  if (mode === "empty") {
-    // Receiving socket carved into the slab: a full card-shaped recess with a
-    // brass rim, mirroring the framing and footprint of the opponent's card
-    // positions above. Dormant blue light wakes when a hand card is selected;
-    // the landed champion card fits it exactly.
-    return (
-      <div
-        className={cn(
-          BOARD_CARD_SIZE,
-          "relative flex items-center justify-center overflow-hidden rounded-lg border px-2 text-center text-[11px] font-semibold transition",
-          "bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(11,18,31,0.9)_55%,rgba(7,11,19,0.96))]",
-          "shadow-[inset_0_6px_20px_rgba(0,0,0,0.75),inset_0_-2px_8px_rgba(0,0,0,0.55),0_1px_0_rgba(244,215,125,0.1)]",
-          emptyActive
-            ? "border-[#f4d77d]/60 text-[#f4d77d] shadow-[inset_0_6px_20px_rgba(0,0,0,0.7),0_0_30px_rgba(214,181,93,0.3)]"
-            : "border-[#8a6f35]/45 text-slate-400 group-hover:border-[#a8894b]/60 group-hover:text-slate-300",
-          emptyCharging && "animate-pulse border-[#f4d77d]/80 motion-reduce:animate-none",
-        )}
-      >
-        {/* engraved inner line tracing the card silhouette */}
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-[5px] rounded-md border transition",
-            emptyActive ? "border-cyan-200/30" : "border-cyan-200/12 group-hover:border-cyan-200/20",
-          )}
-        />
-        {/* runic side notches on the recess wall */}
-        <span aria-hidden className={cn("absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-sm transition", emptyActive ? "bg-[#d6b55d]/60" : "bg-[#8a6f35]/45")} />
-        <span aria-hidden className={cn("absolute right-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-sm transition", emptyActive ? "bg-[#d6b55d]/60" : "bg-[#8a6f35]/45")} />
-        {/* dormant hextech node set into the socket floor */}
-        <span aria-hidden className="absolute left-1/2 top-1/2 grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center">
-          <span className="absolute inset-0 bg-[linear-gradient(160deg,#6a5429,#3c2f16_55%,#55431f)] opacity-70 shadow-[0_1px_3px_rgba(0,0,0,0.7)]" style={{ clipPath: OCTAGON_CLIP }} />
-          <span className="absolute inset-[3px] bg-[#0a121f]" style={{ clipPath: OCTAGON_CLIP }} />
-          <span
-            className={cn(
-              "relative h-2 w-2 rotate-45 rounded-[1px] transition",
-              emptyActive
-                ? "bg-[#f4d77d]/80 shadow-[0_0_10px_rgba(244,215,125,0.6)]"
-                : "bg-cyan-300/45 shadow-[0_0_8px_rgba(34,211,238,0.35)] group-hover:bg-cyan-300/65",
-            )}
-          />
-        </span>
-        {/* faint dormant light pooling at the socket floor */}
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-x-4 bottom-3 h-9 rounded-full blur-md transition",
-            emptyActive ? "bg-[#d6b55d]/25" : "bg-cyan-400/[0.14]",
-          )}
-        />
-        {emptyPrompt && <span className="relative z-10 mt-16 rounded bg-black/45 px-1.5 py-0.5">{emptyPrompt}</span>}
-      </div>
-    );
-  }
-
   if (mode === "face-down") {
     return (
       <div className={cn(fill ? "h-full w-full" : BOARD_CARD_SIZE, "relative overflow-hidden rounded-lg border border-cyan-300/20 bg-[linear-gradient(150deg,#0b2032,#071018_48%,#1c1730)] shadow-xl")}>
