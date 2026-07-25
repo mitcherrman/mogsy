@@ -11,12 +11,29 @@ const api = vi.hoisted(() => ({
   setReady: vi.fn(),
   cancelRoom: vi.fn(),
   getActiveRoom: vi.fn(),
+  submitItemChoice: vi.fn(),
+  submitLock: vi.fn(),
+  getMatchPublic: vi.fn(),
+  getMatchPrivate: vi.fn(),
+  getResolvedRound: vi.fn(),
+  resumeMatch: vi.fn(),
+  getMatchResult: vi.fn(),
 }));
 
 vi.mock("@/lib/stat-check-online/client", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/stat-check-online/client")>();
   return { ...original, statCheckOnlineApi: api };
 });
+
+// The started state mounts the full Stat Check page; stub its data hooks.
+vi.mock("@/hooks/useChampionBaseStats", () => ({
+  useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+vi.mock("@/hooks/useChampionAssets", () => ({
+  useChampionAssets: () => ({ data: undefined }),
+  getChampionSplash: () => null,
+  getChampionIcon: () => null,
+}));
 
 const roomView = (overrides: Partial<RoomView> = {}): RoomView => ({
   roomId: "scr_1",
@@ -120,13 +137,17 @@ describe("StatCheckRoomPage", () => {
       }),
     );
 
+    api.resumeMatch.mockReturnValue(new Promise(() => {})); // match view stays connecting
+
     renderAt("/quiz/stat-check/room/ABCD2345");
     await flush();
     fireEvent.click(screen.getByTestId("sc-room-ready"));
     await flush();
 
     expect(api.setReady).toHaveBeenCalledWith("scr_1", true);
-    expect(screen.getByTestId("sc-room-started")).toHaveTextContent(/scm_9/);
+    // The started room hands off to the online match surface.
+    expect(screen.getByTestId("sc-online-connecting")).toBeInTheDocument();
+    expect(api.resumeMatch).toHaveBeenCalledWith("scm_9");
   });
 
   it("surfaces room-full and auth errors", async () => {

@@ -3,7 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Check, Copy, DoorOpen, Swords, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import StatCheckPage from "../StatCheckPage";
+import { useStatCheckMatch } from "./useStatCheckMatch";
 import { useStatCheckRoom } from "./useStatCheckRoom";
+
+/** Started room: the existing Stat Check arena driven by the online driver. */
+function OnlineMatch({ matchId, onExit }: { matchId: string; onExit: () => void }) {
+  const online = useStatCheckMatch(matchId);
+  return <StatCheckPage online={online} onOnlineExit={onExit} />;
+}
 
 /**
  * Private-match room flow: create → share invite code/link → both ready →
@@ -23,6 +31,10 @@ export default function StatCheckRoomPage() {
     () => (room ? `${window.location.origin}/quiz/stat-check/room/${room.inviteCode}` : ""),
     [room],
   );
+
+  if (state.phase === "started" && room?.matchId) {
+    return <OnlineMatch matchId={room.matchId} onExit={() => navigate("/quiz/stat-check")} />;
+  }
 
   const copyInvite = async () => {
     if (!joinUrl) return;

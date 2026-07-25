@@ -11,10 +11,20 @@
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
 import {
   readActiveRoom,
+  readMatchPrivate,
+  readMatchPublic,
+  readMatchResult,
+  readResolvedRound,
+  readResume,
   readRoomCreated,
   readRoomJoined,
   readRoomView,
   type ActiveRoomView,
+  type MatchPrivateView,
+  type MatchPublicView,
+  type MatchResultView,
+  type ResolvedRoundView,
+  type ResumeView,
   type RoomCreated,
   type RoomJoined,
   type RoomView,
@@ -119,6 +129,42 @@ export const statCheckOnlineApi = {
     }),
   getActiveRoom: (signal?: AbortSignal): Promise<ActiveRoomView> =>
     request("/api/stat-check/active-room", readActiveRoom, { signal }),
+
+  submitItemChoice: (matchId: string, itemId: string, signal?: AbortSignal): Promise<unknown> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/item-choice`, (raw) => raw, {
+      method: "POST",
+      body: { item_id: itemId },
+      signal,
+    }),
+  submitLock: (
+    matchId: string,
+    roundNumber: number,
+    assignments: Record<string, string>,
+    equipped: { category_id: string; item_id: string } | null,
+    signal?: AbortSignal,
+  ): Promise<unknown> =>
+    request(
+      `/api/stat-check/matches/${encodeURIComponent(matchId)}/rounds/${roundNumber}/lock`,
+      (raw) => raw,
+      { method: "POST", body: { round_number: roundNumber, assignments, equipped }, signal },
+    ),
+  getMatchPublic: (matchId: string, signal?: AbortSignal): Promise<MatchPublicView> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}`, readMatchPublic, { signal }),
+  getMatchPrivate: (matchId: string, signal?: AbortSignal): Promise<MatchPrivateView> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/private`, readMatchPrivate, { signal }),
+  getResolvedRound: (matchId: string, roundNumber: number, signal?: AbortSignal): Promise<ResolvedRoundView> =>
+    request(
+      `/api/stat-check/matches/${encodeURIComponent(matchId)}/rounds/${roundNumber}/resolved`,
+      readResolvedRound,
+      { signal },
+    ),
+  resumeMatch: (matchId: string, signal?: AbortSignal): Promise<ResumeView> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/resume`, readResume, {
+      method: "POST",
+      signal,
+    }),
+  getMatchResult: (matchId: string, signal?: AbortSignal): Promise<MatchResultView> =>
+    request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/result`, readMatchResult, { signal }),
 };
 
 export type StatCheckOnlineApi = typeof statCheckOnlineApi;

@@ -38,6 +38,7 @@ export function ItemChoicePanel({
   selectedItemId,
   onSelect,
   onConfirm,
+  waiting = false,
 }: {
   title: string;
   subtitle: string;
@@ -45,6 +46,8 @@ export function ItemChoicePanel({
   selectedItemId: ItemId | null;
   onSelect: (itemId: ItemId) => void;
   onConfirm: () => void;
+  /** Online: own pick committed, opponent still choosing (controls freeze). */
+  waiting?: boolean;
 }) {
   return (
     <div
@@ -64,6 +67,7 @@ export function ItemChoicePanel({
               type="button"
               data-testid={`stat-check-item-option-${itemId}`}
               aria-pressed={selected}
+              disabled={waiting}
               onClick={() => onSelect(itemId)}
               className={cn(
                 "relative rounded-md border bg-black/40 p-1.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200",
@@ -95,11 +99,15 @@ export function ItemChoicePanel({
       <Button
         size="sm"
         data-testid="stat-check-item-confirm"
-        disabled={!selectedItemId}
+        disabled={!selectedItemId || waiting}
         onClick={onConfirm}
         className="mt-2 w-full bg-[#d6b55d] text-[#071018] hover:bg-[#f4d77d]"
       >
-        {selectedItemId ? `Take ${ITEMS[selectedItemId].label}` : "Choose an item"}
+        {waiting
+          ? "Waiting for opponent…"
+          : selectedItemId
+            ? `Take ${ITEMS[selectedItemId].label}`
+            : "Choose an item"}
       </Button>
     </div>
   );

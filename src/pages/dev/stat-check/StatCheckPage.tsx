@@ -51,6 +51,7 @@ import {
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
 import { ItemChoicePanel, ItemGlyph, ItemInventoryStrip } from "./StatCheckItems";
+import type { OnlineMatchController } from "./online/useStatCheckMatch";
 import {
   STAT_CHECK_RULES,
   assignCard,
@@ -114,7 +115,20 @@ type LaneReactionState = {
 
 const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 
-export default function StatCheckPage() {
+/**
+ * Match-driver boundary: with no `online` controller the page runs the local
+ * bot game exactly as before (rules via the local engine, no network). With
+ * an online controller, every rules transition is the server's — the page
+ * keeps only presentation state (placements before lock, reveal choreography)
+ * and renders authoritative snapshots + resolution events.
+ */
+export default function StatCheckPage({
+  online = null,
+  onOnlineExit,
+}: {
+  online?: OnlineMatchController | null;
+  onOnlineExit?: () => void;
+} = {}) {
   const { data: statRows, isLoading, isError } = useChampionBaseStats();
   const { data: assets } = useChampionAssets();
   const deck = useMemo(() => {
@@ -148,7 +162,14 @@ export default function StatCheckPage() {
   const laneBotRefs = useRef<Record<string, HTMLElement | null>>({});
   const discardRefs = useRef<Record<"player" | "bot", HTMLElement | null>>({ player: null, bot: null });
 
+  const matchRef = useRef(match);
+  matchRef.current = match;
+  const onlineReadyRef = useRef(false);
+  const resolutionKeyRef = useRef(0);
+
   useEffect(() => {
+    // Local bot mode only: online matches never run the local engine.
+    if (online) return;
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
     setHandGapIds([]);
@@ -158,7 +179,118 @@ export default function StatCheckPage() {
     setSelectedItemId(null);
     setPendingChoiceId(null);
     dispatchRevealStep({ type: "cancel" });
-  }, [deck, matchKey]);
+  }, [deck, matchKey, online]);
+
+  /** Adopt an authoritative snapshot wholesale (initial load / recovery). */
+  const hardAdoptOnline = (live: MatchState) => {
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    setHandGapIds([]);
+    setLaneReaction(null);
+    setSelectedCardId(null);
+    setSelectedItemId(null);
+    setMatch(live);
+    onlineReadyRef.current = true;
+    if (live.phase === "match-over") dispatchRevealStep({ type: "match-over" });
+    else if (live.phase === "item-choice" && live.lastResolution) dispatchRevealStep({ type: "resolved" });
+    else dispatchRevealStep({ type: "cancel" });
+  };
+
+  /** Advance into the next authoritative state with discard/deal presentation. */
+  const advanceAdoptOnline = (live: MatchState) => {
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    setHandGapIds([]);
+    setLaneReaction(null);
+    setSelectedCardId(null);
+    setSelectedItemId(null);
+    dispatchRevealStep({ type: "discard" });
+    queueDiscardTravels();
+    setMatch(live);
+    const dealTimer = window.setTimeout(
+      () => dispatchRevealStep({ type: "deal" }),
+      animationDuration(STAT_CHECK_ANIMATION.discardMs, prefersReducedMotion, animationSpeed),
+    );
+    const selectTimer = window.setTimeout(
+      () => dispatchRevealStep({ type: "select" }),
+      animationDuration(
+        STAT_CHECK_ANIMATION.discardMs + STAT_CHECK_ANIMATION.dealStaggerMs * 4,
+        prefersReducedMotion,
+        animationSpeed,
+      ),
+    );
+    timersRef.current.push(dealTimer, selectTimer);
+  };
+
+  // Online resolution events: merge the authoritative resolution into the
+  // presented state and run the EXISTING reveal choreography.
+  useEffect(() => {
+    if (!online?.resolutionEvent) return;
+    const { key, resolution } = online.resolutionEvent;
+    if (key === resolutionKeyRef.current) return;
+    resolutionKeyRef.current = key;
+    if (!onlineReadyRef.current) return; // resume path: history arrives inside `live`
+    clearAnimationTimers(timersRef.current);
+    setTravelingCards([]);
+    setHandGapIds([]);
+    setLaneReaction(null);
+    setSelectedCardId(null);
+    setSelectedItemId(null);
+    const ended = resolution.playerHpAfter <= 0 || resolution.botHpAfter <= 0;
+    setMatch((current) => ({
+      ...current,
+      phase: ended ? "match-over" : "resolved",
+      playerHp: resolution.playerHpAfter,
+      botHp: resolution.botHpAfter,
+      lastResolution: resolution,
+      roundHistory: [...current.roundHistory, resolution],
+      equippedItem: null,
+      outcome: !ended
+        ? null
+        : resolution.playerHpAfter <= 0 && resolution.botHpAfter <= 0
+          ? "draw"
+          : resolution.playerHpAfter <= 0
+            ? "bot"
+            : "player",
+    }));
+    dispatchRevealStep({ type: "lock" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online?.resolutionEvent]);
+
+  // Online boundary adoption: initial snapshot, post-cadence item choice
+  // opening after the reveal settles, item-choice completion advancing into
+  // the next round, and terminal states discovered on advance.
+  useEffect(() => {
+    if (!online?.live) return;
+    const live = online.live;
+    if (!onlineReadyRef.current) {
+      hardAdoptOnline(live);
+      return;
+    }
+    const presented = matchRef.current;
+    const settled = revealStep === "resolved" || revealStep === "match-over";
+    if (presented.phase === "resolved" && settled && live.phase === "item-choice") {
+      // Keep the resolved board + results visible; only the control rail
+      // switches to the choice panel (same as bot mode).
+      setMatch({ ...live, lastResolution: presented.lastResolution, currentCategories: presented.currentCategories });
+      return;
+    }
+    if (presented.phase === "resolved" && settled && live.phase === "match-over" && presented.outcome === null) {
+      // Deck exhaustion discovered on advance.
+      setMatch({ ...live, lastResolution: presented.lastResolution });
+      dispatchRevealStep({ type: "match-over" });
+      return;
+    }
+    if (presented.phase === "item-choice" && live.phase === "selecting") {
+      advanceAdoptOnline(live);
+      return;
+    }
+    if (presented.phase === "item-choice" && presented.roundHistory.length === 0 && live.phase === "item-choice") {
+      // Opening choice: keep server truth for chosen counters.
+      setMatch((current) => ({ ...current, itemChoicesCompleted: live.itemChoicesCompleted }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online?.liveKey, revealStep]);
 
   useEffect(() => () => clearAnimationTimers(timersRef.current), []);
 
@@ -191,10 +323,11 @@ export default function StatCheckPage() {
   // and next-round hint all stay mounted; only the Next Round control is
   // replaced by the choice panel until the pick is confirmed.
   useEffect(() => {
+    if (online) return; // online: the server owns phase transitions
     if (revealStep !== "resolved" && revealStep !== "match-over") return;
     if (match.phase !== "resolved" || !itemChoiceDue(match)) return;
     setMatch((state) => beginItemChoice(state));
-  }, [match, revealStep]);
+  }, [match, online, revealStep]);
 
   useEffect(() => {
     if (revealStep !== "locking" || !match.lastResolution) return;
@@ -241,7 +374,8 @@ export default function StatCheckPage() {
   );
   const returningIds = new Set(travelingCards.filter((item) => item.kind === "return").map((item) => item.card.id));
   const departingIds = new Set(handGapIds);
-  const canEdit = match.phase === "selecting" && allowsPreLockInteraction(revealStep);
+  const canEdit =
+    match.phase === "selecting" && allowsPreLockInteraction(revealStep) && !(online && online.youLocked);
   const activeLaneIndex = activeResolvedLane(revealStep);
   const activeResolution = match.lastResolution?.round === match.round ? match.lastResolution : null;
   // Whether the reveal has reached the item beat: before it, lanes show only
@@ -266,6 +400,12 @@ export default function StatCheckPage() {
 
   const confirmItemChoice = () => {
     if (!pendingChoiceId || match.phase !== "item-choice") return;
+    if (online) {
+      if (online.youChosen) return;
+      void online.submitItemChoice(pendingChoiceId);
+      setPendingChoiceId(null);
+      return;
+    }
     setMatch((state) => chooseItem(state, pendingChoiceId));
     setPendingChoiceId(null);
   };
@@ -386,11 +526,23 @@ export default function StatCheckPage() {
     setLaneReaction(null);
     setSelectedCardId(null);
     setSelectedItemId(null);
+    if (online) {
+      // Authoritative lock: the reveal starts only when the server resolution
+      // event arrives (both seats locked). Until then the board stays as
+      // placed and the opponent-status rail shows the wait.
+      void online.submitLock(match.assignments, match.equippedItem);
+      return;
+    }
     dispatchRevealStep({ type: "lock" });
     setMatch((state) => resolveCurrentRound(state));
   };
 
   const nextRound = () => {
+    if (online) {
+      // The server already advanced; this is pure presentation adoption.
+      if (online.live && online.live.phase !== "resolved") advanceAdoptOnline(online.live);
+      return;
+    }
     // A due item choice must complete first; the auto-begin effect and the
     // choice panel own that path, so this control is inert until then.
     if (match.phase !== "resolved" || itemChoiceDue(match)) return;
@@ -514,6 +666,18 @@ export default function StatCheckPage() {
     }
   };
 
+  if (online && !onlineReadyRef.current) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#050b12] text-slate-100">
+        <div data-testid="sc-online-connecting" className="rounded-md border border-cyan-300/15 bg-black/30 p-6 text-sm text-slate-300">
+          {online.status === "error"
+            ? `Could not join the match${online.errorCode ? ` (${online.errorCode})` : ""}.`
+            : "Connecting to your match…"}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
       data-anim-phase={revealStep}
@@ -541,14 +705,16 @@ export default function StatCheckPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
-              {dataSource}
+              {online ? "Online match" : dataSource}
             </Badge>
             <AnimationSpeedControl speed={animationSpeed} onSpeedChange={setAnimationSpeed} />
-            {isLoading && <Badge variant="outline">Loading stats</Badge>}
-            {isError && <Badge variant="outline">Fallback active</Badge>}
-            <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
-              <RotateCcw className="mr-1.5 h-4 w-4" /> Restart
-            </Button>
+            {!online && isLoading && <Badge variant="outline">Loading stats</Badge>}
+            {!online && isError && <Badge variant="outline">Fallback active</Badge>}
+            {!online && (
+              <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
+                <RotateCcw className="mr-1.5 h-4 w-4" /> Restart
+              </Button>
+            )}
           </div>
         </header>
 
@@ -701,7 +867,17 @@ export default function StatCheckPage() {
               onSelectChoice={setPendingChoiceId}
               onConfirmChoice={confirmItemChoice}
               onNextRound={nextRound}
-              onRestart={restart}
+              onRestart={online ? (onOnlineExit ?? restart) : restart}
+              online={
+                online
+                  ? {
+                      youChosen: online.youChosen,
+                      youLocked: online.youLocked,
+                      opponentChosen: online.opponentChosen,
+                      opponentLocked: online.opponentLocked,
+                    }
+                  : null
+              }
             />
             <UtilityStack
               match={match}
@@ -1933,6 +2109,50 @@ function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean) {
   return `${card.name}. ${stats}.${selected ? " Selected. Click a lane to play it." : ""}`;
 }
 
+type RevealSequenceOnlineState = {
+  youChosen: boolean;
+  youLocked: boolean;
+  opponentChosen: boolean;
+  opponentLocked: boolean;
+};
+
+function OnlineOpponentStatus({
+  online,
+  phase,
+}: {
+  online: RevealSequenceOnlineState;
+  phase: MatchState["phase"];
+}) {
+  // Pre-reveal the opponent exposes ONLY these booleans — nothing else exists
+  // client-side to show.
+  const label =
+    phase === "item-choice"
+      ? online.opponentChosen
+        ? "Opponent has chosen"
+        : "Opponent is choosing…"
+      : phase === "selecting"
+        ? online.opponentLocked
+          ? "Opponent locked in"
+          : "Opponent is placing…"
+        : null;
+  if (!label) return null;
+  return (
+    <div
+      data-testid="sc-online-opponent-status"
+      data-opponent-locked={online.opponentLocked ? "true" : "false"}
+      data-opponent-chosen={online.opponentChosen ? "true" : "false"}
+      className="mt-2 flex items-center justify-between rounded-md border border-cyan-300/15 bg-black/30 px-2 py-1.5 text-[11px] font-semibold text-cyan-100/80"
+    >
+      <span>{label}</span>
+      {phase === "selecting" && online.youLocked && (
+        <span data-testid="sc-online-you-locked" className="font-black text-[#f4d77d]">
+          You locked — waiting…
+        </span>
+      )}
+    </div>
+  );
+}
+
 function RevealSequence({
   match,
   resolution,
@@ -1943,6 +2163,7 @@ function RevealSequence({
   onConfirmChoice,
   onNextRound,
   onRestart,
+  online = null,
 }: {
   match: MatchState;
   resolution: RoundResolution | null;
@@ -1953,9 +2174,11 @@ function RevealSequence({
   onConfirmChoice: () => void;
   onNextRound: () => void;
   onRestart: () => void;
+  online?: RevealSequenceOnlineState | null;
 }) {
   const itemChoiceOpen = match.phase === "item-choice";
   const preRoundChoice = itemChoiceOpen && !match.lastResolution;
+  const choiceWaiting = Boolean(online && itemChoiceOpen && online.youChosen);
 
   if (preRoundChoice) {
     // Opening item choice: only the single-family hint for Round 1 may show —
@@ -1971,8 +2194,10 @@ function RevealSequence({
             selectedItemId={pendingChoiceId}
             onSelect={(itemId) => onSelectChoice(itemId)}
             onConfirm={onConfirmChoice}
+            waiting={choiceWaiting}
           />
         </div>
+        {online && <OnlineOpponentStatus online={online} phase={match.phase} />}
       </div>
     );
   }
@@ -1993,10 +2218,14 @@ function RevealSequence({
         </Badge>
       </div>
 
+      {online && <OnlineOpponentStatus online={online} phase={match.phase} />}
+
       {!resolution ? (
         <div className="mt-2 space-y-2">
           <div className="rounded-md bg-black/30 p-2 text-xs text-slate-300">
-            Bot cards stay face-down until lock-in.
+            {online
+              ? "Opponent cards stay face-down until both players lock in."
+              : "Bot cards stay face-down until lock-in."}
           </div>
           <div data-testid="stat-check-rules-note" className="rounded-md bg-black/30 p-2 text-xs text-slate-300">
             <div className="mb-1 font-black uppercase tracking-[0.14em] text-cyan-200 text-[10px]">How damage works</div>
@@ -2023,6 +2252,7 @@ function RevealSequence({
                   selectedItemId={pendingChoiceId}
                   onSelect={(itemId) => onSelectChoice(itemId)}
                   onConfirm={onConfirmChoice}
+                  waiting={choiceWaiting}
                 />
               )}
               {match.phase === "resolved" && (
@@ -2036,7 +2266,7 @@ function RevealSequence({
                   <div className="text-xs text-slate-300">{match.endReason}</div>
                   <MatchSummaryPanel match={match} />
                   <Button onClick={onRestart} className="mt-3 w-full bg-[#d6b55d] text-[#071018] hover:bg-[#f4d77d]">
-                    Restart
+                    {online ? "Leave match" : "Restart"}
                   </Button>
                 </div>
               )}
