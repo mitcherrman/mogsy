@@ -26,6 +26,26 @@ import { useViewportTier } from "./useViewportTier";
 
 const ACADEMY_TITLE = "Mogzy’s Academy of Leaguecraft and Technology";
 
+/**
+ * Canonical root metadata. Kept in step with index.html, which is the source
+ * of truth for the homepage title/description (see site-config.ts for the
+ * list of files to update on a domain change). https://mogzy.lol/ is listed
+ * in the sitemap, so the root render must be indexable — unlike the dev
+ * preview, which is noindex.
+ */
+const ROOT_SEO_TITLE = "Mogzy — League of Legends Quiz & Game Knowledge";
+const ROOT_SEO_DESCRIPTION =
+  "Test your League of Legends knowledge on Mogzy: LoL quiz, item builds, champion abilities and cooldowns, esports trivia, and game knowledge challenges.";
+
+export interface MogzyEntryV2Props {
+  /**
+   * Which metadata to emit. "dev" (default) is the noindex preview at
+   * /dev/mogzy-entry-v2; "root" is the production homepage at /.
+   * Purely a metadata switch — the rendered screen is identical.
+   */
+  seo?: "dev" | "root";
+}
+
 /** Chime (~400ms) overlaps the transition; navigate as the veil peaks. */
 const ENTRY_DURATION_MS = 780;
 const ENTRY_DURATION_REDUCED_MS = 220;
@@ -62,7 +82,7 @@ function TitleOrnamentBottom({ width }: { width: number }) {
   );
 }
 
-export default function MogzyEntryV2() {
+export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
   const navigate = useNavigate();
   const playLaunchChime = useLaunchChime();
   const prefersReducedMotion = useReducedMotion();
@@ -210,11 +230,15 @@ export default function MogzyEntryV2() {
         paddingRight: "env(safe-area-inset-right)",
       }}
     >
-      <SEOHead
-        title={ACADEMY_TITLE}
-        description="Mogzy — League of Legends knowledge, ranked duels, and combat theorycrafting."
-        noindex
-      />
+      {seo === "root" ? (
+        <SEOHead title={ROOT_SEO_TITLE} description={ROOT_SEO_DESCRIPTION} path="/" />
+      ) : (
+        <SEOHead
+          title={ACADEMY_TITLE}
+          description="Mogzy — League of Legends knowledge, ranked duels, and combat theorycrafting."
+          noindex
+        />
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Layer 1 — the four Academy emblems (decorative)                   */}

@@ -217,9 +217,24 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
               <Routes>
-                <Route path="/" element={leagueGate(<Suspense fallback={<RouteLoader />}><Index /></Suspense>)} />
-                {/* Isolated preview of the legacy pre-Mogzy entry screen (src/pages/Index.tsx),
-                    which the root route no longer reaches while LEAGUE_ONLY_MODE is on.
+                {/* Root entrance. In League-only mode the Academy entry screen IS
+                    the homepage: it renders outside <Layout /> so no navbar or
+                    footer appears, and its call to action navigates on to
+                    LEAGUE_HOME_ROUTE. This deliberately does not use leagueGate,
+                    which redirects to /lol — the entrance replaces that redirect.
+                    With LEAGUE_ONLY_MODE off, / falls back to the legacy Mogsy
+                    landing exactly as before, so the flag keeps its meaning. */}
+                <Route
+                  path="/"
+                  element={
+                    LEAGUE_ONLY_MODE ? (
+                      <Suspense fallback={<RouteLoader />}><MogzyEntryV2 seo="root" /></Suspense>
+                    ) : (
+                      <Suspense fallback={<RouteLoader />}><Index /></Suspense>
+                    )
+                  }
+                />
+                {/* Isolated preview of the legacy pre-Mogzy entry screen (src/pages/Index.tsx).
                     Ungated on purpose — inspection only, not a production route. */}
                 <Route path="/dev/legacy-entry" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
                 {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
