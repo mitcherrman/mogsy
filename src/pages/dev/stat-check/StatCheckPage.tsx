@@ -28,10 +28,12 @@ import socketFrameUrl from "@/assets/stat-check/board/stat-check-card-socket-fra
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { buildMatchSummary } from "./matchSummary";
 import {
+  DAMAGE_REVEAL_TIMELINE,
   LANE_PLAQUE_TIMELINE,
   REDUCED_MOTION_CHOREO,
   STAT_CHECK_ANIMATION,
   STAT_CHECK_ANIMATION_SPEEDS,
+  STAT_CHECK_DEFAULT_ANIMATION_SPEED,
   REVEAL_TIMELINE,
   animationDuration,
   durationAtSpeed,
@@ -40,6 +42,18 @@ import {
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
 } from "./animationConfig";
+import {
+  DAMAGE_COMPONENT_LABELS,
+  damageRevealHealthApplied,
+  damageRevealPlan,
+  damageRevealPlanTotalMs,
+  damageRevealShownTotal,
+  damageRevealStageOffsets,
+  damageRevealStepStarts,
+  damageRevealStepTotalMs,
+  type DamageRevealStage,
+  type DamageRevealStep,
+} from "./damageReveal";
 import {
   activeResolvedLane,
   allowsPreLockInteraction,
@@ -88,6 +102,7 @@ import {
   type MatchState,
   type RoundDamage,
   type RoundResolution,
+  type Side,
   type StatCategory,
   type StatCategoryId,
   type StatCheckCard,
@@ -130,6 +145,17 @@ type LaneReactionState = {
   kind: "charging" | "impact" | "accept";
 };
 
+/**
+ * What the centre damage presentation is currently showing. Presentation only:
+ * `step` is one entry of the plan derived from the authoritative RoundDamage,
+ * and `stage` selects which slice of it is on screen. No amount in here is
+ * computed by the presentation.
+ */
+type DamageRevealState = {
+  step: DamageRevealStep;
+  stage: DamageRevealStage;
+};
+
 const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 
 /**
@@ -170,6 +196,14 @@ export default function StatCheckPage({
    * so no component owns its own sequence timers.
    */
   const [lanePlaqueStages, setLanePlaqueStages] = useState<LanePlaqueStage[]>(initialLanePlaqueStages);
+  /**
+   * Centre damage presentation, and which sides have already had their health
+   * loss revealed. Both are scheduled from the same reveal timeline as the
+   * lanes; the health bars read `revealedDamageSides` so a bar cannot drop
+   * before its own impact frame.
+   */
+  const [damageReveal, setDamageReveal] = useState<DamageRevealState | null>(null);
+  const [revealedDamageSides, setRevealedDamageSides] = useState<Side[]>([]);
   // Highlighted-but-unconfirmed pick inside the item-choice panel.
   const [pendingChoiceId, setPendingChoiceId] = useState<ItemId | null>(null);
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`, { items: true }));
@@ -197,6 +231,18 @@ export default function StatCheckPage({
   const onlineReadyRef = useRef(false);
   const resolutionKeyRef = useRef(0);
 
+  /**
+   * Drop the centre presentation and every revealed health step. Called from
+   * the same places that clear the reveal timers, so an interrupted round
+   * (restart, speed change, reconnect, adopting an authoritative snapshot)
+   * cannot leave a half-played damage popup or a partially drained bar behind.
+   * Health then falls back to the authoritative match totals.
+   */
+  const clearDamageReveal = () => {
+    setDamageReveal(null);
+    setRevealedDamageSides([]);
+  };
+
   useEffect(() => {
     // Local bot mode only: online matches never run the local engine.
     if (online) return;
@@ -204,6 +250,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setMatch(createMatch(deck, `${SEED}:${matchKey}`, { items: true }));
     setSelectedCardId(null);
     setSelectedItemId(null);
@@ -217,6 +264,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     setMatch(live);
@@ -232,6 +280,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     dispatchRevealStep({ type: "discard" });
@@ -264,6 +313,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     const ended = resolution.playerHpAfter <= 0 || resolution.botHpAfter <= 0;
@@ -338,6 +388,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     dispatchRevealStep({ type: "cancel" });
   }, [animationSpeed, prefersReducedMotion, travelingCards.length]);
 
@@ -376,6 +427,10 @@ export default function StatCheckPage({
       setDamageFlashKey((key) => key + 1);
       // Reduced motion skips the staged blink entirely and rests on +1/+0.
       setLanePlaqueStages(["settled", "settled", "settled"]);
+      // No count-up, no travel, no jolt: the contained arena flash above is the
+      // whole impact, and health lands on the authoritative post-round totals
+      // immediately because the resolved step stops deferring them.
+      clearDamageReveal();
       return;
     }
 
@@ -390,16 +445,49 @@ export default function StatCheckPage({
     const setLaneStage = (laneIndex: number, next: LanePlaqueStage) =>
       setLanePlaqueStages((current) => current.map((value, index) => (index === laneIndex ? next : value)));
     // Each lane walks its own plaque through winner → threshold → bonus,
-    // starting from that lane's own resolve beat. Lanes stay 400ms apart, so
-    // the sequences overlap rather than queueing end to end.
+    // starting from that lane's own resolve beat. A lane starts only once the
+    // previous one has finished its cleanup, so the sequences never overlap and
+    // never leave an idle gap between them.
     const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) =>
       (["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const).map(
         (nextStage) =>
           [resolveAt + shift + stageOffsets[nextStage], () => setLaneStage(laneIndex, nextStage)] as [number, () => void],
       ),
     );
+
+    /**
+     * Centre damage presentation. The plan is derived once, here, from the
+     * resolution's authoritative RoundDamage — the scheduler only decides when
+     * each already-computed component appears. Zero-damage sides produce no
+     * step, so no popup is scheduled for them; a round where neither side dealt
+     * damage produces an empty plan costing 0ms, which reproduces the original
+     * boardResult → damage → resolved pacing exactly.
+     */
+    const damagePlan = damageRevealPlan(match.lastResolution.damage);
+    const damageStartsAt = REVEAL_TIMELINE.boardResult + shift;
+    const stepStarts = damageRevealStepStarts(damagePlan);
+    const damageSteps: Array<[number, () => void]> = damagePlan.flatMap((step, stepIndex) => {
+      const startAt = damageStartsAt + stepStarts[stepIndex];
+      const beats: Array<[number, () => void]> = damageRevealStageOffsets(step).map(([stage, offset]) => [
+        startAt + offset,
+        () => {
+          setDamageReveal({ step, stage });
+          // The health bar drops at, and only at, this side's health stage.
+          if (stage === "health") {
+            setRevealedDamageSides((sides) => (sides.includes(step.target) ? sides : [...sides, step.target]));
+          }
+          if (stage === "impact") setDamageFlashKey((key) => key + 1);
+        },
+      ]);
+      // Clear this direction before the next one (or the resolved rail) begins.
+      beats.push([startAt + damageRevealStepTotalMs(step), () => setDamageReveal(null)]);
+      return beats;
+    });
+    const damageRevealEndsAt = damageStartsAt + damageRevealPlanTotalMs(damagePlan);
+
     const timeline: Array<[number, () => void]> = [
       ...lanePlaqueSteps,
+      ...damageSteps,
       [REVEAL_TIMELINE.opponentReveal1, () => dispatchRevealStep({ type: "opponent", lane: 1 })],
       [REVEAL_TIMELINE.opponentReveal2, () => dispatchRevealStep({ type: "opponent", lane: 2 })],
       [REVEAL_TIMELINE.opponentReveal3, () => dispatchRevealStep({ type: "opponent", lane: 3 })],
@@ -409,12 +497,12 @@ export default function StatCheckPage({
       [REVEAL_TIMELINE.resolveLane1 + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
       [REVEAL_TIMELINE.resolveLane2 + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
       [REVEAL_TIMELINE.resolveLane3 + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
-      [REVEAL_TIMELINE.boardResult + shift, () => dispatchRevealStep({ type: "board-result" })],
-      [REVEAL_TIMELINE.damage + shift, () => {
-        dispatchRevealStep({ type: "damage" });
-        setDamageFlashKey((key) => key + 1);
-      }],
-      [REVEAL_TIMELINE.resolved + shift, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
+      [damageStartsAt, () => dispatchRevealStep({ type: "board-result" })],
+      [damageRevealEndsAt + REVEAL_TIMELINE.damageTailMs, () => dispatchRevealStep({ type: "damage" })],
+      [
+        damageRevealEndsAt + REVEAL_TIMELINE.resolvedTailMs,
+        () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" }),
+      ],
     ];
     timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion, animationSpeed)));
   }, [animationSpeed, match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
@@ -447,9 +535,29 @@ export default function StatCheckPage({
   // JS-driven so exactly one layout's components (and testids) exist at a time.
   const viewportWidth = useViewportWidth();
   const wideLayout = viewportWidth >= 1210;
+  /**
+   * Health shown on the bars. Through the reveal both sides hold their
+   * pre-round totals; a side drops to its authoritative post-round value only
+   * once its own impact frame has landed (`revealedDamageSides`), so a bar can
+   * never move before the damage that caused it is on screen. Outside the
+   * reveal — including reduced motion, reconnect and any adopted snapshot —
+   * this falls straight through to the authoritative match totals.
+   */
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
-    ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
+    ? {
+        player: revealedDamageSides.includes("player") ? activeResolution.playerHpAfter : activeResolution.playerHpBefore,
+        bot: revealedDamageSides.includes("bot") ? activeResolution.botHpAfter : activeResolution.botHpBefore,
+      }
     : { player: match.playerHp, bot: match.botHp };
+  /**
+   * Bar being struck right now: it flashes from the impact frame and stays lit
+   * through the drain. Only ever the target of the step currently on screen,
+   * so a two-way round lights one bar at a time.
+   */
+  const damageImpactSide: Side | null =
+    damageReveal && (damageReveal.stage === "impact" || damageRevealHealthApplied(damageReveal.stage))
+      ? damageReveal.step.target
+      : null;
 
   // Shared online presentation state for the reveal rail and the item modal.
   const onlineState = online
@@ -469,6 +577,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setMatchKey((key) => key + 1);
   };
 
@@ -615,6 +724,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     if (online) {
@@ -641,6 +751,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
     setSelectedCardId(null);
@@ -838,6 +949,7 @@ export default function StatCheckPage({
               displayHp={displayHp}
               resolution={activeResolution}
               flashKey={damageFlashKey}
+              impactSide={damageImpactSide}
               isOnline={Boolean(online)}
               opponentLabel={opponentLabel}
             />
@@ -846,6 +958,7 @@ export default function StatCheckPage({
               displayHp={displayHp}
               resolution={activeResolution}
               flashKey={damageFlashKey}
+              impactSide={damageImpactSide}
               isOnline={Boolean(online)}
               opponentLabel={opponentLabel}
             />
@@ -853,6 +966,8 @@ export default function StatCheckPage({
 
           <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-1.5 sm:gap-2">
             <div
+              data-testid="stat-check-arena"
+              data-damage-stage={damageReveal?.stage ?? undefined}
               className={cn(
                 "relative min-h-0 rounded-2xl p-1.5 md:p-2 min-[1210px]:p-3",
                 // The slab itself: the approved stone-surface asset is the board
@@ -862,10 +977,20 @@ export default function StatCheckPage({
                 // give the block visible thickness on the table.
                 "border-2 border-[#7d6430]",
                 "shadow-[inset_0_2px_0_rgba(244,215,125,0.28),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_70px_rgba(0,0,0,0.55),0_6px_0_-2px_#241d0e,0_10px_0_-4px_#0a0d14,0_30px_60px_rgba(0,0,0,0.6)]",
+                // Impact frame: two short directional jolts on the arena frame
+                // ONLY. It is a transform, so no layout box moves and the app
+                // shell, header, rails and page never shake with it.
+                damageReveal?.stage === "impact" && "animate-arena-jolt motion-reduce:animate-none",
               )}
               style={{
                 backgroundImage: `radial-gradient(ellipse at 50% 16%, rgba(72,98,132,0.34), transparent 60%), linear-gradient(180deg, rgba(27,37,54,0.22) 0%, rgba(16,23,36,0.4) 46%, rgba(9,14,24,0.62) 100%), url(${stoneSurfaceUrl})`,
                 backgroundSize: "auto, auto, 640px 640px",
+                // Value-badge emphasis transitions (enlarge, winner/loser, and
+                // the settle cleanup) read this, so they scale with the speed
+                // control exactly like the scheduled beats — which is what lets
+                // the next lane start the instant cleanup has finished.
+                ["--sc-value-transition" as string]: `${durationAtSpeed(LANE_PLAQUE_TIMELINE.valueTransitionMs, animationSpeed)}ms`,
+                ["--sc-arena-jolt" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.impactMs, animationSpeed)}ms`,
               }}
             >
               <ArenaAmbience
@@ -877,7 +1002,12 @@ export default function StatCheckPage({
                   revealStep === "board-result" ||
                   revealStep === "damage"
                 }
-                verdict={revealStep === "damage" || revealStep === "resolved" || revealStep === "match-over"}
+                verdict={
+                  damageReveal?.stage === "impact" ||
+                  revealStep === "damage" ||
+                  revealStep === "resolved" ||
+                  revealStep === "match-over"
+                }
                 verdictKey={damageFlashKey}
               />
               {/* All three lanes stay side-by-side at EVERY width: cards are
@@ -921,6 +1051,16 @@ export default function StatCheckPage({
                 );
               })}
               </div>
+              {/* Round payoff: the already-computed damage components add into
+                  one number in the middle of the arena, in front of the board.
+                  Absolutely positioned inside the slab, so it adds no layout
+                  box — no lane, card, socket, connector or plaque can move
+                  because of it. */}
+              <CentreDamageReveal
+                reveal={damageReveal}
+                opponentLabel={opponentLabel}
+                animationSpeed={animationSpeed}
+              />
             </div>
 
             <div className="relative flex items-start gap-1 sm:gap-1.5">
@@ -1263,6 +1403,169 @@ function ArenaAmbience({
             }}
           />
         ))}
+    </div>
+  );
+}
+
+/**
+ * Centre damage presentation: the round's payoff, mounted over the board.
+ *
+ * Every number here comes from the plan the scheduler derived from the
+ * authoritative RoundDamage — this component adds nothing up and decides
+ * nothing. It is absolutely positioned and pointer-events-none, so it cannot
+ * reflow the board or intercept a click, and it clears itself between the two
+ * directions rather than lingering over the arena.
+ */
+function CentreDamageReveal({
+  reveal,
+  opponentLabel,
+  animationSpeed,
+}: {
+  reveal: DamageRevealState | null;
+  opponentLabel: string;
+  animationSpeed: StatCheckAnimationSpeed;
+}) {
+  if (!reveal) return null;
+  const { step, stage } = reveal;
+  const shown = damageRevealShownTotal(step, stage);
+  const activeComponent = step.components.find((component) => component.kind === stage) ?? null;
+  const totalReached = stage === "total" || stage === "impact" || stage === "health" || stage === "settled";
+  const striking = stage === "impact" || stage === "health" || stage === "settled";
+  const playerDeals = step.side === "player";
+  // Arena-relative direction: the opponent's cards sit at the top of every
+  // lane and the player's at the bottom, so damage the player deals travels up.
+  const travelUp = playerDeals;
+
+  return (
+    <div
+      aria-hidden
+      data-testid="stat-check-damage-reveal"
+      data-damage-side={step.side}
+      data-damage-target={step.target}
+      data-damage-stage={stage}
+      data-damage-shown={shown}
+      className="pointer-events-none absolute inset-0 z-[300] grid place-items-center"
+      style={{
+        ["--sc-damage-tick" as string]: `${durationAtSpeed(280, animationSpeed)}ms`,
+        ["--sc-damage-pulse" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.healthMs, animationSpeed)}ms`,
+        ["--damage-dy" as string]: travelUp ? "-190px" : "190px",
+      }}
+    >
+      {/* Contained radial wash: keeps the number legible over the stone
+          without ever hiding the board behind an opaque panel. */}
+      <span
+        className={cn(
+          "absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-300 md:h-[420px] md:w-[420px]",
+          playerDeals
+            ? "bg-[radial-gradient(circle,rgba(244,215,125,0.34),rgba(6,10,16,0.72)_46%,transparent_70%)]"
+            : "bg-[radial-gradient(circle,rgba(248,113,113,0.32),rgba(6,10,16,0.72)_46%,transparent_70%)]",
+          striking ? "opacity-100" : "opacity-90",
+        )}
+      />
+      {/* Directional pulse toward the bar that is about to drain. */}
+      {stage === "health" && (
+        <span
+          data-testid="stat-check-damage-pulse"
+          className={cn(
+            "absolute left-1/2 top-1/2 h-24 w-24 animate-damage-pulse rounded-full motion-reduce:hidden",
+            playerDeals
+              ? "bg-[radial-gradient(circle,rgba(244,215,125,0.85),transparent_70%)]"
+              : "bg-[radial-gradient(circle,rgba(248,113,113,0.85),transparent_70%)]",
+          )}
+        />
+      )}
+
+      {/* A brass-framed readout in the same construction as the lane plaques —
+          frame, bolts, dark interior — rather than a floating label over the
+          board. It must be opaque: the centre of the arena is exactly where the
+          middle lane's plaque sits, and a translucent panel let that plaque's
+          "+1" show through beside the total and read as part of the number. */}
+      <div
+        className={cn(
+          "relative rounded-2xl border-2 p-[6px] shadow-[0_18px_44px_rgba(0,0,0,0.75)]",
+          playerDeals
+            ? "border-[#8a6f35]/80 bg-[linear-gradient(180deg,rgba(74,58,28,0.95),rgba(6,10,16,0.98))]"
+            : "border-[#7d3a3a]/80 bg-[linear-gradient(180deg,rgba(74,28,28,0.95),rgba(6,10,16,0.98))]",
+        )}
+      >
+        {/* corner bolts, matching the lane plaque's backing plate */}
+        {["left-1 top-1", "right-1 top-1", "bottom-1 left-1", "bottom-1 right-1"].map((position) => (
+          <span
+            key={position}
+            className={cn(
+              "absolute h-1.5 w-1.5 rounded-full shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7)]",
+              position,
+              playerDeals ? "bg-[#a8894b]" : "bg-[#b06a6a]",
+            )}
+          />
+        ))}
+        <div
+          className={cn(
+            "flex min-w-[188px] flex-col items-center gap-0.5 rounded-xl border bg-[#05090f]/95 px-4 py-2 md:min-w-[280px] md:px-7 md:py-3",
+            playerDeals ? "border-[#d6b55d]/45" : "border-red-400/40",
+          )}
+        >
+          {/* Who is dealing, and at whom. The arrow points at the side of the
+              arena whose health bar this will reduce: the opponent's cards are
+              the top row of every lane, the player's the bottom row. */}
+          <div
+            data-testid="stat-check-damage-direction"
+            className={cn(
+              "flex items-center gap-1.5 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.24em] md:text-[11px]",
+              playerDeals ? "text-[#f4d77d]" : "text-red-200",
+            )}
+          >
+            {travelUp ? <ArrowUp className="h-3 w-3" strokeWidth={3} /> : <ArrowDown className="h-3 w-3" strokeWidth={3} />}
+            {playerDeals ? `You strike ${opponentLabel}` : `${opponentLabel} strikes you`}
+          </div>
+
+          {/* "Damage" is always mounted (invisible until the total lands) so the
+              readout never changes width mid-count. */}
+          <div className="flex items-baseline gap-2">
+            <span
+              key={`${step.side}:${shown}`}
+              data-testid="stat-check-damage-total"
+              className={cn(
+                "text-[52px] font-black leading-none tabular-nums md:text-[80px]",
+                striking ? "animate-damage-strike" : "animate-damage-tick",
+                playerDeals
+                  ? "text-[#ffe9a8] [text-shadow:0_0_26px_rgba(244,215,125,0.9),0_5px_0_rgba(0,0,0,0.6)]"
+                  : "text-red-200 [text-shadow:0_0_26px_rgba(248,113,113,0.85),0_5px_0_rgba(0,0,0,0.6)]",
+              )}
+            >
+              {shown}
+            </span>
+            <span
+              data-testid="stat-check-damage-total-label"
+              data-damage-total-reached={totalReached ? "true" : "false"}
+              className={cn(
+                "text-sm font-black uppercase tracking-[0.28em] text-white/85 transition-opacity duration-200 md:text-2xl",
+                totalReached ? "opacity-100" : "opacity-0",
+              )}
+            >
+              Damage
+            </span>
+          </div>
+
+          {/* Secondary line: the source that just landed. One label at a time —
+              the number stays the primary object on screen. */}
+          <div className="flex h-5 items-center md:h-7">
+            {activeComponent && (
+              <span
+                key={activeComponent.kind}
+                data-testid="stat-check-damage-component"
+                data-damage-component={activeComponent.kind}
+                className={cn(
+                  "animate-damage-tick whitespace-nowrap text-[10px] font-black uppercase leading-none tracking-[0.3em] md:text-sm",
+                  playerDeals ? "text-[#f4d77d]/85" : "text-red-200/85",
+                )}
+              >
+                {DAMAGE_COMPONENT_LABELS[activeComponent.kind]} +{activeComponent.amount}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1742,6 +2045,21 @@ const PLAQUE_VIEWPORT = "h-[46px] w-[57px] md:h-[76px] md:w-[115px] min-[1210px]
  * guarantees no clipping and no wrapping at any size.
  */
 const STAT_ICON_SIZE = "h-6 w-auto max-w-[28px] md:h-10 md:max-w-[56px] min-[1210px]:h-12 min-[1210px]:max-w-[62px]";
+
+/**
+ * Optical kerning that pulls the stat art back toward its direction arrow.
+ *
+ * Every family's PNG carries 21–35% transparent padding on its left edge
+ * (measured from the alpha channel: armor 0.21, health 0.24, scale/attack-
+ * damage 0.25–0.28, move-speed 0.27, attack-range 0.35), and the lucide arrow
+ * adds ~21% of its own box on each side. A positive box gap therefore renders
+ * as a large hole between the two glyphs — wide enough that the arrow read as
+ * belonging to the level instead of to the icon. These negative margins cancel
+ * the art's built-in padding so the GLYPHS sit close, which is what the eye
+ * actually groups on. They are horizontal only and the icon keeps `shrink-0`,
+ * so the plaque's fixed viewport is unaffected.
+ */
+const STAT_ICON_KERN = "-ml-1.5 md:-ml-2.5 min-[1210px]:-ml-3.5";
 const SCALE_ICON_SIZE = "h-6 w-auto max-w-[30px] md:h-9 md:max-w-[54px] min-[1210px]:h-10 min-[1210px]:max-w-[60px]";
 
 /** Achieved stat gap for a lane, as a percentage; ties are a flat 0. */
@@ -1890,14 +2208,18 @@ function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
   const familyIcon = categoryIcon(category);
   return (
     <div className="flex min-w-0 items-center justify-center">
-      {/* Reading order is "lv. 18  ↓  [armor]": the level qualifier first, then
-          direction, then the family symbol, which dominates the scene. The
-          written category exists only in the tooltip and sr-only label. */}
+      {/* Two information groups, in the semantic order level → direction →
+          icon: "lv. 18" first, then "↓ [armor]". The arrow belongs to the stat
+          family, not to the level, so it is nested with the icon at a hairline
+          gap while a wider gap separates the level group. Both groups centre on
+          the icon artwork's own box (items-center, not a shared baseline), so
+          the arrow reads level with the symbol rather than with "lv.".
+          The written category exists only in the tooltip and sr-only label. */}
       <BoardTooltip
         testId={`stat-check-category-symbol-${category.id}`}
         label={categoryTooltipLabel(category)}
         ariaLabel={categoryAccessibleLabel(category)}
-        buttonClassName="flex items-center gap-0.5 md:gap-1"
+        buttonClassName="flex items-center gap-[7px] md:gap-2.5"
       >
         {levelBadge && (
           <span
@@ -1910,20 +2232,26 @@ function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
             <span className="text-[10px] font-black text-white md:text-lg">{levelBadge}</span>
           </span>
         )}
-        {higher ? (
-          <ArrowUp className="h-3 w-3 shrink-0 text-[#f4d77d] md:h-5 md:w-5" strokeWidth={3} aria-hidden />
-        ) : (
-          <ArrowDown className="h-3 w-3 shrink-0 text-cyan-300 md:h-5 md:w-5" strokeWidth={3} aria-hidden />
-        )}
-        {familyIcon && (
-          <img
-            src={familyIcon}
-            alt=""
-            aria-hidden
-            data-testid={`stat-check-category-icon-${category.id}`}
-            className={cn(STAT_ICON_SIZE, "shrink-0 object-contain")}
-          />
-        )}
+        <span
+          aria-hidden
+          data-testid={`stat-check-category-stat-${category.id}`}
+          className="flex items-center"
+        >
+          {higher ? (
+            <ArrowUp className="h-3 w-3 shrink-0 text-[#f4d77d] md:h-5 md:w-5" strokeWidth={3} aria-hidden />
+          ) : (
+            <ArrowDown className="h-3 w-3 shrink-0 text-cyan-300 md:h-5 md:w-5" strokeWidth={3} aria-hidden />
+          )}
+          {familyIcon && (
+            <img
+              src={familyIcon}
+              alt=""
+              aria-hidden
+              data-testid={`stat-check-category-icon-${category.id}`}
+              className={cn(STAT_ICON_SIZE, STAT_ICON_KERN, "shrink-0 object-contain")}
+            />
+          )}
+        </span>
       </BoardTooltip>
     </div>
   );
@@ -2045,9 +2373,13 @@ export function CategoryValueBadge({
       <span
         ref={valueRef}
         data-testid="stat-check-value-badge"
+        /* The emphasis transition follows the speed control (the arena sets
+           --sc-value-transition), so the settle cleanup always finishes in the
+           trailing window the lane schedule reserves for it — at any speed. */
+        style={{ transitionDuration: "var(--sc-value-transition, 500ms)" }}
         className={cn(
           "inline-flex origin-left rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black",
-          "transition-[transform,filter,opacity] duration-500 ease-out motion-reduce:transition-none",
+          "transition-[transform,filter,opacity] ease-out motion-reduce:transition-none",
           active && "scale-[1.55]",
           emphasis === "winner" && "bg-[#ffe9a8] brightness-110 shadow-[0_0_20px_rgba(244,215,125,0.95),0_0_40px_rgba(244,215,125,0.45)]",
           emphasis === "loser" && "opacity-55 brightness-75 saturate-50",
@@ -2961,12 +3293,15 @@ function CompactMatchupBar({
   displayHp,
   resolution,
   flashKey,
+  impactSide = null,
   isOnline = false,
   opponentLabel = "Bot",
 }: {
   displayHp: { player: number; bot: number };
   resolution: RoundResolution | null;
   flashKey: number;
+  /** Side whose bar is currently taking the centre presentation's damage. */
+  impactSide?: Side | null;
   isOnline?: boolean;
   opponentLabel?: string;
 }) {
@@ -2983,6 +3318,7 @@ function CompactMatchupBar({
           previousHp={resolution?.playerHpBefore}
           damage={resolution?.damage.bot ?? 0}
           flashKey={flashKey}
+          impacting={impactSide === "player"}
         />
       </div>
       <div className="min-w-0">
@@ -2998,6 +3334,7 @@ function CompactMatchupBar({
           previousHp={resolution?.botHpBefore}
           damage={resolution?.damage.player ?? 0}
           flashKey={flashKey}
+          impacting={impactSide === "bot"}
         />
       </div>
     </div>
@@ -3009,6 +3346,7 @@ function MatchupRail({
   displayHp,
   resolution,
   flashKey,
+  impactSide = null,
   isOnline = false,
   opponentLabel = "Bot",
 }: {
@@ -3016,6 +3354,8 @@ function MatchupRail({
   displayHp: { player: number; bot: number };
   resolution: RoundResolution | null;
   flashKey: number;
+  /** Side whose bar is currently taking the centre presentation's damage. */
+  impactSide?: Side | null;
   isOnline?: boolean;
   opponentLabel?: string;
 }) {
@@ -3029,6 +3369,7 @@ function MatchupRail({
         previousHp={resolution?.botHpBefore}
         damage={resolution?.damage.player ?? 0}
         flashKey={flashKey}
+        impacting={impactSide === "bot"}
       />
       <div className="flex items-center gap-3 px-1" aria-hidden>
         <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d6b55d]/50" />
@@ -3041,6 +3382,7 @@ function MatchupRail({
         previousHp={resolution?.playerHpBefore}
         damage={resolution?.damage.bot ?? 0}
         flashKey={flashKey}
+        impacting={impactSide === "player"}
       />
       <ProfilePanel side="player" isOnline={isOnline} />
       <LastRoundDamage resolution={lastRound} opponentLabel={opponentLabel} />
@@ -3084,17 +3426,29 @@ function HpBar({
   previousHp,
   damage,
   flashKey,
+  impacting = false,
 }: {
   side: "player" | "bot";
   hp: number;
   previousHp?: number;
   damage: number;
   flashKey: number;
+  /** True while this bar is the one currently taking the round's damage. */
+  impacting?: boolean;
 }) {
   const pct = Math.max(0, Math.min(100, (hp / STAT_CHECK_RULES.startingHp) * 100));
   const damaged = previousHp != null && damage > 0 && hp < previousHp;
   return (
-    <div className="relative rounded-md border border-cyan-300/12 bg-black/28 px-3 py-1.5 shadow-xl">
+    <div
+      data-testid={`stat-check-${side}-hp-panel`}
+      data-hp-impacting={impacting ? "true" : undefined}
+      className={cn(
+        "relative rounded-md border bg-black/28 px-3 py-1.5 shadow-xl transition-colors duration-200",
+        impacting
+          ? "border-red-400/70 shadow-[0_0_22px_rgba(248,113,113,0.45)]"
+          : "border-cyan-300/12",
+      )}
+    >
       {damaged && (
         <div key={flashKey} className="pointer-events-none absolute right-3 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white motion-reduce:animate-none">
           -{damage}
@@ -3103,11 +3457,14 @@ function HpBar({
       <div data-testid={`stat-check-${side}-hp`} className="text-sm font-black">
         {Math.max(0, hp)} / {STAT_CHECK_RULES.startingHp} HP
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-900">
+      <div className={cn("mt-1 h-2 overflow-hidden rounded-full bg-slate-900", impacting && "ring-1 ring-red-300/60")}>
         <div
           className={cn(
+            // The width transition IS the drain: the bar is handed its new
+            // value only at the impact/health stage, never before it.
             "h-full transition-all duration-500 motion-reduce:transition-none",
             side === "bot" ? "bg-gradient-to-r from-red-600 to-red-400" : "bg-gradient-to-r from-cyan-500 to-cyan-300",
+            impacting && "brightness-150",
           )}
           style={{ width: `${pct}%` }}
         />
@@ -3437,10 +3794,18 @@ function readElementRotation(element?: Element | null) {
   return Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
 }
 
+/**
+ * A speed the player explicitly chose this session wins; anything missing or
+ * unrecognised falls back to the gameplay default. Reading the raw entry (not
+ * `Number(null) === 0`) keeps "never chosen" distinguishable from "chose a
+ * value we no longer offer", and both land on the default.
+ */
 function readStoredAnimationSpeed(): StatCheckAnimationSpeed {
-  if (typeof window === "undefined") return 1;
-  const stored = Number(window.sessionStorage.getItem(SPEED_STORAGE_KEY));
-  return isStatCheckAnimationSpeed(stored) ? stored : 1;
+  if (typeof window === "undefined") return STAT_CHECK_DEFAULT_ANIMATION_SPEED;
+  const stored = window.sessionStorage.getItem(SPEED_STORAGE_KEY);
+  if (stored === null) return STAT_CHECK_DEFAULT_ANIMATION_SPEED;
+  const parsed = Number(stored);
+  return isStatCheckAnimationSpeed(parsed) ? parsed : STAT_CHECK_DEFAULT_ANIMATION_SPEED;
 }
 
 function useSessionAnimationSpeed() {

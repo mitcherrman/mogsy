@@ -1,6 +1,15 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StatCheckPage, { CategoryMarker, CategoryValueBadge, LanePlaque, laneValueEmphasis } from "./StatCheckPage";
+import {
+  DAMAGE_REVEAL_TIMELINE,
+  LANE_PLAQUE_TIMELINE,
+  REVEAL_TIMELINE,
+  STAT_CHECK_DEFAULT_ANIMATION_SPEED,
+  lanePlaqueStageOffsets,
+  laneRevealTotalMs,
+  type StatCheckAnimationSpeed,
+} from "./animationConfig";
 import type { LanePlaqueStage } from "./animationState";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { STAT_CATEGORIES, createMatch, generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
@@ -67,9 +76,10 @@ function laneTextIncludesFamily(container: HTMLElement, family: string) {
 }
 
 function finishReveal() {
-  // Lanes now resolve strictly one after another (9,350ms each at 1x), so the
-  // whole reveal settles at ~30.0s, or ~30.6s on item rounds.
-  act(() => vi.advanceTimersByTime(35_000));
+  // Lanes resolve strictly one after another (8,870ms each at 1x) and the
+  // centre damage presentation follows them, so the longest round settles at
+  // ~33.4s at 1x. Gameplay runs this at 1.5x (~22.3s).
+  act(() => vi.advanceTimersByTime(45_000));
 }
 
 /** Complete an open item-choice phase (opening or post-cadence), if present. */
@@ -86,12 +96,23 @@ function completeItemChoiceIfPresent(itemId = "ruby-crystal") {
  * classic placement flow tests start from the selecting phase, exactly as
  * before the item system existed.
  */
-function renderPage(options: { skipItemChoice?: boolean; item?: string } = {}) {
+function renderPage(options: { skipItemChoice?: boolean; item?: string; speed?: StatCheckAnimationSpeed } = {}) {
+  // Seeding the stored speed BEFORE render is the same path a returning player
+  // takes: an explicit preference is read on mount and overrides the default.
+  if (options.speed != null) window.sessionStorage.setItem("stat-check-animation-speed", String(options.speed));
   const view = render(<StatCheckPage />);
   if (!options.skipItemChoice) {
     expect(completeItemChoiceIfPresent(options.item)).toBe(true);
   }
   return view;
+}
+
+/**
+ * Render pinned to 1x so a test can assert the AUTHORED durations directly.
+ * Gameplay defaults to 1.5x, which would otherwise divide every one of them.
+ */
+function renderPageAtAuthoredSpeed(options: { skipItemChoice?: boolean; item?: string } = {}) {
+  return renderPage({ ...options, speed: 1 });
 }
 
 function reducedMotion(matches: boolean) {
@@ -309,7 +330,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("holds the fan slot open and defers the board card while the clone travels", () => {
-    const { container } = renderPage();
+    const { container } = renderPageAtAuthoredSpeed();
     const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
 
     placeWithoutSettling(container, 0, 0);
@@ -341,7 +362,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("steps through every hero-play phase in order at 1x", () => {
-    const { container } = renderPage();
+    const { container } = renderPageAtAuthoredSpeed();
     placeWithoutSettling(container, 0, 0);
 
     expect(animPhase(container)).toBe("placement-pickup");
@@ -397,7 +418,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("scales the hand reflow transition with the ANIM speed control", () => {
-    const { container } = renderPage();
+    const { container } = renderPageAtAuthoredSpeed();
     const wrapper = () => container.querySelector<HTMLElement>("[data-fan-index]");
     expect(wrapper()?.style.transitionDuration).toBe("370ms");
     fireEvent.change(screen.getByTestId("stat-check-animation-speed"), { target: { value: "0.25" } });
@@ -459,7 +480,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("keeps the travel clone as one persistent DOM node across every phase", () => {
-    const { container } = renderPage();
+    const { container } = renderPageAtAuthoredSpeed();
     placeWithoutSettling(container, 0, 0);
     const node = screen.getAllByTestId(/^stat-check-travel-card-/)[0];
 
@@ -611,11 +632,34 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.queryByTestId(/^stat-check-travel-card-/)).toBeNull();
   });
 
-  it("persists and applies slow-motion animation speed", () => {
+  it("starts a fresh session at the 1.5x gameplay default", () => {
+    expect(STAT_CHECK_DEFAULT_ANIMATION_SPEED).toBe(1.5);
+    // Nothing stored: this is a brand-new session.
+    expect(window.sessionStorage.getItem("stat-check-animation-speed")).toBeNull();
+    renderPage();
+    expect((screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).value).toBe("1.5");
+  });
+
+  it("keeps every slower speed available from the default", () => {
+    renderPage();
+    const options = Array.from(
+      (screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).options,
+      (option) => option.value,
+    );
+    expect(options).toEqual(["0.25", "0.5", "1", "1.5"]);
+  });
+
+  it("falls back to the default when the stored speed is not one we offer", () => {
+    window.sessionStorage.setItem("stat-check-animation-speed", "0.75");
+    renderPage();
+    expect((screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).value).toBe("1.5");
+  });
+
+  it("persists and applies slow-motion animation speed over the default", () => {
     const { container, unmount } = renderPage();
     const speed = screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement;
 
-    expect(speed.value).toBe("1");
+    expect(speed.value).toBe("1.5");
     fireEvent.change(speed, { target: { value: "0.5" } });
     expect(window.sessionStorage.getItem("stat-check-animation-speed")).toBe("0.5");
 
@@ -623,9 +667,27 @@ describe("StatCheckPage tabletop presentation", () => {
     act(() => vi.advanceTimersByTime(900));
     expect(screen.getAllByTestId(/^stat-check-travel-card-/)).toHaveLength(1);
 
+    // An explicit choice survives a remount: the default never overwrites it.
     unmount();
     renderPage();
     expect((screen.getByTestId("stat-check-animation-speed") as HTMLSelectElement).value).toBe("0.5");
+  });
+
+  it("scales the whole reveal from the centralized timeline at the default speed", () => {
+    const { container } = renderPage();
+    const stages = () =>
+      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
+        (marker) => (marker as HTMLElement).dataset.plaqueStage,
+      );
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // Lane 1 starts at (1,220 + 520 item shift) / 1.5 = 1,160ms and reaches its
+    // threshold scene 1,000/1.5 = 667ms later. At 1x that beat is 1,050ms away,
+    // so arriving early is proof the timeline itself is divided by the speed.
+    act(() => vi.advanceTimersByTime(1_160 + 700));
+    expect(stages()[0]).toBe("threshold");
+    expect(stages()[1]).toBe("category");
   });
 
   it("changing speed during active placement clears transient overlays", () => {
@@ -692,7 +754,7 @@ describe("StatCheckPage tabletop presentation", () => {
   });
 
   it("resolves lanes strictly left to right with no overlap", () => {
-    const { container } = renderPage();
+    const { container } = renderPageAtAuthoredSpeed();
     const stages = () =>
       Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
         (marker) => (marker as HTMLElement).dataset.plaqueStage,
@@ -702,10 +764,11 @@ describe("StatCheckPage tabletop presentation", () => {
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
 
-    // This round carries an item, so lane 1 starts at 1,740ms. One lane runs
-    // 9,350ms end to end, so lane 2 cannot start before 11,090ms.
-    const LANE_1 = 1_740;
-    const LANE_MS = 9_350;
+    // Every offset is read from the centralized timeline, so retuning a scene
+    // moves this test with the implementation instead of breaking it.
+    const LANE_1 = REVEAL_TIMELINE.resolveLane1 + REVEAL_TIMELINE.itemRevealShiftMs; // this round carries an item
+    const LANE_MS = laneRevealTotalMs();
+    const OFFSETS = lanePlaqueStageOffsets();
 
     // Step to just inside each of lane 1's scenes and assert the other two
     // lanes have not begun.
@@ -714,30 +777,25 @@ describe("StatCheckPage tabletop presentation", () => {
       act(() => vi.advanceTimersByTime(target - elapsed));
       elapsed = target;
     };
-    for (const [offset, stage] of [
-      [1_050, "threshold"],
-      [2_600, "values"],
-      [4_150, "winner"],
-      [4_800, "slice"],
-      [5_400, "zero"],
-      [6_750, "transfer"],
-      [7_750, "bonus"],
-      [8_400, "settled"],
-    ] as const) {
-      stepTo(LANE_1 + offset);
-      expect(stages()[0], `lane 1 at +${offset}`).toBe(stage);
-      expect(stages()[1], `lane 2 must not start at +${offset}`).toBe("category");
-      expect(stages()[2], `lane 3 must not start at +${offset}`).toBe("category");
+    for (const stage of ["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const) {
+      stepTo(LANE_1 + OFFSETS[stage] + 50);
+      expect(stages()[0], `lane 1 at ${stage}`).toBe(stage);
+      expect(stages()[1], `lane 2 must not start at ${stage}`).toBe("category");
+      expect(stages()[2], `lane 3 must not start at ${stage}`).toBe("category");
     }
 
-    // Lane 2 only begins once lane 1 has fully settled.
-    stepTo(LANE_1 + LANE_MS + 1_050);
+    // Lane 2 only begins once lane 1 has fully settled — and begins IMMEDIATELY
+    // afterwards: one frame past the handoff it is already on its own category
+    // face, with no configured idle interval in between.
+    stepTo(LANE_1 + LANE_MS - 50);
+    expect(stages()).toEqual(["settled", "category", "category"]);
+    stepTo(LANE_1 + LANE_MS + OFFSETS.threshold + 50);
     expect(stages()[0]).toBe("settled");
     expect(stages()[1]).toBe("threshold");
     expect(stages()[2]).toBe("category");
 
     // Lane 3 only begins once lane 2 has fully settled.
-    stepTo(LANE_1 + LANE_MS * 2 + 1_050);
+    stepTo(LANE_1 + LANE_MS * 2 + OFFSETS.threshold + 50);
     expect(stages()[1]).toBe("settled");
     expect(stages()[2]).toBe("threshold");
 
@@ -747,6 +805,200 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(stages()).toEqual(["settled", "settled", "settled"]);
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
     expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
+  });
+
+  it("hands off between lanes with no perceptible idle interval", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    const stages = () =>
+      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
+        (marker) => (marker as HTMLElement).dataset.plaqueStage,
+      );
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    const LANE_1 = REVEAL_TIMELINE.resolveLane1 + REVEAL_TIMELINE.itemRevealShiftMs;
+    const LANE_MS = laneRevealTotalMs();
+    const OFFSETS = lanePlaqueStageOffsets();
+
+    // A lane's last scheduled scene is `settled`; the only time after it is the
+    // cleanup window the value-emphasis transition needs. That window IS the
+    // gap between lanes, and it must not exceed the transition it exists for.
+    const cleanupWindow = LANE_MS - OFFSETS.settled;
+    expect(cleanupWindow).toBe(LANE_PLAQUE_TIMELINE.settleMs);
+    expect(cleanupWindow - LANE_PLAQUE_TIMELINE.valueTransitionMs).toBeLessThanOrEqual(20);
+
+    // Walk the real handoff: lane 1 hits `settled`, then lane 2 leaves
+    // `category` exactly one cleanup window later — nothing idles in between.
+    act(() => vi.advanceTimersByTime(LANE_1 + OFFSETS.settled + 10));
+    expect(stages()).toEqual(["settled", "category", "category"]);
+    act(() => vi.advanceTimersByTime(cleanupWindow + OFFSETS.threshold - 10 + 10));
+    expect(stages()[1]).toBe("threshold");
+  });
+
+  it("regroups the plaque as level, then arrow with the stat icon", () => {
+    const { container } = renderPage();
+    const marker = container.querySelector<HTMLElement>('[data-testid^="stat-check-marker-"]');
+    const categoryId = marker!.getAttribute("data-testid")!.replace("stat-check-marker-", "");
+    const level = container.querySelector<HTMLElement>(`[data-testid="stat-check-category-level-${categoryId}"]`);
+    const statGroup = container.querySelector<HTMLElement>(`[data-testid="stat-check-category-stat-${categoryId}"]`);
+    const icon = container.querySelector<HTMLElement>(`[data-testid="stat-check-category-icon-${categoryId}"]`);
+    expect(statGroup).not.toBeNull();
+    expect(icon).not.toBeNull();
+
+    // The arrow lives INSIDE the stat group with the icon, not beside the level.
+    const arrow = statGroup!.querySelector("svg.lucide-arrow-up, svg.lucide-arrow-down");
+    expect(arrow).not.toBeNull();
+    expect(statGroup!.contains(icon!)).toBe(true);
+    if (level) {
+      expect(level.contains(arrow!)).toBe(false);
+      // Semantic order is still level -> arrow -> icon.
+      expect(level.compareDocumentPosition(statGroup!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+
+    // A real gap separates the two groups, while the arrow/icon pair is pulled
+    // tight by a negative kern that cancels the PNG's transparent left padding.
+    const outer = statGroup!.parentElement!;
+    expect(outer.className).toContain("gap-[7px]");
+    expect(outer.className).toContain("md:gap-2.5");
+    expect(icon!.className).toContain("-ml-1.5");
+    expect(icon!.className).toContain("md:-ml-2.5");
+    expect(icon!.className).toContain("min-[1210px]:-ml-3.5");
+    // Both groups centre on the icon's own box, never on the level's baseline.
+    expect(outer.className).toContain("items-center");
+    expect(statGroup!.className).toContain("items-center");
+  });
+
+  it("consolidates the round's damage sources into one centre total before health moves", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    const t = DAMAGE_REVEAL_TIMELINE;
+    // This round carries an item, so everything after the item beat shifts.
+    const DAMAGE_START = REVEAL_TIMELINE.boardResult + REVEAL_TIMELINE.itemRevealShiftMs;
+    const popup = () => screen.queryByTestId("stat-check-damage-reveal");
+    const playerHp = () => screen.getByTestId("stat-check-player-hp").textContent;
+
+    let elapsed = 0;
+    const stepTo = (target: number) => {
+      act(() => vi.advanceTimersByTime(target - elapsed));
+      elapsed = target;
+    };
+
+    // Nothing before the third lane has finished: the board owns the screen.
+    stepTo(DAMAGE_START - 100);
+    expect(popup()).toBeNull();
+    expect(
+      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
+        (marker) => (marker as HTMLElement).dataset.plaqueStage,
+      ),
+    ).toEqual(["settled", "settled", "settled"]);
+
+    // Establish, then add each real source into a running total: 2 -> 3 -> 4.
+    // (Round 1 of the fixture match: the opponent sweeps for 2 + 1, plus one
+    // decisive lane.) Zero-damage components are never staged.
+    const seen: Array<[string | null, string | null]> = [];
+    for (const [stage, at] of [
+      ["enter", 0],
+      ["board", t.enterMs],
+      ["sweep", t.enterMs + t.componentMs],
+      ["decisive", t.enterMs + t.componentMs * 2],
+      ["total", t.enterMs + t.componentMs * 3],
+    ] as const) {
+      stepTo(DAMAGE_START + at + 60);
+      const node = popup();
+      expect(node, `stage ${stage}`).not.toBeNull();
+      expect(node).toHaveAttribute("data-damage-stage", stage);
+      seen.push([
+        node!.getAttribute("data-damage-shown"),
+        node!.querySelector("[data-damage-component]")?.getAttribute("data-damage-component") ?? null,
+      ]);
+      // Health has NOT moved yet, at any stage before impact.
+      expect(playerHp(), `health must not move at ${stage}`).toMatch(/^20 \//);
+    }
+    expect(seen).toEqual([
+      ["0", null],
+      ["2", "board"],
+      ["3", "sweep"],
+      ["4", "decisive"],
+      ["4", null],
+    ]);
+    expect(screen.getByTestId("stat-check-damage-total-label")).toHaveTextContent(/damage/i);
+
+    // The opponent is the one dealing it, so the player's bar is the target.
+    expect(popup()).toHaveAttribute("data-damage-side", "bot");
+    expect(popup()).toHaveAttribute("data-damage-target", "player");
+
+    // Impact frame: the arena jolts, and health STILL has not changed.
+    const impactAt = t.enterMs + t.componentMs * 3 + t.totalHoldMs;
+    stepTo(DAMAGE_START + impactAt + 60);
+    expect(popup()).toHaveAttribute("data-damage-stage", "impact");
+    expect(screen.getByTestId("stat-check-arena").className).toContain("animate-arena-jolt");
+    expect(playerHp()).toMatch(/^20 \//);
+
+    // Health stage: the authoritative post-round value becomes visible, the
+    // struck bar is flagged, and the total matches the authoritative breakdown.
+    stepTo(DAMAGE_START + impactAt + t.impactMs + 60);
+    expect(popup()).toHaveAttribute("data-damage-stage", "health");
+    expect(playerHp()).toMatch(/^16 \//);
+    expect(screen.getByTestId("stat-check-player-hp-panel")).toHaveAttribute("data-hp-impacting", "true");
+    expect(screen.getByTestId("stat-check-bot-hp-panel")).not.toHaveAttribute("data-hp-impacting");
+
+    // The round does not advance until the presentation has finished.
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
+    finishReveal();
+    expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+    // Authoritative rail total agrees with the number the centre counted to.
+    expect(screen.getByTestId("stat-check-damage-bot")).toHaveTextContent(/Total: 4/);
+    expect(playerHp()).toMatch(/^16 \//);
+  });
+
+  it("shows no damage popup for a side that dealt nothing", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // Round 1: the opponent deals 4, the player deals 0.
+    const sidesSeen = new Set<string>();
+    for (let elapsed = 0; elapsed < 40_000; elapsed += 200) {
+      act(() => vi.advanceTimersByTime(200));
+      const node = screen.queryByTestId("stat-check-damage-reveal");
+      if (node) sidesSeen.add(node.getAttribute("data-damage-side") ?? "");
+    }
+    expect([...sidesSeen]).toEqual(["bot"]);
+    expect(screen.getByTestId("stat-check-damage-player")).toHaveTextContent(/Total: 0/);
+    // A zero-damage side also never lights a health bar.
+    expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("20 / 20 HP");
+  });
+
+  it("reduced motion reaches the same health with no popup, jolt, or count-up", () => {
+    reducedMotion(true);
+    const { container } = renderPage();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    expect(screen.getByTestId("stat-check-arena").className).not.toContain("animate-arena-jolt");
+    // Same authoritative health as the full presentation lands on.
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("16 / 20 HP");
+    expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("20 / 20 HP");
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+  });
+
+  it("restart mid-presentation clears the popup and the revealed health steps", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    const DAMAGE_START = REVEAL_TIMELINE.boardResult + REVEAL_TIMELINE.itemRevealShiftMs;
+    act(() => vi.advanceTimersByTime(DAMAGE_START + DAMAGE_REVEAL_TIMELINE.enterMs + 60));
+    expect(screen.getByTestId("stat-check-damage-reveal")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /restart/i }));
+    expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    finishReveal();
+    completeItemChoiceIfPresent();
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("20 / 20 HP");
   });
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
@@ -941,10 +1193,39 @@ describe("LanePlaque staged reveal", () => {
   });
 
   it("omits lv. entirely for level-independent categories", () => {
-    const moveSpeed = STAT_CATEGORIES.find((entry) => entry.id === "highest-move-speed");
-    const { container } = render(<LanePlaque category={moveSpeed} />);
-    expect(visible(container)).not.toMatch(/lv\.|base/i);
-    expect(container.querySelector('[data-testid="stat-check-category-level-highest-move-speed"]')).toBeNull();
+    for (const id of ["highest-move-speed", "highest-attack-range"] as const) {
+      const category = STAT_CATEGORIES.find((entry) => entry.id === id);
+      expect(category, `missing category ${id}`).toBeDefined();
+      const { container } = render(<LanePlaque category={category} />);
+      expect(visible(container)).not.toMatch(/lv\.|base/i);
+      expect(container.querySelector(`[data-testid="stat-check-category-level-${id}"]`)).toBeNull();
+      // Move speed and attack range read as "↑ [icon]": the direction/icon
+      // group is still there, it is simply the whole plaque.
+      const statGroup = container.querySelector<HTMLElement>(`[data-testid="stat-check-category-stat-${id}"]`);
+      expect(statGroup).not.toBeNull();
+      expect(statGroup!.querySelector("svg.lucide-arrow-up, svg.lucide-arrow-down")).not.toBeNull();
+      expect(statGroup!.querySelector(`[data-testid="stat-check-category-icon-${id}"]`)).not.toBeNull();
+    }
+  });
+
+  it("groups the arrow with the stat icon, apart from the level", () => {
+    const { container } = at(sampleResult({}), "category");
+    const level = container.querySelector<HTMLElement>('[data-testid="stat-check-category-level-highest-hp-18"]');
+    const statGroup = container.querySelector<HTMLElement>('[data-testid="stat-check-category-stat-highest-hp-18"]');
+    const arrow = container.querySelector("svg.lucide-arrow-up");
+    const icon = container.querySelector('[data-testid="stat-check-category-icon-highest-hp-18"]');
+
+    // Order is still level -> arrow -> icon...
+    expect(level!.compareDocumentPosition(arrow!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(arrow!.compareDocumentPosition(icon!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // ...but the arrow now belongs to the icon's group, not the level's.
+    expect(statGroup!.contains(arrow!)).toBe(true);
+    expect(statGroup!.contains(icon!)).toBe(true);
+    expect(level!.contains(arrow!)).toBe(false);
+    // The two groups are separated by a real gap; the arrow/icon pair is closed
+    // up by a negative kern sized to the art's own transparent padding.
+    expect(statGroup!.parentElement!.className).toMatch(/gap-\[7px\].*md:gap-2\.5/);
+    expect(icon!.className).toMatch(/-ml-1\.5.*md:-ml-2\.5.*min-\[1210px\]:-ml-3\.5/);
   });
 
   it("keeps category and threshold as separate scenes", () => {
@@ -1259,7 +1540,7 @@ describe("StatCheckPage item system UI", () => {
   });
 
   it("reveals natural values, then items and bonuses, then finals and winners; consumes exactly once", () => {
-    const { container } = renderPage(); // ruby-crystal
+    const { container } = renderPageAtAuthoredSpeed(); // ruby-crystal, authored 1x beats
     fillBoard(container);
 
     const laneZeroChampion = laneChampions(lanes(container)[0])[0];

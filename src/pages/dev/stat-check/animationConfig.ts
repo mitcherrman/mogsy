@@ -104,6 +104,15 @@ export const STAT_CHECK_ANIMATION_SPEEDS = [0.25, 0.5, 1, 1.5] as const;
 export type StatCheckAnimationSpeed = (typeof STAT_CHECK_ANIMATION_SPEEDS)[number];
 
 /**
+ * Gameplay default. Every duration below is authored at 1x and divided by the
+ * session speed, so raising the default shortens the whole sequence uniformly
+ * rather than through per-timer edits. 1.5x is the reviewed gameplay tempo;
+ * the slower settings stay in the selector for inspection, and an explicit
+ * stored preference always wins over this default.
+ */
+export const STAT_CHECK_DEFAULT_ANIMATION_SPEED: StatCheckAnimationSpeed = 1.5;
+
+/**
  * Lane plaque staging (1x). Each resolved lane runs its fixed-size plaque
  * through category → winner → threshold → bonus, separated by a mechanical
  * shutter blink. All values live here so the sequence is tuned in one place
@@ -128,7 +137,21 @@ export const LANE_PLAQUE_TIMELINE = {
   zeroHoldMs: 800,
   transferMs: 1_000,
   impactMs: 650,
-  settleMs: 1_000,
+  /**
+   * How long a value badge takes to move between emphasis treatments (enlarge,
+   * winner/loser, and the settle cleanup). Driven into the badge as a CSS
+   * custom property so the transition scales with the speed control exactly
+   * like the scheduled beats do.
+   */
+  valueTransitionMs: 500,
+  /**
+   * Trailing time a settled lane owns before the next lane begins. This is
+   * cleanup, not a hold: the enlargement and slice unwind over
+   * `valueTransitionMs`, and the extra 20ms is scheduler handoff slack. There
+   * is deliberately no idle beat here — the previous 1,000ms value left ~480ms
+   * of visible dead air between lanes.
+   */
+  settleMs: 520,
 } as const;
 
 /**
@@ -189,12 +212,40 @@ export const REVEAL_TIMELINE = {
   get boardResult() {
     return this.resolveLane1 + laneRevealTotalMs() * 3;
   },
-  get damage() {
-    return this.boardResult + 340;
-  },
-  get resolved() {
-    return this.boardResult + 760;
-  },
+  /**
+   * Tail beats, measured from the END of the centre damage presentation (see
+   * DAMAGE_REVEAL_TIMELINE). The presentation's length depends on which damage
+   * components the round actually produced, so the scheduler adds
+   * damageRevealPlanTotalMs() to `boardResult` and then these offsets. A round
+   * that deals no damage has an empty plan, which reproduces the original
+   * boardResult+340 / boardResult+760 timing exactly.
+   */
+  damageTailMs: 340,
+  resolvedTailMs: 760,
+} as const;
+
+/**
+ * Centre damage presentation (1x). After the third lane settles, the round's
+ * already-computed damage components are added into a running total in the
+ * middle of the arena, the total lands with an impact, and only then does the
+ * health bar drain. Every value is authored here so the presentation scales
+ * with the same speed control as the rest of the reveal.
+ */
+export const DAMAGE_REVEAL_TIMELINE = {
+  /** The frame establishes itself before any number is counted. */
+  enterMs: 420,
+  /** Hold on each damage component as it is added into the total. */
+  componentMs: 620,
+  /** Hold on the completed total before it strikes. */
+  totalHoldMs: 620,
+  /** The impact frame itself: arena jolt + contained flash. */
+  impactMs: 380,
+  /** Health bar flash and drain to the authoritative value. */
+  healthMs: 700,
+  /** The presentation clears before anything else happens. */
+  clearMs: 300,
+  /** Gap between the two directions when both sides dealt damage. */
+  betweenSidesMs: 320,
 } as const;
 
 export function durationAtSpeed(ms: number, speed: StatCheckAnimationSpeed) {

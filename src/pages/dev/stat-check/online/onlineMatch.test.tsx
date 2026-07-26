@@ -286,12 +286,214 @@ describe("StatCheckPage online driver", () => {
         online={{ ...online, youLocked: true, resolutionEvent: { key: 1, resolution } }}
       />,
     );
-    act(() => vi.advanceTimersByTime(35_000));
+    act(() => vi.advanceTimersByTime(45_000));
     // Each fixed plaque has finished its staged blink and rests on +1/+0; the
     // written outcome stays available to screen readers.
     expect(screen.getAllByText(/You win|Opponent wins|Lane tied/i).length).toBeGreaterThanOrEqual(3);
     expect(container.textContent).toContain(OPP_CARDS[0].name);
     // The server-side item bonus still lands on the champion card.
     expect(screen.getByTestId("stat-check-reveal-item-player")).toHaveTextContent(/\+150/);
+  });
+});
+
+/**
+ * Two-way damage: the server is the only place that decides who dealt what, so
+ * these drive the page from a hand-built authoritative resolution rather than
+ * from the local engine. The presentation must consume those figures exactly.
+ */
+describe("StatCheckPage centre damage presentation (server-authoritative)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.sessionStorage.clear();
+  });
+  afterEach(() => {
+    act(() => vi.runOnlyPendingTimers());
+    vi.useRealTimers();
+  });
+
+  /** p1 wins the board 2-1 with one decisive lane; p2 retaliates decisively. */
+  function twoWayResolvedView(): ResolvedRoundView {
+    const base = resolvedView();
+    return {
+      ...base,
+      results: base.results.map((lane, index) => ({
+        ...lane,
+        winner: index === 2 ? ("p2" as const) : ("p1" as const),
+        decisive: index === 0 || index === 2,
+      })),
+      damage: {
+        p1Dealt: 3, // board 2 + one decisive
+        p2Dealt: 1, // decisive retaliation only
+        boardWinner: "p1",
+        p1CategoryWins: 2,
+        p2CategoryWins: 1,
+        p1DecisiveDamage: 1,
+        p2DecisiveDamage: 1,
+      },
+      p1HpBefore: 20,
+      p2HpBefore: 20,
+      p1HpAfter: 19,
+      p2HpAfter: 17,
+    };
+  }
+
+  function playRound(view: ResolvedRoundView) {
+    const online = controller();
+    const rendered = render(<StatCheckPage online={online} />);
+    const lanes = Array.from(rendered.container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-lane-"]'));
+    for (let index = 0; index < 3; index++) {
+      fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+      fireEvent.click(lanes[index]);
+      act(() => vi.advanceTimersByTime(3_000));
+    }
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    const resolution = toRoundResolution(view, "p1");
+    rendered.rerender(
+      <StatCheckPage online={{ ...online, youLocked: true, resolutionEvent: { key: 1, resolution } }} />,
+    );
+    return { ...rendered, online, resolution };
+  }
+
+  /** Walk the reveal in small steps, recording every damage state observed. */
+  function observeDamage(stepMs = 120, totalMs = 45_000) {
+    const seen: Array<{ side: string; stage: string; shown: string; playerHp: string; botHp: string }> = [];
+    for (let elapsed = 0; elapsed < totalMs; elapsed += stepMs) {
+      act(() => vi.advanceTimersByTime(stepMs));
+      const node = screen.queryByTestId("stat-check-damage-reveal");
+      if (!node) continue;
+      seen.push({
+        side: node.getAttribute("data-damage-side") ?? "",
+        stage: node.getAttribute("data-damage-stage") ?? "",
+        shown: node.getAttribute("data-damage-shown") ?? "",
+        playerHp: screen.getByTestId("stat-check-player-hp").textContent ?? "",
+        botHp: screen.getByTestId("stat-check-bot-hp").textContent ?? "",
+      });
+    }
+    return seen;
+  }
+
+  it("resolves both directions sequentially, board winner first", () => {
+    playRound(twoWayResolvedView());
+    const seen = observeDamage();
+
+    // Never both at once, and the board winner (the player here) leads.
+    const sideOrder = seen.map((entry) => entry.side).filter((side, index, all) => side !== all[index - 1]);
+    expect(sideOrder).toEqual(["player", "bot"]);
+
+    const playerStrike = seen.filter((entry) => entry.side === "player");
+    const retaliation = seen.filter((entry) => entry.side === "bot");
+    expect(playerStrike.at(-1)!.shown).toBe("3");
+    expect(retaliation.at(-1)!.shown).toBe("1");
+    // Retaliation is decisive-only: it never claims a board win it didn't get.
+    expect(retaliation.map((entry) => entry.stage)).not.toContain("board");
+    expect(retaliation.map((entry) => entry.stage)).toContain("decisive");
+  });
+
+  it("drains each bar only at its own impact, never the other side's", () => {
+    playRound(twoWayResolvedView());
+    const seen = observeDamage();
+
+    // While the player is striking, only the opponent's bar may move.
+    for (const entry of seen.filter((item) => item.side === "player")) {
+      expect(entry.playerHp).toMatch(/^20 \//);
+      const expectedBotHp = ["health", "settled"].includes(entry.stage) ? /^17 \// : /^20 \//;
+      expect(entry.botHp, `bot hp at player:${entry.stage}`).toMatch(expectedBotHp);
+    }
+    // The opponent's retaliation then reduces the player, leaving the bot's
+    // already-applied loss in place.
+    for (const entry of seen.filter((item) => item.side === "bot")) {
+      expect(entry.botHp).toMatch(/^17 \//);
+      const expectedPlayerHp = ["health", "settled"].includes(entry.stage) ? /^19 \// : /^20 \//;
+      expect(entry.playerHp, `player hp at bot:${entry.stage}`).toMatch(expectedPlayerHp);
+    }
+
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("19 / 20 HP");
+    expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("17 / 20 HP");
+  });
+
+  it("counts the board win and the decisive bonus separately, to the server's total", () => {
+    const { resolution } = playRound(twoWayResolvedView());
+    const seen = observeDamage().filter((entry) => entry.side === "player");
+    const byStage = new Map(seen.map((entry) => [entry.stage, entry.shown]));
+    expect(byStage.get("enter")).toBe("0");
+    expect(byStage.get("board")).toBe("2");
+    expect(byStage.get("decisive")).toBe("3");
+    // No sweep stage: 2 of 3 lanes is not a sweep.
+    expect(byStage.has("sweep")).toBe(false);
+    expect(byStage.get("total")).toBe(String(resolution.damage.player));
+  });
+
+  it("shows no presentation at all when the server reports a damage-free round", () => {
+    const base = resolvedView();
+    playRound({
+      ...base,
+      results: base.results.map((lane, index) => ({
+        ...lane,
+        winner: index === 0 ? ("p1" as const) : index === 1 ? ("p2" as const) : ("tie" as const),
+        decisive: false,
+      })),
+      damage: {
+        p1Dealt: 0,
+        p2Dealt: 0,
+        boardWinner: "tie",
+        p1CategoryWins: 1,
+        p2CategoryWins: 1,
+        p1DecisiveDamage: 0,
+        p2DecisiveDamage: 0,
+      },
+      p1HpBefore: 20,
+      p2HpBefore: 20,
+      p1HpAfter: 20,
+      p2HpAfter: 20,
+    });
+    expect(observeDamage()).toEqual([]);
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("20 / 20 HP");
+    expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("20 / 20 HP");
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+  });
+
+  it("adopting a recovery snapshot mid-presentation applies the damage once", () => {
+    const online = controller();
+    const { container, rerender } = render(<StatCheckPage online={online} />);
+    const lanes = Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-lane-"]'));
+    for (let index = 0; index < 3; index++) {
+      fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+      fireEvent.click(lanes[index]);
+      act(() => vi.advanceTimersByTime(3_000));
+    }
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    const resolution = toRoundResolution(twoWayResolvedView(), "p1");
+    rerender(<StatCheckPage online={{ ...online, youLocked: true, resolutionEvent: { key: 1, resolution } }} />);
+
+    // Interrupt partway through the centre presentation.
+    act(() => vi.advanceTimersByTime(30_000));
+
+    // A reconnect delivers the authoritative post-round snapshot. The stale
+    // presentation must not replay, and the health must land exactly once on
+    // the server's totals — not be reduced a second time.
+    const recovered = synthesizeMatchState(
+      publicView({
+        phase: "selecting",
+        round: 2,
+        completedRounds: 1,
+        seats: {
+          p1: { seat: "p1", hp: 19, handCount: 6, discardCardIds: [], chosen: false, locked: false },
+          p2: { seat: "p2", hp: 17, handCount: 6, discardCardIds: [], chosen: false, locked: false },
+        },
+      }),
+      privateView(),
+      [],
+    );
+    rerender(
+      <StatCheckPage
+        online={{ ...online, live: recovered, liveKey: 9, resolutionEvent: { key: 1, resolution } }}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(5_000));
+
+    expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("19 / 20 HP");
+    expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("17 / 20 HP");
   });
 });
