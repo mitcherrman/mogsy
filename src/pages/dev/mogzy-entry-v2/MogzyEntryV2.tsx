@@ -6,26 +6,25 @@ import SEOHead from "@/components/SEOHead";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
-import { ACADEMY_EMBLEMS } from "./AcademyEmblems";
+import { ACADEMY_EMBLEMS, EMBLEM_LAYOUT, PARALLAX_RANGE } from "./AcademyEmblems";
 import { useLaunchChime } from "./useLaunchChime";
+import { useViewportTier } from "./useViewportTier";
 
 /**
- * Mogzy entrance — Academy edition (dev-only visual concept).
+ * Mogzy entrance — Academy edition.
  *
- * Same composition and mood as the previous V2 pass: full-screen, layout-free,
- * dark, centre-dominant, with the legacy launch chime. The abstract corner
- * fragments are replaced by the four real Academy emblems, and the Academy
- * title now crowns the composition.
+ * A full-screen, layout-free entry: dark, centre-dominant, with the legacy
+ * launch chime. Four decorative Academy emblems frame a centred mascot and the
+ * single "Enter Mogzy" control.
  *
- * The faithful pre-Mogzy original stays untouched at /dev/legacy-entry.
- * Not wired to production: no app state is read or written, and the route is
- * not linked from any navigation.
+ * The composition is fixed to the viewport and never scrolls. Desktop keeps the
+ * accepted four-corner arrangement; narrower tiers re-place the emblems rather
+ * than scaling the desktop layout down (see EMBLEM_LAYOUT).
+ *
+ * The emblems are decorative only — never buttons or links.
  */
 
 const ACADEMY_TITLE = "Mogzy’s Academy of Leaguecraft and Technology";
-
-/** Pointer travel in px at depth 1. Small on purpose — a drift, not a swing. */
-const PARALLAX_RANGE = 15;
 
 /** Chime (~400ms) overlaps the transition; navigate as the veil peaks. */
 const ENTRY_DURATION_MS = 780;
@@ -36,9 +35,9 @@ const GOLD_BRIGHT = "#f0d78c";
 const IVORY = "#f0e6d2";
 
 /** Four-point star + rule, echoing the ornament above the concept title. */
-function TitleOrnamentTop() {
+function TitleOrnamentTop({ width }: { width: number }) {
   return (
-    <svg width="120" height="18" viewBox="0 0 120 18" fill="none" aria-hidden="true">
+    <svg width={width} height="18" viewBox="0 0 120 18" fill="none" aria-hidden="true">
       <path
         d="M60 1 L62.2 6.8 L68 9 L62.2 11.2 L60 17 L57.8 11.2 L52 9 L57.8 6.8 Z"
         fill={GOLD_BRIGHT}
@@ -51,9 +50,9 @@ function TitleOrnamentTop() {
 }
 
 /** Diamond-and-rule divider beneath the title. */
-function TitleOrnamentBottom() {
+function TitleOrnamentBottom({ width }: { width: number }) {
   return (
-    <svg width="300" height="12" viewBox="0 0 300 12" fill="none" aria-hidden="true">
+    <svg width={width} height="12" viewBox="0 0 300 12" fill="none" aria-hidden="true">
       <path d="M150 1.5 L154.5 6 L150 10.5 L145.5 6 Z" fill={GOLD_BRIGHT} opacity="0.85" />
       <path d="M10 6 H141" stroke={GOLD} strokeWidth="1" opacity="0.45" />
       <path d="M159 6 H290" stroke={GOLD} strokeWidth="1" opacity="0.45" />
@@ -67,11 +66,15 @@ export default function MogzyEntryV2() {
   const navigate = useNavigate();
   const playLaunchChime = useLaunchChime();
   const prefersReducedMotion = useReducedMotion();
+  const tier = useViewportTier();
 
   const [entering, setEntering] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const enteringRef = useRef(false);
+
+  const isPhone = tier === "phone" || tier === "phone-landscape";
+  const isLandscapePhone = tier === "phone-landscape";
 
   /* ---------------------------------------------------------------------- */
   /* Entry transition                                                       */
@@ -115,11 +118,13 @@ export default function MogzyEntryV2() {
   }, [handleEnter]);
 
   /* ---------------------------------------------------------------------- */
-  /* Pointer parallax                                                       */
+  /* Pointer parallax — pointer-driven, so it is off on touch tiers          */
   /* ---------------------------------------------------------------------- */
 
+  const parallaxRange = PARALLAX_RANGE[tier];
+
   useEffect(() => {
-    if (prefersReducedMotion) return;
+    if (prefersReducedMotion || parallaxRange === 0) return;
     const onMove = (e: PointerEvent) => {
       setPointer({
         x: (e.clientX / window.innerWidth) * 2 - 1,
@@ -128,14 +133,14 @@ export default function MogzyEntryV2() {
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, parallaxRange]);
 
   /* ---------------------------------------------------------------------- */
   /* Derived motion values                                                  */
   /* ---------------------------------------------------------------------- */
 
-  // Emblems are real content now, so they sit well above the old fragments'
-  // opacity — but still below the centre so focus never leaves the mascot.
+  // Emblems are real content, so they sit well above atmospheric opacity —
+  // but still below the centre so focus never leaves the mascot.
   const emblemOpacity = useMemo(() => {
     if (entering) return 0;
     return hovered ? 0.94 : 0.76;
@@ -148,11 +153,62 @@ export default function MogzyEntryV2() {
     ? undefined
     : { duration: 2.6, repeat: Infinity, ease: "easeInOut" as const };
 
+  const glowSize = isLandscapePhone ? 300 : isPhone ? 340 : 460;
+
+  const titleBlock = (
+    <motion.div
+      className="flex flex-col items-center"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: entering ? 0 : 1, y: 0 }}
+      transition={{ duration: entering ? 0.4 : 1.1, ease: "easeOut" }}
+    >
+      <TitleOrnamentTop width={isPhone ? 84 : 120} />
+      {/* Warm gold gradient clipped to the glyphs.
+          Keep the text-shadow tight: a wide blur across Cinzel's dense
+          letterforms merges between glyphs and reads as a lit rectangular
+          slab behind the whole title block, not a glow.
+          The line break is explicit so the title always sets in two balanced
+          lines; natural wrapping gives an awkward three-line rag. */}
+      <h1
+        className={[
+          "ranked-title text-center font-medium leading-[1.2] tracking-[0.015em]",
+          isPhone ? "mt-2" : "mt-4",
+          isLandscapePhone
+            ? "text-[clamp(0.95rem,2.1vw,1.3rem)]"
+            : isPhone
+              ? "text-[clamp(1.05rem,5.2vw,1.6rem)]"
+              : "text-[clamp(1.6rem,3.6vw,3rem)]",
+        ].join(" ")}
+        style={{
+          backgroundImage: `linear-gradient(180deg, ${IVORY} 0%, ${GOLD_BRIGHT} 48%, ${GOLD} 100%)`,
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          textShadow: "0 0 10px rgba(201,168,76,0.20), 0 2px 3px rgba(0,0,0,0.6)",
+        }}
+      >
+        <span className="block text-balance">Mogzy’s Academy of</span>
+        <span className="block text-balance">Leaguecraft and Technology</span>
+      </h1>
+      <div className={isPhone ? "mt-1.5" : "mt-3"}>
+        <TitleOrnamentBottom width={isPhone ? 210 : 300} />
+      </div>
+    </motion.div>
+  );
+
   return (
     <main
-      className="relative min-h-dvh w-full overflow-hidden bg-[#04070f] flex flex-col items-center justify-center px-4"
+      className="relative h-[100dvh] w-full overflow-hidden bg-[#04070f]"
       data-testid="mogzy-entry-v2"
       data-entering={entering ? "true" : "false"}
+      data-tier={tier}
+      style={{
+        // Respect device safe areas (notches, home indicator, punch-holes).
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+      }}
     >
       <SEOHead
         title={ACADEMY_TITLE}
@@ -161,15 +217,16 @@ export default function MogzyEntryV2() {
       />
 
       {/* ---------------------------------------------------------------- */}
-      {/* Layer 1 — the four Academy corner emblems                         */}
+      {/* Layer 1 — the four Academy emblems (decorative)                   */}
       {/* ---------------------------------------------------------------- */}
       <div className="pointer-events-none absolute inset-0">
         {ACADEMY_EMBLEMS.map((emblem) => {
-          const dx = prefersReducedMotion ? 0 : pointer.x * PARALLAX_RANGE * emblem.depth;
-          const dy = prefersReducedMotion ? 0 : pointer.y * PARALLAX_RANGE * emblem.depth;
+          const place = EMBLEM_LAYOUT[tier][emblem.key];
+          const dx = parallaxRange === 0 ? 0 : pointer.x * parallaxRange * emblem.depth;
+          const dy = parallaxRange === 0 ? 0 : pointer.y * parallaxRange * emblem.depth;
           // On entry everything is drawn toward the centre of the screen.
-          const pullX = entering ? (50 - emblem.x) * 2.6 : 0;
-          const pullY = entering ? (50 - emblem.y) * 2.6 : 0;
+          const pullX = entering ? (50 - place.x) * 2.6 : 0;
+          const pullY = entering ? (50 - place.y) * 2.6 : 0;
 
           return (
             // Static wrapper carries the vertical centring transform: the four
@@ -180,66 +237,64 @@ export default function MogzyEntryV2() {
               key={emblem.key}
               className="absolute -translate-y-1/2"
               style={{
-                left: `${emblem.x}%`,
-                top: `${emblem.y}%`,
-                width: emblem.width,
-                marginLeft: -emblem.width / 2,
+                left: `${place.x}%`,
+                top: `${place.y}%`,
+                width: place.width,
+                marginLeft: -place.width / 2,
               }}
             >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: emblemOpacity,
-                x: dx + pullX,
-                y: dy + pullY,
-                scale: entering ? 0.62 : 1,
-              }}
-              transition={{
-                opacity: { duration: entering ? 0.5 : 1.6, ease: "easeOut" },
-                x: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
-                y: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
-                scale: { duration: 0.7, ease: "easeIn" },
-              }}
-            >
-              {/* Slow independent breathing */}
               <motion.div
-                animate={
-                  prefersReducedMotion || entering ? undefined : { y: [0, -7, 0] }
-                }
-                transition={
-                  prefersReducedMotion || entering
-                    ? undefined
-                    : {
-                        duration: 9,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: emblem.idleDelay,
-                      }
-                }
+                initial={{ opacity: 0 }}
+                animate={{
+                  opacity: emblemOpacity,
+                  x: dx + pullX,
+                  y: dy + pullY,
+                  scale: entering ? 0.62 : 1,
+                }}
+                transition={{
+                  opacity: { duration: entering ? 0.5 : 1.6, ease: "easeOut" },
+                  x: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
+                  y: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
+                  scale: { duration: 0.7, ease: "easeIn" },
+                }}
               >
-                {/* Emblem art already contains its gold label + divider, so no
-                    second HTML label is rendered. Screen-blended because these
-                    PNGs have no alpha; see AcademyEmblems.tsx. */}
-                <img
-                  src={emblem.src}
-                  alt={emblem.label}
-                  width={emblem.width}
-                  draggable={false}
-                  className="block w-full h-auto select-none"
-                  style={{
-                    mixBlendMode: "screen",
-                    WebkitMaskImage:
-                      "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
-                    maskImage:
-                      "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
-                    filter: hovered
-                      ? "brightness(1.18) saturate(1.08)"
-                      : "brightness(1) saturate(1)",
-                    transition: "filter 400ms ease",
-                  }}
-                />
+                {/* Slow independent breathing */}
+                <motion.div
+                  animate={prefersReducedMotion || entering ? undefined : { y: [0, -7, 0] }}
+                  transition={
+                    prefersReducedMotion || entering
+                      ? undefined
+                      : {
+                          duration: 9,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: emblem.idleDelay,
+                        }
+                  }
+                >
+                  {/* Emblem art already contains its gold label + divider, so
+                      no second HTML label is rendered. Screen-blended because
+                      these PNGs have no alpha; see AcademyEmblems.tsx. */}
+                  <img
+                    src={emblem.src}
+                    alt={emblem.label}
+                    width={place.width}
+                    draggable={false}
+                    className="block w-full h-auto select-none"
+                    style={{
+                      mixBlendMode: "screen",
+                      WebkitMaskImage:
+                        "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
+                      maskImage:
+                        "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
+                      filter: hovered
+                        ? "brightness(1.18) saturate(1.08)"
+                        : "brightness(1) saturate(1)",
+                      transition: "filter 400ms ease",
+                    }}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
             </div>
           );
         })}
@@ -259,11 +314,13 @@ export default function MogzyEntryV2() {
       {/* Layer 2 — central glow                                            */}
       {/* ---------------------------------------------------------------- */}
       <motion.div
-        className="pointer-events-none absolute rounded-full"
+        className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
         aria-hidden="true"
         style={{
-          width: 460,
-          height: 460,
+          width: glowSize,
+          height: glowSize,
+          marginLeft: -glowSize / 2,
+          marginTop: -glowSize / 2,
           background:
             "radial-gradient(circle, rgba(201,168,76,0.26) 0%, rgba(127,214,239,0.10) 45%, transparent 70%)",
           filter: "blur(52px)",
@@ -276,121 +333,123 @@ export default function MogzyEntryV2() {
       />
 
       {/* ---------------------------------------------------------------- */}
-      {/* Layer 3 — Academy title, mascot, call to action                   */}
+      {/* Layer 3 — title, mascot, call to action                           */}
       {/* ---------------------------------------------------------------- */}
-      <motion.div
-        className="relative z-10 flex flex-col items-center"
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: entering ? 0 : 1, y: 0 }}
-        transition={{ duration: entering ? 0.4 : 1.1, ease: "easeOut" }}
-      >
-        <TitleOrnamentTop />
-        {/* Warm gold gradient clipped to the glyphs.
-            Keep the text-shadow tight: a wide blur across Cinzel's dense
-            letterforms merges between glyphs and reads as a lit rectangular
-            slab behind the whole title block, not a glow.
-            The line break is explicit so the title always sets in the two
-            balanced lines the concept art uses; leaving it to natural wrapping
-            gives an awkward three-line rag at desktop widths. */}
-        <h1
-          className="ranked-title mt-4 text-center text-[clamp(1.6rem,3.6vw,3rem)] font-medium leading-[1.2] tracking-[0.015em]"
-          style={{
-            backgroundImage: `linear-gradient(180deg, ${IVORY} 0%, ${GOLD_BRIGHT} 48%, ${GOLD} 100%)`,
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            textShadow: "0 0 10px rgba(201,168,76,0.20), 0 2px 3px rgba(0,0,0,0.6)",
-          }}
+      {/* On phones the title is parked at the top and the mascot/CTA stay
+          optically centred, so the emblem bands above and below never collide
+          with the centre column. Wider tiers keep the accepted single centred
+          stack. */}
+      {isPhone && (
+        <div
+          className="absolute inset-x-0 z-10 flex justify-center px-4"
+          style={{ top: isLandscapePhone ? "3%" : "5%" }}
         >
-          <span className="block text-balance">Mogzy’s Academy of</span>
-          <span className="block text-balance">Leaguecraft and Technology</span>
-        </h1>
-        <div className="mt-3">
-          <TitleOrnamentBottom />
+          {titleBlock}
         </div>
-      </motion.div>
+      )}
 
-      <motion.button
-        type="button"
-        onClick={handleEnter}
-        onHoverStart={() => setHovered(true)}
-        onHoverEnd={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
-        initial={{ opacity: 0, scale: 0.86 }}
-        animate={{
-          opacity: 1,
-          scale: entering ? 1.14 : 1,
-        }}
-        whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
-        whileTap={prefersReducedMotion ? undefined : { scale: 0.96 }}
-        transition={{ duration: entering ? 0.7 : 0.8, ease: "easeOut" }}
-        className="relative z-10 mt-7 flex flex-col items-center gap-5 rounded-2xl px-8 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 focus-visible:ring-offset-4 focus-visible:ring-offset-[#04070f]"
-        aria-label="Enter Mogzy"
+      {/* On portrait phones the title sits above the upper emblem band, so the
+          mascot/CTA column is nudged down to sit optically between the two
+          emblem rows instead of dead-centre (which would clip the upper band). */}
+      <div
+        className={[
+          "relative z-10 flex h-full w-full flex-col items-center justify-center px-4",
+          tier === "phone" ? "pt-[9vh]" : "",
+        ].join(" ")}
       >
-        <motion.div
-          animate={prefersReducedMotion || entering ? undefined : { y: [0, -8, 0] }}
-          transition={
-            prefersReducedMotion || entering
-              ? undefined
-              : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
-          }
-        >
-          {/* The mascot PNG has no alpha channel (colorType 2) — its black
-              backdrop is baked in. Rather than touch the source artwork, we
-              screen-blend it against the near-black page so the black drops
-              out, and feather the edges with a radial mask. A drop-shadow is
-              deliberately NOT used here: on an opaque image it would trace a
-              rectangular halo. The glow comes from layer 2 behind instead. */}
-          <MogzyMascot
-            pose="base"
-            decorative
-            loading="eager"
-            className="h-36 sm:h-40 md:h-44 w-auto"
-            style={{
-              mixBlendMode: "screen",
-              WebkitMaskImage:
-                "radial-gradient(ellipse 62% 58% at 50% 50%, #000 62%, transparent 100%)",
-              maskImage:
-                "radial-gradient(ellipse 62% 58% at 50% 50%, #000 62%, transparent 100%)",
-              filter: hovered
-                ? "brightness(1.16) saturate(1.12)"
-                : "brightness(1) saturate(1)",
-              transition: "filter 400ms ease",
-            }}
-          />
-        </motion.div>
+        {!isPhone && titleBlock}
 
-        <div className="flex flex-col items-center gap-2">
-          <motion.span
-            className="ranked-title text-xl sm:text-2xl md:text-[1.75rem] font-semibold uppercase tracking-[0.16em]"
-            animate={{
-              textShadow: hovered
-                ? "0 0 26px rgba(201,168,76,0.5), 0 1px 0 rgba(2,6,16,0.8)"
-                : "0 0 16px rgba(201,168,76,0.22), 0 1px 0 rgba(2,6,16,0.8)",
-            }}
-            transition={{ duration: 0.4 }}
+        <motion.button
+          type="button"
+          onClick={handleEnter}
+          onHoverStart={() => setHovered(true)}
+          onHoverEnd={() => setHovered(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => setHovered(false)}
+          initial={{ opacity: 0, scale: 0.86 }}
+          animate={{ opacity: 1, scale: entering ? 1.14 : 1 }}
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+          whileTap={prefersReducedMotion ? undefined : { scale: 0.96 }}
+          transition={{ duration: entering ? 0.7 : 0.8, ease: "easeOut" }}
+          className={[
+            "relative z-10 flex flex-col items-center rounded-2xl focus:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 focus-visible:ring-offset-4 focus-visible:ring-offset-[#04070f]",
+            isLandscapePhone ? "mt-0 gap-3 px-6 py-2" : isPhone ? "mt-0 gap-4 px-8 py-3" : "mt-7 gap-5 px-8 py-4",
+          ].join(" ")}
+          aria-label="Enter Mogzy"
+        >
+          <motion.div
+            animate={prefersReducedMotion || entering ? undefined : { y: [0, -8, 0] }}
+            transition={
+              prefersReducedMotion || entering
+                ? undefined
+                : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
+            }
           >
-            Enter Mogzy
-          </motion.span>
-          {/* Hairline rule, widening on hover — the "door" opening */}
-          <motion.span
-            className="block h-px bg-gradient-to-r from-transparent via-[#f0d78c] to-transparent"
-            animate={{ width: hovered ? 208 : 132, opacity: hovered ? 0.9 : 0.5 }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
-          />
-        </div>
-      </motion.button>
+            {/* The mascot artwork has a real alpha channel, so it needs no
+                blend mode, mask, or local backdrop — it composites directly
+                over the page. drop-shadow follows the transparent silhouette,
+                giving the glow its actual shape. */}
+            <MogzyMascot
+              pose="base"
+              decorative
+              loading="eager"
+              className={
+                isLandscapePhone
+                  ? "h-24 w-auto"
+                  : isPhone
+                    ? "h-28 w-auto"
+                    : "h-36 sm:h-40 md:h-44 w-auto"
+              }
+              style={{
+                filter: hovered
+                  ? "drop-shadow(0 0 34px rgba(201,168,76,0.55))"
+                  : "drop-shadow(0 0 22px rgba(201,168,76,0.32))",
+                transition: "filter 400ms ease",
+              }}
+            />
+          </motion.div>
 
-      {/* Interaction hint — the legacy line, kept verbatim */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: entering ? 0 : 1 }}
-        transition={{ delay: entering ? 0 : 1.1, duration: entering ? 0.3 : 0.9 }}
-        className="relative z-10 mt-7 text-[11px] uppercase tracking-[0.4em] text-[#7fd6ef]/55"
-      >
-        tap to enter
-      </motion.p>
+          <div className="flex flex-col items-center gap-2">
+            <motion.span
+              className={[
+                "ranked-title font-semibold uppercase tracking-[0.16em]",
+                isLandscapePhone ? "text-base" : isPhone ? "text-lg" : "text-xl sm:text-2xl md:text-[1.75rem]",
+              ].join(" ")}
+              animate={{
+                textShadow: hovered
+                  ? "0 0 26px rgba(201,168,76,0.5), 0 1px 0 rgba(2,6,16,0.8)"
+                  : "0 0 16px rgba(201,168,76,0.22), 0 1px 0 rgba(2,6,16,0.8)",
+              }}
+              transition={{ duration: 0.4 }}
+            >
+              Enter Mogzy
+            </motion.span>
+            {/* Hairline rule, widening on hover — the "door" opening */}
+            <motion.span
+              className="block h-px bg-gradient-to-r from-transparent via-[#f0d78c] to-transparent"
+              animate={{
+                width: hovered ? (isPhone ? 168 : 208) : isPhone ? 118 : 132,
+                opacity: hovered ? 0.9 : 0.5,
+              }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            />
+          </div>
+        </motion.button>
+
+        {/* Interaction hint — the legacy line, kept verbatim */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: entering ? 0 : 1 }}
+          transition={{ delay: entering ? 0 : 1.1, duration: entering ? 0.3 : 0.9 }}
+          className={[
+            "relative z-10 text-[11px] uppercase tracking-[0.4em] text-[#7fd6ef]/55",
+            isLandscapePhone ? "mt-3" : isPhone ? "mt-5" : "mt-7",
+          ].join(" ")}
+        >
+          tap to enter
+        </motion.p>
+      </div>
 
       {/* Entry veil — the brief flash toward the product */}
       <motion.div
