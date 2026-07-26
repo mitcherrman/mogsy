@@ -1070,12 +1070,38 @@ describe("StatCheckPage item system UI", () => {
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
   });
 
-  it("shows compact inventory counts in the tray as items accumulate", () => {
+  it("renders the board dock with icon wells, counts, and empty/owned/armed states", () => {
     renderPage(); // ruby-crystal taken at the opening choice
     expect(inventoryCountText("ruby-crystal")).toBe("1");
     expect(inventoryCountText("long-sword")).toBe("0");
-    // Owned items are armable; unowned items are disabled.
-    expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toBeEnabled();
-    expect(screen.getByTestId("stat-check-inventory-long-sword")).toBeDisabled();
+    // Owned wells are armable; zero-count wells stay visible but disabled.
+    const owned = screen.getByTestId("stat-check-inventory-ruby-crystal");
+    const empty = screen.getByTestId("stat-check-inventory-long-sword");
+    expect(owned).toBeEnabled();
+    expect(owned).toHaveAttribute("data-dock-state", "owned");
+    expect(empty).toBeDisabled();
+    expect(empty).toHaveAttribute("data-dock-state", "empty");
+    // The dock is icon-only: no "Items"/"Inventory" text label anywhere.
+    expect(screen.getByTestId("stat-check-inventory").textContent).not.toMatch(/item|inventory/i);
+
+    // Arming lights the well; disarming returns it to owned.
+    armItem("ruby-crystal");
+    expect(owned).toHaveAttribute("data-dock-state", "armed");
+    expect(owned).toHaveAttribute("aria-pressed", "true");
+    armItem("ruby-crystal");
+    expect(owned).toHaveAttribute("data-dock-state", "owned");
+  });
+
+  it("keeps the armed dock state through lane assignment and consumes on equip", () => {
+    const { container } = renderPage(); // ruby-crystal
+    fillBoard(container);
+    armItem("ruby-crystal");
+    // Compatible occupied lane highlighted (data attr drives the socket ring).
+    expect(lanes(container)[0]).toHaveAttribute("data-armed-item", "compatible");
+    fireEvent.click(lanes(container)[0]);
+    // Assignment disarms the dock (pending badge owns the state now).
+    expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toHaveAttribute("data-dock-state", "owned");
+    expect(screen.getByTestId("stat-check-pending-item")).toBeInTheDocument();
+    expect(inventoryCountText("ruby-crystal")).toBe("1"); // pending, not consumed
   });
 });

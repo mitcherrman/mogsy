@@ -50,7 +50,7 @@ import {
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
-import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryStrip, ItemInventoryTray } from "./StatCheckItems";
+import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryDock } from "./StatCheckItems";
 import type { OnlineMatchController } from "./online/useStatCheckMatch";
 import {
   STAT_CHECK_RULES,
@@ -785,7 +785,7 @@ export default function StatCheckPage({
             />
           )}
 
-          <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2">
+          <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-1.5 sm:gap-2">
             <div
               className={cn(
                 "relative min-h-0 rounded-2xl p-1.5 md:p-2 min-[1210px]:p-3",
@@ -857,6 +857,25 @@ export default function StatCheckPage({
             </div>
 
             <div className="relative">
+              {/* Board-mounted item dock — icons and counts only, one mount,
+                  one component, split on the same 1210px boundary as the
+                  arena itself.
+                  Compact arena: an in-flow shelf bolted to the board's lower
+                  edge directly above the hand tray. The fan spans the full
+                  width at these sizes, so sitting above it is the only place
+                  that never tangles with hand cards, and it keeps the dock
+                  out of the viewport corner where the app's floating buttons
+                  live.
+                  Wide arena: absolutely mounted in the free corner where the
+                  slab's bottom-left edge meets the tray, clear of the
+                  narrower centred fan. */}
+              <ItemInventoryDock
+                inventory={match.playerInventory}
+                selectedItemId={selectedItemId}
+                disabled={!canEdit}
+                onToggle={toggleInventoryItem}
+                className="z-[450] mx-auto -mt-2 mb-2 min-[1210px]:absolute min-[1210px]:-top-2 min-[1210px]:left-0 min-[1210px]:m-0"
+              />
               {/* hand dock: a carved stone tray extending from the slab's lower
                   edge, in the same stone-and-brass construction — the hand is
                   held by the board, not floating on a panel */}
@@ -898,9 +917,13 @@ export default function StatCheckPage({
               />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1">
+            {/* The fan's outer cards droop past the hand container, so the
+                controls row must own the stacking context above them (fan
+                cards reach z-400 on hover) — otherwise a drooping card sits
+                over Lock In and swallows the tap on narrow screens. */}
+            <div className="relative z-[500] flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1">
               {match.phase === "selecting" ? (
-                <p className="min-w-0 flex-1 basis-full text-xs font-semibold text-cyan-100/70 sm:basis-auto" data-testid="stat-check-instruction">
+                <p className="min-w-0 flex-1 truncate text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
                   {armedItem
                     ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
                     : selectedCard
@@ -909,14 +932,6 @@ export default function StatCheckPage({
                 </p>
               ) : (
                 <span aria-hidden className="min-w-0 flex-1" />
-              )}
-              {!wideLayout && (
-                <ItemInventoryTray
-                  inventory={match.playerInventory}
-                  selectedItemId={selectedItemId}
-                  disabled={!canEdit}
-                  onToggle={toggleInventoryItem}
-                />
               )}
               {/* Lock In exists ONLY during the selecting phase: it never
                   competes with item confirmation or terminal controls. */}
@@ -953,9 +968,6 @@ export default function StatCheckPage({
               <UtilityStack
                 match={match}
                 assets={assets}
-                selectedItemId={selectedItemId}
-                inventoryDisabled={!canEdit}
-                onToggleItem={toggleInventoryItem}
                 opponentLabel={opponentLabel}
                 botDiscardRef={(element) => { discardRefs.current.bot = element; }}
                 playerDiscardRef={(element) => { discardRefs.current.player = element; }}
@@ -1369,7 +1381,16 @@ function ArenaLane({
               clone-to-card swap is then a pure visibility flip with no darker
               first-paint blink. The socket frame stays mounted beneath the card
               layer the whole time, so the handoff never restyles the socket. */}
-          <div className="relative">
+          {/* Armed-item targeting: a cyan energy ring around the receiving
+              socket on compatible occupied lanes — paint only (ring/shadow),
+              never the layout box the travel clone measures. */}
+          <div
+            className={cn(
+              "relative",
+              canEdit && armedItem && armedCompatible && playerCard &&
+                "rounded-lg ring-2 ring-cyan-300/80 shadow-[0_0_16px_rgba(34,211,238,0.55),0_0_32px_rgba(34,211,238,0.25)]",
+            )}
+          >
             <SocketFrame
               active={Boolean(canEdit && selectedCard) || playerCardInFlight}
               occupied={Boolean(playerCard) && !playerCardInFlight}
@@ -1750,7 +1771,7 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[172px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
+    <div className="relative mx-auto h-[148px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
@@ -1769,6 +1790,11 @@ function PlayerHand({
               key={card.id}
               className={cn(
                 "absolute left-1/2 top-0 origin-bottom will-change-transform hover:!z-[400] focus-within:!z-[400]",
+                // Selected card rises above every overlapping fan neighbor so
+                // the pick is unmistakable in the tight mobile fan. Pure
+                // stacking — the transform/geometry the clone measures is
+                // untouched (fanCardLayout already applies the selected lift).
+                selected && "!z-[400]",
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] ease-out motion-reduce:transition-none",
                 hidden && "pointer-events-none opacity-0",
               )}
@@ -1802,30 +1828,18 @@ function PlayerHand({
 function UtilityStack({
   match,
   assets,
-  selectedItemId,
-  inventoryDisabled,
-  onToggleItem,
   opponentLabel = "Bot",
   botDiscardRef,
   playerDiscardRef,
 }: {
   match: MatchState;
   assets: ReturnType<typeof useChampionAssets>["data"];
-  selectedItemId: ItemId | null;
-  inventoryDisabled: boolean;
-  onToggleItem: (itemId: ItemId) => void;
   opponentLabel?: string;
   botDiscardRef: (element: HTMLElement | null) => void;
   playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
   return (
     <div className="grid gap-2">
-      <ItemInventoryStrip
-        inventory={match.playerInventory}
-        selectedItemId={selectedItemId}
-        disabled={inventoryDisabled}
-        onToggle={onToggleItem}
-      />
       <CountPill label="Shared pool" value={match.drawPile.length} />
       <CountPill label="Your hand" value={match.playerHand.length} />
       <CountPill label={`${opponentLabel} hand`} value={match.botHand.length} />
@@ -2194,7 +2208,8 @@ function ChampionCard({
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
-    state === "selected" && "-translate-y-2 scale-[1.08] border-[#f4d77d] shadow-[0_22px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(244,215,125,0.4)] ring-2 ring-[#f4d77d]/75",
+    state === "selected" &&
+      "-translate-y-2 scale-[1.08] border-[#f4d77d] brightness-110 shadow-[0_22px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(244,215,125,0.55),0_0_46px_rgba(34,211,238,0.3)] ring-2 ring-[#f4d77d]",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -2491,7 +2506,7 @@ function CompactMatchupBar({
   return (
     <div data-testid="stat-check-compact-matchup" className="grid grid-cols-2 items-end gap-2">
       <div className="min-w-0">
-        <div className="mb-1 flex items-baseline gap-1.5 px-0.5">
+        <div className="mb-0.5 flex items-baseline gap-1.5 px-0.5 leading-tight">
           <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200/80">You</span>
           <span className="truncate text-[11px] font-black text-white">{isOnline ? "You" : "mogsy"}</span>
         </div>
@@ -2504,7 +2519,7 @@ function CompactMatchupBar({
         />
       </div>
       <div className="min-w-0">
-        <div className="mb-1 flex items-baseline justify-end gap-1.5 px-0.5">
+        <div className="mb-0.5 flex items-baseline justify-end gap-1.5 px-0.5 leading-tight">
           <span className="truncate text-[11px] font-black text-white">
             {isOnline ? "Opponent" : "Deterministic Bot"}
           </span>
@@ -2772,7 +2787,7 @@ export function LaneResult({ result, opponentLabel = "Bot" }: { result: Category
       <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
       <div
         className={cn(
-          "relative max-w-full rounded-xl border p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.22)]",
+          "relative max-w-full rounded-xl border p-[3px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.22)] md:p-[5px]",
           "bg-[linear-gradient(180deg,rgba(52,42,18,0.55),rgba(6,10,16,0.85))]",
           result.decisive ? "border-[#f4d77d]/50 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/30",
         )}
@@ -2803,7 +2818,7 @@ export function LaneResult({ result, opponentLabel = "Bot" }: { result: Category
           </div>
         )}
         {result.decisive && (
-          <div className="rounded bg-[#d6b55d]/20 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em] text-[#f4d77d]">
+          <div className="rounded bg-[#d6b55d]/20 px-1.5 py-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4d77d] md:px-2 md:py-0.5 md:text-xs">
             Decisive +1
           </div>
         )}

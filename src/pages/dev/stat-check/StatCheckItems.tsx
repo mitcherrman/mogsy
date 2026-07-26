@@ -186,118 +186,100 @@ export function ItemChoicePanel({
 }
 
 /**
- * The player's owned-item strip (wide-desktop utility rail). Clicking a chip
- * arms it for lane assignment (click item, then click a compatible occupied
- * lane); clicking again disarms.
+ * Board-mounted persistent inventory: a small stone-and-brass shelf hanging
+ * off the board assembly, holding one recessed item well per item. Icons and
+ * counts only — no labels. The same component (and testids) serves every
+ * layout; the page positions it against the slab/hand construction. Clicking
+ * an owned well arms it for lane assignment (click item, then click a
+ * compatible occupied lane); clicking again disarms.
  */
-export function ItemInventoryStrip({
+export function ItemInventoryDock({
   inventory,
   selectedItemId,
   disabled,
   onToggle,
+  className,
 }: {
   inventory: ItemInventory;
   selectedItemId: ItemId | null;
   disabled: boolean;
   onToggle: (itemId: ItemId) => void;
+  className?: string;
 }) {
   return (
-    <div data-testid="stat-check-inventory" className="rounded-md border border-cyan-300/12 bg-black/28 p-2 shadow-xl">
-      <div className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">
-        Items - {totalInventoryCount(inventory)}
-      </div>
-      <div className="mt-1.5 grid gap-1">
-        {ITEM_IDS.map((itemId) => {
-          const owned = inventoryCount(inventory, itemId);
-          const selected = selectedItemId === itemId;
-          const usable = owned > 0 && !disabled;
-          return (
-            <button
-              key={itemId}
-              type="button"
-              data-testid={`stat-check-inventory-${itemId}`}
-              aria-pressed={selected}
-              disabled={!usable}
-              title={`${ITEMS[itemId].label}: ${ITEMS[itemId].effectText} (${itemFamiliesLabel(itemId)})`}
-              onClick={() => onToggle(itemId)}
-              className={cn(
-                "flex items-center gap-1.5 rounded border px-1.5 py-1 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200",
-                selected
-                  ? "border-[#f4d77d] bg-[#d6b55d]/15 shadow-[0_0_12px_rgba(244,215,125,0.3)]"
-                  : "border-cyan-300/12 bg-black/30",
-                owned === 0 && "opacity-40",
-                usable && !selected && "hover:border-[#d6b55d]/50",
-                !usable && "cursor-not-allowed",
-              )}
-            >
-              <span className="grid h-5 w-5 shrink-0 place-items-center overflow-hidden rounded border border-[#d6b55d]/35 bg-black/50 text-[#f4d77d]">
-                <ItemImage itemId={itemId} glyphClassName="h-3.5 w-3.5" />
-              </span>
-              <span className="min-w-0 truncate text-[11px] font-black text-white">{ITEMS[itemId].label}</span>
-              <span className="ml-auto text-[11px] font-black text-cyan-100">{owned}</span>
-            </button>
-          );
-        })}
-      </div>
-      {selectedItemId && (
-        <div className="mt-1.5 text-[10px] font-semibold text-[#f4d77d]">
-          Click a compatible occupied lane to attach it.
-        </div>
+    <div
+      data-testid="stat-check-inventory"
+      aria-label={`Item inventory, ${totalInventoryCount(inventory)} owned`}
+      className={cn(
+        // The shelf: same slab construction — brass perimeter, dark stone
+        // face, drop shadows giving it physical thickness below the board.
+        // Compact arena: a horizontal shelf bolted across the board's lower
+        // edge. Wide arena (>=1210px, where the rails squeeze the middle
+        // column): a vertical socket strip hanging off the slab's bottom-left
+        // corner — the only region that stays clear of the centred hand fan
+        // at every wide width (that free corner is just ~55px at 1210px).
+        "relative flex w-max items-center gap-1.5 border-2 border-[#7d6430] px-2 pb-1 pt-1.5",
+        "min-[1210px]:flex-col min-[1210px]:gap-0.5 min-[1210px]:px-1 min-[1210px]:pb-1 min-[1210px]:pt-1.5",
+        "rounded-b-xl rounded-t-[4px] bg-[linear-gradient(180deg,rgba(27,37,54,0.55),rgba(9,14,24,0.9)),linear-gradient(160deg,#182236,#0b111d)]",
+        "shadow-[inset_0_2px_0_rgba(244,215,125,0.22),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_18px_rgba(0,0,0,0.5),0_5px_0_-2px_#241d0e,0_8px_0_-4px_#0a0d14,0_16px_28px_rgba(0,0,0,0.55)]",
+        className,
       )}
-    </div>
-  );
-}
-
-/**
- * Compact icon-row inventory for narrow layouts, docked in the controls row
- * next to Lock In. Same arm/disarm interaction and testids as the rail strip —
- * exactly one of the two is mounted at a time (layouts switch by viewport).
- */
-export function ItemInventoryTray({
-  inventory,
-  selectedItemId,
-  disabled,
-  onToggle,
-}: {
-  inventory: ItemInventory;
-  selectedItemId: ItemId | null;
-  disabled: boolean;
-  onToggle: (itemId: ItemId) => void;
-}) {
-  return (
-    <div data-testid="stat-check-inventory" className="flex items-center gap-1">
-      <span className="sr-only">Items - {totalInventoryCount(inventory)}</span>
+    >
+      {/* brass mounting lip where the shelf meets the board edge */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-[3px] left-2 right-2 h-[3px] rounded-full bg-[linear-gradient(90deg,transparent,rgba(168,137,75,0.9)_20%,rgba(214,181,93,0.95)_50%,rgba(168,137,75,0.9)_80%,transparent)] shadow-[inset_0_1px_0_rgba(244,215,125,0.5)]"
+      />
+      {/* corner bolts fixing the shelf to the frame */}
+      <span aria-hidden className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
+      <span aria-hidden className="pointer-events-none absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
       {ITEM_IDS.map((itemId) => {
         const owned = inventoryCount(inventory, itemId);
-        const selected = selectedItemId === itemId;
+        const armed = selectedItemId === itemId;
         const usable = owned > 0 && !disabled;
         return (
           <button
             key={itemId}
             type="button"
             data-testid={`stat-check-inventory-${itemId}`}
-            aria-pressed={selected}
+            data-dock-state={armed ? "armed" : owned > 0 ? "owned" : "empty"}
+            aria-pressed={armed}
             aria-label={`${ITEMS[itemId].label}, ${owned} owned. ${ITEMS[itemId].effectText}.`}
             disabled={!usable}
             title={`${ITEMS[itemId].label}: ${ITEMS[itemId].effectText} (${itemFamiliesLabel(itemId)})`}
             onClick={() => onToggle(itemId)}
             className={cn(
-              "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-md border outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200",
-              selected
-                ? "border-[#f4d77d] bg-[#d6b55d]/15 shadow-[0_0_12px_rgba(244,215,125,0.3)]"
-                : "border-cyan-300/15 bg-black/40",
-              owned === 0 && "opacity-35",
+              // A recessed item well carved into the shelf stone.
+              "relative grid h-10 w-10 shrink-0 place-items-center rounded-md border outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200",
+              "border-black/55 bg-[radial-gradient(ellipse_at_50%_40%,#101a2b,#0a121f_80%)] shadow-[inset_0_3px_8px_rgba(0,0,0,0.75),inset_0_-1px_0_rgba(244,215,125,0.1)]",
+              armed
+                ? // Armed: the well lights up — raised, gold-rimmed, cyan energy glow.
+                  "-translate-y-1 border-[#f4d77d] ring-2 ring-cyan-300/80 shadow-[inset_0_2px_6px_rgba(0,0,0,0.5),0_0_14px_rgba(34,211,238,0.7),0_0_28px_rgba(34,211,238,0.35),0_4px_10px_rgba(0,0,0,0.5)]"
+                : usable && "hover:border-[#d6b55d]/60 hover:shadow-[inset_0_3px_8px_rgba(0,0,0,0.75),0_0_10px_rgba(214,181,93,0.25)]",
+              owned === 0 && "opacity-40 grayscale",
               !usable && "cursor-not-allowed",
             )}
           >
-            <ItemImage itemId={itemId} glyphClassName="h-4.5 w-4.5 text-[#f4d77d]" className="h-full w-full" />
+            <span className="grid h-[30px] w-[30px] place-items-center overflow-hidden rounded-[4px]">
+              <ItemImage itemId={itemId} glyphClassName="h-5 w-5 text-[#f4d77d]" className="h-full w-full" />
+            </span>
+            {/* armed energy tap: a lit gem at the well's base, echoing the
+                socket status lights */}
+            {armed && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -bottom-[5px] left-1/2 h-1.5 w-3 -translate-x-1/2 rounded-b-sm bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9),0_0_20px_rgba(34,211,238,0.5)]"
+              />
+            )}
             <span
               className={cn(
-                "absolute -right-0.5 -top-0.5 rounded-full px-1 text-[9px] font-black leading-[13px]",
-                owned > 0 ? "bg-[#d6b55d] text-black" : "bg-black/70 text-slate-400",
+                "pointer-events-none absolute -right-1 -top-1 rounded-full border px-1 text-[9px] font-black leading-[13px]",
+                owned > 0
+                  ? "border-[#f4d77d]/60 bg-[#d6b55d] text-black shadow-[0_0_6px_rgba(214,181,93,0.5)]"
+                  : "border-white/10 bg-black/75 text-slate-500",
               )}
             >
-              {owned}
+              {`×${owned}`}
             </span>
           </button>
         );
