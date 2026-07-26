@@ -28,12 +28,14 @@ import socketFrameUrl from "@/assets/stat-check/board/stat-check-card-socket-fra
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { buildMatchSummary } from "./matchSummary";
 import {
+  LANE_PLAQUE_TIMELINE,
   REDUCED_MOTION_CHOREO,
   STAT_CHECK_ANIMATION,
   STAT_CHECK_ANIMATION_SPEEDS,
   REVEAL_TIMELINE,
   animationDuration,
   durationAtSpeed,
+  lanePlaqueStageOffsets,
   heroArcLift,
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
@@ -42,10 +44,12 @@ import {
   activeResolvedLane,
   allowsPreLockInteraction,
   animationStepReducer,
+  initialLanePlaqueStages,
   itemsRevealedAtStep,
   revealedOpponentCount,
   stepAfterLane,
   stepBeforeDamage,
+  type LanePlaqueStage,
   type PresentationStep,
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
@@ -154,6 +158,13 @@ export default function StatCheckPage({
    * payload, so collapsing cannot desync a multiplayer match.
    */
   const [inventoryCollapsed, setInventoryCollapsed] = useState(false);
+  /**
+   * Which face each lane's fixed plaque is showing. Presentation only — the
+   * winner, margin, threshold, and damage are all computed once by the engine
+   * before any of this runs. Scheduled from the single reveal timeline below
+   * so no component owns its own sequence timers.
+   */
+  const [lanePlaqueStages, setLanePlaqueStages] = useState<LanePlaqueStage[]>(initialLanePlaqueStages);
   // Highlighted-but-unconfirmed pick inside the item-choice panel.
   const [pendingChoiceId, setPendingChoiceId] = useState<ItemId | null>(null);
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`, { items: true }));
@@ -352,9 +363,14 @@ export default function StatCheckPage({
     if (revealStep !== "locking" || !match.lastResolution) return;
     clearAnimationTimers(timersRef.current);
 
+    // Every reveal starts with all three plaques on their category face.
+    setLanePlaqueStages(initialLanePlaqueStages());
+
     if (prefersReducedMotion) {
       dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" });
       setDamageFlashKey((key) => key + 1);
+      // Reduced motion skips the staged blink entirely and rests on +1/+0.
+      setLanePlaqueStages(["bonus", "bonus", "bonus"]);
       return;
     }
 
@@ -364,7 +380,21 @@ export default function StatCheckPage({
     // original timeline exactly.
     const roundHasItems = match.lastResolution.results.some((result) => result.playerItem || result.botItem);
     const shift = roundHasItems ? REVEAL_TIMELINE.itemRevealShiftMs : 0;
+    const laneResolveAt = [REVEAL_TIMELINE.resolveLane1, REVEAL_TIMELINE.resolveLane2, REVEAL_TIMELINE.resolveLane3];
+    const stageOffsets = lanePlaqueStageOffsets();
+    const setLaneStage = (laneIndex: number, next: LanePlaqueStage) =>
+      setLanePlaqueStages((current) => current.map((value, index) => (index === laneIndex ? next : value)));
+    // Each lane walks its own plaque through winner → threshold → bonus,
+    // starting from that lane's own resolve beat. Lanes stay 400ms apart, so
+    // the sequences overlap rather than queueing end to end.
+    const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) =>
+      (["winner", "threshold", "bonus"] as const).map(
+        (nextStage) =>
+          [resolveAt + shift + stageOffsets[nextStage], () => setLaneStage(laneIndex, nextStage)] as [number, () => void],
+      ),
+    );
     const timeline: Array<[number, () => void]> = [
+      ...lanePlaqueSteps,
       [REVEAL_TIMELINE.opponentReveal1, () => dispatchRevealStep({ type: "opponent", lane: 1 })],
       [REVEAL_TIMELINE.opponentReveal2, () => dispatchRevealStep({ type: "opponent", lane: 2 })],
       [REVEAL_TIMELINE.opponentReveal3, () => dispatchRevealStep({ type: "opponent", lane: 3 })],
@@ -873,6 +903,7 @@ export default function StatCheckPage({
                     assets={assets}
                     concealed={preRoundItemChoice}
                     itemsRevealed={itemsRevealed}
+                    plaqueStage={lanePlaqueStages[index] ?? "category"}
                     armedItem={armedItem}
                     pendingItem={match.equippedItem?.categoryId === category.id ? match.equippedItem : null}
                     onRemovePendingItem={removePendingItem}
@@ -1249,6 +1280,7 @@ function ArenaLane({
   assets,
   concealed,
   itemsRevealed,
+  plaqueStage = "category",
   armedItem,
   pendingItem,
   onRemovePendingItem,
@@ -1277,6 +1309,8 @@ function ArenaLane({
   concealed: boolean;
   /** Reveal has reached the item beat: bonuses and final values may show. */
   itemsRevealed: boolean;
+  /** Which face this lane's fixed plaque is showing, scheduled by the page. */
+  plaqueStage?: LanePlaqueStage;
   /** Inventory item armed for lane assignment, if any. */
   armedItem: ItemId | null;
   /** The player's own pending equip on this lane (hidden from no one — it is theirs). */
@@ -1381,10 +1415,16 @@ function ArenaLane({
         <div className="flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
           {concealed ? (
             <HiddenCategoryMarker index={index} />
-          ) : showResult && resolution ? (
-            <LaneResult result={resolution} opponentLabel={opponentLabel} />
           ) : (
-            <CategoryMarker category={category} />
+            /* One fixed plaque for every state: it changes face, never size. */
+            <LanePlaque
+              category={category}
+              result={showResult ? (resolution ?? null) : null}
+              stage={plaqueStage}
+              reducedMotion={reducedMotion}
+              animationSpeed={animationSpeed}
+              opponentLabel={opponentLabel}
+            />
           )}
           {/* Context tooltip for an armed item: exact bonus, natural → final,
               and which direction wins — or why the item is unusable here. */}
@@ -1613,18 +1653,57 @@ function SocketFrame({
   );
 }
 
-export function CategoryMarker({ category }: { category: StatCategory }) {
-  const higher = category.direction === "higher";
-  const levelBadge = categoryLevelBadge(category);
-  const familyIcon = categoryIcon(category);
+/**
+ * The one fixed plaque viewport, in exact pixels per responsive mode, matching
+ * the measured unresolved category plaque (frame = these + 12px of p-[5px] and
+ * border). Every lane and every stage renders into this same box, so resolving
+ * a lane can never resize the plaque or push the cards around it.
+ */
+const PLAQUE_VIEWPORT = "h-[46px] w-[57px] md:h-[76px] md:w-[115px] min-[1210px]:w-[123px]";
+
+/** Achieved stat gap for a lane, as a percentage; ties are a flat 0. */
+function achievedGapPercent(result: CategoryResult) {
+  return result.winner === "tie" ? 0 : result.margin * 100;
+}
+
+function formatAchievedGap(result: CategoryResult) {
+  const gap = achievedGapPercent(result);
+  return gap === 0 ? "0" : gap.toFixed(1);
+}
+
+/**
+ * Fixed-size lane plaque. `stage` selects which face of the already-computed
+ * result is showing; this component never derives game state, it only presents
+ * it. The stage sequence is scheduled once by the page, not here — the only
+ * timer below drives the shutter's conceal/reveal halves.
+ */
+export function LanePlaque({
+  category,
+  result = null,
+  stage = "category",
+  reducedMotion = false,
+  animationSpeed = 1,
+  opponentLabel = "Bot",
+}: {
+  category: StatCategory;
+  result?: CategoryResult | null;
+  stage?: LanePlaqueStage;
+  reducedMotion?: boolean;
+  animationSpeed?: StatCheckAnimationSpeed;
+  opponentLabel?: string;
+}) {
+  const shownStage: LanePlaqueStage = result ? stage : "category";
+  const blinkMs = Math.max(1, durationAtSpeed(LANE_PLAQUE_TIMELINE.blinkMs, animationSpeed));
+
   return (
     <div
       data-testid={`stat-check-marker-${category.id}`}
       data-direction={category.direction}
+      data-plaque-stage={shownStage}
       className="z-10 flex w-full items-center gap-2"
     >
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
-      <div className="relative max-w-full rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
+      <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
         {/* rail clamps bolting the plaque onto the comparison rail */}
         <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
@@ -1633,64 +1712,237 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
         <span aria-hidden className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
-        <div className="flex min-w-0 max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-1 py-1 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4">
-        {/* Icon-only: direction arrow, bare level number (omitted for unscaled
-            stats), and the stat family symbol. The written category exists
-            only in the tooltip and the sr-only label below. */}
-        <BoardTooltip
-          testId={`stat-check-category-symbol-${category.id}`}
-          label={categoryTooltipLabel(category)}
-          ariaLabel={categoryAccessibleLabel(category)}
-          buttonClassName="flex items-center gap-1 md:gap-2"
+        <div
+          data-testid={`stat-check-plaque-viewport-${category.id}`}
+          className={cn(
+            "relative grid place-items-center overflow-hidden rounded-lg border border-[#d6b55d]/45 bg-black/80 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)]",
+            PLAQUE_VIEWPORT,
+          )}
         >
-          {higher ? (
-            <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
-          ) : (
-            <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
-          )}
-          {levelBadge && (
+          <LanePlaqueFace
+            stage={shownStage}
+            category={category}
+            result={result}
+            opponentLabel={opponentLabel}
+          />
+          {/* Mechanical shutter: a brass-edged cover plate that is already
+              fully across the viewport when a new face mounts, holds while it
+              settles, then retracts upward. Keyed by stage so each transition
+              replays it. The interior swap is synchronous and happens behind
+              this plate, so no face is ever seen changing. Clipped by the
+              viewport's overflow-hidden, so the frame never moves.
+              Reduced motion: `motion-reduce:hidden` drops the plate entirely
+              and the swap is a plain instant change. */}
+          {shownStage !== "category" && (
             <span
+              key={shownStage}
               aria-hidden
-              data-testid={`stat-check-category-level-${category.id}`}
-              className="text-[11px] font-black leading-none text-white md:text-xl"
-            >
-              {levelBadge}
-            </span>
-          )}
-          {familyIcon && (
-            <img
-              src={familyIcon}
-              alt=""
-              aria-hidden
-              data-testid={`stat-check-category-icon-${category.id}`}
-              className="h-5 w-5 shrink-0 object-contain md:h-9 md:w-9"
+              data-testid={`stat-check-plaque-shutter-${category.id}`}
+              style={{ animationDuration: `${blinkMs}ms` }}
+              className={cn(
+                "pointer-events-none absolute inset-0 z-20 animate-plaque-blink ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:hidden",
+                "bg-[linear-gradient(180deg,#0a0f18_0%,#1a1508_58%,#3c3118_100%)]",
+                "border-b-2 border-[#a8894b] shadow-[0_4px_10px_rgba(0,0,0,0.7)]",
+              )}
             />
           )}
-        </BoardTooltip>
-        {/* Extra-damage threshold: scale symbol plus percentage, never the
-            word "Decisive". */}
-        <BoardTooltip
-          testId={`stat-check-decisive-${category.id}`}
-          label={DECISIVE_MARGIN_PRESENTATION.getTooltip(category.decisiveThreshold)}
-          buttonClassName="flex items-center gap-1"
-        >
-          <img
-            src={DECISIVE_MARGIN_PRESENTATION.icon}
-            alt=""
-            aria-hidden
-            data-testid={`stat-check-decisive-icon-${category.id}`}
-            className="h-3.5 w-3.5 shrink-0 object-contain md:h-5 md:w-5"
-          />
-          <span aria-hidden className="text-[10px] font-black leading-none text-[#f4d77d] md:text-sm">
-            {formatThreshold(category.decisiveThreshold)}
-          </span>
-        </BoardTooltip>
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
-      <span className="sr-only">{categoryAccessibleLabel(category)}</span>
+      <span className="sr-only">
+        {result && shownStage !== "category"
+          ? laneStageAccessibleLabel(shownStage, result, opponentLabel)
+          : categoryAccessibleLabel(category)}
+      </span>
     </div>
   );
+}
+
+/** Written description of the face currently showing; never rendered visibly. */
+function laneStageAccessibleLabel(stage: LanePlaqueStage, result: CategoryResult, opponentLabel: string) {
+  const who = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
+  const required = formatThreshold(result.category.decisiveThreshold);
+  if (stage === "winner") return `${who}. ${categoryAccessibleLabel(result.category)}`;
+  if (stage === "threshold") {
+    return `${formatAchievedGap(result)}% stat gap. ${required} is required to deal 1 extra damage.`;
+  }
+  return result.decisive
+    ? `${who}. Plus 1 extra damage: the ${formatAchievedGap(result)}% gap met the ${required} requirement.`
+    : `${who}. Plus 0 extra damage: the ${formatAchievedGap(result)}% gap did not meet the ${required} requirement.`;
+}
+
+/** The swappable interior. Only one face is mounted at a time. */
+function LanePlaqueFace({
+  stage,
+  category,
+  result,
+  opponentLabel,
+}: {
+  stage: LanePlaqueStage;
+  category: StatCategory;
+  result: CategoryResult | null;
+  opponentLabel: string;
+}) {
+  if (stage !== "category" && result) {
+    return <LanePlaqueResultFace stage={stage} result={result} opponentLabel={opponentLabel} />;
+  }
+  return <LanePlaqueCategoryFace category={category} />;
+}
+
+function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
+  const higher = category.direction === "higher";
+  const levelBadge = categoryLevelBadge(category);
+  const familyIcon = categoryIcon(category);
+  return (
+    <div className="flex min-w-0 flex-col items-center justify-center gap-0.5">
+      {/* Icon-only: direction arrow, bare level number (omitted for unscaled
+          stats), and the stat family symbol. The written category exists
+          only in the tooltip and the sr-only label. */}
+      <BoardTooltip
+        testId={`stat-check-category-symbol-${category.id}`}
+        label={categoryTooltipLabel(category)}
+        ariaLabel={categoryAccessibleLabel(category)}
+        buttonClassName="flex items-center gap-1 md:gap-2"
+      >
+        {higher ? (
+          <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
+        )}
+        {levelBadge && (
+          <span
+            aria-hidden
+            data-testid={`stat-check-category-level-${category.id}`}
+            className="text-[11px] font-black leading-none text-white md:text-xl"
+          >
+            {levelBadge}
+          </span>
+        )}
+        {familyIcon && (
+          <img
+            src={familyIcon}
+            alt=""
+            aria-hidden
+            data-testid={`stat-check-category-icon-${category.id}`}
+            className="h-5 w-5 shrink-0 object-contain md:h-9 md:w-9"
+          />
+        )}
+      </BoardTooltip>
+      {/* Extra-damage threshold: scale symbol plus percentage, never the
+          word "Decisive". */}
+      <BoardTooltip
+        testId={`stat-check-decisive-${category.id}`}
+        label={DECISIVE_MARGIN_PRESENTATION.getTooltip(category.decisiveThreshold)}
+        buttonClassName="flex items-center gap-1"
+      >
+        <img
+          src={DECISIVE_MARGIN_PRESENTATION.icon}
+          alt=""
+          aria-hidden
+          data-testid={`stat-check-decisive-icon-${category.id}`}
+          className="h-3.5 w-3.5 shrink-0 object-contain md:h-5 md:w-5"
+        />
+        <span aria-hidden className="text-[10px] font-black leading-none text-[#f4d77d] md:text-sm">
+          {formatThreshold(category.decisiveThreshold)}
+        </span>
+      </BoardTooltip>
+    </div>
+  );
+}
+
+/**
+ * Winner / threshold / bonus faces. Each is sized to the fixed viewport rather
+ * than the other way round: no face may grow the plaque.
+ */
+function LanePlaqueResultFace({
+  stage,
+  result,
+  opponentLabel,
+}: {
+  stage: LanePlaqueStage;
+  result: CategoryResult;
+  opponentLabel: string;
+}) {
+  const required = formatThreshold(result.category.decisiveThreshold);
+  const achieved = formatAchievedGap(result);
+
+  if (stage === "winner") {
+    // "THEY WIN" covers both the bot and an online opponent.
+    const text = result.winner === "player" ? "YOU WIN" : result.winner === "bot" ? "THEY WIN" : "TIE";
+    const tone =
+      result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-300";
+    return (
+      <span
+        data-testid="stat-check-plaque-winner"
+        className={cn("whitespace-nowrap px-0.5 text-[10px] font-black uppercase tracking-[0.06em] md:text-lg", tone)}
+      >
+        {text}
+      </span>
+    );
+  }
+
+  if (stage === "threshold") {
+    return (
+      <BoardTooltip
+        testId="stat-check-plaque-threshold"
+        label={`${achieved}% stat gap. ${required} is required to deal 1 extra damage.`}
+        buttonClassName={cn(
+          "flex items-center gap-0.5 rounded px-0.5 md:gap-1.5",
+          // Pass reads as a confident gold lock; fail is restrained; a tie
+          // stays neutral. No pass/fail wording is ever rendered.
+          result.decisive && "animate-pulse motion-reduce:animate-none",
+        )}
+      >
+        <img
+          src={DECISIVE_MARGIN_PRESENTATION.icon}
+          alt=""
+          aria-hidden
+          className={cn(
+            "h-3 w-3 shrink-0 object-contain md:h-5 md:w-5",
+            result.decisive ? "opacity-100" : "opacity-50",
+          )}
+        />
+        <span
+          aria-hidden
+          className={cn(
+            "whitespace-nowrap text-[8px] font-black leading-none md:text-sm",
+            result.decisive
+              ? "text-[#f4d77d] [text-shadow:0_0_8px_rgba(244,215,125,0.7)]"
+              : result.winner === "tie"
+                ? "text-slate-400"
+                : "text-slate-500",
+          )}
+        >
+          {`${achieved} / ${required}`}
+        </span>
+      </BoardTooltip>
+    );
+  }
+
+  return (
+    <BoardTooltip
+      testId="stat-check-plaque-bonus"
+      label={laneStageAccessibleLabel("bonus", result, opponentLabel)}
+      buttonClassName="flex items-center justify-center px-1"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "text-base font-black leading-none md:text-3xl",
+          result.decisive
+            ? "text-[#f4d77d] [text-shadow:0_0_10px_rgba(244,215,125,0.75)]"
+            : "text-slate-500",
+        )}
+      >
+        {result.decisive ? "+1" : "+0"}
+      </span>
+    </BoardTooltip>
+  );
+}
+
+/** Unresolved lanes render the same fixed plaque on its category face. */
+export function CategoryMarker({ category }: { category: StatCategory }) {
+  return <LanePlaque category={category} />;
 }
 
 /**
@@ -1702,9 +1954,13 @@ function HiddenCategoryMarker({ index }: { index: number }) {
     <div data-testid={`stat-check-hidden-category-${index}`} className="z-10 flex w-full items-center gap-2">
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
       <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
-        <div className="flex min-w-0 flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4">
+        <div
+          className={cn(
+            "grid place-items-center overflow-hidden rounded-lg border border-[#d6b55d]/45 bg-black/80 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)]",
+            PLAQUE_VIEWPORT,
+          )}
+        >
           <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-base">Hidden</span>
-          <span className="hidden text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 md:block">Choose an item first</span>
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
@@ -2821,60 +3077,6 @@ function DiscardPile({
   );
 }
 
-export function LaneResult({ result, opponentLabel = "Bot" }: { result: CategoryResult; opponentLabel?: string }) {
-  const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
-  const accent = result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200";
-  const lineAccent = result.winner === "player" ? "via-[#f4d77d]/60" : result.winner === "bot" ? "via-cyan-300/50" : "via-slate-400/40";
-  return (
-    <div className="z-20 flex w-full items-center gap-2">
-      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
-      <div
-        className={cn(
-          "relative max-w-full rounded-xl border p-[3px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.22)] md:p-[5px]",
-          "bg-[linear-gradient(180deg,rgba(52,42,18,0.55),rgba(6,10,16,0.85))]",
-          result.decisive ? "border-[#f4d77d]/50 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/30",
-        )}
-      >
-        <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
-        <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
-        <div
-          className={cn(
-            "flex min-w-0 max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-1 py-1 text-center shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4",
-            result.decisive ? "border-[#f4d77d]/80" : "border-[#d6b55d]/45",
-          )}
-        >
-        <div className={cn("text-[10px] font-black uppercase tracking-[0.04em] md:whitespace-nowrap md:text-lg md:tracking-[0.08em]", accent)}>{headline}</div>
-        <div className="text-[10px] font-black text-white md:whitespace-nowrap md:text-base">
-          {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
-        </div>
-        {/* Item breakdown: natural + bonus → final, per side that used one. */}
-        {result.playerItem && (
-          <div data-testid="stat-check-result-item-player" className="flex flex-wrap items-center justify-center gap-1 text-[9px] font-black text-[#f4d77d] md:whitespace-nowrap md:text-[10px]">
-            <ItemGlyph itemId={result.playerItem} className="h-3 w-3" />
-            You: {result.category.formatValue(result.playerNaturalValue)} + {result.playerBonus} → {result.category.formatValue(result.playerValue)}
-          </div>
-        )}
-        {result.botItem && (
-          <div data-testid="stat-check-result-item-bot" className="flex flex-wrap items-center justify-center gap-1 text-[9px] font-black text-red-200 md:whitespace-nowrap md:text-[10px]">
-            <ItemGlyph itemId={result.botItem} className="h-3 w-3" />
-            {opponentLabel}: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
-          </div>
-        )}
-        {result.decisive && (
-          <div className="rounded bg-[#d6b55d]/20 px-1.5 py-0 text-[10px] font-black uppercase tracking-[0.1em] text-[#f4d77d] md:px-2 md:py-0.5 md:text-xs">
-            Decisive +1
-          </div>
-        )}
-        <div className="hidden text-[10px] font-semibold text-slate-400 md:block">
-          {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
-          {result.category.direction === "lower" ? " - Lower wins" : ""}
-        </div>
-        </div>
-      </div>
-      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-l from-transparent to-white/30", lineAccent)} />
-    </div>
-  );
-}
 
 function BoardResult({ resolution, opponentLabel = "Bot" }: { resolution: RoundResolution; opponentLabel?: string }) {
   const label =

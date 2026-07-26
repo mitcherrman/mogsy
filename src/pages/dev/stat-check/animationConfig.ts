@@ -103,6 +103,39 @@ export function heroArcLift(distancePx: number, viewportWidth: number, viewportH
 export const STAT_CHECK_ANIMATION_SPEEDS = [0.25, 0.5, 1, 1.5] as const;
 export type StatCheckAnimationSpeed = (typeof STAT_CHECK_ANIMATION_SPEEDS)[number];
 
+/**
+ * Lane plaque staging (1x). Each resolved lane runs its fixed-size plaque
+ * through category → winner → threshold → bonus, separated by a mechanical
+ * shutter blink. All values live here so the sequence is tuned in one place
+ * rather than through timeouts scattered across components.
+ */
+export const LANE_PLAQUE_TIMELINE = {
+  /** Full shutter cycle: cover, swap the concealed content, retract. */
+  blinkMs: 300,
+  /** The swap happens at the midpoint, while the plaque is fully covered. */
+  blinkCoverRatio: 0.5,
+  winnerHoldMs: 350,
+  thresholdHoldMs: 500,
+} as const;
+
+/**
+ * Offsets, relative to a lane's own resolve beat, at which that lane's plaque
+ * enters each stage. Derived from LANE_PLAQUE_TIMELINE so retuning one value
+ * moves the whole sequence coherently.
+ */
+export function lanePlaqueStageOffsets() {
+  const { blinkMs, winnerHoldMs, thresholdHoldMs } = LANE_PLAQUE_TIMELINE;
+  const winner = blinkMs;
+  const threshold = winner + winnerHoldMs + blinkMs;
+  const bonus = threshold + thresholdHoldMs + blinkMs;
+  return { category: 0, winner, threshold, bonus } as const;
+}
+
+/** Time from a lane's resolve beat until its plaque rests on +1/+0. */
+export function lanePlaqueTotalMs() {
+  return lanePlaqueStageOffsets().bonus;
+}
+
 export const REVEAL_TIMELINE = {
   opponentReveal1: 220,
   opponentReveal2: 520,
@@ -117,9 +150,15 @@ export const REVEAL_TIMELINE = {
   resolveLane1: 1_220,
   resolveLane2: 1_620,
   resolveLane3: 2_020,
-  boardResult: 2_420,
-  damage: 2_760,
-  resolved: 3_180,
+  /**
+   * Board damage waits for the last lane's plaque to rest on +1/+0
+   * (resolveLane3 + lanePlaqueTotalMs = 2020 + 1750), then a short beat.
+   * Lanes still start 400ms apart, so their stage sequences overlap and the
+   * round grows by the single trailing plaque run rather than three.
+   */
+  boardResult: 3_820,
+  damage: 4_160,
+  resolved: 4_580,
 } as const;
 
 export function durationAtSpeed(ms: number, speed: StatCheckAnimationSpeed) {

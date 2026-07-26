@@ -86,6 +86,17 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		keyframes: {
+			/**
+			 * Stat Check lane plaque: a brass cover plate that starts fully
+			 * across the plaque viewport, holds while the interior swaps, then
+			 * retracts upward. Clipped by the viewport's overflow-hidden, so
+			 * the plaque frame itself never moves.
+			 */
+			'plaque-blink': {
+				'0%': { transform: 'translateY(0)' },
+				'42%': { transform: 'translateY(0)' },
+				'100%': { transform: 'translateY(-101%)' }
+			},
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -132,6 +143,8 @@ export default {
   			}
   		},
   		animation: {
+			/** Duration is overridden inline so it follows the animation-speed control. */
+			'plaque-blink': 'plaque-blink 300ms cubic-bezier(0.4,0,0.2,1) forwards',
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',

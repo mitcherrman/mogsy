@@ -286,10 +286,12 @@ describe("StatCheckPage online driver", () => {
         online={{ ...online, youLocked: true, resolutionEvent: { key: 1, resolution } }}
       />,
     );
-    act(() => vi.advanceTimersByTime(6_000));
+    act(() => vi.advanceTimersByTime(8_000));
+    // Each fixed plaque has finished its staged blink and rests on +1/+0; the
+    // written outcome stays available to screen readers.
     expect(screen.getAllByText(/You win|Opponent wins|Lane tied/i).length).toBeGreaterThanOrEqual(3);
     expect(container.textContent).toContain(OPP_CARDS[0].name);
-    // Natural + bonus → final breakdown from the server payload.
-    expect(screen.getByTestId("stat-check-result-item-player")).toHaveTextContent(/\+ 150 →/);
+    // The server-side item bonus still lands on the champion card.
+    expect(screen.getByTestId("stat-check-reveal-item-player")).toHaveTextContent(/\+150/);
   });
 });

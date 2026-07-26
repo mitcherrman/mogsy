@@ -25,6 +25,20 @@ export type PresentationStep =
   | "dealing"
   | "match-over";
 
+/**
+ * Presentation stages a resolved lane's fixed-size plaque moves through. The
+ * authoritative result is computed once by the engine; these stages only
+ * decide which slice of that result the plaque is currently showing.
+ */
+export type LanePlaqueStage = "category" | "winner" | "threshold" | "bonus";
+
+export const LANE_PLAQUE_STAGES = ["category", "winner", "threshold", "bonus"] as const satisfies readonly LanePlaqueStage[];
+
+/** Every lane starts on its category face. */
+export function initialLanePlaqueStages(): LanePlaqueStage[] {
+  return ["category", "category", "category"];
+}
+
 export type AnimationEvent =
   | { type: "select" }
   | { type: "pickup" }
