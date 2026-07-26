@@ -23,6 +23,7 @@ export default function Footer() {
     pathname.startsWith("/multiplayer/game") ||
     pathname.startsWith("/combat-lab/diagnostics") ||
     pathname.startsWith("/quiz") ||
+    pathname.startsWith("/dev/stat-check") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 

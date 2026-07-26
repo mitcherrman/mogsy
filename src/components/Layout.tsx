@@ -60,8 +60,8 @@ export default function Layout() {
 
   // Full-bleed routes escape the centered max-w-7xl reading column so a game
   // table can use the whole viewport. The page supplies its own background
-  // and gutters. Currently only the Stat Check tabletop prototype.
-  const isFullBleed = pathname === "/dev/stat-check";
+  // and gutters. Currently only the Stat Check tabletop (dev + live routes).
+  const isFullBleed = pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
 
   // After first paint, warm the chunks the user is most likely to visit next.
   useEffect(() => {
