@@ -856,25 +856,23 @@ export default function StatCheckPage({
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative flex items-start gap-1 sm:gap-1.5">
               {/* Board-mounted item dock — icons and counts only, one mount,
-                  one component, split on the same 1210px boundary as the
-                  arena itself.
-                  Compact arena: an in-flow shelf bolted to the board's lower
-                  edge directly above the hand tray. The fan spans the full
-                  width at these sizes, so sitting above it is the only place
-                  that never tangles with hand cards, and it keeps the dock
-                  out of the viewport corner where the app's floating buttons
-                  live.
-                  Wide arena: absolutely mounted in the free corner where the
-                  slab's bottom-left edge meets the tray, clear of the
-                  narrower centred fan. */}
+                  one component, one orientation. It is the hand tray's left
+                  column at every width: an in-flow vertical socket strip whose
+                  top lip meets the slab's bottom-left edge, so it reads as an
+                  extension of the board rather than a panel.
+                  Being in flow (not absolutely mounted) is what keeps it clear
+                  of the hand on phones, where the fan otherwise spans the whole
+                  viewport: the tray shrinks by the strip's width instead of
+                  being overlapped, and the mobile fan budget in
+                  responsiveFanParameters reserves that same column. */}
               <ItemInventoryDock
                 inventory={match.playerInventory}
                 selectedItemId={selectedItemId}
                 disabled={!canEdit}
                 onToggle={toggleInventoryItem}
-                className="z-[450] mx-auto -mt-2 mb-2 min-[1210px]:absolute min-[1210px]:-top-2 min-[1210px]:left-0 min-[1210px]:m-0"
+                className="z-[450] -mt-2 shrink-0"
               />
               {/* hand dock: a carved stone tray extending from the slab's lower
                   edge, in the same stone-and-brass construction — the hand is
@@ -921,18 +919,7 @@ export default function StatCheckPage({
                 controls row must own the stacking context above them (fan
                 cards reach z-400 on hover) — otherwise a drooping card sits
                 over Lock In and swallows the tap on narrow screens. */}
-            <div className="relative z-[500] flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1">
-              {match.phase === "selecting" ? (
-                <p className="min-w-0 flex-1 truncate text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
-                  {armedItem
-                    ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
-                    : selectedCard
-                      ? `Click a lane to play ${selectedCard.name}.`
-                      : "Click a champion, then click a lane."}
-                </p>
-              ) : (
-                <span aria-hidden className="min-w-0 flex-1" />
-              )}
+            <div className="relative z-[500] flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 px-1">
               {/* Lock In exists ONLY during the selecting phase: it never
                   competes with item confirmation or terminal controls. */}
               {match.phase === "selecting" && (
@@ -1771,8 +1758,10 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[148px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
-      <div className="relative mx-auto h-full min-w-[320px] max-w-full">
+    // The tray is the flexible column beside the board's item dock: min-w-0 so
+    // it yields the strip's width instead of pushing the fan off-screen.
+    <div className="relative mx-auto h-[148px] w-full min-w-0 max-w-4xl flex-1 overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
+      <div className="relative mx-auto h-full max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
           const returning = returningIds.has(card.id);

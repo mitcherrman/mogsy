@@ -186,11 +186,12 @@ export function ItemChoicePanel({
 }
 
 /**
- * Board-mounted persistent inventory: a small stone-and-brass shelf hanging
- * off the board assembly, holding one recessed item well per item. Icons and
- * counts only — no labels. The same component (and testids) serves every
- * layout; the page positions it against the slab/hand construction. Clicking
- * an owned well arms it for lane assignment (click item, then click a
+ * Board-mounted persistent inventory: a stone-and-brass socket strip bolted to
+ * the board assembly, holding one recessed item well per item. Icons and
+ * counts only — no labels. Always a vertical column, top to bottom, at every
+ * width: one component, one construction, no compact variant. The page mounts
+ * it as the left column of the hand tray so it reads as a board extension.
+ * Clicking an owned well arms it for lane assignment (click item, then click a
  * compatible occupied lane); clicking again disarms.
  */
 export function ItemInventoryDock({
@@ -211,15 +212,11 @@ export function ItemInventoryDock({
       data-testid="stat-check-inventory"
       aria-label={`Item inventory, ${totalInventoryCount(inventory)} owned`}
       className={cn(
-        // The shelf: same slab construction — brass perimeter, dark stone
-        // face, drop shadows giving it physical thickness below the board.
-        // Compact arena: a horizontal shelf bolted across the board's lower
-        // edge. Wide arena (>=1210px, where the rails squeeze the middle
-        // column): a vertical socket strip hanging off the slab's bottom-left
-        // corner — the only region that stays clear of the centred hand fan
-        // at every wide width (that free corner is just ~55px at 1210px).
-        "relative flex w-max items-center gap-1.5 border-2 border-[#7d6430] px-2 pb-1 pt-1.5",
-        "min-[1210px]:flex-col min-[1210px]:gap-0.5 min-[1210px]:px-1 min-[1210px]:pb-1 min-[1210px]:pt-1.5",
+        // The strip: same slab construction — brass perimeter, dark stone
+        // face, drop shadows giving it physical thickness beside the board.
+        // A single vertical column at every width; only the well size steps
+        // down below sm so the strip stays 44px wide on phones (52px above).
+        "relative flex w-max flex-col items-center gap-0.5 border-2 border-[#7d6430] px-1 pb-1 pt-1.5",
         "rounded-b-xl rounded-t-[4px] bg-[linear-gradient(180deg,rgba(27,37,54,0.55),rgba(9,14,24,0.9)),linear-gradient(160deg,#182236,#0b111d)]",
         "shadow-[inset_0_2px_0_rgba(244,215,125,0.22),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_18px_rgba(0,0,0,0.5),0_5px_0_-2px_#241d0e,0_8px_0_-4px_#0a0d14,0_16px_28px_rgba(0,0,0,0.55)]",
         className,
@@ -249,8 +246,8 @@ export function ItemInventoryDock({
             title={`${ITEMS[itemId].label}: ${ITEMS[itemId].effectText} (${itemFamiliesLabel(itemId)})`}
             onClick={() => onToggle(itemId)}
             className={cn(
-              // A recessed item well carved into the shelf stone.
-              "relative grid h-10 w-10 shrink-0 place-items-center rounded-md border outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200",
+              // A recessed item well carved into the strip stone.
+              "relative grid h-8 w-8 shrink-0 place-items-center rounded-md border outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 sm:h-10 sm:w-10",
               "border-black/55 bg-[radial-gradient(ellipse_at_50%_40%,#101a2b,#0a121f_80%)] shadow-[inset_0_3px_8px_rgba(0,0,0,0.75),inset_0_-1px_0_rgba(244,215,125,0.1)]",
               armed
                 ? // Armed: the well lights up — raised, gold-rimmed, cyan energy glow.
@@ -260,8 +257,8 @@ export function ItemInventoryDock({
               !usable && "cursor-not-allowed",
             )}
           >
-            <span className="grid h-[30px] w-[30px] place-items-center overflow-hidden rounded-[4px]">
-              <ItemImage itemId={itemId} glyphClassName="h-5 w-5 text-[#f4d77d]" className="h-full w-full" />
+            <span className="grid h-6 w-6 place-items-center overflow-hidden rounded-[4px] sm:h-[30px] sm:w-[30px]">
+              <ItemImage itemId={itemId} glyphClassName="h-4 w-4 text-[#f4d77d] sm:h-5 sm:w-5" className="h-full w-full" />
             </span>
             {/* armed energy tap: a lit gem at the well's base, echoing the
                 socket status lights */}

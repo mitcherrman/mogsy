@@ -228,7 +228,6 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(first).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(first);
     expect(first).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("stat-check-instruction")).toHaveTextContent(/Click a lane to play/i);
 
     fireEvent.click(second);
     expect(first).toHaveAttribute("aria-pressed", "false");
@@ -236,8 +235,22 @@ describe("StatCheckPage tabletop presentation", () => {
 
     fireEvent.click(second);
     expect(second).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("stat-check-instruction")).toHaveTextContent(/Click a champion/i);
     expect(screen.getAllByTestId(/^stat-check-hand-/)).toHaveLength(6);
+  });
+
+  it("shows no instructional sentence beneath the hand in any selection state", () => {
+    const { container } = renderPage();
+    // Idle, card selected, and item armed all used to print a hint line.
+    expect(screen.queryByTestId("stat-check-instruction")).toBeNull();
+    expect(container.textContent).not.toMatch(/click a champion/i);
+
+    fireEvent.click(screen.getByTestId("stat-check-hand-0"));
+    expect(screen.queryByTestId("stat-check-instruction")).toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    fireEvent.click(screen.getByTestId("stat-check-inventory-ruby-crystal"));
+    expect(screen.queryByTestId("stat-check-instruction")).toBeNull();
+    expect(container.textContent).not.toMatch(/then click a lane/i);
   });
 
   it("Escape clears the current selection", () => {
@@ -1068,6 +1081,26 @@ describe("StatCheckPage item system UI", () => {
     finishReveal();
     expect(screen.queryByTestId("stat-check-lock")).toBeNull();
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+  });
+
+  it("mounts one vertical dock with no horizontal compact variant", () => {
+    renderPage();
+    const dock = screen.getByTestId("stat-check-inventory");
+    // A single column at every width: no breakpoint turns it back into a row.
+    expect(dock.className).toContain("flex-col");
+    expect(dock.className).not.toMatch(/flex-row/);
+    expect(dock.className).not.toMatch(/min-\[1210px\]:/);
+    // Four wells, fixed order, rendered top to bottom.
+    const wells = Array.from(dock.querySelectorAll<HTMLElement>('[data-testid^="stat-check-inventory-"]'));
+    expect(wells.map((well) => well.dataset.testid)).toEqual([
+      "stat-check-inventory-long-sword",
+      "stat-check-inventory-cloth-armor",
+      "stat-check-inventory-ruby-crystal",
+      "stat-check-inventory-mogzy-snack",
+    ]);
+    // The dock is the hand tray's sibling column, mounted on the board.
+    expect(dock.parentElement).toBe(screen.getByTestId("stat-check-hand").parentElement);
+    expect(dock.parentElement?.className).toContain("flex");
   });
 
   it("renders the board dock with icon wells, counts, and empty/owned/armed states", () => {
