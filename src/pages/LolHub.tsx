@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins, History as HistoryIcon } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -61,6 +61,15 @@ const ALL_ZIPPER_FEATURES: ZipperFeature[] = [
     Icon: Zap,
     side: "right",
     championName: "Jinx",
+    cutoutOffsetPct: 0,
+  },
+  {
+    to: "/quiz/stat-check",
+    title: "Stat Check",
+    description: "Build a hand, compare champion stats, and outplay your opponent.",
+    Icon: Layers,
+    side: "left",
+    championName: "Twisted Fate",
     cutoutOffsetPct: 0,
   },
   {

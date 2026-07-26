@@ -86,6 +86,7 @@ const HUB_DESTINATIONS = [
   { title: "Combat Lab", to: "/combat-lab" },
   { title: "League Quiz", to: "/quiz" },
   { title: "League Swipe", to: "/league-swipe" },
+  { title: "Stat Check", to: "/quiz/stat-check" },
   { title: "Quiz History", to: "/lol/history" },
   { title: "League Docs", to: "/lol/docs" },
 ];
