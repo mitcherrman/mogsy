@@ -50,7 +50,7 @@ import {
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
-import { ItemChoicePanel, ItemGlyph, ItemInventoryStrip } from "./StatCheckItems";
+import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryStrip, ItemInventoryTray } from "./StatCheckItems";
 import type { OnlineMatchController } from "./online/useStatCheckMatch";
 import {
   STAT_CHECK_RULES,
@@ -392,9 +392,28 @@ export default function StatCheckPage({
   const preRoundItemChoice = itemChoiceOpen && !match.lastResolution;
   const armedItem = selectedItemId && canEdit ? selectedItemId : null;
   const opponentLabel = online ? "Opponent" : "Bot";
+  // Layout mode: the approved three-column desktop shell needs ~1210px; below
+  // that the side rails unmount entirely and the compact arena flow takes over
+  // (compact matchup header, tighter board, tray inventory, secondary drawer).
+  // JS-driven so exactly one layout's components (and testids) exist at a time.
+  const viewportWidth = useViewportWidth();
+  const wideLayout = viewportWidth >= 1210;
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
     ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
     : { player: match.playerHp, bot: match.botHp };
+
+  // Shared online presentation state for the reveal rail and the item modal.
+  const onlineState = online
+    ? {
+        youChosen: online.youChosen,
+        youLocked: online.youLocked,
+        opponentChosen: online.opponentChosen,
+        opponentLocked: online.opponentLocked,
+        opponentConnected: online.opponentConnected,
+        opponentReconnectDeadline: online.opponentReconnectDeadline,
+        onConcede: () => void online.concede(),
+      }
+    : null;
 
   const restart = () => {
     clearAnimationTimers(timersRef.current);
@@ -648,12 +667,22 @@ export default function StatCheckPage({
 
   const queueDiscardTravels = () => {
     if (!activeResolution) return;
+    // Narrow layouts keep the discard piles inside a collapsed drawer whose
+    // content has no box geometry; fly the cards toward the drawer's corner
+    // of the viewport instead of letting the clone collapse onto itself.
+    const discardTarget = (side: "player" | "bot"): DOMRectSnapshot =>
+      snapshotElement(discardRefs.current[side]) ?? {
+        x: side === "player" ? window.innerWidth * 0.7 : window.innerWidth * 0.2,
+        y: window.innerHeight + 40,
+        width: 44,
+        height: 62,
+      };
     for (const result of activeResolution.results) {
       queueCardTravel({
         card: result.playerCard,
         imageUrl: getImage(assets, result.playerCard),
         fromElement: slotElement(lanePlayerRefs.current[result.category.id]),
-        toElement: discardRefs.current.player,
+        toRect: discardTarget("player"),
         fromRotation: 0,
         toRotation: -8,
         kind: "discard",
@@ -663,7 +692,7 @@ export default function StatCheckPage({
         card: result.botCard,
         imageUrl: getImage(assets, result.botCard),
         fromElement: slotElement(laneBotRefs.current[result.category.id]),
-        toElement: discardRefs.current.bot,
+        toRect: discardTarget("bot"),
         fromRotation: 0,
         toRotation: 8,
         kind: "discard",
@@ -702,48 +731,64 @@ export default function StatCheckPage({
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 min-[1210px]:h-full min-[1210px]:min-h-0 min-[1210px]:px-2">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d]">
+            <div className="hidden items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d] md:flex">
               <Swords className="h-4 w-4" /> Dev prototype
             </div>
-            <h1 className="text-2xl font-black leading-tight sm:text-3xl">Stat Check</h1>
+            <h1 className="text-lg font-black leading-tight md:text-2xl min-[1210px]:text-3xl">Stat Check</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-            <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-300 md:gap-2">
+            <Badge variant="outline" className="hidden border-cyan-300/30 bg-cyan-300/10 text-cyan-100 md:inline-flex">
               {online ? "Online match" : dataSource}
             </Badge>
             <AnimationSpeedControl speed={animationSpeed} onSpeedChange={setAnimationSpeed} />
-            {!online && isLoading && <Badge variant="outline">Loading stats</Badge>}
-            {!online && isError && <Badge variant="outline">Fallback active</Badge>}
+            {!online && isLoading && <Badge variant="outline" className="hidden md:inline-flex">Loading stats</Badge>}
+            {!online && isError && <Badge variant="outline" className="hidden md:inline-flex">Fallback active</Badge>}
             {!online && (
               <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
-                <RotateCcw className="mr-1.5 h-4 w-4" /> Restart
+                <RotateCcw className="h-4 w-4 md:mr-1.5" />
+                <span className="hidden md:inline">Restart</span>
               </Button>
             )}
           </div>
         </header>
 
-        {/* The three-column arena grid needs ~1200px: 280px matchup rail +
+        {/* The three-column arena grid needs ~1210px: 280px matchup rail +
             three 210px-minimum lanes with their gaps and slab chrome + the
-            utility rail. Below that the board would paint over the rail
-            (lanes have hard minimums and overflow visibly), so the stacked
-            flow — rails above/below the board — stays active until the grid
-            genuinely fits. */}
-        <section className="flex flex-1 flex-col gap-2 min-[1210px]:grid min-[1210px]:min-h-0 min-[1210px]:grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]">
-          <MatchupRail
-            match={match}
-            displayHp={displayHp}
-            resolution={activeResolution}
-            flashKey={damageFlashKey}
-            isOnline={Boolean(online)}
-            opponentLabel={opponentLabel}
-          />
+            utility rail. Below that the rails UNMOUNT (no stacked document
+            flow): a compact matchup header sits above the board, inventory
+            docks in the controls row, and secondary info collapses into a
+            drawer below the arena. */}
+        <section
+          className={cn(
+            "flex flex-1 flex-col gap-2",
+            wideLayout && "grid min-h-0 grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]",
+          )}
+        >
+          {wideLayout ? (
+            <MatchupRail
+              match={match}
+              displayHp={displayHp}
+              resolution={activeResolution}
+              flashKey={damageFlashKey}
+              isOnline={Boolean(online)}
+              opponentLabel={opponentLabel}
+            />
+          ) : (
+            <CompactMatchupBar
+              displayHp={displayHp}
+              resolution={activeResolution}
+              flashKey={damageFlashKey}
+              isOnline={Boolean(online)}
+              opponentLabel={opponentLabel}
+            />
+          )}
 
-          <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 min-[1210px]:order-none">
+          <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2">
             <div
               className={cn(
-                "relative min-h-0 rounded-2xl p-2 md:p-3",
+                "relative min-h-0 rounded-2xl p-1.5 md:p-2 min-[1210px]:p-3",
                 // The slab itself: the approved stone-surface asset is the board
                 // material, held by a raised brass perimeter frame. Translucent
                 // light/shade gradients sit over the texture so the stone stays
@@ -769,7 +814,11 @@ export default function StatCheckPage({
                 verdict={revealStep === "damage" || revealStep === "resolved" || revealStep === "match-over"}
                 verdictKey={damageFlashKey}
               />
-              <div className="relative z-10 grid h-full min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,340px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
+              {/* All three lanes stay side-by-side at EVERY width: cards are
+                  width-budgeted below md (see BOARD_CARD_SIZE) so the board
+                  compacts instead of scrolling horizontally. Lane gaps and
+                  unused stone shrink with the viewport. */}
+              <div className="relative z-10 grid h-full min-h-0 grid-cols-3 gap-1 sm:gap-2 md:grid-cols-[repeat(3,minmax(180px,340px))] md:justify-center md:gap-4 min-[1210px]:grid-cols-[repeat(3,minmax(210px,340px))] min-[1210px]:gap-8 xl:gap-12">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                 const assigned = assignedCard(match, category.id);
@@ -849,68 +898,137 @@ export default function StatCheckPage({
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-1">
-              <p className="text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
-                {armedItem
-                  ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
-                  : selectedCard
-                    ? `Click a lane to play ${selectedCard.name}.`
-                    : "Click a champion, then click a lane."}
-              </p>
-              <Button
-                size="sm"
-                data-testid="stat-check-lock"
-                onClick={lockIn}
-                disabled={!isReadyToLock(match) || !canEdit}
-                className={cn(
-                  "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
-                  revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
-                )}
-              >
-                <Zap className="mr-1.5 h-4 w-4" /> Lock in
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-1">
+              {match.phase === "selecting" ? (
+                <p className="min-w-0 flex-1 basis-full text-xs font-semibold text-cyan-100/70 sm:basis-auto" data-testid="stat-check-instruction">
+                  {armedItem
+                    ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
+                    : selectedCard
+                      ? `Click a lane to play ${selectedCard.name}.`
+                      : "Click a champion, then click a lane."}
+                </p>
+              ) : (
+                <span aria-hidden className="min-w-0 flex-1" />
+              )}
+              {!wideLayout && (
+                <ItemInventoryTray
+                  inventory={match.playerInventory}
+                  selectedItemId={selectedItemId}
+                  disabled={!canEdit}
+                  onToggle={toggleInventoryItem}
+                />
+              )}
+              {/* Lock In exists ONLY during the selecting phase: it never
+                  competes with item confirmation or terminal controls. */}
+              {match.phase === "selecting" && (
+                <Button
+                  size="sm"
+                  data-testid="stat-check-lock"
+                  onClick={lockIn}
+                  disabled={!isReadyToLock(match) || !canEdit}
+                  className={cn(
+                    "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
+                    revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
+                  )}
+                >
+                  <Zap className="mr-1.5 h-4 w-4" /> Lock in
+                </Button>
+              )}
             </div>
           </section>
 
-          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl min-[1210px]:order-none min-[1210px]:h-full min-[1210px]:overflow-y-auto min-[1210px]:p-1.5">
-            <RevealSequence
-              match={match}
-              resolution={activeResolution}
-              revealStep={revealStep}
-              nextCategories={match.nextCategories}
-              pendingChoiceId={pendingChoiceId}
-              onSelectChoice={setPendingChoiceId}
-              onConfirmChoice={confirmItemChoice}
-              onNextRound={nextRound}
-              onRestart={online ? (onOnlineExit ?? restart) : restart}
-              opponentLabel={opponentLabel}
-              online={
-                online
-                  ? {
-                      youChosen: online.youChosen,
-                      youLocked: online.youLocked,
-                      opponentChosen: online.opponentChosen,
-                      opponentLocked: online.opponentLocked,
-                      opponentConnected: online.opponentConnected,
-                      opponentReconnectDeadline: online.opponentReconnectDeadline,
-                      onConcede: () => void online.concede(),
-                    }
-                  : null
-              }
-            />
-            <UtilityStack
-              match={match}
-              assets={assets}
-              selectedItemId={selectedItemId}
-              inventoryDisabled={!canEdit}
-              onToggleItem={toggleInventoryItem}
-              opponentLabel={opponentLabel}
-              botDiscardRef={(element) => { discardRefs.current.bot = element; }}
-              playerDiscardRef={(element) => { discardRefs.current.player = element; }}
-            />
-          </aside>
+          {wideLayout ? (
+            <aside className="relative h-full min-h-0 space-y-2 overflow-y-auto rounded-md border border-cyan-300/15 bg-black/28 p-1.5 shadow-2xl">
+              <RevealSequence
+                match={match}
+                resolution={activeResolution}
+                revealStep={revealStep}
+                nextCategories={match.nextCategories}
+                showIntel={!itemChoiceOpen}
+                onNextRound={nextRound}
+                onRestart={online ? (onOnlineExit ?? restart) : restart}
+                opponentLabel={opponentLabel}
+                online={itemChoiceOpen ? null : onlineState}
+              />
+              <UtilityStack
+                match={match}
+                assets={assets}
+                selectedItemId={selectedItemId}
+                inventoryDisabled={!canEdit}
+                onToggleItem={toggleInventoryItem}
+                opponentLabel={opponentLabel}
+                botDiscardRef={(element) => { discardRefs.current.bot = element; }}
+                playerDiscardRef={(element) => { discardRefs.current.player = element; }}
+              />
+            </aside>
+          ) : (
+            <section className="space-y-2 pb-[max(env(safe-area-inset-bottom),8px)]">
+              <div className="rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl">
+                <RevealSequence
+                  match={match}
+                  resolution={activeResolution}
+                  revealStep={revealStep}
+                  nextCategories={match.nextCategories}
+                  showIntel={!itemChoiceOpen}
+                  onNextRound={nextRound}
+                  onRestart={online ? (onOnlineExit ?? restart) : restart}
+                  opponentLabel={opponentLabel}
+                  online={itemChoiceOpen ? null : onlineState}
+                />
+              </div>
+              {/* Secondary information: collapsed by default so history and
+                  discards never dominate the arena on narrow screens. */}
+              <details
+                data-testid="stat-check-secondary"
+                className="rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl"
+              >
+                <summary className="cursor-pointer select-none text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
+                  Match details
+                </summary>
+                <div className="mt-2 grid gap-2">
+                  <CountPill label="Shared pool" value={match.drawPile.length} />
+                  <CountPill label="Your hand" value={match.playerHand.length} />
+                  <CountPill label={`${opponentLabel} hand`} value={match.botHand.length} />
+                  <LastRoundDamage resolution={match.roundHistory[match.roundHistory.length - 1] ?? null} opponentLabel={opponentLabel} />
+                  <MatchHistoryPanel history={match.roundHistory} opponentLabel={opponentLabel} />
+                  <DiscardPile side="bot" cards={match.botDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={(element) => { discardRefs.current.bot = element; }} />
+                  <DiscardPile side="player" cards={match.playerDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={(element) => { discardRefs.current.player = element; }} />
+                </div>
+              </details>
+            </section>
+          )}
         </section>
       </div>
+      {/* Item acquisition is a temporary phase: it lives in a contextual
+          overlay (bottom sheet on phones, centered modal above) with the
+          board still visible behind it. Never a page transition. */}
+      <ItemChoiceOverlay open={itemChoiceOpen}>
+        <NextRoundIntel
+          categories={preRoundItemChoice ? match.currentCategories : match.nextCategories}
+          heading={preRoundItemChoice ? "Round 1 Intel" : "Next Round Intel"}
+          compact
+        />
+        <div className="mt-2">
+          <ItemChoicePanel
+            title={
+              preRoundItemChoice
+                ? "Choose your starting item"
+                : `Item choice — ${match.roundHistory.length} rounds complete`
+            }
+            subtitle={
+              preRoundItemChoice
+                ? "Both sides pick one item in secret before Round 1 begins."
+                : "Both sides pick one item in secret before the next round begins."
+            }
+            inventory={match.playerInventory}
+            selectedItemId={pendingChoiceId}
+            onSelect={(itemId) => setPendingChoiceId(itemId)}
+            onConfirm={confirmItemChoice}
+            waiting={Boolean(online && itemChoiceOpen && online.youChosen)}
+          />
+        </div>
+        {onlineState && itemChoiceOpen && <OnlineOpponentStatus online={onlineState} phase={match.phase} />}
+      </ItemChoiceOverlay>
       <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
   );
@@ -1196,7 +1314,7 @@ function ArenaLane({
         // Lanes are open zones on the shared slab: no column washes at all.
         // Target and reaction feedback lives in the socket itself (rim, recess
         // glow, gem status light), so selecting a card never lights the lane.
-        "group relative flex min-h-[420px] flex-col rounded-xl p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
+        "group relative flex min-h-0 min-w-0 flex-col rounded-xl p-1 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px] md:p-2",
         "bg-[radial-gradient(ellipse_62%_52%_at_50%_50%,rgba(56,189,248,0.035),transparent_74%)]",
         reaction === "impact" && "translate-y-[2px]",
       )}
@@ -1475,19 +1593,19 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
         <span aria-hidden className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
-        <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
-        <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
+        <div className="flex min-w-0 max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-1 py-1 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4">
+        <span className="flex items-center gap-1 md:gap-2" aria-hidden>
           {higher ? (
-            <ArrowUp className="h-6 w-6 text-[#f4d77d] sm:h-7 sm:w-7" strokeWidth={2.75} />
+            <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} />
           ) : (
-            <ArrowDown className="h-6 w-6 text-cyan-300 sm:h-7 sm:w-7" strokeWidth={2.75} />
+            <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} />
           )}
-          <CategoryGlyph category={category} className="h-5 w-5 text-[#f4d77d]" />
-          <span className="whitespace-nowrap text-base font-black uppercase tracking-[0.06em] text-white sm:text-lg">
+          <CategoryGlyph category={category} className="hidden h-5 w-5 text-[#f4d77d] md:block" />
+          <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.04em] text-white md:text-lg md:tracking-[0.06em]">
             {category.shortLabel}
           </span>
         </span>
-        <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5" aria-hidden>
+        <span className="hidden flex-wrap items-center justify-center gap-x-2 gap-y-0.5 md:flex" aria-hidden>
           <span className="rounded bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
             {scopeLabel(category)}
           </span>
@@ -1512,9 +1630,9 @@ function HiddenCategoryMarker({ index }: { index: number }) {
     <div data-testid={`stat-check-hidden-category-${index}`} className="z-10 flex w-full items-center gap-2">
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
       <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
-        <div className="flex min-w-[112px] flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
-          <span className="text-base font-black uppercase tracking-[0.14em] text-slate-500">Hidden</span>
-          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Choose an item first</span>
+        <div className="flex min-w-0 flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4">
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-base">Hidden</span>
+          <span className="hidden text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 md:block">Choose an item first</span>
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
@@ -1632,7 +1750,7 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[190px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
+    <div className="relative mx-auto h-[172px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
       <div className="relative mx-auto h-full min-w-[320px] max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
@@ -2007,7 +2125,15 @@ function FlippableCard({
  * header, hand band, bottom bar, gaps, marker) so two cards + marker always
  * fit the locked table height: (100svh - ~480px chrome) / 2 per card.
  */
-const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,calc(50svh_-_240px),340px)]";
+/**
+ * Below md the card is WIDTH-budgeted so all three lanes fit side by side with
+ * no horizontal scroll: ~(100vw - slab chrome - lane gaps) / 3 per card. From
+ * md up it returns to the height budget. One constant drives sockets, placed
+ * cards, flip faces, and (via live DOM measurement) the travel clone, so every
+ * card state scales together and placement geometry stays exact.
+ */
+const BOARD_CARD_SIZE =
+  "w-[clamp(64px,26vw,110px)] h-auto shrink-0 [aspect-ratio:7/10] md:w-auto md:h-[clamp(150px,calc(50svh_-_240px),340px)]";
 
 function ChampionCard({
   card,
@@ -2209,9 +2335,7 @@ function RevealSequence({
   resolution,
   revealStep,
   nextCategories,
-  pendingChoiceId,
-  onSelectChoice,
-  onConfirmChoice,
+  showIntel = true,
   onNextRound,
   onRestart,
   online = null,
@@ -2221,9 +2345,8 @@ function RevealSequence({
   resolution: RoundResolution | null;
   revealStep: PresentationStep;
   nextCategories: StatCategory[];
-  pendingChoiceId: ItemId | null;
-  onSelectChoice: (itemId: ItemId | null) => void;
-  onConfirmChoice: () => void;
+  /** False while the item-choice overlay owns the (single) intel panel. */
+  showIntel?: boolean;
   onNextRound: () => void;
   onRestart: () => void;
   online?: RevealSequenceOnlineState | null;
@@ -2231,35 +2354,21 @@ function RevealSequence({
 }) {
   const itemChoiceOpen = match.phase === "item-choice";
   const preRoundChoice = itemChoiceOpen && !match.lastResolution;
-  const choiceWaiting = Boolean(online && itemChoiceOpen && online.youChosen);
 
   if (preRoundChoice) {
-    // Opening item choice: only the single-family hint for Round 1 may show —
-    // never the full three-category board (which stays concealed on the slab).
-    return (
-      <div>
-        <NextRoundIntel categories={match.currentCategories} heading="Round 1 Intel" compact />
-        <div className="mt-2">
-          <ItemChoicePanel
-            title="Choose your starting item"
-            subtitle="Both sides pick one item in secret before Round 1 begins."
-            inventory={match.playerInventory}
-            selectedItemId={pendingChoiceId}
-            onSelect={(itemId) => onSelectChoice(itemId)}
-            onConfirm={onConfirmChoice}
-            waiting={choiceWaiting}
-          />
-        </div>
-        {online && <OnlineOpponentStatus online={online} phase={match.phase} />}
-      </div>
-    );
+    // Opening item choice: the modal owns the hint and the pick; the rail
+    // shows nothing (the Round 1 board stays concealed on the slab).
+    return null;
   }
 
   return (
     <div>
-      <NextRoundIntel categories={nextCategories} compact />
-
-      <div className="mt-2 h-px bg-cyan-300/10" />
+      {showIntel && (
+        <>
+          <NextRoundIntel categories={nextCategories} compact />
+          <div className="mt-2 h-px bg-cyan-300/10" />
+        </>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div>
@@ -2307,20 +2416,8 @@ function RevealSequence({
           <DamageBreakdown title={`${opponentLabel} deals`} amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
           {(revealStep === "resolved" || revealStep === "match-over") && (
             <div className="space-y-2 pt-2">
-              {itemChoiceOpen && resolution && (
-                // Post-cadence choice: the resolved board, lane results,
-                // damage, completed categories, and the next-round hint all
-                // stay visible; only this control area changes.
-                <ItemChoicePanel
-                  title={`Item choice — ${resolution.round} rounds complete`}
-                  subtitle="Both sides pick one item in secret before the next round begins."
-                  inventory={match.playerInventory}
-                  selectedItemId={pendingChoiceId}
-                  onSelect={(itemId) => onSelectChoice(itemId)}
-                  onConfirm={onConfirmChoice}
-                  waiting={choiceWaiting}
-                />
-              )}
+              {/* Post-cadence item choice happens in the overlay; the resolved
+                  board, lane results, and damage all stay visible behind it. */}
               {match.phase === "resolved" && (
                 <Button data-testid="stat-check-next-round" onClick={onNextRound} className="w-full bg-cyan-300 text-[#06111f] hover:bg-cyan-200">
                   Next Round <ChevronsRight className="ml-1.5 h-4 w-4" />
@@ -2371,6 +2468,57 @@ function MatchSummaryPanel({ match }: { match: MatchState }) {
         <div className="pt-1 text-slate-400">Clues shown: {summary.clueFamilies.join(", ") || "none"}</div>
       </div>
     </details>
+  );
+}
+
+/**
+ * Narrow-layout matchup header: both HP bars and identities in one compact
+ * band directly above the board, replacing the wide matchup rail.
+ */
+function CompactMatchupBar({
+  displayHp,
+  resolution,
+  flashKey,
+  isOnline = false,
+  opponentLabel = "Bot",
+}: {
+  displayHp: { player: number; bot: number };
+  resolution: RoundResolution | null;
+  flashKey: number;
+  isOnline?: boolean;
+  opponentLabel?: string;
+}) {
+  return (
+    <div data-testid="stat-check-compact-matchup" className="grid grid-cols-2 items-end gap-2">
+      <div className="min-w-0">
+        <div className="mb-1 flex items-baseline gap-1.5 px-0.5">
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200/80">You</span>
+          <span className="truncate text-[11px] font-black text-white">{isOnline ? "You" : "mogsy"}</span>
+        </div>
+        <HpBar
+          side="player"
+          hp={displayHp.player}
+          previousHp={resolution?.playerHpBefore}
+          damage={resolution?.damage.bot ?? 0}
+          flashKey={flashKey}
+        />
+      </div>
+      <div className="min-w-0">
+        <div className="mb-1 flex items-baseline justify-end gap-1.5 px-0.5">
+          <span className="truncate text-[11px] font-black text-white">
+            {isOnline ? "Opponent" : "Deterministic Bot"}
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-red-300/80">{opponentLabel}</span>
+        </div>
+        <HpBar
+          side="bot"
+          hp={displayHp.bot}
+          previousHp={resolution?.botHpBefore}
+          damage={resolution?.damage.player ?? 0}
+          flashKey={flashKey}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -2633,23 +2781,23 @@ export function LaneResult({ result, opponentLabel = "Bot" }: { result: Category
         <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
         <div
           className={cn(
-            "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
+            "flex min-w-0 max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-1 py-1 text-center shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4",
             result.decisive ? "border-[#f4d77d]/80" : "border-[#d6b55d]/45",
           )}
         >
-        <div className={cn("whitespace-nowrap text-lg font-black uppercase tracking-[0.08em]", accent)}>{headline}</div>
-        <div className="whitespace-nowrap text-base font-black text-white">
+        <div className={cn("text-[10px] font-black uppercase tracking-[0.04em] md:whitespace-nowrap md:text-lg md:tracking-[0.08em]", accent)}>{headline}</div>
+        <div className="text-[10px] font-black text-white md:whitespace-nowrap md:text-base">
           {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
         </div>
         {/* Item breakdown: natural + bonus → final, per side that used one. */}
         {result.playerItem && (
-          <div data-testid="stat-check-result-item-player" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-[#f4d77d]">
+          <div data-testid="stat-check-result-item-player" className="flex flex-wrap items-center justify-center gap-1 text-[9px] font-black text-[#f4d77d] md:whitespace-nowrap md:text-[10px]">
             <ItemGlyph itemId={result.playerItem} className="h-3 w-3" />
             You: {result.category.formatValue(result.playerNaturalValue)} + {result.playerBonus} → {result.category.formatValue(result.playerValue)}
           </div>
         )}
         {result.botItem && (
-          <div data-testid="stat-check-result-item-bot" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-red-200">
+          <div data-testid="stat-check-result-item-bot" className="flex flex-wrap items-center justify-center gap-1 text-[9px] font-black text-red-200 md:whitespace-nowrap md:text-[10px]">
             <ItemGlyph itemId={result.botItem} className="h-3 w-3" />
             {opponentLabel}: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
           </div>
@@ -2659,7 +2807,7 @@ export function LaneResult({ result, opponentLabel = "Bot" }: { result: Category
             Decisive +1
           </div>
         )}
-        <div className="text-[10px] font-semibold text-slate-400">
+        <div className="hidden text-[10px] font-semibold text-slate-400 md:block">
           {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
           {result.category.direction === "lower" ? " - Lower wins" : ""}
         </div>
@@ -2886,7 +3034,15 @@ function useViewportWidth() {
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth || 1440);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // Some environments update innerWidth without dispatching a resize event
+    // (e.g. emulated-viewport changes); the layout breakpoint's media query
+    // still fires, so re-read the width on its change too.
+    const query = window.matchMedia?.("(min-width: 1210px)");
+    query?.addEventListener?.("change", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      query?.removeEventListener?.("change", onResize);
+    };
   }, []);
   return width;
 }

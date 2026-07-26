@@ -12,6 +12,7 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   useChampionAssets: () => ({ data: undefined }),
   getChampionSplash: () => null,
   getChampionIcon: () => null,
+  resolveAssetUrl: () => null,
 }));
 
 function lanes(container: HTMLElement) {
@@ -872,7 +873,9 @@ describe("StatCheckPage item system UI", () => {
     // concealed stand-ins, and locking is unavailable.
     expect(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).toHaveLength(0);
     expect(screen.getAllByTestId(/^stat-check-hidden-category-/)).toHaveLength(3);
-    expect(screen.getByTestId("stat-check-lock")).toBeDisabled();
+    // Lock In does not exist during item-choice phases — it never competes
+    // with the item confirmation control.
+    expect(screen.queryByTestId("stat-check-lock")).toBeNull();
 
     // Only the single-family hint shows, matching the real Round 1 board.
     expect(screen.getByText(/Round 1 Intel/i)).toBeInTheDocument();
@@ -1023,5 +1026,56 @@ describe("StatCheckPage item system UI", () => {
     // Consumed exactly once: the inventory copy is gone and stays gone.
     expect(inventoryCountText("ruby-crystal")).toBe("0");
     expect(screen.queryByTestId("stat-check-pending-item")).toBeNull();
+  });
+
+  it("presents item acquisition in a modal overlay at every cadence point, never alongside Lock In", () => {
+    const { container } = renderPage({ skipItemChoice: true });
+
+    // Opening choice: overlay dialog open above the (still visible) board.
+    const overlay = screen.getByTestId("stat-check-item-overlay");
+    expect(overlay).toHaveAttribute("role", "dialog");
+    expect(overlay).toHaveAttribute("aria-modal", "true");
+    expect(screen.queryByTestId("stat-check-lock")).toBeNull();
+    expect(screen.getByTestId("stat-check-hand")).toBeInTheDocument();
+
+    // Confirming closes the overlay and restores the selecting controls.
+    fireEvent.click(screen.getByTestId("stat-check-item-option-ruby-crystal"));
+    fireEvent.click(screen.getByTestId("stat-check-item-confirm"));
+    expect(screen.queryByTestId("stat-check-item-overlay")).toBeNull();
+    expect(screen.getByTestId("stat-check-lock")).toBeInTheDocument();
+
+    // Post-cadence (3 completed rounds): the overlay returns, Lock In and
+    // Next Round both stay out of the way until the pick is confirmed.
+    for (let round = 1; round <= 2; round++) {
+      playRound(container);
+      fireEvent.click(screen.getByTestId("stat-check-next-round"));
+      act(() => vi.advanceTimersByTime(2_000));
+    }
+    playRound(container);
+    expect(screen.getByTestId("stat-check-item-overlay")).toBeInTheDocument();
+    expect(screen.queryByTestId("stat-check-lock")).toBeNull();
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
+  });
+
+  it("hides Lock In outside the selecting phase (reveal and resolved states)", () => {
+    const { container } = renderPage();
+    fillBoard(container);
+    expect(screen.getByTestId("stat-check-lock")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    // From the lock onward the phase is no longer "selecting": the control
+    // is unmounted for the whole reveal and resolved presentation.
+    expect(screen.queryByTestId("stat-check-lock")).toBeNull();
+    finishReveal();
+    expect(screen.queryByTestId("stat-check-lock")).toBeNull();
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+  });
+
+  it("shows compact inventory counts in the tray as items accumulate", () => {
+    renderPage(); // ruby-crystal taken at the opening choice
+    expect(inventoryCountText("ruby-crystal")).toBe("1");
+    expect(inventoryCountText("long-sword")).toBe("0");
+    // Owned items are armable; unowned items are disabled.
+    expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toBeEnabled();
+    expect(screen.getByTestId("stat-check-inventory-long-sword")).toBeDisabled();
   });
 });

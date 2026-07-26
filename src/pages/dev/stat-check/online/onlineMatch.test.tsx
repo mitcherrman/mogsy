@@ -18,6 +18,7 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   useChampionAssets: () => ({ data: undefined }),
   getChampionSplash: () => null,
   getChampionIcon: () => null,
+  resolveAssetUrl: () => null,
 }));
 
 const BOARD = generateCategoryBoard("online-test", 1);
