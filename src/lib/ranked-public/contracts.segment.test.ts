@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { LEGACY_SEGMENT, readPublicRound, readPrivatePlayer } from "./contracts";
 import { privatePlayerV2, publicRoundV2 } from "./fixtures";
 
+/**
+ * The v2 fixtures are object literals, so TypeScript infers an exact shape with
+ * no `segment` key. These tests deliberately bolt additive/oversized keys onto
+ * that raw wire body to exercise the reader, which is precisely what a newer
+ * backend would send. Widening the fixture types would weaken them for every
+ * other consumer, so the widening is local to this file.
+ */
+function wire(body: { payload: object }): Record<string, unknown> {
+  return body.payload as Record<string, unknown>;
+}
+
 describe("additive segment discriminator parsing (Phase A)", () => {
   it("defaults a v2 payload with no segment block to quiz.v1", () => {
     const body = publicRoundV2();
@@ -12,7 +23,7 @@ describe("additive segment discriminator parsing (Phase A)", () => {
 
   it("reads an explicit quiz segment block", () => {
     const body = publicRoundV2();
-    body.payload.segment = {
+    wire(body).segment = {
       module_id: "quiz", module_version: 1,
       challenge_count: 1, challenge_index: 0,
     };
@@ -23,7 +34,7 @@ describe("additive segment discriminator parsing (Phase A)", () => {
 
   it("reads a future multi-challenge segment without losing fidelity", () => {
     const body = publicRoundV2();
-    body.payload.segment = {
+    wire(body).segment = {
       module_id: "item_cost_duel", module_version: 1,
       challenge_count: 5, challenge_index: 3,
     };
@@ -35,7 +46,7 @@ describe("additive segment discriminator parsing (Phase A)", () => {
 
   it("populates the segment on the private payload too", () => {
     const body = privatePlayerV2();
-    body.payload.segment = {
+    wire(body).segment = {
       module_id: "quiz", module_version: 1,
       challenge_count: 1, challenge_index: 0,
     };
@@ -46,7 +57,7 @@ describe("additive segment discriminator parsing (Phase A)", () => {
     "degrades a malformed segment block to the legacy default (%j)",
     (segment) => {
       const body = publicRoundV2();
-      body.payload.segment = segment;
+      wire(body).segment = segment;
       // This block carries no secret and no combat value, so an unparseable
       // one must not break an otherwise valid live match.
       expect(readPublicRound(body).segment).toEqual(LEGACY_SEGMENT);
@@ -54,14 +65,14 @@ describe("additive segment discriminator parsing (Phase A)", () => {
 
   it("does not weaken the strict correctness guards", () => {
     const body = publicRoundV2();
-    body.payload.segment = { module_id: "quiz", module_version: 1 };
-    body.payload.correct_index = 2;
+    wire(body).segment = { module_id: "quiz", module_version: 1 };
+    wire(body).correct_index = 2;
     expect(() => readPublicRound(body)).toThrow();
   });
 
   it("leaves the question payload untouched alongside the segment", () => {
     const body = publicRoundV2();
-    body.payload.segment = { module_id: "quiz", module_version: 1 };
+    wire(body).segment = { module_id: "quiz", module_version: 1 };
     const parsed = readPublicRound(body);
     expect(parsed.question?.questionId).toBe("q1");
     expect(parsed.question?.options.length).toBeGreaterThan(0);

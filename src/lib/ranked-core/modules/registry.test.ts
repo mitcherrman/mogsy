@@ -33,7 +33,7 @@ describe("ranked module renderer registry (Phase A)", () => {
 
   it("resolves a quiz segment from a parsed payload", () => {
     const body = publicRoundV2();
-    body.payload.segment = {
+    (body.payload as Record<string, unknown>).segment = {
       module_id: "quiz", module_version: 1,
       challenge_count: 1, challenge_index: 0,
     };
