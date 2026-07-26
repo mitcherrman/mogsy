@@ -12,6 +12,7 @@ import {
   questionViewFromPublicQuestion,
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
+import { quizModule } from "@/lib/ranked-core/modules/quizModule";
 import type { ScenarioSource } from "@/lib/question-surface/contract";
 import {
   permissionsForSubmissionPhase,
@@ -70,8 +71,15 @@ export function projectAbilities(priv: PrivatePlayerView, selectedAbilityId: str
   return abilityViewsFromPrivatePlayer(priv.ownAbilities, { selectedAbilityId });
 }
 
+/**
+ * Question projection for a quiz segment.
+ *
+ * Delegates to `quiz.v1` so there is exactly ONE implementation behind both
+ * this legacy export and the module registry. Retained as a named export
+ * because existing callers and tests import it; the behaviour is unchanged.
+ */
 export function projectQuestion(pub: PublicRoundView): QuestionView | null {
-  return pub.question ? questionViewFromPublicQuestion(pub.question) : null;
+  return quizModule.projectQuestion(pub);
 }
 
 /** Optional rich-visual source for InteractiveScenarioSurface; null → text

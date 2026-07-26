@@ -135,6 +135,29 @@ export interface PlaytestMeta {
   isBotMatch: boolean;
 }
 
+/**
+ * Additive segment/module discriminator (Ranked Phase A).
+ *
+ * Identity and shape only — never module payload and never a canonical answer.
+ * OPTIONAL by contract: a v2 payload (or any legacy round) simply omits it, and
+ * the reader defaults to `quiz.v1`, which is exactly the module those rounds
+ * were created under. `question` remains present and unchanged alongside it.
+ */
+export interface SegmentMeta {
+  moduleId: string;
+  moduleVersion: number;
+  challengeCount: number;
+  challengeIndex: number;
+}
+
+/** Default applied when the backend omits `segment` (v2 payloads, legacy rounds). */
+export const LEGACY_SEGMENT: SegmentMeta = Object.freeze({
+  moduleId: "quiz",
+  moduleVersion: 1,
+  challengeCount: 1,
+  challengeIndex: 0,
+});
+
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
 export interface PublicRoundView {
   schemaVersion: string;
@@ -149,6 +172,8 @@ export interface PublicRoundView {
   activeRound: PublicActiveRound | null;
   nextRoundDurationSeconds: number;
   question: PublicQuestionSource | null;
+  /** Always populated by the reader; defaults to `quiz.v1` when absent. */
+  segment: SegmentMeta;
   progressionPendingPlayers: string[];
   presence: PresenceView | null;
   playtest?: PlaytestMeta | null;
@@ -305,10 +330,33 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     activeRound: readActiveRound(payload.active_round),
     nextRoundDurationSeconds: num(payload.next_round_duration_seconds, "next_round_duration_seconds"),
     question: readQuestion(payload.question),
+    segment: readSegment(payload.segment),
     progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
       ? strList(payload.progression_pending_players, "progression_pending_players") : [],
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
+  };
+}
+
+/**
+ * Tolerant segment reader. Absent, null, or malformed -> `LEGACY_SEGMENT`.
+ *
+ * Tolerance is deliberate here and NOT a weakening of the contract: this block
+ * carries no secret and no combat value, so an unparseable one must degrade to
+ * the legacy quiz default rather than break an otherwise valid live match. The
+ * strict readers guarding correctness (`assertNoCorrectness`, `readQuestion`)
+ * are untouched.
+ */
+function readSegment(v: unknown): SegmentMeta {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return LEGACY_SEGMENT;
+  const o = v as Record<string, unknown>;
+  const int = (raw: unknown, fallback: number) =>
+    typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : fallback;
+  return {
+    moduleId: typeof o.module_id === "string" && o.module_id ? o.module_id : "quiz",
+    moduleVersion: int(o.module_version, 1),
+    challengeCount: int(o.challenge_count, 1),
+    challengeIndex: int(o.challenge_index, 0),
   };
 }
 

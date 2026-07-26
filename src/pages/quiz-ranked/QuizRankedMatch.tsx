@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
-import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
@@ -17,7 +17,7 @@ import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDispla
 import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import {
   opponentPresenceLabel, projectAbilities, projectCombatants, projectPermissions,
-  projectQuestion, projectScenarioSource, projectTimer,
+  projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
 
@@ -36,12 +36,15 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const combatants = useMemo(
     () => (m.publicRound ? projectCombatants(m.publicRound, viewerUserId) : null),
     [m.publicRound, viewerUserId]);
+  // The active segment's module renderer. A v2 payload or a legacy round has
+  // no discriminator and resolves to quiz.v1 — the module those rounds were
+  // created under — so behaviour is unchanged. null = unknown module.
+  const renderer = useMemo(
+    () => (m.publicRound ? rendererForSegment(m.publicRound.segment) : null),
+    [m.publicRound]);
   const question = useMemo(
-    () => (m.publicRound ? projectQuestion(m.publicRound) : null), [m.publicRound]);
-  // Optional rich-visual source (question-safe, pre-reveal). Null → text
-  // fallback. No reveal is passed here, so the surface stays spoiler-safe.
-  const scenarioSource = useMemo(
-    () => (m.publicRound ? projectScenarioSource(m.publicRound) : null), [m.publicRound]);
+    () => (m.publicRound && renderer ? renderer.projectQuestion(m.publicRound) : null),
+    [m.publicRound, renderer]);
   const abilities = useMemo(
     () => (m.privatePlayer ? projectAbilities(m.privatePlayer, m.selectedAbilityId) : []),
     [m.privatePlayer, m.selectedAbilityId]);
@@ -177,17 +180,27 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             <div className="lg:col-start-3 lg:row-start-1">
               <CombatantPanel combatant={combatants.opponent} />
             </div>
-            {question && (
+            {renderer && question && (
               <section data-testid="ranked-question"
                 className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-                <InteractiveScenarioSurface
-                  question={question}
-                  selectedOptionId={m.selectedOptionId}
+                <renderer.Viewport
+                  publicRound={m.publicRound}
+                  selection={m.selectedOptionId}
                   permissions={permissions}
-                  onSelectOption={(o) => m.selectOption(o.id)}
-                  variant="competitive"
-                  scenarioSource={scenarioSource}
+                  onSelect={(sel) => m.selectOption(sel as string)}
                 />
+              </section>
+            )}
+            {!renderer && (
+              // Fail closed: never render a quiz input for an unrecognised
+              // module — a mismatched input shape could submit a meaningless
+              // answer into a rated match.
+              <section data-testid="ranked-unsupported-module"
+                className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+                <p className="text-sm text-muted-foreground">
+                  This round uses a game mode your client does not support yet.
+                  Please refresh to update.
+                </p>
               </section>
             )}
           </div>
