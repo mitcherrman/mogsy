@@ -687,7 +687,7 @@ export default function StatCheckPage({
   return (
     <main
       data-anim-phase={revealStep}
-      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)] [@media(min-width:1024px)_and_(min-height:840px)]:min-h-0"
+      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1210px)_and_(min-height:840px)]:h-[calc(100svh-56px)] [@media(min-width:1210px)_and_(min-height:840px)]:min-h-0"
     >
       {isAnimDebugEnabled() && (
         <div
@@ -701,7 +701,7 @@ export default function StatCheckPage({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 lg:h-full lg:min-h-0 lg:px-2">
+      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 min-[1210px]:h-full min-[1210px]:min-h-0 min-[1210px]:px-2">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d]">
@@ -724,7 +724,13 @@ export default function StatCheckPage({
           </div>
         </header>
 
-        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]">
+        {/* The three-column arena grid needs ~1200px: 280px matchup rail +
+            three 210px-minimum lanes with their gaps and slab chrome + the
+            utility rail. Below that the board would paint over the rail
+            (lanes have hard minimums and overflow visibly), so the stacked
+            flow — rails above/below the board — stays active until the grid
+            genuinely fits. */}
+        <section className="flex flex-1 flex-col gap-2 min-[1210px]:grid min-[1210px]:min-h-0 min-[1210px]:grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]">
           <MatchupRail
             match={match}
             displayHp={displayHp}
@@ -734,7 +740,7 @@ export default function StatCheckPage({
             opponentLabel={opponentLabel}
           />
 
-          <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
+          <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 min-[1210px]:order-none">
             <div
               className={cn(
                 "relative min-h-0 rounded-2xl p-2 md:p-3",
@@ -866,7 +872,7 @@ export default function StatCheckPage({
             </div>
           </section>
 
-          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto lg:p-1.5">
+          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl min-[1210px]:order-none min-[1210px]:h-full min-[1210px]:overflow-y-auto min-[1210px]:p-1.5">
             <RevealSequence
               match={match}
               resolution={activeResolution}
@@ -2385,7 +2391,7 @@ function MatchupRail({
 }) {
   const lastRound = match.roundHistory[match.roundHistory.length - 1] ?? null;
   return (
-    <aside className="order-3 flex min-h-0 flex-col gap-2 lg:order-none lg:h-full lg:overflow-y-auto">
+    <aside className="order-3 flex min-h-0 flex-col gap-2 min-[1210px]:order-none min-[1210px]:h-full min-[1210px]:overflow-y-auto">
       <ProfilePanel side="bot" isOnline={isOnline} />
       <HpBar
         side="bot"
