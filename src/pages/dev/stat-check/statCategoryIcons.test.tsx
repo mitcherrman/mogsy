@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { CategoryMarker } from "./StatCheckPage";
+import { CategoryMarker, LanePlaque } from "./StatCheckPage";
 import {
   DECISIVE_MARGIN_PRESENTATION,
   RESERVED_STAT_PRESENTATION,
@@ -15,9 +15,29 @@ import {
 import {
   ACTIVE_STAT_CATEGORIES,
   STAT_CATEGORIES,
+  type CategoryResult,
   type StatCategory,
+  type StatCheckCard,
   type StatFamily,
 } from "./statCheckEngine";
+
+/** Minimal resolved-lane stub; only the fields the plaque presents matter. */
+const RESULT_STUB: CategoryResult = {
+  category: STAT_CATEGORIES[0],
+  playerCard: {} as StatCheckCard,
+  botCard: {} as StatCheckCard,
+  playerNaturalValue: 0,
+  botNaturalValue: 0,
+  playerItem: null,
+  botItem: null,
+  playerBonus: 0,
+  botBonus: 0,
+  playerValue: 0,
+  botValue: 0,
+  winner: "player",
+  margin: 0,
+  decisive: false,
+};
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
   useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -131,7 +151,8 @@ describe("icon-only category plaque", () => {
       "src",
       categoryIcon(categoryById("lowest-armor-18")) as string,
     );
-    expect(marker.querySelector('[data-testid="stat-check-category-level-lowest-armor-18"]')?.textContent).toBe("18");
+    // The level reads "lv." + the number, with "lv." the smaller element.
+    expect(marker.querySelector('[data-testid="stat-check-category-level-lowest-armor-18"]')?.textContent).toBe("lv.18");
     expect(marker.querySelector("svg.lucide-arrow-down")).toBeTruthy();
     expect(marker.querySelector("svg.lucide-arrow-up")).toBeNull();
   });
@@ -142,34 +163,39 @@ describe("icon-only category plaque", () => {
   });
 
   it("shows level 1 as a bare 1 and omits the level entirely for move speed and range", () => {
-    expect(renderMarker("highest-hp-1").querySelector('[data-testid="stat-check-category-level-highest-hp-1"]')?.textContent).toBe("1");
+    expect(renderMarker("highest-hp-1").querySelector('[data-testid="stat-check-category-level-highest-hp-1"]')?.textContent).toBe("lv.1");
 
     const moveSpeed = renderMarker("highest-move-speed");
     expect(moveSpeed.querySelector('[data-testid="stat-check-category-level-highest-move-speed"]')).toBeNull();
-    expect(visibleText(moveSpeed)).not.toMatch(/base/i);
+    // Level-independent categories show neither "lv." nor "BASE".
+    expect(visibleText(moveSpeed)).not.toMatch(/base|lv\./i);
 
     const range = renderMarker("highest-attack-range");
     expect(range.querySelector('[data-testid="stat-check-category-level-highest-attack-range"]')).toBeNull();
   });
 
-  it("renders the scale icon with the lane's own threshold percentage", () => {
+  it("keeps the scale off the category scene entirely", () => {
+    // The threshold is now its own scene; the category face is level,
+    // direction and stat art only.
     const marker = renderMarker("lowest-hp-1"); // 7.5%
-    expect(marker.querySelector('[data-testid="stat-check-decisive-icon-lowest-hp-1"]')).toHaveAttribute(
-      "src",
-      DECISIVE_MARGIN_PRESENTATION.icon,
-    );
-    expect(visibleText(marker)).toContain("7.5%");
-
-    expect(visibleText(renderMarker("highest-attack-range"))).toContain("20%");
+    expect(marker.querySelector('[data-testid="stat-check-decisive-icon-lowest-hp-1"]')).toBeNull();
+    expect(visibleText(marker)).not.toContain("7.5%");
+    expect(visibleText(renderMarker("highest-attack-range"))).not.toContain("20%");
   });
 
-  it("explains the scale on interaction using the actual threshold", async () => {
-    renderMarker("lowest-hp-1");
-    const scale = screen.getByTestId("stat-check-decisive-lowest-hp-1");
+  it("explains the requirement on the threshold scene using the actual threshold", async () => {
+    const category = categoryById("lowest-hp-1"); // 7.5%
+    render(
+      <LanePlaque
+        category={category}
+        result={{ ...RESULT_STUB, category }}
+        stage="threshold"
+        reducedMotion
+      />,
+    );
+    const scale = screen.getByTestId("stat-check-plaque-threshold");
     expect(scale).toHaveAttribute("aria-label", "If there is a 7.5% gap in stats, deal 1 extra damage.");
-
-    fireEvent.click(scale);
-    expect(await screen.findAllByText("If there is a 7.5% gap in stats, deal 1 extra damage.")).not.toHaveLength(0);
+    expect(scale.textContent).toContain("7.5%");
   });
 
   it("exposes the complete written category on the symbol control", async () => {

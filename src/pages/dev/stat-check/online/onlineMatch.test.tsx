@@ -286,7 +286,7 @@ describe("StatCheckPage online driver", () => {
         online={{ ...online, youLocked: true, resolutionEvent: { key: 1, resolution } }}
       />,
     );
-    act(() => vi.advanceTimersByTime(8_000));
+    act(() => vi.advanceTimersByTime(35_000));
     // Each fixed plaque has finished its staged blink and rests on +1/+0; the
     // written outcome stays available to screen readers.
     expect(screen.getAllByText(/You win|Opponent wins|Lane tied/i).length).toBeGreaterThanOrEqual(3);

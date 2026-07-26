@@ -109,31 +109,55 @@ export type StatCheckAnimationSpeed = (typeof STAT_CHECK_ANIMATION_SPEEDS)[numbe
  * shutter blink. All values live here so the sequence is tuned in one place
  * rather than through timeouts scattered across components.
  */
+/**
+ * Lane reveal choreography (1x). Deliberately slow for visual review: one lane
+ * runs start to finish before the next begins, so every scene can be
+ * inspected. Shorten by editing these values — nothing else needs to move.
+ */
 export const LANE_PLAQUE_TIMELINE = {
-  /** Full shutter cycle: cover, swap the concealed content, retract. */
-  blinkMs: 300,
-  /** The swap happens at the midpoint, while the plaque is fully covered. */
-  blinkCoverRatio: 0.5,
-  winnerHoldMs: 350,
-  thresholdHoldMs: 500,
+  /** Full shutter cycle: the plate is already down, holds, then retracts. */
+  blinkMs: 550,
+  /** The swap happens while the plaque is fully covered. */
+  blinkCoverRatio: 0.42,
+  categoryHoldMs: 1_000,
+  thresholdHoldMs: 1_000,
+  valuesEnlargeMs: 650,
+  valuesHoldMs: 900,
+  winnerEmphasisMs: 650,
+  sliceMs: 600,
+  zeroHoldMs: 800,
+  transferMs: 1_000,
+  impactMs: 650,
+  settleMs: 1_000,
 } as const;
 
 /**
- * Offsets, relative to a lane's own resolve beat, at which that lane's plaque
- * enters each stage. Derived from LANE_PLAQUE_TIMELINE so retuning one value
- * moves the whole sequence coherently.
+ * Offsets, relative to a lane's own start, at which that lane enters each
+ * scene. Ties and failed thresholds keep the identical shape (the slice and
+ * transfer scenes simply render no extra effect) so pacing stays uniform.
  */
 export function lanePlaqueStageOffsets() {
-  const { blinkMs, winnerHoldMs, thresholdHoldMs } = LANE_PLAQUE_TIMELINE;
-  const winner = blinkMs;
-  const threshold = winner + winnerHoldMs + blinkMs;
-  const bonus = threshold + thresholdHoldMs + blinkMs;
-  return { category: 0, winner, threshold, bonus } as const;
+  const t = LANE_PLAQUE_TIMELINE;
+  const threshold = t.categoryHoldMs;
+  const values = threshold + t.blinkMs + t.thresholdHoldMs;
+  const winner = values + t.valuesEnlargeMs + t.valuesHoldMs;
+  const slice = winner + t.winnerEmphasisMs;
+  const zero = slice + t.sliceMs;
+  const transfer = zero + t.blinkMs + t.zeroHoldMs;
+  const bonus = transfer + t.transferMs;
+  const settled = bonus + t.impactMs;
+  return { category: 0, threshold, values, winner, slice, zero, transfer, bonus, settled } as const;
 }
 
-/** Time from a lane's resolve beat until its plaque rests on +1/+0. */
-export function lanePlaqueTotalMs() {
-  return lanePlaqueStageOffsets().bonus;
+/** Total time one lane occupies, including its trailing settle. */
+export function laneRevealTotalMs() {
+  return lanePlaqueStageOffsets().settled + LANE_PLAQUE_TIMELINE.settleMs;
+}
+
+/** Start offsets for the three lanes: strictly sequential, no overlap. */
+export function laneStartOffsets() {
+  const lane = laneRevealTotalMs();
+  return [0, lane, lane * 2] as const;
 }
 
 export const REVEAL_TIMELINE = {
@@ -147,18 +171,30 @@ export const REVEAL_TIMELINE = {
    * equipped item + bonus a readable moment before lane winners resolve.
    */
   itemRevealShiftMs: 520,
-  resolveLane1: 1_220,
-  resolveLane2: 1_620,
-  resolveLane3: 2_020,
   /**
-   * Board damage waits for the last lane's plaque to rest on +1/+0
-   * (resolveLane3 + lanePlaqueTotalMs = 2020 + 1750), then a short beat.
-   * Lanes still start 400ms apart, so their stage sequences overlap and the
-   * round grows by the single trailing plaque run rather than three.
+   * Lanes resolve strictly left → middle → right with no overlap: each starts
+   * only once the previous has fully settled. Derived from the lane
+   * choreography so retiming a scene shifts everything downstream coherently.
    */
-  boardResult: 3_820,
-  damage: 4_160,
-  resolved: 4_580,
+  get resolveLane1() {
+    return 1_220;
+  },
+  get resolveLane2() {
+    return this.resolveLane1 + laneRevealTotalMs();
+  },
+  get resolveLane3() {
+    return this.resolveLane1 + laneRevealTotalMs() * 2;
+  },
+  /** Board damage waits until all three lanes have finished. */
+  get boardResult() {
+    return this.resolveLane1 + laneRevealTotalMs() * 3;
+  },
+  get damage() {
+    return this.boardResult + 340;
+  },
+  get resolved() {
+    return this.boardResult + 760;
+  },
 } as const;
 
 export function durationAtSpeed(ms: number, speed: StatCheckAnimationSpeed) {

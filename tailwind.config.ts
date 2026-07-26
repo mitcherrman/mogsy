@@ -97,6 +97,22 @@ export default {
 				'42%': { transform: 'translateY(0)' },
 				'100%': { transform: 'translateY(-101%)' }
 			},
+			/**
+			 * Stat Check decisive transfer: a packet of energy leaving the
+			 * winning number and travelling to the lane plaque. The distance
+			 * comes from --packet-dx/--packet-dy, measured at runtime from the
+			 * value element and the plaque.
+			 */
+			'energy-transfer': {
+				'0%': { transform: 'translate(-50%, -50%) scale(0.4)', opacity: '0' },
+				'12%': { transform: 'translate(-50%, -50%) scale(1.15)', opacity: '1' },
+				'85%': { opacity: '1' },
+				'100%': {
+					transform:
+						'translate(calc(-50% + var(--packet-dx, 0px)), calc(-50% + var(--packet-dy, 0px))) scale(0.55)',
+					opacity: '0.9'
+				}
+			},
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -145,6 +161,8 @@ export default {
   		animation: {
 			/** Duration is overridden inline so it follows the animation-speed control. */
 			'plaque-blink': 'plaque-blink 300ms cubic-bezier(0.4,0,0.2,1) forwards',
+			/** Duration is overridden inline so it follows the animation-speed control. */
+			'energy-transfer': 'energy-transfer 1000ms cubic-bezier(0.45,0,0.55,1) forwards',
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',

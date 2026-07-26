@@ -45,6 +45,11 @@ import {
   allowsPreLockInteraction,
   animationStepReducer,
   initialLanePlaqueStages,
+  laneSliceActive,
+  laneValuesActive,
+  laneWinnerEmphasised,
+  lanePlaqueBonusEarned,
+  lanePlaqueShowsBonus,
   itemsRevealedAtStep,
   revealedOpponentCount,
   stepAfterLane,
@@ -370,7 +375,7 @@ export default function StatCheckPage({
       dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" });
       setDamageFlashKey((key) => key + 1);
       // Reduced motion skips the staged blink entirely and rests on +1/+0.
-      setLanePlaqueStages(["bonus", "bonus", "bonus"]);
+      setLanePlaqueStages(["settled", "settled", "settled"]);
       return;
     }
 
@@ -388,7 +393,7 @@ export default function StatCheckPage({
     // starting from that lane's own resolve beat. Lanes stay 400ms apart, so
     // the sequences overlap rather than queueing end to end.
     const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) =>
-      (["winner", "threshold", "bonus"] as const).map(
+      (["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const).map(
         (nextStage) =>
           [resolveAt + shift + stageOffsets[nextStage], () => setLaneStage(laneIndex, nextStage)] as [number, () => void],
       ),
@@ -1326,8 +1331,51 @@ function ArenaLane({
   const showResult = Boolean(resolution && (active || stepAfterLane(revealStep, index)));
   const playerWon = resolution?.winner === "player";
   const botWon = resolution?.winner === "bot";
-  const botState = showResult && botWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && playerWon ? "loser" : "idle";
-  const playerState = showResult && playerWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && botWon ? "loser" : "idle";
+  /**
+   * Socket, connector and card lighting waits for the winner scene, so a lane
+   * reads as category → threshold → values → winner instead of lighting up the
+   * instant it resolves.
+   */
+  const lit = showResult && laneWinnerEmphasised(plaqueStage);
+  const botState = lit && botWon ? (resolution?.decisive ? "decisive" : "winner") : lit && playerWon ? "loser" : "idle";
+  const playerState = lit && playerWon ? (resolution?.decisive ? "decisive" : "winner") : lit && botWon ? "loser" : "idle";
+  // Presentation treatment for the active category value on each card. The
+  // number itself is always the engine's final post-item value.
+  const botValueEmphasis = laneValueEmphasis(plaqueStage, showResult ? (resolution ?? null) : null, "bot");
+  const playerValueEmphasis = laneValueEmphasis(plaqueStage, showResult ? (resolution ?? null) : null, "player");
+  const transferring = Boolean(
+    showResult && resolution?.decisive && resolution.winner !== "tie" && plaqueStage === "transfer",
+  );
+
+  // Energy packet geometry, measured from the winning number and the plaque so
+  // it visibly starts on the value rather than at the card or socket centre.
+  const laneBoxRef = useRef<HTMLDivElement | null>(null);
+  const botValueEl = useRef<HTMLSpanElement | null>(null);
+  const playerValueEl = useRef<HTMLSpanElement | null>(null);
+  const plaqueEl = useRef<HTMLDivElement | null>(null);
+  const [packet, setPacket] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
+
+  useEffect(() => {
+    if (!transferring || reducedMotion) {
+      setPacket(null);
+      return;
+    }
+    const laneBox = laneBoxRef.current;
+    const source = (botWon ? botValueEl.current : playerValueEl.current) ?? null;
+    const target = plaqueEl.current;
+    if (!laneBox || !source || !target) return;
+    const lane = laneBox.getBoundingClientRect();
+    const from = source.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    const fromX = from.left + from.width / 2;
+    const fromY = from.top + from.height / 2;
+    setPacket({
+      x: fromX - lane.left,
+      y: fromY - lane.top,
+      dx: to.left + to.width / 2 - fromX,
+      dy: to.top + to.height / 2 - fromY,
+    });
+  }, [transferring, reducedMotion, botWon]);
   // Natural values only until the item-reveal beat; final values afterwards.
   const playerShownValue = resolution
     ? itemsRevealed
@@ -1389,13 +1437,36 @@ function ArenaLane({
           className="pointer-events-none absolute inset-x-12 bottom-10 top-[58%] z-20 animate-ping rounded-full border border-[#f4d77d]/55 motion-reduce:hidden"
         />
       )}
-      <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+      <div
+        ref={laneBoxRef}
+        className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1"
+      >
+        {/* Energy packet: absolutely positioned, so it adds no layout box and
+            cannot move a card, socket or the plaque. It starts on the winning
+            number's measured centre and travels the lane to the plaque, where
+            its arrival is what turns +0 into +1. */}
+        {packet && (
+          <span
+            aria-hidden
+            data-testid={`stat-check-energy-packet-${category.id}`}
+            style={{
+              left: `${packet.x}px`,
+              top: `${packet.y}px`,
+              ["--packet-dx" as string]: `${packet.dx}px`,
+              ["--packet-dy" as string]: `${packet.dy}px`,
+              animationDuration: `${durationAtSpeed(LANE_PLAQUE_TIMELINE.transferMs, animationSpeed)}ms`,
+            }}
+            className="pointer-events-none absolute z-[60] h-2.5 w-2.5 animate-energy-transfer rounded-full bg-[#f4d77d] shadow-[0_0_12px_rgba(244,215,125,1),0_0_26px_rgba(244,215,125,0.6)] motion-reduce:hidden"
+          />
+        )}
         <div ref={botRef} className="relative flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
             card={botCard}
             imageUrl={getImage(assets, botCard)}
             category={category}
             value={botShownValue}
+            valueEmphasis={botValueEmphasis}
+            valueRef={botValueEl}
             flipped={!botHidden}
             reducedMotion={reducedMotion}
             animationSpeed={animationSpeed}
@@ -1412,7 +1483,7 @@ function ArenaLane({
             />
           )}
         </div>
-        <div className="flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
+        <div ref={plaqueEl} className="relative flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
           {concealed ? (
             <HiddenCategoryMarker index={index} />
           ) : (
@@ -1452,7 +1523,7 @@ function ArenaLane({
               active={Boolean(canEdit && selectedCard) || playerCardInFlight}
               occupied={Boolean(playerCard) && !playerCardInFlight}
               gem={
-                showResult && resolution
+                lit && resolution
                   ? playerWon
                     ? "win"
                     : botWon
@@ -1476,6 +1547,8 @@ function ArenaLane({
                   imageUrl={getImage(assets, playerCard)}
                   category={category}
                   value={playerShownValue}
+                  valueEmphasis={playerValueEmphasis}
+                  valueRef={playerValueEl}
                   mode="board"
                   state={playerState}
                   label="You"
@@ -1661,6 +1734,16 @@ function SocketFrame({
  */
 const PLAQUE_VIEWPORT = "h-[46px] w-[57px] md:h-[76px] md:w-[115px] min-[1210px]:w-[123px]";
 
+/**
+ * Icon sizing inside that fixed viewport. Driven by height with `w-auto` and a
+ * max-width cap because the art ships in two aspect ratios (1:1 for
+ * armor/health, 3:2 for attack-damage/move-speed/range/scale) — a square box
+ * would render the 3:2 families visibly smaller. `object-contain` plus the cap
+ * guarantees no clipping and no wrapping at any size.
+ */
+const STAT_ICON_SIZE = "h-6 w-auto max-w-[28px] md:h-10 md:max-w-[56px] min-[1210px]:h-12 min-[1210px]:max-w-[62px]";
+const SCALE_ICON_SIZE = "h-6 w-auto max-w-[30px] md:h-9 md:max-w-[54px] min-[1210px]:h-10 min-[1210px]:max-w-[60px]";
+
 /** Achieved stat gap for a lane, as a percentage; ties are a flat 0. */
 function achievedGapPercent(result: CategoryResult) {
   return result.winner === "tie" ? 0 : result.margin * 100;
@@ -1694,6 +1777,14 @@ export function LanePlaque({
 }) {
   const shownStage: LanePlaqueStage = result ? stage : "category";
   const blinkMs = Math.max(1, durationAtSpeed(LANE_PLAQUE_TIMELINE.blinkMs, animationSpeed));
+  /**
+   * There are only three plaque faces, and the shutter is keyed to the face —
+   * not the scene — so it plays exactly twice per lane: category → threshold
+   * and threshold → +0. The values/winner/slice scenes all keep the threshold
+   * face, and +0 → +1 is driven by the arriving packet, not another blink.
+   */
+  const plaqueFace: "category" | "threshold" | "bonus" =
+    shownStage === "category" ? "category" : lanePlaqueShowsBonus(shownStage) ? "bonus" : "threshold";
 
   return (
     <div
@@ -1733,9 +1824,9 @@ export function LanePlaque({
               viewport's overflow-hidden, so the frame never moves.
               Reduced motion: `motion-reduce:hidden` drops the plate entirely
               and the swap is a plain instant change. */}
-          {shownStage !== "category" && (
+          {plaqueFace !== "category" && (
             <span
-              key={shownStage}
+              key={plaqueFace}
               aria-hidden
               data-testid={`stat-check-plaque-shutter-${category.id}`}
               style={{ animationDuration: `${blinkMs}ms` }}
@@ -1762,9 +1853,13 @@ export function LanePlaque({
 function laneStageAccessibleLabel(stage: LanePlaqueStage, result: CategoryResult, opponentLabel: string) {
   const who = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
   const required = formatThreshold(result.category.decisiveThreshold);
-  if (stage === "winner") return `${who}. ${categoryAccessibleLabel(result.category)}`;
-  if (stage === "threshold") {
-    return `${formatAchievedGap(result)}% stat gap. ${required} is required to deal 1 extra damage.`;
+  // The threshold and values scenes state the requirement only: assistive tech
+  // learns the outcome at the same moment the board shows it, never earlier.
+  if (stage === "threshold" || stage === "values") {
+    return `${categoryAccessibleLabel(result.category)} ${required} is required to deal 1 extra damage.`;
+  }
+  if (stage === "winner" || stage === "slice") {
+    return `${who}. ${formatAchievedGap(result)}% stat gap against a ${required} requirement.`;
   }
   return result.decisive
     ? `${who}. Plus 1 extra damage: the ${formatAchievedGap(result)}% gap met the ${required} requirement.`
@@ -1794,29 +1889,31 @@ function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
   const levelBadge = categoryLevelBadge(category);
   const familyIcon = categoryIcon(category);
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center gap-0.5">
-      {/* Icon-only: direction arrow, bare level number (omitted for unscaled
-          stats), and the stat family symbol. The written category exists
-          only in the tooltip and the sr-only label. */}
+    <div className="flex min-w-0 items-center justify-center">
+      {/* Reading order is "lv. 18  ↓  [armor]": the level qualifier first, then
+          direction, then the family symbol, which dominates the scene. The
+          written category exists only in the tooltip and sr-only label. */}
       <BoardTooltip
         testId={`stat-check-category-symbol-${category.id}`}
         label={categoryTooltipLabel(category)}
         ariaLabel={categoryAccessibleLabel(category)}
-        buttonClassName="flex items-center gap-1 md:gap-2"
+        buttonClassName="flex items-center gap-0.5 md:gap-1"
       >
-        {higher ? (
-          <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
-        ) : (
-          <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
-        )}
         {levelBadge && (
           <span
             aria-hidden
             data-testid={`stat-check-category-level-${category.id}`}
-            className="text-[11px] font-black leading-none text-white md:text-xl"
+            className="flex items-baseline gap-px leading-none"
           >
-            {levelBadge}
+            {/* "lv." is the smallest element; the number outranks it. */}
+            <span className="text-[6px] font-black lowercase tracking-tight text-slate-400 md:text-[9px]">lv.</span>
+            <span className="text-[10px] font-black text-white md:text-lg">{levelBadge}</span>
           </span>
+        )}
+        {higher ? (
+          <ArrowUp className="h-3 w-3 shrink-0 text-[#f4d77d] md:h-5 md:w-5" strokeWidth={3} aria-hidden />
+        ) : (
+          <ArrowDown className="h-3 w-3 shrink-0 text-cyan-300 md:h-5 md:w-5" strokeWidth={3} aria-hidden />
         )}
         {familyIcon && (
           <img
@@ -1824,27 +1921,9 @@ function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
             alt=""
             aria-hidden
             data-testid={`stat-check-category-icon-${category.id}`}
-            className="h-5 w-5 shrink-0 object-contain md:h-9 md:w-9"
+            className={cn(STAT_ICON_SIZE, "shrink-0 object-contain")}
           />
         )}
-      </BoardTooltip>
-      {/* Extra-damage threshold: scale symbol plus percentage, never the
-          word "Decisive". */}
-      <BoardTooltip
-        testId={`stat-check-decisive-${category.id}`}
-        label={DECISIVE_MARGIN_PRESENTATION.getTooltip(category.decisiveThreshold)}
-        buttonClassName="flex items-center gap-1"
-      >
-        <img
-          src={DECISIVE_MARGIN_PRESENTATION.icon}
-          alt=""
-          aria-hidden
-          data-testid={`stat-check-decisive-icon-${category.id}`}
-          className="h-3.5 w-3.5 shrink-0 object-contain md:h-5 md:w-5"
-        />
-        <span aria-hidden className="text-[10px] font-black leading-none text-[#f4d77d] md:text-sm">
-          {formatThreshold(category.decisiveThreshold)}
-        </span>
       </BoardTooltip>
     </div>
   );
@@ -1866,59 +1945,34 @@ function LanePlaqueResultFace({
   const required = formatThreshold(result.category.decisiveThreshold);
   const achieved = formatAchievedGap(result);
 
-  if (stage === "winner") {
-    // "THEY WIN" covers both the bot and an online opponent.
-    const text = result.winner === "player" ? "YOU WIN" : result.winner === "bot" ? "THEY WIN" : "TIE";
-    const tone =
-      result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-300";
-    return (
-      <span
-        data-testid="stat-check-plaque-winner"
-        className={cn("whitespace-nowrap px-0.5 text-[10px] font-black uppercase tracking-[0.06em] md:text-lg", tone)}
-      >
-        {text}
-      </span>
-    );
-  }
-
-  if (stage === "threshold") {
+  // Threshold scene: the requirement only — the achieved margin is never
+  // shown here, and no winner wording exists on the plaque at any scene.
+  if (!lanePlaqueShowsBonus(stage)) {
     return (
       <BoardTooltip
         testId="stat-check-plaque-threshold"
-        label={`${achieved}% stat gap. ${required} is required to deal 1 extra damage.`}
-        buttonClassName={cn(
-          "flex items-center gap-0.5 rounded px-0.5 md:gap-1.5",
-          // Pass reads as a confident gold lock; fail is restrained; a tie
-          // stays neutral. No pass/fail wording is ever rendered.
-          result.decisive && "animate-pulse motion-reduce:animate-none",
-        )}
+        label={DECISIVE_MARGIN_PRESENTATION.getTooltip(result.category.decisiveThreshold)}
+        buttonClassName="flex items-center gap-1 rounded px-0.5 md:gap-2"
       >
         <img
           src={DECISIVE_MARGIN_PRESENTATION.icon}
           alt=""
           aria-hidden
-          className={cn(
-            "h-3 w-3 shrink-0 object-contain md:h-5 md:w-5",
-            result.decisive ? "opacity-100" : "opacity-50",
-          )}
+          className={cn(SCALE_ICON_SIZE, "shrink-0 object-contain")}
         />
         <span
           aria-hidden
-          className={cn(
-            "whitespace-nowrap text-[8px] font-black leading-none md:text-sm",
-            result.decisive
-              ? "text-[#f4d77d] [text-shadow:0_0_8px_rgba(244,215,125,0.7)]"
-              : result.winner === "tie"
-                ? "text-slate-400"
-                : "text-slate-500",
-          )}
+          className="whitespace-nowrap text-[10px] font-black leading-none text-[#f4d77d] md:text-base"
         >
-          {`${achieved} / ${required}`}
+          {required}
         </span>
       </BoardTooltip>
     );
   }
 
+  // Bonus scene. The plaque lands on +0 first; +1 only after the winning
+  // value's energy packet has actually arrived.
+  const earned = result.decisive && lanePlaqueBonusEarned(stage);
   return (
     <BoardTooltip
       testId="stat-check-plaque-bonus"
@@ -1927,16 +1981,105 @@ function LanePlaqueResultFace({
     >
       <span
         aria-hidden
+        data-bonus={earned ? "1" : "0"}
         className={cn(
-          "text-base font-black leading-none md:text-3xl",
-          result.decisive
-            ? "text-[#f4d77d] [text-shadow:0_0_10px_rgba(244,215,125,0.75)]"
+          "text-base font-black leading-none transition-all duration-200 md:text-3xl",
+          earned
+            ? "scale-110 text-[#f4d77d] [text-shadow:0_0_14px_rgba(244,215,125,0.85)]"
             : "text-slate-500",
         )}
       >
-        {result.decisive ? "+1" : "+0"}
+        {earned ? "+1" : "+0"}
       </span>
     </BoardTooltip>
+  );
+}
+
+/**
+ * How the active category's value is presented during a lane reveal. The value
+ * itself is always the engine's final post-item number; only its treatment
+ * changes here.
+ */
+export type LaneValueEmphasis = "none" | "enlarged" | "winner" | "loser" | "tie" | "sliced";
+
+/**
+ * Treatment for one side's category value at a given scene. Reads the already
+ * computed result — it never decides who won, only how that is shown.
+ */
+export function laneValueEmphasis(
+  stage: LanePlaqueStage,
+  result: CategoryResult | null,
+  side: "player" | "bot",
+): LaneValueEmphasis {
+  if (!result || !laneValuesActive(stage)) return "none";
+  // Ties stay symmetrical and neutral for the whole lane: never a winner or
+  // loser treatment, and never sliced.
+  if (result.winner === "tie") return "tie";
+  if (!laneWinnerEmphasised(stage)) return "enlarged";
+  if (result.winner === side) return "winner";
+  // Only a decisive pass cuts the losing number, and only from the slice scene.
+  return result.decisive && laneSliceActive(stage) ? "sliced" : "loser";
+}
+
+/**
+ * The active category value on a champion card.
+ *
+ * Enlargement is a pure `transform: scale`, so the badge's layout box — and
+ * therefore the stat row, card height, portrait, name and item chip — never
+ * move. The sliced state hides the real badge and draws two clipped copies in
+ * an absolutely positioned overlay, so only the glyphs are cut.
+ */
+export function CategoryValueBadge({
+  value,
+  emphasis,
+  valueRef,
+}: {
+  value: string | number;
+  emphasis: LaneValueEmphasis;
+  valueRef?: RefObject<HTMLSpanElement | null>;
+}) {
+  const sliced = emphasis === "sliced";
+  const active = emphasis !== "none";
+  return (
+    <span data-testid="stat-check-value" data-value-emphasis={emphasis} className="relative mt-0.5 inline-flex">
+      <span
+        ref={valueRef}
+        data-testid="stat-check-value-badge"
+        className={cn(
+          "inline-flex origin-left rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black",
+          "transition-[transform,filter,opacity] duration-500 ease-out motion-reduce:transition-none",
+          active && "scale-[1.55]",
+          emphasis === "winner" && "bg-[#ffe9a8] brightness-110 shadow-[0_0_20px_rgba(244,215,125,0.95),0_0_40px_rgba(244,215,125,0.45)]",
+          emphasis === "loser" && "opacity-55 brightness-75 saturate-50",
+          emphasis === "tie" && "bg-slate-200 shadow-[0_0_16px_rgba(203,213,225,0.65)]",
+          sliced && "opacity-0",
+        )}
+      >
+        {value}
+      </span>
+      {sliced && <SlicedValueOverlay value={value} />}
+    </span>
+  );
+}
+
+/** Two clipped halves of the losing number, pulled apart along a bright cut. */
+function SlicedValueOverlay({ value }: { value: string | number }) {
+  const half =
+    "absolute left-0 top-0 inline-flex origin-left scale-[1.55] rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black opacity-60 saturate-50";
+  return (
+    <span
+      aria-hidden
+      data-testid="stat-check-value-slice"
+      className="pointer-events-none absolute left-0 top-0 motion-reduce:hidden"
+    >
+      <span className={cn(half, "-translate-y-[3px] -rotate-[2deg] [clip-path:polygon(0_0,100%_0,100%_44%,0_56%)]")}>
+        {value}
+      </span>
+      <span className={cn(half, "translate-y-[3px] rotate-[2deg] [clip-path:polygon(0_56%,100%_44%,100%_100%,0_100%)]")}>
+        {value}
+      </span>
+      <span className="absolute left-0 top-1/2 h-px w-[170%] origin-left -translate-y-1/2 scale-x-100 bg-[#f4d77d] shadow-[0_0_10px_rgba(244,215,125,0.95)]" />
+    </span>
   );
 }
 
@@ -2391,6 +2534,8 @@ function FlippableCard({
   reducedMotion,
   animationSpeed,
   state,
+  valueEmphasis = "none",
+  valueRef,
   opponentLabel = "Bot",
 }: {
   card: StatCheckCard | null;
@@ -2401,6 +2546,8 @@ function FlippableCard({
   reducedMotion: boolean;
   animationSpeed: StatCheckAnimationSpeed;
   state: "idle" | "winner" | "loser" | "decisive";
+  valueEmphasis?: LaneValueEmphasis;
+  valueRef?: RefObject<HTMLSpanElement | null>;
   opponentLabel?: string;
 }) {
   if (reducedMotion) {
@@ -2412,6 +2559,8 @@ function FlippableCard({
         value={value}
         mode={flipped ? "board" : "face-down"}
         state={state}
+        valueEmphasis={valueEmphasis}
+        valueRef={valueRef}
         label={flipped ? opponentLabel : undefined}
       />
     );
@@ -2431,7 +2580,20 @@ function FlippableCard({
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden={!flipped}>
           {/* The face-up front mounts only once the flip starts, so the concealed
               champion never appears in the DOM or accessibility tree early. */}
-          {flipped && <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="board" state={state} label={opponentLabel} fill />}
+          {flipped && (
+            <ChampionCard
+              card={card}
+              imageUrl={imageUrl}
+              category={category}
+              value={value}
+              mode="board"
+              state={state}
+              valueEmphasis={valueEmphasis}
+              valueRef={valueRef}
+              label={opponentLabel}
+              fill
+            />
+          )}
         </div>
       </motion.div>
     </div>
@@ -2465,6 +2627,8 @@ function ChampionCard({
   value,
   mode,
   state = "idle",
+  valueEmphasis = "none",
+  valueRef,
   label,
   disabled,
   selected,
@@ -2478,6 +2642,10 @@ function ChampionCard({
   value?: number;
   mode: "hand" | "board" | "face-down";
   state?: "idle" | "selected" | "assigned" | "winner" | "loser" | "decisive";
+  /** Reveal treatment for the active category's value only. */
+  valueEmphasis?: LaneValueEmphasis;
+  /** Measured by the lane so an energy packet can start at this number. */
+  valueRef?: RefObject<HTMLSpanElement | null>;
   label?: string;
   disabled?: boolean;
   selected?: boolean;
@@ -2534,7 +2702,7 @@ function ChampionCard({
         <div className={cn("truncate font-black text-white", mode === "board" ? "text-sm" : "text-sm")}>{card?.name}</div>
         {relevant ? (
           <>
-            <div className="mt-0.5 inline-flex rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black">{relevant}</div>
+            <CategoryValueBadge value={relevant} emphasis={valueEmphasis} valueRef={valueRef} />
             <div className="mt-1 flex flex-wrap gap-0.5 opacity-70">
               {chips.slice(0, 3).map((chip) => (
                 <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[9px] font-semibold text-slate-300">

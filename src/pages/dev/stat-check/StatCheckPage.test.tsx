@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import StatCheckPage, { CategoryMarker, LanePlaque } from "./StatCheckPage";
+import StatCheckPage, { CategoryMarker, CategoryValueBadge, LanePlaque, laneValueEmphasis } from "./StatCheckPage";
+import type { LanePlaqueStage } from "./animationState";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
-import { createMatch, generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
+import { STAT_CATEGORIES, createMatch, generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
   useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -66,9 +67,9 @@ function laneTextIncludesFamily(container: HTMLElement, family: string) {
 }
 
 function finishReveal() {
-  // Covers the full reveal including each lane plaque's staged blink sequence
-  // (resolved lands at 4,580ms at 1x, +520ms more on item rounds).
-  act(() => vi.advanceTimersByTime(7_000));
+  // Lanes now resolve strictly one after another (9,350ms each at 1x), so the
+  // whole reveal settles at ~30.0s, or ~30.6s on item rounds.
+  act(() => vi.advanceTimersByTime(35_000));
 }
 
 /** Complete an open item-choice phase (opening or post-cadence), if present. */
@@ -690,35 +691,62 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(results.every((text) => / vs /.test(text))).toBe(false);
   });
 
-  it("runs each lane plaque through its stages in sequential lane order", () => {
+  it("resolves lanes strictly left to right with no overlap", () => {
     const { container } = renderPage();
     const stages = () =>
-      Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map(
-        (marker) => marker.dataset.plaqueStage,
+      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
+        (marker) => (marker as HTMLElement).dataset.plaqueStage,
       );
 
     expect(stages()).toEqual(["category", "category", "category"]);
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
 
-    // This round carries an item, so every resolve beat shifts by 520ms:
-    // lane 1 resolves at 1,740ms and blinks to its winner face at +300ms,
-    // while lanes 2 and 3 still show their category face.
-    act(() => vi.advanceTimersByTime(2_100));
-    expect(stages()).toEqual(["winner", "category", "category"]);
+    // This round carries an item, so lane 1 starts at 1,740ms. One lane runs
+    // 9,350ms end to end, so lane 2 cannot start before 11,090ms.
+    const LANE_1 = 1_740;
+    const LANE_MS = 9_350;
 
-    // Lane 2 follows 400ms later, lane 3 after that: strictly sequential.
-    act(() => vi.advanceTimersByTime(400));
-    expect(stages()[1]).toBe("winner");
+    // Step to just inside each of lane 1's scenes and assert the other two
+    // lanes have not begun.
+    let elapsed = 0;
+    const stepTo = (target: number) => {
+      act(() => vi.advanceTimersByTime(target - elapsed));
+      elapsed = target;
+    };
+    for (const [offset, stage] of [
+      [1_050, "threshold"],
+      [2_600, "values"],
+      [4_150, "winner"],
+      [4_800, "slice"],
+      [5_400, "zero"],
+      [6_750, "transfer"],
+      [7_750, "bonus"],
+      [8_400, "settled"],
+    ] as const) {
+      stepTo(LANE_1 + offset);
+      expect(stages()[0], `lane 1 at +${offset}`).toBe(stage);
+      expect(stages()[1], `lane 2 must not start at +${offset}`).toBe("category");
+      expect(stages()[2], `lane 3 must not start at +${offset}`).toBe("category");
+    }
+
+    // Lane 2 only begins once lane 1 has fully settled.
+    stepTo(LANE_1 + LANE_MS + 1_050);
+    expect(stages()[0]).toBe("settled");
+    expect(stages()[1]).toBe("threshold");
     expect(stages()[2]).toBe("category");
 
-    // Every plaque ends on its bonus face and stays there.
+    // Lane 3 only begins once lane 2 has fully settled.
+    stepTo(LANE_1 + LANE_MS * 2 + 1_050);
+    expect(stages()[1]).toBe("settled");
+    expect(stages()[2]).toBe("threshold");
+
+    // The round does not complete until all three lanes have settled.
+    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
     finishReveal();
-    expect(stages()).toEqual(["bonus", "bonus", "bonus"]);
-    // Damage resolves only after the lanes have finished staging.
+    expect(stages()).toEqual(["settled", "settled", "settled"]);
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
     expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(2_000));
-    expect(stages()).toEqual(["bonus", "bonus", "bonus"]);
   });
 
   it("prevents reassignment after lock-in and reaches resolved reveal state", () => {
@@ -867,128 +895,208 @@ describe("CategoryMarker", () => {
   });
 });
 
-describe("LanePlaque staged result", () => {
-  /** Visible text only: the sr-only stage description is not on the board. */
+describe("LanePlaque staged reveal", () => {
+  /** Visible text only: sr-only stage descriptions are not on the board. */
   function visible(container: HTMLElement) {
     const clone = container.cloneNode(true) as HTMLElement;
     for (const node of Array.from(clone.querySelectorAll(".sr-only"))) node.remove();
     return (clone.textContent ?? "").replace(/\s+/g, " ").trim();
   }
 
-  const winner = (result: CategoryResult, stage: "winner" | "threshold" | "bonus") =>
+  const at = (result: CategoryResult, stage: LanePlaqueStage) =>
     render(<LanePlaque category={result.category} result={result} stage={stage} reducedMotion />);
 
-  it("announces the winner without values or margins", () => {
-    const { container } = winner(sampleResult({}), "winner");
-    expect(visible(container)).toContain("YOU WIN");
-    expect(visible(container)).not.toMatch(/vs|625|604/);
-  });
+  const ALL_STAGES = [
+    "category",
+    "threshold",
+    "values",
+    "winner",
+    "slice",
+    "zero",
+    "transfer",
+    "bonus",
+    "settled",
+  ] as const;
 
-  it("uses THEY WIN for the opponent, never BOT WINS or OPPONENT WINS", () => {
-    const { container } = winner(sampleResult({ winner: "bot", decisive: true }), "winner");
-    expect(visible(container)).toContain("THEY WIN");
-    expect(visible(container)).not.toMatch(/BOT WINS|OPPONENT WINS/i);
-  });
-
-  it("shows TIE for a tied lane", () => {
-    const { container } = winner(sampleResult({ winner: "tie", margin: 0 }), "winner");
-    expect(visible(container)).toContain("TIE");
-  });
-
-  it("shows achieved over required at the threshold stage", () => {
-    // 9.7% achieved against the sample category's 7.5% requirement.
-    const { container } = winner(sampleResult({ margin: 0.097, decisive: true }), "threshold");
-    expect(visible(container)).toContain("9.7 / 7.5%");
-    expect(visible(container)).not.toMatch(/decisive/i);
-  });
-
-  it("reports a tie as a zero gap against the requirement", () => {
-    const { container } = winner(sampleResult({ winner: "tie", margin: 0 }), "threshold");
-    expect(visible(container)).toContain("0 / 7.5%");
-  });
-
-  it("rests on +1 when the threshold passed and +0 when it did not", () => {
-    expect(visible(winner(sampleResult({ decisive: true }), "bonus").container)).toContain("+1");
-    expect(visible(winner(sampleResult({ decisive: false }), "bonus").container)).toContain("+0");
-    expect(visible(winner(sampleResult({ winner: "tie", margin: 0, decisive: false }), "bonus").container)).toContain("+0");
-  });
-
-  it("never renders the retired result wording", () => {
-    for (const stage of ["winner", "threshold", "bonus"] as const) {
-      const text = visible(winner(sampleResult({ decisive: true }), stage).container);
-      expect(text).not.toMatch(/DECISIVE|Decisive at|NO BONUS|BOT WINS|OPPONENT WINS/i);
+  it("shows no winner wording at any scene", () => {
+    for (const stage of ALL_STAGES) {
+      const text = visible(at(sampleResult({ decisive: true }), stage).container);
+      expect(text).not.toMatch(/YOU WIN|THEY WIN|\bTIE\b|BOT WINS|OPPONENT WINS|DECISIVE|NO BONUS/i);
     }
   });
 
-  /**
-   * The fixed-shell contract. jsdom has no layout engine, so the deterministic
-   * check here is that every stage renders the *same* fixed-size viewport
-   * element with identical sizing classes; the real pixel measurement is done
-   * in a browser and reported alongside this suite.
-   */
-  it("renders one identically-sized plaque viewport at every stage", () => {
+  it("orders the category scene as level, direction, icon", () => {
+    const { container } = at(sampleResult({}), "category");
+    const level = container.querySelector('[data-testid="stat-check-category-level-highest-hp-18"]');
+    const arrow = container.querySelector("svg.lucide-arrow-up");
+    const icon = container.querySelector('[data-testid="stat-check-category-icon-highest-hp-18"]');
+    expect(level).not.toBeNull();
+    expect(arrow).not.toBeNull();
+    expect(icon).not.toBeNull();
+    // Document order must read level -> arrow -> icon.
+    expect(level.compareDocumentPosition(arrow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(arrow.compareDocumentPosition(icon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(visible(container)).toContain("lv.");
+    expect(visible(container)).toContain("18");
+  });
+
+  it("omits lv. entirely for level-independent categories", () => {
+    const moveSpeed = STAT_CATEGORIES.find((entry) => entry.id === "highest-move-speed");
+    const { container } = render(<LanePlaque category={moveSpeed} />);
+    expect(visible(container)).not.toMatch(/lv\.|base/i);
+    expect(container.querySelector('[data-testid="stat-check-category-level-highest-move-speed"]')).toBeNull();
+  });
+
+  it("keeps category and threshold as separate scenes", () => {
+    // The category scene carries no scale icon or percentage...
+    const category = at(sampleResult({}), "category");
+    expect(visible(category.container)).not.toContain("7.5%");
+    // ...and the threshold scene shows the requirement only, never the gap.
+    const threshold = at(sampleResult({ margin: 0.097, decisive: true }), "threshold");
+    expect(visible(threshold.container)).toContain("7.5%");
+    expect(visible(threshold.container)).not.toContain("9.7");
+  });
+
+  it("reaches +0 before impact and only shows +1 once the packet lands", () => {
+    const decisive = sampleResult({ decisive: true });
+    expect(visible(at(decisive, "zero").container)).toContain("+0");
+    expect(visible(at(decisive, "transfer").container)).toContain("+0");
+    expect(visible(at(decisive, "bonus").container)).toContain("+1");
+    expect(visible(at(decisive, "settled").container)).toContain("+1");
+  });
+
+  it("remains +0 for a failed threshold and for a tie", () => {
+    for (const result of [
+      sampleResult({ decisive: false }),
+      sampleResult({ winner: "tie", margin: 0, decisive: false }),
+    ]) {
+      for (const stage of ["zero", "transfer", "bonus", "settled"] as const) {
+        const text = visible(at(result, stage).container);
+        expect(text).toContain("+0");
+        expect(text).not.toContain("+1");
+      }
+    }
+  });
+
+  it("renders one identically-sized plaque viewport at every scene", () => {
     const result = sampleResult({ decisive: true });
-    const viewports = (["category", "winner", "threshold", "bonus"] as const).map((stage) => {
-      const { container } = render(
-        <LanePlaque category={result.category} result={result} stage={stage} reducedMotion />,
-      );
-      const box = container.querySelector<HTMLElement>(
-        `[data-testid="stat-check-plaque-viewport-${result.category.id}"]`,
+    const classes = ALL_STAGES.map((stage) => {
+      const box = at(result, stage).container.querySelector<HTMLElement>(
+        '[data-testid="stat-check-plaque-viewport-highest-hp-18"]',
       );
       expect(box, `stage ${stage} has no fixed viewport`).not.toBeNull();
-      return box!.className;
+      return box.className;
     });
-
-    // One fixed width and height per responsive mode, shared by all stages.
-    expect(new Set(viewports).size).toBe(1);
-    expect(viewports[0]).toContain("h-[46px]");
-    expect(viewports[0]).toContain("w-[57px]");
-    expect(viewports[0]).toContain("md:h-[76px]");
-    expect(viewports[0]).toContain("md:w-[115px]");
-    expect(viewports[0]).toContain("min-[1210px]:w-[123px]");
-    // The interior is clipped, so a wipe can never spill past the frame.
-    expect(viewports[0]).toContain("overflow-hidden");
+    expect(new Set(classes).size).toBe(1);
+    expect(classes[0]).toContain("h-[46px]");
+    expect(classes[0]).toContain("w-[57px]");
+    expect(classes[0]).toContain("md:h-[76px]");
+    expect(classes[0]).toContain("md:w-[115px]");
+    expect(classes[0]).toContain("min-[1210px]:w-[123px]");
+    expect(classes[0]).toContain("overflow-hidden");
   });
 
-  it("skips the mechanical shutter for reduced motion but still swaps", () => {
+  it("blinks only when the plaque face actually changes", () => {
+    // Three faces: category, threshold, bonus. The shutter is keyed to the
+    // face, so values/winner/slice reuse the threshold plate without
+    // re-blinking, and +0 -> +1 is driven by the packet, not a shutter.
     const result = sampleResult({ decisive: true });
-    const reduced = render(
-      <LanePlaque category={result.category} result={result} stage="bonus" reducedMotion />,
-    );
-    expect(visible(reduced.container)).toContain("+1");
-
-    // The shutter element carries motion-reduce:hidden, so the accessible
-    // path shows the new face immediately with no sweep.
-    const shutter = reduced.container.querySelector<HTMLElement>(
-      `[data-testid="stat-check-plaque-shutter-${result.category.id}"]`,
-    );
-    expect(shutter?.className).toContain("motion-reduce:hidden");
+    const keyFor = (stage: LanePlaqueStage) => {
+      const shutter = at(result, stage).container.querySelector<HTMLElement>(
+        '[data-testid="stat-check-plaque-shutter-highest-hp-18"]',
+      );
+      return shutter === null ? "none" : "present";
+    };
+    // The category face carries no shutter at all.
+    expect(keyFor("category")).toBe("none");
+    for (const stage of ["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const) {
+      expect(keyFor(stage), `stage ${stage}`).toBe("present");
+    }
   });
 
-  it("keeps the category face free of any shutter before a lane resolves", () => {
-    const { container } = render(<LanePlaque category={higherHp18Category} />);
-    expect(
-      container.querySelector(`[data-testid="stat-check-plaque-shutter-${higherHp18Category.id}"]`),
-    ).toBeNull();
-    expect(container.querySelector('[data-testid^="stat-check-category-icon-"]')).not.toBeNull();
+  it("applies responsive icon-size classes to the stat art", () => {
+    const stat = at(sampleResult({}), "category").container.querySelector<HTMLElement>(
+      '[data-testid="stat-check-category-icon-highest-hp-18"]',
+    );
+    expect(stat.className).toContain("h-6");
+    expect(stat.className).toContain("md:h-10");
+    expect(stat.className).toContain("min-[1210px]:h-12");
+    // Height-driven with a width cap, so 1:1 and 3:2 art read at equal weight.
+    expect(stat.className).toContain("w-auto");
+    expect(stat.className).toContain("object-contain");
+  });
+});
+
+describe("lane value emphasis", () => {
+  const decisive = sampleResult({ decisive: true }); // player wins decisively
+  const plain = sampleResult({ decisive: false }); // player wins, misses threshold
+  const tied = sampleResult({ winner: "tie", margin: 0, decisive: false });
+
+  it("does not touch values before the values scene", () => {
+    for (const stage of ["category", "threshold"] as const) {
+      expect(laneValueEmphasis(stage, decisive, "player")).toBe("none");
+      expect(laneValueEmphasis(stage, decisive, "bot")).toBe("none");
+    }
   });
 
-  it("derives the achieved gap from item-modified final values", () => {
-    // 700 vs 604 after a +150 item: the margin the engine computed is what the
-    // threshold stage reports, not the natural comparison.
-    const withItem = sampleResult({
-      playerNaturalValue: 550,
-      playerValue: 700,
-      playerBonus: 150,
-      playerItem: "ruby-crystal",
-      botValue: 604,
-      margin: 0.159,
-      decisive: true,
-    });
+  it("enlarges both sides equally at the values scene", () => {
+    expect(laneValueEmphasis("values", decisive, "player")).toBe("enlarged");
+    expect(laneValueEmphasis("values", decisive, "bot")).toBe("enlarged");
+  });
+
+  it("emphasises the winner and subordinates the loser", () => {
+    expect(laneValueEmphasis("winner", decisive, "player")).toBe("winner");
+    expect(laneValueEmphasis("winner", decisive, "bot")).toBe("loser");
+  });
+
+  it("slices only the losing number, and only on a decisive pass", () => {
+    expect(laneValueEmphasis("slice", decisive, "bot")).toBe("sliced");
+    expect(laneValueEmphasis("slice", decisive, "player")).toBe("winner");
+    // A win that misses the threshold never slices.
+    expect(laneValueEmphasis("slice", plain, "bot")).toBe("loser");
+    expect(laneValueEmphasis("bonus", plain, "bot")).toBe("loser");
+  });
+
+  it("keeps ties symmetrical and never sliced", () => {
+    for (const stage of ["values", "winner", "slice", "zero", "transfer", "bonus"] as const) {
+      expect(laneValueEmphasis(stage, tied, "player")).toBe("tie");
+      expect(laneValueEmphasis(stage, tied, "bot")).toBe("tie");
+    }
+  });
+
+  it("clears every value effect once the lane settles", () => {
+    for (const result of [decisive, plain, tied]) {
+      expect(laneValueEmphasis("settled", result, "player")).toBe("none");
+      expect(laneValueEmphasis("settled", result, "bot")).toBe("none");
+    }
+  });
+
+  it("scales the badge with a transform so its layout box never grows", () => {
     const { container } = render(
-      <LanePlaque category={withItem.category} result={withItem} stage="threshold" reducedMotion />,
+      <CategoryValueBadge value={625} emphasis="winner" />,
     );
-    expect(visible(container)).toContain("15.9 / 7.5%");
+    const badge = container.querySelector<HTMLElement>('[data-testid="stat-check-value-badge"]');
+    expect(badge.className).toContain("scale-[1.55]");
+    // No width/height utility is applied, so the box itself is untouched.
+    expect(badge.className).not.toMatch(/\b(w-\[|h-\[|min-w-|min-h-)/);
+  });
+
+  it("slices only the glyphs, in an absolutely positioned overlay", () => {
+    const { container } = render(<CategoryValueBadge value={604} emphasis="sliced" />);
+    const overlay = container.querySelector<HTMLElement>('[data-testid="stat-check-value-slice"]');
+    expect(overlay).not.toBeNull();
+    expect(overlay.className).toContain("absolute");
+    expect(overlay.className).toContain("pointer-events-none");
+    // The real badge is hidden, not removed, so the row keeps its box.
+    const badge = container.querySelector<HTMLElement>('[data-testid="stat-check-value-badge"]');
+    expect(badge.className).toContain("opacity-0");
+  });
+
+  it("does not slice for any non-decisive emphasis", () => {
+    for (const emphasis of ["none", "enlarged", "winner", "loser", "tie"] as const) {
+      const { container } = render(<CategoryValueBadge value={610} emphasis={emphasis} />);
+      expect(container.querySelector('[data-testid="stat-check-value-slice"]')).toBeNull();
+    }
   });
 });
 
@@ -1180,9 +1288,9 @@ describe("StatCheckPage item system UI", () => {
     expect(lanes(container)[0].textContent).toContain(final);
     expect(screen.queryByText(/You win|Bot wins|Lane tied/i)).toBeNull();
 
-    // Lane winners resolve after the shifted resolve beat (1,740ms) plus the
-    // plaque's opening blink into its winner face (+300ms).
-    act(() => vi.advanceTimersByTime(1_100));
+    // Lane winners now land at lane 1's start (1,740ms) plus the winner scene
+    // offset (4,100ms) — the slow deliberate sequence.
+    act(() => vi.advanceTimersByTime(4_700));
     expect(lanes(container)[0].textContent).toMatch(/You win|Bot wins|Lane tied/i);
 
     finishReveal();
