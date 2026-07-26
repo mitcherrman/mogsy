@@ -126,6 +126,11 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 
+// Dev-only entrance concept — visual iteration on the Mogzy entry screen.
+// Purely presentational, no app state, not linked from any navigation.
+// The faithful pre-Mogzy original stays viewable at /dev/legacy-entry.
+const MogzyEntryV2 = lazy(() => import("./pages/dev/mogzy-entry-v2/MogzyEntryV2"));
+
 // Production Ranked TUTORIAL onboarding — mandatory for new accounts, replayable
 // for completed ones. Reuses the canonical tutorial with durable completion.
 const RankedTutorialOnboardingPage = lazy(() => import("./pages/onboarding/RankedTutorialOnboardingPage"));
@@ -213,6 +218,13 @@ const App = () => (
           <BrowserRouter>
               <Routes>
                 <Route path="/" element={leagueGate(<Suspense fallback={<RouteLoader />}><Index /></Suspense>)} />
+                {/* Isolated preview of the legacy pre-Mogzy entry screen (src/pages/Index.tsx),
+                    which the root route no longer reaches while LEAGUE_ONLY_MODE is on.
+                    Ungated on purpose — inspection only, not a production route. */}
+                <Route path="/dev/legacy-entry" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
+                {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
+                    original, so it sits outside <Layout /> alongside the legacy route. */}
+                <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<RouteLoader />}><MogzyEntryV2 /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
