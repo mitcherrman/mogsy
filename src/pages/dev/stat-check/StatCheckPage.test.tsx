@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StatCheckPage, { CategoryMarker, LaneResult } from "./StatCheckPage";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
-import { generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
+import { createMatch, generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
   useChampionBaseStats: () => ({ data: undefined, isLoading: false, isError: false }),
@@ -17,6 +17,15 @@ vi.mock("@/hooks/useChampionAssets", () => ({
 
 function lanes(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-lane-"]'));
+}
+
+/**
+ * The next-round hint renders no visible wording, so the written family is read
+ * back from the socket's accessible label.
+ */
+function nextHintFamilyLabel() {
+  const label = screen.getByTestId("stat-check-next-hint").getAttribute("aria-label") ?? "";
+  return label.replace(/^Next-round hint:\s*/, "");
 }
 
 function laneChampions(lane: HTMLElement) {
@@ -723,9 +732,12 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("updates discards after next round and keeps visible intel continuous", () => {
     const { container } = renderPage();
-    const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
-    expect(screen.getByTestId("stat-check-next-intel")).toHaveTextContent(/One upcoming stat family/i);
-    expect(screen.getByTestId("stat-check-next-intel")).not.toHaveTextContent(/Higher wins|Lower wins|Level 1|Level 18/i);
+    // The hint is now a single icon-only board socket: the family lives in the
+    // accessible label, and no direction or level leaks through it.
+    const firstIntel = nextHintFamilyLabel();
+    const hint = screen.getByTestId("stat-check-next-hint");
+    expect(hint.textContent).toBe("");
+    expect(hint.getAttribute("aria-label")).not.toMatch(/Highest|Lowest|Level \d/i);
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     finishReveal();
@@ -739,7 +751,7 @@ describe("StatCheckPage tabletop presentation", () => {
 
   it("clears resolved presentation state when advancing to the next round", () => {
     const { container } = renderPage();
-    const firstIntel = screen.getByTestId("stat-check-next-intel-label").textContent ?? "";
+    const firstIntel = nextHintFamilyLabel();
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
     finishReveal();
@@ -798,7 +810,8 @@ describe("CategoryMarker", () => {
     const { container } = render(<CategoryMarker category={higherHp18Category} />);
     const marker = container.querySelector('[data-testid="stat-check-marker-highest-hp-18"]');
     expect(marker).toHaveAttribute("data-direction", "higher");
-    expect(marker).toHaveTextContent("L18 HP");
+    // The plaque is icon-only: the short label no longer renders anywhere.
+    expect(marker?.textContent).not.toContain("L18 HP");
     expect(marker).toHaveTextContent("7.5%");
     expect(marker).toHaveTextContent(/Highest level-18 health/i);
     expect(marker).toHaveTextContent(/Health/);
@@ -1101,6 +1114,122 @@ describe("StatCheckPage item system UI", () => {
     // The dock is the hand tray's sibling column, mounted on the board.
     expect(dock.parentElement).toBe(screen.getByTestId("stat-check-hand").parentElement);
     expect(dock.parentElement?.className).toContain("flex");
+  });
+
+  function dockWells() {
+    return Array.from(
+      screen.getByTestId("stat-check-inventory").querySelectorAll<HTMLElement>('[data-testid^="stat-check-inventory-"]'),
+    );
+  }
+
+  it("collapses and expands the vertical dock, keeping the lever and hint mounted", () => {
+    renderPage();
+    const dock = screen.getByTestId("stat-check-inventory");
+    expect(dock).toHaveAttribute("data-collapsed", "false");
+    expect(dockWells()).toHaveLength(4);
+
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "true");
+    expect(dockWells()).toHaveLength(0);
+    // The lever and the next-round hint survive the collapse...
+    expect(screen.getByTestId("stat-check-dock-lever")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-next-hint")).toBeInTheDocument();
+    // ...and the dock stays a vertical column mounted on the board.
+    expect(screen.getByTestId("stat-check-inventory").className).toContain("flex-col");
+
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "false");
+    expect(dockWells()).toHaveLength(4);
+  });
+
+  it("labels the lever without rendering any text on it", () => {
+    renderPage();
+    const lever = screen.getByTestId("stat-check-dock-lever");
+    expect(lever.textContent).toBe("");
+    expect(lever).toHaveAttribute("aria-label", "Collapse items");
+    expect(lever).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(lever);
+    const collapsed = screen.getByTestId("stat-check-dock-lever");
+    expect(collapsed).toHaveAttribute("aria-label", "Expand items");
+    expect(collapsed).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows the next-round hint as a single icon with no visible direction or level", () => {
+    renderPage();
+    const hint = screen.getByTestId("stat-check-next-hint");
+    // Exactly one stat icon, and nothing readable.
+    expect(hint.querySelectorAll("img")).toHaveLength(1);
+    expect(hint.textContent).toBe("");
+    expect(hint.getAttribute("aria-label")).toMatch(/^Next-round hint: /);
+    expect(hint.getAttribute("aria-label")).not.toMatch(/highest|lowest|level \d/i);
+    // It is not an item well, so it can never be armed as one.
+    expect(hint.dataset.testid).not.toMatch(/^stat-check-inventory-/);
+  });
+
+  it("keeps an armed item visible by refusing to hide the wells", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "true");
+
+    // Arming while collapsed must bring the wells back so the armed item stays
+    // visibly represented while it waits for a lane.
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever")); // expand to reach the well
+    armItem("ruby-crystal");
+    expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toHaveAttribute("aria-pressed", "true");
+
+    // The lever cannot hide an armed item.
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "false");
+    expect(dockWells()).toHaveLength(4);
+    expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("auto-expands the dock when a new item is acquired", () => {
+    const { container } = renderPage();
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "true");
+
+    // Play to the round-3 item cadence and take an item.
+    for (let round = 1; round <= 2; round++) {
+      playRound(container);
+      fireEvent.click(screen.getByTestId("stat-check-next-round"));
+      act(() => vi.advanceTimersByTime(2_000));
+    }
+    playRound(container);
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "true");
+
+    fireEvent.click(screen.getByTestId("stat-check-item-option-mogzy-snack"));
+    fireEvent.click(screen.getByTestId("stat-check-item-confirm"));
+
+    // Acquiring pops the dock open so the new well is never hidden.
+    expect(screen.getByTestId("stat-check-inventory")).toHaveAttribute("data-collapsed", "false");
+    expect(inventoryCountText("mogzy-snack")).toBe("1");
+  });
+
+  it("keeps dock collapse out of authoritative match state", () => {
+    const { container } = renderPage();
+    const before = {
+      ruby: inventoryCountText("ruby-crystal"),
+      lockDisabled: (screen.getByTestId("stat-check-lock") as HTMLButtonElement).disabled,
+      markers: container.querySelectorAll('[data-testid^="stat-check-marker-"]').length,
+    };
+
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+
+    // Collapsing is pure presentation: nothing the engine owns moves.
+    expect((screen.getByTestId("stat-check-lock") as HTMLButtonElement).disabled).toBe(before.lockDisabled);
+    expect(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).toHaveLength(before.markers);
+
+    // Re-expanding restores the identical inventory: the count survived a
+    // round-trip through collapse untouched.
+    fireEvent.click(screen.getByTestId("stat-check-dock-lever"));
+    expect(inventoryCountText("ruby-crystal")).toBe(before.ruby);
+
+    // And the match state itself carries no collapse concept at all.
+    const state = createMatch(STAT_CHECK_FIXTURE_DECK, "collapse-state-check", { items: true });
+    expect(Object.keys(state).some((key) => /collapse|dock|inventoryOpen/i.test(key))).toBe(false);
   });
 
   it("renders the board dock with icon wells, counts, and empty/owned/armed states", () => {

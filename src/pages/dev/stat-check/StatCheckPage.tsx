@@ -49,8 +49,16 @@ import {
   type PresentationStep,
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
-import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
+import { ITEMS, isItemCompatible, itemBonusFor, totalInventoryCount, type ItemId } from "./items";
 import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryDock } from "./StatCheckItems";
+import { BoardTooltip } from "./StatCheckTooltip";
+import {
+  DECISIVE_MARGIN_PRESENTATION,
+  categoryIcon,
+  categoryLevelBadge,
+  categoryTooltipLabel,
+  formatThreshold,
+} from "./statCategoryIcons";
 import type { OnlineMatchController } from "./online/useStatCheckMatch";
 import {
   STAT_CHECK_RULES,
@@ -140,6 +148,12 @@ export default function StatCheckPage({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   // Armed inventory item awaiting a lane click (click item, then click lane).
   const [selectedItemId, setSelectedItemId] = useState<ItemId | null>(null);
+  /**
+   * Item dock collapse: purely local presentation. It is deliberately NOT part
+   * of MatchState — it never reaches the engine, the reducer, or any online
+   * payload, so collapsing cannot desync a multiplayer match.
+   */
+  const [inventoryCollapsed, setInventoryCollapsed] = useState(false);
   // Highlighted-but-unconfirmed pick inside the item-choice panel.
   const [pendingChoiceId, setPendingChoiceId] = useState<ItemId | null>(null);
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`, { items: true }));
@@ -440,6 +454,23 @@ export default function StatCheckPage({
     setSelectedCardId(null);
     setSelectedItemId((current) => (current === itemId ? null : itemId));
   };
+
+  // Acquiring an item pops the dock open so the new well is never hidden
+  // behind a collapsed lever. Only a genuine increase re-expands, so manual
+  // collapse still sticks once the player owns items.
+  const inventoryTotal = totalInventoryCount(match.playerInventory);
+  const previousInventoryTotal = useRef(inventoryTotal);
+  useEffect(() => {
+    if (inventoryTotal > previousInventoryTotal.current) setInventoryCollapsed(false);
+    previousInventoryTotal.current = inventoryTotal;
+  }, [inventoryTotal]);
+
+  /**
+   * An armed item must stay visibly represented while it waits for a lane, so
+   * arming forces the wells open regardless of the manual collapse preference
+   * (which is remembered and reapplied once the item is assigned or disarmed).
+   */
+  const dockCollapsed = inventoryCollapsed && !selectedItemId;
 
   // Item-to-lane attachment shares the click-lane gesture with card placement:
   // an armed inventory item takes priority and never falls through to the
@@ -872,6 +903,9 @@ export default function StatCheckPage({
                 selectedItemId={selectedItemId}
                 disabled={!canEdit}
                 onToggle={toggleInventoryItem}
+                collapsed={dockCollapsed}
+                onToggleCollapsed={() => setInventoryCollapsed((current) => !current)}
+                nextHintFamily={match.nextCategories[0]?.family ?? null}
                 className="z-[450] -mt-2 shrink-0"
               />
               {/* hand dock: a carved stone tray extending from the slab's lower
@@ -945,8 +979,6 @@ export default function StatCheckPage({
                 match={match}
                 resolution={activeResolution}
                 revealStep={revealStep}
-                nextCategories={match.nextCategories}
-                showIntel={!itemChoiceOpen}
                 onNextRound={nextRound}
                 onRestart={online ? (onOnlineExit ?? restart) : restart}
                 opponentLabel={opponentLabel}
@@ -967,8 +999,6 @@ export default function StatCheckPage({
                   match={match}
                   resolution={activeResolution}
                   revealStep={revealStep}
-                  nextCategories={match.nextCategories}
-                  showIntel={!itemChoiceOpen}
                   onNextRound={nextRound}
                   onRestart={online ? (onOnlineExit ?? restart) : restart}
                   opponentLabel={opponentLabel}
@@ -1585,6 +1615,8 @@ function SocketFrame({
 
 export function CategoryMarker({ category }: { category: StatCategory }) {
   const higher = category.direction === "higher";
+  const levelBadge = categoryLevelBadge(category);
+  const familyIcon = categoryIcon(category);
   return (
     <div
       data-testid={`stat-check-marker-${category.id}`}
@@ -1602,25 +1634,57 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
         <span aria-hidden className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <div className="flex min-w-0 max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-1 py-1 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] md:min-w-[112px] md:px-3 md:py-2 min-[1210px]:px-4">
-        <span className="flex items-center gap-1 md:gap-2" aria-hidden>
+        {/* Icon-only: direction arrow, bare level number (omitted for unscaled
+            stats), and the stat family symbol. The written category exists
+            only in the tooltip and the sr-only label below. */}
+        <BoardTooltip
+          testId={`stat-check-category-symbol-${category.id}`}
+          label={categoryTooltipLabel(category)}
+          ariaLabel={categoryAccessibleLabel(category)}
+          buttonClassName="flex items-center gap-1 md:gap-2"
+        >
           {higher ? (
-            <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} />
+            <ArrowUp className="h-3.5 w-3.5 text-[#f4d77d] md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
           ) : (
-            <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} />
+            <ArrowDown className="h-3.5 w-3.5 text-cyan-300 md:h-7 md:w-7" strokeWidth={2.75} aria-hidden />
           )}
-          <CategoryGlyph category={category} className="hidden h-5 w-5 text-[#f4d77d] md:block" />
-          <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-[0.04em] text-white md:text-lg md:tracking-[0.06em]">
-            {category.shortLabel}
+          {levelBadge && (
+            <span
+              aria-hidden
+              data-testid={`stat-check-category-level-${category.id}`}
+              className="text-[11px] font-black leading-none text-white md:text-xl"
+            >
+              {levelBadge}
+            </span>
+          )}
+          {familyIcon && (
+            <img
+              src={familyIcon}
+              alt=""
+              aria-hidden
+              data-testid={`stat-check-category-icon-${category.id}`}
+              className="h-5 w-5 shrink-0 object-contain md:h-9 md:w-9"
+            />
+          )}
+        </BoardTooltip>
+        {/* Extra-damage threshold: scale symbol plus percentage, never the
+            word "Decisive". */}
+        <BoardTooltip
+          testId={`stat-check-decisive-${category.id}`}
+          label={DECISIVE_MARGIN_PRESENTATION.getTooltip(category.decisiveThreshold)}
+          buttonClassName="flex items-center gap-1"
+        >
+          <img
+            src={DECISIVE_MARGIN_PRESENTATION.icon}
+            alt=""
+            aria-hidden
+            data-testid={`stat-check-decisive-icon-${category.id}`}
+            className="h-3.5 w-3.5 shrink-0 object-contain md:h-5 md:w-5"
+          />
+          <span aria-hidden className="text-[10px] font-black leading-none text-[#f4d77d] md:text-sm">
+            {formatThreshold(category.decisiveThreshold)}
           </span>
-        </span>
-        <span className="hidden flex-wrap items-center justify-center gap-x-2 gap-y-0.5 md:flex" aria-hidden>
-          <span className="rounded bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
-            {scopeLabel(category)}
-          </span>
-          <span className="text-[11px] font-black uppercase tracking-[0.1em] text-[#f4d77d]">
-            Decisive {formatThreshold(category.decisiveThreshold)}
-          </span>
-        </span>
+        </BoardTooltip>
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
@@ -2338,8 +2402,6 @@ function RevealSequence({
   match,
   resolution,
   revealStep,
-  nextCategories,
-  showIntel = true,
   onNextRound,
   onRestart,
   online = null,
@@ -2348,9 +2410,6 @@ function RevealSequence({
   match: MatchState;
   resolution: RoundResolution | null;
   revealStep: PresentationStep;
-  nextCategories: StatCategory[];
-  /** False while the item-choice overlay owns the (single) intel panel. */
-  showIntel?: boolean;
   onNextRound: () => void;
   onRestart: () => void;
   online?: RevealSequenceOnlineState | null;
@@ -2367,13 +2426,8 @@ function RevealSequence({
 
   return (
     <div>
-      {showIntel && (
-        <>
-          <NextRoundIntel categories={nextCategories} compact />
-          <div className="mt-2 h-px bg-cyan-300/10" />
-        </>
-      )}
-
+      {/* The next-round hint is no longer a panel here: it is a single
+          icon-only socket mounted on the board's item dock. */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Round {match.round}</div>
@@ -2927,11 +2981,6 @@ function statChips(card: StatCheckCard) {
 
 function statFamilyLabel(category: StatCategory) {
   return STAT_FAMILY_LABELS[category.family] ?? "Champion Stats";
-}
-
-function formatThreshold(threshold: number) {
-  const percent = threshold * 100;
-  return Number.isInteger(percent) ? `${percent}%` : `${percent.toFixed(1)}%`;
 }
 
 function scopeLabel(category: StatCategory) {

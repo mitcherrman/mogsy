@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Check, Gem, Sandwich, Shield, Sword } from "lucide-react";
+import { Check, ChevronUp, Gem, Sandwich, Shield, Sword } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveAssetUrl } from "@/hooks/useChampionAssets";
 import { cn } from "@/lib/utils";
 import { ITEMS, ITEM_IDS, inventoryCount, totalInventoryCount, type ItemId, type ItemInventory } from "./items";
 import { STAT_FAMILY_LABELS, type StatFamily } from "./statCheckEngine";
+import { nextRoundHintTooltip, statFamilyPresentation } from "./statCategoryIcons";
+import { BoardTooltip } from "./StatCheckTooltip";
 
 /**
  * Canonical LoL item ids for the existing backend item-icon convention
@@ -199,17 +201,27 @@ export function ItemInventoryDock({
   selectedItemId,
   disabled,
   onToggle,
+  collapsed = false,
+  onToggleCollapsed,
+  nextHintFamily = null,
   className,
 }: {
   inventory: ItemInventory;
   selectedItemId: ItemId | null;
   disabled: boolean;
   onToggle: (itemId: ItemId) => void;
+  /** Local UI state only — never part of match/engine/multiplayer state. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+  /** Upcoming stat family for the board-mounted hint socket, if revealed. */
+  nextHintFamily?: StatFamily | null;
   className?: string;
 }) {
+  const hintIcon = nextHintFamily ? statFamilyPresentation(nextHintFamily).icon : null;
   return (
     <div
       data-testid="stat-check-inventory"
+      data-collapsed={collapsed ? "true" : "false"}
       aria-label={`Item inventory, ${totalInventoryCount(inventory)} owned`}
       className={cn(
         // The strip: same slab construction — brass perimeter, dark stone
@@ -230,7 +242,9 @@ export function ItemInventoryDock({
       {/* corner bolts fixing the shelf to the frame */}
       <span aria-hidden className="pointer-events-none absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
       <span aria-hidden className="pointer-events-none absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
-      {ITEM_IDS.map((itemId) => {
+      {/* Collapsing hides only the wells; the lever and the hint socket below
+          always stay mounted so the board extension never disappears. */}
+      {!collapsed && ITEM_IDS.map((itemId) => {
         const owned = inventoryCount(inventory, itemId);
         const armed = selectedItemId === itemId;
         const usable = owned > 0 && !disabled;
@@ -281,6 +295,63 @@ export function ItemInventoryDock({
           </button>
         );
       })}
+      {/* Physical brass lever bolted to the strip: no text, just a chevron
+          that folds the wells away. Always visible at every width. */}
+      {onToggleCollapsed && (
+        <>
+          <span
+            aria-hidden
+            className="pointer-events-none my-0.5 h-px w-6 rounded-full bg-[linear-gradient(90deg,transparent,rgba(168,137,75,0.8),transparent)]"
+          />
+          <BoardTooltip
+            testId="stat-check-dock-lever"
+            label={collapsed ? "Expand items" : "Collapse items"}
+            side="right"
+            ariaExpanded={!collapsed}
+            onClick={onToggleCollapsed}
+            buttonClassName={cn(
+              "relative grid h-5 w-8 shrink-0 place-items-center rounded-[3px] border border-[#7d6430] transition sm:w-10",
+              "bg-[linear-gradient(180deg,#3c3118,#1a1508)] shadow-[inset_0_1px_0_rgba(244,215,125,0.35),0_2px_4px_rgba(0,0,0,0.6)]",
+              "hover:border-[#d6b55d]/70",
+            )}
+          >
+            <ChevronUp
+              aria-hidden
+              className={cn("h-3.5 w-3.5 text-[#f4d77d] transition-transform", collapsed && "rotate-180")}
+              strokeWidth={3}
+            />
+          </BoardTooltip>
+        </>
+      )}
+      {/* Next-round hint socket: family art only. Deliberately not a button
+          and not an item well — it reveals the upcoming stat family and
+          nothing about direction, level, or the rest of the board. */}
+      {nextHintFamily && (
+        <BoardTooltip
+          testId="stat-check-next-hint"
+          label={nextRoundHintTooltip(nextHintFamily)}
+          side="right"
+          buttonClassName={cn(
+            // Distinct from item wells: a circular cyan-rimmed intel port
+            // rather than a square recessed stone socket.
+            "relative mt-0.5 grid h-7 w-7 shrink-0 cursor-help place-items-center rounded-full border border-cyan-300/50 sm:h-9 sm:w-9",
+            "bg-[radial-gradient(circle_at_50%_35%,rgba(34,211,238,0.18),#08111c_75%)]",
+            "shadow-[inset_0_1px_4px_rgba(0,0,0,0.7),0_0_10px_rgba(34,211,238,0.28)]",
+          )}
+        >
+          <span data-hint-family={nextHintFamily} className="contents">
+            {hintIcon && (
+              <img
+                src={hintIcon}
+                alt=""
+                aria-hidden
+                data-testid="stat-check-next-hint-icon"
+                className="h-4 w-4 object-contain sm:h-5 sm:w-5"
+              />
+            )}
+          </span>
+        </BoardTooltip>
+      )}
     </div>
   );
 }
