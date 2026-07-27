@@ -1,8 +1,7 @@
 // ---------------------------------------------------------------------------
 // Frontend Ranked module renderer registry (Phase A).
 //
-// Phase A registers exactly one renderer: `quiz.v1`. No Item Cost Duel
-// renderer exists yet, and a test asserts that.
+// Phase B slice 4 registers `item_cost_duel.v1` alongside `quiz.v1`.
 //
 // Resolution is by moduleId only. The backend pins module VERSION for replay
 // correctness; the frontend renders whatever the backend already resolved, so
@@ -11,11 +10,13 @@
 // ---------------------------------------------------------------------------
 
 import type { SegmentMeta } from "@/lib/ranked-public/contracts";
+import { ITEM_COST_DUEL_MODULE_ID, itemCostDuelModule } from "./itemCostDuelModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
 import type { ModuleRenderer } from "./types";
 
 const RENDERERS: Record<string, ModuleRenderer> = {
   [QUIZ_MODULE_ID]: quizModule,
+  [ITEM_COST_DUEL_MODULE_ID]: itemCostDuelModule,
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -41,5 +42,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
   return getModuleRenderer(segment.moduleId);
 }
 
-export { quizModule };
-export type { ModuleRenderer, ModuleViewportProps } from "./types";
+export { itemCostDuelModule, quizModule };
+export type {
+  ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,
+} from "./types";

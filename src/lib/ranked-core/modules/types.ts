@@ -22,7 +22,24 @@ import type {
   InteractionPermissions,
   QuestionView,
 } from "@/lib/ranked-core/viewTypes";
-import type { PublicRoundView } from "@/lib/ranked-public/contracts";
+import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/contracts";
+
+/**
+ * Authoritative segment actions the shell lends to a module viewport.
+ *
+ * Every one of these is a server round trip. A module NEVER advances its own
+ * index, decides correctness, or measures timing — it asks, and re-renders
+ * from whatever the next authoritative snapshot says.
+ */
+export interface ModuleSegmentActions {
+  draftAbility: (abilityId: string | null) => void;
+  confirmAbility: () => void;
+  submitChallenge: (challengeIndex: number, itemId: string) => void;
+  /** True while any of the above is in flight. */
+  busy: boolean;
+  /** Last action error, already human-readable. */
+  error: string | null;
+}
 
 /** Props every module viewport receives from the shell. */
 export interface ModuleViewportProps {
@@ -34,6 +51,16 @@ export interface ModuleViewportProps {
   permissions: InteractionPermissions;
   /** Report a selection change back to the shell controller. */
   onSelect: (selection: unknown) => void;
+  /**
+   * Owner state of a multi-challenge segment; null for a one-challenge
+   * module. Present on both the public and private snapshots, so a module can
+   * drive its whole phase model from the ordinary poll.
+   */
+  segmentState: SegmentStateView | null;
+  /** Server round trips. Only a module that declares `ownsSubmission` uses these. */
+  actions: ModuleSegmentActions;
+  /** Deadline-anchored clock skew, so a countdown uses server time. */
+  skewMs: number;
 }
 
 /**
@@ -44,6 +71,15 @@ export interface ModuleViewportProps {
 export interface ModuleRenderer {
   moduleId: string;
   moduleVersion: number;
+  /**
+   * True when the module owns its own ability phase, input, and submission,
+   * so the shell must NOT render the quiz select→review→confirm strip or the
+   * quiz ability tray alongside it.
+   *
+   * This is a capability the module declares, not an `isItemCostDuel` flag in
+   * the shell: adding a third module changes only that module's value.
+   */
+  ownsSubmission: boolean;
   /** The segment viewport rendered inside the arena's centre column. */
   Viewport: ComponentType<ModuleViewportProps>;
   /**

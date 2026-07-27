@@ -49,7 +49,32 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_QUESTION_POOL_UNAVAILABLE", "RANKED_CANNOT_CANCEL", "RANKED_INVALID_CLASS",
   "RANKED_RATE_LIMITED",
   "RANKED_BOT_DISABLED", "RANKED_BOT_NOT_ELIGIBLE",
+  // multi-challenge segments (Phase B)
+  "RANKED_NO_ACTIVE_SEGMENT", "RANKED_WRONG_SEGMENT_PHASE",
+  "RANKED_WRONG_CHALLENGE_INDEX", "RANKED_SEGMENT_COMPLETE",
+  "RANKED_ABILITY_NOT_AVAILABLE_IN_MODULE", "RANKED_INVALID_CHOICE",
+  "RANKED_INVALID_CHALLENGE_INDEX", "RANKED_MODULE_DATA_UNAVAILABLE",
 ]);
+
+/** Server-authoritative acknowledgement of a segment action. */
+export interface SegmentAbilityAck {
+  status: string;
+  segmentNumber: number;
+  abilityId: string | null;
+  confirmed: boolean;
+  idempotent: boolean;
+}
+
+export interface SegmentChallengeAck {
+  status: string;
+  segmentNumber: number;
+  challengeIndex: number;
+  idempotent: boolean;
+  conflicting: boolean;
+  segmentResolved: boolean;
+  /** The SERVER's next index. The client never increments its own. */
+  nextChallengeIndex: number;
+}
 
 export interface BotMatchCreated {
   matchId: string;
@@ -214,6 +239,67 @@ export const submitRound = (matchId: string, roundNumber: number, answerIndex: n
                             abilityId: string | null, signal?: AbortSignal) =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/rounds/${roundNumber}/submission`,
     raw, { method: "POST", body: { round_number: roundNumber, answer: answerIndex, ability_id: abilityId }, signal });
+
+// ------------------------------------------ multi-challenge segments
+
+const segmentBase = (matchId: string, segmentNumber: number) =>
+  `/api/ranked/matches/${encodeURIComponent(matchId)}/segments/${segmentNumber}`;
+
+const readAbilityAck = (json: unknown): SegmentAbilityAck => {
+  const o = json as Record<string, unknown>;
+  return {
+    status: typeof o.status === "string" ? o.status : "draft",
+    segmentNumber: Number(o.segment_number),
+    abilityId: typeof o.ability_id === "string" ? o.ability_id : null,
+    confirmed: o.confirmed === true,
+    idempotent: o.idempotent === true,
+  };
+};
+
+const readChallengeAck = (json: unknown): SegmentChallengeAck => {
+  const o = json as Record<string, unknown>;
+  if (typeof o.next_challenge_index !== "number") {
+    throw new Error("missing next_challenge_index");
+  }
+  return {
+    status: typeof o.status === "string" ? o.status : "accepted",
+    segmentNumber: Number(o.segment_number),
+    challengeIndex: Number(o.challenge_index),
+    idempotent: o.idempotent === true,
+    conflicting: o.conflicting === true,
+    segmentResolved: o.segment_resolved === true,
+    nextChallengeIndex: o.next_challenge_index,
+  };
+};
+
+/** Draft the segment ability. `null` is the explicit No Ability choice. */
+export const draftSegmentAbility = (
+  matchId: string, segmentNumber: number, abilityId: string | null,
+  signal?: AbortSignal,
+): Promise<SegmentAbilityAck> =>
+  request(`${segmentBase(matchId, segmentNumber)}/ability`, readAbilityAck,
+    { method: "POST", body: { ability_id: abilityId }, signal });
+
+/** Lock the current draft. Safe to retry: the backend is idempotent. */
+export const confirmSegmentAbility = (
+  matchId: string, segmentNumber: number, abilityId: string | null,
+  signal?: AbortSignal,
+): Promise<SegmentAbilityAck> =>
+  request(`${segmentBase(matchId, segmentNumber)}/ability/confirm`, readAbilityAck,
+    { method: "POST", body: { ability_id: abilityId }, signal });
+
+/**
+ * Submit one challenge. The body carries the chosen item id and nothing else —
+ * no timing, no correctness, no index (the index is in the path and must equal
+ * the server's expected index).
+ */
+export const submitSegmentChallenge = (
+  matchId: string, segmentNumber: number, challengeIndex: number, itemId: string,
+  signal?: AbortSignal,
+): Promise<SegmentChallengeAck> =>
+  request(
+    `${segmentBase(matchId, segmentNumber)}/challenges/${challengeIndex}`,
+    readChallengeAck, { method: "POST", body: { item_id: itemId }, signal });
 
 export const chooseLevelTwo = (matchId: string, abilityId: string, signal?: AbortSignal) =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/progression/level-two-choice`,

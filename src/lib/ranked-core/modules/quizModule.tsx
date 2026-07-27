@@ -48,6 +48,8 @@ function QuizViewport({ publicRound, selection, permissions, onSelect }: ModuleV
 export const quizModule: ModuleRenderer = {
   moduleId: QUIZ_MODULE_ID,
   moduleVersion: QUIZ_MODULE_VERSION,
+  // The shell owns the quiz select→review→confirm flow, exactly as before.
+  ownsSubmission: false,
   Viewport: QuizViewport,
   projectQuestion,
   summaryLabel: (pub, selection) => {

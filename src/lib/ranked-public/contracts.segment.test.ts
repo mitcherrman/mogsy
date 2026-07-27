@@ -27,21 +27,52 @@ describe("additive segment discriminator parsing (Phase A)", () => {
       module_id: "quiz", module_version: 1,
       challenge_count: 1, challenge_index: 0,
     };
+    // Still an EXHAUSTIVE comparison: a backend that omits the Phase B phase
+    // fields must read as a segment with no phase and no deadlines, which is
+    // exactly what LEGACY_SEGMENT carries for them.
     expect(readPublicRound(body).segment).toEqual({
+      ...LEGACY_SEGMENT,
       moduleId: "quiz", moduleVersion: 1, challengeCount: 1, challengeIndex: 0,
     });
   });
 
-  it("reads a future multi-challenge segment without losing fidelity", () => {
+  it("reads a multi-challenge segment without losing fidelity", () => {
     const body = publicRoundV2();
     wire(body).segment = {
       module_id: "item_cost_duel", module_version: 1,
       challenge_count: 5, challenge_index: 3,
     };
     expect(readPublicRound(body).segment).toEqual({
+      ...LEGACY_SEGMENT,
       moduleId: "item_cost_duel", moduleVersion: 1,
       challengeCount: 5, challengeIndex: 3,
     });
+  });
+
+  it("reads the Phase B phase envelope when the backend sends it", () => {
+    const body = publicRoundV2();
+    wire(body).segment = {
+      module_id: "item_cost_duel", module_version: 1,
+      challenge_count: 5, challenge_index: 2, segment_number: 3,
+      phase: "challenges", ability_deadline: "2026-07-26T12:00:05+00:00",
+      challenge_started_at: "2026-07-26T12:00:05+00:00",
+      challenge_deadline: "2026-07-26T12:00:30+00:00",
+      pressure_applied: true, resolved: false,
+    };
+    expect(readPublicRound(body).segment).toEqual({
+      moduleId: "item_cost_duel", moduleVersion: 1, challengeCount: 5,
+      challengeIndex: 2, segmentNumber: 3, phase: "challenges",
+      abilityDeadline: "2026-07-26T12:00:05+00:00",
+      challengeStartedAt: "2026-07-26T12:00:05+00:00",
+      challengeDeadline: "2026-07-26T12:00:30+00:00",
+      pressureApplied: true, resolved: false,
+    });
+  });
+
+  it("degrades an unrecognised phase value to no phase", () => {
+    const body = publicRoundV2();
+    wire(body).segment = { module_id: "quiz", phase: "something_new" };
+    expect(readPublicRound(body).segment.phase).toBeNull();
   });
 
   it("populates the segment on the private payload too", () => {
