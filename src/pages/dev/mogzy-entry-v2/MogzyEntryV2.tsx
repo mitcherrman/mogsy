@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 
@@ -6,7 +13,18 @@ import SEOHead from "@/components/SEOHead";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
-import { ACADEMY_EMBLEMS, EMBLEM_LAYOUT, PARALLAX_RANGE } from "./AcademyEmblems";
+import AcademyFacade from "./AcademyFacade";
+import {
+  DOOR_ASPECT,
+  DOOR_BOARD,
+  DOOR_RISE,
+  DOOR_WIDTH,
+  PARALLAX_RANGE,
+  PARAPET_ABOVE_TITLE,
+  PLAQUE_GAP,
+  SKY_PARALLAX_DEPTH,
+  doorWidthFor,
+} from "./AcademyScene";
 import { useLaunchChime } from "./useLaunchChime";
 import { useViewportTier } from "./useViewportTier";
 
@@ -14,15 +32,23 @@ import { useViewportTier } from "./useViewportTier";
  * Mogzy entrance — Academy edition.
  *
  * A full-screen, layout-free entry: dark, centre-dominant, with the legacy
- * launch chime. Four decorative Academy emblems frame a centred mascot and the
- * single "Enter Mogzy" control.
+ * launch chime. The visitor is standing directly in front of the Academy's main
+ * door, close enough that the building runs off every edge of the frame: the
+ * title is carved into the wall, the door is cut through the wall beneath it,
+ * and Mogzy waits on the threshold to show them in.
  *
- * The composition is fixed to the viewport and never scrolls. Desktop keeps the
- * accepted four-corner arrangement; narrower tiers re-place the emblems rather
- * than scaling the desktop layout down (see EMBLEM_LAYOUT).
+ * The composition is fixed to the viewport and never scrolls. Because the
+ * masonry has to line up with content flexbox positions at runtime, this
+ * component measures the title block and the mascot and hands AcademyFacade the
+ * two anchors it needs — the wall's top edge and the door's position. Nothing
+ * about the building is guessed from the viewport alone.
  *
- * The emblems are decorative only — never buttons or links.
+ * The façade is decorative throughout — never buttons or links. The single
+ * interactive target is the central "Enter Mogzy" control.
  */
+
+/** Never let the wall swallow the frame entirely; keep a sliver of sky. */
+const MIN_SKY = 8;
 
 const ACADEMY_TITLE = "Mogzy’s Academy of Leaguecraft and Technology";
 
@@ -52,7 +78,7 @@ const ENTRY_DURATION_REDUCED_MS = 220;
 
 const GOLD = "#c9a84c";
 const GOLD_BRIGHT = "#f0d78c";
-const IVORY = "#f0e6d2";
+const GOLD_DIM = "#8f7738";
 
 /** Four-point star + rule, echoing the ornament above the concept title. */
 function TitleOrnamentTop({ width }: { width: number }) {
@@ -92,6 +118,63 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
   const [hovered, setHovered] = useState(false);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const enteringRef = useRef(false);
+
+  /* ---------------------------------------------------------------------- */
+  /* Façade anchors                                                         */
+  /* ---------------------------------------------------------------------- */
+
+  const titleRef = useRef<HTMLDivElement>(null);
+  const mascotRef = useRef<HTMLDivElement>(null);
+  // Sensible pre-measurement values so the very first paint is already a
+  // plausible façade rather than a wall covering the whole screen.
+  const [anchors, setAnchors] = useState({
+    parapetY: 140,
+    doorCx: 0,
+    doorTop: 340,
+    doorWidth: 320,
+    groundY: 840,
+    mascotCy: 440,
+  });
+
+  // Layout effect, not effect: this runs before paint, so the wall is never
+  // seen in the wrong place. Re-measured on resize and — importantly — once
+  // the display face has loaded, because Cinzel is heavier than the fallback
+  // and swapping it in moves the whole centre column.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const title = titleRef.current?.getBoundingClientRect();
+      const mascot = mascotRef.current?.getBoundingClientRect();
+      if (!title || !mascot) return;
+
+      const doorWidth = doorWidthFor(DOOR_WIDTH[tier], window.innerWidth);
+      const doorTop = mascot.top - DOOR_RISE[tier];
+      // The wall's base is the door's own threshold, so the building lands on
+      // one line instead of the door floating on a wall of its own.
+      const groundY =
+        doorTop + doorWidth * DOOR_ASPECT * (DOOR_BOARD.threshold / DOOR_BOARD.height);
+
+      setAnchors({
+        parapetY: Math.max(MIN_SKY, title.top - PARAPET_ABOVE_TITLE[tier]),
+        doorCx: mascot.left + mascot.width / 2,
+        doorTop,
+        doorWidth,
+        groundY,
+        mascotCy: mascot.top + mascot.height / 2,
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (titleRef.current) observer.observe(titleRef.current);
+    if (mascotRef.current) observer.observe(mascotRef.current);
+    window.addEventListener("resize", measure);
+    void document.fonts?.ready.then(measure).catch(() => undefined);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [tier]);
 
   const isPhone = tier === "phone" || tier === "phone-landscape";
   const isLandscapePhone = tier === "phone-landscape";
@@ -159,12 +242,23 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
   /* Derived motion values                                                  */
   /* ---------------------------------------------------------------------- */
 
-  // Emblems are real content, so they sit well above atmospheric opacity —
-  // but still below the centre so focus never leaves the mascot.
-  const emblemOpacity = useMemo(() => {
-    if (entering) return 0;
-    return hovered ? 0.94 : 0.76;
-  }, [entering, hovered]);
+  // The façade is the room the visitor is standing in, so unlike the old
+  // decorative emblems it stays at full strength — it is dark by construction,
+  // not by opacity. It only fades once they commit to entering.
+  const facadeOpacity = entering ? 0 : 1;
+
+  // Only the sky is far enough away to move with the pointer; the wall is at
+  // arm's length and stays put.
+  const skyDrift = useMemo(
+    () =>
+      parallaxRange === 0
+        ? { x: 0, y: 0 }
+        : {
+            x: pointer.x * parallaxRange * SKY_PARALLAX_DEPTH,
+            y: pointer.y * parallaxRange * SKY_PARALLAX_DEPTH * 0.35,
+          },
+    [parallaxRange, pointer.x, pointer.y],
+  );
 
   const glowScale = entering ? 3.4 : hovered ? 1.18 : 1;
   const glowOpacity = entering ? 1 : hovered ? 0.95 : 0.65;
@@ -176,13 +270,33 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
   const glowSize = isLandscapePhone ? 300 : isPhone ? 340 : 460;
 
   const titleBlock = (
-    <motion.div
-      className="flex flex-col items-center"
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: entering ? 0 : 1, y: 0 }}
-      transition={{ duration: entering ? 0.4 : 1.1, ease: "easeOut" }}
+    // No panel. The title is an inscription in the dark, held only by its own
+    // ornaments and the faintest wash of light behind it — a boxed plaque made
+    // the building read as a rendered façade and put a bright rectangle above
+    // the mascot. The wrapper is what gets measured for the roofline, so it
+    // must stay a plain box: no transform, no animated offset.
+    <div
+      ref={titleRef}
+      className={[
+        "relative flex flex-col items-center",
+        isLandscapePhone ? "px-5 py-1.5" : isPhone ? "px-1 py-2" : "px-10 py-4",
+      ].join(" ")}
+      style={{
+        background:
+          "radial-gradient(70% 130% at 50% 45%, rgba(240,215,140,0.030) 0%, rgba(240,215,140,0.008) 45%, transparent 78%)",
+      }}
     >
-      <TitleOrnamentTop width={isPhone ? 84 : 120} />
+      <motion.div
+        className="flex flex-col items-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: entering ? 0 : 1 }}
+        transition={{ duration: entering ? 0.4 : 1.1, ease: "easeOut" }}
+      >
+      {/* Landscape phones drop the ornaments: they cost ~50px of plaque
+          height, and on a 360-390px-tall screen that is exactly the stone the
+          door's arch needs to stand in below the sign. The inscription alone
+          still reads as engraved. */}
+      {!isLandscapePhone && <TitleOrnamentTop width={isPhone ? 84 : 120} />}
       {/* Warm gold gradient clipped to the glyphs.
           Keep the text-shadow tight: a wide blur across Cinzel's dense
           letterforms merges between glyphs and reads as a lit rectangular
@@ -192,28 +306,45 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       <h1
         className={[
           "ranked-title text-center font-medium leading-[1.2] tracking-[0.015em]",
-          isPhone ? "mt-2" : "mt-4",
+          isLandscapePhone ? "mt-0" : isPhone ? "mt-2" : "mt-4",
           isLandscapePhone
             ? "text-[clamp(0.95rem,2.1vw,1.3rem)]"
             : isPhone
-              ? "text-[clamp(1.05rem,5.2vw,1.6rem)]"
+              ? // Trimmed from 5.2vw: the plaque's frame costs width, and at
+                // 5.2vw the second line wraps onto a third at 390px.
+                "text-[clamp(1rem,4.7vw,1.5rem)]"
               : "text-[clamp(1.6rem,3.6vw,3rem)]",
         ].join(" ")}
+        // Dimmer than the call to action on purpose. The focal order is Mogzy,
+        // then the doorway, then "Enter Mogzy" — the academy's name is the
+        // last thing the eye should land on, so the gradient starts at gold
+        // rather than ivory and carries no glow.
         style={{
-          backgroundImage: `linear-gradient(180deg, ${IVORY} 0%, ${GOLD_BRIGHT} 48%, ${GOLD} 100%)`,
+          backgroundImage: `linear-gradient(
+            180deg,
+            #fff3cf 0%,
+            ${GOLD_BRIGHT} 38%,
+            ${GOLD} 72%,
+            ${GOLD_DIM} 100%
+          )`,
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           WebkitTextFillColor: "transparent",
-          textShadow: "0 0 10px rgba(201,168,76,0.20), 0 2px 3px rgba(0,0,0,0.6)",
+          opacity: 1,
+          textShadow:
+            "0 1px 0 rgba(255,245,210,0.12), 0 2px 4px rgba(0,0,0,0.68)",
         }}
       >
         <span className="block text-balance">Mogzy’s Academy of</span>
         <span className="block text-balance">Leaguecraft and Technology</span>
       </h1>
-      <div className={isPhone ? "mt-1.5" : "mt-3"}>
-        <TitleOrnamentBottom width={isPhone ? 210 : 300} />
-      </div>
-    </motion.div>
+      {!isLandscapePhone && (
+        <div className={isPhone ? "mt-1.5" : "mt-3"}>
+          <TitleOrnamentBottom width={isPhone ? 210 : 300} />
+        </div>
+      )}
+      </motion.div>
+    </div>
   );
 
   return (
@@ -241,88 +372,39 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* Layer 1 — the four Academy emblems (decorative)                   */}
+      {/* Layer 1 — the Academy façade (decorative)                         */}
       {/* ---------------------------------------------------------------- */}
-      <div className="pointer-events-none absolute inset-0">
-        {ACADEMY_EMBLEMS.map((emblem) => {
-          const place = EMBLEM_LAYOUT[tier][emblem.key];
-          const dx = parallaxRange === 0 ? 0 : pointer.x * parallaxRange * emblem.depth;
-          const dy = parallaxRange === 0 ? 0 : pointer.y * parallaxRange * emblem.depth;
-          // On entry everything is drawn toward the centre of the screen.
-          const pullX = entering ? (50 - place.x) * 2.6 : 0;
-          const pullY = entering ? (50 - place.y) * 2.6 : 0;
-
-          return (
-            // Static wrapper carries the vertical centring transform: the four
-            // emblems have different intrinsic heights, so anchoring by their
-            // centre (rather than their top) is what keeps them balanced and
-            // stops the bottom pair running off the screen edge.
-            <div
-              key={emblem.key}
-              className="absolute -translate-y-1/2"
-              style={{
-                left: `${place.x}%`,
-                top: `${place.y}%`,
-                width: place.width,
-                marginLeft: -place.width / 2,
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{
-                  opacity: emblemOpacity,
-                  x: dx + pullX,
-                  y: dy + pullY,
-                  scale: entering ? 0.62 : 1,
-                }}
-                transition={{
-                  opacity: { duration: entering ? 0.5 : 1.6, ease: "easeOut" },
-                  x: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
-                  y: { type: "spring", stiffness: entering ? 90 : 40, damping: entering ? 18 : 24 },
-                  scale: { duration: 0.7, ease: "easeIn" },
-                }}
-              >
-                {/* Slow independent breathing */}
-                <motion.div
-                  animate={prefersReducedMotion || entering ? undefined : { y: [0, -7, 0] }}
-                  transition={
-                    prefersReducedMotion || entering
-                      ? undefined
-                      : {
-                          duration: 9,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: emblem.idleDelay,
-                        }
-                  }
-                >
-                  {/* Emblem art already contains its gold label + divider, so
-                      no second HTML label is rendered. Screen-blended because
-                      these PNGs have no alpha; see AcademyEmblems.tsx. */}
-                  <img
-                    src={emblem.src}
-                    alt={emblem.label}
-                    width={place.width}
-                    draggable={false}
-                    className="block w-full h-auto select-none"
-                    style={{
-                      mixBlendMode: "screen",
-                      WebkitMaskImage:
-                        "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
-                      maskImage:
-                        "radial-gradient(ellipse 66% 62% at 50% 46%, #000 58%, transparent 100%)",
-                      filter: hovered
-                        ? "brightness(1.18) saturate(1.08)"
-                        : "brightness(1) saturate(1)",
-                      transition: "filter 400ms ease",
-                    }}
-                  />
-                </motion.div>
-              </motion.div>
-            </div>
-          );
-        })}
-      </div>
+      {/* No parallax and no hover scale on this layer: the wall is an arm's
+          length away and it has a door cut in it that has to stay put under
+          the mascot. Only the sky behind it drifts, below. Entering walks the
+          visitor through the door, so the building grows past the frame. */}
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden="true"
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: facadeOpacity,
+          scale: entering ? 1.16 : 1,
+        }}
+        transition={{
+          opacity: { duration: entering ? 0.45 : 1.4, ease: "easeOut" },
+          scale: { duration: 0.75, ease: "easeIn" },
+        }}
+        style={{ transformOrigin: `${anchors.doorCx}px ${anchors.mascotCy}px` }}
+      >
+        <AcademyFacade
+          tier={tier}
+          parapetY={anchors.parapetY}
+          doorCx={anchors.doorCx}
+          doorTop={anchors.doorTop}
+          doorWidth={anchors.doorWidth}
+          groundY={anchors.groundY}
+          lit={hovered}
+          entering={entering}
+          still={Boolean(prefersReducedMotion)}
+          skyDrift={skyDrift}
+        />
+      </motion.div>
 
       {/* Vignette — keeps the edges dark so the centre always wins */}
       <div
@@ -335,18 +417,23 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       />
 
       {/* ---------------------------------------------------------------- */}
-      {/* Layer 2 — central glow                                            */}
+      {/* Layer 2 — light spilling out of the doorway                       */}
       {/* ---------------------------------------------------------------- */}
+      {/* Anchored to the door, not the viewport centre: the light has to look
+          like it is coming out of the opening. A screen-centred glow on a flat
+          wall just reads as a smudge. */}
       <motion.div
-        className="pointer-events-none absolute left-1/2 top-1/2 rounded-full"
+        className="pointer-events-none absolute rounded-full"
         aria-hidden="true"
         style={{
+          left: anchors.doorCx,
+          top: anchors.mascotCy,
           width: glowSize,
           height: glowSize,
           marginLeft: -glowSize / 2,
           marginTop: -glowSize / 2,
           background:
-            "radial-gradient(circle, rgba(201,168,76,0.26) 0%, rgba(127,214,239,0.10) 45%, transparent 70%)",
+            "radial-gradient(circle, rgba(201,168,76,0.24) 0%, rgba(127,214,239,0.09) 45%, transparent 70%)",
           filter: "blur(52px)",
         }}
         animate={{
@@ -359,26 +446,36 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
       {/* ---------------------------------------------------------------- */}
       {/* Layer 3 — title, mascot, call to action                           */}
       {/* ---------------------------------------------------------------- */}
-      {/* On phones the title is parked at the top and the mascot/CTA stay
-          optically centred, so the emblem bands above and below never collide
-          with the centre column. Wider tiers keep the accepted single centred
-          stack. */}
+      {/* On phones the title is parked near the top and the mascot/CTA stay
+          optically centred below it. It is parked low enough to leave a band of
+          sky and roofline above it — the plaque has to read as mounted on the
+          wall, which means there has to be some wall-top above it. Wider tiers
+          keep the accepted single centred stack. */}
       {isPhone && (
         <div
           className="absolute inset-x-0 z-10 flex justify-center px-4"
-          style={{ top: isLandscapePhone ? "3%" : "5%" }}
+          // Landscape phones are only ~390px tall: sky, parapet, plaque, arch,
+          // mascot, CTA and hint do not all fit. That tier gets the tightest
+          // crop — the plaque goes right to the top edge and the roofline is
+          // understood to be above the frame.
+          style={{ top: isLandscapePhone ? "2%" : "12%" }}
         >
           {titleBlock}
         </div>
       )}
 
-      {/* On portrait phones the title sits above the upper emblem band, so the
-          mascot/CTA column is nudged down to sit optically between the two
-          emblem rows instead of dead-centre (which would clip the upper band). */}
+      {/* On portrait phones the title is parked at the top, so the mascot/CTA
+          column is nudged down a little to sit optically centred in what is
+          left rather than dead-centre of the whole screen. */}
       <div
         className={[
           "relative z-10 flex h-full w-full flex-col items-center justify-center px-4",
-          tier === "phone" ? "pt-[9vh]" : "",
+          // Phones park the plaque at the top, so the entrance column is nudged
+          // down to sit optically centred in the wall below it — and far enough
+          // down that the door's arch has wall to stand in rather than pushing
+          // up behind the plaque.
+          tier === "phone" ? "pt-[13vh]" : "",
+          isLandscapePhone ? "pt-[14vh]" : "",
         ].join(" ")}
       >
         {!isPhone && titleBlock}
@@ -390,49 +487,70 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
           onHoverEnd={() => setHovered(false)}
           onFocus={() => setHovered(true)}
           onBlur={() => setHovered(false)}
-          initial={{ opacity: 0, scale: 0.86 }}
-          animate={{ opacity: 1, scale: entering ? 1.14 : 1 }}
-          whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
-          whileTap={prefersReducedMotion ? undefined : { scale: 0.96 }}
-          transition={{ duration: entering ? 0.7 : 0.8, ease: "easeOut" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className={[
             "relative z-10 flex flex-col items-center rounded-2xl focus:outline-none",
             "focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 focus-visible:ring-offset-4 focus-visible:ring-offset-[#04070f]",
-            isLandscapePhone ? "mt-0 gap-3 px-6 py-2" : isPhone ? "mt-0 gap-4 px-8 py-3" : "mt-7 gap-5 px-8 py-4",
+            isLandscapePhone ? "gap-3 px-6 py-2" : isPhone ? "gap-4 px-8 py-3" : "gap-5 px-8 py-4",
           ].join(" ")}
+          // The wall the door's arch stands in; see AcademyScene.PLAQUE_GAP.
+          // On phones the plaque is parked absolutely, so this is the only
+          // thing separating them.
+          style={{ marginTop: isPhone ? 0 : PLAQUE_GAP[tier] }}
           aria-label="Enter Mogzy"
         >
-          <motion.div
-            animate={prefersReducedMotion || entering ? undefined : { y: [0, -8, 0] }}
-            transition={
-              prefersReducedMotion || entering
-                ? undefined
-                : { duration: 4.2, repeat: Infinity, ease: "easeInOut" }
-            }
-          >
-            {/* The mascot artwork has a real alpha channel, so it needs no
-                blend mode, mask, or local backdrop — it composites directly
-                over the page. drop-shadow follows the transparent silhouette,
-                giving the glow its actual shape. */}
-            <MogzyMascot
-              pose="base"
-              decorative
-              loading="eager"
-              className={
-                isLandscapePhone
-                  ? "h-24 w-auto"
-                  : isPhone
-                    ? "h-28 w-auto"
-                    : "h-36 sm:h-40 md:h-44 w-auto"
+          {/* This wrapper is the door's anchor, so it must not move: the door
+              is cut into a wall that does not scale, and a control that grew
+              on hover would slide Mogzy off the threshold. The hover and press
+              feedback lives in the mascot and the light inside the doorway
+              instead — see facadeOpacity and MogzyMascot's filter below. */}
+          <div ref={mascotRef} className="relative flex items-center justify-center">
+            <motion.div
+              className="relative"
+              animate={
+                entering
+                  ? { scale: 1.18, y: -6 }
+                  : prefersReducedMotion
+                    ? { scale: hovered ? 1.05 : 1 }
+                    : { scale: hovered ? 1.05 : 1, y: [0, -8, 0] }
               }
-              style={{
-                filter: hovered
-                  ? "drop-shadow(0 0 34px rgba(201,168,76,0.55))"
-                  : "drop-shadow(0 0 22px rgba(201,168,76,0.32))",
-                transition: "filter 400ms ease",
-              }}
-            />
-          </motion.div>
+              transition={
+                entering
+                  ? { duration: 0.7, ease: "easeIn" }
+                  : {
+                      scale: { duration: 0.4, ease: "easeOut" },
+                      y: prefersReducedMotion
+                        ? { duration: 0 }
+                        : { duration: 4.2, repeat: Infinity, ease: "easeInOut" },
+                    }
+              }
+            >
+              {/* The mascot artwork has a real alpha channel, so it needs no
+                  blend mode, mask, or local backdrop — it composites directly
+                  over the page. drop-shadow follows the transparent
+                  silhouette, giving the glow its actual shape. */}
+              <MogzyMascot
+                pose="base"
+                decorative
+                loading="eager"
+                className={
+                  isLandscapePhone
+                    ? "h-24 w-auto"
+                    : isPhone
+                      ? "h-28 w-auto"
+                      : "h-36 sm:h-40 md:h-44 w-auto"
+                }
+                style={{
+                  filter: hovered
+                    ? "drop-shadow(0 0 34px rgba(201,168,76,0.55))"
+                    : "drop-shadow(0 0 22px rgba(201,168,76,0.32))",
+                  transition: "filter 400ms ease",
+                }}
+              />
+            </motion.div>
+          </div>
 
           <div className="flex flex-col items-center gap-2">
             <motion.span
