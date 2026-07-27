@@ -11,6 +11,7 @@ import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
+import { SegmentTranscript } from "@/components/ranked-arena/SegmentTranscript";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
@@ -49,6 +50,18 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     () => (m.privatePlayer ? projectAbilities(m.privatePlayer, m.selectedAbilityId) : []),
     [m.privatePlayer, m.selectedAbilityId]);
   const timer = m.publicRound ? projectTimer(m.publicRound, m.skewMs, Date.now()) : null;
+  // A module that owns its own ability window and submission renders those
+  // itself; the shell must not also show the quiz confirm strip or ability
+  // tray. This is a capability the module declares — not a mode branch here.
+  const moduleOwnsSubmission = renderer?.ownsSubmission === true;
+  const segmentActions = useMemo(() => ({
+    draftAbility: m.draftSegmentAbility,
+    confirmAbility: m.confirmSegmentAbility,
+    submitChallenge: m.submitSegmentChallenge,
+    busy: m.submitting,
+    error: m.actionError,
+  }), [m.draftSegmentAbility, m.confirmSegmentAbility, m.submitSegmentChallenge,
+    m.submitting, m.actionError]);
   void tick;
 
   if (m.phase === "fatal") {
@@ -103,7 +116,9 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // to "Round —". During that gap (input phases only) we show an intentional
   // "Preparing next round…" transition instead of a malformed header/empty timer.
   const roundLabel = m.roundNumber !== null ? `Round ${m.roundNumber}` : "Preparing match…";
-  const inTransition = !timer && m.phase !== "progression";
+  // A phased segment in its ability window legitimately has no engine round
+  // and therefore no shared timer — that is the phase, not a transition gap.
+  const inTransition = !timer && m.phase !== "progression" && !m.segmentState;
 
   return (
     <div className="ranked-shell space-y-3" data-testid="ranked-match">
@@ -180,7 +195,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             <div className="lg:col-start-3 lg:row-start-1">
               <CombatantPanel combatant={combatants.opponent} />
             </div>
-            {renderer && question && (
+            {renderer && (question || moduleOwnsSubmission) && (
               <section data-testid="ranked-question"
                 className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
                 <renderer.Viewport
@@ -188,6 +203,9 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                   selection={m.selectedOptionId}
                   permissions={permissions}
                   onSelect={(sel) => m.selectOption(sel as string)}
+                  segmentState={m.segmentState}
+                  actions={segmentActions}
+                  skewMs={m.skewMs}
                 />
               </section>
             )}
@@ -205,7 +223,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             )}
           </div>
 
-          {/* Lower HUD: ability hotbar + one-shot lock. */}
+          {/* Lower HUD: ability hotbar + one-shot lock. Suppressed entirely
+              for a module that runs its own ability window and submission —
+              two competing ability controls would be a real input hazard. */}
+          {!moduleOwnsSubmission && (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
             {m.privatePlayer && (
               <section data-testid="ranked-abilities" className="ranked-panel p-3 sm:p-4">
@@ -229,13 +250,24 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                 confirmLabel={m.submitting ? "Locking…" : undefined} />
             </section>
           </div>
+          )}
         </>
       )}
 
-      {m.phase !== "progression" && m.lastResolved && (
+      {/* A multi-challenge segment has its own transcript: the arena reveal
+          panel describes ONE challenge, which is the wrong shape for five. */}
+      {m.lastSegmentSettlement ? (
+        <SegmentTranscript
+          reveal={m.lastSegmentSettlement.reveal}
+          viewerUserId={viewerUserId}
+          opponentUserId={m.opponentUserId}
+          damageDealt={m.lastSegmentSettlement.damageByPlayerId[viewerUserId] ?? null}
+          abilitiesByPlayerId={m.lastSegmentSettlement.abilitiesByPlayerId}
+        />
+      ) : m.phase !== "progression" && m.lastResolved ? (
         <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
           namesByPlayerId={{ [viewerUserId]: "You", [m.opponentUserId ?? ""]: "Opponent" }} />
-      )}
+      ) : null}
     </div>
   );
 }

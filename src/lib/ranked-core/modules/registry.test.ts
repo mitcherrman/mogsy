@@ -1,26 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { readPublicRound } from "@/lib/ranked-public/contracts";
+import { LEGACY_SEGMENT, readPublicRound } from "@/lib/ranked-public/contracts";
 import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import {
   getModuleRenderer,
+  itemCostDuelModule,
   registeredModuleIds,
   rendererForSegment,
   quizModule,
 } from "./registry";
 
-describe("ranked module renderer registry (Phase A)", () => {
-  it("registers only the quiz renderer", () => {
-    expect(registeredModuleIds()).toEqual(["quiz"]);
+describe("ranked module renderer registry", () => {
+  it("registers the quiz and Item Cost Duel renderers", () => {
+    expect(registeredModuleIds()).toEqual(["item_cost_duel", "quiz"]);
   });
 
-  it("has no Item Cost Duel renderer yet", () => {
-    expect(getModuleRenderer("item_cost_duel")).toBeNull();
-    expect(registeredModuleIds()).not.toContain("item_cost_duel");
-  });
-
-  it("resolves the quiz renderer by id", () => {
+  it("resolves each renderer by id", () => {
     expect(getModuleRenderer("quiz")).toBe(quizModule);
+    expect(getModuleRenderer("item_cost_duel")).toBe(itemCostDuelModule);
   });
 
   it("falls back to quiz when no segment discriminator is present", () => {
@@ -41,18 +38,38 @@ describe("ranked module renderer registry (Phase A)", () => {
     expect(rendererForSegment(parsed.segment)).toBe(quizModule);
   });
 
+  it("resolves an Item Cost Duel segment from a parsed payload", () => {
+    const body = publicRoundV2();
+    (body.payload as Record<string, unknown>).segment = {
+      module_id: "item_cost_duel", module_version: 1,
+      challenge_count: 5, challenge_index: 0, phase: "ability",
+    };
+    const parsed = readPublicRound(body);
+    expect(rendererForSegment(parsed.segment)).toBe(itemCostDuelModule);
+  });
+
   it("fails closed on an unknown module instead of rendering a quiz input", () => {
+    // The invariant Phase A pinned with `item_cost_duel` — now that the module
+    // is registered, it is pinned with a module that genuinely does not exist.
     const renderer = rendererForSegment({
-      moduleId: "item_cost_duel", moduleVersion: 1,
-      challengeCount: 5, challengeIndex: 0,
+      ...LEGACY_SEGMENT, moduleId: "not_a_real_module", challengeCount: 5,
     });
     // Null, NOT quizModule: a mismatched input shape must never be submitted
     // into a rated match.
     expect(renderer).toBeNull();
+    expect(getModuleRenderer("not_a_real_module")).toBeNull();
   });
 
   it("exposes a stable renderer identity", () => {
     expect(quizModule.moduleId).toBe("quiz");
     expect(quizModule.moduleVersion).toBe(1);
+    expect(itemCostDuelModule.moduleId).toBe("item_cost_duel");
+    expect(itemCostDuelModule.moduleVersion).toBe(1);
+  });
+
+  it("declares which module owns its own submission flow", () => {
+    // The shell reads this instead of branching on the module id.
+    expect(quizModule.ownsSubmission).toBe(false);
+    expect(itemCostDuelModule.ownsSubmission).toBe(true);
   });
 });

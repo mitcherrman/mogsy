@@ -19,7 +19,9 @@ import * as api from "@/lib/ranked-public/client";
 import { RankedApiError } from "@/lib/ranked-public/client";
 import type {
   MatchResultView, PresenceView, PrivatePlayerView, PublicRoundView,
+  SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
+import { readSegmentSettlement } from "@/lib/ranked-public/contracts";
 import { snapshotSkewMs } from "./rankedViews";
 
 const POLL_MS = 1500;
@@ -58,6 +60,13 @@ export interface MatchController {
   edit: () => void;
   confirm: (answerIndex: number) => void;
   chooseLevelTwo: (abilityId: string) => void;
+  /** Authoritative state of an active multi-challenge segment, or null. */
+  segmentState: SegmentStateView | null;
+  /** Transcript of the last resolved multi-challenge segment, or null. */
+  lastSegmentSettlement: SegmentSettlementView | null;
+  draftSegmentAbility: (abilityId: string | null) => void;
+  confirmSegmentAbility: () => void;
+  submitSegmentChallenge: (challengeIndex: number, itemId: string) => void;
 }
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string): MatchController {
@@ -65,6 +74,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [roundNumber, setRoundNumber] = useState<number | null>(null);
   const [privatePlayer, setPrivatePlayer] = useState<PrivatePlayerView | null>(null);
   const [lastResolved, setLastResolved] = useState<ResolvedRoundView | null>(null);
+  const [lastSegmentSettlement, setLastSegmentSettlement] =
+    useState<SegmentSettlementView | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
   const [skewMs, setSkewMs] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
@@ -119,6 +130,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       const settlement = adaptBackendSettlement(env.payload as unknown as ResolvedProjection, idMapping());
       resolvedRef.current = round;
       setLastResolved(settlement);
+      // A quiz round yields null here, which correctly clears a previous
+      // segment transcript so it cannot linger over the next round.
+      setLastSegmentSettlement(readSegmentSettlement(env.payload));
     } catch (e) {
       if (!api.isAborted(e)) { /* resolved not ready yet; ignore */ }
     }
@@ -143,6 +157,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       if (active !== null) {
         activeRoundRef.current = active;
         setRoundNumber(active); // sticky: never blanks during the between-rounds gap
+      } else if (pub.segment.segmentNumber !== null && pub.segment.phase !== null) {
+        // A phased segment in its ability window has no engine round yet, by
+        // design — the challenge clock must not run during it. The segment
+        // number is still the right thing to show in the header.
+        setRoundNumber(pub.segment.segmentNumber);
       }
       setPublicRound(pub);
       setError(null);
@@ -204,10 +223,15 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
         activeRoundRef.current = resume.public.activeRound?.roundNumber ?? null;
         if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
         if (resume.latestResolved) {
+          const raw = (resume.latestResolved as { payload: unknown }).payload;
           try {
-            setLastResolved(adaptBackendSettlement(
-              (resume.latestResolved as { payload: unknown }).payload as ResolvedProjection, idMapping()));
+            setLastResolved(adaptBackendSettlement(raw as ResolvedProjection, idMapping()));
           } catch { /* ignore */ }
+          // Recovered separately so a transcript survives a refresh even if
+          // the arena settlement adapter rejects an older payload shape.
+          try {
+            setLastSegmentSettlement(readSegmentSettlement(raw));
+          } catch { /* a malformed reveal simply shows no transcript */ }
         }
       } catch (e) {
         if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
@@ -250,6 +274,58 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     })();
   }, [matchId, submitting, publicRound, selectedAbilityId, poke]);
 
+  // --------------------------------------------- multi-challenge segments
+  //
+  // Each of these is a server round trip followed by an immediate re-poll.
+  // Nothing here advances an index, decides correctness, or measures timing;
+  // the next authoritative snapshot is the only thing that moves the segment
+  // forward, which is what makes a refresh mid-segment land correctly.
+
+  const segmentState = publicRound?.segmentState ?? null;
+  const segmentNumber = segmentState?.segmentNumber ?? null;
+
+  const runSegmentAction = useCallback(
+    (action: (segment: number) => Promise<unknown>) => {
+      if (!matchId || submitting || segmentNumber === null) return;
+      setSubmitting(true);
+      setActionError(null);
+      (async () => {
+        try {
+          await action(segmentNumber);
+        } catch (e) {
+          // A stale phase/index means the server already moved on — re-poll
+          // rather than surfacing a transient race as an error.
+          const stale = e instanceof RankedApiError && (
+            e.code === "RANKED_STALE_ROUND" ||
+            e.code === "RANKED_WRONG_SEGMENT_PHASE" ||
+            e.code === "RANKED_WRONG_CHALLENGE_INDEX" ||
+            e.code === "RANKED_SEGMENT_COMPLETE");
+          if (!stale) {
+            setActionError(e instanceof Error ? e.message : "action failed");
+          }
+        } finally {
+          setSubmitting(false);
+          poke();
+        }
+      })();
+    }, [matchId, submitting, segmentNumber, poke]);
+
+  const draftSegmentAbility = useCallback((abilityId: string | null) => {
+    runSegmentAction((segment) => api.draftSegmentAbility(matchId!, segment, abilityId));
+  }, [runSegmentAction, matchId]);
+
+  const confirmSegmentAbility = useCallback(() => {
+    // The confirmed value is whatever the SERVER currently holds as the draft.
+    const drafted = segmentState?.ownAbility.selectedAbilityId ?? null;
+    runSegmentAction((segment) =>
+      api.confirmSegmentAbility(matchId!, segment, drafted));
+  }, [runSegmentAction, matchId, segmentState]);
+
+  const submitSegmentChallenge = useCallback((challengeIndex: number, itemId: string) => {
+    runSegmentAction((segment) =>
+      api.submitSegmentChallenge(matchId!, segment, challengeIndex, itemId));
+  }, [runSegmentAction, matchId]);
+
   const chooseLevelTwo = useCallback((abilityId: string) => {
     if (!matchId || submitting) return;
     setSubmitting(true); setActionError(null);
@@ -271,5 +347,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, actionError, error,
     selectOption, selectAbility, review, edit, confirm, chooseLevelTwo,
+    segmentState, lastSegmentSettlement, draftSegmentAbility,
+    confirmSegmentAbility, submitSegmentChallenge,
   };
 }

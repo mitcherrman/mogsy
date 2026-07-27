@@ -96,3 +96,126 @@ export function matchResultV1(reason = "combat") {
 export function heartbeatOk() {
   return { status: "active", match_id: "m1", active: true };
 }
+
+// ------------------------------ multi-challenge segments (Phase B slice 4)
+
+const ABILITY_DEADLINE = "2026-07-18T12:00:05+00:00";
+const CHALLENGE_DEADLINE = "2026-07-18T12:00:30+00:00";
+
+function duelItem(n: number) {
+  return {
+    item_id: `Item ${n}`, name: `Item ${n}`, item_type: "legendary",
+    asset_path: `assets/items/${n}.png`,
+  };
+}
+
+/** Backend-shaped `segment` discriminator for an Item Cost Duel segment. */
+export function icdSegmentMeta(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    module_id: "item_cost_duel", module_version: 1, challenge_count: 5,
+    challenge_index: 0, segment_number: 3, phase: "ability",
+    ability_deadline: ABILITY_DEADLINE, challenge_started_at: null,
+    challenge_deadline: null, pressure_applied: false, resolved: false,
+    ...over,
+  };
+}
+
+/**
+ * Backend-shaped `segment_state`. Mirrors `service.segment_state_view` — the
+ * opponent appears only as a count and a confirmation flag, and there is no
+ * cost, correct item, or correctness anywhere in it.
+ */
+export function icdSegmentState(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    active: true,
+    segment_number: 3,
+    module_id: "item_cost_duel",
+    module_version: 1,
+    phase: "ability",
+    challenge_count: 5,
+    ability_deadline: ABILITY_DEADLINE,
+    challenge_started_at: null,
+    challenge_deadline: null,
+    pressure_applied: false,
+    own_ability: {
+      selected_ability_id: null, confirmed: false,
+      available_ability_ids: ["tank.fortify"],
+      unavailable_ability_ids: {},
+    },
+    opponent_ability_confirmed: false,
+    own_next_challenge_index: 0,
+    own_submitted_choices: [null, null, null, null, null],
+    own_challenges_completed: 0,
+    opponent_challenges_completed: 0,
+    opponent_finished: false,
+    own_finished: false,
+    ...over,
+  };
+}
+
+/** Challenge-phase state at `index`, with the earlier choices filled in. */
+export function icdChallengeState(index: number,
+                                  over: Partial<Record<string, unknown>> = {}) {
+  const choices = Array.from({ length: 5 }, (_, i) =>
+    i < index ? { item_id: `Item ${i * 2}` } : null);
+  return icdSegmentState({
+    phase: "challenges",
+    challenge_started_at: "2026-07-18T12:00:05+00:00",
+    challenge_deadline: CHALLENGE_DEADLINE,
+    own_ability: {
+      selected_ability_id: "tank.fortify", confirmed: true,
+      available_ability_ids: ["tank.fortify"], unavailable_ability_ids: {},
+    },
+    opponent_ability_confirmed: true,
+    own_next_challenge_index: index,
+    own_submitted_choices: choices,
+    own_challenges_completed: index,
+    own_finished: index >= 5,
+    challenges: {
+      prompt: "Which item costs more?",
+      challenge_count: 5,
+      challenges: Array.from({ length: 5 }, (_, i) => ({
+        challenge_index: i, left: duelItem(i * 2), right: duelItem(i * 2 + 1),
+      })),
+    },
+    ...over,
+  });
+}
+
+/** A resolved Item Cost Duel settlement payload (post-reveal). */
+export function icdResolvedPayload(over: Partial<Record<string, unknown>> = {}) {
+  const items: Record<string, unknown> = {};
+  for (let i = 0; i < 10; i += 1) items[`Item ${i}`] = duelItem(i);
+  return {
+    round_number: 3,
+    players: [
+      { player_id: "userA", class_id: "tank", selected_ability_id: "tank.fortify",
+        damage: { final_damage_dealt: 15, final_damage_received: 0 } },
+      { player_id: "userB", class_id: "mage", selected_ability_id: null,
+        damage: { final_damage_dealt: 0, final_damage_received: 15 } },
+    ],
+    segment_reveal: {
+      module_id: "item_cost_duel",
+      module_version: 1,
+      challenge_count: 5,
+      challenges: Array.from({ length: 5 }, (_, i) => ({
+        challenge_index: i,
+        left_item_id: `Item ${i * 2}`, right_item_id: `Item ${i * 2 + 1}`,
+        left_cost: 1000 + i * 100, right_cost: 2000 + i * 100,
+        correct_item_id: `Item ${i * 2 + 1}`, price_gap: 1000,
+      })),
+      players: {
+        userA: { segment_result: "win", correct: 5, incorrect: 0, unanswered: 0,
+          total_response_ms: 5000,
+          per_challenge_ms: [1000, 1000, 1000, 1000, 1000],
+          choices: Array.from({ length: 5 }, (_, i) => `Item ${i * 2 + 1}`) },
+        userB: { segment_result: "loss", correct: 1, incorrect: 3, unanswered: 1,
+          total_response_ms: 9000,
+          per_challenge_ms: [2000, 2000, 2000, 3000, null],
+          choices: ["Item 1", "Item 2", "Item 4", "Item 6", null] },
+      },
+      items,
+    },
+    ...over,
+  };
+}

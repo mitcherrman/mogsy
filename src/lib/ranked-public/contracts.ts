@@ -147,8 +147,23 @@ export interface SegmentMeta {
   moduleId: string;
   moduleVersion: number;
   challengeCount: number;
+  /** The VIEWER's own next challenge; 0 for a quiz segment. */
   challengeIndex: number;
+  segmentNumber: number | null;
+  /**
+   * Authoritative phase of a multi-challenge segment, or null for a quiz /
+   * legacy round. Phase B slice 4 additive: a v2 payload that omits these
+   * reads as a quiz segment, exactly as before.
+   */
+  phase: SegmentPhase;
+  abilityDeadline: string | null;
+  challengeStartedAt: string | null;
+  challengeDeadline: string | null;
+  pressureApplied: boolean;
+  resolved: boolean;
 }
+
+export type SegmentPhase = "ability" | "challenges" | null;
 
 /** Default applied when the backend omits `segment` (v2 payloads, legacy rounds). */
 export const LEGACY_SEGMENT: SegmentMeta = Object.freeze({
@@ -156,7 +171,70 @@ export const LEGACY_SEGMENT: SegmentMeta = Object.freeze({
   moduleVersion: 1,
   challengeCount: 1,
   challengeIndex: 0,
+  segmentNumber: null,
+  phase: null,
+  abilityDeadline: null,
+  challengeStartedAt: null,
+  challengeDeadline: null,
+  pressureApplied: false,
+  resolved: false,
 });
+
+/** One pre-reveal item card. These four fields are the backend allow-list. */
+export interface SegmentItemView {
+  itemId: string;
+  name: string | null;
+  itemType: string | null;
+  assetPath: string | null;
+}
+
+export interface SegmentChallengeView {
+  challengeIndex: number;
+  left: SegmentItemView;
+  right: SegmentItemView;
+}
+
+/** The viewer's OWN ability state inside a multi-challenge segment. */
+export interface SegmentAbilityView {
+  selectedAbilityId: string | null;
+  confirmed: boolean;
+  availableAbilityIds: string[];
+  /** ability id -> human reason it cannot be picked here (e.g. Mage Insight). */
+  unavailableAbilityIds: Record<string, string>;
+}
+
+/**
+ * Owner-scoped state of the active multi-challenge segment.
+ *
+ * Everything here is pre-reveal safe by construction on the backend: the
+ * opponent appears ONLY as a completion count and a confirmation flag, and no
+ * canonical cost, correct item, or correctness is present until settlement.
+ * The reader below rejects the payload outright if any of that appears — a
+ * structural key check, never a substring scan, so the legitimate module id
+ * `item_cost_duel` and the field `challenge_count` are not false positives.
+ */
+export interface SegmentStateView {
+  segmentNumber: number;
+  moduleId: string;
+  moduleVersion: number;
+  phase: SegmentPhase;
+  challengeCount: number;
+  abilityDeadline: string | null;
+  challengeStartedAt: string | null;
+  challengeDeadline: string | null;
+  pressureApplied: boolean;
+  ownAbility: SegmentAbilityView;
+  opponentAbilityConfirmed: boolean;
+  ownNextChallengeIndex: number;
+  ownSubmittedChoices: (string | null)[];
+  ownChallengesCompleted: number;
+  opponentChallengesCompleted: number;
+  opponentFinished: boolean;
+  ownFinished: boolean;
+  /** Present only in the challenge phase. */
+  prompt: string | null;
+  challenges: SegmentChallengeView[];
+}
 
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
 export interface PublicRoundView {
@@ -174,6 +252,8 @@ export interface PublicRoundView {
   question: PublicQuestionSource | null;
   /** Always populated by the reader; defaults to `quiz.v1` when absent. */
   segment: SegmentMeta;
+  /** Owner state of the active multi-challenge segment; null for quiz. */
+  segmentState: SegmentStateView | null;
   progressionPendingPlayers: string[];
   presence: PresenceView | null;
   playtest?: PlaytestMeta | null;
@@ -331,6 +411,7 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     nextRoundDurationSeconds: num(payload.next_round_duration_seconds, "next_round_duration_seconds"),
     question: readQuestion(payload.question),
     segment: readSegment(payload.segment),
+    segmentState: readSegmentState(payload.segment_state),
     progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
       ? strList(payload.progression_pending_players, "progression_pending_players") : [],
     presence: readPresence(payload.presence),
@@ -352,11 +433,128 @@ function readSegment(v: unknown): SegmentMeta {
   const o = v as Record<string, unknown>;
   const int = (raw: unknown, fallback: number) =>
     typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : fallback;
+  const iso = (raw: unknown) => (typeof raw === "string" && raw ? raw : null);
   return {
     moduleId: typeof o.module_id === "string" && o.module_id ? o.module_id : "quiz",
     moduleVersion: int(o.module_version, 1),
     challengeCount: int(o.challenge_count, 1),
     challengeIndex: int(o.challenge_index, 0),
+    segmentNumber: typeof o.segment_number === "number" ? o.segment_number : null,
+    phase: o.phase === "ability" || o.phase === "challenges" ? o.phase : null,
+    abilityDeadline: iso(o.ability_deadline),
+    challengeStartedAt: iso(o.challenge_started_at),
+    challengeDeadline: iso(o.challenge_deadline),
+    pressureApplied: o.pressure_applied === true,
+    resolved: o.resolved === true,
+  };
+}
+
+/**
+ * Keys that may never appear inside a PRE-REVEAL segment payload.
+ *
+ * Matched as exact key names while walking the object graph. A substring scan
+ * of the serialized JSON would reject the legitimate module id
+ * `item_cost_duel` and the legitimate field `challenge_count`, so it is not
+ * used here or anywhere else in this reader.
+ */
+const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
+  "cost", "left_cost", "right_cost", "item_cost", "price", "price_gap",
+  "correct", "is_correct", "correct_item_id", "correct_index", "answer",
+  "opponent_choices", "opponent_submitted_choices", "opponent_choice",
+  "opponent_ability_id", "opponent_selected_ability_id", "opponent_times",
+  "opponent_submitted_at", "opponent_per_challenge_ms", "score", "scores",
+  "winner", "winner_id", "segment_result", "outcomes", "reveal",
+  "segment_private", "segment_private_json",
+]);
+
+function assertSegmentIsPreRevealSafe(node: unknown, depth = 0): void {
+  if (depth > 12 || node === null || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    node.forEach((v) => assertSegmentIsPreRevealSafe(v, depth + 1));
+    return;
+  }
+  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    if (_FORBIDDEN_SEGMENT_KEYS.has(key)) {
+      throw new RankedPublicParseError(`segment_state leaked a hidden field: ${key}`);
+    }
+    assertSegmentIsPreRevealSafe(value, depth + 1);
+  }
+}
+
+function readSegmentItem(v: unknown, label: string): SegmentItemView {
+  const o = rec(v, label);
+  return {
+    itemId: str(o.item_id, `${label}.item_id`),
+    name: nstr(o.name, `${label}.name`),
+    itemType: nstr(o.item_type, `${label}.item_type`),
+    assetPath: nstr(o.asset_path, `${label}.asset_path`),
+  };
+}
+
+/**
+ * Strict reader for the owner segment state.
+ *
+ * Absent/null → null (a quiz segment, and every legacy payload). A PRESENT but
+ * hidden-information-carrying payload is a hard parse error, not a degrade:
+ * unlike the tolerant `segment` discriminator, this block drives real input,
+ * so a malformed one must not be rendered at all.
+ */
+function readSegmentState(v: unknown): SegmentStateView | null {
+  if (v === null || v === undefined) return null;
+  const o = rec(v, "segment_state");
+  if (o.active === false) return null;
+  assertSegmentIsPreRevealSafe(o);
+  const ability = rec(o.own_ability, "segment_state.own_ability");
+  const unavailable: Record<string, string> = {};
+  for (const [k, val] of Object.entries(
+    rec(ability.unavailable_ability_ids, "unavailable_ability_ids"),
+  )) {
+    unavailable[k] = str(val, `unavailable_ability_ids.${k}`);
+  }
+  const challengeBlock = o.challenges === null || o.challenges === undefined
+    ? null : rec(o.challenges, "segment_state.challenges");
+  const rawChallenges = challengeBlock && Array.isArray(challengeBlock.challenges)
+    ? challengeBlock.challenges : [];
+  const choices = Array.isArray(o.own_submitted_choices) ? o.own_submitted_choices : [];
+  return {
+    segmentNumber: num(o.segment_number, "segment_state.segment_number"),
+    moduleId: str(o.module_id, "segment_state.module_id"),
+    moduleVersion: num(o.module_version, "segment_state.module_version"),
+    phase: o.phase === "ability" || o.phase === "challenges" ? o.phase : null,
+    challengeCount: num(o.challenge_count, "segment_state.challenge_count"),
+    abilityDeadline: nstr(o.ability_deadline, "ability_deadline"),
+    challengeStartedAt: nstr(o.challenge_started_at, "challenge_started_at"),
+    challengeDeadline: nstr(o.challenge_deadline, "challenge_deadline"),
+    pressureApplied: o.pressure_applied === true,
+    ownAbility: {
+      selectedAbilityId: nstr(ability.selected_ability_id, "selected_ability_id"),
+      confirmed: bool(ability.confirmed, "own_ability.confirmed"),
+      availableAbilityIds: strList(ability.available_ability_ids, "available_ability_ids"),
+      unavailableAbilityIds: unavailable,
+    },
+    opponentAbilityConfirmed: o.opponent_ability_confirmed === true,
+    ownNextChallengeIndex: num(o.own_next_challenge_index, "own_next_challenge_index"),
+    // The backend stores a raw `{item_id}` choice; the client only ever needs
+    // which item was picked, so it is flattened here and nothing else is kept.
+    ownSubmittedChoices: choices.map((c) => {
+      if (c === null || c === undefined) return null;
+      const choice = rec(c, "own_submitted_choices[]");
+      return str(choice.item_id, "own_submitted_choices[].item_id");
+    }),
+    ownChallengesCompleted: num(o.own_challenges_completed, "own_challenges_completed"),
+    opponentChallengesCompleted: num(
+      o.opponent_challenges_completed, "opponent_challenges_completed"),
+    opponentFinished: o.opponent_finished === true,
+    ownFinished: o.own_finished === true,
+    prompt: challengeBlock ? nstr(challengeBlock.prompt, "challenges.prompt") : null,
+    challenges: rawChallenges.map((c, i) => {
+      const challenge = rec(c, `challenges[${i}]`);
+      return {
+        challengeIndex: num(challenge.challenge_index, `challenges[${i}].challenge_index`),
+        left: readSegmentItem(challenge.left, `challenges[${i}].left`),
+        right: readSegmentItem(challenge.right, `challenges[${i}].right`),
+      };
+    }),
   };
 }
 
@@ -414,6 +612,135 @@ export function readResolvedEnvelope(body: unknown): {
 } {
   const env = envelope(body, "resolved_round", "ranked_duel.resolved_round.v2");
   return { schemaVersion: env.schemaVersion, serverTime: env.serverTime, payload: env.payload };
+}
+
+// ------------------------------------------------- resolved segment reveal
+
+export type SegmentResult = "win" | "loss" | "draw" | "timeout";
+
+export interface SegmentRevealChallenge {
+  challengeIndex: number;
+  leftItemId: string;
+  rightItemId: string;
+  leftCost: number;
+  rightCost: number;
+  correctItemId: string;
+}
+
+export interface SegmentRevealPlayer {
+  segmentResult: SegmentResult | null;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
+  totalResponseMs: number;
+  perChallengeMs: (number | null)[];
+  choices: (string | null)[];
+}
+
+export interface SegmentRevealView {
+  moduleId: string;
+  challengeCount: number;
+  challenges: SegmentRevealChallenge[];
+  players: Record<string, SegmentRevealPlayer>;
+  /** Already-public display metadata, keyed by item id. */
+  items: Record<string, SegmentItemView>;
+}
+
+const _SEGMENT_RESULTS: ReadonlySet<string> = new Set([
+  "win", "loss", "draw", "timeout"]);
+
+/**
+ * Post-settlement segment transcript, or null when the resolved round was a
+ * quiz round (no `segment_reveal`).
+ *
+ * This is the ONLY reader that accepts canonical costs and correct item ids —
+ * by then they are terminal data both participants may see. It is deliberately
+ * separate from `readSegmentState`, which rejects exactly these fields.
+ */
+export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
+  if (!payload || typeof payload !== "object") return null;
+  const raw = (payload as Record<string, unknown>).segment_reveal;
+  if (raw === null || raw === undefined) return null;
+  const o = rec(raw, "segment_reveal");
+  const challenges = Array.isArray(o.challenges) ? o.challenges : [];
+  const players: Record<string, SegmentRevealPlayer> = {};
+  for (const [pid, value] of Object.entries(rec(o.players, "segment_reveal.players"))) {
+    const p = rec(value, `players.${pid}`);
+    const result = nstr(p.segment_result, `players.${pid}.segment_result`);
+    players[pid] = {
+      segmentResult: result && _SEGMENT_RESULTS.has(result)
+        ? (result as SegmentResult) : null,
+      correct: num(p.correct, `players.${pid}.correct`),
+      incorrect: num(p.incorrect, `players.${pid}.incorrect`),
+      unanswered: num(p.unanswered, `players.${pid}.unanswered`),
+      totalResponseMs: num(p.total_response_ms, `players.${pid}.total_response_ms`),
+      perChallengeMs: (Array.isArray(p.per_challenge_ms) ? p.per_challenge_ms : [])
+        .map((ms, i) => nnum(ms, `players.${pid}.per_challenge_ms[${i}]`)),
+      choices: (Array.isArray(p.choices) ? p.choices : [])
+        .map((c, i) => nstr(c, `players.${pid}.choices[${i}]`)),
+    };
+  }
+  const items: Record<string, SegmentItemView> = {};
+  if (o.items && typeof o.items === "object") {
+    for (const [id, value] of Object.entries(o.items as Record<string, unknown>)) {
+      items[id] = readSegmentItem(value, `items.${id}`);
+    }
+  }
+  return {
+    moduleId: str(o.module_id, "segment_reveal.module_id"),
+    challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
+    challenges: challenges.map((c, i) => {
+      const ch = rec(c, `segment_reveal.challenges[${i}]`);
+      return {
+        challengeIndex: num(ch.challenge_index, `challenges[${i}].challenge_index`),
+        leftItemId: str(ch.left_item_id, `challenges[${i}].left_item_id`),
+        rightItemId: str(ch.right_item_id, `challenges[${i}].right_item_id`),
+        leftCost: num(ch.left_cost, `challenges[${i}].left_cost`),
+        rightCost: num(ch.right_cost, `challenges[${i}].right_cost`),
+        correctItemId: str(ch.correct_item_id, `challenges[${i}].correct_item_id`),
+      };
+    }),
+    players,
+    items,
+  };
+}
+
+export interface SegmentSettlementView {
+  reveal: SegmentRevealView;
+  /** Damage each player DEALT this segment, straight from the settlement. */
+  damageByPlayerId: Record<string, number>;
+  /** The ability each player actually used, revealed only now. */
+  abilitiesByPlayerId: Record<string, string | null>;
+}
+
+/**
+ * A resolved round's segment transcript plus the settlement values it needs,
+ * or null when the round was an ordinary quiz round.
+ *
+ * The damage and ability values are read from the same authoritative
+ * settlement the arena already renders — nothing is recomputed here.
+ */
+export function readSegmentSettlement(payload: unknown): SegmentSettlementView | null {
+  const reveal = readSegmentReveal(payload);
+  if (!reveal) return null;
+  const damageByPlayerId: Record<string, number> = {};
+  const abilitiesByPlayerId: Record<string, string | null> = {};
+  const players = (payload as Record<string, unknown>)?.players;
+  if (Array.isArray(players)) {
+    for (const raw of players) {
+      if (!raw || typeof raw !== "object") continue;
+      const p = raw as Record<string, unknown>;
+      const pid = typeof p.player_id === "string" ? p.player_id : null;
+      if (!pid) continue;
+      const damage = p.damage as Record<string, unknown> | undefined;
+      if (damage && typeof damage.final_damage_dealt === "number") {
+        damageByPlayerId[pid] = damage.final_damage_dealt;
+      }
+      abilitiesByPlayerId[pid] = typeof p.selected_ability_id === "string"
+        ? p.selected_ability_id : null;
+    }
+  }
+  return { reveal, damageByPlayerId, abilitiesByPlayerId };
 }
 
 export function readQueueStatus(body: unknown): QueueStatusView {
