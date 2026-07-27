@@ -156,31 +156,66 @@ export const LANE_PLAQUE_TIMELINE = {
 
 /**
  * Offsets, relative to a lane's own start, at which that lane enters each
- * scene. Ties and failed thresholds keep the identical shape (the slice and
- * transfer scenes simply render no extra effect) so pacing stays uniform.
+ * scene.
+ *
+ * The shape is identical for every lane; only its *length* depends on the
+ * authoritative outcome. A lane that earns no decisive bonus has nothing to
+ * wait for after the comparison — there is no losing number to cut, no energy
+ * packet in flight and no impact to land — so those three beats collapse to
+ * zero and the lane hands off as soon as `+0` has been read. The scenes still
+ * all exist and still fire in order, so the plaque, the value badges and the
+ * accessible label walk exactly the same path they always did; `+1` and the
+ * slice stay gated on `result.decisive`, so a collapsed lane can never flash a
+ * bonus it did not earn.
+ *
+ * Pass the lane's own `result.decisive` — which the engine already computes as
+ * `winner !== "tie" && margin >= threshold`, so ties and failed thresholds are
+ * both false. Nothing here decides an outcome; it only reads one.
  */
-export function lanePlaqueStageOffsets() {
+export function lanePlaqueStageOffsets(decisive = true) {
   const t = LANE_PLAQUE_TIMELINE;
+  const sliceMs = decisive ? t.sliceMs : 0;
+  const transferMs = decisive ? t.transferMs : 0;
+  const impactMs = decisive ? t.impactMs : 0;
   const threshold = t.categoryHoldMs;
   const values = threshold + t.blinkMs + t.thresholdHoldMs;
   const winner = values + t.valuesEnlargeMs + t.valuesHoldMs;
   const slice = winner + t.winnerEmphasisMs;
-  const zero = slice + t.sliceMs;
+  const zero = slice + sliceMs;
   const transfer = zero + t.blinkMs + t.zeroHoldMs;
-  const bonus = transfer + t.transferMs;
-  const settled = bonus + t.impactMs;
+  const bonus = transfer + transferMs;
+  const settled = bonus + impactMs;
   return { category: 0, threshold, values, winner, slice, zero, transfer, bonus, settled } as const;
 }
 
 /** Total time one lane occupies, including its trailing settle. */
-export function laneRevealTotalMs() {
-  return lanePlaqueStageOffsets().settled + LANE_PLAQUE_TIMELINE.settleMs;
+export function laneRevealTotalMs(decisive = true) {
+  return lanePlaqueStageOffsets(decisive).settled + LANE_PLAQUE_TIMELINE.settleMs;
 }
 
-/** Start offsets for the three lanes: strictly sequential, no overlap. */
-export function laneStartOffsets() {
-  const lane = laneRevealTotalMs();
-  return [0, lane, lane * 2] as const;
+/**
+ * Post-comparison duration: from the winner beat (the moment the values have
+ * been compared) to the lane handing off. This is the figure the non-decisive
+ * pacing pass targets, and the tests assert the reduction against it.
+ */
+export function lanePostComparisonMs(decisive = true) {
+  const offsets = lanePlaqueStageOffsets(decisive);
+  return laneRevealTotalMs(decisive) - offsets.winner;
+}
+
+/**
+ * Start offsets for the three lanes: strictly sequential, no overlap. Each lane
+ * begins only once the previous one has finished its own cleanup, so a lane
+ * that resolves faster pulls every later lane forward rather than leaving a gap.
+ */
+export function laneStartOffsets(laneDecisive: readonly boolean[] = [true, true, true]) {
+  const starts: number[] = [];
+  let at = 0;
+  for (let index = 0; index < 3; index += 1) {
+    starts.push(at);
+    at += laneRevealTotalMs(laneDecisive[index] ?? true);
+  }
+  return starts as readonly number[];
 }
 
 export const REVEAL_TIMELINE = {
@@ -195,23 +230,12 @@ export const REVEAL_TIMELINE = {
    */
   itemRevealShiftMs: 520,
   /**
-   * Lanes resolve strictly left → middle → right with no overlap: each starts
-   * only once the previous has fully settled. Derived from the lane
-   * choreography so retiming a scene shifts everything downstream coherently.
+   * When the first lane starts. Lanes 2 and 3 are no longer fixed offsets: a
+   * lane's length now depends on its own authoritative outcome, so the later
+   * lanes and the board-damage beat are derived per round by
+   * `laneResolveOffsets` / `boardResultOffset` below.
    */
-  get resolveLane1() {
-    return 1_220;
-  },
-  get resolveLane2() {
-    return this.resolveLane1 + laneRevealTotalMs();
-  },
-  get resolveLane3() {
-    return this.resolveLane1 + laneRevealTotalMs() * 2;
-  },
-  /** Board damage waits until all three lanes have finished. */
-  get boardResult() {
-    return this.resolveLane1 + laneRevealTotalMs() * 3;
-  },
+  resolveLane1: 1_220,
   /**
    * Tail beats, measured from the END of the centre damage presentation (see
    * DAMAGE_REVEAL_TIMELINE). The presentation's length depends on which damage
@@ -225,6 +249,21 @@ export const REVEAL_TIMELINE = {
 } as const;
 
 /**
+ * Absolute offsets at which each of the three lanes begins, for a round whose
+ * lanes carry the given authoritative decisive outcomes. Strictly increasing
+ * and non-overlapping by construction.
+ */
+export function laneResolveOffsets(laneDecisive: readonly boolean[] = [true, true, true]) {
+  return laneStartOffsets(laneDecisive).map((start) => REVEAL_TIMELINE.resolveLane1 + start);
+}
+
+/** Board damage waits until all three lanes have finished. */
+export function boardResultOffset(laneDecisive: readonly boolean[] = [true, true, true]) {
+  const starts = laneStartOffsets(laneDecisive);
+  return REVEAL_TIMELINE.resolveLane1 + starts[2] + laneRevealTotalMs(laneDecisive[2] ?? true);
+}
+
+/**
  * Centre damage presentation (1x). After the third lane settles, the round's
  * already-computed damage components are added into a running total in the
  * middle of the arena, the total lands with an impact, and only then does the
@@ -232,10 +271,22 @@ export const REVEAL_TIMELINE = {
  * with the same speed control as the rest of the reveal.
  */
 export const DAMAGE_REVEAL_TIMELINE = {
-  /** The frame establishes itself before any number is counted. */
+  /** The frame and the winner's identity establish themselves first. */
   enterMs: 420,
-  /** Hold on each damage component as it is added into the total. */
-  componentMs: 620,
+  /**
+   * Hold on the board-result number — 2 for a normal board win, 3 for a sweep.
+   * This is the starting subtotal, not a component added to one.
+   */
+  boardMs: 620,
+  /**
+   * Extra time the board result holds on a sweep, while the floating SWEEP
+   * notification enters, holds and exits over the established `3`.
+   */
+  sweepNoticeMs: 900,
+  /** Hold on a lane that awarded +1: the existing decisive visual language. */
+  laneBonusMs: 460,
+  /** A +0 lane is subordinate — it reads and moves on rather than landing. */
+  laneZeroMs: 260,
   /** Hold on the completed total before it strikes. */
   totalHoldMs: 620,
   /** The impact frame itself: arena jolt + contained flash. */

@@ -150,6 +150,25 @@ export default {
 					opacity: '0'
 				}
 			},
+			/**
+			 * Floating SWEEP notification: a brief rise into place, a hold, and a
+			 * clean exit — celebratory without an elastic bounce or a slot-machine
+			 * effect. The whole life of the effect is one animation, so it ends on
+			 * its own and never needs a timer of its own.
+			 */
+			'sweep-notice': {
+				'0%': { transform: 'translateY(10px) scale(0.94)', opacity: '0' },
+				'16%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+				'78%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+				'100%': { transform: 'translateY(-8px) scale(0.98)', opacity: '0' }
+			},
+			/** Single glint travelling across the brass plate, once. */
+			'sweep-glint': {
+				'0%': { transform: 'translateX(0)', opacity: '0' },
+				'22%': { opacity: '1' },
+				'70%': { transform: 'translateX(420%)', opacity: '0' },
+				'100%': { transform: 'translateX(420%)', opacity: '0' }
+			},
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -206,6 +225,9 @@ export default {
 			'damage-tick': 'damage-tick var(--sc-damage-tick, 280ms) cubic-bezier(0.22,1,0.36,1) both',
 			'damage-strike': 'damage-strike var(--sc-arena-jolt, 380ms) cubic-bezier(0.22,1,0.36,1) both',
 			'damage-pulse': 'damage-pulse var(--sc-damage-pulse, 700ms) cubic-bezier(0.22,1,0.36,1) both',
+			/** Speed-scaled via --sc-sweep-notice, set on the damage overlay. */
+			'sweep-notice': 'sweep-notice var(--sc-sweep-notice, 900ms) cubic-bezier(0.22,1,0.36,1) both',
+			'sweep-glint': 'sweep-glint var(--sc-sweep-notice, 900ms) cubic-bezier(0.4,0,0.2,1) both',
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',

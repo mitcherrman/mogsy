@@ -36,14 +36,16 @@ import {
   STAT_CHECK_DEFAULT_ANIMATION_SPEED,
   REVEAL_TIMELINE,
   animationDuration,
+  boardResultOffset,
   durationAtSpeed,
+  laneResolveOffsets,
   lanePlaqueStageOffsets,
   heroArcLift,
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
 } from "./animationConfig";
 import {
-  DAMAGE_COMPONENT_LABELS,
+  damageRevealBoardShown,
   damageRevealHealthApplied,
   damageRevealPlan,
   damageRevealPlanTotalMs,
@@ -51,9 +53,17 @@ import {
   damageRevealStageOffsets,
   damageRevealStepStarts,
   damageRevealStepTotalMs,
+  damageRevealSweepVisible,
+  damageRevealedLanes,
   type DamageRevealStage,
   type DamageRevealStep,
 } from "./damageReveal";
+import {
+  DEFAULT_STAT_CHECK_IDENTITIES,
+  damageIdentityHeader,
+  type StatCheckIdentities,
+} from "./damageIdentity";
+import UserAvatar from "@/components/UserAvatar";
 import {
   activeResolvedLane,
   allowsPreLockInteraction,
@@ -168,9 +178,17 @@ const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 export default function StatCheckPage({
   online = null,
   onOnlineExit,
+  identities = DEFAULT_STAT_CHECK_IDENTITIES,
 }: {
   online?: OnlineMatchController | null;
   onOnlineExit?: () => void;
+  /**
+   * Who the two sides are, for the damage tally's header. Defaults to the bot
+   * game's You/Bot pair; the online room supplies the seats' real display names
+   * (already present client-side in RoomView, so no contract changes) and
+   * whatever avatar the existing profile system already has.
+   */
+  identities?: StatCheckIdentities;
 } = {}) {
   const { data: statRows, isLoading, isError } = useChampionBaseStats();
   const { data: assets } = useChampionAssets();
@@ -440,20 +458,29 @@ export default function StatCheckPage({
     // original timeline exactly.
     const roundHasItems = match.lastResolution.results.some((result) => result.playerItem || result.botItem);
     const shift = roundHasItems ? REVEAL_TIMELINE.itemRevealShiftMs : 0;
-    const laneResolveAt = [REVEAL_TIMELINE.resolveLane1, REVEAL_TIMELINE.resolveLane2, REVEAL_TIMELINE.resolveLane3];
-    const stageOffsets = lanePlaqueStageOffsets();
+    /**
+     * Each lane's own authoritative outcome, in board order. A lane that earned
+     * no decisive bonus has no slice, no packet and no impact to wait for, so it
+     * runs a materially shorter sequence — and because every later lane starts
+     * from the previous lane's end, a fast lane pulls the whole round forward
+     * rather than leaving dead air behind it. This is a pure read of the engine
+     * result: no gameplay figure is recomputed here.
+     */
+    const laneDecisive = [0, 1, 2].map((index) => match.lastResolution?.results[index]?.decisive ?? false);
+    const laneResolveAt = laneResolveOffsets(laneDecisive);
     const setLaneStage = (laneIndex: number, next: LanePlaqueStage) =>
       setLanePlaqueStages((current) => current.map((value, index) => (index === laneIndex ? next : value)));
     // Each lane walks its own plaque through winner → threshold → bonus,
     // starting from that lane's own resolve beat. A lane starts only once the
     // previous one has finished its cleanup, so the sequences never overlap and
     // never leave an idle gap between them.
-    const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) =>
-      (["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const).map(
+    const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) => {
+      const stageOffsets = lanePlaqueStageOffsets(laneDecisive[laneIndex]);
+      return (["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const).map(
         (nextStage) =>
           [resolveAt + shift + stageOffsets[nextStage], () => setLaneStage(laneIndex, nextStage)] as [number, () => void],
-      ),
-    );
+      );
+    });
 
     /**
      * Centre damage presentation. The plan is derived once, here, from the
@@ -463,8 +490,8 @@ export default function StatCheckPage({
      * damage produces an empty plan costing 0ms, which reproduces the original
      * boardResult → damage → resolved pacing exactly.
      */
-    const damagePlan = damageRevealPlan(match.lastResolution.damage);
-    const damageStartsAt = REVEAL_TIMELINE.boardResult + shift;
+    const damagePlan = damageRevealPlan(match.lastResolution.damage, match.lastResolution.results);
+    const damageStartsAt = boardResultOffset(laneDecisive) + shift;
     const stepStarts = damageRevealStepStarts(damagePlan);
     const damageSteps: Array<[number, () => void]> = damagePlan.flatMap((step, stepIndex) => {
       const startAt = damageStartsAt + stepStarts[stepIndex];
@@ -494,9 +521,9 @@ export default function StatCheckPage({
       ...(roundHasItems
         ? [[REVEAL_TIMELINE.itemReveal, () => dispatchRevealStep({ type: "item-reveal" })] as [number, () => void]]
         : []),
-      [REVEAL_TIMELINE.resolveLane1 + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
-      [REVEAL_TIMELINE.resolveLane2 + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
-      [REVEAL_TIMELINE.resolveLane3 + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
+      [laneResolveAt[0] + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
+      [laneResolveAt[1] + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
+      [laneResolveAt[2] + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
       [damageStartsAt, () => dispatchRevealStep({ type: "board-result" })],
       [damageRevealEndsAt + REVEAL_TIMELINE.damageTailMs, () => dispatchRevealStep({ type: "damage" })],
       [
@@ -1058,7 +1085,7 @@ export default function StatCheckPage({
                   because of it. */}
               <CentreDamageReveal
                 reveal={damageReveal}
-                opponentLabel={opponentLabel}
+                identities={identities}
                 animationSpeed={animationSpeed}
               />
             </div>
@@ -1418,17 +1445,20 @@ function ArenaAmbience({
  */
 function CentreDamageReveal({
   reveal,
-  opponentLabel,
+  identities,
   animationSpeed,
 }: {
   reveal: DamageRevealState | null;
-  opponentLabel: string;
+  identities: StatCheckIdentities;
   animationSpeed: StatCheckAnimationSpeed;
 }) {
   if (!reveal) return null;
   const { step, stage } = reveal;
+  const header = damageIdentityHeader(step, identities);
   const shown = damageRevealShownTotal(step, stage);
-  const activeComponent = step.components.find((component) => component.kind === stage) ?? null;
+  const boardShown = damageRevealBoardShown(step, stage);
+  const revealedLanes = damageRevealedLanes(step, stage);
+  const sweepVisible = damageRevealSweepVisible(step, stage);
   const totalReached = stage === "total" || stage === "impact" || stage === "health" || stage === "settled";
   const striking = stage === "impact" || stage === "health" || stage === "settled";
   const playerDeals = step.side === "player";
@@ -1442,12 +1472,16 @@ function CentreDamageReveal({
       data-testid="stat-check-damage-reveal"
       data-damage-side={step.side}
       data-damage-target={step.target}
+      data-damage-kind={step.kind}
       data-damage-stage={stage}
       data-damage-shown={shown}
+      data-damage-board={step.kind === "winner" ? step.boardResult : undefined}
+      data-damage-sweep={step.sweep ? "true" : "false"}
       className="pointer-events-none absolute inset-0 z-[300] grid place-items-center"
       style={{
         ["--sc-damage-tick" as string]: `${durationAtSpeed(280, animationSpeed)}ms`,
         ["--sc-damage-pulse" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.healthMs, animationSpeed)}ms`,
+        ["--sc-sweep-notice" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.sweepNoticeMs, animationSpeed)}ms`,
         ["--damage-dy" as string]: travelUp ? "-190px" : "190px",
       }}
     >
@@ -1473,6 +1507,52 @@ function CentreDamageReveal({
               : "bg-[radial-gradient(circle,rgba(248,113,113,0.85),transparent_70%)]",
           )}
         />
+      )}
+
+      {/* Floating SWEEP notification. Absolutely positioned above the plate, so
+          it adds no layout box and can never push the identity header or the
+          numbers around; it is contained by the arena's own bounds. It exists
+          only while the board stage that established the `3` is on screen, and
+          it is derived from the step, so it owns no state and cannot replay on
+          reconnect or recovery. Reduced motion keeps the plain opacity fade and
+          drops the float and the sparkle travel. */}
+      {sweepVisible && (
+        <div
+          data-testid="stat-check-sweep-notice"
+          className="absolute bottom-[calc(50%+68px)] left-1/2 -translate-x-1/2 md:bottom-[calc(50%+104px)]"
+        >
+          <div
+            className={cn(
+              "relative animate-sweep-notice rounded-lg border-2 border-[#d6b55d]/70 px-3 py-1 md:px-5 md:py-1.5",
+              "bg-[linear-gradient(180deg,rgba(74,58,28,0.97),rgba(6,10,16,0.98))]",
+              "shadow-[0_10px_30px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(244,215,125,0.35)]",
+              "motion-reduce:animate-none motion-reduce:opacity-100",
+            )}
+            style={{ animationDuration: "var(--sc-sweep-notice)" }}
+          >
+            {/* Glint travelling across the brass. Purely decorative, and the
+                first thing reduced motion drops. */}
+            <span
+              aria-hidden
+              data-testid="stat-check-sweep-glint"
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-md motion-reduce:hidden"
+            >
+              <span
+                className="absolute inset-y-0 -left-full w-1/2 animate-sweep-glint bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)]"
+                style={{ animationDuration: "var(--sc-sweep-notice)" }}
+              />
+            </span>
+            <span
+              className={cn(
+                "relative flex items-center gap-1.5 whitespace-nowrap text-[13px] font-black uppercase leading-none tracking-[0.34em] md:text-xl",
+                "text-[#ffe9a8] [text-shadow:0_0_18px_rgba(244,215,125,0.95),0_2px_0_rgba(0,0,0,0.65)]",
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#8ee6f0] motion-reduce:hidden md:h-5 md:w-5" strokeWidth={3} />
+              Sweep
+            </span>
+          </div>
+        </div>
       )}
 
       {/* A brass-framed readout in the same construction as the lane plaques —
@@ -1501,68 +1581,132 @@ function CentreDamageReveal({
         ))}
         <div
           className={cn(
-            "flex min-w-[188px] flex-col items-center gap-0.5 rounded-xl border bg-[#05090f]/95 px-4 py-2 md:min-w-[280px] md:px-7 md:py-3",
+            "flex min-w-[212px] flex-col items-center gap-1 rounded-xl border bg-[#05090f]/95 px-4 py-2 md:min-w-[320px] md:px-7 md:py-3",
             playerDeals ? "border-[#d6b55d]/45" : "border-red-400/40",
           )}
         >
-          {/* Who is dealing, and at whom. The arrow points at the side of the
-              arena whose health bar this will reduce: the opponent's cards are
-              the top row of every lane, the player's the bottom row. */}
+          {/* Identity header: WHO this damage belongs to, with their avatar, as
+              one unit. The arrow points at the side of the arena whose health
+              bar this will reduce, which is what ties the identity to the damage
+              being presented. A retaliation reads COUNTER, never WINNER, so the
+              board-losing side is never presented as the round winner. */}
           <div
-            data-testid="stat-check-damage-direction"
+            data-testid="stat-check-damage-identity"
+            data-damage-label={header.label}
+            data-damage-name={header.name}
             className={cn(
-              "flex items-center gap-1.5 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.24em] md:text-[11px]",
+              "flex items-center gap-1.5 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.24em] md:gap-2 md:text-[11px]",
               playerDeals ? "text-[#f4d77d]" : "text-red-200",
             )}
           >
             {travelUp ? <ArrowUp className="h-3 w-3" strokeWidth={3} /> : <ArrowDown className="h-3 w-3" strokeWidth={3} />}
-            {playerDeals ? `You strike ${opponentLabel}` : `${opponentLabel} strikes you`}
+            <span>
+              {header.label}: {header.name}
+            </span>
+            <UserAvatar
+              src={header.avatarUrl}
+              name={header.name}
+              size="xs"
+              className={cn("ring-1", playerDeals ? "ring-[#d6b55d]/60" : "ring-red-400/50")}
+            />
           </div>
 
-          {/* "Damage" is always mounted (invisible until the total lands) so the
-              readout never changes width mid-count. */}
-          <div className="flex items-baseline gap-2">
-            <span
-              key={`${step.side}:${shown}`}
-              data-testid="stat-check-damage-total"
-              className={cn(
-                "text-[52px] font-black leading-none tabular-nums md:text-[80px]",
-                striking ? "animate-damage-strike" : "animate-damage-tick",
-                playerDeals
-                  ? "text-[#ffe9a8] [text-shadow:0_0_26px_rgba(244,215,125,0.9),0_5px_0_rgba(0,0,0,0.6)]"
-                  : "text-red-200 [text-shadow:0_0_26px_rgba(248,113,113,0.85),0_5px_0_rgba(0,0,0,0.6)]",
-              )}
-            >
-              {shown}
-            </span>
-            <span
-              data-testid="stat-check-damage-total-label"
-              data-damage-total-reached={totalReached ? "true" : "false"}
-              className={cn(
-                "text-sm font-black uppercase tracking-[0.28em] text-white/85 transition-opacity duration-200 md:text-2xl",
-                totalReached ? "opacity-100" : "opacity-0",
-              )}
-            >
-              Damage
-            </span>
-          </div>
-
-          {/* Secondary line: the source that just landed. One label at a time —
-              the number stays the primary object on screen. */}
-          <div className="flex h-5 items-center md:h-7">
-            {activeComponent && (
+          {/* The arithmetic, read left to right exactly as it was earned: the
+              board result the round opened with, the three lanes in board
+              order, then the total. Every slot is always mounted and reserved,
+              so the plate never changes width mid-count and nothing under it
+              moves. */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Board result: 2 for a normal board win, 3 for a sweep. Absent
+                entirely on a retaliation, which never claims the board. */}
+            {step.kind === "winner" && (
               <span
-                key={activeComponent.kind}
-                data-testid="stat-check-damage-component"
-                data-damage-component={activeComponent.kind}
+                key={`board:${step.boardResult}`}
+                data-testid="stat-check-damage-board"
+                data-damage-board-shown={boardShown ? "true" : "false"}
                 className={cn(
-                  "animate-damage-tick whitespace-nowrap text-[10px] font-black uppercase leading-none tracking-[0.3em] md:text-sm",
-                  playerDeals ? "text-[#f4d77d]/85" : "text-red-200/85",
+                  "text-[38px] font-black leading-none tabular-nums transition-opacity duration-200 md:text-[58px]",
+                  boardShown ? "animate-damage-tick opacity-100" : "opacity-0",
+                  playerDeals
+                    ? "text-[#ffe9a8] [text-shadow:0_0_22px_rgba(244,215,125,0.85),0_4px_0_rgba(0,0,0,0.6)]"
+                    : "text-red-200 [text-shadow:0_0_22px_rgba(248,113,113,0.8),0_4px_0_rgba(0,0,0,0.6)]",
                 )}
               >
-                {DAMAGE_COMPONENT_LABELS[activeComponent.kind]} +{activeComponent.amount}
+                {step.boardResult}
               </span>
             )}
+
+            {/* The three lane bonuses, left → middle → right, aligned with the
+                board's own lane order. All three appear, including +0: a zero
+                lane is deliberately subordinate rather than hidden. */}
+            <div data-testid="stat-check-damage-lanes" className="flex items-center gap-1.5 md:gap-2.5">
+              {step.laneBonuses.map((bonus) => {
+                const laneRevealed = revealedLanes.some((entry) => entry.lane === bonus.lane);
+                const earned = bonus.amount > 0;
+                return (
+                  <span
+                    key={bonus.stage}
+                    data-testid={`stat-check-damage-lane-${bonus.lane}`}
+                    data-damage-lane-amount={bonus.amount}
+                    data-damage-lane-revealed={laneRevealed ? "true" : "false"}
+                    className={cn(
+                      "text-base font-black leading-none tabular-nums transition-all duration-200 md:text-2xl",
+                      laneRevealed ? "opacity-100" : "opacity-0",
+                      laneRevealed && earned && "animate-damage-tick",
+                      earned
+                        ? playerDeals
+                          ? "scale-110 text-[#f4d77d] [text-shadow:0_0_14px_rgba(244,215,125,0.85)]"
+                          : "scale-110 text-red-200 [text-shadow:0_0_14px_rgba(248,113,113,0.8)]"
+                        : "text-slate-500",
+                    )}
+                  >
+                    +{bonus.amount}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Final total. Always mounted (invisible until it lands) so the
+                plate never changes width mid-count. */}
+            <div className="flex items-baseline gap-1.5 md:gap-2">
+              <span
+                aria-hidden
+                className={cn(
+                  "text-xl font-black leading-none text-white/40 transition-opacity duration-200 md:text-3xl",
+                  totalReached ? "opacity-100" : "opacity-0",
+                )}
+              >
+                =
+              </span>
+              <span
+                key={`${step.side}:${striking ? "strike" : "total"}`}
+                data-testid="stat-check-damage-total"
+                data-damage-total-reached={totalReached ? "true" : "false"}
+                className={cn(
+                  "text-[52px] font-black leading-none tabular-nums md:text-[80px]",
+                  // The tick/strike keyframes end on opacity:1 with `both` fill,
+                  // which overrides a static opacity-0 class. So the animation is
+                  // mounted only once the total has actually landed — otherwise
+                  // the answer sits on screen through the entire count.
+                  totalReached && (striking ? "animate-damage-strike" : "animate-damage-tick"),
+                  totalReached ? "opacity-100" : "opacity-0",
+                  playerDeals
+                    ? "text-[#ffe9a8] [text-shadow:0_0_26px_rgba(244,215,125,0.9),0_5px_0_rgba(0,0,0,0.6)]"
+                    : "text-red-200 [text-shadow:0_0_26px_rgba(248,113,113,0.85),0_5px_0_rgba(0,0,0,0.6)]",
+                )}
+              >
+                {step.total}
+              </span>
+              <span
+                data-testid="stat-check-damage-total-label"
+                className={cn(
+                  "text-sm font-black uppercase tracking-[0.28em] text-white/85 transition-opacity duration-200 md:text-2xl",
+                  totalReached ? "opacity-100" : "opacity-0",
+                )}
+              >
+                Damage
+              </span>
+            </div>
           </div>
         </div>
       </div>

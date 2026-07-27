@@ -4,13 +4,22 @@ import { Check, Copy, DoorOpen, Swords, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import StatCheckPage from "../StatCheckPage";
+import { statCheckIdentities, type StatCheckIdentities } from "../damageIdentity";
 import { useStatCheckMatch } from "./useStatCheckMatch";
 import { useStatCheckRoom } from "./useStatCheckRoom";
 
 /** Started room: the existing Stat Check arena driven by the online driver. */
-function OnlineMatch({ matchId, onExit }: { matchId: string; onExit: () => void }) {
+function OnlineMatch({
+  matchId,
+  identities,
+  onExit,
+}: {
+  matchId: string;
+  identities: StatCheckIdentities;
+  onExit: () => void;
+}) {
   const online = useStatCheckMatch(matchId);
-  return <StatCheckPage online={online} onOnlineExit={onExit} />;
+  return <StatCheckPage online={online} identities={identities} onOnlineExit={onExit} />;
 }
 
 /**
@@ -33,7 +42,24 @@ export default function StatCheckRoomPage() {
   );
 
   if (state.phase === "started" && room?.matchId) {
-    return <OnlineMatch matchId={room.matchId} onExit={() => navigate("/quiz/stat-check")} />;
+    /**
+     * Damage-tally identities for the arena. The names are the seats'
+     * `display_name`, which the room contract already carries and this page
+     * already renders in the lobby — nothing new is requested from the server.
+     * The room projection carries no avatar, so both sides fall through to the
+     * shared UserAvatar's own fallback glyph rather than to an invented source.
+     */
+    const identities = statCheckIdentities({
+      player: { name: selfSeat?.displayName ?? "" },
+      bot: { name: opponentSeat?.displayName ?? "" },
+    });
+    return (
+      <OnlineMatch
+        matchId={room.matchId}
+        identities={identities}
+        onExit={() => navigate("/quiz/stat-check")}
+      />
+    );
   }
 
   const copyInvite = async () => {

@@ -71,6 +71,59 @@ function fillBoard(container: HTMLElement) {
   place(container, 2, 2);
 }
 
+/** The face each lane's plaque is currently showing, in board order. */
+function plaqueStages(container: HTMLElement) {
+  return Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
+    (marker) => (marker as HTMLElement).dataset.plaqueStage,
+  );
+}
+
+/**
+ * Each lane's authoritative decisive outcome, read back off the settled
+ * plaques (`data-bonus`), so a test never has to re-derive the engine's rules.
+ * Only meaningful once the lanes have resolved.
+ */
+function laneDecisiveFlags(container: HTMLElement) {
+  return Array.from(container.querySelectorAll("[data-bonus]")).map(
+    (node) => (node as HTMLElement).dataset.bonus === "1",
+  );
+}
+
+/**
+ * The decisive bonus each lane awarded to `side`, in board order — taken from
+ * the lane plaques plus each lane's own winner, which is what the tally must
+ * agree with.
+ */
+function laneBonusAmounts(container: HTMLElement, side: "player" | "bot") {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map((marker) => {
+    const bonus = marker.querySelector<HTMLElement>("[data-bonus]");
+    if (!bonus || bonus.dataset.bonus !== "1") return 0;
+    // The plaque's accessible label names the winner of its own lane.
+    const label = (marker.querySelector(".sr-only")?.textContent ?? "").trim();
+    const botWon = /^bot wins/i.test(label);
+    return (side === "bot") === botWon ? 1 : 0;
+  });
+}
+
+/**
+ * Advance until the centre presentation reaches `stage`, then stop. Returns the
+ * reveal node so a test can assert what was on screen at that exact stage.
+ */
+function advanceToDamageStage(stage: string, side = "bot") {
+  for (let elapsed = 0; elapsed < 45_000; elapsed += 40) {
+    act(() => vi.advanceTimersByTime(40));
+    const node = screen.queryByTestId("stat-check-damage-reveal");
+    if (
+      node &&
+      node.getAttribute("data-damage-side") === side &&
+      node.getAttribute("data-damage-stage") === stage
+    ) {
+      return node;
+    }
+  }
+  return null;
+}
+
 function laneTextIncludesFamily(container: HTMLElement, family: string) {
   return lanes(container).some((lane) => lane.textContent?.toLowerCase().includes(family.toLowerCase()));
 }
@@ -753,88 +806,6 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(results.every((text) => / vs /.test(text))).toBe(false);
   });
 
-  it("resolves lanes strictly left to right with no overlap", () => {
-    const { container } = renderPageAtAuthoredSpeed();
-    const stages = () =>
-      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
-        (marker) => (marker as HTMLElement).dataset.plaqueStage,
-      );
-
-    expect(stages()).toEqual(["category", "category", "category"]);
-    fillBoard(container);
-    fireEvent.click(screen.getByTestId("stat-check-lock"));
-
-    // Every offset is read from the centralized timeline, so retuning a scene
-    // moves this test with the implementation instead of breaking it.
-    const LANE_1 = REVEAL_TIMELINE.resolveLane1 + REVEAL_TIMELINE.itemRevealShiftMs; // this round carries an item
-    const LANE_MS = laneRevealTotalMs();
-    const OFFSETS = lanePlaqueStageOffsets();
-
-    // Step to just inside each of lane 1's scenes and assert the other two
-    // lanes have not begun.
-    let elapsed = 0;
-    const stepTo = (target: number) => {
-      act(() => vi.advanceTimersByTime(target - elapsed));
-      elapsed = target;
-    };
-    for (const stage of ["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const) {
-      stepTo(LANE_1 + OFFSETS[stage] + 50);
-      expect(stages()[0], `lane 1 at ${stage}`).toBe(stage);
-      expect(stages()[1], `lane 2 must not start at ${stage}`).toBe("category");
-      expect(stages()[2], `lane 3 must not start at ${stage}`).toBe("category");
-    }
-
-    // Lane 2 only begins once lane 1 has fully settled — and begins IMMEDIATELY
-    // afterwards: one frame past the handoff it is already on its own category
-    // face, with no configured idle interval in between.
-    stepTo(LANE_1 + LANE_MS - 50);
-    expect(stages()).toEqual(["settled", "category", "category"]);
-    stepTo(LANE_1 + LANE_MS + OFFSETS.threshold + 50);
-    expect(stages()[0]).toBe("settled");
-    expect(stages()[1]).toBe("threshold");
-    expect(stages()[2]).toBe("category");
-
-    // Lane 3 only begins once lane 2 has fully settled.
-    stepTo(LANE_1 + LANE_MS * 2 + OFFSETS.threshold + 50);
-    expect(stages()[1]).toBe("settled");
-    expect(stages()[2]).toBe("threshold");
-
-    // The round does not complete until all three lanes have settled.
-    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
-    finishReveal();
-    expect(stages()).toEqual(["settled", "settled", "settled"]);
-    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
-    expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
-  });
-
-  it("hands off between lanes with no perceptible idle interval", () => {
-    const { container } = renderPageAtAuthoredSpeed();
-    const stages = () =>
-      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
-        (marker) => (marker as HTMLElement).dataset.plaqueStage,
-      );
-    fillBoard(container);
-    fireEvent.click(screen.getByTestId("stat-check-lock"));
-
-    const LANE_1 = REVEAL_TIMELINE.resolveLane1 + REVEAL_TIMELINE.itemRevealShiftMs;
-    const LANE_MS = laneRevealTotalMs();
-    const OFFSETS = lanePlaqueStageOffsets();
-
-    // A lane's last scheduled scene is `settled`; the only time after it is the
-    // cleanup window the value-emphasis transition needs. That window IS the
-    // gap between lanes, and it must not exceed the transition it exists for.
-    const cleanupWindow = LANE_MS - OFFSETS.settled;
-    expect(cleanupWindow).toBe(LANE_PLAQUE_TIMELINE.settleMs);
-    expect(cleanupWindow - LANE_PLAQUE_TIMELINE.valueTransitionMs).toBeLessThanOrEqual(20);
-
-    // Walk the real handoff: lane 1 hits `settled`, then lane 2 leaves
-    // `category` exactly one cleanup window later — nothing idles in between.
-    act(() => vi.advanceTimersByTime(LANE_1 + OFFSETS.settled + 10));
-    expect(stages()).toEqual(["settled", "category", "category"]);
-    act(() => vi.advanceTimersByTime(cleanupWindow + OFFSETS.threshold - 10 + 10));
-    expect(stages()[1]).toBe("threshold");
-  });
-
   it("regroups the plaque as level, then arrow with the stat icon", () => {
     const { container } = renderPage();
     const marker = container.querySelector<HTMLElement>('[data-testid^="stat-check-marker-"]');
@@ -868,90 +839,348 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(statGroup!.className).toContain("items-center");
   });
 
-  it("consolidates the round's damage sources into one centre total before health moves", () => {
+  it("resolves lanes strictly left to right with no overlap", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    expect(plaqueStages(container)).toEqual(["category", "category", "category"]);
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    /**
+     * Walked in small steps rather than jumped to computed offsets: a lane's
+     * length now depends on its own authoritative outcome, so the ordering
+     * guarantee is asserted from what the board actually does. Every observed
+     * frame is recorded and the invariants are checked across all of them.
+     */
+    const frames: string[][] = [];
+    for (let elapsed = 0; elapsed < 40_000; elapsed += 100) {
+      act(() => vi.advanceTimersByTime(100));
+      frames.push(plaqueStages(container) as string[]);
+      if (frames[frames.length - 1].every((stage) => stage === "settled")) break;
+    }
+
+    // No overlap, ever: at most one lane is mid-sequence in any frame.
+    for (const frame of frames) {
+      const inProgress = frame.filter((stage) => stage !== "category" && stage !== "settled");
+      expect(inProgress.length, `two lanes ran at once: ${frame.join()}`).toBeLessThanOrEqual(1);
+    }
+
+    // Strict left -> middle -> right: a lane may only leave `category` once
+    // every lane to its left has already reached `settled`.
+    for (const frame of frames) {
+      for (let lane = 1; lane < 3; lane += 1) {
+        if (frame[lane] !== "category") {
+          for (let left = 0; left < lane; left += 1) {
+            expect(frame[left], `lane ${lane + 1} started before lane ${left + 1} settled`).toBe("settled");
+          }
+        }
+      }
+    }
+
+    // Each lane walked its whole sequence, in order, and never went backwards.
+    for (let lane = 0; lane < 3; lane += 1) {
+      const seen = frames.map((frame) => frame[lane]).filter((stage, index, all) => stage !== all[index - 1]);
+      const order = ["category", "threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"];
+      const positions = seen.map((stage) => order.indexOf(stage));
+      for (let i = 1; i < positions.length; i += 1) {
+        expect(positions[i], `lane ${lane + 1} went backwards`).toBeGreaterThan(positions[i - 1]);
+      }
+      expect(seen[0]).toBe("category");
+      expect(seen[seen.length - 1]).toBe("settled");
+    }
+
+    finishReveal();
+    expect(plaqueStages(container)).toEqual(["settled", "settled", "settled"]);
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+    expect(screen.getByTestId("stat-check-damage-player")).toBeInTheDocument();
+  });
+
+  it("hands off between lanes with no perceptible idle interval", () => {
     const { container } = renderPageAtAuthoredSpeed();
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
 
-    const t = DAMAGE_REVEAL_TIMELINE;
-    // This round carries an item, so everything after the item beat shifts.
-    const DAMAGE_START = REVEAL_TIMELINE.boardResult + REVEAL_TIMELINE.itemRevealShiftMs;
-    const popup = () => screen.queryByTestId("stat-check-damage-reveal");
-    const playerHp = () => screen.getByTestId("stat-check-player-hp").textContent;
-
+    const LANE_1 = REVEAL_TIMELINE.resolveLane1 + REVEAL_TIMELINE.itemRevealShiftMs;
+    // Lane 1's own outcome decides its length, read from the settled plaque
+    // rather than assumed.
     let elapsed = 0;
     const stepTo = (target: number) => {
       act(() => vi.advanceTimersByTime(target - elapsed));
       elapsed = target;
     };
 
-    // Nothing before the third lane has finished: the board owns the screen.
-    stepTo(DAMAGE_START - 100);
-    expect(popup()).toBeNull();
-    expect(
-      Array.from(container.querySelectorAll('[data-testid^="stat-check-marker-"]')).map(
-        (marker) => (marker as HTMLElement).dataset.plaqueStage,
-      ),
-    ).toEqual(["settled", "settled", "settled"]);
+    // Walk to lane 1's settle, whichever length it turned out to have.
+    const decisive = laneDecisiveFlags(container);
+    const OFFSETS = lanePlaqueStageOffsets(decisive[0]);
+    const LANE_MS = laneRevealTotalMs(decisive[0]);
 
-    // Establish, then add each real source into a running total: 2 -> 3 -> 4.
-    // (Round 1 of the fixture match: the opponent sweeps for 2 + 1, plus one
-    // decisive lane.) Zero-damage components are never staged.
-    const seen: Array<[string | null, string | null]> = [];
-    for (const [stage, at] of [
-      ["enter", 0],
-      ["board", t.enterMs],
-      ["sweep", t.enterMs + t.componentMs],
-      ["decisive", t.enterMs + t.componentMs * 2],
-      ["total", t.enterMs + t.componentMs * 3],
-    ] as const) {
-      stepTo(DAMAGE_START + at + 60);
-      const node = popup();
-      expect(node, `stage ${stage}`).not.toBeNull();
-      expect(node).toHaveAttribute("data-damage-stage", stage);
-      seen.push([
-        node!.getAttribute("data-damage-shown"),
-        node!.querySelector("[data-damage-component]")?.getAttribute("data-damage-component") ?? null,
-      ]);
-      // Health has NOT moved yet, at any stage before impact.
-      expect(playerHp(), `health must not move at ${stage}`).toMatch(/^20 \//);
+    // A lane's last scheduled scene is `settled`; the only time after it is the
+    // cleanup window the value-emphasis transition needs. That window IS the
+    // gap between lanes, and it must not exceed the transition it exists for.
+    const cleanupWindow = LANE_MS - OFFSETS.settled;
+    expect(cleanupWindow).toBe(LANE_PLAQUE_TIMELINE.settleMs);
+    expect(cleanupWindow - LANE_PLAQUE_TIMELINE.valueTransitionMs).toBeLessThanOrEqual(20);
+
+    // Walk the real handoff: lane 1 hits `settled`, then lane 2 leaves
+    // `category` exactly one cleanup window later — nothing idles in between.
+    stepTo(LANE_1 + OFFSETS.settled + 10);
+    expect(plaqueStages(container)).toEqual(["settled", "category", "category"]);
+    stepTo(LANE_1 + LANE_MS + lanePlaqueStageOffsets(decisive[1]).threshold + 10);
+    expect(plaqueStages(container)[1]).toBe("threshold");
+  });
+
+  it("resolves a lane that earns no bonus materially faster than a decisive one", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // Record when each lane reached `settled`, then compare the lengths the
+    // board actually spent against the authoritative outcome of each lane.
+    const settledAt: Array<number | null> = [null, null, null];
+    for (let elapsed = 100; elapsed <= 40_000; elapsed += 100) {
+      act(() => vi.advanceTimersByTime(100));
+      const stages = plaqueStages(container);
+      stages.forEach((stage, lane) => {
+        if (stage === "settled" && settledAt[lane] === null) settledAt[lane] = elapsed;
+      });
+      if (settledAt.every((at) => at !== null)) break;
     }
-    expect(seen).toEqual([
-      ["0", null],
-      ["2", "board"],
-      ["3", "sweep"],
-      ["4", "decisive"],
-      ["4", null],
+
+    const decisive = laneDecisiveFlags(container);
+    // Lengths of lanes 2 and 3 measured from the previous lane's settle.
+    const lengths = [settledAt[1]! - settledAt[0]!, settledAt[2]! - settledAt[1]!];
+    lengths.forEach((length, index) => {
+      const lane = index + 1;
+      const expected = laneRevealTotalMs(decisive[lane]);
+      // Within one 100ms sampling step of the authored length for its outcome.
+      expect(Math.abs(length - expected), `lane ${lane + 1} length ${length} vs ${expected}`).toBeLessThanOrEqual(150);
+    });
+
+    // And the two authored lengths really are materially different.
+    expect(laneRevealTotalMs(false)).toBeLessThan(laneRevealTotalMs(true));
+  });
+
+  it("tells the round as board result, then the three lane bonuses, then the total", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    const popup = () => screen.queryByTestId("stat-check-damage-reveal");
+    const playerHp = () => screen.getByTestId("stat-check-player-hp").textContent;
+
+    /**
+     * Poll the presentation rather than jumping to computed offsets: the stage
+     * layout depends on which components this round produced. Each distinct
+     * stage is recorded once, with what the plate showed at that moment.
+     */
+    type Frame = {
+      stage: string | null;
+      shown: string | null;
+      board: string | null;
+      lanesRevealed: number[];
+      sweep: boolean;
+      totalReached: string | null;
+      totalAnimated: boolean;
+      totalLabel: string | null;
+      hp: string | null;
+    };
+    const frames: Frame[] = [];
+    for (let elapsed = 0; elapsed < 45_000; elapsed += 60) {
+      act(() => vi.advanceTimersByTime(60));
+      const node = popup();
+      if (!node || node.getAttribute("data-damage-side") !== "bot") continue;
+      const stage = node.getAttribute("data-damage-stage");
+      if (frames.length > 0 && frames[frames.length - 1].stage === stage) continue;
+      frames.push({
+        stage,
+        shown: node.getAttribute("data-damage-shown"),
+        board: node.querySelector("[data-testid='stat-check-damage-board']")?.getAttribute("data-damage-board-shown") ?? null,
+        lanesRevealed: Array.from(node.querySelectorAll("[data-damage-lane-revealed='true']")).map((lane) =>
+          Number((lane as HTMLElement).dataset.damageLaneAmount),
+        ),
+        sweep: node.querySelector("[data-testid='stat-check-sweep-notice']") !== null,
+        totalReached:
+          node.querySelector("[data-testid='stat-check-damage-total']")?.getAttribute("data-damage-total-reached") ??
+          null,
+        totalAnimated: /animate-damage-(tick|strike)/.test(
+          node.querySelector("[data-testid='stat-check-damage-total']")?.className ?? "",
+        ),
+        totalLabel: node.querySelector("[data-testid='stat-check-damage-total-label']")?.textContent ?? null,
+        hp: screen.getByTestId("stat-check-player-hp").textContent,
+      });
+    }
+
+    // Round 1 of the fixture match: the opponent sweeps the board (3) and takes
+    // one lane decisively, for 4 — so the board result IS the sweep number.
+    const stages = frames.map((frame) => frame.stage);
+    expect(stages).toEqual([
+      "enter",
+      "board",
+      "lane-1",
+      "lane-2",
+      "lane-3",
+      "total",
+      "impact",
+      "health",
+      "settled",
     ]);
-    expect(screen.getByTestId("stat-check-damage-total-label")).toHaveTextContent(/damage/i);
+    expect(popup()).toBeNull(); // cleared before the round advanced
 
-    // The opponent is the one dealing it, so the player's bar is the target.
-    expect(popup()).toHaveAttribute("data-damage-side", "bot");
-    expect(popup()).toHaveAttribute("data-damage-target", "player");
+    const at = (stage: string) => frames.find((frame) => frame.stage === stage)!;
+    // The board result is established, and it is the sweep's 3 — not 2 then +1.
+    expect(at("board").shown).toBe("3");
+    expect(at("board").board).toBe("true");
+    // Lanes reveal one at a time, left to right, and ALL THREE appear.
+    expect(at("board").lanesRevealed).toHaveLength(0);
+    expect(at("lane-1").lanesRevealed).toHaveLength(1);
+    expect(at("lane-2").lanesRevealed).toHaveLength(2);
+    expect(at("lane-3").lanesRevealed).toHaveLength(3);
+    // Displayed lane bonuses match the authoritative lane plaques.
+    expect(at("lane-3").lanesRevealed).toEqual(laneBonusAmounts(container, "bot"));
+    // The subtotal runs up from the board result and lands on the total.
+    expect(Number(at("lane-3").shown)).toBe(4);
+    expect(at("total").shown).toBe("4");
+    expect(at("total").totalLabel).toMatch(/damage/i);
 
-    // Impact frame: the arena jolts, and health STILL has not changed.
-    const impactAt = t.enterMs + t.componentMs * 3 + t.totalHoldMs;
-    stepTo(DAMAGE_START + impactAt + 60);
-    expect(popup()).toHaveAttribute("data-damage-stage", "impact");
-    expect(screen.getByTestId("stat-check-arena").className).toContain("animate-arena-jolt");
-    expect(playerHp()).toMatch(/^20 \//);
+    /**
+     * The total must stay genuinely hidden until it lands. The tick/strike
+     * keyframes end on opacity:1 with `both` fill, so mounting them early would
+     * override the hidden class and park the answer on screen for the whole
+     * count — which is exactly what a capture caught.
+     */
+    for (const stage of ["enter", "board", "lane-1", "lane-2", "lane-3"]) {
+      expect(at(stage).totalReached, `total revealed early at ${stage}`).toBe("false");
+      expect(at(stage).totalAnimated, `total animated early at ${stage}`).toBe(false);
+    }
+    for (const stage of ["total", "impact", "health"]) {
+      expect(at(stage).totalReached).toBe("true");
+      expect(at(stage).totalAnimated).toBe(true);
+    }
 
-    // Health stage: the authoritative post-round value becomes visible, the
-    // struck bar is flagged, and the total matches the authoritative breakdown.
-    stepTo(DAMAGE_START + impactAt + t.impactMs + 60);
-    expect(popup()).toHaveAttribute("data-damage-stage", "health");
-    expect(playerHp()).toMatch(/^16 \//);
-    expect(screen.getByTestId("stat-check-player-hp-panel")).toHaveAttribute("data-hp-impacting", "true");
-    expect(screen.getByTestId("stat-check-bot-hp-panel")).not.toHaveAttribute("data-hp-impacting");
+    // Health moves at impact's own health stage, and never before it.
+    for (const stage of ["enter", "board", "lane-1", "lane-2", "lane-3", "total", "impact"]) {
+      expect(at(stage).hp, `health must not move at ${stage}`).toMatch(/^20 \//);
+    }
+    expect(at("health").hp).toMatch(/^16 \//);
 
-    // The round does not advance until the presentation has finished.
-    expect(screen.queryByTestId("stat-check-next-round")).toBeNull();
     finishReveal();
-    expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
-    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
     // Authoritative rail total agrees with the number the centre counted to.
     expect(screen.getByTestId("stat-check-damage-bot")).toHaveTextContent(/Total: 4/);
     expect(playerHp()).toMatch(/^16 \//);
+  });
+
+  it("heads the tally with the round winner's identity and avatar", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    const identity = advanceToDamageStage("board");
+    expect(identity).not.toBeNull();
+    const header = screen.getByTestId("stat-check-damage-identity");
+    // Bot play: the bot IS the round winner here, named, never "Bot strikes you".
+    expect(header).toHaveAttribute("data-damage-label", "WINNER");
+    expect(header).toHaveAttribute("data-damage-name", "Bot");
+    expect(header.textContent).toContain("WINNER: Bot");
+    expect(header.textContent).not.toMatch(/strikes/i);
+    // The avatar reads as part of the same header, from the shared component.
+    expect(header.querySelector("img, svg.lucide-user")).not.toBeNull();
+  });
+
+  it("uses the real usernames and avatars it is given", () => {
+    const identities = {
+      player: { name: "mogsyfan", avatarUrl: "https://cdn.example/a.png" },
+      bot: { name: "Faker2010", avatarUrl: "https://cdn.example/b.png" },
+    };
+    window.sessionStorage.setItem("stat-check-animation-speed", "1");
+    const { container } = render(<StatCheckPage identities={identities} />);
+    expect(completeItemChoiceIfPresent()).toBe(true);
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    advanceToDamageStage("board");
+    const header = screen.getByTestId("stat-check-damage-identity");
+    expect(header).toHaveAttribute("data-damage-name", "Faker2010");
+    expect(header.textContent).toContain("WINNER: Faker2010");
+    const avatar = header.querySelector("img");
+    expect(avatar).not.toBeNull();
+    expect(avatar!.getAttribute("src")).toBe("https://cdn.example/b.png");
+  });
+
+  it("floats a SWEEP notification for a 3-0 board, only while the 3 is up", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+    // Round 1 of the fixture match is an authoritative 3-0 sweep.
+    const reveal = advanceToDamageStage("board");
+    expect(reveal).toHaveAttribute("data-damage-sweep", "true");
+    const notice = screen.getByTestId("stat-check-sweep-notice");
+    expect(notice.textContent).toMatch(/sweep/i);
+    // Board result on screen at the same time is the sweep's own 3.
+    expect(reveal).toHaveAttribute("data-damage-shown", "3");
+    // It is a floating notification, not part of the plate.
+    expect(notice.closest("[data-testid='stat-check-damage-identity']")).toBeNull();
+    expect(notice.className).toContain("absolute");
+    // Motion-safe: the float and the glint are the first things reduced motion drops.
+    expect(notice.querySelector(".animate-sweep-notice")?.className).toContain("motion-reduce:animate-none");
+    expect(notice.querySelector("[data-testid='stat-check-sweep-glint']")?.className).toContain("motion-reduce:hidden");
+
+    // It leaves with the board stage and never returns for the lane bonuses.
+    advanceToDamageStage("lane-1");
+    expect(screen.queryByTestId("stat-check-sweep-notice")).toBeNull();
+    for (const stage of ["lane-2", "lane-3", "total", "impact"] as const) {
+      advanceToDamageStage(stage);
+      expect(screen.queryByTestId("stat-check-sweep-notice"), `sweep returned at ${stage}`).toBeNull();
+    }
+  });
+
+  it("ties the SWEEP notification to the authoritative sweep flag across many rounds", () => {
+    const { container } = renderPageAtAuthoredSpeed();
+
+    /**
+     * The invariant, checked on every frame of several real rounds: the
+     * notification is on screen ONLY when the authoritative step says the board
+     * was swept AND the board result is the one on screen. A 2-1 board win, a
+     * decisive bonus and a retaliation therefore can never produce it. (The
+     * 2-1 and bonus-only cases are also pinned directly, without a game, in
+     * damageReveal.test.ts.)
+     */
+    const boardResultsSeen = new Set<string>();
+    let noticeFrames = 0;
+    for (let round = 0; round < 4; round += 1) {
+      if (!screen.queryByTestId("stat-check-lock")) break;
+      fillBoard(container);
+      fireEvent.click(screen.getByTestId("stat-check-lock"));
+
+      for (let elapsed = 0; elapsed < 45_000; elapsed += 80) {
+        act(() => vi.advanceTimersByTime(80));
+        const node = screen.queryByTestId("stat-check-damage-reveal");
+        const notice = screen.queryByTestId("stat-check-sweep-notice");
+        if (!node) {
+          expect(notice, "a notification outlived its presentation").toBeNull();
+          continue;
+        }
+        const swept = node.getAttribute("data-damage-sweep") === "true";
+        const stage = node.getAttribute("data-damage-stage");
+        if (notice) {
+          noticeFrames += 1;
+          expect(swept, "notification without an authoritative sweep").toBe(true);
+          expect(stage, "notification outside the board result").toBe("board");
+          // A sweep board result is always 3 — never a bonus-driven number.
+          expect(node.getAttribute("data-damage-shown")).toBe("3");
+        }
+        if (stage === "board") boardResultsSeen.add(node.getAttribute("data-damage-shown") ?? "");
+        if (!swept) expect(notice, "notification on a non-swept board").toBeNull();
+      }
+      if (!screen.queryByTestId("stat-check-next-round")) break;
+      fireEvent.click(screen.getByTestId("stat-check-next-round"));
+      completeItemChoiceIfPresent();
+    }
+
+    // The walk really did exercise the notification at least once.
+    expect(noticeFrames).toBeGreaterThan(0);
+    // Every board result shown was a legal one: 2 or 3, never anything else.
+    expect([...boardResultsSeen].sort()).not.toContain("1");
+    for (const board of boardResultsSeen) expect(["2", "3"]).toContain(board);
   });
 
   it("shows no damage popup for a side that dealt nothing", () => {
@@ -979,6 +1208,8 @@ describe("StatCheckPage tabletop presentation", () => {
     fireEvent.click(screen.getByTestId("stat-check-lock"));
 
     expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    // No presentation means no floating notification either, swept or not.
+    expect(screen.queryByTestId("stat-check-sweep-notice")).toBeNull();
     expect(screen.getByTestId("stat-check-arena").className).not.toContain("animate-arena-jolt");
     // Same authoritative health as the full presentation lands on.
     expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("16 / 20 HP");
@@ -986,16 +1217,31 @@ describe("StatCheckPage tabletop presentation", () => {
     expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
   });
 
+  it("reduced motion lands every lane on its final plaque immediately", () => {
+    reducedMotion(true);
+    const { container } = renderPage();
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    // Both outcomes collapse to the same instant: no lane is left mid-sequence.
+    expect(plaqueStages(container)).toEqual(["settled", "settled", "settled"]);
+    // And each plaque rests on its authoritative bonus, decisive or not.
+    const bonuses = Array.from(container.querySelectorAll("[data-bonus]")).map((node) =>
+      (node as HTMLElement).dataset.bonus,
+    );
+    expect(bonuses).toHaveLength(3);
+    expect(bonuses.every((bonus) => bonus === "0" || bonus === "1")).toBe(true);
+  });
+
   it("restart mid-presentation clears the popup and the revealed health steps", () => {
     const { container } = renderPageAtAuthoredSpeed();
     fillBoard(container);
     fireEvent.click(screen.getByTestId("stat-check-lock"));
-    const DAMAGE_START = REVEAL_TIMELINE.boardResult + REVEAL_TIMELINE.itemRevealShiftMs;
-    act(() => vi.advanceTimersByTime(DAMAGE_START + DAMAGE_REVEAL_TIMELINE.enterMs + 60));
+    advanceToDamageStage("enter");
     expect(screen.getByTestId("stat-check-damage-reveal")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /restart/i }));
     expect(screen.queryByTestId("stat-check-damage-reveal")).toBeNull();
+    expect(screen.queryByTestId("stat-check-sweep-notice")).toBeNull();
     finishReveal();
     completeItemChoiceIfPresent();
     expect(screen.getByTestId("stat-check-player-hp")).toHaveTextContent("20 / 20 HP");

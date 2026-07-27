@@ -356,13 +356,23 @@ describe("StatCheckPage centre damage presentation (server-authoritative)", () =
 
   /** Walk the reveal in small steps, recording every damage state observed. */
   function observeDamage(stepMs = 120, totalMs = 45_000) {
-    const seen: Array<{ side: string; stage: string; shown: string; playerHp: string; botHp: string }> = [];
+    const seen: Array<{
+      side: string;
+      kind: string;
+      sweep: string;
+      stage: string;
+      shown: string;
+      playerHp: string;
+      botHp: string;
+    }> = [];
     for (let elapsed = 0; elapsed < totalMs; elapsed += stepMs) {
       act(() => vi.advanceTimersByTime(stepMs));
       const node = screen.queryByTestId("stat-check-damage-reveal");
       if (!node) continue;
       seen.push({
         side: node.getAttribute("data-damage-side") ?? "",
+        kind: node.getAttribute("data-damage-kind") ?? "",
+        sweep: node.getAttribute("data-damage-sweep") ?? "",
         stage: node.getAttribute("data-damage-stage") ?? "",
         shown: node.getAttribute("data-damage-shown") ?? "",
         playerHp: screen.getByTestId("stat-check-player-hp").textContent ?? "",
@@ -384,9 +394,12 @@ describe("StatCheckPage centre damage presentation (server-authoritative)", () =
     const retaliation = seen.filter((entry) => entry.side === "bot");
     expect(playerStrike.at(-1)!.shown).toBe("3");
     expect(retaliation.at(-1)!.shown).toBe("1");
-    // Retaliation is decisive-only: it never claims a board win it didn't get.
+    // Retaliation is lane-bonus-only: it never claims a board result it didn't
+    // earn, and it is headed COUNTER rather than WINNER.
     expect(retaliation.map((entry) => entry.stage)).not.toContain("board");
-    expect(retaliation.map((entry) => entry.stage)).toContain("decisive");
+    expect(retaliation.map((entry) => entry.stage)).toContain("lane-3");
+    expect(retaliation.map((entry) => entry.kind)).not.toContain("winner");
+    expect(playerStrike.map((entry) => entry.kind)).toContain("winner");
   });
 
   it("drains each bar only at its own impact, never the other side's", () => {
@@ -412,15 +425,18 @@ describe("StatCheckPage centre damage presentation (server-authoritative)", () =
     expect(screen.getByTestId("stat-check-bot-hp")).toHaveTextContent("17 / 20 HP");
   });
 
-  it("counts the board win and the decisive bonus separately, to the server's total", () => {
+  it("opens on the server's board result and runs the lanes up to its total", () => {
     const { resolution } = playRound(twoWayResolvedView());
     const seen = observeDamage().filter((entry) => entry.side === "player");
     const byStage = new Map(seen.map((entry) => [entry.stage, entry.shown]));
     expect(byStage.get("enter")).toBe("0");
+    // 2 of 3 lanes is a board win, not a sweep: the board result is 2.
     expect(byStage.get("board")).toBe("2");
-    expect(byStage.get("decisive")).toBe("3");
-    // No sweep stage: 2 of 3 lanes is not a sweep.
-    expect(byStage.has("sweep")).toBe(false);
+    expect(seen.every((entry) => entry.sweep === "false")).toBe(true);
+    // All three lanes are told, in board order, and the last lands the total.
+    expect(byStage.get("lane-1")).toBeDefined();
+    expect(byStage.get("lane-2")).toBeDefined();
+    expect(byStage.get("lane-3")).toBe(String(resolution.damage.player));
     expect(byStage.get("total")).toBe(String(resolution.damage.player));
   });
 
