@@ -77,6 +77,25 @@ const socialConfig: Record<string, { icon: React.ElementType; label: string }> =
   website: { icon: Globe, label: "Website" },
 };
 
+/**
+ * Columns a League-facing profile is allowed to read about ANOTHER user.
+ *
+ * The legacy Mogsy profile was a dating profile: `age`, `location`, `socials`,
+ * `status_message`, `custom_theme` and `profile_photos` all still exist in
+ * storage and are still editable by their owner, but they must never reach a
+ * League surface — UI, query, metadata, JSON-LD or social preview.
+ *
+ * Deliberately a subset of BOTH the current `public_profiles` view and the
+ * restricted view that replaces it, so this query is valid before and after
+ * that migration and the two can be deployed in either order. `is_bot` is not
+ * listed for exactly that reason: it is absent from the current view, so
+ * selecting it here would break the page until the migration lands. Its only
+ * consumer is the thin-profile `noindex` rule, which already evaluates the
+ * same way without it.
+ */
+const LEAGUE_PROFILE_COLUMNS =
+  "id, user_id, display_name, avatar_url, profile_frame, is_pro, is_anonymous, created_at";
+
 const frameClasses: Record<string, string> = {
   default: "",
   gold: "ring-4 ring-yellow-400/60",
@@ -258,10 +277,11 @@ export default function UserProfile() {
     setTierConfig(localTierConfig);
     setRankEnabled(localRankEnabled);
 
-    // Fetch profile
+    // Fetch profile. League surfaces read the restricted projection; the
+    // legacy Mogsy profile keeps its full read so nothing about it changes.
     const { data: profileData } = await supabase
       .from("public_profiles")
-      .select("*")
+      .select(LEAGUE_ONLY_MODE ? LEAGUE_PROFILE_COLUMNS : "*")
       .eq("id", profileId)
       .single();
 
@@ -271,15 +291,11 @@ export default function UserProfile() {
     }
     setProfile(profileData as unknown as ProfileData);
 
-    // League-only mode: skip the old swipe-league stats, favorites and
-    // comments — the public profile shows identity + League CTAs only.
+    // League-only mode: identity + League CTAs only. No swipe-league stats,
+    // favorites or comments — and no profile photos, which are legacy dating
+    // media. The rows stay in `profile_photos`; we simply never read them, so
+    // `photos` remains empty and the avatar renders instead.
     if (LEAGUE_ONLY_MODE) {
-      const { data: photoData } = await supabase
-        .from("profile_photos")
-        .select("url, sort_order")
-        .eq("profile_id", profileId!)
-        .order("sort_order");
-      if (photoData) setPhotos(photoData);
       setLoading(false);
       return;
     }
@@ -517,12 +533,16 @@ export default function UserProfile() {
       {/* Thin-profile rule: bot-generated and unnamed profiles are templated
           near-duplicates at scale — keep them out of the index. Named human
           profiles with real public stats stay indexable. */}
+      {/* League metadata carries identity only. `status_message` (a legacy
+          dating bio) and `location` are deliberately absent from the
+          description, the JSON-LD and therefore every social preview — a
+          self-reported location must never be published as structured data. */}
       <SEOHead
         noindex={!!profile.is_bot || !profile.display_name}
         title={`${profile.display_name || "User"} — Mogzy`}
         description={
           LEAGUE_ONLY_MODE
-            ? `View ${profile.display_name}'s Mogzy League profile. League quiz, Combat Lab and game knowledge. ${profile.status_message || ""}`
+            ? `View ${profile.display_name}'s Mogzy League profile. League quiz, Combat Lab and game knowledge.`
             : `View ${profile.display_name}'s profile on Mogzy. ${profile.status_message || ""}`
         }
         image={profile.avatar_url || undefined}
@@ -533,8 +553,8 @@ export default function UserProfile() {
             "@type": "Person",
             name: profile.display_name || "User",
             image: profile.avatar_url || undefined,
-            description: profile.status_message || undefined,
-            address: profile.location || undefined,
+            description: LEAGUE_ONLY_MODE ? undefined : profile.status_message || undefined,
+            address: LEAGUE_ONLY_MODE ? undefined : profile.location || undefined,
           },
         }}
       />
@@ -559,7 +579,7 @@ export default function UserProfile() {
           >
             {/* Avatar / Photo circles */}
             <div className="relative mb-4">
-              {photos.length > 0 ? (
+              {!LEAGUE_ONLY_MODE && photos.length > 0 ? (
                 <ProfilePhotoCircles photos={photos} />
               ) : (
                 <div
@@ -596,14 +616,15 @@ export default function UserProfile() {
               </h1>
             </div>
 
+            {/* Age and location are legacy dating fields: never on a League profile. */}
             <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
-              {profile.age && (
+              {!LEAGUE_ONLY_MODE && profile.age && (
                 <span className={cn("text-sm", theme.styles.mutedColor || "text-muted-foreground")}>{profile.age} years old</span>
               )}
-              {profile.age && profile.location && (
+              {!LEAGUE_ONLY_MODE && profile.age && profile.location && (
                 <span className={cn("opacity-40", theme.styles.mutedColor || "text-muted-foreground")}>·</span>
               )}
-              {profile.location && (
+              {!LEAGUE_ONLY_MODE && profile.location && (
                 <span className={cn("text-sm flex items-center gap-1", theme.styles.mutedColor || "text-muted-foreground")}>
                   <MapPin className="h-3 w-3" />
                   {profile.location}
@@ -653,8 +674,8 @@ export default function UserProfile() {
               )}
             </div>
 
-            {/* Status */}
-            {profile.status_message && (
+            {/* Status — legacy dating bio, hidden from League profiles. */}
+            {!LEAGUE_ONLY_MODE && profile.status_message && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -810,8 +831,8 @@ export default function UserProfile() {
           </motion.div>
         )}
 
-        {/* Socials */}
-        {activeSocials.length > 0 && (
+        {/* Socials — legacy dating links, hidden from League profiles. */}
+        {!LEAGUE_ONLY_MODE && activeSocials.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
