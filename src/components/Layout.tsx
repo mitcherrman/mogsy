@@ -63,6 +63,11 @@ export default function Layout() {
   // and gutters. Currently only the Stat Check tabletop (dev + live routes).
   const isFullBleed = pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
 
+  // The friends drawer is a floating overlay. On a full-bleed gameplay surface
+  // it would sit on top of the Stat Check tabletop and its trigger would
+  // compete with the board for clicks, so it is suppressed there.
+  const showFriendsDrawer = !isFullBleed;
+
   // After first paint, warm the chunks the user is most likely to visit next.
   useEffect(() => {
     if (loading || settingsLoading) return;
@@ -144,7 +149,7 @@ export default function Layout() {
           League Hub
         </Link>
       )}
-      <FloatingFriendsButton />
+      {showFriendsDrawer && <FloatingFriendsButton />}
       {!isLolSection && <FloatingThemeSwitcher />}
       <FloatingScrollButton />
       <TutorialTipPopup />
