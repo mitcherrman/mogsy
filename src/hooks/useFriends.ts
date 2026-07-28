@@ -26,6 +26,7 @@ export function useFriends() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [friends, setFriends] = useState<FriendRow[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRow[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Get my profile id
@@ -60,6 +61,7 @@ export function useFriends() {
     if (!rows) {
       setFriends([]);
       setPendingRequests([]);
+      setSentRequests([]);
       setLoading(false);
       return;
     }
@@ -107,6 +109,12 @@ export function useFriends() {
         (r) => r.status === "pending" && r.addressee_id === myProfileId
       )
     );
+    // Outgoing: requests this user sent that the other side has not answered.
+    setSentRequests(
+      enriched.filter(
+        (r) => r.status === "pending" && r.requester_id === myProfileId
+      )
+    );
     setLoading(false);
   }, [myProfileId]);
 
@@ -141,14 +149,23 @@ export function useFriends() {
     await refresh();
   };
 
+  /** Withdraw a request this user sent. Same row delete as decline/remove,
+   *  named separately so the drawer's intent is readable at the call site. */
+  const cancelRequest = async (friendshipId: string) => {
+    await supabase.from("friendships").delete().eq("id", friendshipId);
+    await refresh();
+  };
+
   return {
     myProfileId,
     friends,
     pendingRequests,
+    sentRequests,
     loading,
     sendRequest,
     acceptRequest,
     declineRequest,
+    cancelRequest,
     removeFriend,
     refresh,
   };

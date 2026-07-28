@@ -138,7 +138,9 @@ export default function Leaderboard() {
 
     const { data: profiles } = await supabase
       .from("public_profiles")
-      .select("id, display_name, avatar_url, location")
+      // `location` is a legacy dating field and is no longer projected by
+      // public_profiles; selecting it would fail the whole query.
+      .select("id, display_name, avatar_url")
       .neq("display_name", "");
 
     if (!profiles || profiles.length === 0) return;
@@ -252,7 +254,8 @@ export default function Leaderboard() {
 
       const { data: profiles } = await supabase
         .from("public_profiles")
-        .select("id, display_name, avatar_url, location")
+        // See above: `location` is no longer projected by public_profiles.
+        .select("id, display_name, avatar_url")
         .in("id", profileIds);
 
       if (profiles) {

@@ -45,8 +45,12 @@ const AdminGaming = R.AdminGaming.Component;
 const SecretRoom = R.SecretRoom.Component;
 const Moderator = R.Moderator.Component;
 const CustomLink = R.CustomLink.Component;
-const Multiplayer = R.Multiplayer.Component;
-const MultiplayerGame = R.MultiplayerGame.Component;
+// Multiplayer / MultiplayerGame are intentionally NOT bound here. The legacy
+// team lobby is retired: its routes redirect now, so the components — and the
+// stub "Invite Friend" button inside MultiplayerLobby, which only ever raised
+// a toast and created no invite — stay out of the bundle. The page files and
+// the multiplayer_* tables are preserved: this disconnects them, it does not
+// delete them.
 const Feedback = R.Feedback.Component;
 const BlogIndex = R.BlogIndex.Component;
 const BlogPost = R.BlogPost.Component;
@@ -262,15 +266,22 @@ const App = () => (
                   <Route path="/shop" element={leagueGate(<ProtectedRoute><Shop /></ProtectedRoute>)} />
                   <Route path="/swipe-leagues" element={leagueGate(<ProtectedRoute><SwipeLeagues /></ProtectedRoute>)} />
                   <Route path="/elo-check" element={leagueGate(<ProtectedRoute><EloCheck /></ProtectedRoute>)} />
-                  <Route path="/user/:profileId" element={<UserProfile />} />
+                  {/* Authenticated-only: a signed-out visitor cannot read any
+                      profile row under current RLS, so an unprotected route
+                      could only ever render "Profile not found". */}
+                  <Route path="/user/:profileId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
                   <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
                   <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense></AdminRoute>} />
                   <Route path="/admin/data" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminData /></Suspense></AdminRoute>} />
                   <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense></AdminRoute>} />
                   <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense></AdminRoute>} />
                   <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
-                  <Route path="/multiplayer" element={leagueGate(<ProtectedRoute><Suspense fallback={<RouteFallback />}><Multiplayer /></Suspense></ProtectedRoute>)} />
-                  <Route path="/multiplayer/game/:gameId" element={leagueGate(<ProtectedRoute><Suspense fallback={<RouteFallback />}><MultiplayerGame /></Suspense></ProtectedRoute>)} />
+                  {/* Retired legacy team lobby. Previously leagueGate'd (which
+                      already redirected in League-only mode); now an explicit
+                      redirect so the intent is permanent rather than a side
+                      effect of the flag. */}
+                  <Route path="/multiplayer" element={<Navigate to={LEAGUE_HOME_ROUTE} replace />} />
+                  <Route path="/multiplayer/game/:gameId" element={<Navigate to={LEAGUE_HOME_ROUTE} replace />} />
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
