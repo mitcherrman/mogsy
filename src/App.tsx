@@ -109,6 +109,11 @@ const RankedDuelPrototype = lazy(() => import("./pages/dev/ranked-duel-prototype
 const StatCheckPage = lazy(() => import("./pages/dev/stat-check/StatCheckPage"));
 const StatCheckRoomPage = lazy(() => import("./pages/dev/stat-check/online/StatCheckRoomPage"));
 
+// Public Stat Check entrance: mode selection plus the production-safe bot shell
+// (both reuse the components above; neither forks the game or the room flow).
+const StatCheckModeSelectPage = lazy(() => import("./pages/stat-check/StatCheckModeSelectPage"));
+const StatCheckBotPage = lazy(() => import("./pages/stat-check/StatCheckBotPage"));
+
 // Dev-only prototype — Daily Score Attack against the feature-flagged
 // backend; not linked from any navigation.
 const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/DailyScoreAttackPage"));
@@ -337,7 +342,9 @@ const App = () => (
                   <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><Contact /></Suspense>} />
                   <Route path="/dev/ranked-duel" element={<Suspense fallback={<RouteFallback />}><RankedDuelPrototype /></Suspense>} />
                   <Route path="/dev/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckPage /></Suspense>} />
-                  <Route path="/quiz/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
+                  <Route path="/quiz/stat-check" element={<Suspense fallback={<RouteFallback />}><StatCheckModeSelectPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/bot" element={<Suspense fallback={<RouteFallback />}><StatCheckBotPage /></Suspense>} />
+                  <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />

@@ -117,6 +117,30 @@ describe("Quiz Hub hierarchy", () => {
     expect(container.querySelector('[data-testid="current-progress-card"]')).toBeNull();
   });
 
+  it("offers a Stat Check entry that links to the mode-selection screen", async () => {
+    const { container } = await renderHub();
+    const link = screen.getByTestId("hub-stat-check-link");
+    expect(link.getAttribute("href")).toBe("/quiz/stat-check");
+    expect(link).toHaveTextContent(/Stat Check/i);
+    // Sits in the hub body above the practice grid, not tucked into a footer.
+    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
+    expect(
+      container
+        .querySelector('[data-testid="hub-stat-check-section"]')!
+        .compareDocumentPosition(practice) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("keeps the existing quiz start and mode navigation intact alongside Stat Check", async () => {
+    const { container } = await renderHub();
+    expect(container.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="hub-daily-history-row"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="hub-practice-section"]')).not.toBeNull();
+    expect(screen.getByTestId("hub-mastery-link").getAttribute("href")).toBe("/quiz/mastery");
+    // Practice categories still start a quiz set.
+    expect(screen.getByText("Item Build Paths")).toBeTruthy();
+  });
+
   it("the Ranked hero absorbs the compact progress stats + profile link", async () => {
     const { container } = await renderHub();
     const hero = container.querySelector('[data-testid="ranked-hero"]')!;

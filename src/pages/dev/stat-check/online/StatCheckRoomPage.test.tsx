@@ -53,7 +53,7 @@ function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/quiz/stat-check" element={<StatCheckRoomPage />} />
+        <Route path="/quiz/stat-check/private" element={<StatCheckRoomPage />} />
         <Route path="/quiz/stat-check/room/:inviteCode" element={<StatCheckRoomPage />} />
       </Routes>
     </MemoryRouter>,
@@ -82,7 +82,7 @@ describe("StatCheckRoomPage", () => {
     api.createRoom.mockResolvedValue({ roomId: "scr_1", inviteCode: "ABCD2345", joinPath: "/quiz/stat-check/room/ABCD2345" });
     api.getRoom.mockResolvedValue(roomView());
 
-    renderAt("/quiz/stat-check");
+    renderAt("/quiz/stat-check/private");
     await flush();
     fireEvent.click(screen.getByTestId("sc-room-create"));
     await flush();

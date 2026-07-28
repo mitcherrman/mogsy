@@ -19,7 +19,7 @@ function OnlineMatch({
   onExit: () => void;
 }) {
   const online = useStatCheckMatch(matchId);
-  return <StatCheckPage online={online} identities={identities} onOnlineExit={onExit} />;
+  return <StatCheckPage online={online} identities={identities} onOnlineExit={onExit} surface="public" />;
 }
 
 /**
