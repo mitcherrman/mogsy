@@ -2226,3 +2226,147 @@ describe("StatCheckPage hand cards answer the board", () => {
     });
   });
 });
+
+/**
+ * The round-transition discard frame. Outgoing clones used to carry no
+ * category, so they fell back to the generic HP/AD/AR/RNG chip set and flashed
+ * stats unrelated to the round being cleared.
+ */
+describe("StatCheckPage discard transition presentation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.sessionStorage.clear();
+    reducedMotion(false);
+  });
+
+  afterEach(() => {
+    act(() => vi.runOnlyPendingTimers());
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  /** Every value visible on the resolved board, both sides, in lane order. */
+  function resolvedBoardValues(container: HTMLElement) {
+    return lanes(container).flatMap((lane) =>
+      Array.from(lane.querySelectorAll<HTMLElement>('[data-testid="stat-check-value-badge"]')).map((badge) =>
+        (badge.textContent ?? "").trim(),
+      ),
+    );
+  }
+
+  /** Travel clones render through a portal on document.body, not in container. */
+  function travelClones() {
+    return Array.from(document.body.querySelectorAll<HTMLElement>('[data-testid^="stat-check-travel-card-"]')).map((clone) => ({
+      champion: clone.querySelector("[data-card-champion]")?.getAttribute("data-card-champion") ?? null,
+      badges: clone.querySelectorAll('[data-testid="stat-check-value"]').length,
+      rows: clone.querySelectorAll("[data-card-category]").length,
+      value: (clone.querySelector('[data-testid="stat-check-value-badge"]')?.textContent ?? "").trim(),
+      text: (clone.textContent ?? "").trim(),
+    }));
+  }
+
+  function armItem(itemId: string) {
+    fireEvent.click(screen.getByTestId(`stat-check-inventory-${itemId}`));
+  }
+
+  /** Drive one full round to the point where Next Round is offered. */
+  function playRound(container: HTMLElement) {
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    finishReveal();
+    expect(screen.getByTestId("stat-check-next-round")).toBeInTheDocument();
+  }
+
+  it("keeps each outgoing card on its own lane value instead of the generic stat chips", () => {
+    const { container } = renderPage();
+    playRound(container);
+    const boardValues = resolvedBoardValues(container);
+    expect(boardValues).toHaveLength(6);
+
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    // Sample the discard frame while the clones are still in flight.
+    act(() => vi.advanceTimersByTime(120));
+    const clones = travelClones();
+    expect(clones).toHaveLength(6);
+
+    clones.forEach((clone) => {
+      // One contested value, no hand rows, and no generic chip anywhere.
+      expect(clone.badges).toBe(1);
+      expect(clone.rows).toBe(0);
+      expect(clone.text).not.toMatch(/HP|AD|AR|RNG/);
+      // The number it leaves with is the number it just contested.
+      expect(boardValues).toContain(clone.value);
+    });
+  });
+
+  it("shows no next-round category on an outgoing card", () => {
+    const { container } = renderPage();
+    playRound(container);
+    const previousBoard = Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map((marker) =>
+      (marker.getAttribute("data-testid") ?? "").replace("stat-check-marker-", ""),
+    );
+
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    act(() => vi.advanceTimersByTime(120));
+
+    // Clones carry only the retired lanes' own categories.
+    const cloneNodes = Array.from(document.body.querySelectorAll<HTMLElement>('[data-testid^="stat-check-travel-card-"]'));
+    expect(cloneNodes).toHaveLength(6);
+    expect(cloneNodes.flatMap((clone) => Array.from(clone.querySelectorAll("[data-card-category]")))).toHaveLength(0);
+
+    // Once the transition settles the board has moved on, and consecutive
+    // boards share no category id — so nothing in flight could have shown it.
+    act(() => vi.advanceTimersByTime(4_000));
+    completeItemChoiceIfPresent();
+    act(() => vi.advanceTimersByTime(1_000));
+    const nextBoard = Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map((marker) =>
+      (marker.getAttribute("data-testid") ?? "").replace("stat-check-marker-", ""),
+    );
+    expect(nextBoard).toHaveLength(3);
+    expect(nextBoard.filter((id) => previousBoard.includes(id))).toHaveLength(0);
+  });
+
+  it("leaves the hand on the new categories once the transition finishes", () => {
+    const { container } = renderPage();
+    playRound(container);
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    act(() => vi.advanceTimersByTime(4_000));
+    completeItemChoiceIfPresent();
+    act(() => vi.advanceTimersByTime(1_000));
+
+    // No clone survives the transition, and the hand carries exactly the new board.
+    expect(document.body.querySelectorAll('[data-testid^="stat-check-travel-card-"]')).toHaveLength(0);
+    const board = Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map((marker) =>
+      (marker.getAttribute("data-testid") ?? "").replace("stat-check-marker-", ""),
+    );
+    const rows = Array.from(
+      screen.getByTestId("stat-check-hand-0").querySelectorAll<HTMLElement>("[data-card-category]"),
+    ).map((row) => row.getAttribute("data-card-category"));
+    expect(rows).toEqual(board);
+  });
+
+  it("keeps the outgoing card's item-adjusted value, not its natural one", () => {
+    const { container } = renderPage(); // opening choice takes ruby-crystal (+150 health)
+    fillBoard(container);
+    const healthLane = Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).findIndex((marker) =>
+      (marker.getAttribute("data-testid") ?? "").includes("hp"),
+    );
+    if (healthLane < 0) return; // this seed's board has no health lane
+    armItem("ruby-crystal");
+    fireEvent.click(lanes(container)[healthLane]);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    finishReveal();
+
+    const boardValues = resolvedBoardValues(container);
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    act(() => vi.advanceTimersByTime(120));
+
+    // Every clone value is a value the resolved board actually showed, so the
+    // equipped lane leaves with its bonus applied rather than a natural value.
+    const clones = travelClones();
+    expect(clones).toHaveLength(6);
+    clones.forEach((clone) => {
+      expect(boardValues).toContain(clone.value);
+    });
+  });
+});

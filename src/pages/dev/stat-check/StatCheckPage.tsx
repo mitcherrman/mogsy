@@ -128,6 +128,12 @@ type TravelingCardState = {
   /** Category + label of the destination slot, so the clone's final frame is
       pixel-identical to the real board card it hands off to. */
   category?: StatCategory;
+  /**
+   * Already-resolved contested value for `category`. Discard clones carry it so
+   * an outgoing card keeps the exact item-adjusted number it just contested
+   * rather than re-deriving a natural value.
+   */
+  value?: number;
   label?: string;
   from: DOMRectSnapshot;
   to: DOMRectSnapshot;
@@ -804,6 +810,7 @@ export default function StatCheckPage({
     card,
     imageUrl,
     category,
+    value,
     label,
     fromElement,
     toElement,
@@ -820,6 +827,7 @@ export default function StatCheckPage({
     card: StatCheckCard;
     imageUrl?: string | null;
     category?: StatCategory;
+    value?: number;
     label?: string;
     fromElement?: Element | null;
     toElement?: Element | null;
@@ -836,7 +844,7 @@ export default function StatCheckPage({
     const from = fromRect ?? snapshotElement(fromElement) ?? fallbackRect();
     const to = toRect ?? snapshotElement(toElement) ?? from;
     const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    setTravelingCards((items) => [...items, { id, card, imageUrl, category, label, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
+    setTravelingCards((items) => [...items, { id, card, imageUrl, category, value, label, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
     if ((kind === "place" || kind === "lane-move") && phaseDurations?.length === 8) {
       // Schedule the hero-play phase machine: each dispatch fires at the end of
       // the previous phase; the lane charges immediately, flashes at impact, and
@@ -882,10 +890,16 @@ export default function StatCheckPage({
         width: 44,
         height: 62,
       };
+    // Outgoing cards keep the presentation of the round they belonged to: the
+    // lane they contested and the final value they contested it with. Without
+    // this the clone had no category and fell back to the generic stat chips,
+    // flashing stats that had nothing to do with the round being cleared.
     for (const result of activeResolution.results) {
       queueCardTravel({
         card: result.playerCard,
         imageUrl: getImage(assets, result.playerCard),
+        category: result.category,
+        value: result.playerValue,
         fromElement: slotElement(lanePlayerRefs.current[result.category.id]),
         toRect: discardTarget("player"),
         fromRotation: 0,
@@ -896,6 +910,8 @@ export default function StatCheckPage({
       queueCardTravel({
         card: result.botCard,
         imageUrl: getImage(assets, result.botCard),
+        category: result.category,
+        value: result.botValue,
         fromElement: slotElement(laneBotRefs.current[result.category.id]),
         toRect: discardTarget("bot"),
         fromRotation: 0,
@@ -2869,6 +2885,7 @@ const TravelingCard = memo(function TravelingCard({
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
           category={item.category}
+          value={item.value}
           label={item.label}
           mode="board"
           state="idle"
