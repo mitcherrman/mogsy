@@ -186,9 +186,17 @@ export default function StatCheckPage({
   online = null,
   onOnlineExit,
   identities = DEFAULT_STAT_CHECK_IDENTITIES,
+  surface = "dev",
 }: {
   online?: OnlineMatchController | null;
   onOnlineExit?: () => void;
+  /**
+   * Which shell the identical game is mounted in. The engine, choreography and
+   * every control are the same either way — `"public"` only suppresses the
+   * development-facing chrome in the header (prototype eyebrow, deck-source and
+   * stat-loading badges) so the shipped bot route does not read as a dev page.
+   */
+  surface?: "dev" | "public";
   /**
    * Who the two sides are, for the damage tally's header. Defaults to the bot
    * game's You/Bot pair; the online room supplies the seats' real display names
@@ -955,17 +963,19 @@ export default function StatCheckPage({
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <div>
             <div className="hidden items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d] md:flex">
-              <Swords className="h-4 w-4" /> Dev prototype
+              <Swords className="h-4 w-4" /> {surface === "public" ? (online ? "Private match" : "Practice match") : "Dev prototype"}
             </div>
             <h1 className="text-lg font-black leading-tight md:text-2xl min-[1210px]:text-3xl">Stat Check</h1>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-300 md:gap-2">
-            <Badge variant="outline" className="hidden border-cyan-300/30 bg-cyan-300/10 text-cyan-100 md:inline-flex">
-              {online ? "Online match" : dataSource}
-            </Badge>
+            {surface === "dev" && (
+              <Badge variant="outline" className="hidden border-cyan-300/30 bg-cyan-300/10 text-cyan-100 md:inline-flex">
+                {online ? "Online match" : dataSource}
+              </Badge>
+            )}
             <AnimationSpeedControl speed={animationSpeed} onSpeedChange={setAnimationSpeed} />
-            {!online && isLoading && <Badge variant="outline" className="hidden md:inline-flex">Loading stats</Badge>}
-            {!online && isError && <Badge variant="outline" className="hidden md:inline-flex">Fallback active</Badge>}
+            {surface === "dev" && !online && isLoading && <Badge variant="outline" className="hidden md:inline-flex">Loading stats</Badge>}
+            {surface === "dev" && !online && isError && <Badge variant="outline" className="hidden md:inline-flex">Fallback active</Badge>}
             {!online && (
               <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
                 <RotateCcw className="h-4 w-4 md:mr-1.5" />
@@ -996,6 +1006,7 @@ export default function StatCheckPage({
               impactSide={damageImpactSide}
               isOnline={Boolean(online)}
               opponentLabel={opponentLabel}
+              surface={surface}
             />
           ) : (
             <CompactMatchupBar
@@ -3535,6 +3546,7 @@ function MatchupRail({
   impactSide = null,
   isOnline = false,
   opponentLabel = "Bot",
+  surface = "dev",
 }: {
   match: MatchState;
   displayHp: { player: number; bot: number };
@@ -3544,11 +3556,12 @@ function MatchupRail({
   impactSide?: Side | null;
   isOnline?: boolean;
   opponentLabel?: string;
+  surface?: "dev" | "public";
 }) {
   const lastRound = match.roundHistory[match.roundHistory.length - 1] ?? null;
   return (
     <aside className="order-3 flex min-h-0 flex-col gap-2 min-[1210px]:order-none min-[1210px]:h-full min-[1210px]:overflow-y-auto">
-      <ProfilePanel side="bot" isOnline={isOnline} />
+      <ProfilePanel side="bot" isOnline={isOnline} surface={surface} />
       <HpBar
         side="bot"
         hp={displayHp.bot}
@@ -3570,16 +3583,38 @@ function MatchupRail({
         flashKey={flashKey}
         impacting={impactSide === "player"}
       />
-      <ProfilePanel side="player" isOnline={isOnline} />
+      <ProfilePanel side="player" isOnline={isOnline} surface={surface} />
       <LastRoundDamage resolution={lastRound} opponentLabel={opponentLabel} />
       <MatchHistoryPanel history={match.roundHistory} opponentLabel={opponentLabel} />
     </aside>
   );
 }
 
-function ProfilePanel({ side, isOnline = false }: { side: "player" | "bot"; isOnline?: boolean }) {
-  // Cosmetic matchup dressing for the dev prototype (mock rank/record flavor);
-  // online private matches show neutral seat identities instead.
+/**
+ * Invented matchup-card flavour. Nothing here is fetched, stored, or derived
+ * from a profile, a match record, or any backend contract — these are fixed
+ * decorative strings, and the engine never reads them.
+ *
+ * The public bot route deliberately gives the bot an absurd, obviously-fake
+ * boast (`Metal IV`, a rank that does not exist) so it cannot be mistaken for
+ * a real record; the dev prototype keeps its original placeholder line.
+ */
+const MATCHUP_FLAVOR: Record<"dev" | "public", { bot: string; player: string }> = {
+  dev: { bot: "Platinum IV - 63% WR - 412 games", player: "Diamond II - 57% WR - 892 games" },
+  public: { bot: "Metal IV - 99% WR - 999 games", player: "Diamond II - 57% WR - 892 games" },
+};
+
+export function ProfilePanel({
+  side,
+  isOnline = false,
+  surface = "dev",
+}: {
+  side: "player" | "bot";
+  isOnline?: boolean;
+  surface?: "dev" | "public";
+}) {
+  // Cosmetic matchup dressing for the local bot game (invented rank/record
+  // flavor); online private matches show neutral seat identities instead.
   const bot = side === "bot";
   return (
     <div className="flex items-center gap-3 rounded-md border border-cyan-300/12 bg-black/28 p-2.5 shadow-xl">
@@ -3599,7 +3634,7 @@ function ProfilePanel({ side, isOnline = false }: { side: "player" | "bot"; isOn
           {isOnline ? (bot ? "Opponent" : "You") : bot ? "Deterministic Bot" : "mogsy"}
         </div>
         <div className="truncate text-[11px] text-slate-400">
-          {isOnline ? "Private match" : bot ? "Platinum IV - 63% WR - 412 games" : "Diamond II - 57% WR - 892 games"}
+          {isOnline ? "Private match" : MATCHUP_FLAVOR[surface][bot ? "bot" : "player"]}
         </div>
       </div>
     </div>

@@ -109,6 +109,15 @@ describe("LolHub — navigation structure", () => {
     }
   });
 
+  it("sends Stat Check to the mode-selection screen, never straight into a mode", () => {
+    renderHub();
+    const links = screen
+      .getAllByRole("link", { name: /Stat Check/ })
+      .map((l) => l.getAttribute("href"));
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    for (const href of links) expect(href).toBe("/quiz/stat-check");
+  });
+
   it("renders all four League Swipe game cards with their routes", () => {
     renderHub();
     for (const g of SWIPE_ROUTES) {

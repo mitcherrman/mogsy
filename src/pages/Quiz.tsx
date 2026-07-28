@@ -853,6 +853,30 @@ export default function Quiz() {
               </Link>
             </div>
 
+            {/* 2c. Stat Check — the card game entrance. A pure link to the
+                mode-selection screen, which owns the bot/private choice; the
+                quiz's own start flow is untouched. */}
+            <div className="mb-3" data-testid="hub-stat-check-section">
+              <Link
+                to="/quiz/stat-check"
+                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="hub-stat-check-link"
+              >
+                <Card className="transition-colors hover:border-primary/50">
+                  <CardHeader className="pb-1">
+                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
+                      <Layers className="h-4 w-4" aria-hidden="true" />
+                      Stat Check
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Build a hand and compare champion stats across three lanes.
+                      Play the bot, or invite a friend to a private match.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
+
             {/* 3. Practice categories — train topics before the next match. */}
             <div className="mb-3" data-testid="hub-practice-section">
               <div className="mb-2 mt-1 flex items-start justify-between gap-3">
