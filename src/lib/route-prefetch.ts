@@ -63,8 +63,9 @@ export const Routes = {
   SecretRoom: lazyWithRetry(() => import("@/pages/SecretRoom")),
   Moderator: lazyWithRetry(() => import("@/pages/Moderator")),
   CustomLink: lazyWithRetry(() => import("@/pages/CustomLink")),
-  Multiplayer: lazyWithRetry(() => import("@/pages/Multiplayer")),
-  MultiplayerGame: lazyWithRetry(() => import("@/pages/MultiplayerGame")),
+  // Multiplayer / MultiplayerGame are deliberately absent: the legacy team
+  // lobby is retired and its routes redirect. Declaring them here would keep
+  // emitting their chunks even though nothing can navigate to them.
   Feedback: lazyWithRetry(() => import("@/pages/Feedback")),
   BlogIndex: lazyWithRetry(() => import("@/pages/blog/BlogIndex")),
   BlogPost: lazyWithRetry(() => import("@/pages/blog/BlogPost")),
@@ -145,7 +146,6 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p.startsWith("/blog/"), keys: ["BlogPost"] },
   { test: (p) => p === "/feedback", keys: ["Feedback"] },
   { test: (p) => p === "/referral", keys: ["Referral"] },
-  { test: (p) => p === "/multiplayer", keys: ["Multiplayer"] },
 ];
 
 const warmed = new Set<string>();

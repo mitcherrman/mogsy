@@ -34,8 +34,10 @@ WITH (security_invoker = true) AS
     is_pro,
     is_bot,         -- drives the thin-profile noindex rule
     is_anonymous,
-    created_at,     -- surfaced as the Mogzy join date
-    updated_at
+    created_at      -- surfaced as the Mogzy join date
+    -- `updated_at` is deliberately omitted: it was not part of the approved
+    -- League contract, nothing reads it from this view, and it would disclose
+    -- when a profile was last edited to every future cross-user reader.
   FROM public.profiles;
 
 GRANT SELECT ON public.public_profiles TO anon, authenticated;
