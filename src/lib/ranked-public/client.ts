@@ -235,10 +235,28 @@ export const getResolvedRound = (matchId: string, round: number, signal?: AbortS
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/rounds/${round}/resolved`,
     readResolvedEnvelope, { signal });
 
+/**
+ * Lock the answer. R3: the body carries the answer and nothing else — the
+ * ability is drafted separately and never travels with the answer, so one click
+ * on an option is the entire submission.
+ */
 export const submitRound = (matchId: string, roundNumber: number, answerIndex: number,
-                            abilityId: string | null, signal?: AbortSignal) =>
+                            signal?: AbortSignal) =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/rounds/${roundNumber}/submission`,
-    raw, { method: "POST", body: { round_number: roundNumber, answer: answerIndex, ability_id: abilityId }, signal });
+    raw, { method: "POST", body: { round_number: roundNumber, answer: answerIndex }, signal });
+
+/**
+ * Arm, change, or clear the quiz round's ability. `null` is the explicit No
+ * Ability choice — and the default, so it never has to be sent at all.
+ *
+ * Non-blocking: callable before or after the answer, as often as the player
+ * likes, for as long as the round stays open. There is no confirm step; the
+ * round's close is what freezes the choice.
+ */
+export const setRoundAbility = (matchId: string, roundNumber: number,
+                                abilityId: string | null, signal?: AbortSignal) =>
+  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/rounds/${roundNumber}/ability`,
+    raw, { method: "POST", body: { ability_id: abilityId }, signal });
 
 // ------------------------------------------ multi-challenge segments
 

@@ -49,24 +49,30 @@ export interface MatchController {
   skewMs: number;
   viewerUserId: string;
   opponentUserId: string | null;
+  /** The option the viewer has answered with (or has in flight). */
   selectedOptionId: string | null;
+  /** The server's current ability draft, echoed locally between polls. */
   selectedAbilityId: string | null;
   submitting: boolean;
+  /** True only while an ability draft write is in flight. */
+  abilityBusy: boolean;
   actionError: string | null;
   error: string | null;
-  selectOption: (id: string) => void;
+  /**
+   * R3: one click. Submits the answer immediately and irrevocably; there is no
+   * separate confirm step and no local "locked" state before the server says so.
+   */
+  answer: (optionId: string, answerIndex: number) => void;
+  /** Arm/change/clear the round's ability. Never blocks or gates the answer. */
   selectAbility: (id: string | null) => void;
-  review: () => void;
-  edit: () => void;
-  confirm: (answerIndex: number) => void;
   chooseLevelTwo: (abilityId: string) => void;
   /** Authoritative state of an active multi-challenge segment, or null. */
   segmentState: SegmentStateView | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
   lastSegmentSettlement: SegmentSettlementView | null;
-  draftSegmentAbility: (abilityId: string | null) => void;
-  confirmSegmentAbility: () => void;
   submitSegmentChallenge: (challengeIndex: number, itemId: string) => void;
+  /** True while the round is open for an ability change. */
+  roundLive: boolean;
 }
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string): MatchController {
@@ -79,8 +85,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [result, setResult] = useState<MatchResultView | null>(null);
   const [skewMs, setSkewMs] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  // Local ECHO of the server's ability draft, so a click feels immediate. The
+  // authoritative value always wins on the next snapshot (see the sync effect
+  // below) and a failed write reverts to it, so this can never drift into a
+  // second authority.
   const [selectedAbilityId, setSelectedAbilityId] = useState<string | null>(null);
-  const [reviewing, setReviewing] = useState(false);
+  const [abilityBusy, setAbilityBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +104,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const failuresRef = useRef(0);
   const inFlightRef = useRef(false);
   const rerunRef = useRef(false);
+  const serverAbilityRef = useRef<string | null>(null);
+  // Synchronous double-activation guards. State alone is not enough: two clicks
+  // dispatched in the same React batch both read the pre-update `submitting`,
+  // so a stale-closure check would let the second one through.
+  const answeringRef = useRef(false);
+  const abilityRef = useRef(false);
 
   const opponentUserId =
     publicRound?.players.find((p) => p.playerId !== viewerUserId)?.playerId ?? null;
@@ -109,10 +125,20 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     if (!publicRound) return "recovering";
     if (matchOver) return "match_over";
     if (iOweChoice) return "progression";
+    // `hasSubmitted` is the SERVER's view of the viewer's submission. R3 never
+    // shows "locked" from local state alone — a click in flight stays in the
+    // active phase with its controls disabled until the backend confirms.
     if (hasSubmitted) return "locked";
-    if (reviewing) return "reviewing";
     return "active";
   })();
+
+  /**
+   * The round is still open for an ability change exactly while the engine
+   * says the viewer's selection window is open. That covers the whole waiting
+   * stretch after the viewer has answered, and closes the instant the round
+   * resolves — no client-side timer or inference involved.
+   */
+  const roundLive = phase === "active" || phase === "locked";
 
   const clearTimer = () => {
     if (timerRef.current !== undefined) window.clearTimeout(timerRef.current);
@@ -151,8 +177,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       const previous = activeRoundRef.current;
       if (previous !== null && active !== null && active !== previous) {
         await captureResolved(previous, controller.signal);
-        // A new round: clear the previous round's local selection.
-        setSelectedOptionId(null); setSelectedAbilityId(null); setReviewing(false);
+        // A new round: drop the previous round's local echoes. The ability ref
+        // is reset too, so the next snapshot's value is adopted even when the
+        // new round's draft happens to equal the old one.
+        setSelectedOptionId(null); setSelectedAbilityId(null);
+        serverAbilityRef.current = null;
       }
       if (active !== null) {
         activeRoundRef.current = active;
@@ -250,29 +279,80 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
-  const selectOption = useCallback((id: string) => { setSelectedOptionId(id); setReviewing(false); }, []);
-  const selectAbility = useCallback((id: string | null) => { setSelectedAbilityId(id); setReviewing(false); }, []);
-  const review = useCallback(() => { if (selectedOptionId !== null) setReviewing(true); }, [selectedOptionId]);
-  const edit = useCallback(() => setReviewing(false), []);
+  // The server's ability draft is the authority; adopt it whenever it moves.
+  // Compared against a ref rather than used directly so a local echo survives
+  // the polls between the click and the server acknowledging it.
+  const serverAbilityId = privatePlayer?.ownSelection.selectedAbilityId ?? null;
+  useEffect(() => {
+    if (serverAbilityRef.current !== serverAbilityId) {
+      serverAbilityRef.current = serverAbilityId;
+      setSelectedAbilityId(serverAbilityId);
+    }
+  }, [serverAbilityId]);
 
-  const confirm = useCallback((answerIndex: number) => {
-    if (!matchId || submitting) return;
+  /**
+   * R3 one-click answer. The click IS the submission: it goes straight to the
+   * authoritative route with no confirm step and no local lock. `submitting`
+   * disables every option while the request is in flight, which is what makes
+   * a double-click safe on top of the backend's own idempotency.
+   */
+  const answer = useCallback((optionId: string, answerIndex: number) => {
+    if (!matchId || answeringRef.current) return;
     const rn = publicRound?.activeRound?.roundNumber;
     if (rn === undefined) return;
+    answeringRef.current = true;
+    setSelectedOptionId(optionId);  // shows WHICH option is in flight, not a lock
     setSubmitting(true); setActionError(null);
     (async () => {
       try {
-        await api.submitRound(matchId, rn, answerIndex, selectedAbilityId);
-        setSubmitting(false);
-        poke();
+        await api.submitRound(matchId, rn, answerIndex);
+        poke();  // the next snapshot is what actually flips the UI to locked
       } catch (e) {
+        // Release the grid so the player can answer again.
+        setSelectedOptionId(null);
+        if (!(e instanceof RankedApiError && e.code === "RANKED_STALE_ROUND")) {
+          setActionError(e instanceof Error ? e.message : "submit failed");
+        } else {
+          poke();
+        }
+      } finally {
+        answeringRef.current = false;
         setSubmitting(false);
-        if (e instanceof RankedApiError && e.code === "RANKED_STALE_ROUND") { poke(); return; }
-        // Preserve selections for retry.
-        setActionError(e instanceof Error ? e.message : "submit failed");
       }
     })();
-  }, [matchId, submitting, publicRound, selectedAbilityId, poke]);
+  }, [matchId, publicRound, poke]);
+
+  /**
+   * Arm, change, or clear the round's ability. Independent of the answer in
+   * both directions: it neither requires nor blocks one, and it stays callable
+   * while waiting for the opponent. `null` clears back to No Ability.
+   */
+  const selectAbility = useCallback((id: string | null) => {
+    if (!matchId || abilityRef.current) return;
+    const rn = publicRound?.activeRound?.roundNumber;
+    if (rn === undefined || rn === null) return;
+    abilityRef.current = true;
+    setSelectedAbilityId(id);  // optimistic echo, reverted below on failure
+    setAbilityBusy(true); setActionError(null);
+    (async () => {
+      try {
+        await api.setRoundAbility(matchId, rn, id);
+      } catch (e) {
+        // The round closed or moved on under us — the frozen server value is
+        // the truth, so adopt it rather than reporting a race as an error.
+        const stale = e instanceof RankedApiError && (
+          e.code === "RANKED_STALE_ROUND" || e.code === "RANKED_ROUND_CLOSED");
+        setSelectedAbilityId(serverAbilityRef.current);
+        if (!stale) {
+          setActionError(e instanceof Error ? e.message : "ability change failed");
+        }
+      } finally {
+        abilityRef.current = false;
+        setAbilityBusy(false);
+        poke();
+      }
+    })();
+  }, [matchId, publicRound, poke]);
 
   // --------------------------------------------- multi-challenge segments
   //
@@ -310,17 +390,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       })();
     }, [matchId, submitting, segmentNumber, poke]);
 
-  const draftSegmentAbility = useCallback((abilityId: string | null) => {
-    runSegmentAction((segment) => api.draftSegmentAbility(matchId!, segment, abilityId));
-  }, [runSegmentAction, matchId]);
-
-  const confirmSegmentAbility = useCallback(() => {
-    // The confirmed value is whatever the SERVER currently holds as the draft.
-    const drafted = segmentState?.ownAbility.selectedAbilityId ?? null;
-    runSegmentAction((segment) =>
-      api.confirmSegmentAbility(matchId!, segment, drafted));
-  }, [runSegmentAction, matchId, segmentState]);
-
+  // R3: no segment ability actions. Item Cost Duel has no ability interaction,
+  // so the only segment command a module can issue is a challenge submission.
   const submitSegmentChallenge = useCallback((challengeIndex: number, itemId: string) => {
     runSegmentAction((segment) =>
       api.submitSegmentChallenge(matchId!, segment, challengeIndex, itemId));
@@ -345,9 +416,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   return {
     phase, publicRound, roundNumber, privatePlayer, lastResolved, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
-    selectedOptionId, selectedAbilityId, submitting, actionError, error,
-    selectOption, selectAbility, review, edit, confirm, chooseLevelTwo,
-    segmentState, lastSegmentSettlement, draftSegmentAbility,
-    confirmSegmentAbility, submitSegmentChallenge,
+    selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
+    error, roundLive, answer, selectAbility, chooseLevelTwo,
+    segmentState, lastSegmentSettlement, submitSegmentChallenge,
   };
 }

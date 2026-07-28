@@ -45,15 +45,31 @@ describe("public Ranked client", () => {
     expect("match_id" in body).toBe(false);
   });
 
-  it("submit sends the backend answer index + ability id, no correctness", async () => {
+  it("submit sends the answer index alone — no ability, no correctness", async () => {
     stub(() => json({ status: "accepted" }));
-    await api.submitRound("m1", 2, 1, "tank.fortify");
+    await api.submitRound("m1", 2, 1);
     const body = JSON.parse(calls[0].init.body as string);
-    expect(body).toEqual({ round_number: 2, answer: 1, ability_id: "tank.fortify" });
+    expect(body).toEqual({ round_number: 2, answer: 1 });
+    // R3: the ability never travels with the answer, so one click is the lock.
+    expect("ability_id" in body).toBe(false);
     expect("is_correct" in body).toBe(false);
     expect(calls[0].url).toContain("/api/ranked/matches/m1/rounds/2/submission");
     // No credentials in the URL.
     expect(calls[0].url).not.toContain("jwt");
+  });
+
+  it("the round ability route carries only the ability id", async () => {
+    stub(() => json({ status: "accepted" }));
+    await api.setRoundAbility("m1", 2, "tank.fortify");
+    expect(JSON.parse(calls[0].init.body as string))
+      .toEqual({ ability_id: "tank.fortify" });
+    expect(calls[0].url).toContain("/api/ranked/matches/m1/rounds/2/ability");
+  });
+
+  it("clearing the ability sends an explicit null", async () => {
+    stub(() => json({ status: "accepted" }));
+    await api.setRoundAbility("m1", 2, null);
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({ ability_id: null });
   });
 
   it("GET public round parses the v2 envelope", async () => {

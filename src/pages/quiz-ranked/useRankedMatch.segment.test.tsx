@@ -152,30 +152,15 @@ describe("useRankedMatch — multi-challenge segments", () => {
     expect(result.current.roundNumber).toBe(3);
   });
 
-  it("drafts and confirms the ability through the segment routes", async () => {
+  it("exposes no segment ability commands at all", async () => {
+    // R3: Item Cost Duel has no ability interaction, so the controller offers
+    // no way to reach one. The only segment command is a challenge submission.
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.draftSegmentAbility("tank.fortify"));
-    await settle();
-    expect(backend.abilityDrafts).toEqual([{ ability_id: "tank.fortify" }]);
-
-    // The server now holds the draft; confirming sends what the SERVER has.
-    backend.segmentState = icdSegmentState({
-      own_ability: { selected_ability_id: "tank.fortify", confirmed: false,
-        available_ability_ids: ["tank.fortify"], unavailable_ability_ids: {} },
-    });
-    await settle(1600);
-    act(() => result.current.confirmSegmentAbility());
-    await settle();
-    expect(backend.abilityConfirms).toEqual([{ ability_id: "tank.fortify" }]);
-  });
-
-  it("drafts an explicit No Ability", async () => {
-    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
-    await settle();
-    act(() => result.current.draftSegmentAbility(null));
-    await settle();
-    expect(backend.abilityDrafts).toEqual([{ ability_id: null }]);
+    const controller = result.current as unknown as Record<string, unknown>;
+    expect(controller.draftSegmentAbility).toBeUndefined();
+    expect(controller.confirmSegmentAbility).toBeUndefined();
+    expect(typeof result.current.submitSegmentChallenge).toBe("function");
   });
 
   it("submits a challenge with only the item id", async () => {
@@ -234,20 +219,21 @@ describe("useRankedMatch — multi-challenge segments", () => {
       if (u.endsWith("/resume")) return json(resumeEnvelope());
       if (u.endsWith("/private")) return json(privateBody());
       if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
-      if (u.endsWith("/ability")) {
-        return json({ detail: { code: "RANKED_ABILITY_NOT_AVAILABLE_IN_MODULE",
-          message: "Mage Insight has no effect in this segment" } }, 422);
+      if (u.includes("/challenges/")) {
+        return json({ detail: { code: "RANKED_INVALID_CHOICE",
+          message: "that item is not in this pair" } }, 422);
       }
       if (/\/matches\/m1$/.test(String(u)) && (init.method ?? "GET") === "GET") {
         return json(publicBody());
       }
       return json({}, 200);
     }) as unknown as typeof fetch);
+    backend.segmentState = icdChallengeState(1);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.draftSegmentAbility("mage.insight"));
+    act(() => result.current.submitSegmentChallenge(1, "Item 99"));
     await settle();
-    expect(result.current.actionError).toMatch(/no effect in this segment/);
+    expect(result.current.actionError).toMatch(/not in this pair/);
   });
 
   it("recovers the transcript of a resolved segment on resume", async () => {

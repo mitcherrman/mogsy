@@ -17,8 +17,8 @@ import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
 import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import {
-  opponentPresenceLabel, projectAbilities, projectCombatants, projectPermissions,
-  projectTimer,
+  abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
+  projectAbilityPermissions, projectCombatants, projectPermissions, projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
 
@@ -55,13 +55,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // tray. This is a capability the module declares — not a mode branch here.
   const moduleOwnsSubmission = renderer?.ownsSubmission === true;
   const segmentActions = useMemo(() => ({
-    draftAbility: m.draftSegmentAbility,
-    confirmAbility: m.confirmSegmentAbility,
     submitChallenge: m.submitSegmentChallenge,
     busy: m.submitting,
     error: m.actionError,
-  }), [m.draftSegmentAbility, m.confirmSegmentAbility, m.submitSegmentChallenge,
-    m.submitting, m.actionError]);
+  }), [m.submitSegmentChallenge, m.submitting, m.actionError]);
   void tick;
 
   if (m.phase === "fatal") {
@@ -106,10 +103,19 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
 
   const opponentLabel = opponentPresenceLabel(m.presence);
   const selectedOption = question?.options.find((o) => o.id === m.selectedOptionId) ?? null;
-  const inputOpen = m.phase === "active" || m.phase === "reviewing";
-  const subPhase: SubmissionPhase =
-    m.phase === "locked" ? "locked" : m.phase === "reviewing" ? "reviewing" : "selecting";
+  // R3: the answer grid is open only while the round is unanswered. One click
+  // submits, so there is no `reviewing` phase and no `canChangeAnswer` state.
+  const inputOpen = m.phase === "active";
+  const subPhase: SubmissionPhase = m.phase === "locked" ? "locked" : "selecting";
   const permissions = projectPermissions(subPhase, inputOpen, m.submitting);
+  // The ability tray is gated INDEPENDENTLY of the answer: it stays live for as
+  // long as the server says the viewer's selection window is open, which
+  // includes the whole wait for the opponent.
+  const abilityPermissions = projectAbilityPermissions(
+    m.privatePlayer, m.roundLive, m.abilityBusy);
+  const showAbilityTray = !moduleOwnsSubmission && m.privatePlayer !== null
+    && abilityPermissions.canSelectAbility
+    && abilityTrayIsUseful(abilities, m.selectedAbilityId);
 
   // Stable round header. `activeRound` briefly reports null between rounds; the
   // sticky `roundNumber` keeps the last shown round so the header never blanks
@@ -176,11 +182,17 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               options: (m.privatePlayer?.ownAbilities.level2Options ?? []).map((id) => ({
                 id, name: abilityName(id), description: abilityDescription(id),
               })),
+              // R3: the pending id marks the choice IN FLIGHT, not one awaiting
+              // a confirmation click. The server's acceptance is what ends the
+              // progression phase, so nothing is confirmed locally.
               pendingOptionId: pendingLevel2, confirmedOptionId: null,
             }}
-            permissions={{ ...NO_INTERACTIONS, canSelectAbility: !m.submitting, canConfirmSubmission: !m.submitting }}
-            onSelectOption={setPendingLevel2}
-            onConfirmOption={() => pendingLevel2 && m.chooseLevelTwo(pendingLevel2)}
+            permissions={{ ...NO_INTERACTIONS, canSelectAbility: !m.submitting }}
+            onSelectOption={(id) => {
+              if (m.submitting || pendingLevel2 !== null) return;  // double-click safe
+              setPendingLevel2(id);
+              m.chooseLevelTwo(id);
+            }}
             gatesNextRound
           />
         </section>
@@ -202,7 +214,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                   publicRound={m.publicRound}
                   selection={m.selectedOptionId}
                   permissions={permissions}
-                  onSelect={(sel) => m.selectOption(sel as string)}
+                  // R3: selecting an option IS answering. The index comes from
+                  // the projected question so the shell never guesses it from
+                  // the option id.
+                  onSelect={(sel) => {
+                    const option = question?.options.find((o) => o.id === sel);
+                    if (option) m.answer(option.id, option.index);
+                  }}
                   segmentState={m.segmentState}
                   actions={segmentActions}
                   skewMs={m.skewMs}
@@ -223,31 +241,49 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             )}
           </div>
 
-          {/* Lower HUD: ability hotbar + one-shot lock. Suppressed entirely
-              for a module that runs its own ability window and submission —
-              two competing ability controls would be a real input hazard. */}
+          {/* Lower HUD: the OPTIONAL ability hotbar, and a status line.
+              There is no Lock In button — clicking an answer submits it — and
+              the tray is suppressed entirely when nothing is actionable or when
+              a module runs its own submission. */}
           {!moduleOwnsSubmission && (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
-            {m.privatePlayer && (
+            {showAbilityTray && (
               <section data-testid="ranked-abilities" className="ranked-panel p-3 sm:p-4">
                 <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
-                  permissions={permissions} onSelectAbility={m.selectAbility} />
+                  permissions={abilityPermissions} onSelectAbility={m.selectAbility}
+                  noAbilityLabel="Clear ability" />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Optional — you can change or clear this until the round ends.
+                </p>
               </section>
             )}
-            <section className={`ranked-panel p-3 sm:p-4 ${m.privatePlayer ? "" : "lg:col-span-2"}`}>
-              <SubmissionReview
-                flow="direct"
-                submission={{ selectedOptionId: m.selectedOptionId, selectedAbilityId: m.selectedAbilityId, phase: subPhase }}
-                answerLabel={selectedOption?.label ?? null}
-                abilityName={m.selectedAbilityId ? abilityName(m.selectedAbilityId) : null}
-                permissions={permissions}
-                onReview={m.review}
-                onEdit={m.edit}
-                onConfirm={() => selectedOption && m.confirm(selectedOption.index)}
-                statusMessage={
-                  m.actionError ? { tone: "error", text: m.actionError }
-                    : m.phase === "locked" ? { tone: "info", text: "Submitted — waiting for opponent…" } : null}
-                confirmLabel={m.submitting ? "Locking…" : undefined} />
+            <section data-testid="ranked-submission-status"
+              className={`ranked-panel p-3 sm:p-4 ${showAbilityTray ? "" : "lg:col-span-2"}`}>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Answer</dt>
+                  <dd className="font-semibold" data-testid="status-answer">
+                    {selectedOption?.label ?? "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Ability</dt>
+                  <dd className="font-semibold" data-testid="status-ability">
+                    {m.selectedAbilityId ? abilityName(m.selectedAbilityId) : "No ability"}
+                  </dd>
+                </div>
+              </dl>
+              {m.actionError ? (
+                <p role="alert" data-testid="submission-status"
+                  className="mt-2 text-xs text-destructive">{m.actionError}</p>
+              ) : (
+                <p role="status" data-testid="submission-status"
+                  className="mt-2 text-xs text-muted-foreground">
+                  {m.submitting ? "Submitting…"
+                    : m.phase === "locked" ? "Answer locked — waiting for opponent…"
+                      : "Choose an answer to lock it in."}
+                </p>
+              )}
             </section>
           </div>
           )}

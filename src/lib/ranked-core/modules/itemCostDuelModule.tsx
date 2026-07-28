@@ -102,99 +102,27 @@ function ItemCard({ item, selected, disabled, onPick }: {
   );
 }
 
-// ---------------------------------------------------------- ability phase
+// ------------------------------------------------ legacy ability phase
+//
+// R3 removed the ability window from the Item Cost Duel format, so no segment
+// created from now on can be in this phase. A match created BEFORE R3 froze the
+// old format in its snapshot and could still be sitting in one, so this renders
+// a neutral waiting state rather than crashing or offering controls the client
+// no longer implements. The server expires the window on its own (5s), so the
+// next poll moves the segment on with No Ability for both sides.
 
-function AbilityPhase({ state, actions, skewMs }: {
+function LegacyAbilityPhase({ state, skewMs }: {
   state: SegmentStateView;
-  actions: ModuleViewportProps["actions"];
   skewMs: number;
 }) {
-  const own = state.ownAbility;
-  const locked = own.confirmed || actions.busy;
-  // Local echo so a click feels immediate; the authoritative value always
-  // wins on the next snapshot.
-  const [draft, setDraft] = useState<string | null>(own.selectedAbilityId);
-  const serverDraft = useRef(own.selectedAbilityId);
-  useEffect(() => {
-    if (serverDraft.current !== own.selectedAbilityId) {
-      serverDraft.current = own.selectedAbilityId;
-      setDraft(own.selectedAbilityId);
-    }
-  }, [own.selectedAbilityId]);
-  const shown = own.confirmed ? own.selectedAbilityId : draft;
-
-  const pick = (abilityId: string | null) => {
-    setDraft(abilityId);
-    actions.draftAbility(abilityId);
-  };
-
-  const unavailable = Object.entries(own.unavailableAbilityIds);
-
   return (
-    <div className="space-y-3" data-testid="icd-ability-phase">
-      <header>
-        <h4 className="font-semibold">Item Cost Duel</h4>
-        <p className="text-sm text-muted-foreground">
-          Pick an ability for this segment, then confirm. Five item questions
-          follow — the more expensive item wins each one.
-        </p>
-      </header>
-      <Countdown deadline={state.abilityDeadline} skewMs={skewMs}
-                 label="Time left to choose an ability" />
-
-      <fieldset disabled={locked} className="space-y-2">
-        <legend className="text-sm font-medium">Ability</legend>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => pick(null)} disabled={locked}
-                  aria-pressed={shown === null}
-                  data-testid={`icd-ability-${NO_ABILITY}`}
-                  className={`rounded border px-3 py-1.5 text-sm disabled:opacity-60
-                    ${shown === null ? "border-primary ring-2 ring-primary" : "border-border"}`}>
-            No Ability
-          </button>
-          {own.availableAbilityIds.map((id) => (
-            <button key={id} type="button" onClick={() => pick(id)} disabled={locked}
-                    aria-pressed={shown === id} data-testid={`icd-ability-${id}`}
-                    className={`rounded border px-3 py-1.5 text-sm disabled:opacity-60
-                      ${shown === id ? "border-primary ring-2 ring-primary" : "border-border"}`}>
-              {abilityName(id)}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      {unavailable.length > 0 && (
-        <ul className="space-y-1 text-xs text-muted-foreground"
-            data-testid="icd-unavailable-abilities">
-          {unavailable.map(([id, reason]) => (
-            <li key={id}>
-              <span className="font-medium">{abilityName(id)}</span>: {reason}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={actions.confirmAbility}
-                disabled={own.confirmed || actions.busy}
-                data-testid="icd-confirm-ability"
-                className="rounded bg-primary px-4 py-2 text-sm font-semibold
-                           text-primary-foreground disabled:opacity-60">
-          {own.confirmed ? "Locked in" : actions.busy ? "Confirming…" : "Confirm"}
-        </button>
-        <p className="text-xs text-muted-foreground" data-testid="icd-ability-status">
-          {own.confirmed
-            ? `Locked: ${own.selectedAbilityId ? abilityName(own.selectedAbilityId) : "No Ability"}`
-            : "You can change this until you confirm."}
-        </p>
-      </div>
-
-      <p className="text-xs text-muted-foreground" data-testid="icd-opponent-ready">
-        {state.opponentAbilityConfirmed
-          ? "Opponent is ready."
-          : "Waiting for the opponent to choose…"}
-        {/* Only readiness — never WHAT they chose. */}
+    <div className="space-y-2" data-testid="icd-legacy-ability-phase">
+      <h4 className="font-semibold">Item Cost Duel</h4>
+      <p className="text-sm text-muted-foreground" role="status">
+        Starting the challenges…
       </p>
+      <Countdown deadline={state.abilityDeadline} skewMs={skewMs}
+                 label="Time until the challenges start" />
     </div>
   );
 }
@@ -286,7 +214,7 @@ function ItemCostDuelViewport(
   return (
     <div className="space-y-3">
       {segmentState.phase === "ability"
-        ? <AbilityPhase state={segmentState} actions={actions} skewMs={skewMs} />
+        ? <LegacyAbilityPhase state={segmentState} skewMs={skewMs} />
         : <ChallengePhase state={segmentState} actions={actions} skewMs={skewMs} />}
       {actions.error && (
         <p role="alert" data-testid="icd-error" className="text-sm text-destructive">
@@ -310,9 +238,9 @@ export const itemCostDuelModule: ModuleRenderer = {
   summaryLabel: (pub) => {
     const state = pub.segmentState;
     if (!state) return null;
-    if (state.phase === "ability") {
-      return state.ownAbility.confirmed ? "Ability locked" : "Choosing an ability";
-    }
+    // No "Choosing an ability" status: there is no ability step to be in. A
+    // legacy segment still transitioning simply reads as starting.
+    if (state.phase === "ability") return "Starting…";
     return `Challenge ${Math.min(state.ownNextChallengeIndex + 1, state.challengeCount)} of ${state.challengeCount}`;
   },
 };

@@ -84,7 +84,7 @@ describe("LevelUpPanel — level 2 choice", () => {
     expect(screen.queryByTestId("level-confirm")).toBeNull();
   });
 
-  it("denied permissions disable options and confirm, with a reason", () => {
+  it("denied permissions disable the options, with a reason", () => {
     const onSelect = vi.fn();
     render(
       <LevelUpPanel
@@ -94,10 +94,24 @@ describe("LevelUpPanel — level 2 choice", () => {
       />,
     );
     expect(screen.getByTestId("level-option-mage.overload")).toBeDisabled();
-    expect(screen.getByTestId("level-confirm")).toBeDisabled();
+    // R3: without an onConfirmOption there is no confirm button to disable —
+    // the option click IS the choice, gated by canSelectAbility alone.
+    expect(screen.queryByTestId("level-confirm")).toBeNull();
     expect(screen.getByText("Wait for the reveal.")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("level-option-mage.overload"));
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("omits the confirm button entirely when no confirm handler is given", () => {
+    render(
+      <LevelUpPanel
+        event={{ kind: "level2-choice", options: OPTIONS, pendingOptionId: null, confirmedOptionId: null }}
+        permissions={{ ...NO_INTERACTIONS, canSelectAbility: true }}
+        onSelectOption={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("level-confirm")).toBeNull();
+    expect(screen.getByTestId("level-option-mage.overload")).toBeEnabled();
   });
 });
 

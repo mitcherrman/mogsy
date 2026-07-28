@@ -20,10 +20,7 @@ function parse(rawState: unknown, meta = icdSegmentMeta()) {
 }
 
 function actions(over: Partial<ModuleSegmentActions> = {}): ModuleSegmentActions {
-  return {
-    draftAbility: vi.fn(), confirmAbility: vi.fn(), submitChallenge: vi.fn(),
-    busy: false, error: null, ...over,
-  };
+  return { submitChallenge: vi.fn(), busy: false, error: null, ...over };
 }
 
 function renderModule(state: SegmentStateView | null, acts = actions()) {
@@ -58,88 +55,42 @@ describe("secondsRemaining", () => {
   });
 });
 
-describe("Item Cost Duel — ability phase", () => {
-  it("shows the title, instruction, countdown and the options", () => {
+describe("Item Cost Duel — R3: no ability interaction", () => {
+  it("renders challenge 1 immediately when the segment opens", () => {
+    // The authoritative segment now opens in the challenge phase, so the very
+    // first thing the player sees is a pair of items.
+    renderModule(parse(icdChallengeState(0)).segmentState);
+    expect(screen.getByTestId("icd-challenge-phase")).toBeInTheDocument();
+    expect(screen.getByTestId("icd-progress")).toHaveTextContent("Challenge 1 of 5");
+    expect(screen.queryByTestId("icd-ability-phase")).toBeNull();
+  });
+
+  it("exposes no ability control of any kind", () => {
+    renderModule(parse(icdChallengeState(0)).segmentState);
+    expect(screen.queryByTestId("icd-confirm-ability")).toBeNull();
+    expect(screen.queryByTestId("icd-ability-__none__")).toBeNull();
+    expect(screen.queryByTestId("icd-ability-tank.fortify")).toBeNull();
+    expect(screen.queryByTestId("icd-unavailable-abilities")).toBeNull();
+    expect(screen.queryByTestId("icd-ability-status")).toBeNull();
+    expect(screen.queryByTestId("icd-opponent-ready")).toBeNull();
+  });
+
+  it("never shows a 'choosing an ability' status", () => {
+    renderModule(parse(icdChallengeState(0)).segmentState);
+    expect(document.body.textContent).not.toMatch(/choosing an ability/i);
+  });
+
+  it("degrades a legacy ability phase to a neutral waiting state", () => {
+    // A match created BEFORE R3 froze the old format and can still report the
+    // ability phase. The client must not crash or offer removed controls — the
+    // server expires the window on its own.
     renderModule(parse(icdSegmentState()).segmentState);
-    expect(screen.getByText("Item Cost Duel")).toBeInTheDocument();
-    expect(screen.getByTestId("icd-countdown")).toHaveTextContent("5s");
-    expect(screen.getByTestId("icd-ability-__none__")).toBeInTheDocument();
-    expect(screen.getByTestId("icd-ability-tank.fortify")).toBeInTheDocument();
-  });
-
-  it("drafts an ability and can change it before confirming", () => {
-    const { acts } = renderModule(parse(icdSegmentState()).segmentState);
-    fireEvent.click(screen.getByTestId("icd-ability-tank.fortify"));
-    expect(acts.draftAbility).toHaveBeenCalledWith("tank.fortify");
-    expect(screen.getByTestId("icd-ability-tank.fortify"))
-      .toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(screen.getByTestId("icd-ability-__none__"));
-    expect(acts.draftAbility).toHaveBeenLastCalledWith(null);
-    expect(screen.getByTestId("icd-ability-__none__"))
-      .toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("treats No Ability as an explicit, selectable choice", () => {
-    const { acts } = renderModule(parse(icdSegmentState()).segmentState);
-    fireEvent.click(screen.getByTestId("icd-ability-__none__"));
-    expect(acts.draftAbility).toHaveBeenCalledWith(null);
-    expect(acts.draftAbility).not.toHaveBeenCalledWith("__none__");
-  });
-
-  it("confirms through the authoritative action", () => {
-    const { acts } = renderModule(parse(icdSegmentState()).segmentState);
-    fireEvent.click(screen.getByTestId("icd-confirm-ability"));
-    expect(acts.confirmAbility).toHaveBeenCalledOnce();
-  });
-
-  it("locks every control once the server reports the selection confirmed", () => {
-    renderModule(parse(icdSegmentState({
-      own_ability: {
-        selected_ability_id: "tank.fortify", confirmed: true,
-        available_ability_ids: ["tank.fortify"], unavailable_ability_ids: {},
-      },
-    })).segmentState);
-    expect(screen.getByTestId("icd-confirm-ability")).toBeDisabled();
-    expect(screen.getByTestId("icd-ability-tank.fortify")).toBeDisabled();
-    expect(screen.getByTestId("icd-ability-__none__")).toBeDisabled();
-    expect(screen.getByTestId("icd-ability-status")).toHaveTextContent("Locked");
-  });
-
-  it("shows an unavailable ability with the server's reason", () => {
-    renderModule(parse(icdSegmentState({
-      own_ability: {
-        selected_ability_id: null, confirmed: false,
-        available_ability_ids: ["mage.arcane_charge"],
-        unavailable_ability_ids: {
-          "mage.insight": "Mage Insight has no effect in this segment",
-        },
-      },
-    })).segmentState);
-    const list = screen.getByTestId("icd-unavailable-abilities");
-    expect(within(list).getByText(/no effect in this segment/i)).toBeInTheDocument();
-    // ...and it is NOT offered as a choice.
-    expect(screen.queryByTestId("icd-ability-mage.insight")).toBeNull();
-  });
-
-  it("reports opponent readiness without revealing the choice", () => {
-    renderModule(parse(icdSegmentState({
-      opponent_ability_confirmed: true,
-    })).segmentState);
-    expect(screen.getByTestId("icd-opponent-ready"))
-      .toHaveTextContent("Opponent is ready.");
+    expect(screen.getByTestId("icd-legacy-ability-phase")).toBeInTheDocument();
+    expect(screen.getByText(/starting the challenges/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("icd-confirm-ability")).toBeNull();
+    expect(screen.queryByTestId("icd-ability-tank.fortify")).toBeNull();
+    // Still no opponent ability information of any kind.
     expect(document.body.textContent).not.toMatch(/arcane|overload|insight/i);
-  });
-
-  it("restores the drafted selection after a refresh", () => {
-    renderModule(parse(icdSegmentState({
-      own_ability: {
-        selected_ability_id: "tank.fortify", confirmed: false,
-        available_ability_ids: ["tank.fortify"], unavailable_ability_ids: {},
-      },
-    })).segmentState);
-    expect(screen.getByTestId("icd-ability-tank.fortify"))
-      .toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("icd-confirm-ability")).toBeEnabled();
   });
 });
 
@@ -243,18 +194,17 @@ describe("Item Cost Duel — accessibility basics", () => {
     }
   });
 
-  it("conveys selection state programmatically, not only visually", () => {
-    renderModule(parse(icdSegmentState()).segmentState);
-    const none = screen.getByTestId("icd-ability-__none__");
-    const fortify = screen.getByTestId("icd-ability-tank.fortify");
-    // No Ability reads as selected while the server holds no draft, because
-    // that IS the outcome of letting the window expire — showing nothing
-    // selected would misrepresent what happens if the player does nothing.
-    expect(none).toHaveAttribute("aria-pressed", "true");
-    expect(fortify).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(fortify);
-    expect(fortify).toHaveAttribute("aria-pressed", "true");
-    expect(none).toHaveAttribute("aria-pressed", "false");
+  it("conveys the picked item programmatically, not only visually", () => {
+    renderModule(parse(icdChallengeState(0)).segmentState);
+    const left = screen.getByTestId("icd-item-Item 0");
+    const right = screen.getByTestId("icd-item-Item 1");
+    expect(left).toHaveAttribute("aria-pressed", "false");
+    expect(right).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(right);
+    expect(right).toHaveAttribute("aria-pressed", "true");
+    // ...and both lock at once, so a second activation cannot double-submit.
+    expect(left).toBeDisabled();
+    expect(right).toBeDisabled();
   });
 
   it("gives every item image meaningful alt text", () => {
@@ -269,13 +219,13 @@ describe("Item Cost Duel — accessibility basics", () => {
     expect(countdown).not.toHaveAttribute("aria-live");
   });
 
-  it("summarises the pending state for the shell review panel", () => {
-    const ability = parse(icdSegmentState());
-    expect(itemCostDuelModule.summaryLabel(ability, null))
-      .toBe("Choosing an ability");
+  it("summarises the pending state without any ability language", () => {
     const challenge = parse(icdChallengeState(2));
     expect(itemCostDuelModule.summaryLabel(challenge, null))
       .toBe("Challenge 3 of 5");
+    // A legacy segment mid-transition reads as starting, never as choosing.
+    expect(itemCostDuelModule.summaryLabel(parse(icdSegmentState()), null))
+      .toBe("Starting…");
   });
 
   it("projects no question view — it is not a question module", () => {
