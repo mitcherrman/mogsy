@@ -25,6 +25,68 @@ export type PresentationStep =
   | "dealing"
   | "match-over";
 
+/**
+ * Presentation stages a resolved lane's fixed-size plaque moves through. The
+ * authoritative result is computed once by the engine; these stages only
+ * decide which slice of that result the plaque is currently showing.
+ */
+export type LanePlaqueStage =
+  | "category"
+  | "threshold"
+  | "values"
+  | "winner"
+  | "slice"
+  | "zero"
+  | "transfer"
+  | "bonus"
+  | "settled";
+
+export const LANE_PLAQUE_STAGES = [
+  "category",
+  "threshold",
+  "values",
+  "winner",
+  "slice",
+  "zero",
+  "transfer",
+  "bonus",
+  "settled",
+] as const satisfies readonly LanePlaqueStage[];
+
+/** Scenes at or after which the champion cards show enlarged category values. */
+export function laneValuesActive(stage: LanePlaqueStage) {
+  return ["values", "winner", "slice", "zero", "transfer", "bonus"].includes(stage);
+}
+
+/**
+ * Scenes where the winning side is lit over the loser. Includes "settled":
+ * only the enlargement, slice and transfer are cleaned up when a lane
+ * finishes — the lane still reads as won.
+ */
+export function laneWinnerEmphasised(stage: LanePlaqueStage) {
+  return ["winner", "slice", "zero", "transfer", "bonus", "settled"].includes(stage);
+}
+
+/** The losing number is only cut once the decisive slice scene is reached. */
+export function laneSliceActive(stage: LanePlaqueStage) {
+  return ["slice", "zero", "transfer", "bonus"].includes(stage);
+}
+
+/** The plaque shows a bonus figure (+0, then possibly +1) from "zero" onward. */
+export function lanePlaqueShowsBonus(stage: LanePlaqueStage) {
+  return ["zero", "transfer", "bonus", "settled"].includes(stage);
+}
+
+/** +1 only lands once the energy packet has arrived. */
+export function lanePlaqueBonusEarned(stage: LanePlaqueStage) {
+  return stage === "bonus" || stage === "settled";
+}
+
+/** Every lane starts on its category face. */
+export function initialLanePlaqueStages(): LanePlaqueStage[] {
+  return ["category", "category", "category"];
+}
+
 export type AnimationEvent =
   | { type: "select" }
   | { type: "pickup" }

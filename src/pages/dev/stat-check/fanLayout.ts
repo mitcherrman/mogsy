@@ -20,6 +20,14 @@ export type FanCardLayout = {
   zIndex: number;
 };
 
+/**
+ * Horizontal budget the fan may NOT use, per mode: page gutters, the board's
+ * vertical item dock beside the tray, and one card body so the outer cards
+ * land inside the tray instead of running off the viewport edges. Only bites
+ * on phones (below ~460px), where the spread is otherwise gap-bound.
+ */
+const CHROME_WIDTH = { mobile: 232, desktop: 520 } as const;
+
 export const FAN_LAYOUT_TUNING = {
   mobileBreakpoint: 768,
   mobile: {
@@ -54,7 +62,7 @@ export function centeredNormalizedPosition(index: number, cardCount: number) {
 export function responsiveFanParameters(cardCount: number, viewportWidth: number): FanLayoutParameters {
   const mode: FanLayoutMode = viewportWidth < FAN_LAYOUT_TUNING.mobileBreakpoint ? "mobile" : "desktop";
   const tuning = FAN_LAYOUT_TUNING[mode];
-  const usableWidth = Math.max(0, viewportWidth - (mode === "mobile" ? 72 : 520));
+  const usableWidth = Math.max(0, viewportWidth - CHROME_WIDTH[mode]);
   const countWidth = Math.max(0, cardCount - 1) * tuning.widthPerGap;
   const fanWidth = clamp(Math.min(countWidth, usableWidth), tuning.minWidth, tuning.maxWidth);
 

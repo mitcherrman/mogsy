@@ -69,7 +69,11 @@ export default function Navbar({ themeId }: { themeId?: string }) {
       });
 
   // Detect game routes where bottom nav should auto-hide
-  const isGameRoute = location.pathname.startsWith("/swipe") || location.pathname.includes("/multiplayer/game");
+  const isGameRoute =
+    location.pathname.startsWith("/swipe") ||
+    location.pathname.includes("/multiplayer/game") ||
+    location.pathname.startsWith("/quiz/stat-check") ||
+    location.pathname.startsWith("/dev/stat-check");
 
   // Auto-hide nav when route changes
   useEffect(() => {

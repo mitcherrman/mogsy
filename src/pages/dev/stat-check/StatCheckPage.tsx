@@ -28,29 +28,71 @@ import socketFrameUrl from "@/assets/stat-check/board/stat-check-card-socket-fra
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
 import { buildMatchSummary } from "./matchSummary";
 import {
+  DAMAGE_REVEAL_TIMELINE,
+  LANE_PLAQUE_TIMELINE,
   REDUCED_MOTION_CHOREO,
   STAT_CHECK_ANIMATION,
   STAT_CHECK_ANIMATION_SPEEDS,
+  STAT_CHECK_DEFAULT_ANIMATION_SPEED,
   REVEAL_TIMELINE,
   animationDuration,
+  boardResultOffset,
   durationAtSpeed,
+  laneResolveOffsets,
+  lanePlaqueStageOffsets,
   heroArcLift,
   isStatCheckAnimationSpeed,
   type StatCheckAnimationSpeed,
 } from "./animationConfig";
 import {
+  damageRevealBoardShown,
+  damageRevealHealthApplied,
+  damageRevealPlan,
+  damageRevealPlanTotalMs,
+  damageRevealShownTotal,
+  damageRevealStageOffsets,
+  damageRevealStepStarts,
+  damageRevealStepTotalMs,
+  damageRevealSweepVisible,
+  damageRevealedLanes,
+  type DamageRevealStage,
+  type DamageRevealStep,
+} from "./damageReveal";
+import {
+  DEFAULT_STAT_CHECK_IDENTITIES,
+  damageIdentityHeader,
+  type StatCheckIdentities,
+} from "./damageIdentity";
+import UserAvatar from "@/components/UserAvatar";
+import {
   activeResolvedLane,
   allowsPreLockInteraction,
   animationStepReducer,
+  initialLanePlaqueStages,
+  laneSliceActive,
+  laneValuesActive,
+  laneWinnerEmphasised,
+  lanePlaqueBonusEarned,
+  lanePlaqueShowsBonus,
   itemsRevealedAtStep,
   revealedOpponentCount,
   stepAfterLane,
   stepBeforeDamage,
+  type LanePlaqueStage,
   type PresentationStep,
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
-import { ITEMS, isItemCompatible, itemBonusFor, type ItemId } from "./items";
-import { ItemChoicePanel, ItemGlyph, ItemInventoryStrip } from "./StatCheckItems";
+import { ITEMS, isItemCompatible, itemBonusFor, totalInventoryCount, type ItemId } from "./items";
+import { categoryValueAccessibleText, handCardCategoryValues, type CardCategoryValue } from "./handCardStats";
+import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryDock } from "./StatCheckItems";
+import { BoardTooltip } from "./StatCheckTooltip";
+import {
+  DECISIVE_MARGIN_PRESENTATION,
+  categoryIcon,
+  categoryLevelBadge,
+  categoryTooltipLabel,
+  formatThreshold,
+} from "./statCategoryIcons";
 import type { OnlineMatchController } from "./online/useStatCheckMatch";
 import {
   STAT_CHECK_RULES,
@@ -71,6 +113,7 @@ import {
   type MatchState,
   type RoundDamage,
   type RoundResolution,
+  type Side,
   type StatCategory,
   type StatCategoryId,
   type StatCheckCard,
@@ -85,6 +128,12 @@ type TravelingCardState = {
   /** Category + label of the destination slot, so the clone's final frame is
       pixel-identical to the real board card it hands off to. */
   category?: StatCategory;
+  /**
+   * Already-resolved contested value for `category`. Discard clones carry it so
+   * an outgoing card keeps the exact item-adjusted number it just contested
+   * rather than re-deriving a natural value.
+   */
+  value?: number;
   label?: string;
   from: DOMRectSnapshot;
   to: DOMRectSnapshot;
@@ -113,6 +162,17 @@ type LaneReactionState = {
   kind: "charging" | "impact" | "accept";
 };
 
+/**
+ * What the centre damage presentation is currently showing. Presentation only:
+ * `step` is one entry of the plan derived from the authoritative RoundDamage,
+ * and `stage` selects which slice of it is on screen. No amount in here is
+ * computed by the presentation.
+ */
+type DamageRevealState = {
+  step: DamageRevealStep;
+  stage: DamageRevealStage;
+};
+
 const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 
 /**
@@ -125,9 +185,17 @@ const SPEED_STORAGE_KEY = "stat-check-animation-speed";
 export default function StatCheckPage({
   online = null,
   onOnlineExit,
+  identities = DEFAULT_STAT_CHECK_IDENTITIES,
 }: {
   online?: OnlineMatchController | null;
   onOnlineExit?: () => void;
+  /**
+   * Who the two sides are, for the damage tally's header. Defaults to the bot
+   * game's You/Bot pair; the online room supplies the seats' real display names
+   * (already present client-side in RoomView, so no contract changes) and
+   * whatever avatar the existing profile system already has.
+   */
+  identities?: StatCheckIdentities;
 } = {}) {
   const { data: statRows, isLoading, isError } = useChampionBaseStats();
   const { data: assets } = useChampionAssets();
@@ -140,6 +208,27 @@ export default function StatCheckPage({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   // Armed inventory item awaiting a lane click (click item, then click lane).
   const [selectedItemId, setSelectedItemId] = useState<ItemId | null>(null);
+  /**
+   * Item dock collapse: purely local presentation. It is deliberately NOT part
+   * of MatchState — it never reaches the engine, the reducer, or any online
+   * payload, so collapsing cannot desync a multiplayer match.
+   */
+  const [inventoryCollapsed, setInventoryCollapsed] = useState(false);
+  /**
+   * Which face each lane's fixed plaque is showing. Presentation only — the
+   * winner, margin, threshold, and damage are all computed once by the engine
+   * before any of this runs. Scheduled from the single reveal timeline below
+   * so no component owns its own sequence timers.
+   */
+  const [lanePlaqueStages, setLanePlaqueStages] = useState<LanePlaqueStage[]>(initialLanePlaqueStages);
+  /**
+   * Centre damage presentation, and which sides have already had their health
+   * loss revealed. Both are scheduled from the same reveal timeline as the
+   * lanes; the health bars read `revealedDamageSides` so a bar cannot drop
+   * before its own impact frame.
+   */
+  const [damageReveal, setDamageReveal] = useState<DamageRevealState | null>(null);
+  const [revealedDamageSides, setRevealedDamageSides] = useState<Side[]>([]);
   // Highlighted-but-unconfirmed pick inside the item-choice panel.
   const [pendingChoiceId, setPendingChoiceId] = useState<ItemId | null>(null);
   const [match, setMatch] = useState<MatchState>(() => createMatch(STAT_CHECK_FIXTURE_DECK, `${SEED}:0`, { items: true }));
@@ -167,6 +256,18 @@ export default function StatCheckPage({
   const onlineReadyRef = useRef(false);
   const resolutionKeyRef = useRef(0);
 
+  /**
+   * Drop the centre presentation and every revealed health step. Called from
+   * the same places that clear the reveal timers, so an interrupted round
+   * (restart, speed change, reconnect, adopting an authoritative snapshot)
+   * cannot leave a half-played damage popup or a partially drained bar behind.
+   * Health then falls back to the authoritative match totals.
+   */
+  const clearDamageReveal = () => {
+    setDamageReveal(null);
+    setRevealedDamageSides([]);
+  };
+
   useEffect(() => {
     // Local bot mode only: online matches never run the local engine.
     if (online) return;
@@ -174,6 +275,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setMatch(createMatch(deck, `${SEED}:${matchKey}`, { items: true }));
     setSelectedCardId(null);
     setSelectedItemId(null);
@@ -187,6 +289,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     setMatch(live);
@@ -202,6 +305,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     dispatchRevealStep({ type: "discard" });
@@ -234,6 +338,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     const ended = resolution.playerHpAfter <= 0 || resolution.botHpAfter <= 0;
@@ -308,6 +413,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     dispatchRevealStep({ type: "cancel" });
   }, [animationSpeed, prefersReducedMotion, travelingCards.length]);
 
@@ -338,9 +444,18 @@ export default function StatCheckPage({
     if (revealStep !== "locking" || !match.lastResolution) return;
     clearAnimationTimers(timersRef.current);
 
+    // Every reveal starts with all three plaques on their category face.
+    setLanePlaqueStages(initialLanePlaqueStages());
+
     if (prefersReducedMotion) {
       dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" });
       setDamageFlashKey((key) => key + 1);
+      // Reduced motion skips the staged blink entirely and rests on +1/+0.
+      setLanePlaqueStages(["settled", "settled", "settled"]);
+      // No count-up, no travel, no jolt: the contained arena flash above is the
+      // whole impact, and health lands on the authoritative post-round totals
+      // immediately because the resolved step stops deferring them.
+      clearDamageReveal();
       return;
     }
 
@@ -350,22 +465,78 @@ export default function StatCheckPage({
     // original timeline exactly.
     const roundHasItems = match.lastResolution.results.some((result) => result.playerItem || result.botItem);
     const shift = roundHasItems ? REVEAL_TIMELINE.itemRevealShiftMs : 0;
+    /**
+     * Each lane's own authoritative outcome, in board order. A lane that earned
+     * no decisive bonus has no slice, no packet and no impact to wait for, so it
+     * runs a materially shorter sequence — and because every later lane starts
+     * from the previous lane's end, a fast lane pulls the whole round forward
+     * rather than leaving dead air behind it. This is a pure read of the engine
+     * result: no gameplay figure is recomputed here.
+     */
+    const laneDecisive = [0, 1, 2].map((index) => match.lastResolution?.results[index]?.decisive ?? false);
+    const laneResolveAt = laneResolveOffsets(laneDecisive);
+    const setLaneStage = (laneIndex: number, next: LanePlaqueStage) =>
+      setLanePlaqueStages((current) => current.map((value, index) => (index === laneIndex ? next : value)));
+    // Each lane walks its own plaque through winner → threshold → bonus,
+    // starting from that lane's own resolve beat. A lane starts only once the
+    // previous one has finished its cleanup, so the sequences never overlap and
+    // never leave an idle gap between them.
+    const lanePlaqueSteps: Array<[number, () => void]> = laneResolveAt.flatMap((resolveAt, laneIndex) => {
+      const stageOffsets = lanePlaqueStageOffsets(laneDecisive[laneIndex]);
+      return (["threshold", "values", "winner", "slice", "zero", "transfer", "bonus", "settled"] as const).map(
+        (nextStage) =>
+          [resolveAt + shift + stageOffsets[nextStage], () => setLaneStage(laneIndex, nextStage)] as [number, () => void],
+      );
+    });
+
+    /**
+     * Centre damage presentation. The plan is derived once, here, from the
+     * resolution's authoritative RoundDamage — the scheduler only decides when
+     * each already-computed component appears. Zero-damage sides produce no
+     * step, so no popup is scheduled for them; a round where neither side dealt
+     * damage produces an empty plan costing 0ms, which reproduces the original
+     * boardResult → damage → resolved pacing exactly.
+     */
+    const damagePlan = damageRevealPlan(match.lastResolution.damage, match.lastResolution.results);
+    const damageStartsAt = boardResultOffset(laneDecisive) + shift;
+    const stepStarts = damageRevealStepStarts(damagePlan);
+    const damageSteps: Array<[number, () => void]> = damagePlan.flatMap((step, stepIndex) => {
+      const startAt = damageStartsAt + stepStarts[stepIndex];
+      const beats: Array<[number, () => void]> = damageRevealStageOffsets(step).map(([stage, offset]) => [
+        startAt + offset,
+        () => {
+          setDamageReveal({ step, stage });
+          // The health bar drops at, and only at, this side's health stage.
+          if (stage === "health") {
+            setRevealedDamageSides((sides) => (sides.includes(step.target) ? sides : [...sides, step.target]));
+          }
+          if (stage === "impact") setDamageFlashKey((key) => key + 1);
+        },
+      ]);
+      // Clear this direction before the next one (or the resolved rail) begins.
+      beats.push([startAt + damageRevealStepTotalMs(step), () => setDamageReveal(null)]);
+      return beats;
+    });
+    const damageRevealEndsAt = damageStartsAt + damageRevealPlanTotalMs(damagePlan);
+
     const timeline: Array<[number, () => void]> = [
+      ...lanePlaqueSteps,
+      ...damageSteps,
       [REVEAL_TIMELINE.opponentReveal1, () => dispatchRevealStep({ type: "opponent", lane: 1 })],
       [REVEAL_TIMELINE.opponentReveal2, () => dispatchRevealStep({ type: "opponent", lane: 2 })],
       [REVEAL_TIMELINE.opponentReveal3, () => dispatchRevealStep({ type: "opponent", lane: 3 })],
       ...(roundHasItems
         ? [[REVEAL_TIMELINE.itemReveal, () => dispatchRevealStep({ type: "item-reveal" })] as [number, () => void]]
         : []),
-      [REVEAL_TIMELINE.resolveLane1 + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
-      [REVEAL_TIMELINE.resolveLane2 + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
-      [REVEAL_TIMELINE.resolveLane3 + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
-      [REVEAL_TIMELINE.boardResult + shift, () => dispatchRevealStep({ type: "board-result" })],
-      [REVEAL_TIMELINE.damage + shift, () => {
-        dispatchRevealStep({ type: "damage" });
-        setDamageFlashKey((key) => key + 1);
-      }],
-      [REVEAL_TIMELINE.resolved + shift, () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" })],
+      [laneResolveAt[0] + shift, () => dispatchRevealStep({ type: "resolve", lane: 1 })],
+      [laneResolveAt[1] + shift, () => dispatchRevealStep({ type: "resolve", lane: 2 })],
+      [laneResolveAt[2] + shift, () => dispatchRevealStep({ type: "resolve", lane: 3 })],
+      [damageStartsAt, () => dispatchRevealStep({ type: "board-result" })],
+      [damageRevealEndsAt + REVEAL_TIMELINE.damageTailMs, () => dispatchRevealStep({ type: "damage" })],
+      [
+        damageRevealEndsAt + REVEAL_TIMELINE.resolvedTailMs,
+        () => dispatchRevealStep({ type: match.phase === "match-over" ? "match-over" : "resolved" }),
+      ],
     ];
     timersRef.current = timeline.map(([delay, action]) => window.setTimeout(action, animationDuration(delay, prefersReducedMotion, animationSpeed)));
   }, [animationSpeed, match.lastResolution, match.phase, prefersReducedMotion, revealStep]);
@@ -392,15 +563,55 @@ export default function StatCheckPage({
   const preRoundItemChoice = itemChoiceOpen && !match.lastResolution;
   const armedItem = selectedItemId && canEdit ? selectedItemId : null;
   const opponentLabel = online ? "Opponent" : "Bot";
+  // Layout mode: the approved three-column desktop shell needs ~1210px; below
+  // that the side rails unmount entirely and the compact arena flow takes over
+  // (compact matchup header, tighter board, tray inventory, secondary drawer).
+  // JS-driven so exactly one layout's components (and testids) exist at a time.
+  const viewportWidth = useViewportWidth();
+  const wideLayout = viewportWidth >= 1210;
+  /**
+   * Health shown on the bars. Through the reveal both sides hold their
+   * pre-round totals; a side drops to its authoritative post-round value only
+   * once its own impact frame has landed (`revealedDamageSides`), so a bar can
+   * never move before the damage that caused it is on screen. Outside the
+   * reveal — including reduced motion, reconnect and any adopted snapshot —
+   * this falls straight through to the authoritative match totals.
+   */
   const displayHp = activeResolution && stepBeforeDamage(revealStep)
-    ? { player: activeResolution.playerHpBefore, bot: activeResolution.botHpBefore }
+    ? {
+        player: revealedDamageSides.includes("player") ? activeResolution.playerHpAfter : activeResolution.playerHpBefore,
+        bot: revealedDamageSides.includes("bot") ? activeResolution.botHpAfter : activeResolution.botHpBefore,
+      }
     : { player: match.playerHp, bot: match.botHp };
+  /**
+   * Bar being struck right now: it flashes from the impact frame and stays lit
+   * through the drain. Only ever the target of the step currently on screen,
+   * so a two-way round lights one bar at a time.
+   */
+  const damageImpactSide: Side | null =
+    damageReveal && (damageReveal.stage === "impact" || damageRevealHealthApplied(damageReveal.stage))
+      ? damageReveal.step.target
+      : null;
+
+  // Shared online presentation state for the reveal rail and the item modal.
+  const onlineState = online
+    ? {
+        youChosen: online.youChosen,
+        youLocked: online.youLocked,
+        opponentChosen: online.opponentChosen,
+        opponentLocked: online.opponentLocked,
+        opponentConnected: online.opponentConnected,
+        opponentReconnectDeadline: online.opponentReconnectDeadline,
+        onConcede: () => void online.concede(),
+      }
+    : null;
 
   const restart = () => {
     clearAnimationTimers(timersRef.current);
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setMatchKey((key) => key + 1);
   };
 
@@ -421,6 +632,23 @@ export default function StatCheckPage({
     setSelectedCardId(null);
     setSelectedItemId((current) => (current === itemId ? null : itemId));
   };
+
+  // Acquiring an item pops the dock open so the new well is never hidden
+  // behind a collapsed lever. Only a genuine increase re-expands, so manual
+  // collapse still sticks once the player owns items.
+  const inventoryTotal = totalInventoryCount(match.playerInventory);
+  const previousInventoryTotal = useRef(inventoryTotal);
+  useEffect(() => {
+    if (inventoryTotal > previousInventoryTotal.current) setInventoryCollapsed(false);
+    previousInventoryTotal.current = inventoryTotal;
+  }, [inventoryTotal]);
+
+  /**
+   * An armed item must stay visibly represented while it waits for a lane, so
+   * arming forces the wells open regardless of the manual collapse preference
+   * (which is remembered and reapplied once the item is assigned or disarmed).
+   */
+  const dockCollapsed = inventoryCollapsed && !selectedItemId;
 
   // Item-to-lane attachment shares the click-lane gesture with card placement:
   // an armed inventory item takes priority and never falls through to the
@@ -530,6 +758,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     setSelectedCardId(null);
     setSelectedItemId(null);
     if (online) {
@@ -556,6 +785,7 @@ export default function StatCheckPage({
     setTravelingCards([]);
     setHandGapIds([]);
     setLaneReaction(null);
+    clearDamageReveal();
     dispatchRevealStep({ type: "discard" });
     queueDiscardTravels();
     setSelectedCardId(null);
@@ -580,6 +810,7 @@ export default function StatCheckPage({
     card,
     imageUrl,
     category,
+    value,
     label,
     fromElement,
     toElement,
@@ -596,6 +827,7 @@ export default function StatCheckPage({
     card: StatCheckCard;
     imageUrl?: string | null;
     category?: StatCategory;
+    value?: number;
     label?: string;
     fromElement?: Element | null;
     toElement?: Element | null;
@@ -612,7 +844,7 @@ export default function StatCheckPage({
     const from = fromRect ?? snapshotElement(fromElement) ?? fallbackRect();
     const to = toRect ?? snapshotElement(toElement) ?? from;
     const id = `${kind}:${card.id}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-    setTravelingCards((items) => [...items, { id, card, imageUrl, category, label, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
+    setTravelingCards((items) => [...items, { id, card, imageUrl, category, value, label, from, to, fromRotation, toRotation, durationMs, phaseDurations, kind }]);
     if ((kind === "place" || kind === "lane-move") && phaseDurations?.length === 8) {
       // Schedule the hero-play phase machine: each dispatch fires at the end of
       // the previous phase; the lane charges immediately, flashes at impact, and
@@ -648,12 +880,28 @@ export default function StatCheckPage({
 
   const queueDiscardTravels = () => {
     if (!activeResolution) return;
+    // Narrow layouts keep the discard piles inside a collapsed drawer whose
+    // content has no box geometry; fly the cards toward the drawer's corner
+    // of the viewport instead of letting the clone collapse onto itself.
+    const discardTarget = (side: "player" | "bot"): DOMRectSnapshot =>
+      snapshotElement(discardRefs.current[side]) ?? {
+        x: side === "player" ? window.innerWidth * 0.7 : window.innerWidth * 0.2,
+        y: window.innerHeight + 40,
+        width: 44,
+        height: 62,
+      };
+    // Outgoing cards keep the presentation of the round they belonged to: the
+    // lane they contested and the final value they contested it with. Without
+    // this the clone had no category and fell back to the generic stat chips,
+    // flashing stats that had nothing to do with the round being cleared.
     for (const result of activeResolution.results) {
       queueCardTravel({
         card: result.playerCard,
         imageUrl: getImage(assets, result.playerCard),
+        category: result.category,
+        value: result.playerValue,
         fromElement: slotElement(lanePlayerRefs.current[result.category.id]),
-        toElement: discardRefs.current.player,
+        toRect: discardTarget("player"),
         fromRotation: 0,
         toRotation: -8,
         kind: "discard",
@@ -662,8 +910,10 @@ export default function StatCheckPage({
       queueCardTravel({
         card: result.botCard,
         imageUrl: getImage(assets, result.botCard),
+        category: result.category,
+        value: result.botValue,
         fromElement: slotElement(laneBotRefs.current[result.category.id]),
-        toElement: discardRefs.current.bot,
+        toRect: discardTarget("bot"),
         fromRotation: 0,
         toRotation: 8,
         kind: "discard",
@@ -687,7 +937,7 @@ export default function StatCheckPage({
   return (
     <main
       data-anim-phase={revealStep}
-      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1024px)_and_(min-height:840px)]:h-[calc(100svh-56px)] [@media(min-width:1024px)_and_(min-height:840px)]:min-h-0"
+      className="relative min-h-screen overflow-hidden bg-[#050b12] text-slate-100 [@media(min-width:1210px)_and_(min-height:840px)]:h-[calc(100svh-56px)] [@media(min-width:1210px)_and_(min-height:840px)]:min-h-0"
     >
       {isAnimDebugEnabled() && (
         <div
@@ -701,43 +951,69 @@ export default function StatCheckPage({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(25,187,211,0.2),transparent_34%),radial-gradient(circle_at_50%_100%,rgba(201,168,76,0.16),transparent_34%),linear-gradient(180deg,#091421_0%,#071018_45%,#04070b_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[8%] mx-auto h-[74%] max-w-6xl rounded-[42%] bg-[radial-gradient(ellipse_at_center,rgba(8,22,35,0.92),rgba(4,8,13,0.35)_68%,transparent_72%)] shadow-[0_0_90px_rgba(0,0,0,0.7)_inset]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 lg:h-full lg:min-h-0 lg:px-2">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+      <div className="relative mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 px-3 py-2 sm:px-4 min-[1210px]:h-full min-[1210px]:min-h-0 min-[1210px]:px-2">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d]">
+            <div className="hidden items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6b55d] md:flex">
               <Swords className="h-4 w-4" /> Dev prototype
             </div>
-            <h1 className="text-2xl font-black leading-tight sm:text-3xl">Stat Check</h1>
+            <h1 className="text-lg font-black leading-tight md:text-2xl min-[1210px]:text-3xl">Stat Check</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-            <Badge variant="outline" className="border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-300 md:gap-2">
+            <Badge variant="outline" className="hidden border-cyan-300/30 bg-cyan-300/10 text-cyan-100 md:inline-flex">
               {online ? "Online match" : dataSource}
             </Badge>
             <AnimationSpeedControl speed={animationSpeed} onSpeedChange={setAnimationSpeed} />
-            {!online && isLoading && <Badge variant="outline">Loading stats</Badge>}
-            {!online && isError && <Badge variant="outline">Fallback active</Badge>}
+            {!online && isLoading && <Badge variant="outline" className="hidden md:inline-flex">Loading stats</Badge>}
+            {!online && isError && <Badge variant="outline" className="hidden md:inline-flex">Fallback active</Badge>}
             {!online && (
               <Button size="sm" variant="outline" onClick={restart} className="border-[#d6b55d]/40 bg-black/30 text-[#f4d77d]">
-                <RotateCcw className="mr-1.5 h-4 w-4" /> Restart
+                <RotateCcw className="h-4 w-4 md:mr-1.5" />
+                <span className="hidden md:inline">Restart</span>
               </Button>
             )}
           </div>
         </header>
 
-        <section className="flex flex-1 flex-col gap-2 lg:grid lg:min-h-0 lg:grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]">
-          <MatchupRail
-            match={match}
-            displayHp={displayHp}
-            resolution={activeResolution}
-            flashKey={damageFlashKey}
-            isOnline={Boolean(online)}
-            opponentLabel={opponentLabel}
-          />
+        {/* The three-column arena grid needs ~1210px: 280px matchup rail +
+            three 210px-minimum lanes with their gaps and slab chrome + the
+            utility rail. Below that the rails UNMOUNT (no stacked document
+            flow): a compact matchup header sits above the board, inventory
+            docks in the controls row, and secondary info collapses into a
+            drawer below the arena. */}
+        <section
+          className={cn(
+            "flex flex-1 flex-col gap-2",
+            wideLayout && "grid min-h-0 grid-cols-[280px_minmax(0,1fr)_160px] xl:grid-cols-[300px_minmax(0,1fr)_176px]",
+          )}
+        >
+          {wideLayout ? (
+            <MatchupRail
+              match={match}
+              displayHp={displayHp}
+              resolution={activeResolution}
+              flashKey={damageFlashKey}
+              impactSide={damageImpactSide}
+              isOnline={Boolean(online)}
+              opponentLabel={opponentLabel}
+            />
+          ) : (
+            <CompactMatchupBar
+              displayHp={displayHp}
+              resolution={activeResolution}
+              flashKey={damageFlashKey}
+              impactSide={damageImpactSide}
+              isOnline={Boolean(online)}
+              opponentLabel={opponentLabel}
+            />
+          )}
 
-          <section className="order-1 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-2 lg:order-none">
+          <section className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto_auto] gap-1.5 sm:gap-2">
             <div
+              data-testid="stat-check-arena"
+              data-damage-stage={damageReveal?.stage ?? undefined}
               className={cn(
-                "relative min-h-0 rounded-2xl p-2 md:p-3",
+                "relative min-h-0 rounded-2xl p-1.5 md:p-2 min-[1210px]:p-3",
                 // The slab itself: the approved stone-surface asset is the board
                 // material, held by a raised brass perimeter frame. Translucent
                 // light/shade gradients sit over the texture so the stone stays
@@ -745,10 +1021,20 @@ export default function StatCheckPage({
                 // give the block visible thickness on the table.
                 "border-2 border-[#7d6430]",
                 "shadow-[inset_0_2px_0_rgba(244,215,125,0.28),inset_0_-2px_0_rgba(0,0,0,0.6),inset_0_0_70px_rgba(0,0,0,0.55),0_6px_0_-2px_#241d0e,0_10px_0_-4px_#0a0d14,0_30px_60px_rgba(0,0,0,0.6)]",
+                // Impact frame: two short directional jolts on the arena frame
+                // ONLY. It is a transform, so no layout box moves and the app
+                // shell, header, rails and page never shake with it.
+                damageReveal?.stage === "impact" && "animate-arena-jolt motion-reduce:animate-none",
               )}
               style={{
                 backgroundImage: `radial-gradient(ellipse at 50% 16%, rgba(72,98,132,0.34), transparent 60%), linear-gradient(180deg, rgba(27,37,54,0.22) 0%, rgba(16,23,36,0.4) 46%, rgba(9,14,24,0.62) 100%), url(${stoneSurfaceUrl})`,
                 backgroundSize: "auto, auto, 640px 640px",
+                // Value-badge emphasis transitions (enlarge, winner/loser, and
+                // the settle cleanup) read this, so they scale with the speed
+                // control exactly like the scheduled beats — which is what lets
+                // the next lane start the instant cleanup has finished.
+                ["--sc-value-transition" as string]: `${durationAtSpeed(LANE_PLAQUE_TIMELINE.valueTransitionMs, animationSpeed)}ms`,
+                ["--sc-arena-jolt" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.impactMs, animationSpeed)}ms`,
               }}
             >
               <ArenaAmbience
@@ -760,10 +1046,19 @@ export default function StatCheckPage({
                   revealStep === "board-result" ||
                   revealStep === "damage"
                 }
-                verdict={revealStep === "damage" || revealStep === "resolved" || revealStep === "match-over"}
+                verdict={
+                  damageReveal?.stage === "impact" ||
+                  revealStep === "damage" ||
+                  revealStep === "resolved" ||
+                  revealStep === "match-over"
+                }
                 verdictKey={damageFlashKey}
               />
-              <div className="relative z-10 grid h-full min-h-0 grid-flow-col auto-cols-[minmax(200px,70vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-[repeat(3,minmax(210px,340px))] md:justify-center md:gap-8 md:overflow-visible md:pb-0 xl:gap-12">
+              {/* All three lanes stay side-by-side at EVERY width: cards are
+                  width-budgeted below md (see BOARD_CARD_SIZE) so the board
+                  compacts instead of scrolling horizontally. Lane gaps and
+                  unused stone shrink with the viewport. */}
+              <div className="relative z-10 grid h-full min-h-0 grid-cols-3 gap-1 sm:gap-2 md:grid-cols-[repeat(3,minmax(180px,340px))] md:justify-center md:gap-4 min-[1210px]:grid-cols-[repeat(3,minmax(210px,340px))] min-[1210px]:gap-8 xl:gap-12">
               {match.currentCategories.map((category, index) => {
                 const resolution = activeResolution?.results.find((result) => result.category.id === category.id);
                 const assigned = assignedCard(match, category.id);
@@ -787,6 +1082,7 @@ export default function StatCheckPage({
                     assets={assets}
                     concealed={preRoundItemChoice}
                     itemsRevealed={itemsRevealed}
+                    plaqueStage={lanePlaqueStages[index] ?? "category"}
                     armedItem={armedItem}
                     pendingItem={match.equippedItem?.categoryId === category.id ? match.equippedItem : null}
                     onRemovePendingItem={removePendingItem}
@@ -799,9 +1095,39 @@ export default function StatCheckPage({
                 );
               })}
               </div>
+              {/* Round payoff: the already-computed damage components add into
+                  one number in the middle of the arena, in front of the board.
+                  Absolutely positioned inside the slab, so it adds no layout
+                  box — no lane, card, socket, connector or plaque can move
+                  because of it. */}
+              <CentreDamageReveal
+                reveal={damageReveal}
+                identities={identities}
+                animationSpeed={animationSpeed}
+              />
             </div>
 
-            <div className="relative">
+            <div className="relative flex items-start gap-1 sm:gap-1.5">
+              {/* Board-mounted item dock — icons and counts only, one mount,
+                  one component, one orientation. It is the hand tray's left
+                  column at every width: an in-flow vertical socket strip whose
+                  top lip meets the slab's bottom-left edge, so it reads as an
+                  extension of the board rather than a panel.
+                  Being in flow (not absolutely mounted) is what keeps it clear
+                  of the hand on phones, where the fan otherwise spans the whole
+                  viewport: the tray shrinks by the strip's width instead of
+                  being overlapped, and the mobile fan budget in
+                  responsiveFanParameters reserves that same column. */}
+              <ItemInventoryDock
+                inventory={match.playerInventory}
+                selectedItemId={selectedItemId}
+                disabled={!canEdit}
+                onToggle={toggleInventoryItem}
+                collapsed={dockCollapsed}
+                onToggleCollapsed={() => setInventoryCollapsed((current) => !current)}
+                nextHintFamily={match.nextCategories[0]?.family ?? null}
+                className="z-[450] -mt-2 shrink-0"
+              />
               {/* hand dock: a carved stone tray extending from the slab's lower
                   edge, in the same stone-and-brass construction — the hand is
                   held by the board, not floating on a panel */}
@@ -826,6 +1152,7 @@ export default function StatCheckPage({
               <div aria-hidden className="pointer-events-none absolute left-1/2 top-2 h-16 w-[46%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1),transparent_70%)]" />
               <PlayerHand
                 cards={match.playerHand}
+                categories={match.currentCategories}
                 assets={assets}
                 selectedCardId={selectedCardId}
                 assignedCardIds={assignedCardIds}
@@ -843,68 +1170,115 @@ export default function StatCheckPage({
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3 px-1">
-              <p className="text-xs font-semibold text-cyan-100/70" data-testid="stat-check-instruction">
-                {armedItem
-                  ? `Click a compatible occupied lane to attach ${ITEMS[armedItem].label}.`
-                  : selectedCard
-                    ? `Click a lane to play ${selectedCard.name}.`
-                    : "Click a champion, then click a lane."}
-              </p>
-              <Button
-                size="sm"
-                data-testid="stat-check-lock"
-                onClick={lockIn}
-                disabled={!isReadyToLock(match) || !canEdit}
-                className={cn(
-                  "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
-                  revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
-                )}
-              >
-                <Zap className="mr-1.5 h-4 w-4" /> Lock in
-              </Button>
+            {/* The fan's outer cards droop past the hand container, so the
+                controls row must own the stacking context above them (fan
+                cards reach z-400 on hover) — otherwise a drooping card sits
+                over Lock In and swallows the tap on narrow screens. */}
+            <div className="relative z-[500] flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5 px-1">
+              {/* Lock In exists ONLY during the selecting phase: it never
+                  competes with item confirmation or terminal controls. */}
+              {match.phase === "selecting" && (
+                <Button
+                  size="sm"
+                  data-testid="stat-check-lock"
+                  onClick={lockIn}
+                  disabled={!isReadyToLock(match) || !canEdit}
+                  className={cn(
+                    "bg-[#d6b55d] text-[#071018] shadow-[0_0_24px_rgba(214,181,93,0.25)] hover:bg-[#f4d77d]",
+                    revealStep === "locking" && "animate-pulse motion-reduce:animate-none",
+                  )}
+                >
+                  <Zap className="mr-1.5 h-4 w-4" /> Lock in
+                </Button>
+              )}
             </div>
           </section>
 
-          <aside className="order-2 relative min-h-0 space-y-2 overflow-hidden rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl lg:order-none lg:h-full lg:overflow-y-auto lg:p-1.5">
-            <RevealSequence
-              match={match}
-              resolution={activeResolution}
-              revealStep={revealStep}
-              nextCategories={match.nextCategories}
-              pendingChoiceId={pendingChoiceId}
-              onSelectChoice={setPendingChoiceId}
-              onConfirmChoice={confirmItemChoice}
-              onNextRound={nextRound}
-              onRestart={online ? (onOnlineExit ?? restart) : restart}
-              opponentLabel={opponentLabel}
-              online={
-                online
-                  ? {
-                      youChosen: online.youChosen,
-                      youLocked: online.youLocked,
-                      opponentChosen: online.opponentChosen,
-                      opponentLocked: online.opponentLocked,
-                      opponentConnected: online.opponentConnected,
-                      opponentReconnectDeadline: online.opponentReconnectDeadline,
-                      onConcede: () => void online.concede(),
-                    }
-                  : null
-              }
-            />
-            <UtilityStack
-              match={match}
-              assets={assets}
-              selectedItemId={selectedItemId}
-              inventoryDisabled={!canEdit}
-              onToggleItem={toggleInventoryItem}
-              opponentLabel={opponentLabel}
-              botDiscardRef={(element) => { discardRefs.current.bot = element; }}
-              playerDiscardRef={(element) => { discardRefs.current.player = element; }}
-            />
-          </aside>
+          {wideLayout ? (
+            <aside className="relative h-full min-h-0 space-y-2 overflow-y-auto rounded-md border border-cyan-300/15 bg-black/28 p-1.5 shadow-2xl">
+              <RevealSequence
+                match={match}
+                resolution={activeResolution}
+                revealStep={revealStep}
+                onNextRound={nextRound}
+                onRestart={online ? (onOnlineExit ?? restart) : restart}
+                opponentLabel={opponentLabel}
+                online={itemChoiceOpen ? null : onlineState}
+              />
+              <UtilityStack
+                match={match}
+                assets={assets}
+                opponentLabel={opponentLabel}
+                botDiscardRef={(element) => { discardRefs.current.bot = element; }}
+                playerDiscardRef={(element) => { discardRefs.current.player = element; }}
+              />
+            </aside>
+          ) : (
+            <section className="space-y-2 pb-[max(env(safe-area-inset-bottom),8px)]">
+              <div className="rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl">
+                <RevealSequence
+                  match={match}
+                  resolution={activeResolution}
+                  revealStep={revealStep}
+                  onNextRound={nextRound}
+                  onRestart={online ? (onOnlineExit ?? restart) : restart}
+                  opponentLabel={opponentLabel}
+                  online={itemChoiceOpen ? null : onlineState}
+                />
+              </div>
+              {/* Secondary information: collapsed by default so history and
+                  discards never dominate the arena on narrow screens. */}
+              <details
+                data-testid="stat-check-secondary"
+                className="rounded-md border border-cyan-300/15 bg-black/28 p-2.5 shadow-2xl"
+              >
+                <summary className="cursor-pointer select-none text-xs font-black uppercase tracking-[0.14em] text-cyan-100">
+                  Match details
+                </summary>
+                <div className="mt-2 grid gap-2">
+                  <CountPill label="Shared pool" value={match.drawPile.length} />
+                  <CountPill label="Your hand" value={match.playerHand.length} />
+                  <CountPill label={`${opponentLabel} hand`} value={match.botHand.length} />
+                  <LastRoundDamage resolution={match.roundHistory[match.roundHistory.length - 1] ?? null} opponentLabel={opponentLabel} />
+                  <MatchHistoryPanel history={match.roundHistory} opponentLabel={opponentLabel} />
+                  <DiscardPile side="bot" cards={match.botDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={(element) => { discardRefs.current.bot = element; }} />
+                  <DiscardPile side="player" cards={match.playerDiscard} assets={assets} opponentLabel={opponentLabel} elementRef={(element) => { discardRefs.current.player = element; }} />
+                </div>
+              </details>
+            </section>
+          )}
         </section>
       </div>
+      {/* Item acquisition is a temporary phase: it lives in a contextual
+          overlay (bottom sheet on phones, centered modal above) with the
+          board still visible behind it. Never a page transition. */}
+      <ItemChoiceOverlay open={itemChoiceOpen}>
+        <NextRoundIntel
+          categories={preRoundItemChoice ? match.currentCategories : match.nextCategories}
+          heading={preRoundItemChoice ? "Round 1 Intel" : "Next Round Intel"}
+          compact
+        />
+        <div className="mt-2">
+          <ItemChoicePanel
+            title={
+              preRoundItemChoice
+                ? "Choose your starting item"
+                : `Item choice — ${match.roundHistory.length} rounds complete`
+            }
+            subtitle={
+              preRoundItemChoice
+                ? "Both sides pick one item in secret before Round 1 begins."
+                : "Both sides pick one item in secret before the next round begins."
+            }
+            inventory={match.playerInventory}
+            selectedItemId={pendingChoiceId}
+            onSelect={(itemId) => setPendingChoiceId(itemId)}
+            onConfirm={confirmItemChoice}
+            waiting={Boolean(online && itemChoiceOpen && online.youChosen)}
+          />
+        </div>
+        {onlineState && itemChoiceOpen && <OnlineOpponentStatus online={onlineState} phase={match.phase} />}
+      </ItemChoiceOverlay>
       <CardMotionOverlay travelingCards={travelingCards} assets={assets} reducedMotion={prefersReducedMotion} />
     </main>
   );
@@ -1078,6 +1452,286 @@ function ArenaAmbience({
   );
 }
 
+/**
+ * Centre damage presentation: the round's payoff, mounted over the board.
+ *
+ * Every number here comes from the plan the scheduler derived from the
+ * authoritative RoundDamage — this component adds nothing up and decides
+ * nothing. It is absolutely positioned and pointer-events-none, so it cannot
+ * reflow the board or intercept a click, and it clears itself between the two
+ * directions rather than lingering over the arena.
+ */
+function CentreDamageReveal({
+  reveal,
+  identities,
+  animationSpeed,
+}: {
+  reveal: DamageRevealState | null;
+  identities: StatCheckIdentities;
+  animationSpeed: StatCheckAnimationSpeed;
+}) {
+  if (!reveal) return null;
+  const { step, stage } = reveal;
+  const header = damageIdentityHeader(step, identities);
+  const shown = damageRevealShownTotal(step, stage);
+  const boardShown = damageRevealBoardShown(step, stage);
+  const revealedLanes = damageRevealedLanes(step, stage);
+  const sweepVisible = damageRevealSweepVisible(step, stage);
+  const totalReached = stage === "total" || stage === "impact" || stage === "health" || stage === "settled";
+  const striking = stage === "impact" || stage === "health" || stage === "settled";
+  const playerDeals = step.side === "player";
+  // Arena-relative direction: the opponent's cards sit at the top of every
+  // lane and the player's at the bottom, so damage the player deals travels up.
+  const travelUp = playerDeals;
+
+  return (
+    <div
+      aria-hidden
+      data-testid="stat-check-damage-reveal"
+      data-damage-side={step.side}
+      data-damage-target={step.target}
+      data-damage-kind={step.kind}
+      data-damage-stage={stage}
+      data-damage-shown={shown}
+      data-damage-board={step.kind === "winner" ? step.boardResult : undefined}
+      data-damage-sweep={step.sweep ? "true" : "false"}
+      className="pointer-events-none absolute inset-0 z-[300] grid place-items-center"
+      style={{
+        ["--sc-damage-tick" as string]: `${durationAtSpeed(280, animationSpeed)}ms`,
+        ["--sc-damage-pulse" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.healthMs, animationSpeed)}ms`,
+        ["--sc-sweep-notice" as string]: `${durationAtSpeed(DAMAGE_REVEAL_TIMELINE.sweepNoticeMs, animationSpeed)}ms`,
+        ["--damage-dy" as string]: travelUp ? "-190px" : "190px",
+      }}
+    >
+      {/* Contained radial wash: keeps the number legible over the stone
+          without ever hiding the board behind an opaque panel. */}
+      <span
+        className={cn(
+          "absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-300 md:h-[420px] md:w-[420px]",
+          playerDeals
+            ? "bg-[radial-gradient(circle,rgba(244,215,125,0.34),rgba(6,10,16,0.72)_46%,transparent_70%)]"
+            : "bg-[radial-gradient(circle,rgba(248,113,113,0.32),rgba(6,10,16,0.72)_46%,transparent_70%)]",
+          striking ? "opacity-100" : "opacity-90",
+        )}
+      />
+      {/* Directional pulse toward the bar that is about to drain. */}
+      {stage === "health" && (
+        <span
+          data-testid="stat-check-damage-pulse"
+          className={cn(
+            "absolute left-1/2 top-1/2 h-24 w-24 animate-damage-pulse rounded-full motion-reduce:hidden",
+            playerDeals
+              ? "bg-[radial-gradient(circle,rgba(244,215,125,0.85),transparent_70%)]"
+              : "bg-[radial-gradient(circle,rgba(248,113,113,0.85),transparent_70%)]",
+          )}
+        />
+      )}
+
+      {/* Floating SWEEP notification. Absolutely positioned above the plate, so
+          it adds no layout box and can never push the identity header or the
+          numbers around; it is contained by the arena's own bounds. It exists
+          only while the board stage that established the `3` is on screen, and
+          it is derived from the step, so it owns no state and cannot replay on
+          reconnect or recovery. Reduced motion keeps the plain opacity fade and
+          drops the float and the sparkle travel. */}
+      {sweepVisible && (
+        <div
+          data-testid="stat-check-sweep-notice"
+          className="absolute bottom-[calc(50%+68px)] left-1/2 -translate-x-1/2 md:bottom-[calc(50%+104px)]"
+        >
+          <div
+            className={cn(
+              "relative animate-sweep-notice rounded-lg border-2 border-[#d6b55d]/70 px-3 py-1 md:px-5 md:py-1.5",
+              "bg-[linear-gradient(180deg,rgba(74,58,28,0.97),rgba(6,10,16,0.98))]",
+              "shadow-[0_10px_30px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(244,215,125,0.35)]",
+              "motion-reduce:animate-none motion-reduce:opacity-100",
+            )}
+            style={{ animationDuration: "var(--sc-sweep-notice)" }}
+          >
+            {/* Glint travelling across the brass. Purely decorative, and the
+                first thing reduced motion drops. */}
+            <span
+              aria-hidden
+              data-testid="stat-check-sweep-glint"
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-md motion-reduce:hidden"
+            >
+              <span
+                className="absolute inset-y-0 -left-full w-1/2 animate-sweep-glint bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)]"
+                style={{ animationDuration: "var(--sc-sweep-notice)" }}
+              />
+            </span>
+            <span
+              className={cn(
+                "relative flex items-center gap-1.5 whitespace-nowrap text-[13px] font-black uppercase leading-none tracking-[0.34em] md:text-xl",
+                "text-[#ffe9a8] [text-shadow:0_0_18px_rgba(244,215,125,0.95),0_2px_0_rgba(0,0,0,0.65)]",
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#8ee6f0] motion-reduce:hidden md:h-5 md:w-5" strokeWidth={3} />
+              Sweep
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* A brass-framed readout in the same construction as the lane plaques —
+          frame, bolts, dark interior — rather than a floating label over the
+          board. It must be opaque: the centre of the arena is exactly where the
+          middle lane's plaque sits, and a translucent panel let that plaque's
+          "+1" show through beside the total and read as part of the number. */}
+      <div
+        className={cn(
+          "relative rounded-2xl border-2 p-[6px] shadow-[0_18px_44px_rgba(0,0,0,0.75)]",
+          playerDeals
+            ? "border-[#8a6f35]/80 bg-[linear-gradient(180deg,rgba(74,58,28,0.95),rgba(6,10,16,0.98))]"
+            : "border-[#7d3a3a]/80 bg-[linear-gradient(180deg,rgba(74,28,28,0.95),rgba(6,10,16,0.98))]",
+        )}
+      >
+        {/* corner bolts, matching the lane plaque's backing plate */}
+        {["left-1 top-1", "right-1 top-1", "bottom-1 left-1", "bottom-1 right-1"].map((position) => (
+          <span
+            key={position}
+            className={cn(
+              "absolute h-1.5 w-1.5 rounded-full shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7)]",
+              position,
+              playerDeals ? "bg-[#a8894b]" : "bg-[#b06a6a]",
+            )}
+          />
+        ))}
+        <div
+          className={cn(
+            "flex min-w-[212px] flex-col items-center gap-1 rounded-xl border bg-[#05090f]/95 px-4 py-2 md:min-w-[320px] md:px-7 md:py-3",
+            playerDeals ? "border-[#d6b55d]/45" : "border-red-400/40",
+          )}
+        >
+          {/* Identity header: WHO this damage belongs to, with their avatar, as
+              one unit. The arrow points at the side of the arena whose health
+              bar this will reduce, which is what ties the identity to the damage
+              being presented. A retaliation reads COUNTER, never WINNER, so the
+              board-losing side is never presented as the round winner. */}
+          <div
+            data-testid="stat-check-damage-identity"
+            data-damage-label={header.label}
+            data-damage-name={header.name}
+            className={cn(
+              "flex items-center gap-1.5 whitespace-nowrap text-[9px] font-black uppercase tracking-[0.24em] md:gap-2 md:text-[11px]",
+              playerDeals ? "text-[#f4d77d]" : "text-red-200",
+            )}
+          >
+            {travelUp ? <ArrowUp className="h-3 w-3" strokeWidth={3} /> : <ArrowDown className="h-3 w-3" strokeWidth={3} />}
+            <span>
+              {header.label}: {header.name}
+            </span>
+            <UserAvatar
+              src={header.avatarUrl}
+              name={header.name}
+              size="xs"
+              className={cn("ring-1", playerDeals ? "ring-[#d6b55d]/60" : "ring-red-400/50")}
+            />
+          </div>
+
+          {/* The arithmetic, read left to right exactly as it was earned: the
+              board result the round opened with, the three lanes in board
+              order, then the total. Every slot is always mounted and reserved,
+              so the plate never changes width mid-count and nothing under it
+              moves. */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Board result: 2 for a normal board win, 3 for a sweep. Absent
+                entirely on a retaliation, which never claims the board. */}
+            {step.kind === "winner" && (
+              <span
+                key={`board:${step.boardResult}`}
+                data-testid="stat-check-damage-board"
+                data-damage-board-shown={boardShown ? "true" : "false"}
+                className={cn(
+                  "text-[38px] font-black leading-none tabular-nums transition-opacity duration-200 md:text-[58px]",
+                  boardShown ? "animate-damage-tick opacity-100" : "opacity-0",
+                  playerDeals
+                    ? "text-[#ffe9a8] [text-shadow:0_0_22px_rgba(244,215,125,0.85),0_4px_0_rgba(0,0,0,0.6)]"
+                    : "text-red-200 [text-shadow:0_0_22px_rgba(248,113,113,0.8),0_4px_0_rgba(0,0,0,0.6)]",
+                )}
+              >
+                {step.boardResult}
+              </span>
+            )}
+
+            {/* The three lane bonuses, left → middle → right, aligned with the
+                board's own lane order. All three appear, including +0: a zero
+                lane is deliberately subordinate rather than hidden. */}
+            <div data-testid="stat-check-damage-lanes" className="flex items-center gap-1.5 md:gap-2.5">
+              {step.laneBonuses.map((bonus) => {
+                const laneRevealed = revealedLanes.some((entry) => entry.lane === bonus.lane);
+                const earned = bonus.amount > 0;
+                return (
+                  <span
+                    key={bonus.stage}
+                    data-testid={`stat-check-damage-lane-${bonus.lane}`}
+                    data-damage-lane-amount={bonus.amount}
+                    data-damage-lane-revealed={laneRevealed ? "true" : "false"}
+                    className={cn(
+                      "text-base font-black leading-none tabular-nums transition-all duration-200 md:text-2xl",
+                      laneRevealed ? "opacity-100" : "opacity-0",
+                      laneRevealed && earned && "animate-damage-tick",
+                      earned
+                        ? playerDeals
+                          ? "scale-110 text-[#f4d77d] [text-shadow:0_0_14px_rgba(244,215,125,0.85)]"
+                          : "scale-110 text-red-200 [text-shadow:0_0_14px_rgba(248,113,113,0.8)]"
+                        : "text-slate-500",
+                    )}
+                  >
+                    +{bonus.amount}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Final total. Always mounted (invisible until it lands) so the
+                plate never changes width mid-count. */}
+            <div className="flex items-baseline gap-1.5 md:gap-2">
+              <span
+                aria-hidden
+                className={cn(
+                  "text-xl font-black leading-none text-white/40 transition-opacity duration-200 md:text-3xl",
+                  totalReached ? "opacity-100" : "opacity-0",
+                )}
+              >
+                =
+              </span>
+              <span
+                key={`${step.side}:${striking ? "strike" : "total"}`}
+                data-testid="stat-check-damage-total"
+                data-damage-total-reached={totalReached ? "true" : "false"}
+                className={cn(
+                  "text-[52px] font-black leading-none tabular-nums md:text-[80px]",
+                  // The tick/strike keyframes end on opacity:1 with `both` fill,
+                  // which overrides a static opacity-0 class. So the animation is
+                  // mounted only once the total has actually landed — otherwise
+                  // the answer sits on screen through the entire count.
+                  totalReached && (striking ? "animate-damage-strike" : "animate-damage-tick"),
+                  totalReached ? "opacity-100" : "opacity-0",
+                  playerDeals
+                    ? "text-[#ffe9a8] [text-shadow:0_0_26px_rgba(244,215,125,0.9),0_5px_0_rgba(0,0,0,0.6)]"
+                    : "text-red-200 [text-shadow:0_0_26px_rgba(248,113,113,0.85),0_5px_0_rgba(0,0,0,0.6)]",
+                )}
+              >
+                {step.total}
+              </span>
+              <span
+                data-testid="stat-check-damage-total-label"
+                className={cn(
+                  "text-sm font-black uppercase tracking-[0.28em] text-white/85 transition-opacity duration-200 md:text-2xl",
+                  totalReached ? "opacity-100" : "opacity-0",
+                )}
+              >
+                Damage
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ArenaLane({
   category,
   index,
@@ -1096,6 +1750,7 @@ function ArenaLane({
   assets,
   concealed,
   itemsRevealed,
+  plaqueStage = "category",
   armedItem,
   pendingItem,
   onRemovePendingItem,
@@ -1124,6 +1779,8 @@ function ArenaLane({
   concealed: boolean;
   /** Reveal has reached the item beat: bonuses and final values may show. */
   itemsRevealed: boolean;
+  /** Which face this lane's fixed plaque is showing, scheduled by the page. */
+  plaqueStage?: LanePlaqueStage;
   /** Inventory item armed for lane assignment, if any. */
   armedItem: ItemId | null;
   /** The player's own pending equip on this lane (hidden from no one — it is theirs). */
@@ -1139,8 +1796,51 @@ function ArenaLane({
   const showResult = Boolean(resolution && (active || stepAfterLane(revealStep, index)));
   const playerWon = resolution?.winner === "player";
   const botWon = resolution?.winner === "bot";
-  const botState = showResult && botWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && playerWon ? "loser" : "idle";
-  const playerState = showResult && playerWon ? (resolution?.decisive ? "decisive" : "winner") : showResult && botWon ? "loser" : "idle";
+  /**
+   * Socket, connector and card lighting waits for the winner scene, so a lane
+   * reads as category → threshold → values → winner instead of lighting up the
+   * instant it resolves.
+   */
+  const lit = showResult && laneWinnerEmphasised(plaqueStage);
+  const botState = lit && botWon ? (resolution?.decisive ? "decisive" : "winner") : lit && playerWon ? "loser" : "idle";
+  const playerState = lit && playerWon ? (resolution?.decisive ? "decisive" : "winner") : lit && botWon ? "loser" : "idle";
+  // Presentation treatment for the active category value on each card. The
+  // number itself is always the engine's final post-item value.
+  const botValueEmphasis = laneValueEmphasis(plaqueStage, showResult ? (resolution ?? null) : null, "bot");
+  const playerValueEmphasis = laneValueEmphasis(plaqueStage, showResult ? (resolution ?? null) : null, "player");
+  const transferring = Boolean(
+    showResult && resolution?.decisive && resolution.winner !== "tie" && plaqueStage === "transfer",
+  );
+
+  // Energy packet geometry, measured from the winning number and the plaque so
+  // it visibly starts on the value rather than at the card or socket centre.
+  const laneBoxRef = useRef<HTMLDivElement | null>(null);
+  const botValueEl = useRef<HTMLSpanElement | null>(null);
+  const playerValueEl = useRef<HTMLSpanElement | null>(null);
+  const plaqueEl = useRef<HTMLDivElement | null>(null);
+  const [packet, setPacket] = useState<{ x: number; y: number; dx: number; dy: number } | null>(null);
+
+  useEffect(() => {
+    if (!transferring || reducedMotion) {
+      setPacket(null);
+      return;
+    }
+    const laneBox = laneBoxRef.current;
+    const source = (botWon ? botValueEl.current : playerValueEl.current) ?? null;
+    const target = plaqueEl.current;
+    if (!laneBox || !source || !target) return;
+    const lane = laneBox.getBoundingClientRect();
+    const from = source.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    const fromX = from.left + from.width / 2;
+    const fromY = from.top + from.height / 2;
+    setPacket({
+      x: fromX - lane.left,
+      y: fromY - lane.top,
+      dx: to.left + to.width / 2 - fromX,
+      dy: to.top + to.height / 2 - fromY,
+    });
+  }, [transferring, reducedMotion, botWon]);
   // Natural values only until the item-reveal beat; final values afterwards.
   const playerShownValue = resolution
     ? itemsRevealed
@@ -1190,7 +1890,7 @@ function ArenaLane({
         // Lanes are open zones on the shared slab: no column washes at all.
         // Target and reaction feedback lives in the socket itself (rim, recess
         // glow, gem status light), so selecting a card never lights the lane.
-        "group relative flex min-h-[420px] flex-col rounded-xl p-2 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px]",
+        "group relative flex min-h-0 min-w-0 flex-col rounded-xl p-1 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200 md:min-h-[400px] md:p-2",
         "bg-[radial-gradient(ellipse_62%_52%_at_50%_50%,rgba(56,189,248,0.035),transparent_74%)]",
         reaction === "impact" && "translate-y-[2px]",
       )}
@@ -1202,13 +1902,36 @@ function ArenaLane({
           className="pointer-events-none absolute inset-x-12 bottom-10 top-[58%] z-20 animate-ping rounded-full border border-[#f4d77d]/55 motion-reduce:hidden"
         />
       )}
-      <div className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1">
+      <div
+        ref={laneBoxRef}
+        className="relative grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1"
+      >
+        {/* Energy packet: absolutely positioned, so it adds no layout box and
+            cannot move a card, socket or the plaque. It starts on the winning
+            number's measured centre and travels the lane to the plaque, where
+            its arrival is what turns +0 into +1. */}
+        {packet && (
+          <span
+            aria-hidden
+            data-testid={`stat-check-energy-packet-${category.id}`}
+            style={{
+              left: `${packet.x}px`,
+              top: `${packet.y}px`,
+              ["--packet-dx" as string]: `${packet.dx}px`,
+              ["--packet-dy" as string]: `${packet.dy}px`,
+              animationDuration: `${durationAtSpeed(LANE_PLAQUE_TIMELINE.transferMs, animationSpeed)}ms`,
+            }}
+            className="pointer-events-none absolute z-[60] h-2.5 w-2.5 animate-energy-transfer rounded-full bg-[#f4d77d] shadow-[0_0_12px_rgba(244,215,125,1),0_0_26px_rgba(244,215,125,0.6)] motion-reduce:hidden"
+          />
+        )}
         <div ref={botRef} className="relative flex min-h-0 min-w-0 items-center justify-center py-0.5">
           <FlippableCard
             card={botCard}
             imageUrl={getImage(assets, botCard)}
             category={category}
             value={botShownValue}
+            valueEmphasis={botValueEmphasis}
+            valueRef={botValueEl}
             flipped={!botHidden}
             reducedMotion={reducedMotion}
             animationSpeed={animationSpeed}
@@ -1225,13 +1948,19 @@ function ArenaLane({
             />
           )}
         </div>
-        <div className="flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
+        <div ref={plaqueEl} className="relative flex min-h-[64px] min-w-0 flex-col items-center justify-center gap-1">
           {concealed ? (
             <HiddenCategoryMarker index={index} />
-          ) : showResult && resolution ? (
-            <LaneResult result={resolution} opponentLabel={opponentLabel} />
           ) : (
-            <CategoryMarker category={category} />
+            /* One fixed plaque for every state: it changes face, never size. */
+            <LanePlaque
+              category={category}
+              result={showResult ? (resolution ?? null) : null}
+              stage={plaqueStage}
+              reducedMotion={reducedMotion}
+              animationSpeed={animationSpeed}
+              opponentLabel={opponentLabel}
+            />
           )}
           {/* Context tooltip for an armed item: exact bonus, natural → final,
               and which direction wins — or why the item is unusable here. */}
@@ -1245,12 +1974,21 @@ function ArenaLane({
               clone-to-card swap is then a pure visibility flip with no darker
               first-paint blink. The socket frame stays mounted beneath the card
               layer the whole time, so the handoff never restyles the socket. */}
-          <div className="relative">
+          {/* Armed-item targeting: a cyan energy ring around the receiving
+              socket on compatible occupied lanes — paint only (ring/shadow),
+              never the layout box the travel clone measures. */}
+          <div
+            className={cn(
+              "relative",
+              canEdit && armedItem && armedCompatible && playerCard &&
+                "rounded-lg ring-2 ring-cyan-300/80 shadow-[0_0_16px_rgba(34,211,238,0.55),0_0_32px_rgba(34,211,238,0.25)]",
+            )}
+          >
             <SocketFrame
               active={Boolean(canEdit && selectedCard) || playerCardInFlight}
               occupied={Boolean(playerCard) && !playerCardInFlight}
               gem={
-                showResult && resolution
+                lit && resolution
                   ? playerWon
                     ? "win"
                     : botWon
@@ -1274,6 +2012,8 @@ function ArenaLane({
                   imageUrl={getImage(assets, playerCard)}
                   category={category}
                   value={playerShownValue}
+                  valueEmphasis={playerValueEmphasis}
+                  valueRef={playerValueEl}
                   mode="board"
                   state={playerState}
                   label="You"
@@ -1451,16 +2191,90 @@ function SocketFrame({
   );
 }
 
-export function CategoryMarker({ category }: { category: StatCategory }) {
-  const higher = category.direction === "higher";
+/**
+ * The one fixed plaque viewport, in exact pixels per responsive mode, matching
+ * the measured unresolved category plaque (frame = these + 12px of p-[5px] and
+ * border). Every lane and every stage renders into this same box, so resolving
+ * a lane can never resize the plaque or push the cards around it.
+ */
+const PLAQUE_VIEWPORT = "h-[46px] w-[57px] md:h-[76px] md:w-[115px] min-[1210px]:w-[123px]";
+
+/**
+ * Icon sizing inside that fixed viewport. Driven by height with `w-auto` and a
+ * max-width cap because the art ships in two aspect ratios (1:1 for
+ * armor/health, 3:2 for attack-damage/move-speed/range/scale) — a square box
+ * would render the 3:2 families visibly smaller. `object-contain` plus the cap
+ * guarantees no clipping and no wrapping at any size.
+ */
+const STAT_ICON_SIZE = "h-6 w-auto max-w-[28px] md:h-10 md:max-w-[56px] min-[1210px]:h-12 min-[1210px]:max-w-[62px]";
+
+/**
+ * Optical kerning that pulls the stat art back toward its direction arrow.
+ *
+ * Every family's PNG carries 21–35% transparent padding on its left edge
+ * (measured from the alpha channel: armor 0.21, health 0.24, scale/attack-
+ * damage 0.25–0.28, move-speed 0.27, attack-range 0.35), and the lucide arrow
+ * adds ~21% of its own box on each side. A positive box gap therefore renders
+ * as a large hole between the two glyphs — wide enough that the arrow read as
+ * belonging to the level instead of to the icon. These negative margins cancel
+ * the art's built-in padding so the GLYPHS sit close, which is what the eye
+ * actually groups on. They are horizontal only and the icon keeps `shrink-0`,
+ * so the plaque's fixed viewport is unaffected.
+ */
+const STAT_ICON_KERN = "-ml-1.5 md:-ml-2.5 min-[1210px]:-ml-3.5";
+const SCALE_ICON_SIZE = "h-6 w-auto max-w-[30px] md:h-9 md:max-w-[54px] min-[1210px]:h-10 min-[1210px]:max-w-[60px]";
+
+/** Achieved stat gap for a lane, as a percentage; ties are a flat 0. */
+function achievedGapPercent(result: CategoryResult) {
+  return result.winner === "tie" ? 0 : result.margin * 100;
+}
+
+function formatAchievedGap(result: CategoryResult) {
+  const gap = achievedGapPercent(result);
+  return gap === 0 ? "0" : gap.toFixed(1);
+}
+
+/**
+ * Fixed-size lane plaque. `stage` selects which face of the already-computed
+ * result is showing; this component never derives game state, it only presents
+ * it. The stage sequence is scheduled once by the page, not here — the only
+ * timer below drives the shutter's conceal/reveal halves.
+ */
+export function LanePlaque({
+  category,
+  result = null,
+  stage = "category",
+  reducedMotion = false,
+  animationSpeed = 1,
+  opponentLabel = "Bot",
+}: {
+  category: StatCategory;
+  result?: CategoryResult | null;
+  stage?: LanePlaqueStage;
+  reducedMotion?: boolean;
+  animationSpeed?: StatCheckAnimationSpeed;
+  opponentLabel?: string;
+}) {
+  const shownStage: LanePlaqueStage = result ? stage : "category";
+  const blinkMs = Math.max(1, durationAtSpeed(LANE_PLAQUE_TIMELINE.blinkMs, animationSpeed));
+  /**
+   * There are only three plaque faces, and the shutter is keyed to the face —
+   * not the scene — so it plays exactly twice per lane: category → threshold
+   * and threshold → +0. The values/winner/slice scenes all keep the threshold
+   * face, and +0 → +1 is driven by the arriving packet, not another blink.
+   */
+  const plaqueFace: "category" | "threshold" | "bonus" =
+    shownStage === "category" ? "category" : lanePlaqueShowsBonus(shownStage) ? "bonus" : "threshold";
+
   return (
     <div
       data-testid={`stat-check-marker-${category.id}`}
       data-direction={category.direction}
+      data-plaque-stage={shownStage}
       className="z-10 flex w-full items-center gap-2"
     >
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
-      <div className="relative max-w-full rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
+      <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
         {/* rail clamps bolting the plaque onto the comparison rail */}
         <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
@@ -1469,32 +2283,303 @@ export function CategoryMarker({ category }: { category: StatCategory }) {
         <span aria-hidden className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
         <span aria-hidden className="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a8894b] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.7),0_0_2px_rgba(244,215,125,0.4)]" />
-        <div className="flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
-        <span className="flex items-center gap-1.5 sm:gap-2" aria-hidden>
-          {higher ? (
-            <ArrowUp className="h-6 w-6 text-[#f4d77d] sm:h-7 sm:w-7" strokeWidth={2.75} />
-          ) : (
-            <ArrowDown className="h-6 w-6 text-cyan-300 sm:h-7 sm:w-7" strokeWidth={2.75} />
+        <div
+          data-testid={`stat-check-plaque-viewport-${category.id}`}
+          className={cn(
+            "relative grid place-items-center overflow-hidden rounded-lg border border-[#d6b55d]/45 bg-black/80 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)]",
+            PLAQUE_VIEWPORT,
           )}
-          <CategoryGlyph category={category} className="h-5 w-5 text-[#f4d77d]" />
-          <span className="whitespace-nowrap text-base font-black uppercase tracking-[0.06em] text-white sm:text-lg">
-            {category.shortLabel}
-          </span>
-        </span>
-        <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5" aria-hidden>
-          <span className="rounded bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
-            {scopeLabel(category)}
-          </span>
-          <span className="text-[11px] font-black uppercase tracking-[0.1em] text-[#f4d77d]">
-            Decisive {formatThreshold(category.decisiveThreshold)}
-          </span>
-        </span>
+        >
+          <LanePlaqueFace
+            stage={shownStage}
+            category={category}
+            result={result}
+            opponentLabel={opponentLabel}
+          />
+          {/* Mechanical shutter: a brass-edged cover plate that is already
+              fully across the viewport when a new face mounts, holds while it
+              settles, then retracts upward. Keyed by stage so each transition
+              replays it. The interior swap is synchronous and happens behind
+              this plate, so no face is ever seen changing. Clipped by the
+              viewport's overflow-hidden, so the frame never moves.
+              Reduced motion: `motion-reduce:hidden` drops the plate entirely
+              and the swap is a plain instant change. */}
+          {plaqueFace !== "category" && (
+            <span
+              key={plaqueFace}
+              aria-hidden
+              data-testid={`stat-check-plaque-shutter-${category.id}`}
+              style={{ animationDuration: `${blinkMs}ms` }}
+              className={cn(
+                "pointer-events-none absolute inset-0 z-20 animate-plaque-blink ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:hidden",
+                "bg-[linear-gradient(180deg,#0a0f18_0%,#1a1508_58%,#3c3118_100%)]",
+                "border-b-2 border-[#a8894b] shadow-[0_4px_10px_rgba(0,0,0,0.7)]",
+              )}
+            />
+          )}
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
-      <span className="sr-only">{categoryAccessibleLabel(category)}</span>
+      <span className="sr-only">
+        {result && shownStage !== "category"
+          ? laneStageAccessibleLabel(shownStage, result, opponentLabel)
+          : categoryAccessibleLabel(category)}
+      </span>
     </div>
   );
+}
+
+/** Written description of the face currently showing; never rendered visibly. */
+function laneStageAccessibleLabel(stage: LanePlaqueStage, result: CategoryResult, opponentLabel: string) {
+  const who = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
+  const required = formatThreshold(result.category.decisiveThreshold);
+  // The threshold and values scenes state the requirement only: assistive tech
+  // learns the outcome at the same moment the board shows it, never earlier.
+  if (stage === "threshold" || stage === "values") {
+    return `${categoryAccessibleLabel(result.category)} ${required} is required to deal 1 extra damage.`;
+  }
+  if (stage === "winner" || stage === "slice") {
+    return `${who}. ${formatAchievedGap(result)}% stat gap against a ${required} requirement.`;
+  }
+  return result.decisive
+    ? `${who}. Plus 1 extra damage: the ${formatAchievedGap(result)}% gap met the ${required} requirement.`
+    : `${who}. Plus 0 extra damage: the ${formatAchievedGap(result)}% gap did not meet the ${required} requirement.`;
+}
+
+/** The swappable interior. Only one face is mounted at a time. */
+function LanePlaqueFace({
+  stage,
+  category,
+  result,
+  opponentLabel,
+}: {
+  stage: LanePlaqueStage;
+  category: StatCategory;
+  result: CategoryResult | null;
+  opponentLabel: string;
+}) {
+  if (stage !== "category" && result) {
+    return <LanePlaqueResultFace stage={stage} result={result} opponentLabel={opponentLabel} />;
+  }
+  return <LanePlaqueCategoryFace category={category} />;
+}
+
+function LanePlaqueCategoryFace({ category }: { category: StatCategory }) {
+  const higher = category.direction === "higher";
+  const levelBadge = categoryLevelBadge(category);
+  const familyIcon = categoryIcon(category);
+  return (
+    <div className="flex min-w-0 items-center justify-center">
+      {/* Two information groups, in the semantic order level → direction →
+          icon: "lv. 18" first, then "↓ [armor]". The arrow belongs to the stat
+          family, not to the level, so it is nested with the icon at a hairline
+          gap while a wider gap separates the level group. Both groups centre on
+          the icon artwork's own box (items-center, not a shared baseline), so
+          the arrow reads level with the symbol rather than with "lv.".
+          The written category exists only in the tooltip and sr-only label. */}
+      <BoardTooltip
+        testId={`stat-check-category-symbol-${category.id}`}
+        label={categoryTooltipLabel(category)}
+        ariaLabel={categoryAccessibleLabel(category)}
+        buttonClassName="flex items-center gap-[7px] md:gap-2.5"
+      >
+        {levelBadge && (
+          <span
+            aria-hidden
+            data-testid={`stat-check-category-level-${category.id}`}
+            className="flex items-baseline gap-px leading-none"
+          >
+            {/* "lv." is the smallest element; the number outranks it. */}
+            <span className="text-[6px] font-black lowercase tracking-tight text-slate-400 md:text-[9px]">lv.</span>
+            <span className="text-[10px] font-black text-white md:text-lg">{levelBadge}</span>
+          </span>
+        )}
+        <span
+          aria-hidden
+          data-testid={`stat-check-category-stat-${category.id}`}
+          className="flex items-center"
+        >
+          {higher ? (
+            <ArrowUp className="h-3 w-3 shrink-0 text-[#f4d77d] md:h-5 md:w-5" strokeWidth={3} aria-hidden />
+          ) : (
+            <ArrowDown className="h-3 w-3 shrink-0 text-cyan-300 md:h-5 md:w-5" strokeWidth={3} aria-hidden />
+          )}
+          {familyIcon && (
+            <img
+              src={familyIcon}
+              alt=""
+              aria-hidden
+              data-testid={`stat-check-category-icon-${category.id}`}
+              className={cn(STAT_ICON_SIZE, STAT_ICON_KERN, "shrink-0 object-contain")}
+            />
+          )}
+        </span>
+      </BoardTooltip>
+    </div>
+  );
+}
+
+/**
+ * Winner / threshold / bonus faces. Each is sized to the fixed viewport rather
+ * than the other way round: no face may grow the plaque.
+ */
+function LanePlaqueResultFace({
+  stage,
+  result,
+  opponentLabel,
+}: {
+  stage: LanePlaqueStage;
+  result: CategoryResult;
+  opponentLabel: string;
+}) {
+  const required = formatThreshold(result.category.decisiveThreshold);
+  const achieved = formatAchievedGap(result);
+
+  // Threshold scene: the requirement only — the achieved margin is never
+  // shown here, and no winner wording exists on the plaque at any scene.
+  if (!lanePlaqueShowsBonus(stage)) {
+    return (
+      <BoardTooltip
+        testId="stat-check-plaque-threshold"
+        label={DECISIVE_MARGIN_PRESENTATION.getTooltip(result.category.decisiveThreshold)}
+        buttonClassName="flex items-center gap-1 rounded px-0.5 md:gap-2"
+      >
+        <img
+          src={DECISIVE_MARGIN_PRESENTATION.icon}
+          alt=""
+          aria-hidden
+          className={cn(SCALE_ICON_SIZE, "shrink-0 object-contain")}
+        />
+        <span
+          aria-hidden
+          className="whitespace-nowrap text-[10px] font-black leading-none text-[#f4d77d] md:text-base"
+        >
+          {required}
+        </span>
+      </BoardTooltip>
+    );
+  }
+
+  // Bonus scene. The plaque lands on +0 first; +1 only after the winning
+  // value's energy packet has actually arrived.
+  const earned = result.decisive && lanePlaqueBonusEarned(stage);
+  return (
+    <BoardTooltip
+      testId="stat-check-plaque-bonus"
+      label={laneStageAccessibleLabel("bonus", result, opponentLabel)}
+      buttonClassName="flex items-center justify-center px-1"
+    >
+      <span
+        aria-hidden
+        data-bonus={earned ? "1" : "0"}
+        className={cn(
+          "text-base font-black leading-none transition-all duration-200 md:text-3xl",
+          earned
+            ? "scale-110 text-[#f4d77d] [text-shadow:0_0_14px_rgba(244,215,125,0.85)]"
+            : "text-slate-500",
+        )}
+      >
+        {earned ? "+1" : "+0"}
+      </span>
+    </BoardTooltip>
+  );
+}
+
+/**
+ * How the active category's value is presented during a lane reveal. The value
+ * itself is always the engine's final post-item number; only its treatment
+ * changes here.
+ */
+export type LaneValueEmphasis = "none" | "enlarged" | "winner" | "loser" | "tie" | "sliced";
+
+/**
+ * Treatment for one side's category value at a given scene. Reads the already
+ * computed result — it never decides who won, only how that is shown.
+ */
+export function laneValueEmphasis(
+  stage: LanePlaqueStage,
+  result: CategoryResult | null,
+  side: "player" | "bot",
+): LaneValueEmphasis {
+  if (!result || !laneValuesActive(stage)) return "none";
+  // Ties stay symmetrical and neutral for the whole lane: never a winner or
+  // loser treatment, and never sliced.
+  if (result.winner === "tie") return "tie";
+  if (!laneWinnerEmphasised(stage)) return "enlarged";
+  if (result.winner === side) return "winner";
+  // Only a decisive pass cuts the losing number, and only from the slice scene.
+  return result.decisive && laneSliceActive(stage) ? "sliced" : "loser";
+}
+
+/**
+ * The active category value on a champion card.
+ *
+ * Enlargement is a pure `transform: scale`, so the badge's layout box — and
+ * therefore the stat row, card height, portrait, name and item chip — never
+ * move. The sliced state hides the real badge and draws two clipped copies in
+ * an absolutely positioned overlay, so only the glyphs are cut.
+ */
+export function CategoryValueBadge({
+  value,
+  emphasis,
+  valueRef,
+}: {
+  value: string | number;
+  emphasis: LaneValueEmphasis;
+  valueRef?: RefObject<HTMLSpanElement | null>;
+}) {
+  const sliced = emphasis === "sliced";
+  const active = emphasis !== "none";
+  return (
+    <span data-testid="stat-check-value" data-value-emphasis={emphasis} className="relative mt-0.5 inline-flex">
+      <span
+        ref={valueRef}
+        data-testid="stat-check-value-badge"
+        /* The emphasis transition follows the speed control (the arena sets
+           --sc-value-transition), so the settle cleanup always finishes in the
+           trailing window the lane schedule reserves for it — at any speed. */
+        style={{ transitionDuration: "var(--sc-value-transition, 500ms)" }}
+        className={cn(
+          "inline-flex origin-left rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black",
+          "transition-[transform,filter,opacity] ease-out motion-reduce:transition-none",
+          active && "scale-[1.55]",
+          emphasis === "winner" && "bg-[#ffe9a8] brightness-110 shadow-[0_0_20px_rgba(244,215,125,0.95),0_0_40px_rgba(244,215,125,0.45)]",
+          emphasis === "loser" && "opacity-55 brightness-75 saturate-50",
+          emphasis === "tie" && "bg-slate-200 shadow-[0_0_16px_rgba(203,213,225,0.65)]",
+          sliced && "opacity-0",
+        )}
+      >
+        {value}
+      </span>
+      {sliced && <SlicedValueOverlay value={value} />}
+    </span>
+  );
+}
+
+/** Two clipped halves of the losing number, pulled apart along a bright cut. */
+function SlicedValueOverlay({ value }: { value: string | number }) {
+  const half =
+    "absolute left-0 top-0 inline-flex origin-left scale-[1.55] rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black opacity-60 saturate-50";
+  return (
+    <span
+      aria-hidden
+      data-testid="stat-check-value-slice"
+      className="pointer-events-none absolute left-0 top-0 motion-reduce:hidden"
+    >
+      <span className={cn(half, "-translate-y-[3px] -rotate-[2deg] [clip-path:polygon(0_0,100%_0,100%_44%,0_56%)]")}>
+        {value}
+      </span>
+      <span className={cn(half, "translate-y-[3px] rotate-[2deg] [clip-path:polygon(0_56%,100%_44%,100%_100%,0_100%)]")}>
+        {value}
+      </span>
+      <span className="absolute left-0 top-1/2 h-px w-[170%] origin-left -translate-y-1/2 scale-x-100 bg-[#f4d77d] shadow-[0_0_10px_rgba(244,215,125,0.95)]" />
+    </span>
+  );
+}
+
+/** Unresolved lanes render the same fixed plaque on its category face. */
+export function CategoryMarker({ category }: { category: StatCategory }) {
+  return <LanePlaque category={category} />;
 }
 
 /**
@@ -1506,9 +2591,13 @@ function HiddenCategoryMarker({ index }: { index: number }) {
     <div data-testid={`stat-check-hidden-category-${index}`} className="z-10 flex w-full items-center gap-2">
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(90deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
       <div className="relative rounded-xl border border-[#8a6f35]/60 bg-[linear-gradient(180deg,rgba(74,58,28,0.6),rgba(6,10,16,0.88))] p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.28)]">
-        <div className="flex min-w-[112px] flex-col items-center gap-0.5 rounded-lg border border-[#d6b55d]/45 bg-black/80 px-3 py-2 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4">
-          <span className="text-base font-black uppercase tracking-[0.14em] text-slate-500">Hidden</span>
-          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Choose an item first</span>
+        <div
+          className={cn(
+            "grid place-items-center overflow-hidden rounded-lg border border-[#d6b55d]/45 bg-black/80 shadow-[inset_0_1px_0_rgba(214,181,93,0.28)]",
+            PLAQUE_VIEWPORT,
+          )}
+        >
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 md:text-base">Hidden</span>
         </div>
       </div>
       <span aria-hidden className="h-[3px] flex-1 rounded-full bg-[linear-gradient(270deg,transparent,rgba(138,111,53,0.55)_20%,rgba(138,111,53,0.8))] shadow-[0_1px_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(244,215,125,0.3)]" />
@@ -1595,6 +2684,7 @@ function categoryAccessibleLabel(category: StatCategory) {
 
 function PlayerHand({
   cards,
+  categories,
   assets,
   selectedCardId,
   assignedCardIds,
@@ -1607,6 +2697,8 @@ function PlayerHand({
   onSelect,
 }: {
   cards: StatCheckCard[];
+  /** The current round's three lane categories, left → middle → right. */
+  categories: StatCategory[];
   assets: ReturnType<typeof useChampionAssets>["data"];
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
@@ -1626,8 +2718,10 @@ function PlayerHand({
   let visibleIndex = -1;
 
   return (
-    <div className="relative mx-auto h-[190px] w-full max-w-4xl overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
-      <div className="relative mx-auto h-full min-w-[320px] max-w-full">
+    // The tray is the flexible column beside the board's item dock: min-w-0 so
+    // it yields the strip's width instead of pushing the fan off-screen.
+    <div className="relative mx-auto h-[148px] w-full min-w-0 max-w-4xl flex-1 overflow-visible px-3 pb-0 pt-1 sm:h-[210px] lg:h-[176px] xl:h-[188px] 2xl:h-[200px]" data-testid="stat-check-hand">
+      <div className="relative mx-auto h-full max-w-full">
         {activeCards.map((card, index) => {
           const departing = departingIds.has(card.id) && assignedCardIds.has(card.id);
           const returning = returningIds.has(card.id);
@@ -1645,6 +2739,11 @@ function PlayerHand({
               key={card.id}
               className={cn(
                 "absolute left-1/2 top-0 origin-bottom will-change-transform hover:!z-[400] focus-within:!z-[400]",
+                // Selected card rises above every overlapping fan neighbor so
+                // the pick is unmistakable in the tight mobile fan. Pure
+                // stacking — the transform/geometry the clone measures is
+                // untouched (fanCardLayout already applies the selected lift).
+                selected && "!z-[400]",
                 reducedMotion ? "transition-none" : "transition-[transform,opacity] ease-out motion-reduce:transition-none",
                 hidden && "pointer-events-none opacity-0",
               )}
@@ -1660,6 +2759,7 @@ function PlayerHand({
               <ChampionCard
                 card={card}
                 imageUrl={getImage(assets, card)}
+                categoryValues={handCardCategoryValues(card, categories)}
                 mode="hand"
                 state={selected ? "selected" : "idle"}
                 disabled={disabled || departing}
@@ -1678,30 +2778,18 @@ function PlayerHand({
 function UtilityStack({
   match,
   assets,
-  selectedItemId,
-  inventoryDisabled,
-  onToggleItem,
   opponentLabel = "Bot",
   botDiscardRef,
   playerDiscardRef,
 }: {
   match: MatchState;
   assets: ReturnType<typeof useChampionAssets>["data"];
-  selectedItemId: ItemId | null;
-  inventoryDisabled: boolean;
-  onToggleItem: (itemId: ItemId) => void;
   opponentLabel?: string;
   botDiscardRef: (element: HTMLElement | null) => void;
   playerDiscardRef: (element: HTMLElement | null) => void;
 }) {
   return (
     <div className="grid gap-2">
-      <ItemInventoryStrip
-        inventory={match.playerInventory}
-        selectedItemId={selectedItemId}
-        disabled={inventoryDisabled}
-        onToggle={onToggleItem}
-      />
       <CountPill label="Shared pool" value={match.drawPile.length} />
       <CountPill label="Your hand" value={match.playerHand.length} />
       <CountPill label={`${opponentLabel} hand`} value={match.botHand.length} />
@@ -1797,6 +2885,7 @@ const TravelingCard = memo(function TravelingCard({
           card={item.card}
           imageUrl={item.imageUrl ?? getImage(assets, item.card)}
           category={item.category}
+          value={item.value}
           label={item.label}
           mode="board"
           state="idle"
@@ -1944,6 +3033,8 @@ function FlippableCard({
   reducedMotion,
   animationSpeed,
   state,
+  valueEmphasis = "none",
+  valueRef,
   opponentLabel = "Bot",
 }: {
   card: StatCheckCard | null;
@@ -1954,6 +3045,8 @@ function FlippableCard({
   reducedMotion: boolean;
   animationSpeed: StatCheckAnimationSpeed;
   state: "idle" | "winner" | "loser" | "decisive";
+  valueEmphasis?: LaneValueEmphasis;
+  valueRef?: RefObject<HTMLSpanElement | null>;
   opponentLabel?: string;
 }) {
   if (reducedMotion) {
@@ -1965,6 +3058,8 @@ function FlippableCard({
         value={value}
         mode={flipped ? "board" : "face-down"}
         state={state}
+        valueEmphasis={valueEmphasis}
+        valueRef={valueRef}
         label={flipped ? opponentLabel : undefined}
       />
     );
@@ -1984,7 +3079,20 @@ function FlippableCard({
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden={!flipped}>
           {/* The face-up front mounts only once the flip starts, so the concealed
               champion never appears in the DOM or accessibility tree early. */}
-          {flipped && <ChampionCard card={card} imageUrl={imageUrl} category={category} value={value} mode="board" state={state} label={opponentLabel} fill />}
+          {flipped && (
+            <ChampionCard
+              card={card}
+              imageUrl={imageUrl}
+              category={category}
+              value={value}
+              mode="board"
+              state={state}
+              valueEmphasis={valueEmphasis}
+              valueRef={valueRef}
+              label={opponentLabel}
+              fill
+            />
+          )}
         </div>
       </motion.div>
     </div>
@@ -2001,15 +3109,26 @@ function FlippableCard({
  * header, hand band, bottom bar, gaps, marker) so two cards + marker always
  * fit the locked table height: (100svh - ~480px chrome) / 2 per card.
  */
-const BOARD_CARD_SIZE = "h-[148px] w-auto shrink-0 [aspect-ratio:7/10] md:h-[clamp(150px,calc(50svh_-_240px),340px)]";
+/**
+ * Below md the card is WIDTH-budgeted so all three lanes fit side by side with
+ * no horizontal scroll: ~(100vw - slab chrome - lane gaps) / 3 per card. From
+ * md up it returns to the height budget. One constant drives sockets, placed
+ * cards, flip faces, and (via live DOM measurement) the travel clone, so every
+ * card state scales together and placement geometry stays exact.
+ */
+const BOARD_CARD_SIZE =
+  "w-[clamp(64px,26vw,110px)] h-auto shrink-0 [aspect-ratio:7/10] md:w-auto md:h-[clamp(150px,calc(50svh_-_240px),340px)]";
 
 function ChampionCard({
   card,
   imageUrl,
   category,
+  categoryValues,
   value,
   mode,
   state = "idle",
+  valueEmphasis = "none",
+  valueRef,
   label,
   disabled,
   selected,
@@ -2020,9 +3139,19 @@ function ChampionCard({
   card: StatCheckCard | null;
   imageUrl?: string | null;
   category?: StatCategory;
+  /**
+   * The current board's three lane categories, in lane order. Supplied for
+   * cards in hand so a card answers the live board; a placed card takes
+   * `category` instead and shows only that lane's value.
+   */
+  categoryValues?: CardCategoryValue[];
   value?: number;
   mode: "hand" | "board" | "face-down";
   state?: "idle" | "selected" | "assigned" | "winner" | "loser" | "decisive";
+  /** Reveal treatment for the active category's value only. */
+  valueEmphasis?: LaneValueEmphasis;
+  /** Measured by the lane so an energy packet can start at this number. */
+  valueRef?: RefObject<HTMLSpanElement | null>;
   label?: string;
   disabled?: boolean;
   selected?: boolean;
@@ -2057,12 +3186,16 @@ function ChampionCard({
   }
 
   const relevant = card && category ? category.formatValue(value ?? category.getValue(card)) : null;
-  const chips = card ? statChips(card) : [];
+  // A card in hand shows the round's three lane categories; anything else falls
+  // back to the generic chip set (no board established yet).
+  const boardRows = card && !relevant ? categoryValues ?? null : null;
+  const chips = card && !boardRows ? statChips(card) : [];
   const cardClassName = cn(
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
     mode === "board" && (fill ? "h-full w-full" : BOARD_CARD_SIZE),
-    state === "selected" && "-translate-y-2 scale-[1.08] border-[#f4d77d] shadow-[0_22px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(244,215,125,0.4)] ring-2 ring-[#f4d77d]/75",
+    state === "selected" &&
+      "-translate-y-2 scale-[1.08] border-[#f4d77d] brightness-110 shadow-[0_22px_48px_rgba(0,0,0,0.65),0_0_30px_rgba(244,215,125,0.55),0_0_46px_rgba(34,211,238,0.3)] ring-2 ring-[#f4d77d]",
     state === "assigned" && "opacity-50 saturate-75",
     state === "winner" && "border-[#d6b55d] shadow-[0_0_24px_rgba(214,181,93,0.3)]",
     state === "decisive" && "border-[#f4d77d] shadow-[0_0_36px_rgba(214,181,93,0.45)]",
@@ -2077,16 +3210,22 @@ function ChampionCard({
         {label && <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
         <div className={cn("truncate font-black text-white", mode === "board" ? "text-sm" : "text-sm")}>{card?.name}</div>
         {relevant ? (
-          <>
-            <div className="mt-0.5 inline-flex rounded-full bg-[#d6b55d] px-2 py-0.5 text-sm font-black text-black">{relevant}</div>
-            <div className="mt-1 flex flex-wrap gap-0.5 opacity-70">
-              {chips.slice(0, 3).map((chip) => (
-                <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[9px] font-semibold text-slate-300">
-                  {chip.label} {chip.value}
-                </span>
-              ))}
-            </div>
-          </>
+          // Placed in a lane: only this lane's contested value survives.
+          <CategoryValueBadge value={relevant} emphasis={valueEmphasis} valueRef={valueRef} />
+        ) : boardRows ? (
+          <div className="mt-1 flex flex-wrap gap-1" data-testid="stat-check-card-board-rows">
+            {boardRows.map((row) => (
+              <span
+                key={`${row.laneIndex}-${row.category.id}`}
+                data-card-lane={row.laneIndex}
+                data-card-category={row.category.id}
+                title={categoryValueAccessibleText(row)}
+                className="rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-slate-200"
+              >
+                {row.label} {row.value}
+              </span>
+            ))}
+          </div>
         ) : (
           <div className="mt-1 flex flex-wrap gap-1">
             {chips.map((chip) => (
@@ -2109,7 +3248,7 @@ function ChampionCard({
         type="button"
         disabled={disabled}
         aria-pressed={selected ?? false}
-        aria-label={card ? handCardAccessibleLabel(card, selected) : undefined}
+        aria-label={card ? handCardAccessibleLabel(card, selected, boardRows) : undefined}
         onClick={onClick}
         className={cardClassName}
       >
@@ -2125,8 +3264,11 @@ function ChampionCard({
   );
 }
 
-function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean) {
-  const stats = statChips(card).map((chip) => `${chip.label} ${chip.value}`).join(", ");
+function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean, boardRows?: CardCategoryValue[] | null) {
+  // Screen readers get the full category sentence the compact row abbreviates.
+  const stats = boardRows?.length
+    ? boardRows.map((row) => categoryValueAccessibleText(row)).join(", ")
+    : statChips(card).map((chip) => `${chip.label} ${chip.value}`).join(", ");
   return `${card.name}. ${stats}.${selected ? " Selected. Click a lane to play it." : ""}`;
 }
 
@@ -2202,10 +3344,6 @@ function RevealSequence({
   match,
   resolution,
   revealStep,
-  nextCategories,
-  pendingChoiceId,
-  onSelectChoice,
-  onConfirmChoice,
   onNextRound,
   onRestart,
   online = null,
@@ -2214,10 +3352,6 @@ function RevealSequence({
   match: MatchState;
   resolution: RoundResolution | null;
   revealStep: PresentationStep;
-  nextCategories: StatCategory[];
-  pendingChoiceId: ItemId | null;
-  onSelectChoice: (itemId: ItemId | null) => void;
-  onConfirmChoice: () => void;
   onNextRound: () => void;
   onRestart: () => void;
   online?: RevealSequenceOnlineState | null;
@@ -2225,36 +3359,17 @@ function RevealSequence({
 }) {
   const itemChoiceOpen = match.phase === "item-choice";
   const preRoundChoice = itemChoiceOpen && !match.lastResolution;
-  const choiceWaiting = Boolean(online && itemChoiceOpen && online.youChosen);
 
   if (preRoundChoice) {
-    // Opening item choice: only the single-family hint for Round 1 may show —
-    // never the full three-category board (which stays concealed on the slab).
-    return (
-      <div>
-        <NextRoundIntel categories={match.currentCategories} heading="Round 1 Intel" compact />
-        <div className="mt-2">
-          <ItemChoicePanel
-            title="Choose your starting item"
-            subtitle="Both sides pick one item in secret before Round 1 begins."
-            inventory={match.playerInventory}
-            selectedItemId={pendingChoiceId}
-            onSelect={(itemId) => onSelectChoice(itemId)}
-            onConfirm={onConfirmChoice}
-            waiting={choiceWaiting}
-          />
-        </div>
-        {online && <OnlineOpponentStatus online={online} phase={match.phase} />}
-      </div>
-    );
+    // Opening item choice: the modal owns the hint and the pick; the rail
+    // shows nothing (the Round 1 board stays concealed on the slab).
+    return null;
   }
 
   return (
     <div>
-      <NextRoundIntel categories={nextCategories} compact />
-
-      <div className="mt-2 h-px bg-cyan-300/10" />
-
+      {/* The next-round hint is no longer a panel here: it is a single
+          icon-only socket mounted on the board's item dock. */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Round {match.round}</div>
@@ -2301,20 +3416,8 @@ function RevealSequence({
           <DamageBreakdown title={`${opponentLabel} deals`} amount={resolution.damage.bot} side="bot" damage={resolution.damage} />
           {(revealStep === "resolved" || revealStep === "match-over") && (
             <div className="space-y-2 pt-2">
-              {itemChoiceOpen && resolution && (
-                // Post-cadence choice: the resolved board, lane results,
-                // damage, completed categories, and the next-round hint all
-                // stay visible; only this control area changes.
-                <ItemChoicePanel
-                  title={`Item choice — ${resolution.round} rounds complete`}
-                  subtitle="Both sides pick one item in secret before the next round begins."
-                  inventory={match.playerInventory}
-                  selectedItemId={pendingChoiceId}
-                  onSelect={(itemId) => onSelectChoice(itemId)}
-                  onConfirm={onConfirmChoice}
-                  waiting={choiceWaiting}
-                />
-              )}
+              {/* Post-cadence item choice happens in the overlay; the resolved
+                  board, lane results, and damage all stay visible behind it. */}
               {match.phase === "resolved" && (
                 <Button data-testid="stat-check-next-round" onClick={onNextRound} className="w-full bg-cyan-300 text-[#06111f] hover:bg-cyan-200">
                   Next Round <ChevronsRight className="ml-1.5 h-4 w-4" />
@@ -2368,11 +3471,68 @@ function MatchSummaryPanel({ match }: { match: MatchState }) {
   );
 }
 
+/**
+ * Narrow-layout matchup header: both HP bars and identities in one compact
+ * band directly above the board, replacing the wide matchup rail.
+ */
+function CompactMatchupBar({
+  displayHp,
+  resolution,
+  flashKey,
+  impactSide = null,
+  isOnline = false,
+  opponentLabel = "Bot",
+}: {
+  displayHp: { player: number; bot: number };
+  resolution: RoundResolution | null;
+  flashKey: number;
+  /** Side whose bar is currently taking the centre presentation's damage. */
+  impactSide?: Side | null;
+  isOnline?: boolean;
+  opponentLabel?: string;
+}) {
+  return (
+    <div data-testid="stat-check-compact-matchup" className="grid grid-cols-2 items-end gap-2">
+      <div className="min-w-0">
+        <div className="mb-0.5 flex items-baseline gap-1.5 px-0.5 leading-tight">
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200/80">You</span>
+          <span className="truncate text-[11px] font-black text-white">{isOnline ? "You" : "mogsy"}</span>
+        </div>
+        <HpBar
+          side="player"
+          hp={displayHp.player}
+          previousHp={resolution?.playerHpBefore}
+          damage={resolution?.damage.bot ?? 0}
+          flashKey={flashKey}
+          impacting={impactSide === "player"}
+        />
+      </div>
+      <div className="min-w-0">
+        <div className="mb-0.5 flex items-baseline justify-end gap-1.5 px-0.5 leading-tight">
+          <span className="truncate text-[11px] font-black text-white">
+            {isOnline ? "Opponent" : "Deterministic Bot"}
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-red-300/80">{opponentLabel}</span>
+        </div>
+        <HpBar
+          side="bot"
+          hp={displayHp.bot}
+          previousHp={resolution?.botHpBefore}
+          damage={resolution?.damage.player ?? 0}
+          flashKey={flashKey}
+          impacting={impactSide === "bot"}
+        />
+      </div>
+    </div>
+  );
+}
+
 function MatchupRail({
   match,
   displayHp,
   resolution,
   flashKey,
+  impactSide = null,
   isOnline = false,
   opponentLabel = "Bot",
 }: {
@@ -2380,12 +3540,14 @@ function MatchupRail({
   displayHp: { player: number; bot: number };
   resolution: RoundResolution | null;
   flashKey: number;
+  /** Side whose bar is currently taking the centre presentation's damage. */
+  impactSide?: Side | null;
   isOnline?: boolean;
   opponentLabel?: string;
 }) {
   const lastRound = match.roundHistory[match.roundHistory.length - 1] ?? null;
   return (
-    <aside className="order-3 flex min-h-0 flex-col gap-2 lg:order-none lg:h-full lg:overflow-y-auto">
+    <aside className="order-3 flex min-h-0 flex-col gap-2 min-[1210px]:order-none min-[1210px]:h-full min-[1210px]:overflow-y-auto">
       <ProfilePanel side="bot" isOnline={isOnline} />
       <HpBar
         side="bot"
@@ -2393,6 +3555,7 @@ function MatchupRail({
         previousHp={resolution?.botHpBefore}
         damage={resolution?.damage.player ?? 0}
         flashKey={flashKey}
+        impacting={impactSide === "bot"}
       />
       <div className="flex items-center gap-3 px-1" aria-hidden>
         <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d6b55d]/50" />
@@ -2405,6 +3568,7 @@ function MatchupRail({
         previousHp={resolution?.playerHpBefore}
         damage={resolution?.damage.bot ?? 0}
         flashKey={flashKey}
+        impacting={impactSide === "player"}
       />
       <ProfilePanel side="player" isOnline={isOnline} />
       <LastRoundDamage resolution={lastRound} opponentLabel={opponentLabel} />
@@ -2448,17 +3612,29 @@ function HpBar({
   previousHp,
   damage,
   flashKey,
+  impacting = false,
 }: {
   side: "player" | "bot";
   hp: number;
   previousHp?: number;
   damage: number;
   flashKey: number;
+  /** True while this bar is the one currently taking the round's damage. */
+  impacting?: boolean;
 }) {
   const pct = Math.max(0, Math.min(100, (hp / STAT_CHECK_RULES.startingHp) * 100));
   const damaged = previousHp != null && damage > 0 && hp < previousHp;
   return (
-    <div className="relative rounded-md border border-cyan-300/12 bg-black/28 px-3 py-1.5 shadow-xl">
+    <div
+      data-testid={`stat-check-${side}-hp-panel`}
+      data-hp-impacting={impacting ? "true" : undefined}
+      className={cn(
+        "relative rounded-md border bg-black/28 px-3 py-1.5 shadow-xl transition-colors duration-200",
+        impacting
+          ? "border-red-400/70 shadow-[0_0_22px_rgba(248,113,113,0.45)]"
+          : "border-cyan-300/12",
+      )}
+    >
       {damaged && (
         <div key={flashKey} className="pointer-events-none absolute right-3 top-0 -translate-y-3 animate-bounce rounded-full bg-red-500 px-2 py-0.5 text-xs font-black text-white motion-reduce:animate-none">
           -{damage}
@@ -2467,11 +3643,14 @@ function HpBar({
       <div data-testid={`stat-check-${side}-hp`} className="text-sm font-black">
         {Math.max(0, hp)} / {STAT_CHECK_RULES.startingHp} HP
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-900">
+      <div className={cn("mt-1 h-2 overflow-hidden rounded-full bg-slate-900", impacting && "ring-1 ring-red-300/60")}>
         <div
           className={cn(
+            // The width transition IS the drain: the bar is handed its new
+            // value only at the impact/health stage, never before it.
             "h-full transition-all duration-500 motion-reduce:transition-none",
             side === "bot" ? "bg-gradient-to-r from-red-600 to-red-400" : "bg-gradient-to-r from-cyan-500 to-cyan-300",
+            impacting && "brightness-150",
           )}
           style={{ width: `${pct}%` }}
         />
@@ -2609,60 +3788,6 @@ function DiscardPile({
   );
 }
 
-export function LaneResult({ result, opponentLabel = "Bot" }: { result: CategoryResult; opponentLabel?: string }) {
-  const headline = result.winner === "player" ? "You win" : result.winner === "bot" ? `${opponentLabel} wins` : "Lane tied";
-  const accent = result.winner === "player" ? "text-[#f4d77d]" : result.winner === "bot" ? "text-cyan-200" : "text-slate-200";
-  const lineAccent = result.winner === "player" ? "via-[#f4d77d]/60" : result.winner === "bot" ? "via-cyan-300/50" : "via-slate-400/40";
-  return (
-    <div className="z-20 flex w-full items-center gap-2">
-      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-r from-transparent to-white/30", lineAccent)} />
-      <div
-        className={cn(
-          "relative max-w-full rounded-xl border p-[5px] shadow-[0_10px_26px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(214,181,93,0.22)]",
-          "bg-[linear-gradient(180deg,rgba(52,42,18,0.55),rgba(6,10,16,0.85))]",
-          result.decisive ? "border-[#f4d77d]/50 shadow-[0_0_30px_rgba(214,181,93,0.3)]" : "border-[#d6b55d]/30",
-        )}
-      >
-        <span aria-hidden className="absolute -left-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-l-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
-        <span aria-hidden className="absolute -right-[7px] top-1/2 h-6 w-[7px] -translate-y-1/2 rounded-r-sm bg-[linear-gradient(180deg,#8a6f35,#4a3a1c)] shadow-[0_1px_2px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(244,215,125,0.4)]" />
-        <div
-          className={cn(
-            "flex min-w-[112px] max-w-full flex-col items-center gap-0.5 rounded-lg border bg-black/85 px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(214,181,93,0.28)] sm:px-4",
-            result.decisive ? "border-[#f4d77d]/80" : "border-[#d6b55d]/45",
-          )}
-        >
-        <div className={cn("whitespace-nowrap text-lg font-black uppercase tracking-[0.08em]", accent)}>{headline}</div>
-        <div className="whitespace-nowrap text-base font-black text-white">
-          {result.category.formatValue(result.playerValue)} vs {result.category.formatValue(result.botValue)}
-        </div>
-        {/* Item breakdown: natural + bonus → final, per side that used one. */}
-        {result.playerItem && (
-          <div data-testid="stat-check-result-item-player" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-[#f4d77d]">
-            <ItemGlyph itemId={result.playerItem} className="h-3 w-3" />
-            You: {result.category.formatValue(result.playerNaturalValue)} + {result.playerBonus} → {result.category.formatValue(result.playerValue)}
-          </div>
-        )}
-        {result.botItem && (
-          <div data-testid="stat-check-result-item-bot" className="flex items-center gap-1 whitespace-nowrap text-[10px] font-black text-red-200">
-            <ItemGlyph itemId={result.botItem} className="h-3 w-3" />
-            {opponentLabel}: {result.category.formatValue(result.botNaturalValue)} + {result.botBonus} → {result.category.formatValue(result.botValue)}
-          </div>
-        )}
-        {result.decisive && (
-          <div className="rounded bg-[#d6b55d]/20 px-2 py-0.5 text-xs font-black uppercase tracking-[0.1em] text-[#f4d77d]">
-            Decisive +1
-          </div>
-        )}
-        <div className="text-[10px] font-semibold text-slate-400">
-          {(result.margin * 100).toFixed(1)}% margin - Decisive at {formatThreshold(result.category.decisiveThreshold)}
-          {result.category.direction === "lower" ? " - Lower wins" : ""}
-        </div>
-        </div>
-      </div>
-      <span aria-hidden className={cn("h-px flex-1 bg-gradient-to-l from-transparent to-white/30", lineAccent)} />
-    </div>
-  );
-}
 
 function BoardResult({ resolution, opponentLabel = "Bot" }: { resolution: RoundResolution; opponentLabel?: string }) {
   const label =
@@ -2771,11 +3896,6 @@ function statFamilyLabel(category: StatCategory) {
   return STAT_FAMILY_LABELS[category.family] ?? "Champion Stats";
 }
 
-function formatThreshold(threshold: number) {
-  const percent = threshold * 100;
-  return Number.isInteger(percent) ? `${percent}%` : `${percent.toFixed(1)}%`;
-}
-
 function scopeLabel(category: StatCategory) {
   if (category.id.includes("-18")) return "Level 18";
   if (category.id.includes("-1")) return "Level 1";
@@ -2860,10 +3980,18 @@ function readElementRotation(element?: Element | null) {
   return Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
 }
 
+/**
+ * A speed the player explicitly chose this session wins; anything missing or
+ * unrecognised falls back to the gameplay default. Reading the raw entry (not
+ * `Number(null) === 0`) keeps "never chosen" distinguishable from "chose a
+ * value we no longer offer", and both land on the default.
+ */
 function readStoredAnimationSpeed(): StatCheckAnimationSpeed {
-  if (typeof window === "undefined") return 1;
-  const stored = Number(window.sessionStorage.getItem(SPEED_STORAGE_KEY));
-  return isStatCheckAnimationSpeed(stored) ? stored : 1;
+  if (typeof window === "undefined") return STAT_CHECK_DEFAULT_ANIMATION_SPEED;
+  const stored = window.sessionStorage.getItem(SPEED_STORAGE_KEY);
+  if (stored === null) return STAT_CHECK_DEFAULT_ANIMATION_SPEED;
+  const parsed = Number(stored);
+  return isStatCheckAnimationSpeed(parsed) ? parsed : STAT_CHECK_DEFAULT_ANIMATION_SPEED;
 }
 
 function useSessionAnimationSpeed() {
@@ -2880,7 +4008,15 @@ function useViewportWidth() {
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth || 1440);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // Some environments update innerWidth without dispatching a resize event
+    // (e.g. emulated-viewport changes); the layout breakpoint's media query
+    // still fires, so re-read the width on its change too.
+    const query = window.matchMedia?.("(min-width: 1210px)");
+    query?.addEventListener?.("change", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      query?.removeEventListener?.("change", onResize);
+    };
   }, []);
   return width;
 }
