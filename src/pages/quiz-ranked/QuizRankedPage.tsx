@@ -71,8 +71,26 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   const [recoveredMatchId, setRecoveredMatchId] = useState<string | null>(null);
   const [recoveryChecked, setRecoveryChecked] = useState(false);
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("standard");
+  const [botClass, setBotClass] = useState<RankedClass>("tank");
   const [botBusy, setBotBusy] = useState(false);
   const [botError, setBotError] = useState<string | null>(null);
+  // The class whose queue-join is in flight. Doubles as the double-activation
+  // guard: while it is set every card is disabled, so a second click (mouse or
+  // keyboard) cannot start a second join.
+  const [joiningClass, setJoiningClass] = useState<RankedClass | null>(null);
+
+  function joinAs(classId: RankedClass) {
+    if (joiningClass !== null) return;
+    setJoiningClass(classId);
+    q.joinAs(classId);
+  }
+
+  // Release the guard whenever the queue leaves the joining state — on success
+  // the page has already moved on; on failure the cards become clickable again
+  // and `q.error` explains why.
+  useEffect(() => {
+    if (q.state !== "joining") setJoiningClass(null);
+  }, [q.state]);
 
   // Reconnect after a full page reload: an active bot match is NOT in the queue,
   // so queue recovery alone loses it. Account-bound discovery rediscovers the
@@ -100,7 +118,7 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
     setBotBusy(true);
     setBotError(null);
     try {
-      const created = await createBotMatch(q.selectedClass ?? "tank", botDifficulty);
+      const created = await createBotMatch(botClass, botDifficulty);
       setBotMatchId(created.matchId);
     } catch (e) {
       if (isAborted(e)) return;
@@ -159,36 +177,39 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
               Your class sets your abilities and combat identity for the duel.
             </p>
           </div>
+          {/* R3: one click. Picking a class IS joining the queue as that class
+              — there is no separate confirmation. `joiningClass` marks the card
+              whose request is in flight and blocks a double activation; the
+              server's acceptance is what moves the page on. */}
           <div className="grid gap-2 sm:grid-cols-3">
-            {CLASSES.map((c) => (
-              <button key={c.id} type="button"
-                data-testid={`ranked-class-${c.id}`}
-                aria-pressed={q.selectedClass === c.id}
-                onClick={() => q.setSelectedClass(c.id)}
-                className={`min-h-[44px] rounded-lg border-2 p-3 text-center transition-colors motion-reduce:transition-none ${
-                  q.selectedClass === c.id
-                    ? "border-[#c9a84c] bg-[#c9a84c]/10 shadow-[0_0_18px_-6px_rgba(201,168,76,0.6)]"
-                    : "border-white/10 bg-white/[0.03] hover:border-[#c9a84c]/40"}`}>
-                {/* Card label carries the class name; the art is combat identity. */}
-                <MogzyClass character={c.id} decorative
-                  className="mx-auto mb-1.5 h-16 w-16 sm:h-20 sm:w-20" />
-                <div className="font-semibold">{c.label}</div>
-                <div className="text-xs text-muted-foreground">{c.blurb}</div>
-              </button>
-            ))}
+            {CLASSES.map((c) => {
+              const pending = joiningClass === c.id;
+              return (
+                <button key={c.id} type="button"
+                  data-testid={`ranked-class-${c.id}`}
+                  aria-pressed={q.selectedClass === c.id}
+                  aria-busy={pending}
+                  disabled={joiningClass !== null}
+                  onClick={() => joinAs(c.id)}
+                  className={`min-h-[44px] rounded-lg border-2 p-3 text-center transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    q.selectedClass === c.id
+                      ? "border-[#c9a84c] bg-[#c9a84c]/10 shadow-[0_0_18px_-6px_rgba(201,168,76,0.6)]"
+                      : "border-white/10 bg-white/[0.03] enabled:hover:border-[#c9a84c]/40"}`}>
+                  {/* Card label carries the class name; the art is combat identity. */}
+                  <MogzyClass character={c.id} decorative
+                    className="mx-auto mb-1.5 h-16 w-16 sm:h-20 sm:w-20" />
+                  <div className="font-semibold">{c.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {pending ? "Joining queue…" : c.blurb}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-
-          {/* Ranked queue — real matchmaking. */}
-          <div className="space-y-1.5">
-            <Button data-testid="ranked-join" disabled={q.state === "joining"} onClick={q.join}
-              className="w-full min-h-[44px]">
-              {q.state === "joining" ? "Joining…" : "Join Ranked queue"}
-            </Button>
-            <p className="text-center text-[11px] text-muted-foreground">
-              Matches you against another player.
-            </p>
-            {q.error && <p className="text-xs text-destructive">{q.error}</p>}
-          </div>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Choose a class to join the Ranked queue against another player.
+          </p>
+          {q.error && <p className="text-xs text-destructive">{q.error}</p>}
 
           {/* Distinct, clearly-labeled owner playtest path (bot). */}
           <div className="relative flex items-center gap-3 pt-1" aria-hidden>
@@ -207,6 +228,23 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
             <p className="text-[11px] text-muted-foreground">
               Practice the full duel against a deterministic bot. Placeholder questions.
             </p>
+            {/* The playtest keeps its OWN class picker: the Ranked cards above
+                now queue on click, so this path needs its own selection. "Play
+                vs Bot" is a distinct destination, not a confirmation of it. */}
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Bot class">
+              {CLASSES.map((c) => (
+                <button key={c.id} type="button"
+                  data-testid={`ranked-bot-class-${c.id}`}
+                  aria-pressed={botClass === c.id}
+                  onClick={() => setBotClass(c.id)}
+                  className={`min-h-[36px] rounded-md border px-3 text-xs transition-colors motion-reduce:transition-none ${
+                    botClass === c.id
+                      ? "border-[#c9a84c]/60 bg-[#c9a84c]/10 text-[#e8c97a]"
+                      : "border-white/10 bg-white/[0.03] hover:border-[#c9a84c]/40"}`}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Bot difficulty">
               {BOT_DIFFICULTIES.map((d) => (
                 <button key={d.id} type="button"

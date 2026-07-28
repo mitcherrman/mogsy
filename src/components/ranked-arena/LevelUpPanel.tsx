@@ -99,7 +99,7 @@ export function LevelUpPanel({
       <header className="space-y-1">
         <h3 className="font-semibold">Choose your Level 2 ability</h3>
         <p className="text-xs text-muted-foreground">
-          This choice is permanent for the match.
+          One click applies this permanently.
           {gatesNextRound && " The next round starts after you choose."}
         </p>
         {selectReason && (
@@ -128,16 +128,21 @@ export function LevelUpPanel({
           </button>
         ))}
       </div>
-      <Button
-        type="button"
-        data-testid="level-confirm"
-        disabled={!permissions.canConfirmSubmission || pendingOptionId === null}
-        onClick={() => onConfirmOption?.()}
-        className="w-full min-h-[44px]"
-      >
-        <Lock className="h-4 w-4 mr-1" aria-hidden />
-        Confirm permanent choice
-      </Button>
+      {/* R3: no confirmation button. A director that still wants an explicit
+          confirm step (the Ranked Tutorial teaches one) passes onConfirmOption;
+          the live arena does not, and the choice applies on the first click. */}
+      {onConfirmOption && (
+        <Button
+          type="button"
+          data-testid="level-confirm"
+          disabled={!permissions.canConfirmSubmission || pendingOptionId === null}
+          onClick={() => onConfirmOption()}
+          className="w-full min-h-[44px]"
+        >
+          <Lock className="h-4 w-4 mr-1" aria-hidden />
+          Confirm permanent choice
+        </Button>
+      )}
     </section>
   );
 }

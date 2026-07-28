@@ -92,23 +92,37 @@ async function mount() {
 }
 
 describe("QuizRankedMatch — multi-challenge segment", () => {
-  it("renders the Item Cost Duel ability screen from the registry", async () => {
-    await mount();
-    expect(await screen.findByTestId("icd-ability-phase")).toBeInTheDocument();
-    expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
-  });
+  const openInChallenges = () => {
+    backend.segmentMeta = icdSegmentMeta({ phase: "challenges", challenge_index: 0 });
+    backend.segmentState = icdChallengeState(0);
+  };
 
-  it("suppresses the quiz confirm strip and ability tray", async () => {
+  it("renders the Item Cost Duel challenge board straight from the registry",
+    async () => {
+      openInChallenges();
+      await mount();
+      expect(await screen.findByTestId("icd-challenge-phase")).toBeInTheDocument();
+      expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
+      // R3: no ability step stands between the segment opening and challenge 1.
+      expect(screen.queryByTestId("icd-ability-phase")).toBeNull();
+      expect(screen.getByTestId("icd-progress")).toHaveTextContent("Challenge 1 of 5");
+    });
+
+  it("suppresses the quiz answer status strip and ability tray", async () => {
+    openInChallenges();
     await mount();
-    await screen.findByTestId("icd-ability-phase");
-    // Two competing ability controls would be a real input hazard.
+    await screen.findByTestId("icd-challenge-phase");
+    // The module owns its own submission; a second set of controls beside it
+    // would be a real input hazard.
     expect(screen.queryByTestId("ranked-abilities")).toBeNull();
+    expect(screen.queryByTestId("ranked-submission-status")).toBeNull();
   });
 
-  it("does not show the between-rounds transition during the ability window", async () => {
+  it("shows no 'choosing an ability' status and no transition gap", async () => {
+    openInChallenges();
     await mount();
-    await screen.findByTestId("icd-ability-phase");
-    // No engine round exists yet BY DESIGN — that is the phase, not a gap.
+    await screen.findByTestId("icd-challenge-phase");
+    expect(document.body.textContent).not.toMatch(/choosing an ability/i);
     expect(screen.queryByTestId("ranked-round-transition")).toBeNull();
   });
 

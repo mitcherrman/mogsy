@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
     error: null,
     setSelectedClass: vi.fn(),
     join: vi.fn(),
+    joinAs: vi.fn(),
     cancel: vi.fn(),
   },
 }));

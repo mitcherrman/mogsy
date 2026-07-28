@@ -48,6 +48,8 @@ export interface QueueController {
   error: string | null;
   setSelectedClass: (c: RankedClass) => void;
   join: () => void;
+  /** R3 one-click join: pick a class and queue as it in a single action. */
+  joinAs: (c: RankedClass) => void;
   cancel: () => void;
 }
 
@@ -139,14 +141,24 @@ export function useRankedQueue(): QueueController {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const join = useCallback(() => {
+  /**
+   * R3: join as an EXPLICIT class in one call.
+   *
+   * The class travels as an argument rather than through `selectedClass` state
+   * because the click that picks a class is the same click that joins — routing
+   * it through a state update first would send whatever the previous render
+   * closed over. `selectedClass` is still updated so the queued-as copy and any
+   * later bot match reflect the pick.
+   */
+  const joinAs = useCallback((classId: RankedClass) => {
+    setSelectedClass(classId);
     setState("joining");
     setError(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const s = await api.joinQueue(selectedClass, controller.signal);
+        const s = await api.joinQueue(classId, controller.signal);
         applyStatus(s);
         if (s.status === "waiting") {
           failuresRef.current = 0;
@@ -157,7 +169,9 @@ export function useRankedQueue(): QueueController {
         handleError(e, "action");
       }
     })();
-  }, [selectedClass, applyStatus, handleError, poll]);
+  }, [applyStatus, handleError, poll]);
+
+  const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
   const cancel = useCallback(() => {
     setState("cancelling");
@@ -177,6 +191,6 @@ export function useRankedQueue(): QueueController {
 
   return {
     state, status, matchId, selectedClass, unavailableReason, error,
-    setSelectedClass, join, cancel,
+    setSelectedClass, join, joinAs, cancel,
   };
 }

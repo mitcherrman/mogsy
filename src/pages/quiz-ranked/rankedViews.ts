@@ -22,6 +22,7 @@ import { remainingSeconds } from "@/lib/ranked-core/timerMath";
 import {
   AbilityView,
   InteractionPermissions,
+  NO_INTERACTIONS,
   QuestionView,
   SubmissionPhase,
   TimerView,
@@ -97,6 +98,51 @@ export function projectPermissions(phase: SubmissionPhase, inputOpen: boolean,
     canReviewSubmission: false, canConfirmSubmission: false,
     disabledReasons: { submitting: "Submitting…" },
   });
+}
+
+/**
+ * R3: the ability tray's own gating, deliberately NOT the answer's.
+ *
+ * The answer locks on one click; the ability stays editable for as long as the
+ * ROUND is open — including the whole stretch where the player has already
+ * answered and is waiting for the opponent. The authority for "still open" is
+ * the backend's own selection phase (`own_selection.phase`), which the engine
+ * flips to `locked` at the instant the round closes. Nothing here infers it
+ * from local submission state, so the tray can never stay live past the freeze.
+ */
+export function projectAbilityPermissions(
+  priv: PrivatePlayerView | null, roundLive: boolean, busy: boolean,
+): InteractionPermissions {
+  const open = roundLive && priv?.ownSelection.phase === "open";
+  if (!open) {
+    return restrictPermissions(NO_INTERACTIONS, {
+      disabledReasons: {
+        ability: roundLive ? "Ability locked for this round." : undefined,
+      },
+    });
+  }
+  const base: InteractionPermissions = {
+    ...NO_INTERACTIONS, canSelectAbility: true,
+  };
+  if (!busy) return base;
+  return restrictPermissions(base, {
+    canSelectAbility: false,
+    disabledReasons: { ability: "Saving…" },
+  });
+}
+
+/**
+ * Whether the ability tray should render at all.
+ *
+ * Hidden when there is nothing actionable: no private state, a module that owns
+ * its own submission, no unlocked ability, or every unlocked ability out of
+ * charges. A tray whose only live control is "No Ability" is not worth a row —
+ * No Ability is already the default and needs no click.
+ */
+export function abilityTrayIsUseful(abilities: AbilityView[],
+                                    selectedAbilityId: string | null): boolean {
+  if (selectedAbilityId !== null) return true;  // must remain clearable
+  return abilities.some((a) => a.unlocked && !a.exhausted && !a.locked);
 }
 
 /** Neutral opponent-connection copy for the arena chrome. */

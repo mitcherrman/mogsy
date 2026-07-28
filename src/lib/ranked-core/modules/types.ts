@@ -32,10 +32,8 @@ import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/cont
  * from whatever the next authoritative snapshot says.
  */
 export interface ModuleSegmentActions {
-  draftAbility: (abilityId: string | null) => void;
-  confirmAbility: () => void;
   submitChallenge: (challengeIndex: number, itemId: string) => void;
-  /** True while any of the above is in flight. */
+  /** True while a challenge submission is in flight. */
   busy: boolean;
   /** Last action error, already human-readable. */
   error: string | null;
@@ -72,9 +70,8 @@ export interface ModuleRenderer {
   moduleId: string;
   moduleVersion: number;
   /**
-   * True when the module owns its own ability phase, input, and submission,
-   * so the shell must NOT render the quiz select→review→confirm strip or the
-   * quiz ability tray alongside it.
+   * True when the module owns its own input and submission, so the shell must
+   * NOT render the quiz answer flow or the quiz ability tray alongside it.
    *
    * This is a capability the module declares, not an `isItemCostDuel` flag in
    * the shell: adding a third module changes only that module's value.
