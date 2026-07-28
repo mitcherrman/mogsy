@@ -12,6 +12,7 @@ import {
 } from "./animationConfig";
 import type { LanePlaqueStage } from "./animationState";
 import { STAT_CHECK_FIXTURE_DECK } from "./fixtureDeck";
+import { compactCategoryLabel } from "./handCardStats";
 import { STAT_CATEGORIES, createMatch, generateCategoryBoard, type CategoryResult, type StatCategory, type StatCheckCard } from "./statCheckEngine";
 
 vi.mock("@/hooks/useChampionBaseStats", () => ({
@@ -2041,5 +2042,187 @@ describe("StatCheckPage item system UI", () => {
     expect(screen.getByTestId("stat-check-inventory-ruby-crystal")).toHaveAttribute("data-dock-state", "owned");
     expect(screen.getByTestId("stat-check-pending-item")).toBeInTheDocument();
     expect(inventoryCountText("ruby-crystal")).toBe("1"); // pending, not consumed
+  });
+});
+
+/**
+ * Cards in hand answer the live board: exactly the three current lane
+ * categories, in lane order. Placing a card collapses it to that one lane's
+ * contested value.
+ */
+describe("StatCheckPage hand cards answer the board", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    window.sessionStorage.clear();
+    reducedMotion(false);
+  });
+
+  afterEach(() => {
+    act(() => vi.runOnlyPendingTimers());
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  /** The board's category ids in lane order, read off the lane plaques. */
+  function boardCategoryIds(container: HTMLElement) {
+    return Array.from(container.querySelectorAll<HTMLElement>('[data-testid^="stat-check-marker-"]')).map((marker) =>
+      (marker.getAttribute("data-testid") ?? "").replace("stat-check-marker-", ""),
+    );
+  }
+
+  function handCardRows(handIndex: number) {
+    const card = screen.getByTestId(`stat-check-hand-${handIndex}`);
+    return Array.from(card.querySelectorAll<HTMLElement>("[data-card-category]"));
+  }
+
+  function rowSummary(rows: HTMLElement[]) {
+    return rows.map((row) => ({
+      lane: Number(row.dataset.cardLane),
+      category: row.dataset.cardCategory,
+      text: (row.textContent ?? "").trim(),
+    }));
+  }
+
+  function categoryById(id: string | undefined) {
+    const found = STAT_CATEGORIES.find((entry) => entry.id === id);
+    if (!found) throw new Error(`unknown category ${id}`);
+    return found;
+  }
+
+  /** The visible values on a placed lane card (excluding the invisible pre-mount). */
+  function laneCardValues(container: HTMLElement, laneIndex: number) {
+    const lane = lanes(container)[laneIndex];
+    const card = Array.from(lane.querySelectorAll<HTMLElement>("[data-card-champion]")).find(
+      (element) => !element.closest('[data-board-premount="true"]'),
+    );
+    return {
+      badges: card?.querySelectorAll('[data-testid="stat-check-value"]').length ?? 0,
+      rows: card?.querySelectorAll("[data-card-category]").length ?? 0,
+      text: (card?.textContent ?? "").trim(),
+      className: card?.className ?? "",
+    };
+  }
+
+  it("shows exactly three rows per hand card, in lane order, matching the board", () => {
+    const { container } = renderPage();
+    const expected = boardCategoryIds(container);
+    expect(expected).toHaveLength(3);
+
+    for (let handIndex = 0; handIndex < 6; handIndex += 1) {
+      const rows = rowSummary(handCardRows(handIndex));
+      expect(rows).toHaveLength(3);
+      expect(rows.map((row) => row.lane)).toEqual([0, 1, 2]);
+      expect(rows.map((row) => row.category)).toEqual(expected);
+    }
+  });
+
+  it("shows no stat outside the current board", () => {
+    const { container } = renderPage();
+    const board = boardCategoryIds(container);
+    const card = screen.getByTestId("stat-check-hand-0");
+    const rows = Array.from(card.querySelectorAll<HTMLElement>("[data-card-category]"));
+    expect(rows).toHaveLength(3);
+    rows.forEach((row) => {
+      expect(board).toContain(row.dataset.cardCategory);
+    });
+    // The board-driven row set replaced the generic fixed chip set.
+    expect(card.querySelector('[data-testid="stat-check-card-board-rows"]')).not.toBeNull();
+  });
+
+  it("uses the same values the lane comparison contests", () => {
+    const { container } = renderPage();
+    const board = boardCategoryIds(container);
+    const champion = screen.getByTestId("stat-check-hand-0").getAttribute("data-card-champion");
+    const card = STAT_CHECK_FIXTURE_DECK.find((entry) => entry.name === champion);
+    expect(card).toBeTruthy();
+    handCardRows(0).forEach((row, index) => {
+      const category = categoryById(board[index]);
+      const authoritative = category.formatValue(category.getValue(card!));
+      expect((row.textContent ?? "").trim()).toBe(`${compactCategoryLabel(category)} ${authoritative}`);
+    });
+  });
+
+  it("spells out the full categories in the hand card's accessible label", () => {
+    const { container } = renderPage();
+    const label = screen.getByTestId("stat-check-hand-0").getAttribute("aria-label") ?? "";
+    boardCategoryIds(container).forEach((id) => {
+      expect(label.toLowerCase()).toContain(categoryById(id).label.toLowerCase());
+    });
+  });
+
+  it.each([0, 1, 2])("leaves only lane %i's value on a card placed there", (laneIndex) => {
+    const { container } = renderPage();
+    const board = boardCategoryIds(container);
+    place(container, 0, laneIndex);
+
+    const placed = laneCardValues(container, laneIndex);
+    // One contested value, and none of the three-row hand presentation.
+    expect(placed.badges).toBe(1);
+    expect(placed.rows).toBe(0);
+
+    // No other lane's category label survives on the placed card.
+    board
+      .filter((_, index) => index !== laneIndex)
+      .map((id) => compactCategoryLabel(categoryById(id)))
+      .forEach((otherLabel) => {
+        expect(placed.text).not.toContain(otherLabel);
+      });
+  });
+
+  it("keeps hand and placed card geometry unchanged by the row change", () => {
+    const { container } = renderPage();
+    const handCard = screen.getByTestId("stat-check-hand-0");
+    // Fixed size classes are the geometry contract; the row change is content-only.
+    expect(handCard.className).toContain("h-40 w-28");
+    expect(handCard.className).toContain("sm:h-44 sm:w-32");
+    place(container, 0, 0);
+    expect(laneCardValues(container, 0).className).toContain("w-[clamp(");
+  });
+
+  it("updates every remaining hand card to the new round's categories", () => {
+    const { container } = renderPage();
+    const firstRound = boardCategoryIds(container);
+    fillBoard(container);
+    fireEvent.click(screen.getByTestId("stat-check-lock"));
+    finishReveal();
+    fireEvent.click(screen.getByTestId("stat-check-next-round"));
+    completeItemChoiceIfPresent();
+    act(() => vi.advanceTimersByTime(2_000));
+
+    // The round genuinely advanced, so the board comparison below is not vacuous.
+    expect(screen.getByText("Round 2")).toBeInTheDocument();
+    const secondRound = boardCategoryIds(container);
+    expect(secondRound).toHaveLength(3);
+    const rows = rowSummary(handCardRows(0));
+    expect(rows.map((row) => row.category)).toEqual(secondRound);
+    // Consecutive boards share no category id, so every round-1 row is stale
+    // and this negative covers the whole previous board.
+    const stale = firstRound.filter((id) => !secondRound.includes(id));
+    expect(stale).toHaveLength(3);
+    rows.forEach((row) => {
+      expect(stale).not.toContain(row.category);
+    });
+  });
+
+  it("keeps the next-round hint limited to the stat family", () => {
+    const { container } = renderPage();
+    fillBoard(container);
+    const hint = nextHintFamilyLabel();
+    expect(hint.length).toBeGreaterThan(0);
+    expect(hint).not.toMatch(/level|highest|lowest/i);
+    expect(boardCategoryIds(container)).toHaveLength(3);
+  });
+
+  it("adds no category rows to the opponent's concealed cards", () => {
+    const { container } = renderPage();
+    fillBoard(container);
+    // Hand cards still carry rows, so this is a real negative for the opponent.
+    expect(container.querySelectorAll("[data-card-category]").length).toBeGreaterThan(0);
+    lanes(container).forEach((lane) => {
+      expect(lane.textContent).toContain("Concealed");
+      Array.from(lane.querySelectorAll<HTMLElement>("[data-card-champion]")).forEach((face) => {
+        expect(face.querySelectorAll("[data-card-category]").length).toBe(0);
+      });
+    });
   });
 });

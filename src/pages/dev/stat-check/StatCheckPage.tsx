@@ -83,6 +83,7 @@ import {
 } from "./animationState";
 import { fanCardLayout, responsiveFanParameters } from "./fanLayout";
 import { ITEMS, isItemCompatible, itemBonusFor, totalInventoryCount, type ItemId } from "./items";
+import { categoryValueAccessibleText, handCardCategoryValues, type CardCategoryValue } from "./handCardStats";
 import { ItemChoiceOverlay, ItemChoicePanel, ItemGlyph, ItemInventoryDock } from "./StatCheckItems";
 import { BoardTooltip } from "./StatCheckTooltip";
 import {
@@ -1135,6 +1136,7 @@ export default function StatCheckPage({
               <div aria-hidden className="pointer-events-none absolute left-1/2 top-2 h-16 w-[46%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.1),transparent_70%)]" />
               <PlayerHand
                 cards={match.playerHand}
+                categories={match.currentCategories}
                 assets={assets}
                 selectedCardId={selectedCardId}
                 assignedCardIds={assignedCardIds}
@@ -2666,6 +2668,7 @@ function categoryAccessibleLabel(category: StatCategory) {
 
 function PlayerHand({
   cards,
+  categories,
   assets,
   selectedCardId,
   assignedCardIds,
@@ -2678,6 +2681,8 @@ function PlayerHand({
   onSelect,
 }: {
   cards: StatCheckCard[];
+  /** The current round's three lane categories, left → middle → right. */
+  categories: StatCategory[];
   assets: ReturnType<typeof useChampionAssets>["data"];
   selectedCardId: string | null;
   assignedCardIds: Set<string>;
@@ -2738,6 +2743,7 @@ function PlayerHand({
               <ChampionCard
                 card={card}
                 imageUrl={getImage(assets, card)}
+                categoryValues={handCardCategoryValues(card, categories)}
                 mode="hand"
                 state={selected ? "selected" : "idle"}
                 disabled={disabled || departing}
@@ -3100,6 +3106,7 @@ function ChampionCard({
   card,
   imageUrl,
   category,
+  categoryValues,
   value,
   mode,
   state = "idle",
@@ -3115,6 +3122,12 @@ function ChampionCard({
   card: StatCheckCard | null;
   imageUrl?: string | null;
   category?: StatCategory;
+  /**
+   * The current board's three lane categories, in lane order. Supplied for
+   * cards in hand so a card answers the live board; a placed card takes
+   * `category` instead and shows only that lane's value.
+   */
+  categoryValues?: CardCategoryValue[];
   value?: number;
   mode: "hand" | "board" | "face-down";
   state?: "idle" | "selected" | "assigned" | "winner" | "loser" | "decisive";
@@ -3156,7 +3169,10 @@ function ChampionCard({
   }
 
   const relevant = card && category ? category.formatValue(value ?? category.getValue(card)) : null;
-  const chips = card ? statChips(card) : [];
+  // A card in hand shows the round's three lane categories; anything else falls
+  // back to the generic chip set (no board established yet).
+  const boardRows = card && !relevant ? categoryValues ?? null : null;
+  const chips = card && !boardRows ? statChips(card) : [];
   const cardClassName = cn(
     "relative block overflow-hidden rounded-lg border border-cyan-300/20 bg-[#071526] text-left shadow-2xl outline-none transition duration-200 focus-visible:ring-2 focus-visible:ring-cyan-200 motion-reduce:transition-none",
     mode === "hand" && "h-40 w-28 shrink-0 origin-bottom hover:-translate-y-2 sm:h-44 sm:w-32 lg:h-[148px] lg:w-[104px] xl:h-40 xl:w-28 2xl:h-44 2xl:w-32",
@@ -3177,16 +3193,22 @@ function ChampionCard({
         {label && <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100/80">{label}</div>}
         <div className={cn("truncate font-black text-white", mode === "board" ? "text-sm" : "text-sm")}>{card?.name}</div>
         {relevant ? (
-          <>
-            <CategoryValueBadge value={relevant} emphasis={valueEmphasis} valueRef={valueRef} />
-            <div className="mt-1 flex flex-wrap gap-0.5 opacity-70">
-              {chips.slice(0, 3).map((chip) => (
-                <span key={chip.label} className="rounded bg-black/55 px-1 py-px text-[9px] font-semibold text-slate-300">
-                  {chip.label} {chip.value}
-                </span>
-              ))}
-            </div>
-          </>
+          // Placed in a lane: only this lane's contested value survives.
+          <CategoryValueBadge value={relevant} emphasis={valueEmphasis} valueRef={valueRef} />
+        ) : boardRows ? (
+          <div className="mt-1 flex flex-wrap gap-1" data-testid="stat-check-card-board-rows">
+            {boardRows.map((row) => (
+              <span
+                key={`${row.laneIndex}-${row.category.id}`}
+                data-card-lane={row.laneIndex}
+                data-card-category={row.category.id}
+                title={categoryValueAccessibleText(row)}
+                className="rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-slate-200"
+              >
+                {row.label} {row.value}
+              </span>
+            ))}
+          </div>
         ) : (
           <div className="mt-1 flex flex-wrap gap-1">
             {chips.map((chip) => (
@@ -3209,7 +3231,7 @@ function ChampionCard({
         type="button"
         disabled={disabled}
         aria-pressed={selected ?? false}
-        aria-label={card ? handCardAccessibleLabel(card, selected) : undefined}
+        aria-label={card ? handCardAccessibleLabel(card, selected, boardRows) : undefined}
         onClick={onClick}
         className={cardClassName}
       >
@@ -3225,8 +3247,11 @@ function ChampionCard({
   );
 }
 
-function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean) {
-  const stats = statChips(card).map((chip) => `${chip.label} ${chip.value}`).join(", ");
+function handCardAccessibleLabel(card: StatCheckCard, selected?: boolean, boardRows?: CardCategoryValue[] | null) {
+  // Screen readers get the full category sentence the compact row abbreviates.
+  const stats = boardRows?.length
+    ? boardRows.map((row) => categoryValueAccessibleText(row)).join(", ")
+    : statChips(card).map((chip) => `${chip.label} ${chip.value}`).join(", ");
   return `${card.name}. ${stats}.${selected ? " Selected. Click a lane to play it." : ""}`;
 }
 
