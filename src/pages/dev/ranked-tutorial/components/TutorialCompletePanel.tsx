@@ -12,6 +12,12 @@ import { useTutorialOnboarding } from "../tutorialOnboardingContext";
  *    stateless reset, no persistence), and the return control is an ordinary
  *    route link to the Ranked hub — it never queues or navigates automatically.
  *
+ *  - "voluntary": the same escapable controls as a replay, but this run IS the
+ *    account's first completion, so it is recorded once in the background. The
+ *    user is never blocked on that write and never has to press anything extra —
+ *    nothing here is gating their access — and a failure is reported without
+ *    trapping them.
+ *
  *  - "mandatory": no skip. The primary action durably persists completion via
  *    the context's onComplete; navigation happens only after the authoritative
  *    write succeeds. On failure the user stays here with a retryable error.
@@ -25,12 +31,31 @@ export function TutorialCompletePanel({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [voluntarySaved, setVoluntarySaved] = useState<boolean | null>(null);
 
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
 
   const isMandatory = mode === "mandatory";
+  const isVoluntary = mode === "voluntary";
+
+  // Record a voluntary FIRST completion exactly once. Reaching this panel IS
+  // the completion event, so there is nothing for the user to confirm. The
+  // underlying write is first-write-wins, so a repeat can never overwrite an
+  // existing timestamp.
+  const recorded = useRef(false);
+  useEffect(() => {
+    if (!isVoluntary || !onComplete || recorded.current) return;
+    recorded.current = true;
+    let cancelled = false;
+    void onComplete().then((ok) => {
+      if (!cancelled) setVoluntarySaved(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isVoluntary, onComplete]);
 
   const handleFinish = async () => {
     if (saving || !onComplete) return;
@@ -110,10 +135,20 @@ export function TutorialCompletePanel({
           </div>
           <p className="text-[11px] text-muted-foreground">
             This returns to the Ranked area. It does not automatically queue you.
-            {mode === "replay"
-              ? " Replaying does not change your saved progress."
-              : " This dev run doesn't write anything to your account."}
+            {mode === "replay" && " Replaying does not change your saved progress."}
+            {mode === "voluntary" && " Your tutorial completion has been saved."}
+            {mode === "dev" && " This dev run doesn't write anything to your account."}
           </p>
+          {isVoluntary && voluntarySaved === false && (
+            <p
+              role="status"
+              data-testid="voluntary-completion-error"
+              className="text-[11px] text-muted-foreground"
+            >
+              We couldn&apos;t save your tutorial completion. Nothing is blocked —
+              you can replay it later to record it.
+            </p>
+          )}
         </>
       )}
     </section>

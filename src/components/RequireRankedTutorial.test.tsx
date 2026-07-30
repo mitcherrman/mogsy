@@ -5,7 +5,7 @@ import RequireRankedTutorial from "./RequireRankedTutorial";
 
 // --- Mocks -----------------------------------------------------------------
 const authState = { loading: false };
-const settingsState = { loading: false };
+const settingsState = { loading: false, completionRequiredForNewUsers: true };
 const tutorialState = {
   loading: false,
   error: false,
@@ -16,7 +16,20 @@ const tutorialState = {
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
-vi.mock("@/hooks/useAppSettings", () => ({ useAppSettings: () => ({ ...settingsState, settings: {} }) }));
+vi.mock("@/hooks/useAppSettings", () => ({
+  useAppSettings: () => ({
+    loading: settingsState.loading,
+    settings: {
+      policy: {
+        combatSim: { tokensRequiredForNonPro: true },
+        tutorial: {
+          autoPopupEnabled: true,
+          completionRequiredForNewUsers: settingsState.completionRequiredForNewUsers,
+        },
+      },
+    },
+  }),
+}));
 vi.mock("@/hooks/useRankedTutorialStatus", () => ({
   useRankedTutorialStatus: () => tutorialState,
 }));
@@ -46,6 +59,7 @@ describe("RequireRankedTutorial", () => {
   beforeEach(() => {
     authState.loading = false;
     settingsState.loading = false;
+    settingsState.completionRequiredForNewUsers = true;
     tutorialState.loading = false;
     tutorialState.error = false;
     tutorialState.required = false;
@@ -110,6 +124,7 @@ describe("RequireRankedTutorial across gated quiz routes", () => {
   beforeEach(() => {
     authState.loading = false;
     settingsState.loading = false;
+    settingsState.completionRequiredForNewUsers = true;
     tutorialState.loading = false;
     tutorialState.error = false;
   });
@@ -127,5 +142,59 @@ describe("RequireRankedTutorial across gated quiz routes", () => {
     renderAt(path);
     expect(screen.getByTestId("gated-content")).toBeTruthy();
     expect(screen.queryByTestId("onboarding-route")).toBeNull();
+  });
+});
+
+describe("RequireRankedTutorial under the global forced-tutorial policy", () => {
+  beforeEach(() => {
+    authState.loading = false;
+    settingsState.loading = false;
+    settingsState.completionRequiredForNewUsers = true;
+    tutorialState.loading = false;
+    tutorialState.error = false;
+    tutorialState.required = true; // incomplete, eligible account
+  });
+
+  it("still forces an incomplete user when the policy is ON (unchanged default)", () => {
+    renderGuarded();
+    expect(screen.getByTestId("onboarding-route")).toBeTruthy();
+  });
+
+  it("lets an incomplete user through when the policy is OFF", () => {
+    settingsState.completionRequiredForNewUsers = false;
+    renderGuarded();
+    expect(screen.getByTestId("quiz-content")).toBeTruthy();
+    expect(screen.queryByTestId("onboarding-route")).toBeNull();
+  });
+
+  it("re-enabling the policy immediately forces the same incomplete user again", () => {
+    settingsState.completionRequiredForNewUsers = false;
+    const first = renderGuarded();
+    expect(screen.getByTestId("quiz-content")).toBeTruthy();
+    first.unmount();
+
+    // No migration, no repair: the account's stored completion state is
+    // untouched, so flipping the policy back restores the gate exactly.
+    settingsState.completionRequiredForNewUsers = true;
+    renderGuarded();
+    expect(screen.getByTestId("onboarding-route")).toBeTruthy();
+  });
+
+  it("does not disrupt an already-completed user in either policy state", () => {
+    tutorialState.required = false;
+    tutorialState.completed = true;
+    for (const required of [true, false]) {
+      settingsState.completionRequiredForNewUsers = required;
+      const view = renderGuarded();
+      expect(screen.getByTestId("quiz-content")).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it("waits for the settings read before deciding (no redirect loop on load)", () => {
+    settingsState.loading = true;
+    renderGuarded();
+    expect(screen.queryByTestId("onboarding-route")).toBeNull();
+    expect(screen.queryByTestId("quiz-content")).toBeNull();
   });
 });

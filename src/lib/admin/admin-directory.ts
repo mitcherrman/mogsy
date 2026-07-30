@@ -191,6 +191,19 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
     warning: "Publishing and settling write immutable live event state.",
   },
   {
+    id: "platform-policies",
+    title: "Platform Policies",
+    description:
+      "Global switches: the Combat Sim token requirement for non-Pro users, the automatic tutorial popup, and the required new-user tutorial.",
+    path: "/admin/platform-policies",
+    category: "Site Operations",
+    status: "Production",
+    environment: "all",
+    dangerLevel: "mutates-production",
+    warning:
+      "Each switch changes platform access or onboarding for every user immediately.",
+  },
+  {
     id: "admin-diagnostics",
     title: "Site Diagnostics",
     description: "Admin diagnostics, route registry, and internal health pages.",

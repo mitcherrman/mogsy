@@ -7,6 +7,7 @@
 const ACTION_COUNT_KEY = "quiz:gate:action_count";
 const NUDGE_SEEN_KEY = "quiz:gate:nudge_seen";
 const HUB_VISITED_KEY = "quiz:gate:hub_visited";
+const TUTORIAL_POPUP_DISMISSED_KEY = "quiz:gate:tutorial_popup_dismissed";
 
 function readInt(storage: Storage, key: string): number {
   try {
@@ -66,6 +67,33 @@ export function markHubVisited(): void {
 export function hasVisitedHub(): boolean {
   try {
     return sessionStorage.getItem(HUB_VISITED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The user skipped the optional tutorial popup this session.
+ *
+ * Only reachable when the global `tutorial_completion_required_for_new_users`
+ * policy is OFF (the popup has no skip control otherwise). Deliberately
+ * sessionStorage and deliberately client-local: it suppresses one optional
+ * overlay for one visit and confers no access. It is NOT tutorial completion —
+ * that lives in profiles.ranked_tutorial_completed_at — so it can never satisfy
+ * the forced-tutorial gate, and re-enabling that policy immediately resumes
+ * using the real server-side completion state.
+ */
+export function markTutorialPopupDismissed(): void {
+  try {
+    sessionStorage.setItem(TUTORIAL_POPUP_DISMISSED_KEY, "1");
+  } catch {
+    // Storage unavailable (private mode / disabled): the popup simply reappears.
+  }
+}
+
+export function hasDismissedTutorialPopup(): boolean {
+  try {
+    return sessionStorage.getItem(TUTORIAL_POPUP_DISMISSED_KEY) === "1";
   } catch {
     return false;
   }

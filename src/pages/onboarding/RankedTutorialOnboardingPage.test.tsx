@@ -13,6 +13,9 @@ import RankedTutorialOnboardingPage from "./RankedTutorialOnboardingPage";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  // Global forced-tutorial policy. Default ON = current production behaviour,
+  // so every pre-existing expectation in this file is unchanged.
+  completionRequiredForNewUsers: true,
   status: {
     loading: false,
     required: true,
@@ -33,6 +36,20 @@ vi.mock("react-router-dom", async (orig) => {
 vi.mock("@/hooks/useRankedTutorialStatus", () => ({
   useRankedTutorialStatus: () => mocks.status,
 }));
+vi.mock("@/hooks/useAppSettings", () => ({
+  useAppSettings: () => ({
+    loading: false,
+    settings: {
+      policy: {
+        combatSim: { tokensRequiredForNonPro: true },
+        tutorial: {
+          autoPopupEnabled: true,
+          completionRequiredForNewUsers: mocks.completionRequiredForNewUsers,
+        },
+      },
+    },
+  }),
+}));
 
 const renderPage = () =>
   render(
@@ -43,6 +60,7 @@ const renderPage = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.completionRequiredForNewUsers = true;
   mocks.status = {
     loading: false,
     required: true,

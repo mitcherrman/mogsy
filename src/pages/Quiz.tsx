@@ -21,6 +21,7 @@ import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
+import LeaguecraftTutorialLink from "@/components/quiz/LeaguecraftTutorialLink";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
@@ -888,15 +889,10 @@ export default function Quiz() {
                     Train specific topics before your next ranked match.
                   </p>
                 </div>
-                {/* Voluntary tutorial replay. Anyone on /quiz has already cleared the
-                    onboarding gate, so this never affects saved completion. */}
-                <Link
-                  to="/onboarding/ranked-tutorial"
-                  className="shrink-0 text-xs font-medium text-primary/80 underline-offset-4 hover:underline"
-                  data-testid="replay-tutorial-link"
-                >
-                  Replay tutorial
-                </Link>
+                {/* Permanent Leaguecraft tutorial entry. Available regardless of the
+                    automatic-popup and forced-tutorial policies; a replay by an
+                    already-completed user never rewrites saved completion. */}
+                <LeaguecraftTutorialLink />
               </div>
               {/* Plain conditional swap (no AnimatePresence mode="wait"):
                   under prefers-reduced-motion the skeleton's exit animation

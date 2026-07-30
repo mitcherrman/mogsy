@@ -1,16 +1,24 @@
 // ---------------------------------------------------------------------------
-// /onboarding/ranked-tutorial — production Ranked Tutorial onboarding (E2)
+// Ranked Tutorial host page (E2).
+//
+// Serves BOTH routes:
+//   /onboarding/ranked-tutorial — the mandatory first-run onboarding target.
+//   /quiz/tutorial              — the permanent Leaguecraft entry, where any
+//                                 authenticated user may start or replay it.
 //
 // Reuses the exact same canonical tutorial implementation as /dev/ranked-tutorial
 // (no fork, no duplication). It adds only the production concerns: a minimal
-// welcome step, mandatory vs replay mode, durable completion persistence, and
-// post-completion navigation.
+// welcome step, run-mode selection, durable completion persistence, and
+// post-completion navigation. The run mode is derived from the account's real
+// completion state plus the global tutorial policy, so the two routes cannot
+// disagree and neither can corrupt the other's semantics.
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { RANKED_TUTORIAL_RETURN_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import RankedTutorialPage from "@/pages/dev/ranked-tutorial/RankedTutorialPage";
@@ -22,29 +30,42 @@ import {
 export default function RankedTutorialOnboardingPage() {
   const navigate = useNavigate();
   const { loading, required, completed, completeTutorial } = useRankedTutorialStatus();
+  const { settings, loading: settingsLoading } = useAppSettings();
   const [started, setStarted] = useState(false);
 
-  // Required incomplete accounts run the mandatory flow; everyone else who
-  // reaches this route (completed users, exempt guests) is here voluntarily.
-  const mode: TutorialMode = required ? "mandatory" : "replay";
+  // Three separate concepts, deliberately not collapsed into one:
+  //   `completed` — durable ACCOUNT state: has this user ever finished?
+  //   `forced`    — eligibility AND global POLICY: is this run compulsory?
+  //   `mode`      — the resulting experience.
+  //
+  // An incomplete user who is NOT forced (the permanent Leaguecraft route, or
+  // the popup while the forced-tutorial policy is off) still gets their first
+  // completion recorded — they simply are not trapped here while doing it. That
+  // is what makes re-enabling the forced policy accurate later.
+  const forced = required && settings.policy.tutorial.completionRequiredForNewUsers;
+  const mode: TutorialMode = forced ? "mandatory" : completed ? "replay" : "voluntary";
+  const persistsCompletion = mode === "mandatory" || mode === "voluntary";
 
   const contextValue = useMemo(
     () => ({
       mode,
       returnTo: RANKED_TUTORIAL_RETURN_ROUTE,
-      onComplete:
-        mode === "mandatory"
-          ? async () => {
-              const ok = await completeTutorial();
-              if (ok) navigate(RANKED_TUTORIAL_RETURN_ROUTE, { replace: true });
-              return ok;
+      onComplete: persistsCompletion
+        ? async () => {
+            const ok = await completeTutorial();
+            // Only the mandatory flow navigates on success; a voluntary run
+            // records quietly and leaves the user in control of where to go.
+            if (ok && mode === "mandatory") {
+              navigate(RANKED_TUTORIAL_RETURN_ROUTE, { replace: true });
             }
-          : undefined,
+            return ok;
+          }
+        : undefined,
     }),
-    [mode, completeTutorial, navigate],
+    [mode, persistsCompletion, completeTutorial, navigate],
   );
 
-  if (loading) {
+  if (loading || settingsLoading) {
     return <div className="min-h-dvh bg-background" data-testid="onboarding-loading" />;
   }
 
@@ -78,8 +99,9 @@ export default function RankedTutorialOnboardingPage() {
             >
               Start Tutorial
             </Button>
-            {/* Replay/voluntary visitors may leave; required accounts get no skip. */}
-            {mode === "replay" && (
+            {/* Anyone not under the mandatory flow may leave; required accounts
+                get no skip. */}
+            {mode !== "mandatory" && (
               <Button
                 size="lg"
                 variant="outline"

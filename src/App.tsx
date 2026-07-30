@@ -103,6 +103,9 @@ const KnowledgeHistory = lazy(() => import("./pages/admin/knowledge/KnowledgeHis
 // Admin Directory — private grouped index of admin destinations (E3).
 const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
 
+// Admin Platform Policies — global Combat Sim token + tutorial switches.
+const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
+
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
 const CombatBattleDetail = lazy(() => import("./pages/CombatBattleDetail"));
@@ -290,6 +293,7 @@ const App = () => (
                   <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
                   <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
                   <Route path="/admin/directory" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDirectory /></Suspense></AdminRoute>} />
+                  <Route path="/admin/platform-policies" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlatformPolicies /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
@@ -323,6 +327,12 @@ const App = () => (
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
                   <Route path="/admin/combat-battles" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense></AdminRoute>} />
                   <Route path="/onboarding/ranked-tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
+                  {/* Permanent Leaguecraft tutorial entry: any authenticated user may start
+                      or replay the tutorial here, regardless of the auto-popup and
+                      forced-tutorial policies. Same page component as the onboarding route,
+                      and deliberately NOT wrapped in RequireRankedTutorial — guarding a
+                      tutorial route with the tutorial gate is a redirect loop. */}
+                  <Route path="/quiz/tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />

@@ -5,17 +5,32 @@ import { RANKED_TUTORIAL_RETURN_ROUTE } from "@/lib/ranked-tutorial/onboarding";
  * How the shared tutorial is being run:
  *  - "dev":       the isolated /dev route — no auth, no persistence (default).
  *  - "mandatory": required onboarding — completion must persist before leaving.
- *  - "replay":    a completed user replaying voluntarily — no persistence.
+ *  - "voluntary": a NOT-yet-completed user who chose to be here (the permanent
+ *                 Leaguecraft tutorial route, or the popup while the
+ *                 forced-tutorial policy is off). Escapable like a replay, but
+ *                 this is still the account's FIRST completion, so it IS
+ *                 recorded — otherwise turning the forced-tutorial policy off
+ *                 would silently stop recording completions, and re-enabling it
+ *                 would wrongly re-force everyone who trained in the meantime.
+ *  - "replay":    an ALREADY-completed user replaying — never persists, so a
+ *                 replay cannot overwrite or corrupt the original completion.
  */
-export type TutorialMode = "dev" | "mandatory" | "replay";
+export type TutorialMode = "dev" | "mandatory" | "voluntary" | "replay";
 
 export interface TutorialOnboardingContextValue {
   mode: TutorialMode;
   /**
-   * Final completion action. In "mandatory" mode this persists completion and
-   * resolves true only after the authoritative write succeeds; the host page is
-   * responsible for navigating on success. In "replay"/"dev" it is undefined and
-   * the completion panel falls back to an ordinary return link.
+   * Final completion action, defined only when this run is the account's first
+   * completion ("mandatory" and "voluntary").
+   *
+   * In "mandatory" mode an explicit blocking action invokes it and it resolves
+   * true only after the authoritative write succeeds; the host page navigates on
+   * success. In "voluntary" mode the panel records completion in the background
+   * and never blocks the user. In "replay"/"dev" it is undefined and nothing is
+   * written.
+   *
+   * The underlying write is first-write-wins and idempotent, so invoking it more
+   * than once can never overwrite an existing completion timestamp.
    */
   onComplete?: () => Promise<boolean>;
   /** Where "return"/exit links point. */
