@@ -34,6 +34,7 @@ import {
   Wand2,
   Crown,
   Lock,
+  ArrowLeft,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import ChampionVisual from "@/components/combat-lab/ChampionVisual";
@@ -131,6 +132,43 @@ const defaultConfig: SimulateRequest = {
  */
 function portraitFrameClass(hasChampion: boolean): string {
   return `${hasChampion ? "min-h-[300px]" : "h-[200px]"} shrink-0 lg:h-[440px]`;
+}
+
+/**
+ * Developer chrome (backend status badge, diagnostics link, dev-mode toggle) is
+ * no longer rendered in the production Combat Lab header — it cost vertical
+ * space above the simulator and meant nothing to a normal visitor. The
+ * instrumentation it gates is untouched; this is the opt-in that reaches it.
+ *
+ * `?dev=1` turns it on and sticks for the tab; `?dev=0` clears it. Nothing is
+ * rendered when it is off, at any viewport width.
+ */
+const DEV_MODE_KEY = "combat-lab:dev-mode";
+
+function readDevModeFlag(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const flag = new URLSearchParams(window.location.search).get("dev");
+    if (flag === "1") {
+      sessionStorage.setItem(DEV_MODE_KEY, "1");
+      return true;
+    }
+    if (flag === "0") {
+      sessionStorage.removeItem(DEV_MODE_KEY);
+      return false;
+    }
+    return sessionStorage.getItem(DEV_MODE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function clearDevModeFlag(): void {
+  try {
+    sessionStorage.removeItem(DEV_MODE_KEY);
+  } catch {
+    /* storage unavailable — nothing to clear */
+  }
 }
 
 /* ─────────────── hooks ─────────────── */
@@ -577,7 +615,11 @@ export default function CombatLab() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [devMode, setDevMode] = useState(false);
+  const [devMode, setDevMode] = useState(readDevModeFlag);
+
+  /* Remaining daily simulations, shown in the compact header. The sandbox owns
+     the live value — it refreshes after every run — and reports it upward. */
+  const [creditStatus, setCreditStatus] = useState<CombatLabCreditStatus | null>(null);
 
   /* persist config */
   useEffect(() => {
@@ -720,7 +762,7 @@ export default function CombatLab() {
   };
 
   return (
-    <div className="px-4 md:px-0 py-4 md:py-5 2xl:w-[120%] 2xl:-ml-[10%]">
+    <div className="px-4 md:px-0 py-2 md:py-2.5 2xl:w-[120%] 2xl:-ml-[10%]">
       <SEOHead
         title="Mogzy Combat Lab | League of Legends Damage Simulator"
         description="Test League of Legends champion damage, items, abilities, runes, and combat scenarios in the Mogzy Combat Lab damage simulator. Free, in-browser, no account needed."
@@ -728,65 +770,75 @@ export default function CombatLab() {
         keywords="league of legends damage simulator, lol damage calculator, champion damage, combat lab, lol builds, league of legends training tool"
       />
 
-      {/* Header */}
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary/80 m-0">
-          <Swords className="h-3.5 w-3.5" />
-          Combat Lab
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Mobile: developer chrome collapses to a small connection dot.
-              Desktop (and Dev Mode on mobile) keeps the full controls. */}
+      {/* Compact header: hub control, emblem, H1 and remaining simulations on a
+          single desktop row, so the simulator grid starts near the top of the
+          viewport. The prose explainer that used to sit here lives in the
+          methodology section below the workspace. `mb-3.5` (14px) is the only
+          thing between this row and the grid. */}
+      <header
+        className="mb-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 lg:flex-nowrap"
+        data-combat-lab-header
+      >
+        <Link
+          to="/lol"
+          aria-label="Back to League hub"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-2.5 py-1 text-[11px] font-semibold text-[#c9a84c] transition-colors hover:border-[#c9a84c] hover:bg-[#0a1428]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          League Hub
+        </Link>
+        <Swords className="h-4 w-4 shrink-0 text-primary/80" aria-hidden="true" />
+        <h1 className="min-w-0 text-sm font-bold tracking-wide text-foreground lg:flex-1 lg:whitespace-nowrap lg:text-base">
+          COMBAT LAB: LEAGUE OF LEGENDS DAMAGE SIMULATOR
+        </h1>
+        {/* Remaining simulations, hard right on desktop. `basis-full` keeps it
+            on its own line once the row wraps on narrow screens. */}
+        {creditStatus && (
           <span
-            className={`h-2 w-2 rounded-full lg:hidden ${
-              apiStatus === "online"
-                ? "bg-emerald-400"
-                : apiStatus === "offline"
-                  ? "bg-red-500"
-                  : "bg-amber-400"
-            }`}
-            title={`Backend ${apiStatus}`}
-            aria-label={`Backend ${apiStatus}`}
-          />
-          <div className={`items-center gap-2 ${devMode ? "flex" : "hidden lg:flex"}`}>
-            <ApiStatusBadge status={apiStatus} />
-            <Link
-              to="/combat-lab/diagnostics"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            >
-              <Activity className="h-3 w-3" />
-              Diagnostics
-            </Link>
-            <button
-              type="button"
-              onClick={() => setDevMode((v) => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] uppercase tracking-wider transition-colors ${
-                devMode
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-border/50 bg-card/40 text-muted-foreground hover:border-primary/40 hover:text-primary"
-              }`}
-              title="Toggle developer mode"
-            >
-              <Activity className="h-3 w-3" />
-              Dev Mode {devMode ? "ON" : "OFF"}
-            </button>
-          </div>
-        </div>
+            className="shrink-0 basis-full lg:basis-auto lg:text-right"
+            data-combat-lab-credits
+          >
+            {creditStatus.unlimited ? (
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider text-[#f0d78c]">
+                <Crown className="h-3.5 w-3.5" />
+                Pro: unlimited
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <Zap className="h-3.5 w-3.5" />
+                {Math.max(0, creditStatus.credits_remaining ?? 0)}/{creditStatus.credits_limit} left
+              </span>
+            )}
+          </span>
+        )}
       </header>
 
-      {/* Page intro: real H1 + one-line explainer so the page reads as a
-          documented tool, not a bare form. Full methodology lives below the
-          workspace. */}
-      <section className="mb-4 max-w-3xl">
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">
-          Combat Lab: League of Legends damage simulator
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Build a champion loadout — level, items, runes, and abilities — and simulate combat
-          against a configurable target to see exactly where the damage comes from. Free and
-          in-browser; no account needed.
-        </p>
-      </section>
+      {/* Developer chrome — opt-in only (see `readDevModeFlag`). Renders nothing
+          in the production layout at any viewport, so it reserves no space. */}
+      {devMode && (
+        <div className="mb-3.5 flex flex-wrap items-center gap-2">
+          <ApiStatusBadge status={apiStatus} />
+          <Link
+            to="/combat-lab/diagnostics"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-card/40 px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <Activity className="h-3 w-3" />
+            Diagnostics
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              clearDevModeFlag();
+              setDevMode(false);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/60 bg-primary/15 px-2.5 py-1 text-[11px] uppercase tracking-wider text-primary transition-colors"
+            title="Turn developer mode off"
+          >
+            <Activity className="h-3 w-3" />
+            Dev Mode ON
+          </button>
+        </div>
+      )}
 
       <Tabs defaultValue="sandbox" className="w-full">
         {/* Rotation Simulator hidden in Phase 2A — Interactive Sandbox is the primary experience.
@@ -1143,6 +1195,7 @@ export default function CombatLab() {
             apiStatus={apiStatus}
             devMode={devMode}
             setDevMode={setDevMode}
+            onCreditsChange={setCreditStatus}
           />
         </TabsContent>
       </Tabs>
@@ -1759,6 +1812,8 @@ type SandboxProps = {
   apiStatus: ApiStatus;
   devMode: boolean;
   setDevMode: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Reports the daily credit status upward so the page header can show it. */
+  onCreditsChange?: (credits: CombatLabCreditStatus | null) => void;
 };
 
 function buildAttackerStats(config: SimulateRequest): Record<string, number> {
@@ -1800,6 +1855,7 @@ function InteractiveSandbox({
   apiStatus,
   devMode,
   setDevMode,
+  onCreditsChange,
 }: SandboxProps) {
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -1813,8 +1869,9 @@ function InteractiveSandbox({
   const [lastRequest, setLastRequest] = useState<unknown>(null);
   const [lastResponse, setLastResponse] = useState<unknown>(null);
   const [lastEndpoint, setLastEndpoint] = useState<string>("");
-  // Daily Combat Lab credits. `credits` drives the unobtrusive indicator;
-  // `creditsGate` is set only when a run is blocked, showing the upsell card.
+  // Daily Combat Lab credits. `credits` is reported up to the page header, which
+  // renders the remaining count; `creditsGate` is set only when a run is
+  // blocked, showing the upsell card below.
   const [credits, setCredits] = useState<CombatLabCreditStatus | null>(null);
   const [creditsGate, setCreditsGate] = useState<CombatLabCreditStatus | null>(null);
   const [lastAction, setLastAction] = useState<
@@ -1888,6 +1945,12 @@ function InteractiveSandbox({
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // Mirror the credit status into the page header, which owns its rendering.
+  useEffect(() => {
+    onCreditsChange?.(credits);
+  }, [credits, onCreditsChange]);
+
   const championLevel = Math.max(
     1,
     Math.min(20, Number(config.stats?.LEVEL ?? 18) || 18)
@@ -2873,22 +2936,8 @@ function InteractiveSandbox({
 
   return (
     <div className="space-y-6">
-      {/* Daily credits indicator — unobtrusive, right-aligned. */}
-      {credits && (
-        <div className="flex justify-end">
-          {credits.unlimited ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-3 py-1 text-xs font-medium text-[#f0d78c]">
-              <Crown className="h-3.5 w-3.5" />
-              Pro: Unlimited simulations
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
-              <Zap className="h-3.5 w-3.5" />
-              {Math.max(0, credits.credits_remaining ?? 0)} of {credits.credits_limit} free simulations left today
-            </span>
-          )}
-        </div>
-      )}
+      {/* The daily credits indicator lives in the compact page header (see
+          `onCreditsChange`) so it costs no vertical space above the grid. */}
 
       {/* Credit gate — shown when a Free user runs out. Clean upsell, no raw error. */}
       {creditsGate && (

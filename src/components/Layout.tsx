@@ -68,6 +68,12 @@ export default function Layout() {
   // compete with the board for clicks, so it is suppressed there.
   const showFriendsDrawer = !isFullBleed;
 
+  // Combat Lab renders the League Hub control inline in its own compact page
+  // header, so the shell's copy is suppressed there to avoid a duplicate. Its
+  // sub-routes (e.g. /combat-lab/diagnostics) still get the shell control.
+  const pageOwnsHubControl = pathname === "/combat-lab";
+  const showShellHubControl = isLolSection && pathname !== "/lol" && !pageOwnsHubControl;
+
   // After first paint, warm the chunks the user is most likely to visit next.
   useEffect(() => {
     if (loading || settingsLoading) return;
@@ -118,7 +124,7 @@ export default function Layout() {
             : "pt-[var(--app-header-h)] relative z-20 max-w-7xl mx-auto w-full px-0 md:px-4 lg:px-8"
         }
       >
-        {isLolSection && pathname !== "/lol" && (
+        {showShellHubControl && (
           /* Mobile: back control in normal flow so it reserves space and never
              overlays cards. Desktop keeps the floating pill (see below). */
           <div className="md:hidden px-4 pt-2">
@@ -139,7 +145,7 @@ export default function Layout() {
       {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}
       <Footer />
-      {isLolSection && pathname !== "/lol" && (
+      {showShellHubControl && (
         <Link
           to="/lol"
           aria-label="Back to League hub"
