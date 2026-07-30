@@ -27,7 +27,11 @@ type HubDestination = {
   subtitle: string;
   Icon: React.ElementType;
   championName: string;
-  /** object-position for the splash crop inside the left book cover. */
+  /**
+   * object-position for the splash crop inside the left book cover. The panel
+   * crops horizontally only (see BookModeCard), so the X value frames the
+   * champion's face; each value is tuned per splash.
+   */
   splashPosition?: string;
 };
 
@@ -40,7 +44,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
     subtitle: "Study. Practice. Ascend.",
     Icon: BrainCircuit,
     championName: "Ryze",
-    splashPosition: "center 18%",
+    splashPosition: "95% center",
   },
   {
     to: "/quiz/stat-check",
@@ -48,7 +52,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
     subtitle: "Build. Compare. Outplay.",
     Icon: Layers,
     championName: "Twisted Fate",
-    splashPosition: "center 15%",
+    splashPosition: "95% center",
   },
   {
     to: "/lol/history",
@@ -56,7 +60,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
     subtitle: "Review your past results.",
     Icon: HistoryIcon,
     championName: "Zilean",
-    splashPosition: "center 20%",
+    splashPosition: "70% center",
   },
 ];
 const RIGHT_DESTINATIONS: HubDestination[] = [
@@ -66,7 +70,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
     championName: "Akali",
-    splashPosition: "center 22%",
+    splashPosition: "44% center",
   },
   {
     to: "/lol/docs",
@@ -74,7 +78,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
     subtitle: "Explore League knowledge.",
     Icon: FileText,
     championName: "Viktor",
-    splashPosition: "center 18%",
+    splashPosition: "44% center",
   },
   {
     to: "/lol/patch-reports",
@@ -82,7 +86,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
     subtitle: "Track every gameplay change.",
     Icon: Newspaper,
     championName: "Jayce",
-    splashPosition: "center 20%",
+    splashPosition: "98% center",
   },
 ];
 // Mobile list order follows the desktop grid row-major (by priority), not
@@ -91,6 +95,16 @@ const ALL_DESTINATIONS = LEFT_DESTINATIONS.flatMap((d, i) => {
   const right = RIGHT_DESTINATIONS[i];
   return right ? [d, right] : [d];
 });
+
+// Personalized academy lines. One is picked at random per hub entry and stays
+// fixed for the whole visit (see academyLineIndex below).
+const ACADEMY_LINES: ((name: string) => string)[] = [
+  (name) => `Have you been studying, ${name}?`,
+  (name) => `Remember to train your combat skills, ${name}.`,
+  (name) => `Don’t fall behind on the patch notes, ${name}!`,
+];
+/** Fallback address for anonymous users and profiles with no display name. */
+const ACADEMY_FALLBACK_NAME = "Summoner";
 
 // League Swipe MVP games (see /league-swipe). The hub subsection is currently
 // hidden — Meta Reflex now lives inside Leaguecraft — but the code is kept so
@@ -109,6 +123,10 @@ export default function LolHub() {
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  // Pick the academy line ONCE per mount — lazy initializer, so no Math.random()
+  // during render and the line never changes while the user stays on the hub.
+  const [academyLineIndex] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const isAnonymous = !user || user.is_anonymous === true;
   // First-visit tutorial onboarding. Authoritative source is the profile's
@@ -136,6 +154,30 @@ export default function LolHub() {
     playUiSfx("appEnter");
   }, []);
 
+  // Display name for the academy line. Anonymous users keep the "Summoner"
+  // fallback and never hit the network; a signed-in user with no display_name
+  // set falls back too. Read-only, best-effort — failures stay silent.
+  useEffect(() => {
+    if (!user || isAnonymous) {
+      setDisplayName(null);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active) setDisplayName((data as { display_name?: string | null } | null)?.display_name?.trim() || null);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, isAnonymous]);
+
+  const academyLine = ACADEMY_LINES[academyLineIndex](displayName || ACADEMY_FALLBACK_NAME);
+
   const onDestinationClick = (to: string) => {
     playUiSfx("sectionOpen");
     if (to === "/quiz") {
@@ -143,15 +185,29 @@ export default function LolHub() {
     }
   };
 
-  const renderBook = (d: HubDestination) => (
-    // Width is additionally capped against viewport height so three book rows
-    // always fit above the fold: a card's visible height ≈ width × 0.507
-    // (3:2 canvas minus the frame's reclaimed transparent padding), and
-    // ~350px of the viewport goes to navbar + heading + paddings + gaps.
+  const DESKTOP_BOOK_STACK_Y_PX = -50;
+
+  const DESKTOP_BOOK_STACK_INSET_PX = 120;
+
+  const renderBook = (d: HubDestination, side: "left" | "right") => (
+    // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
+    // padding, so the card box IS the drawn book: height = width × 0.542, and
+    // width = the drawn book's width.
+    //
+    // The size tracks viewport height on a deliberately SHALLOWER slope than a
+    // strict three-rows-above-the-fold fit (which would be ≈ 0.615 × usable
+    // height). At 1080 the two coincide, so 1920×1080 still shows all six books
+    // without scrolling; below that the books stay large and the third row is
+    // allowed to run slightly past the fold, which is the intended trade.
+    //   0.308 × 100dvh + 176px  →  1080: 509px · 900: 453px · 768: 413px
+    // The min() keeps the book inside its grid column so it can never clip.
+    //
+    // Each column is pushed OUTWARD (mr-auto / ml-auto) instead of centred, so
+    // the books sit near the viewport edges and the central Mogzy lane opens up.
     <div
       key={d.to}
-      className="mx-auto w-full"
-      style={{ maxWidth: "min(100%, calc((100dvh - 350px) * 0.64))" }}
+      className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+      style={{ maxWidth: "min(100%, calc(100dvh * 0.308 + 176px))" }}
     >
       <BookModeCard
         to={d.to}
@@ -213,10 +269,12 @@ export default function LolHub() {
           aria-hidden
         />
 
-        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-6 lg:px-10 xl:px-14 pt-3 md:pt-4 pb-6 md:pb-4">
+        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-3 lg:px-4 xl:px-6 pt-3 md:pt-2 pb-6 md:pb-1">
           {/* Anonymous sign-up nudge banner */}
           {isAnonymous && !nudgeDismissed && (
-            <div className="relative mx-auto mb-3 flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-[#c9a84c]/30 bg-[#0a1020]/70 backdrop-blur-sm py-2 pl-3 pr-10 sm:px-4 sm:py-2.5 text-sm">
+            // Desktop keeps this strip compact (md:*) so the book grid gets the
+            // vertical room; mobile spacing is unchanged.
+            <div className="relative mx-auto mb-3 md:mb-1.5 flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-[#c9a84c]/30 bg-[#0a1020]/70 backdrop-blur-sm py-2 pl-3 pr-10 sm:px-4 sm:py-2.5 md:py-1 text-sm">
               <span className="flex-1 min-w-[9rem] text-xs sm:text-sm text-[#f5e9c8]/90">
                 {/* Concise on mobile; full pitch from sm up. */}
                 <span className="sm:hidden">Save XP and streaks across devices.</span>
@@ -229,7 +287,7 @@ export default function LolHub() {
                   playUiSfx("primaryAction");
                   navigate("/auth?mode=signup&returnTo=/lol");
                 }}
-                className="shrink-0 inline-flex min-h-[32px] sm:min-h-[40px] items-center rounded-md bg-[#c9a84c]/20 px-2.5 py-1 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
+                className="shrink-0 inline-flex min-h-[32px] sm:min-h-[40px] md:min-h-[28px] items-center rounded-md bg-[#c9a84c]/20 px-2.5 py-1 sm:px-3 sm:py-2 md:py-0.5 text-xs sm:text-sm md:text-xs font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
               >
                 Sign up free
               </button>
@@ -263,18 +321,31 @@ export default function LolHub() {
               <span className="block text-balance">Mogzy’s Academy of</span>
               <span className="block text-balance">Leaguecraft and Technology</span>
             </h1>
-            <p className="mt-2 text-[10px] md:text-[11px] font-bold uppercase tracking-[0.34em] text-[#c9a84c]/90">
+            {/* Sub-lines are mobile-only: on desktop that vertical band goes to
+                the book grid instead. Mobile presentation is unchanged. */}
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.34em] text-[#c9a84c]/90 md:hidden">
               Welcome back, Summoner
             </p>
-            <p className="mt-1 text-xs md:text-sm text-[#cfc4a5]/85">
+            <p className="mt-1 text-xs text-[#cfc4a5]/85 md:hidden">
               Chart your path. Sharpen your edge.
+            </p>
+            {/* Randomized personalized academy line (desktop). Chosen once per
+                mount; the entrance fade is disabled under prefers-reduced-motion
+                by .academy-personal-line in index.css. */}
+            <p className="academy-personal-line mx-auto mt-1 hidden text-[13px] leading-tight tracking-[0.02em] text-[#7ad6ff]/85 md:block lg:text-sm">
+              {academyLine}
             </p>
           </header>
 
           {/* Desktop: six open books flanking Mogzy's central lane */}
-          <div className="mt-2 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(220px,0.62fr)_1fr] items-center gap-x-2 lg:gap-x-4">
-            <div className="flex min-h-0 flex-col justify-center gap-y-[clamp(4px,1.6vh,26px)]">
-              {LEFT_DESTINATIONS.map(renderBook)}
+          <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
+            <div
+              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
+              style={{
+                transform: `translate(${DESKTOP_BOOK_STACK_INSET_PX}px, ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+              }}
+            >
+              {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
             </div>
 
             {/* Central lane — Mogzy hovers above the painted stack of books.
@@ -301,8 +372,13 @@ export default function LolHub() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col justify-center gap-y-[clamp(4px,1.6vh,26px)]">
-              {RIGHT_DESTINATIONS.map(renderBook)}
+            <div
+              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
+              style={{
+                transform: `translate(-${DESKTOP_BOOK_STACK_INSET_PX}px, ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+              }}
+            >
+              {RIGHT_DESTINATIONS.map((d) => renderBook(d, "right"))}
             </div>
           </div>
 

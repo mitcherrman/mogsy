@@ -883,8 +883,17 @@ html.high-contrast * { text-shadow: none !important; }
 }
 .academy-mogzy-float { animation: academy-mogzy-float 6s ease-in-out infinite; will-change: transform; }
 
+/* Personalized academy line — one subtle entrance fade, no looping motion. */
+@keyframes academy-line-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.academy-personal-line { animation: academy-line-in 480ms ease-out both; }
+
 @media (prefers-reduced-motion: reduce) {
   .academy-mogzy-float { animation: none !important; }
+  /* No fade: the line is simply present at full opacity. */
+  .academy-personal-line { animation: none !important; }
 }
 
 /* Shared layout tokens — sm+ overrides (see :root above). */
@@ -900,4 +909,45 @@ html.high-contrast * { text-shadow: none !important; }
    (applied once on the app shell — never per page). */
 .pb-bottom-nav {
   padding-bottom: var(--bottom-nav-clearance);
+}
+
+.book-title-glimmer {
+  background-image: linear-gradient(
+    105deg,
+    #b89a57 0%,
+    #e2cf98 34%,
+    #fff8d8 46%,
+    #ffffff 50%,
+    #fff1bd 54%,
+    #e2cf98 66%,
+    #b89a57 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 50%;
+  animation: book-title-glimmer 10s linear infinite;
+  filter:
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.75))
+    drop-shadow(0 0 5px rgba(218, 190, 112, 0.14));
+}
+
+@keyframes book-title-glimmer {
+  0%,
+  55% {
+    background-position: 100% 50%;
+  }
+
+  78% {
+    background-position: -100% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-title-glimmer {
+    animation: none;
+    background-position: 50% 50%;
+  }
 }
