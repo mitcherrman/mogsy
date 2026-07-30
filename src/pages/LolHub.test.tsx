@@ -1,7 +1,7 @@
 /**
- * /lol homepage navigation structure: mobile hub panels cover every hero
- * destination, swipe game cards keep their routes, the hero selector exists
- * once (desktop-only container), and landing analytics stay wired.
+ * /lol homepage navigation structure: the academy library hub renders every
+ * approved destination (desktop book cards + mobile panels), the League Swipe
+ * subsection stays hidden, and landing analytics stay wired.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -83,19 +83,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const HUB_DESTINATIONS = [
+  { title: "Leaguecraft", to: "/quiz" },
   { title: "Combat Lab", to: "/combat-lab" },
-  { title: "League Quiz", to: "/quiz" },
-  { title: "League Swipe", to: "/league-swipe" },
   { title: "Stat Check", to: "/quiz/stat-check" },
+  { title: "Mogzy Archives", to: "/lol/docs" },
   { title: "Quiz History", to: "/lol/history" },
-  { title: "League Docs", to: "/lol/docs" },
-];
-
-const SWIPE_ROUTES = [
-  { title: "Favorite Champion", to: "/league-swipe/favorite-champion" },
-  { title: "Most Annoying Champion", to: "/league-swipe/most-annoying-champion" },
-  { title: "Stat Duel", to: "/league-swipe/higher-base-stat" },
-  { title: "Item Cost Duel", to: "/league-swipe/item-cost-duel" },
+  { title: "Patch Reports", to: "/lol/patch-reports" },
 ];
 
 describe("LolHub — navigation structure", () => {
@@ -109,6 +102,22 @@ describe("LolHub — navigation structure", () => {
     }
   });
 
+  it("renders each destination twice: desktop book card + mobile panel", () => {
+    renderHub();
+    for (const d of HUB_DESTINATIONS) {
+      const links = screen
+        .getAllByRole("link", { name: new RegExp(d.title) })
+        .filter((l) => l.getAttribute("href") === d.to);
+      expect(links.length, `${d.title} → ${d.to}`).toBe(2);
+    }
+  });
+
+  it("uses the academy names — no stale League Quiz / League Docs labels", () => {
+    renderHub();
+    expect(screen.queryByRole("link", { name: /League Quiz/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /League Docs/ })).toBeNull();
+  });
+
   it("sends Stat Check to the mode-selection screen, never straight into a mode", () => {
     renderHub();
     const links = screen
@@ -118,26 +127,26 @@ describe("LolHub — navigation structure", () => {
     for (const href of links) expect(href).toBe("/quiz/stat-check");
   });
 
-  it("renders all four League Swipe game cards with their routes", () => {
+  it("hides the League Swipe subsection while Meta Reflex lives inside Leaguecraft", () => {
     renderHub();
-    for (const g of SWIPE_ROUTES) {
-      const link = screen.getByRole("link", { name: new RegExp(g.title) });
-      expect(link.getAttribute("href")).toBe(g.to);
-    }
+    // No top-level League Swipe destination and no swipe game cards.
+    expect(screen.queryByRole("link", { name: /League Swipe/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Favorite Champion/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Item Cost Duel/ })).toBeNull();
   });
 
-  it("keeps the hero mode selector as a single desktop-only control set", () => {
+  it("does not render the old hero mode selector", () => {
     const { container } = renderHub();
-    // The tab buttons still exist (desktop behavior intact)…
-    const tabs = screen.getAllByRole("button", { name: /^(Quiz|Combat Lab|League Swipe)$/ });
-    expect(tabs).toHaveLength(3);
-    // …inside one responsive container that is hidden below md. This asserts
-    // the structural intent (one hidden-on-mobile wrapper), not styling detail.
-    const tabRow = tabs[0].parentElement!;
-    expect(tabRow.className).toContain("hidden");
-    expect(tabRow.className).toContain("md:flex");
-    // No second set of mode tabs was introduced anywhere.
-    expect(container.querySelectorAll('button[aria-pressed]')).toHaveLength(3);
+    expect(container.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
+    expect(screen.queryByText("Train Your League Knowledge")).toBeNull();
+  });
+
+  it("renders the academy heading and welcome copy", () => {
+    renderHub();
+    expect(screen.getByText("Mogzy’s Academy of")).toBeTruthy();
+    expect(screen.getByText("Leaguecraft and Technology")).toBeTruthy();
+    expect(screen.getByText(/Welcome back, Summoner/i)).toBeTruthy();
+    expect(screen.getByText("Chart your path. Sharpen your edge.")).toBeTruthy();
   });
 
   it("shows the guest signup banner with concise mobile copy and a dismiss control", () => {

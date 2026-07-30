@@ -60,13 +60,17 @@ export default function Layout() {
 
   // Full-bleed routes escape the centered max-w-7xl reading column so a game
   // table can use the whole viewport. The page supplies its own background
-  // and gutters. Currently only the Stat Check tabletop (dev + live routes).
-  const isFullBleed = pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
+  // and gutters. Stat Check tabletop (dev + live routes) plus the /lol academy
+  // library hub, whose painted background and book grid span the viewport.
+  const isStatCheckSurface =
+    pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
+  const isFullBleed = isStatCheckSurface || pathname === "/lol";
 
-  // The friends drawer is a floating overlay. On a full-bleed gameplay surface
-  // it would sit on top of the Stat Check tabletop and its trigger would
-  // compete with the board for clicks, so it is suppressed there.
-  const showFriendsDrawer = !isFullBleed;
+  // The friends drawer is a floating overlay. On the full-bleed Stat Check
+  // gameplay surface it would sit on top of the tabletop and its trigger would
+  // compete with the board for clicks, so it is suppressed there. The /lol hub
+  // is full-bleed but not a gameplay surface, so the drawer stays.
+  const showFriendsDrawer = !isStatCheckSurface;
 
   // Combat Lab renders the League Hub control inline in its own compact page
   // header, so the shell's copy is suppressed there to avoid a duplicate. Its

@@ -875,6 +875,18 @@ html.high-contrast * { text-shadow: none !important; }
   .hero-cta-gold::after { display: none; }
 }
 
+/* /lol academy library hub — Mogzy's gentle hover over the book stack.
+   Applied to an absolutely-positioned wrapper so it never affects layout. */
+@keyframes academy-mogzy-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.academy-mogzy-float { animation: academy-mogzy-float 6s ease-in-out infinite; will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  .academy-mogzy-float { animation: none !important; }
+}
+
 /* Shared layout tokens — sm+ overrides (see :root above). */
 @media (min-width: 640px) {
   :root {
