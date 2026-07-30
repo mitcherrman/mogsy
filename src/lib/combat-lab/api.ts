@@ -170,6 +170,21 @@ export type CombatLabBasicAttackRequest = {
 
 export type CombatLabActiveRequest = {
   champion_name: string;
+  /**
+   * The attacker's equipped items. ADDITIVE and optional on the backend
+   * (`CombatLabActivePayload.item_names`, default `[]`), so omitting it keeps
+   * the previous behavior exactly. Required in practice for a qualifying
+   * ability cast to arm a Spellblade item — without it the backend cannot know
+   * the attacker's inventory from an `/active` request at all.
+   */
+  item_names?: string[];
+  /**
+   * Authoritative simulation time, mirroring the long-standing
+   * `/basic-attack` field so both routes evaluate the Spellblade internal
+   * cooldown against the same clock. ADDITIVE and optional on the backend
+   * (default `0.0`).
+   */
+  current_time?: number;
   attacker_stats: Record<string, number>;
   target_stats: Record<string, number>;
   state: Record<string, unknown>;
