@@ -44,3 +44,27 @@ describe("App /quiz route classification", () => {
     }
   });
 });
+
+describe("permanent Leaguecraft tutorial route", () => {
+  it("is registered and auth-gated like other authenticated Leaguecraft pages", () => {
+    expect(firstElementFor("/quiz/tutorial")).toBe("<ProtectedRoute");
+  });
+
+  it("is never wrapped in RequireRankedTutorial (no self-redirect loop)", () => {
+    expect(appSource).not.toMatch(
+      /path="\/quiz\/tutorial"\s+element=\{<RequireRankedTutorial/,
+    );
+  });
+
+  it("keeps the mandatory onboarding route registered alongside it", () => {
+    // Both routes exist: the onboarding target the forced gate redirects to,
+    // and the permanent voluntary entry inside Leaguecraft.
+    expect(firstElementFor("/onboarding/ranked-tutorial")).toBe("<ProtectedRoute");
+  });
+});
+
+describe("admin platform-policies route", () => {
+  it("is admin-gated, not merely hidden", () => {
+    expect(firstElementFor("/admin/platform-policies")).toBe("<AdminRoute");
+  });
+});

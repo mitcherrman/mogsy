@@ -11,9 +11,15 @@ import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { markHubVisited } from "@/lib/quiz/onboarding-gate";
+import {
+  markHubVisited,
+  markTutorialPopupDismissed,
+  hasDismissedTutorialPopup,
+} from "@/lib/quiz/onboarding-gate";
 import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
+import { useAppSettings } from "@/hooks/useAppSettings";
+import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { playUiSfx } from "@/lib/ui-sfx";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
@@ -134,9 +140,29 @@ export default function LolHub() {
   // user who has not completed the tutorial, once status has finished loading.
   // Fail-open on a genuine read error (don't trap the user behind a
   // non-dismissible popup); loading is distinct from error and simply waits.
+  //
+  // Layered on top: the admin-controlled global policy. `autoPopupEnabled`
+  // suppresses ONLY this automatic overlay — the tutorial itself and its
+  // permanent Leaguecraft route stay available either way — and
+  // `completionRequiredForNewUsers` decides whether the overlay is escapable.
   const { loading: tutorialLoading, completed: tutorialCompleted, error: tutorialError } =
     useRankedTutorialStatus();
-  const showWelcome = !tutorialLoading && !tutorialError && isAnonymous && !tutorialCompleted;
+  const { settings, loading: settingsLoading } = useAppSettings();
+  const [popupDismissed, setPopupDismissed] = useState(hasDismissedTutorialPopup);
+
+  const { showAutoPopup, popupDismissible } = evaluateTutorialPresentation({
+    autoPopupEnabled: settings.policy.tutorial.autoPopupEnabled,
+    completionRequiredForNewUsers: settings.policy.tutorial.completionRequiredForNewUsers,
+    completed: tutorialCompleted,
+    eligibleForFirstVisit: isAnonymous,
+  });
+  const showWelcome =
+    !tutorialLoading && !settingsLoading && !tutorialError && showAutoPopup && !popupDismissed;
+
+  const dismissWelcome = () => {
+    markTutorialPopupDismissed();
+    setPopupDismissed(true);
+  };
 
   // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
   useEffect(() => {
@@ -222,7 +248,9 @@ export default function LolHub() {
 
   return (
     <div>
-      {showWelcome && <LolWelcomeIntro />}
+      {showWelcome && (
+        <LolWelcomeIntro dismissible={popupDismissible} onDismiss={dismissWelcome} />
+      )}
       <SEOHead
         title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."

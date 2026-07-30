@@ -13,6 +13,11 @@ const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
   authUser: { id: "u1", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
   tutorial: { loading: false, error: false, completed: true },
+  // Global tutorial policy. Both default ON = current production behaviour, so
+  // every pre-existing expectation in this file is unchanged.
+  settingsLoading: false,
+  autoPopupEnabled: true,
+  completionRequiredForNewUsers: true,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -31,7 +36,23 @@ vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));
 vi.mock("@/components/lol/LolWelcomeIntro", () => ({
-  default: () => <div data-testid="lol-welcome-popup" />,
+  default: ({ dismissible }: { dismissible?: boolean }) => (
+    <div data-testid="lol-welcome-popup" data-dismissible={String(!!dismissible)} />
+  ),
+}));
+vi.mock("@/hooks/useAppSettings", () => ({
+  useAppSettings: () => ({
+    loading: mocks.settingsLoading,
+    settings: {
+      policy: {
+        combatSim: { tokensRequiredForNonPro: true },
+        tutorial: {
+          autoPopupEnabled: mocks.autoPopupEnabled,
+          completionRequiredForNewUsers: mocks.completionRequiredForNewUsers,
+        },
+      },
+    },
+  }),
 }));
 vi.mock("@/hooks/useRankedTutorialStatus", () => ({
   useRankedTutorialStatus: () => ({
@@ -79,6 +100,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.authUser = { id: "u1", is_anonymous: false };
   mocks.tutorial = { loading: false, error: false, completed: true };
+  mocks.settingsLoading = false;
+  mocks.autoPopupEnabled = true;
+  mocks.completionRequiredForNewUsers = true;
+  try {
+    sessionStorage.clear();
+  } catch {
+    /* jsdom sessionStorage always present; guard for safety */
+  }
 });
 afterEach(cleanup);
 
@@ -230,5 +259,75 @@ describe("LolHub — first-visit tutorial popup visibility", () => {
     mocks.tutorial = { loading: false, error: true, completed: false };
     renderHub();
     expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+});
+
+describe("LolHub — automatic tutorial popup under the global policies", () => {
+  const newGuest = () => {
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+  };
+
+  it("popup ON + forced ON → popup appears and is not dismissible", () => {
+    newGuest();
+    renderHub();
+    const popup = screen.getByTestId("lol-welcome-popup");
+    expect(popup.getAttribute("data-dismissible")).toBe("false");
+  });
+
+  it("popup ON + forced OFF → popup appears and IS dismissible", () => {
+    newGuest();
+    mocks.completionRequiredForNewUsers = false;
+    renderHub();
+    const popup = screen.getByTestId("lol-welcome-popup");
+    expect(popup.getAttribute("data-dismissible")).toBe("true");
+  });
+
+  it("popup OFF + forced ON → no popup (the route guard still forces entry)", () => {
+    newGuest();
+    mocks.autoPopupEnabled = false;
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("popup OFF + forced OFF → no popup at all", () => {
+    newGuest();
+    mocks.autoPopupEnabled = false;
+    mocks.completionRequiredForNewUsers = false;
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("never shows the popup to a completed user, whatever the policy", () => {
+    for (const autoPopupEnabled of [true, false]) {
+      for (const completionRequiredForNewUsers of [true, false]) {
+        mocks.authUser = { id: "anon1", is_anonymous: true };
+        mocks.tutorial = { loading: false, error: false, completed: true };
+        mocks.autoPopupEnabled = autoPopupEnabled;
+        mocks.completionRequiredForNewUsers = completionRequiredForNewUsers;
+        const view = renderHub();
+        expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+        view.unmount();
+      }
+    }
+  });
+
+  it("does not flash the popup while the settings read is still loading", () => {
+    newGuest();
+    mocks.settingsLoading = true;
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("re-enabling the auto-popup restores it for the same incomplete guest", () => {
+    newGuest();
+    mocks.autoPopupEnabled = false;
+    const first = renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+    first.unmount();
+
+    mocks.autoPopupEnabled = true;
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
   });
 });

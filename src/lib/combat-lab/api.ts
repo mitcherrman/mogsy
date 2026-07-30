@@ -131,9 +131,19 @@ export type SandboxStepResponse = {
   [k: string]: unknown;
 };
 
-/** Combat Lab daily usage credits (mirrors the backend credit status). */
+/**
+ * Combat Lab daily usage credits (mirrors the backend credit status).
+ *
+ * This payload is the single authority the UI renders from. The server has
+ * already applied Pro entitlement AND the global
+ * `combat_sim_tokens_required_for_non_pro` policy before answering, so the UI
+ * must never reconstruct either rule locally — that is what makes it impossible
+ * for the UI to offer a run the server would reject, or vice versa.
+ */
 export type CombatLabCreditStatus = {
+  /** User ENTITLEMENT. Independent of the global policy below. */
   is_pro: boolean;
+  /** No cap applies to this caller — via Pro, or because tokens are switched off. */
   unlimited: boolean;
   credits_used: number;
   credits_limit: number | null;
@@ -141,6 +151,12 @@ export type CombatLabCreditStatus = {
   blocked: boolean;
   reset_at: string | null;
   upsell_message: string | null;
+  /**
+   * Global POLICY as applied to this caller: are Combat Sim tokens metered at
+   * all? False for Pro users (never metered) and for everyone while the admin
+   * toggle is off. Optional so a response from an older backend still parses.
+   */
+  tokens_required?: boolean;
 };
 
 /**

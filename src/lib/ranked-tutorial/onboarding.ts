@@ -12,8 +12,27 @@
  */
 export const RANKED_TUTORIAL_VERSION = 1;
 
-/** Production route for the mandatory/replayable Ranked Tutorial onboarding. */
+/**
+ * Onboarding route for the mandatory Ranked Tutorial — the destination the
+ * forced-tutorial route guard redirects an incomplete account to.
+ */
 export const RANKED_TUTORIAL_ROUTE = "/onboarding/ranked-tutorial";
+
+/**
+ * Permanent Leaguecraft route where ANY authenticated user can voluntarily
+ * start or replay the tutorial, independent of the automatic-popup and
+ * forced-tutorial policies.
+ *
+ * Lives under the Leaguecraft root (`/quiz`) to match the current information
+ * architecture — Leaguecraft owns /quiz, /quiz/ranked, /quiz/stat-check and
+ * /quiz/mastery — rather than the onboarding namespace, which is reserved for
+ * the mandatory first-run flow. Both routes render the SAME page component, and
+ * that page derives mandatory-vs-replay from the account's real completion
+ * state, so neither route can corrupt the other's semantics.
+ *
+ * A real route, not modal state: browser refresh and direct navigation work.
+ */
+export const LEAGUECRAFT_TUTORIAL_ROUTE = "/quiz/tutorial";
 
 /** Where the tutorial returns the user on completion or exit. */
 export const RANKED_TUTORIAL_RETURN_ROUTE = "/quiz";

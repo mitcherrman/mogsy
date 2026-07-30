@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DEFAULT_PLATFORM_POLICY,
+  parsePlatformPolicy,
+  type PlatformPolicy,
+} from "@/lib/platform-policy/policy";
 
 export interface CardStatsConfig {
   position: "bottom-center" | "bottom-left" | "bottom-right" | "below-name" | "overlay-bottom";
@@ -33,9 +38,20 @@ interface AppSettings {
   require_auth: boolean;
   card_stats_config: CardStatsConfig;
   nav_tab_mode: "play" | "swipe";
+  /**
+   * Admin-controlled global platform policy (Combat Sim tokens + tutorial).
+   * Read from the same app_settings rows the backend reads, so there is exactly
+   * one storage authority. Fail-closed defaults reproduce current behaviour.
+   */
+  policy: PlatformPolicy;
 }
 
-const defaults: AppSettings = { require_auth: true, card_stats_config: DEFAULT_CARD_STATS_CONFIG, nav_tab_mode: "play" };
+const defaults: AppSettings = {
+  require_auth: true,
+  card_stats_config: DEFAULT_CARD_STATS_CONFIG,
+  nav_tab_mode: "play",
+  policy: DEFAULT_PLATFORM_POLICY,
+};
 
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(defaults);
@@ -55,6 +71,10 @@ export function useAppSettings() {
             }
             if (row.key === "nav_tab_mode") s.nav_tab_mode = (row.value as any)?.mode ?? "play";
           }
+          // Policy rows are parsed by the shared pure contract, not inline, so
+          // the guard, the hub, the admin panel, and the tests agree by
+          // construction. A failed read leaves `data` null → defaults stand.
+          s.policy = parsePlatformPolicy(data as { key: string; value: unknown }[]);
           setSettings(s);
         }
         setLoading(false);

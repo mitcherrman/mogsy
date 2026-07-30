@@ -16,12 +16,25 @@ const STEPS = [
  * First-visit tutorial-onboarding overlay for the LoL hub.
  *
  * Visibility is decided entirely by the caller from authoritative auth/tutorial
- * status (anonymous + not completed). This component is deliberately NOT
- * dismissible: its single action starts the mandatory tutorial. It does not
- * touch localStorage — a guest who opens but abandons the tutorial still has an
- * incomplete profile, so the caller shows the popup again on their next visit.
+ * status (anonymous + not completed) and the global `tutorial_auto_popup_enabled`
+ * policy. It does not touch localStorage — a guest who opens but abandons the
+ * tutorial still has an incomplete profile, so the caller shows the popup again
+ * on their next visit.
+ *
+ * `dismissible` mirrors the global `tutorial_completion_required_for_new_users`
+ * policy. When completion is REQUIRED the overlay stays non-dismissible, exactly
+ * as before: its single action starts the mandatory tutorial. When completion is
+ * NOT required the overlay must be escapable — otherwise the popup would trap a
+ * user the route guard is willing to let through. Dismissing changes no server
+ * state: it never stamps completion and never edits the profile.
  */
-export default function LolWelcomeIntro() {
+export default function LolWelcomeIntro({
+  dismissible = false,
+  onDismiss,
+}: {
+  dismissible?: boolean;
+  onDismiss?: () => void;
+}) {
   const navigate = useNavigate();
 
   const startTutorial = () => {
@@ -87,6 +100,18 @@ export default function LolWelcomeIntro() {
         >
           Start Tutorial
         </Button>
+
+        {/* Escape hatch, present only when the tutorial is not required. */}
+        {dismissible && (
+          <Button
+            variant="ghost"
+            className="mt-2 w-full text-sm text-[#f5e9c8]/70 hover:bg-white/5 hover:text-[#f5e9c8]"
+            onClick={onDismiss}
+            data-testid="lol-welcome-skip-tutorial"
+          >
+            Skip for now
+          </Button>
+        )}
       </motion.div>
     </motion.div>
   );
