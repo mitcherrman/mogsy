@@ -46,9 +46,14 @@ import {
   getAbilityIconUrl,
   getChampionSquareIconUrl,
   inferActionAbilitySlot,
-  abilityVariantToken,
   toneForSlot,
 } from "@/lib/combat-lab/abilityIcons";
+import { groupChampionActions, type ActionGroup } from "@/lib/combat-lab/actionGroups";
+import {
+  getEventDisplayLabel,
+  summarizeCombatResult,
+  type CombatResultTone,
+} from "@/lib/combat-lab/combatResult";
 import {
   useChampionAssets,
   getChampionSkins,
@@ -1503,7 +1508,7 @@ function TimelineViewer({ events }: { events: TimelineEvent[] }) {
       <ol className="relative space-y-3 border-l border-border/60 pl-5">
         {events.map((e, i) => {
           const t = getEventTime(e);
-          const name = getEventLabel(e);
+          const name = getEventDisplayLabel(e);
           const dmg = getEventDamage(e);
           const isDamage = dmg != null && dmg > 0;
           const tone = damageTypeTone(e.damage_type);
@@ -2308,7 +2313,8 @@ function InteractiveSandbox({
     prevHpRef.current = defenderHP.current;
   }, [defenderHP.current, defenderHP.max]);
 
-  // Latest damage-bearing combat event for the Last Action card.
+  // Latest damage-bearing combat event — dev-mode detail only; the Last Action
+  // panel itself is driven by the timeline entry the page built for the cast.
   const lastCombatEvent = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
@@ -2317,6 +2323,42 @@ function InteractiveSandbox({
     }
     return events[events.length - 1] || null;
   }, [events]);
+
+  /**
+   * The defender has been reduced to 0 HP.
+   *
+   * Only ever true once an action has actually resolved: a fresh sandbox whose
+   * max HP has not been resolved yet also reports `current: 0`, and calling that
+   * "defeated" would put a death badge on an untouched target.
+   */
+  const targetDefeated =
+    combatTimeline.length > 0 && defenderHP.max > 0 && defenderHP.current <= 0;
+
+  const lastTimelineEntry = combatTimeline.length
+    ? combatTimeline[combatTimeline.length - 1]
+    : null;
+
+  /**
+   * Timeline pills carry the same stored ability art the cast buttons use, so a
+   * run of Q casts is recognisable without reading the abbreviation. A basic
+   * attack has no ability art of its own and falls back to the champion icon.
+   */
+  const timelineStripEntries = useMemo(
+    () =>
+      combatTimeline.map((e) => {
+        const slot =
+          e.kind === "basic-attack"
+            ? null
+            : e.abilityKey ?? inferActionAbilitySlot(e.action_id, e.label);
+        return {
+          ...e,
+          iconUrl: slot
+            ? getAbilityIconUrl(config.champion, slot)
+            : getChampionSquareIconUrl(config.champion),
+        };
+      }),
+    [combatTimeline, config.champion],
+  );
 
   const applyResponse = (res: SandboxStepResponse) => {
     if (res.state) setState(res.state);
@@ -3220,10 +3262,34 @@ function InteractiveSandbox({
                   />
                   Auto Reset
                 </label>
-                <Button size="sm" variant="outline" onClick={resetCombat} className="h-7 text-xs">
+                {/* Once the target is down, Reset is the next thing to do, so it
+                    stops being a quiet outline button and becomes the CTA. */}
+                <Button
+                  size="sm"
+                  variant={targetDefeated ? "default" : "outline"}
+                  onClick={resetCombat}
+                  className="h-7 text-xs"
+                >
                   <RotateCcw className="h-3.5 w-3.5" /> Reset
                 </Button>
               </div>
+            }
+            status={
+              targetDefeated ? (
+                <div
+                  role="status"
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-destructive/50 bg-destructive/10 px-2.5 py-1.5"
+                >
+                  <Skull className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.18em] text-destructive">
+                    {defenderDisplayName} defeated
+                  </span>
+                  <span className="text-[11px] text-foreground/70">
+                    Further casts still resolve against a 0 HP target and spend a simulation —
+                    reset to start a new sequence.
+                  </span>
+                </div>
+              ) : null
             }
           >
           <div className="space-y-2.5">
@@ -3315,12 +3381,13 @@ function InteractiveSandbox({
           </div>
         </CombatArena>
         <LastActionCard
+          entry={lastTimelineEntry as CombatTimelineEntryT | null}
           event={lastCombatEvent}
           attackerName={attackerDisplayName}
           defenderName={defenderDisplayName}
           hp={defenderHP}
-          abilityKey={lastAction && lastAction.kind === "active" ? lastAction.abilityKey : undefined}
-          abilityRank={lastAction && lastAction.kind === "active" ? lastAction.rank : undefined}
+          defeated={targetDefeated}
+          devMode={devMode}
         />
         </div>
 
@@ -3340,6 +3407,7 @@ function InteractiveSandbox({
                 emptyMessage="Select a defender champion"
                 skinKey={defenderSkin}
                 onSkinChange={setDefenderSkin}
+                defeated={targetDefeated}
                 className={portraitFrameClass(!!targetSetup.targetChampionName)}
               />
             ) : (
@@ -3409,7 +3477,7 @@ function InteractiveSandbox({
 
       {/* COMBAT TIMELINE — compact horizontal strip, always in the first screen */}
       <CombatTimelineStrip
-        entries={combatTimeline}
+        entries={timelineStripEntries}
         selectedId={selectedTimelineId}
         onSelect={setSelectedTimelineId}
       />
@@ -3847,7 +3915,9 @@ function humanizeEvent(
   defenderName?: string,
 ): string {
   const a = e as any;
-  const name = getEventLabel(e);
+  // Display label, not the engine's record name — this string is read aloud to
+  // the user, so `damage_packet` must never reach it.
+  const name = getEventDisplayLabel(e);
   const dmg = getEventDamage(e);
   const dt = e.damage_type
     ? String(e.damage_type).charAt(0).toUpperCase() + String(e.damage_type).slice(1)
@@ -3982,6 +4052,7 @@ function DefenderHPCard({
   const dr = typeof ts.TARGET_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_DAMAGE_REDUCTION_PERCENT : undefined;
   const physDr = typeof ts.TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_PHYSICAL_DAMAGE_REDUCTION_PERCENT : undefined;
   const magicDr = typeof ts.TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT === "number" ? ts.TARGET_MAGIC_DAMAGE_REDUCTION_PERCENT : undefined;
+  const defeated = hp.max > 0 && hp.current <= 0;
   const low = hp.max > 0 && hp.pct < 25;
   const med = hp.max > 0 && hp.pct < 55 && !low;
   const fillTone = low
@@ -4003,16 +4074,33 @@ function DefenderHPCard({
       </span>
     );
   return (
-    <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+    <Card
+      className={`backdrop-blur-sm transition-colors ${
+        defeated ? "border-destructive/60 bg-destructive/10" : "border-border/60 bg-card/60"
+      }`}
+    >
       <CardContent className="relative space-y-1.5 px-3.5 py-2.5">
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
-            <TargetIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+            {defeated ? (
+              <Skull className="h-3.5 w-3.5 shrink-0 text-destructive" />
+            ) : (
+              <TargetIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+            )}
             <span className="truncate text-[11px] font-bold uppercase tracking-wide text-foreground/85">
               {defenderName}
             </span>
+            {defeated && (
+              <span className="shrink-0 rounded border border-destructive/60 bg-destructive/15 px-1.5 py-px text-[10px] font-black uppercase tracking-[0.18em] text-destructive">
+                Defeated
+              </span>
+            )}
           </div>
-          <div className="shrink-0 text-xl font-extrabold leading-none tabular-nums text-foreground">
+          <div
+            className={`shrink-0 text-xl font-extrabold leading-none tabular-nums ${
+              defeated ? "text-destructive" : "text-foreground"
+            }`}
+          >
             {hp.max > 0 ? hp.current.toLocaleString() : "—"}
             <span className="ml-1 text-[11px] font-normal text-muted-foreground">
               / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
@@ -4026,7 +4114,11 @@ function DefenderHPCard({
         </div>
         <div
           className={`relative h-3 w-full overflow-hidden rounded-full border bg-background/60 transition-colors duration-300 ${
-            flash ? "border-red-500/80 ring-2 ring-red-500/40" : "border-border/60"
+            flash
+              ? "border-red-500/80 ring-2 ring-red-500/40"
+              : defeated
+                ? "border-destructive/60"
+                : "border-border/60"
           }`}
         >
           <div
@@ -4073,61 +4165,139 @@ function DefenderHPCard({
   );
 }
 
+/** Per-result colouring for the headline figure. Damage types read at a glance. */
+const RESULT_TONE: Record<CombatResultTone, { text: string; frame: string; chip: string }> = {
+  physical: {
+    text: "text-orange-300",
+    frame: "border-orange-400/40 bg-orange-500/10",
+    chip: "text-orange-200/90",
+  },
+  magic: {
+    text: "text-sky-300",
+    frame: "border-sky-400/40 bg-sky-500/10",
+    chip: "text-sky-200/90",
+  },
+  true: {
+    text: "text-foreground",
+    frame: "border-foreground/25 bg-foreground/5",
+    chip: "text-foreground/80",
+  },
+  mixed: {
+    text: "text-primary",
+    frame: "border-primary/40 bg-primary/10",
+    chip: "text-primary/90",
+  },
+  healing: {
+    text: "text-emerald-300",
+    frame: "border-emerald-400/40 bg-emerald-500/10",
+    chip: "text-emerald-200/90",
+  },
+  shield: {
+    text: "text-amber-300",
+    frame: "border-amber-400/40 bg-amber-500/10",
+    chip: "text-amber-200/90",
+  },
+  none: {
+    text: "text-muted-foreground",
+    frame: "border-border/60 bg-muted/20",
+    chip: "text-muted-foreground",
+  },
+};
+
+/**
+ * "What just happened", as a player would say it.
+ *
+ * This panel used to render the raw event straight out of the response, so its
+ * heading was whatever the engine called the record — for a basic attack, the
+ * literal string `damage_packet`. It now reads the action the *page* dispatched
+ * (which it always knows) and folds the response into a user-facing result via
+ * summarizeCombatResult, so no engine token can reach production UI. The engine
+ * names are still worth having while debugging, so dev mode prints them back.
+ */
 function LastActionCard({
+  entry,
   event,
   attackerName,
   defenderName,
   hp,
-  abilityKey,
-  abilityRank,
+  defeated,
+  devMode,
 }: {
+  entry: CombatTimelineEntryT | null;
   event: TimelineEvent | null;
   attackerName: string;
   defenderName: string;
   hp: { current: number; max: number; pct: number };
-  abilityKey?: "Q" | "W" | "E" | "R";
-  abilityRank?: number;
+  defeated: boolean;
+  devMode: boolean;
 }) {
-  if (!event) return null;
-  const dmg = getEventDamage(event);
-  const dt = event.damage_type
-    ? String(event.damage_type).charAt(0).toUpperCase() + String(event.damage_type).slice(1)
-    : "";
-  const label = getEventLabel(event);
+  if (!entry) return null;
+  const result = summarizeCombatResult(entry);
+  const tone = RESULT_TONE[result.tone];
   const rankSuffix =
-    abilityKey && typeof abilityRank === "number" ? ` ${abilityKey} Rank ${abilityRank}` : "";
+    entry.abilityKey && typeof entry.abilityRank === "number"
+      ? ` · ${entry.abilityKey} rank ${entry.abilityRank}`
+      : "";
+  const amount = result.amount ?? 0;
+
   return (
     <SectionCard title="Last Action" icon={Activity}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {attackerName}{rankSuffix}
+      <div className="space-y-2">
+        {/* Headline: the number is the point of the panel. */}
+        <div className={`rounded-lg border px-3 py-2.5 ${tone.frame}`}>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {attackerName} · {entry.label}
+            {rankSuffix}
           </div>
-          <div className="text-sm font-semibold text-foreground">{label}</div>
-          {typeof dmg === "number" && dmg > 0 && (
-            <div className="text-2xl font-bold tabular-nums text-destructive">
-              {Math.round(dmg).toLocaleString()}
-              <span className="ml-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {dt || "damage"}
-              </span>
+          <div className={`mt-0.5 flex flex-wrap items-baseline gap-x-2 ${tone.text}`}>
+            <span className="text-3xl font-black leading-none tabular-nums">
+              {result.amount == null ? "—" : Math.round(amount).toLocaleString()}
+            </span>
+            <span className="text-xs font-bold uppercase tracking-[0.18em]">
+              {result.headline}
+            </span>
+          </div>
+          {(result.shielded > 0 || result.healing > 0) && result.tone !== "shield" && result.tone !== "healing" && (
+            <div className={`mt-1 text-[11px] font-medium ${tone.chip}`}>
+              {result.shielded > 0 && `${Math.round(result.shielded).toLocaleString()} absorbed by shield`}
+              {result.shielded > 0 && result.healing > 0 && " · "}
+              {result.healing > 0 && `${Math.round(result.healing).toLocaleString()} healed`}
             </div>
           )}
         </div>
-        <div className="space-y-1 sm:text-right">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+
+        {/* Where it landed. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {defenderName}
-          </div>
-          <div className="text-2xl font-bold tabular-nums text-foreground">
-            {hp.max > 0 ? hp.current.toLocaleString() : "—"}
-            <span className="text-sm font-normal text-muted-foreground">
+            {defeated && (
+              <span className="ml-1.5 rounded border border-destructive/60 px-1 py-px text-[9px] font-black tracking-[0.15em] text-destructive">
+                DEFEATED
+              </span>
+            )}
+          </span>
+          <span className="tabular-nums">
+            <span className="text-xl font-extrabold text-foreground">
+              {hp.max > 0 ? hp.current.toLocaleString() : "—"}
+            </span>
+            <span className="text-xs text-muted-foreground">
               {" "}
               / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
             </span>
-          </div>
-          {hp.max > 0 && (
-            <div className="text-[11px] text-muted-foreground">{hp.pct.toFixed(0)}% remaining</div>
-          )}
+            {hp.max > 0 && (
+              <span className="ml-2 text-xs font-semibold text-foreground/70">
+                {hp.pct.toFixed(0)}% left
+              </span>
+            )}
+          </span>
         </div>
+
+        {devMode && event && (
+          <div className="font-mono text-[10px] text-muted-foreground">
+            raw event: {String(event.type ?? "—")} · {getEventLabel(event)} ·{" "}
+            {String(getEventDamage(event) ?? "—")}
+          </div>
+        )}
       </div>
     </SectionCard>
   );
@@ -4775,16 +4945,19 @@ function ActionButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  // Gold at rest here competed with the panel frame and the ability accents, so
+  // the resting state is neutral and the gold arrives on interaction — hover,
+  // focus and press — which is what it is for.
   const toneCls =
     tone === "accent"
-      ? "border-accent/40 bg-gradient-to-br from-accent/15 to-accent/0 text-accent hover:border-accent/70"
-      : "border-primary/40 bg-gradient-to-br from-primary/15 to-primary/0 text-primary hover:border-primary/70";
+      ? "border-border/60 bg-gradient-to-br from-accent/10 to-accent/0 text-accent hover:border-accent/70 hover:from-accent/20 focus-visible:border-accent/70"
+      : "border-border/60 bg-gradient-to-br from-primary/10 to-primary/0 text-primary hover:border-primary/70 hover:from-primary/20 focus-visible:border-primary/70";
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)] disabled:cursor-not-allowed disabled:opacity-50 ${toneCls}`}
+      className={`group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all hover:shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${toneCls}`}
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-current/30 bg-background/30">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
@@ -4801,14 +4974,17 @@ function ActionButton({
 
 /**
  * Champion-specific runtime casts (Aatrox's Q1/Q2/Q3 and their sweetspots,
- * Hwei's ten subject casts, Zeri's attack variants…) rendered as a bar of
- * game-style ability buttons.
+ * Hwei's ten subject casts, Zeri's attack variants…) rendered as game-style
+ * ability buttons.
  *
  * These sub-actions have no icon of their own in the asset store, so each one
- * reuses the icon of the parent ability it belongs to and is distinguished by
- * its key badge (`Q1`, `QQ`, `R`) and caption. When no parent can be inferred
- * with confidence the champion's own square icon is used instead of borrowing
- * another ability's art — see `inferActionAbilitySlot`.
+ * reuses the icon of the parent ability it belongs to. Six tiles wearing the
+ * same Q artwork are hard to tell apart, so actions whose labels prove they
+ * belong to the same cast are laid out as one stage row — `Q1` once, with its
+ * `Normal` and `Sweetspot` tiles beside it — instead of six equal siblings. The
+ * grouping is arrangement only: every action keeps its own button, its own id
+ * and its own cast payload (see lib/combat-lab/actionGroups). Anything that
+ * cannot be placed in a stage with confidence renders exactly as before.
  */
 function ChampionActionGrid({
   actions,
@@ -4823,43 +4999,89 @@ function ChampionActionGrid({
   offline: boolean;
   onCast: (action: CombatAction) => void;
 }) {
+  const groups = useMemo(() => groupChampionActions(actions), [actions]);
+  const standalone = groups.filter((g) => !g.grouped);
+  const staged = groups.filter((g) => g.grouped);
+
+  const tileFor = (
+    member: ActionGroup<CombatAction>["members"][number],
+    slot: ReturnType<typeof inferActionAbilitySlot>,
+  ) => {
+    const a = member.action;
+    const iconUrl = slot
+      ? getAbilityIconUrl(champion, slot)
+      : getChampionSquareIconUrl(champion);
+    return (
+      <AbilityButton
+        iconUrl={iconUrl}
+        glyph={Flame}
+        keyLabel={member.keyLabel || slot || undefined}
+        tone={toneForSlot(slot)}
+        size="md"
+        busy={busy === a.id}
+        disabled={!!busy || offline}
+        onClick={() => onCast(a)}
+        title={a.description || member.label}
+        ariaLabel={`Cast ${member.label}`}
+      />
+    );
+  };
+
   return (
     <div className="border-t border-border/25 pt-2">
       <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-foreground/70">
         {champion ? `${champion} actions` : "Champion actions"}
       </Label>
-      <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 sm:grid-cols-4">
-        {actions.map((a) => {
-          const label = a.label || a.name || a.id;
-          const slot = inferActionAbilitySlot(a.id, label);
-          const iconUrl = slot
-            ? getAbilityIconUrl(champion, slot)
-            : getChampionSquareIconUrl(champion);
-          // "QQ - Devastating Fire" → badge "QQ", caption "Devastating Fire".
-          const token = abilityVariantToken(label);
-          const caption =
-            (token ? label.slice(token.length).replace(/^\s*[-–·]\s*/, "").trim() : label) || label;
-          return (
-            <div key={a.id} className="flex flex-col items-center gap-1">
-              <AbilityButton
-                iconUrl={iconUrl}
-                glyph={Flame}
-                keyLabel={token || slot || undefined}
-                tone={toneForSlot(slot)}
-                size="md"
-                busy={busy === a.id}
-                disabled={!!busy || offline}
-                onClick={() => onCast(a)}
-                title={a.description || label}
-                ariaLabel={`Cast ${label}`}
-              />
-              <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight text-muted-foreground">
-                {caption}
-              </span>
+      {staged.length > 0 && (
+        <div className="mb-2 space-y-1.5">
+          {staged.map((g) => (
+            <div
+              key={g.key}
+              className="flex items-start gap-2.5 rounded-md border border-border/40 bg-background/30 px-2 py-1.5"
+            >
+              <div className="w-[52px] shrink-0 pt-0.5">
+                <div className="text-base font-black leading-none tracking-tight text-foreground">
+                  {g.token}
+                </div>
+                {g.abilityName && (
+                  <div className="mt-0.5 line-clamp-2 text-[9px] leading-tight text-muted-foreground">
+                    {g.abilityName}
+                  </div>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-wrap gap-x-2.5 gap-y-1.5">
+                {g.members.map((m) => (
+                  <div key={m.action.id} className="flex w-[64px] flex-col items-center gap-1">
+                    {tileFor(m, g.slot)}
+                    <span
+                      className={`line-clamp-2 w-full text-center text-[10px] font-semibold leading-tight ${
+                        m.isBase ? "text-muted-foreground" : "text-primary"
+                      }`}
+                    >
+                      {m.variantLabel}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+      {standalone.length > 0 && (
+        <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 sm:grid-cols-4">
+          {standalone.map((g) => {
+            const m = g.members[0];
+            return (
+              <div key={g.key} className="flex flex-col items-center gap-1">
+                {tileFor(m, g.slot)}
+                <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight text-muted-foreground">
+                  {m.variantLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -5568,7 +5790,7 @@ function CombatTimelinePanel({
                               >
                                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                                   <span className="font-semibold text-foreground/90">
-                                    {getEventLabel(ev)}
+                                    {getEventDisplayLabel(ev)}
                                   </span>
                                   {typeof getEventDamage(ev) === "number" && (
                                     <span className="font-mono text-destructive">
@@ -7128,7 +7350,7 @@ function DamageBreakdownPanel({ events, className }: { events: TimelineEvent[]; 
   const byType = new Map<string, number>();
   for (const e of damageEvents) {
     const dmg = getEventDamage(e) as number;
-    const label = getEventLabel(e);
+    const label = getEventDisplayLabel(e);
     const cat = eventCategory(e);
     const existing = bySource.get(label);
     if (existing) existing.total += dmg;

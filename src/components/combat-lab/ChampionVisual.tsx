@@ -30,6 +30,12 @@ type Props = {
   skinKey?: string;
   /** When provided, a compact skin selector is rendered (if 2+ skins). */
   onSkinChange?: (key: string) => void;
+  /**
+   * The champion this frame shows has been reduced to 0 HP. The art desaturates
+   * and a badge is added; the name, level and controls stay legible, because the
+   * point is to say "this target is down", not to hide the setup behind it.
+   */
+  defeated?: boolean;
   className?: string;
 };
 
@@ -42,6 +48,7 @@ export default function ChampionVisual({
   emptyMessage,
   skinKey,
   onSkinChange,
+  defeated = false,
   className,
 }: Props) {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -199,10 +206,16 @@ export default function ChampionVisual({
 
   return (
     <div
-      className={`relative flex flex-col overflow-hidden rounded-xl border ${roleTone} bg-gradient-to-b from-muted/20 to-background/70 ${className ?? ""}`}
+      className={`relative flex flex-col overflow-hidden rounded-xl border ${
+        defeated ? "border-destructive/60" : roleTone
+      } bg-gradient-to-b from-muted/20 to-background/70 ${className ?? ""}`}
     >
       {/* Media area — mode-specific content lives inside this box only */}
-      <div className="absolute inset-0">
+      <div
+        className={`absolute inset-0 transition-[filter,opacity] duration-500 ${
+          defeated ? "opacity-60 grayscale" : ""
+        }`}
+      >
         {mode === "splash" && imageUrl ? (
           <img
             key={imageUrl}
@@ -236,6 +249,16 @@ export default function ChampionVisual({
       {role && (
         <div className="absolute left-2 top-2 rounded-md bg-background/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-foreground/80 backdrop-blur-sm">
           {role}
+        </div>
+      )}
+
+      {/* Defeated badge — the word carries the state; the grayscale art only
+          reinforces it, so this reads the same without colour perception. */}
+      {defeated && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
+          <span className="rounded-md border border-destructive/70 bg-background/85 px-3 py-1 text-sm font-black uppercase tracking-[0.25em] text-destructive shadow-lg backdrop-blur-sm">
+            Defeated
+          </span>
         </div>
       )}
 

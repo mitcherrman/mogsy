@@ -72,6 +72,12 @@ export function MoreSection({
  * read as the interactive elements. The edit affordance is a small square icon
  * button rather than gold `EDIT` text — the whole row is still the click target,
  * so discoverability does not depend on hitting the icon.
+ *
+ * The label (`ITEMS`, `RUNES`, `STATE`…) sat at `text-muted-foreground`, which
+ * at 10px uppercase was close to unreadable against the card. It is a step
+ * brighter and heavier now; the summary beside it stays the brighter of the two
+ * so the *value* still leads. The icon keeps its 12px glyph but gets a larger
+ * touch target than the glyph itself, which is what it needed on mobile.
  */
 export function ConfigRow({
   label,
@@ -97,17 +103,17 @@ export function ConfigRow({
         aria-label={open ? `Close ${label}` : `Edit ${label}`}
         title={open ? `Close ${label}` : `Edit ${label}`}
       >
-        <span className="w-[70px] shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="w-[70px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-foreground/65">
           {label}
         </span>
-        <span className="min-w-0 flex-1 truncate text-xs text-foreground/90">{summary}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{summary}</span>
         <span
-          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors group-hover:bg-primary/15 group-hover:text-primary ${
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground/80 transition-colors group-hover:bg-primary/15 group-hover:text-primary ${
             open ? "bg-primary/15 text-primary" : ""
           }`}
           aria-hidden="true"
         >
-          {open ? <X className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+          {open ? <X className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
         </span>
       </button>
       {open && <div className="pb-2.5 pt-0.5">{children}</div>}

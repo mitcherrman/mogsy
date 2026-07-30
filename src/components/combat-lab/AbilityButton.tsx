@@ -97,7 +97,7 @@ export default function AbilityButton({
       disabled={inert}
       title={title}
       aria-label={ariaLabel}
-      className={`group relative shrink-0 rounded-lg bg-gradient-to-b p-[1.5px] transition-all duration-150 ${s.box} ${t.frame} ${
+      className={`group relative shrink-0 rounded-lg bg-gradient-to-b p-[1.5px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${s.box} ${t.frame} ${
         locked || disabled
           ? "cursor-not-allowed opacity-45 saturate-0"
           : `cursor-pointer ${t.glow} hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.96]`
