@@ -115,6 +115,24 @@ const defaultConfig: SimulateRequest = {
   crit_mode: "expected",
 };
 
+/**
+ * Sizing for the large attacker/defender portrait frames in the versus grid.
+ *
+ * The desktop height is fixed instead of `flex-1`. The versus grid is
+ * stretch-aligned, so a `flex-1` frame took whatever height was left over from
+ * the tallest column — meaning the portrait silently resized whenever the
+ * center or defender column grew as metadata resolved. Because the artwork is
+ * `object-cover`, that height change re-derived the image scale and read as a
+ * zoom on first load. A fixed height makes the frame's geometry independent of
+ * its siblings, so it is final from the first mounted paint.
+ *
+ * `shrink-0` keeps the frame at that height even if a column is ever squeezed.
+ * Mobile sizing is unchanged: 200px empty, 300px with a champion selected.
+ */
+function portraitFrameClass(hasChampion: boolean): string {
+  return `${hasChampion ? "min-h-[300px]" : "h-[200px]"} shrink-0 lg:h-[440px]`;
+}
+
 /* ─────────────── hooks ─────────────── */
 
 function useOutsideClose(
@@ -2906,11 +2924,7 @@ function InteractiveSandbox({
               level={config.stats?.LEVEL ?? 18}
               skinKey={attackerSkin}
               onSkinChange={setAttackerSkin}
-              className={
-                config.champion
-                  ? "min-h-[300px] flex-1"
-                  : "h-[200px] lg:h-auto lg:min-h-[300px] lg:flex-1"
-              }
+              className={portraitFrameClass(!!config.champion)}
             />
           }
         >
@@ -3256,11 +3270,7 @@ function InteractiveSandbox({
                 emptyMessage="Select a defender champion"
                 skinKey={defenderSkin}
                 onSkinChange={setDefenderSkin}
-                className={
-                  targetSetup.targetChampionName
-                    ? "min-h-[300px] flex-1"
-                    : "h-[200px] lg:h-auto lg:min-h-[300px] lg:flex-1"
-                }
+                className={portraitFrameClass(!!targetSetup.targetChampionName)}
               />
             ) : (
               <>
@@ -3282,7 +3292,7 @@ function InteractiveSandbox({
                     </div>
                   )}
                 </div>
-                <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+                <div className="hidden lg:flex lg:flex-col">
                   <ChampionVisual
                     role="defender"
                     championId=""
@@ -3291,7 +3301,7 @@ function InteractiveSandbox({
                         ? "Custom Target Dummy active"
                         : "Legacy target profile active"
                     }
-                    className="min-h-[300px] flex-1"
+                    className={portraitFrameClass(false)}
                   />
                 </div>
               </>
