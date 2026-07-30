@@ -3,8 +3,8 @@
  *
  * The old top section stacked four blocks above the simulator: an eyebrow, a
  * developer status strip, an H1 + explanatory paragraph, and a verbose daily
- * credit pill. Together they pushed the versus grid — and the 440px portraits —
- * well below the fold on desktop.
+ * credit pill. Together they pushed the versus grid — and the portraits that
+ * open it — well below the fold on desktop.
  *
  * These tests pin the replacement: one header row carrying the hub control, the
  * emblem, the full title and the remaining-simulation count, with the removed
@@ -190,13 +190,13 @@ describe("Combat Lab compact header", () => {
     expect(header(container).querySelector(".lg\\:hidden")).toBeNull();
   });
 
-  it("still mounts the simulator workspace and the 440px portraits", () => {
+  it("still mounts the simulator workspace and the 400px portraits", () => {
     const { container } = mount();
 
     expect(container.querySelector("[data-orientation]")).not.toBeNull();
     const badge = Array.from(container.querySelectorAll("div")).find(
       (d) => d.textContent === "attacker" && d.className.includes("uppercase"),
     );
-    expect(badge?.parentElement?.className).toContain("lg:h-[440px]");
+    expect(badge?.parentElement?.className).toContain("lg:h-[400px]");
   });
 });

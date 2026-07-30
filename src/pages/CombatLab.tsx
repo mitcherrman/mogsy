@@ -41,6 +41,14 @@ import ChampionVisual from "@/components/combat-lab/ChampionVisual";
 import CombatSidePanel, { ConfigRow, MoreSection } from "@/components/combat-lab/CombatSidePanel";
 import CombatArena from "@/components/combat-lab/CombatArena";
 import CombatTimelineStrip from "@/components/combat-lab/CombatTimelineStrip";
+import AbilityButton from "@/components/combat-lab/AbilityButton";
+import {
+  getAbilityIconUrl,
+  getChampionSquareIconUrl,
+  inferActionAbilitySlot,
+  abilityVariantToken,
+  toneForSlot,
+} from "@/lib/combat-lab/abilityIcons";
 import {
   useChampionAssets,
   getChampionSkins,
@@ -129,9 +137,15 @@ const defaultConfig: SimulateRequest = {
  *
  * `shrink-0` keeps the frame at that height even if a column is ever squeezed.
  * Mobile sizing is unchanged: 200px empty, 300px with a champion selected.
+ *
+ * The desktop height is 400px rather than the original 440px: the compacted HP
+ * strip and denser panels shortened the center column, and at 440px the side
+ * columns' configuration controls started below the portraits' baseline. 400px
+ * lines the first config row up with the cast controls while still giving the
+ * splash art a 4:5-ish frame at every desktop width.
  */
 function portraitFrameClass(hasChampion: boolean): string {
-  return `${hasChampion ? "min-h-[300px]" : "h-[200px]"} shrink-0 lg:h-[440px]`;
+  return `${hasChampion ? "min-h-[300px]" : "h-[200px]"} shrink-0 lg:h-[400px]`;
 }
 
 /**
@@ -254,18 +268,21 @@ function SectionCard({
   right?: React.ReactNode;
   className?: string;
 }) {
+  // Card's shadcn default is 24px of padding on every edge; at the density this
+  // workspace needs that reads as empty space around every panel, so the shell
+  // is tightened here once rather than per call site.
   return (
     <Card className={`border-border/60 bg-card/60 backdrop-blur-sm ${className ?? ""}`}>
-      <CardHeader className="pb-3">
+      <CardHeader className="px-3.5 pb-2 pt-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2 text-foreground/90">
-            {Icon ? <Icon className="h-4 w-4 text-primary" /> : null}
+          <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-foreground/85">
+            {Icon ? <Icon className="h-3.5 w-3.5 text-primary" /> : null}
             {title}
           </CardTitle>
           {right}
         </div>
       </CardHeader>
-      <CardContent className="pt-0">{children}</CardContent>
+      <CardContent className="px-3.5 pb-3.5 pt-0">{children}</CardContent>
     </Card>
   );
 }
@@ -2978,7 +2995,7 @@ function InteractiveSandbox({
           }
         >
         <SectionCard title="Attacker" icon={Swords}>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="grid grid-cols-[1fr_76px] items-end gap-2">
               <SearchSelect
                 label="Champion"
@@ -3012,6 +3029,9 @@ function InteractiveSandbox({
                 />
               </div>
             </div>
+            {/* Passive rows share one hairline-divided list instead of each
+                carrying its own frame — see ConfigRow. */}
+            <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
               summary={config.items.length > 0 ? config.items.join(" · ") : "None"}
@@ -3145,6 +3165,7 @@ function InteractiveSandbox({
               </div>
             </ConfigRow>
             </MoreSection>
+            </div>
           </div>
         </SectionCard>
         <ActiveEffectsPanel
@@ -3194,13 +3215,7 @@ function InteractiveSandbox({
               </div>
             }
           >
-          <div className="space-y-2">
-            {config.champion && (
-              <div className="text-[11px] text-muted-foreground">
-                Showing actions for{" "}
-                <span className="font-medium text-foreground/80">{config.champion}</span>
-              </div>
-            )}
+          <div className="space-y-2.5">
             <AbilityRankBar
               ranks={abilityRanks}
               caps={legalRankCaps}
@@ -3229,26 +3244,24 @@ function InteractiveSandbox({
               onClick={() => sendStep("basic-attack")}
             />
             {visibleActions.length > 0 && (
-              <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
-                <Label className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Active target scope
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/25 pt-2">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Target scope
                 </Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {scopeOptions.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setActiveTargetScope(s)}
-                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                        activeTargetScope === s
-                          ? "border-primary/60 bg-primary/15 text-primary"
-                          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+                {scopeOptions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setActiveTargetScope(s)}
+                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                      activeTargetScope === s
+                        ? "border-primary/60 bg-primary/15 text-primary"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             )}
             {config.champion === "Sylas" && (
@@ -3270,27 +3283,24 @@ function InteractiveSandbox({
               </div>
             )}
             {actionsLoading && (
-              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
+              <div className="border-t border-border/25 pt-2 text-xs text-muted-foreground">
                 Loading champion actions…
               </div>
             )}
             {!actionsLoading && config.champion && !hasChampionSpecificActions && fallbackAbilityActions.length === 0 && (
-              <div className="rounded-md border border-dashed border-border/50 bg-background/30 p-3 text-xs text-muted-foreground">
+              <div className="border-t border-border/25 pt-2 text-xs text-muted-foreground">
                 No special runtime actions for this champion.
               </div>
             )}
-            {visibleActions.map((a) => (
-              <ActionButton
-                key={a.id}
-                label={a.label || a.name || a.id}
-                hint={a.description}
-                icon={Flame}
-                tone="accent"
-                busy={busy === a.id}
-                disabled={!!busy || offline}
-                onClick={() => sendStep("active", a.id, a.extra)}
+            {visibleActions.length > 0 && (
+              <ChampionActionGrid
+                actions={visibleActions}
+                champion={config.champion}
+                busy={busy}
+                offline={offline}
+                onCast={(a) => sendStep("active", a.id, a.extra)}
               />
-            ))}
+            )}
           </div>
         </CombatArena>
         <LastActionCard
@@ -3968,74 +3978,87 @@ function DefenderHPCard({
     : med
       ? "from-amber-500 to-yellow-400"
       : "from-emerald-500 to-emerald-400";
+  // Defenses were six bordered tiles stacked under the bar, which was most of
+  // the panel's height and usually half-empty. They read fine as one wrapping
+  // line of label/value pairs.
   const Stat = ({ label, value, suffix }: { label: string; value?: number; suffix?: string }) =>
     value == null ? null : (
-      <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1">
-        <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="text-xs font-semibold tabular-nums text-foreground">
+      <span className="whitespace-nowrap">
+        <span className="text-muted-foreground">{label}</span>{" "}
+        <span className="font-semibold tabular-nums text-foreground/90">
           {Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })}
           {suffix || ""}
-        </div>
-      </div>
+        </span>
+      </span>
     );
   return (
-    <SectionCard title={`${defenderName} — HP`} icon={TargetIcon}>
-      <div className="space-y-3">
-        <div className="relative">
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="text-4xl font-extrabold tabular-nums text-foreground leading-none transition-colors duration-300">
-              {hp.max > 0 ? hp.current.toLocaleString() : "—"}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                {" "}
-                / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
-              </span>
-            </div>
+    <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+      <CardContent className="relative space-y-1.5 px-3.5 py-2.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <TargetIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="truncate text-[11px] font-bold uppercase tracking-wide text-foreground/85">
+              {defenderName}
+            </span>
+          </div>
+          <div className="shrink-0 text-xl font-extrabold leading-none tabular-nums text-foreground">
+            {hp.max > 0 ? hp.current.toLocaleString() : "—"}
+            <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+              / {hp.max > 0 ? hp.max.toLocaleString() : "—"} HP
+            </span>
             {hp.max > 0 && (
-              <div className="text-lg font-bold tabular-nums text-foreground/80">
+              <span className="ml-2 text-[11px] font-bold text-foreground/70">
                 {hp.pct.toFixed(0)}%
-              </div>
+              </span>
             )}
           </div>
+        </div>
+        <div
+          className={`relative h-3 w-full overflow-hidden rounded-full border bg-background/60 transition-colors duration-300 ${
+            flash ? "border-red-500/80 ring-2 ring-red-500/40" : "border-border/60"
+          }`}
+        >
           <div
-            className={`relative mt-2 h-5 w-full overflow-hidden rounded-full border bg-background/60 transition-colors duration-300 ${
-              flash ? "border-red-500/80 ring-2 ring-red-500/40" : "border-border/60"
-            }`}
-          >
-            <div
-              className={`h-full bg-gradient-to-r ${fillTone} transition-[width] duration-700 ease-out`}
-              style={{ width: `${hp.pct}%` }}
-            />
-            {flash && (
-              <div
-                key={`pulse-${flash.key}`}
-                className="pointer-events-none absolute inset-0 animate-pulse bg-red-500/30"
-              />
-            )}
-          </div>
+            className={`h-full bg-gradient-to-r ${fillTone} transition-[width] duration-700 ease-out`}
+            style={{ width: `${hp.pct}%` }}
+          />
           {flash && (
             <div
-              key={flash.key}
-              className="pointer-events-none absolute -top-6 right-0 animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-md bg-red-600/95 px-2.5 py-1 text-base font-extrabold tabular-nums text-white shadow-xl ring-1 ring-red-300/40"
-            >
-              -{Math.round(flash.delta).toLocaleString()}
-            </div>
+              key={`pulse-${flash.key}`}
+              className="pointer-events-none absolute inset-0 animate-pulse bg-red-500/30"
+            />
           )}
         </div>
-        <div className="grid grid-cols-3 gap-1 opacity-80">
-          <Stat label="Armor" value={armor} />
-          <Stat label="MR" value={mr} />
-          <Stat label="Shield" value={shield} />
-          <Stat label="DR" value={dr} suffix="%" />
-          <Stat label="Phys DR" value={physDr} suffix="%" />
-          <Stat label="Magic DR" value={magicDr} suffix="%" />
-        </div>
+        {flash && (
+          <div
+            key={flash.key}
+            className="pointer-events-none absolute right-3 top-1 animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-md bg-red-600/95 px-2 py-0.5 text-sm font-extrabold tabular-nums text-white shadow-xl ring-1 ring-red-300/40"
+          >
+            -{Math.round(flash.delta).toLocaleString()}
+          </div>
+        )}
+        {(armor != null ||
+          mr != null ||
+          shield != null ||
+          dr != null ||
+          physDr != null ||
+          magicDr != null) && (
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] leading-tight">
+            <Stat label="Armor" value={armor} />
+            <Stat label="MR" value={mr} />
+            <Stat label="Shield" value={shield} />
+            <Stat label="DR" value={dr} suffix="%" />
+            <Stat label="Phys DR" value={physDr} suffix="%" />
+            <Stat label="Magic DR" value={magicDr} suffix="%" />
+          </div>
+        )}
         {devMode && (
-          <div className="rounded border border-dashed border-border/40 bg-background/30 px-2 py-1 text-[10px] font-mono text-muted-foreground">
+          <div className="font-mono text-[10px] text-muted-foreground">
             HP source: {hp.source} · mode: {mode}
           </div>
         )}
-      </div>
-    </SectionCard>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -4163,7 +4186,7 @@ function DefenderPanel({
         </div>
 
         {setup.targetMode === "target_champion" && (
-          <div className="space-y-2 rounded-md border border-border/50 bg-background/30 p-2.5">
+          <div className="space-y-2.5">
             <div className="grid grid-cols-[1fr_76px] items-end gap-2">
               <SearchSelect
                 label="Defender champion"
@@ -4192,6 +4215,7 @@ function DefenderPanel({
                 />
               </div>
             </div>
+            <div className="border-t border-border/25">
             <ConfigRow
               label="Items"
               summary={
@@ -4261,11 +4285,12 @@ function DefenderPanel({
               />
             </ConfigRow>
             </MoreSection>
+            </div>
           </div>
         )}
 
         {setup.targetMode === "target_dummy" && (
-          <div className="space-y-3 rounded-md border border-border/50 bg-background/30 p-3">
+          <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">HP</Label>
@@ -4302,6 +4327,7 @@ function DefenderPanel({
               label="More defenses"
               summary={`Shield ${setup.dummyShield.toLocaleString()} · DR ${setup.dummyDR}%`}
             >
+              <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Shield</Label>
@@ -4342,6 +4368,7 @@ function DefenderPanel({
                 setAdvancedOpen={setAdvancedOpen}
                 showChampionSection={false}
               />
+              </div>
             </MoreSection>
           </div>
         )}
@@ -4761,6 +4788,71 @@ function ActionButton({
   );
 }
 
+/**
+ * Champion-specific runtime casts (Aatrox's Q1/Q2/Q3 and their sweetspots,
+ * Hwei's ten subject casts, Zeri's attack variants…) rendered as a bar of
+ * game-style ability buttons.
+ *
+ * These sub-actions have no icon of their own in the asset store, so each one
+ * reuses the icon of the parent ability it belongs to and is distinguished by
+ * its key badge (`Q1`, `QQ`, `R`) and caption. When no parent can be inferred
+ * with confidence the champion's own square icon is used instead of borrowing
+ * another ability's art — see `inferActionAbilitySlot`.
+ */
+function ChampionActionGrid({
+  actions,
+  champion,
+  busy,
+  offline,
+  onCast,
+}: {
+  actions: CombatAction[];
+  champion?: string;
+  busy: string | null;
+  offline: boolean;
+  onCast: (action: CombatAction) => void;
+}) {
+  return (
+    <div className="border-t border-border/25 pt-2">
+      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-foreground/70">
+        {champion ? `${champion} actions` : "Champion actions"}
+      </Label>
+      <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 sm:grid-cols-4">
+        {actions.map((a) => {
+          const label = a.label || a.name || a.id;
+          const slot = inferActionAbilitySlot(a.id, label);
+          const iconUrl = slot
+            ? getAbilityIconUrl(champion, slot)
+            : getChampionSquareIconUrl(champion);
+          // "QQ - Devastating Fire" → badge "QQ", caption "Devastating Fire".
+          const token = abilityVariantToken(label);
+          const caption =
+            (token ? label.slice(token.length).replace(/^\s*[-–·]\s*/, "").trim() : label) || label;
+          return (
+            <div key={a.id} className="flex flex-col items-center gap-1">
+              <AbilityButton
+                iconUrl={iconUrl}
+                glyph={Flame}
+                keyLabel={token || slot || undefined}
+                tone={toneForSlot(slot)}
+                size="md"
+                busy={busy === a.id}
+                disabled={!!busy || offline}
+                onClick={() => onCast(a)}
+                title={a.description || label}
+                ariaLabel={`Cast ${label}`}
+              />
+              <span className="line-clamp-2 w-full text-center text-[10px] font-medium leading-tight text-muted-foreground">
+                {caption}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Targets ─────────────── */
 
 const TARGET_SLOTS: { key: string; label: string; sub: string }[] = [
@@ -5123,14 +5215,19 @@ function StateCard({ entry, changed }: { entry: RuntimeEntry; changed?: boolean 
 
 /* ─────────────── Ability Rank Bar (League-style) ─────────────── */
 
+/**
+ * Per-slot chrome for the ability bar. `glyph` is only the fallback for a
+ * champion with no stored ability art — the real icon from Mogzy's asset store
+ * is the primary visual (see lib/combat-lab/abilityIcons).
+ */
 const ABILITY_KEY_META: Record<
   "Q" | "W" | "E" | "R",
-  { icon: typeof Swords; tone: string; ring: string; chip: string }
+  { glyph: typeof Swords; chip: string }
 > = {
-  Q: { icon: Swords, tone: "text-amber-300", ring: "ring-amber-400/50", chip: "bg-amber-400" },
-  W: { icon: Zap, tone: "text-sky-300", ring: "ring-sky-400/50", chip: "bg-sky-400" },
-  E: { icon: Flame, tone: "text-emerald-300", ring: "ring-emerald-400/50", chip: "bg-emerald-400" },
-  R: { icon: Wand2, tone: "text-fuchsia-300", ring: "ring-fuchsia-400/50", chip: "bg-fuchsia-400" },
+  Q: { glyph: Swords, chip: "bg-amber-400" },
+  W: { glyph: Zap, chip: "bg-sky-400" },
+  E: { glyph: Flame, chip: "bg-emerald-400" },
+  R: { glyph: Wand2, chip: "bg-fuchsia-400" },
 };
 
 function AbilityRankBar({
@@ -5159,10 +5256,10 @@ function AbilityRankBar({
   devMode: boolean;
 }) {
   return (
-    <div className="rounded-md border border-border/50 bg-background/40 px-2.5 py-2">
-      <div className="mb-2 flex items-center justify-between">
-        <Label className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-          Abilities · click card to cast
+    <div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <Label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/70">
+          Cast an ability
         </Label>
         <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-border/60 bg-background/60 p-0.5 text-[10px]">
@@ -5192,33 +5289,29 @@ function AbilityRankBar({
           const hardMax = k === "R" ? 3 : 5;
           const cap = caps[k];
           const meta = ABILITY_KEY_META[k];
-          const Icon = meta.icon;
           const current = ranks[k];
           const unlearned = current <= 0;
           const busyThis = busyKey === k;
           return (
             <div key={k} className="flex flex-col items-center gap-1.5">
-              <button
-                type="button"
+              <AbilityButton
+                iconUrl={getAbilityIconUrl(champion, k)}
+                glyph={meta.glyph}
+                keyLabel={k}
+                tone={toneForSlot(k)}
+                size="lg"
+                rankBadge={unlearned ? undefined : String(current)}
+                locked={unlearned}
+                busy={busyThis}
+                disabled={disabled}
                 onClick={() => !unlearned && !disabled && onCast(k)}
-                disabled={disabled || unlearned || busyThis}
                 title={
                   unlearned
                     ? "Ability not learned at this level."
                     : `Cast ${k} (rank ${current})`
                 }
-                aria-label={`Cast ${k} rank ${current}`}
-                className={`group relative flex h-12 w-12 items-center justify-center rounded-md border bg-gradient-to-br from-background/80 to-background/40 shadow-inner ring-1 transition-all ${
-                  unlearned
-                    ? "cursor-not-allowed border-border/40 opacity-40 ring-border/30"
-                    : `cursor-pointer border-border/60 ${meta.ring} hover:scale-[1.06] hover:border-primary/60 hover:shadow-[0_0_12px_-2px_currentColor] active:scale-95`
-                } ${busyThis ? "animate-pulse" : ""}`}
-              >
-                <Icon className={`h-5 w-5 ${meta.tone}`} />
-                <span className="absolute bottom-0.5 right-0.5 rounded bg-background/80 px-1 text-[9px] font-bold leading-none text-foreground/90">
-                  {k}
-                </span>
-              </button>
+                ariaLabel={`Cast ${k} rank ${current}`}
+              />
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: hardMax }, (_, i) => i + 1).map((r) => {
                   const filled = r <= current;
@@ -5248,13 +5341,11 @@ function AbilityRankBar({
                   );
                 })}
               </div>
-              <div
-                className={`text-[10px] font-semibold ${
-                  unlearned ? "text-muted-foreground/60" : "text-muted-foreground"
-                }`}
-              >
-                {unlearned ? "Unlearned" : `Rank ${current}`}
-              </div>
+              {/* Rank is on the button badge and in the pips; only the
+                  not-learned state needs spelling out. */}
+              {unlearned && (
+                <div className="text-[10px] font-semibold text-muted-foreground/60">Unlearned</div>
+              )}
             </div>
           );
         })}

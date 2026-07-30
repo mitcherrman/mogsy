@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, X } from "lucide-react";
 
 /**
  * Column shell for the attacker/defender sides of the Combat Lab workspace:
@@ -40,11 +40,11 @@ export function MoreSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-md border border-border/50 bg-background/30 lg:rounded-none lg:border-0 lg:bg-transparent">
+    <div>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-muted/20 lg:hidden"
+        className="flex w-full items-center gap-2 py-2 text-left transition-colors hover:bg-muted/10 lg:hidden"
         aria-expanded={open}
       >
         <span className="min-w-0 flex-1">
@@ -53,32 +53,25 @@ export function MoreSection({
           </span>
           <span className="block truncate text-xs text-muted-foreground">{summary}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-primary/80">
-          {open ? (
-            <>
-              Close <ChevronUp className="h-3 w-3" />
-            </>
-          ) : (
-            <>
-              Edit <ChevronDown className="h-3 w-3" />
-            </>
-          )}
+        <span className="flex shrink-0 items-center text-muted-foreground/70">
+          {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </span>
       </button>
-      <div
-        className={`${
-          open ? "block border-t border-border/40 px-2.5 py-2.5" : "hidden"
-        } lg:block lg:border-0 lg:p-0`}
-      >
-        <div className="space-y-2">{children}</div>
-      </div>
+      <div className={`${open ? "block pb-1" : "hidden"} lg:block lg:pb-0`}>{children}</div>
     </div>
   );
 }
 
 /**
- * Inline-expandable configuration row: shows the current selection at a
- * glance, expands in place to reveal the existing editor controls.
+ * Inline-expandable configuration row.
+ *
+ * These rows are read far more often than they are edited, so they carry no
+ * frame of their own: a hairline divider separates them and the label/summary
+ * pair supplies the hierarchy. Borders are reserved for the real input controls
+ * (champion select, level field) that sit above them, which is what makes those
+ * read as the interactive elements. The edit affordance is a small square icon
+ * button rather than gold `EDIT` text — the whole row is still the click target,
+ * so discoverability does not depend on hitting the icon.
  */
 export function ConfigRow({
   label,
@@ -93,30 +86,31 @@ export function ConfigRow({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-md border border-border/50 bg-background/30">
+    <div className="border-b border-border/25 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/20"
+        className={`group flex w-full items-center gap-2 py-1.5 text-left transition-colors hover:bg-muted/10 ${
+          open ? "text-foreground" : ""
+        }`}
         aria-expanded={open}
+        aria-label={open ? `Close ${label}` : `Edit ${label}`}
+        title={open ? `Close ${label}` : `Edit ${label}`}
       >
-        <span className="w-[74px] shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="w-[70px] shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
         <span className="min-w-0 flex-1 truncate text-xs text-foreground/90">{summary}</span>
-        <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium uppercase tracking-wider text-primary/80">
-          {open ? (
-            <>
-              Close <ChevronUp className="h-3 w-3" />
-            </>
-          ) : (
-            <>
-              Edit <ChevronDown className="h-3 w-3" />
-            </>
-          )}
+        <span
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors group-hover:bg-primary/15 group-hover:text-primary ${
+            open ? "bg-primary/15 text-primary" : ""
+          }`}
+          aria-hidden="true"
+        >
+          {open ? <X className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
         </span>
       </button>
-      {open && <div className="border-t border-border/40 px-2.5 py-2.5">{children}</div>}
+      {open && <div className="pb-2.5 pt-0.5">{children}</div>}
     </div>
   );
 }

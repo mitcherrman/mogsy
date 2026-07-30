@@ -104,7 +104,7 @@ describe("Combat Lab portrait frame geometry", () => {
     const { container } = mount();
     const frame = portraitFrame(container, "attacker");
 
-    expect(frame.className).toContain("lg:h-[440px]");
+    expect(frame.className).toContain("lg:h-[400px]");
     expect(frame.className).toContain("shrink-0");
     // Residual sizing is what coupled the frame to its siblings' height.
     expect(frame.className).not.toMatch(RESIDUAL_FLEX);
@@ -129,7 +129,7 @@ describe("Combat Lab portrait frame geometry", () => {
     await waitFor(() => expect(frame.textContent).toContain("Sett Resolved"));
 
     expect(frame.className).toBe(before);
-    expect(frame.className).toContain("lg:h-[440px]");
+    expect(frame.className).toContain("lg:h-[400px]");
     expect(frame.className).not.toMatch(RESIDUAL_FLEX);
   });
 
@@ -143,7 +143,7 @@ describe("Combat Lab portrait frame geometry", () => {
     const attacker = portraitFrame(container, "attacker");
     const defender = portraitFrame(container, "defender");
 
-    expect(defender.className).toContain("lg:h-[440px]");
+    expect(defender.className).toContain("lg:h-[400px]");
     expect(defender.className).not.toMatch(RESIDUAL_FLEX);
     // Both sides resolve to the same desktop height utility.
     const lgHeight = (cls: string) => cls.match(/lg:h-\[\d+px\]/)?.[0];
