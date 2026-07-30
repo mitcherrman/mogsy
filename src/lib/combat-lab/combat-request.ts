@@ -74,25 +74,33 @@ export const buildRequestState = (currentState: unknown) => {
  * backend-provided `state.current_time`, else `state.states.CURRENT_TIME`,
  * else 0.
  *
- * WHY IT CAN STILL BE 0, AND WHY THAT IS NOT A SUBSTITUTE CLOCK
- * ------------------------------------------------------------
- * The sandbox has no simulation clock of its own. It advances one action per
- * HTTP request, and the backend's `CombatState.snapshot()` returns only
- * `{ states, timed_effects, permanent_stacks }` — it does not echo a time. So
- * neither key above is populated today and this returns 0, which is exactly
- * the value `/basic-attack` has always hard-coded. This function is therefore
- * behavior-preserving right now; it is deliberately NOT a wall clock and NOT a
- * client-incremented timer, because inventing either would make the frontend
- * an authority on cooldown timing.
+ * WHERE THE CLOCK ACTUALLY COMES FROM
+ * -----------------------------------
+ * The backend owns an advancing simulation clock. `CombatState.snapshot()`
+ * publishes it as a top-level `current_time`, mirroring the canonical internal
+ * key `states.COMBAT_TIME`, and both `/active` and `/basic-attack` restore that
+ * clock and advance it exactly once per accepted action. So this function reads
+ * a real, monotonically advancing backend value.
  *
- * The consequence of a 0 clock is real and is reported rather than papered
- * over: the engine arms Spellblade only when
- * `current_time >= COOLDOWN_<ITEM>_SPELLBLADE`, and arming writes that key as
- * `current_time + cooldown_seconds`. With a pinned 0 clock the first
- * qualifying cast arms and later casts cannot re-arm until Reset clears state.
- * Fixing that requires an authoritative clock to exist — a backend-echoed time
- * or an explicit sandbox time control — at which point this single function is
- * the only place the frontend needs to change.
+ * It is deliberately NOT a wall clock and NOT a client-incremented timer. The
+ * frontend never adds to the value it reads, because inventing time would make
+ * the frontend an authority on cooldown timing.
+ *
+ * WHAT THE RETURNED SCALAR IS FOR — AND WHY 0 IS STILL SAFE
+ * --------------------------------------------------------
+ * The scalar this feeds into `payload.current_time` is ADVISORY. The server
+ * restores the clock from the state document first — `state.current_time`, then
+ * `states.COMBAT_TIME`, then the legacy `states.CURRENT_TIME` alias — and only
+ * falls back to the scalar as a bounded compatibility seed when the state
+ * carries no clock at all, refusing any seed that would already satisfy a
+ * recorded deadline. A client therefore cannot rewind, freeze or jump the clock
+ * through this field.
+ *
+ * The real transport is `states.COMBAT_TIME`: `buildRequestState` whitelists
+ * `states` wholesale, so the clock rides back to the server inside it even
+ * though the top-level mirror is stripped from the request. A 0 here means
+ * genuinely-fresh or legacy state (no clock anywhere), which the backend treats
+ * as the start of combat.
  */
 export const getAuthoritativeCombatTime = (currentState: unknown): number => {
   if (!currentState || typeof currentState !== "object") return 0;

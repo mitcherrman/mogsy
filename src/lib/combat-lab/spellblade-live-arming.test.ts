@@ -4,8 +4,9 @@
  * backend.
  *
  * The mock is a deliberately faithful miniature of the deployed engine
- * (backend commit 21a75f4321c8c7a8c43266aeae83ae8080ee5779), so these tests fail
- * if the frontend stops holding up its half of the contract:
+ * (backend commit 2edb6559edac3d3f164c6b16db837eec4a4b8fc7, which added the
+ * authoritative simulation clock), so these tests fail if the frontend stops
+ * holding up its half of the contract:
  *
  *   - `/active` arms only when the request carries the attacker's `item_names`
  *     AND the action qualifies AND `current_time >= COOLDOWN_<ITEM>_SPELLBLADE`
@@ -15,7 +16,22 @@
  *   - `/basic-attack` consumes readiness exactly once and zeroes it
  *     (`consume_sheet_spellblade`), with no time check on the consume side.
  *   - Responses carry state via `CombatState.snapshot()`, i.e. exactly
- *     `{ states, timed_effects, permanent_stacks }`.
+ *     `{ states, timed_effects, permanent_stacks, current_time }`.
+ *
+ * THE CLOCK IS THE BACKEND'S, AND IT ADVANCES (`combat_lab_clock`)
+ * ---------------------------------------------------------------
+ * The canonical clock is `states.COMBAT_TIME`, mirrored into the snapshot as a
+ * top-level `current_time`. The server restores it in this precedence —
+ * `state.current_time`, then `states.COMBAT_TIME`, then the legacy
+ * `states.CURRENT_TIME` alias (absorbed) — and advances it exactly once per
+ * accepted action. The client's `current_time` scalar is advisory only: with a
+ * clock in the state document it is ignored outright.
+ *
+ * This matters for the frontend because `buildRequestState` whitelists only
+ * `{ states, timed_effects, permanent_stacks }`, so the top-level mirror is
+ * stripped from the outgoing request. The clock survives the round trip anyway
+ * because it rides inside `states.COMBAT_TIME` — precedence #2. That is the
+ * single most important integration property certified in this file.
  *
  * ALL Spellblade damage in this file originates in the mock. The frontend is
  * only ever asserted to be a faithful conduit: it must never compute, scale or
@@ -88,6 +104,80 @@ const asSnapshot = (raw: unknown): Snapshot => {
   };
 };
 
+/* ───────────────────── the authoritative clock, server-side ───────────────────── */
+
+/** Mirrors `combat_lab_clock` constants. */
+const CLOCK_STATE_KEY = "COMBAT_TIME";
+const LEGACY_CLOCK_STATE_KEY = "CURRENT_TIME";
+const DEFAULT_ABILITY_CAST_SECONDS = 0.25;
+const DEFAULT_ATTACKS_PER_SECOND = 0.658;
+
+/** Mirrors `combat_lab_clock.normalize_clock_value`. */
+const normalizeClock = (value: unknown): number | null => {
+  if (value === null || value === undefined || typeof value === "boolean") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, n);
+};
+
+/**
+ * Mirrors `combat_lab_clock.restore_clock`: precedence is the top-level
+ * `current_time`, then `states.COMBAT_TIME`, then the legacy alias — and both
+ * the alias and any stray top-level key are popped so exactly one clock key can
+ * survive a round trip.
+ */
+function restoreClock(state: Snapshot, payload: WireBody): number {
+  const doc = (payload.state || {}) as Record<string, unknown>;
+  const incoming = (doc.states || {}) as Record<string, unknown>;
+  const legacy = normalizeClock(incoming[LEGACY_CLOCK_STATE_KEY]);
+  delete state.states[LEGACY_CLOCK_STATE_KEY];
+  delete state.states.current_time;
+
+  for (const candidate of [
+    normalizeClock(doc.current_time),
+    normalizeClock(incoming[CLOCK_STATE_KEY]),
+    legacy,
+  ]) {
+    if (candidate !== null) {
+      state.states[CLOCK_STATE_KEY] = candidate;
+      return candidate;
+    }
+  }
+
+  // The client scalar is a bounded compatibility seed only, and is refused when
+  // it would already satisfy a recorded deadline. Every test here either
+  // carries a clock in the state document or starts genuinely fresh, so the
+  // safe-seed bound reduces to "no recorded deadline it could unlock".
+  const seed = normalizeClock(payload.current_time);
+  const unlocks = Object.entries(state.states).some(
+    ([k, v]) =>
+      (k.startsWith("COOLDOWN_") || k.endsWith("_EXPIRES_AT")) &&
+      seed !== null &&
+      seed >= Number(v || 0)
+  );
+  const restored = seed && !unlocks ? seed : 0;
+  state.states[CLOCK_STATE_KEY] = restored;
+  return restored;
+}
+
+/** Mirrors `CombatState.snapshot()`, which publishes the clock at the top level. */
+const publish = (state: Snapshot): Snapshot & { current_time: number } => ({
+  ...state,
+  current_time: Number(state.states[CLOCK_STATE_KEY] || 0),
+});
+
+/** Mirrors `combat_lab_clock.advance_clock`, called once per accepted action. */
+const advanceClock = (state: Snapshot, delta: number) => {
+  state.states[CLOCK_STATE_KEY] = Number(state.states[CLOCK_STATE_KEY] || 0) + delta;
+};
+
+/** Mirrors `combat_lab_clock.resolve_basic_attack_interval`. */
+const basicAttackInterval = (attackerStats: Record<string, unknown> | undefined) => {
+  const aps = normalizeClock((attackerStats || {}).FINAL_ATTACK_SPEED) ?? DEFAULT_ATTACKS_PER_SECOND;
+  return 1.0 / Math.max(aps, 0.01);
+};
+
 /** Records every request the frontend actually put on the wire. */
 type WireCall = { path: string; body: WireBody };
 let wire: WireCall[] = [];
@@ -100,7 +190,8 @@ function fakeActive(body: WireBody) {
 
   const name = String(body.active_name || "").toLowerCase();
   const items: string[] = Array.isArray(body.item_names) ? body.item_names : [];
-  const currentTime = typeof body.current_time === "number" ? body.current_time : 0;
+  // The clock the SERVER restored, never the scalar the client sent.
+  const currentTime = restoreClock(state, body);
 
   const qualifies = QUALIFYING.has(name) && !NON_QUALIFYING.has(name);
 
@@ -129,10 +220,13 @@ function fakeActive(body: WireBody) {
     }
   }
 
+  // Exactly one advancement, for an accepted action.
+  advanceClock(state, DEFAULT_ABILITY_CAST_SECONDS);
+
   return {
     ok: true,
     result: {
-      state,
+      state: publish(state),
       events,
       remaining_by_scope: { PRIMARY: { current_hp: 3700, max_hp: 4000 } },
       attacker_stats: { AD: 100 },
@@ -147,6 +241,9 @@ function fakeBasicAttack(body: WireBody) {
   const events: CombatEvent[] = [
     { event: "Basic Attack", damage: 100, final_damage: 100, damage_type: "physical" },
   ];
+
+  // Same clock, same route contract — `/basic-attack` restores and advances it too.
+  restoreClock(state, body);
 
   // `consume_sheet_spellblade`: readiness only, no time check.
   if (state.states.ITEM_SHEET_SPELLBLADE_READY) {
@@ -163,7 +260,12 @@ function fakeBasicAttack(body: WireBody) {
     });
   }
 
-  return { ok: true, result: { state, events, remaining_by_scope: {}, attacker_stats: {} } };
+  advanceClock(state, basicAttackInterval(body.attacker_stats as Record<string, unknown>));
+
+  return {
+    ok: true,
+    result: { state: publish(state), events, remaining_by_scope: {}, attacker_stats: {} },
+  };
 }
 
 beforeEach(() => {
@@ -249,6 +351,14 @@ class Sandbox {
   get states(): Record<string, unknown> {
     return this.state?.states ?? {};
   }
+
+  /**
+   * The clock as the frontend reads it back — the top-level mirror the backend
+   * published, which is what `getAuthoritativeCombatTime` consumes first.
+   */
+  get clock(): number | undefined {
+    return (this.state as Record<string, unknown> | null)?.current_time as number | undefined;
+  }
 }
 
 const procEvents = (res: StepResponse): CombatEvent[] =>
@@ -318,11 +428,15 @@ describe("live Spellblade arming: cast → armed → attack → consumed → no 
 
     const hit = await lab.attack();
     expect(procEvents(hit)).toHaveLength(0);
-    // The non-Spellblade build still sent a complete, valid request.
+    // The non-Spellblade build still sent a complete, valid request, carrying
+    // the backend clock advanced by the preceding cast. (Before the backend
+    // owned a clock this read 0 forever; the value is incidental here — what
+    // matters is that a build with nothing to arm is otherwise unchanged.)
     const body = lastCall("/api/combat-lab/basic-attack").body;
     expect(body.champion_name).toBe("Ezreal");
     expect(body.item_names).toEqual(["Void Staff", "Rabadon's Deathcap"]);
-    expect(body.current_time).toBe(0);
+    expect(body.current_time).toBeCloseTo(0.25, 5);
+    expect(body.state.states.COMBAT_TIME).toBeCloseTo(0.25, 5);
   });
 
   it("does not arm on a non-qualifying action even with a Spellblade equipped", async () => {
@@ -431,39 +545,148 @@ describe("response passthrough", () => {
   });
 });
 
-describe("KNOWN GAP: re-arming needs an authoritative clock", () => {
-  it("documents that a pinned 0 clock blocks the second cast's re-arm", async () => {
+/**
+ * The gap this file previously only documented — a clock pinned at 0 made the
+ * second cast unable to re-arm forever — is closed by the deployed backend
+ * clock. These tests certify the frontend against that deployed contract.
+ */
+describe("the authoritative backend clock round-trips and re-arming works", () => {
+  it("carries the clock in states.COMBAT_TIME, which is what survives buildRequestState", async () => {
     const lab = new Sandbox("Ezreal", ["Sheen"]);
-
     await lab.cast("Q");
-    expect(lab.readiness).toBe(1);
-    expect(lab.states.COOLDOWN_SHEEN_SPELLBLADE).toBe(1.5);
+
+    // The response publishes both the canonical key and the top-level mirror.
+    expect(lab.states.COMBAT_TIME).toBeCloseTo(0.25, 5);
+    expect(lab.clock).toBeCloseTo(0.25, 5);
 
     await lab.attack();
+
+    // The request state the frontend sent carries the clock inside `states`,
+    // because `buildRequestState` whitelists `states` wholesale. The top-level
+    // mirror is stripped — and that is fine, since the server's precedence
+    // falls through to `states.COMBAT_TIME`.
+    const sent = lastCall("/api/combat-lab/basic-attack").body;
+    expect(sent.state.states.COMBAT_TIME).toBeCloseTo(0.25, 5);
+    expect(sent.state).not.toHaveProperty("current_time");
+    // The advisory scalar still mirrors the same backend value.
+    expect(sent.current_time).toBeCloseTo(0.25, 5);
+  });
+
+  it("advances monotonically across a cast/attack sequence, never resetting to 0", async () => {
+    const lab = new Sandbox("Ezreal", ["Sheen"]);
+    const seen: number[] = [];
+
+    for (const step of ["cast", "attack", "cast", "attack", "attack"] as const) {
+      if (step === "cast") await lab.cast("Q");
+      else await lab.attack();
+      seen.push(lab.clock!);
+    }
+
+    expect(seen).toHaveLength(5);
+    for (let i = 1; i < seen.length; i++) {
+      expect(seen[i]).toBeGreaterThan(seen[i - 1]);
+    }
+    // Once the first response has landed, the clock is never 0 again.
+    expect(seen.every((t) => t > 0)).toBe(true);
+  });
+
+  it("completes cast → arm → attack → consume → re-arm after the ICD → consume once", async () => {
+    const lab = new Sandbox("Ezreal", ["Sheen"]);
+
+    // 1. First qualifying cast arms.
+    const first = await lab.cast("Q");
+    expect(armEvents(first)).toHaveLength(1);
+    expect(lab.readiness).toBe(1);
+    expect(lab.states.COOLDOWN_SHEEN_SPELLBLADE).toBeCloseTo(1.5, 5);
+
+    // 2. First qualifying attack consumes exactly one proc.
+    const hit = await lab.attack();
+    expect(procEvents(hit)).toHaveLength(1);
+    expect(procEvents(hit)[0].final_damage).toBe(100);
     expect(lab.readiness).toBe(0);
 
-    // Second cast: the engine gate is `current_time >= COOLDOWN_..._SPELLBLADE`,
-    // i.e. `0 >= 1.5` → false, so it cannot re-arm. This is NOT something the
-    // frontend may fix by inventing a clock; it needs a real authoritative time
-    // source. Asserted so the gap is visible and so the fix flips this test.
+    // 3. A second attack without another cast does not duplicate the proc.
+    const dry = await lab.attack();
+    expect(procEvents(dry)).toHaveLength(0);
+
+    // Backend time has now passed the 1.5s ICD purely by advancing on accepted
+    // actions — nothing here invents or injects a clock value.
+    expect(lab.clock!).toBeGreaterThan(1.5);
+
+    // 4. A later qualifying cast re-arms, with no Reset in between.
     const second = await lab.cast("Q");
-    expect(armEvents(second)).toHaveLength(0);
+    expect(armEvents(second)).toHaveLength(1);
+    expect(lab.readiness).toBe(1);
+    expect(lab.states.COOLDOWN_SHEEN_SPELLBLADE).toBeCloseTo(lab.clock! - 0.25 + 1.5, 5);
+
+    // 5. The next attack consumes exactly one new proc.
+    const reHit = await lab.attack();
+    expect(procEvents(reHit)).toHaveLength(1);
     expect(lab.readiness).toBe(0);
   });
 
-  it("re-arms correctly as soon as an authoritative clock exists", async () => {
+  it("keeps Lich Bane's re-arm backend-authoritative magic damage", async () => {
+    const lab = new Sandbox("Ezreal", ["Lich Bane"]);
+    await lab.cast("Q");
+    const hit = await lab.attack();
+    expect(procEvents(hit)[0].damage_type).toBe("magic");
+    expect(procEvents(hit)[0].final_damage).toBe(375);
+
+    await lab.attack();
+    await lab.cast("Q");
+    const reHit = await lab.attack();
+    // Same backend-owned figures on the re-arm; the frontend scales nothing.
+    expect(procEvents(reHit)).toHaveLength(1);
+    expect(procEvents(reHit)[0].damage_type).toBe("magic");
+    expect(procEvents(reHit)[0].final_damage).toBe(375);
+  });
+
+  it("treats states.CURRENT_TIME as a compatibility fallback only, absorbed by the server", async () => {
+    const lab = new Sandbox("Ezreal", ["Sheen"]);
+    // A legacy state document carrying only the old alias.
+    lab.state = { states: { CURRENT_TIME: 2.0 }, timed_effects: [], permanent_stacks: {} };
+
+    const second = await lab.cast("Q");
+    // The alias seeded the canonical clock, then was removed — exactly one
+    // clock key survives the round trip.
+    expect(armEvents(second)).toHaveLength(1);
+    expect(lab.states.COMBAT_TIME).toBeCloseTo(2.25, 5);
+    expect(lab.states.CURRENT_TIME).toBeUndefined();
+  });
+
+  it("starts safely at 0 for a legacy state with no clock at all", async () => {
+    const lab = new Sandbox("Ezreal", ["Sheen"]);
+    lab.state = { states: {}, timed_effects: [], permanent_stacks: {} };
+
+    // No clock anywhere and no recorded deadline: the first cast still arms
+    // from a clean 0 rather than failing.
+    const first = await lab.cast("Q");
+    expect(lastCall("/api/combat-lab/active").body.current_time).toBe(0);
+    expect(armEvents(first)).toHaveLength(1);
+    expect(lab.clock).toBeCloseTo(0.25, 5);
+  });
+
+  it("never lets the client scalar unlock a pending cooldown", async () => {
     const lab = new Sandbox("Ezreal", ["Sheen"]);
     await lab.cast("Q");
     await lab.attack();
-    expect(lab.readiness).toBe(0);
+    const honest = lab.clock!;
 
-    // Simulate the backend echoing a real clock past the internal cooldown.
-    lab.states.CURRENT_TIME = 2.0;
-
-    const second = await lab.cast("Q");
-    expect(lastCall("/api/combat-lab/active").body.current_time).toBe(2.0);
-    expect(armEvents(second)).toHaveLength(1);
-    expect(lab.readiness).toBe(1);
-    expect(lab.states.COOLDOWN_SHEEN_SPELLBLADE).toBe(3.5);
+    // Forge a scalar far in the future. The state document still carries the
+    // real clock, so the server ignores the scalar outright.
+    const payload = buildActiveRequest({
+      championName: "Ezreal",
+      itemNames: ["Sheen"],
+      attackerStats: ATTACKER,
+      targetStats: TARGET,
+      currentState: lab.state,
+      activeName: "Q",
+      targetScope: "PRIMARY",
+    });
+    const forged = await combatApi.active({ ...payload, current_time: 999_999 });
+    expect((forged.state as Record<string, unknown>).current_time).toBeCloseTo(
+      honest + 0.25,
+      5
+    );
   });
 });

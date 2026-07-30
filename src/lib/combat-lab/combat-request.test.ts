@@ -179,6 +179,86 @@ describe("current_time comes from the existing simulation clock", () => {
     expect(basic.current_time).toBe(3.5);
     expect(active.current_time).toBe(basic.current_time);
   });
+
+  /**
+   * The deployed backend's canonical clock key is `states.COMBAT_TIME`; the
+   * top-level `current_time` is only the published mirror. Since
+   * `buildRequestState` whitelists `states` wholesale but drops unknown
+   * top-level keys, `states.COMBAT_TIME` is the field that actually carries the
+   * clock back to the server (restore precedence #2).
+   */
+  describe("states.COMBAT_TIME is the real round-trip transport", () => {
+    it("preserves states.COMBAT_TIME in the outgoing request state", () => {
+      const backendState = {
+        current_time: 1.75,
+        states: { COMBAT_TIME: 1.75, COOLDOWN_SHEEN_SPELLBLADE: 1.5 },
+        timed_effects: [],
+        permanent_stacks: {},
+      };
+      const active = buildActiveRequest(activeInput({ currentState: backendState }));
+      expect(
+        (active.state as { states: Record<string, unknown> }).states.COMBAT_TIME
+      ).toBe(1.75);
+      expect(
+        (active.state as { states: Record<string, unknown> }).states
+          .COOLDOWN_SHEEN_SPELLBLADE
+      ).toBe(1.5);
+    });
+
+    it("strips the top-level mirror from request state, which the server tolerates", () => {
+      const active = buildActiveRequest(
+        activeInput({
+          currentState: {
+            current_time: 1.75,
+            states: { COMBAT_TIME: 1.75 },
+            timed_effects: [],
+            permanent_stacks: {},
+          },
+        })
+      );
+      // Exactly the three canonical snapshot keys go on the wire as `state`.
+      expect(Object.keys(active.state as object).sort()).toEqual([
+        "permanent_stacks",
+        "states",
+        "timed_effects",
+      ]);
+      // The advisory scalar still reports the backend's value.
+      expect(active.current_time).toBe(1.75);
+    });
+
+    it("still reports the backend clock as the advisory scalar when only COMBAT_TIME is present", () => {
+      // `getAuthoritativeCombatTime` reads the published mirror and the legacy
+      // alias, not the internal key — so a state carrying only COMBAT_TIME
+      // yields a 0 scalar. That is safe: the server reads COMBAT_TIME from the
+      // state document, which this request preserves intact.
+      const state = { states: { COMBAT_TIME: 4.0 }, timed_effects: [], permanent_stacks: {} };
+      const active = buildActiveRequest(activeInput({ currentState: state }));
+      expect(active.current_time).toBe(0);
+      expect(
+        (active.state as { states: Record<string, unknown> }).states.COMBAT_TIME
+      ).toBe(4.0);
+    });
+
+    it("never advances or mutates the clock it was given", () => {
+      const state = {
+        current_time: 2.5,
+        states: { COMBAT_TIME: 2.5 },
+        timed_effects: [],
+        permanent_stacks: {},
+      };
+      buildActiveRequest(activeInput({ currentState: state }));
+      buildBasicAttackRequest({
+        championName: "Ezreal",
+        itemNames: ["Sheen"],
+        runeNames: [],
+        attackerStats,
+        targetStats,
+        currentState: state,
+      });
+      expect(state.current_time).toBe(2.5);
+      expect(state.states.COMBAT_TIME).toBe(2.5);
+    });
+  });
 });
 
 describe("request state preserves backend-owned mechanic state", () => {
