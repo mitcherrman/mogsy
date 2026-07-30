@@ -93,6 +93,11 @@ import {
   type CombatLabCreditStatus,
   CombatLabCreditsExhaustedError,
 } from "@/lib/combat-lab/api";
+import {
+  buildActiveRequest,
+  buildBasicAttackRequest,
+  makeEmptyCombatState,
+} from "@/lib/combat-lab/combat-request";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -1731,44 +1736,12 @@ function KeyStringEditor({
 const SANDBOX_STORAGE_KEY = "combat-lab:sandbox-state";
 
 /**
- * Canonical empty combat state shape. Reset replaces the live state object
- * with a FRESH copy of this so no stale `states.*` keys (TARGET_REMAINING_HP,
- * TARGET_DAMAGE_REDUCTION_PERCENT, *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.)
- * can survive into the next backend request.
+ * The canonical empty state shape, the strict request-state builder and the
+ * authoritative combat clock now live in `@/lib/combat-lab/combat-request`
+ * alongside the two payload builders, so the on-wire request contract is
+ * testable without driving this page. Behavior is unchanged — see that module
+ * for the full rationale.
  */
-const makeEmptyCombatState = () => ({
-  states: {} as Record<string, unknown>,
-  timed_effects: [] as unknown[],
-  permanent_stacks: {} as Record<string, unknown>,
-});
-/**
- * Strict request-state builder. The ONLY source allowed for payload.state is
- * the live `currentState` React variable. We extract just the three canonical
- * keys so stray top-level fields (TARGET_DAMAGE_REDUCTION_PERCENT,
- * *_EXPIRES_AT, ITEM_JAKSHO_STACKS, etc.) from a previous response, runtime
- * snapshot, defense preview, localStorage hydration, or derived HP source
- * cannot leak into the next backend call. Anything missing or non-object is
- * normalized to an empty canonical shape.
- */
-const buildRequestState = (currentState: unknown) => {
-  const empty = makeEmptyCombatState();
-  if (!currentState || typeof currentState !== "object") return empty;
-  const s = currentState as Record<string, unknown>;
-  const states =
-    s.states && typeof s.states === "object" && !Array.isArray(s.states)
-      ? (s.states as Record<string, unknown>)
-      : empty.states;
-  const timed_effects = Array.isArray(s.timed_effects)
-    ? (s.timed_effects as unknown[])
-    : empty.timed_effects;
-  const permanent_stacks =
-    s.permanent_stacks &&
-    typeof s.permanent_stacks === "object" &&
-    !Array.isArray(s.permanent_stacks)
-      ? (s.permanent_stacks as Record<string, unknown>)
-      : empty.permanent_stacks;
-  return { states, timed_effects, permanent_stacks };
-};
 const TARGET_SETUP_STORAGE_KEY = "combat-lab:target-setup";
 
 type TargetMode = "target_champion" | "target_dummy" | "target_profile";
@@ -2375,27 +2348,25 @@ function InteractiveSandbox({
             }
           : {};
       // STRICT: payload.state comes ONLY from the live `state` variable,
-      // funneled through buildRequestState. We never merge from targetRuntime,
-      // lastResponse, defensePreview, activeDefenderEffects, cached target
-      // stats, localStorage, or derived HP source. After Reset this yields
+      // funneled through buildRequestState (inside the payload builders). We
+      // never merge from targetRuntime, lastResponse, defensePreview,
+      // activeDefenderEffects, cached target stats, localStorage, or derived HP
+      // source. After Reset this yields
       // { states: {}, timed_effects: [], permanent_stacks: {} } guaranteed.
-      const safeState = buildRequestState(state);
       let payload: unknown;
       let endpoint: string;
       let res: SandboxStepResponse;
       if (kind === "basic-attack") {
         endpoint = "/api/combat-lab/basic-attack";
-        payload = {
-          champion_name: config.champion,
-          item_names: config.items,
-          rune_names: config.runes,
-          attacker_stats,
-          target_stats,
-          state: safeState,
-          current_time: 0,
-          ...targetEntityFields,
-          ...rankPayload,
-        } as CombatLabBasicAttackRequest;
+        payload = buildBasicAttackRequest({
+          championName: config.champion,
+          itemNames: config.items,
+          runeNames: config.runes,
+          attackerStats: attacker_stats,
+          targetStats: target_stats,
+          currentState: state,
+          extraFields: [targetEntityFields, rankPayload],
+        });
         setLastEndpoint(endpoint);
         setLastRequest(payload);
         res = await combatApi.basicAttack(payload as CombatLabBasicAttackRequest);
@@ -2406,19 +2377,19 @@ function InteractiveSandbox({
           sylasExtra.copied_champion = hijackTarget || "Malphite";
           sylasExtra.hijack_target = hijackTarget || "Malphite";
         }
-        payload = {
-          champion_name: config.champion,
-          attacker_stats,
-          target_stats,
-          state: safeState,
-          active_name: action_id || "",
-          target_scope: activeTargetScope || "PRIMARY",
-          piercing_arrow_charge_bonus_percent: 0,
-          ...extra,
-          ...sylasExtra,
-          ...targetEntityFields,
-          ...rankPayload,
-        } as CombatLabActiveRequest;
+        // `item_names` is the attacker's live loadout — the same source
+        // /basic-attack has always sent. Without it the backend cannot know the
+        // inventory on an ability cast, so no Spellblade item could ever arm.
+        payload = buildActiveRequest({
+          championName: config.champion,
+          itemNames: config.items,
+          attackerStats: attacker_stats,
+          targetStats: target_stats,
+          currentState: state,
+          activeName: action_id || "",
+          targetScope: activeTargetScope || "PRIMARY",
+          extraFields: [extra, sylasExtra, targetEntityFields, rankPayload],
+        });
         setLastEndpoint(endpoint);
         setLastRequest(payload);
         res = await combatApi.active(payload as CombatLabActiveRequest);
@@ -2537,21 +2508,32 @@ function InteractiveSandbox({
       // live `state` variable via buildRequestState (no targetRuntime,
       // lastResponse, defensePreview, cached target stats, localStorage, or
       // derived HP merging).
-      const applyState = buildRequestState(state);
-      const payload: CombatLabActiveRequest = {
-        champion_name: targetSetup.targetChampionName,
-        attacker_stats,
-        target_stats,
-        state: applyState,
-        active_name: defenseName,
-        target_scope: "PRIMARY",
-        piercing_arrow_charge_bonus_percent: 0,
-        target_champion_name: targetSetup.targetChampionName,
-        target_level: targetSetup.targetLevel,
-        target_item_names: targetSetup.targetItemNames,
-        target_rune_names: targetSetup.targetRuneNames,
-        ...rankPayload,
-      } as CombatLabActiveRequest;
+      //
+      // DELIBERATELY NO ATTACKER `item_names` HERE. This call's champion_name is
+      // the DEFENDER, and applying a defender's defensive ability is not the
+      // attacker casting anything — so the attacker's inventory has no meaning
+      // on this request. The backend agrees: target-side defenses classify as
+      // non-qualifying for Spellblade arming, and sending an inventory anyway
+      // would risk an "unresolved arming" diagnostic attributed to the
+      // defender's champion. An empty inventory matches the backend default.
+      const payload: CombatLabActiveRequest = buildActiveRequest({
+        championName: targetSetup.targetChampionName,
+        itemNames: [],
+        attackerStats: attacker_stats,
+        targetStats: target_stats,
+        currentState: state,
+        activeName: defenseName,
+        targetScope: "PRIMARY",
+        extraFields: [
+          {
+            target_champion_name: targetSetup.targetChampionName,
+            target_level: targetSetup.targetLevel,
+            target_item_names: targetSetup.targetItemNames,
+            target_rune_names: targetSetup.targetRuneNames,
+          },
+          rankPayload,
+        ],
+      });
       setLastEndpoint("/api/combat-lab/active");
       setLastRequest(payload);
       const res = await combatApi.active(payload);
