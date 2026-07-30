@@ -12,6 +12,12 @@ Nothing in here has been applied. No ledger rows have been inserted.
 Apply order is strictly M1 → M2 → M3. M3 grants cross-user reads; if it landed
 before M1 the dating-era columns would still be in the projection.
 
+M3 is not a novel pattern for this codebase. `public.resolve_custom_link(text)`
+(`20260520083308`) already does exactly the same thing — SECURITY DEFINER, a
+fixed `RETURNS TABLE` contract, and a deliberate omission of the sensitive
+identifier (`created_by_user_id`) that the underlying table carries. M3 applies
+that established shape to profiles.
+
 ## Apply workflow (per migration)
 
 1. Supabase SQL Editor, connected as `postgres` (M1 requires this so the view's
@@ -219,11 +225,11 @@ profiles — the page's own `quiz-progress` query plus the three inside
 `LeaguePublicProfile` — and `showQuizRank` is already false when there is no
 data.
 
-**Accept the consequence explicitly:** on another user's profile the League
+**Consequence — APPROVED 2026-07-30.** On another user's profile the League
 stats, categories and achievements sections go **empty**. This trades
 demonstrably wrong data (the viewer's own numbers presented as someone else's)
-for absent data. That is the right trade, but it is a visible product change and
-should be signed off, not slipped in.
+for absent data. Signed off as the intended visible behaviour: hide rank,
+category progress and achievements rather than display the viewer's own.
 
 Restoring those sections for **other** users requires new backend endpoints
 keyed on **profile id**, resolving `user_id` server-side and requiring a
@@ -288,6 +294,29 @@ whenever no verified JWT is presented, across seven endpoints:
 M3 omitting `user_id` denies the identifier that would make this exploitable at
 scale, but it is a mitigation, not a fix.
 
-**Also out of scope:** `20260710130000_funnel_events` (never applied; silent-fail
-analytics, no user-facing breakage), the four orphan ledger rows, and the
-`custom_links` ACL question — see `docs/community-reconciliation-checks.sql`.
+**Also out of scope**, all now resolved by the reconciliation checks — full
+results in `docs/community-reconciliation-checks.sql`:
+
+- **The four orphan ledger rows — investigated, none affect Community.** Two are
+  schema/policy changes that should be reconstructed into the repo
+  (`20260224125853`, which hardens `profile_photos` to authenticated-only, and
+  `20260310114226`, which adds `leagues.show_global_stats`); two are one-off data
+  backfills that should not be re-committed as migrations. The
+  `profile_photos` one is the notable risk: it is a **security hardening that
+  exists only in the database**, so a rebuild from the repo would silently
+  restore the public-readable policy.
+- **`custom_links` — the earlier conclusion was wrong and is corrected.**
+  `grant_pro` and `grant_diamonds` *are* protected (never column-granted, and
+  anon/authenticated hold no table-level SELECT on that table), but
+  `created_by_user_id` — an auth user id — carries an explicit column grant to
+  both roles. Currently inert: the public read policy was dropped in
+  `20260520083308`, so RLS yields no rows, and `resolve_custom_link()` is
+  SECURITY DEFINER with a fixed 10-column contract that omits it. It belongs to
+  the same perimeter as M3's `user_id` omission and should be closed when that
+  backlog is worked.
+- **Ledger primary key confirmed** — `PRIMARY KEY (version)`. The duplicate
+  `20260710120000` must be renamed before any historical backfill. The three
+  M1/M2/M3 inserts above are unaffected, and `UNIQUE (idempotency_key)` does not
+  interfere because NULLs do not conflict.
+- **`20260710130000_funnel_events`** — still never applied; silent-fail
+  analytics, no user-facing breakage.
