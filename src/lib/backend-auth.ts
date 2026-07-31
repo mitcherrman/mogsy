@@ -25,28 +25,46 @@ export async function getBackendAuthHeaders(): Promise<Record<string, string>> {
   }
 }
 
+// Single-flight guard. Quiz play fires several writes near-simultaneously
+// (start session, submit answer), and each one now guarantees a token. Without
+// this, concurrent callers would each reach signInAnonymously() and mint a
+// separate throwaway anonymous user for the same visitor.
+let inFlightToken: Promise<string | null> | null = null;
+
 // Guest-first guarantee for JWT-only backend endpoints (e.g. quiz history):
 // make sure a Supabase session — anonymous if need be — exists and return its
 // access token, or null if a guest session genuinely can't be established.
 export async function ensureBackendAuthToken(): Promise<string | null> {
   if (e2eEnabled()) return getE2EIdentity()?.token ?? null;
-  try {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.access_token) return data.session.access_token;
+  if (inFlightToken) return inFlightToken;
 
-    const { data: anon } = await supabase.auth.signInAnonymously();
-    if (anon?.session?.access_token) return anon.session.access_token;
+  inFlightToken = (async () => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) return data.session.access_token;
 
-    // A concurrent sign-in (e.g. AuthProvider init) may land the session a
-    // tick later via onAuthStateChange — poll briefly before giving up.
-    for (let i = 0; i < 10; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      const { data: retry } = await supabase.auth.getSession();
-      if (retry.session?.access_token) return retry.session.access_token;
+      const { data: anon } = await supabase.auth.signInAnonymously();
+      if (anon?.session?.access_token) return anon.session.access_token;
+
+      // A concurrent sign-in (e.g. AuthProvider init) may land the session a
+      // tick later via onAuthStateChange — poll briefly before giving up.
+      for (let i = 0; i < 10; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const { data: retry } = await supabase.auth.getSession();
+        if (retry.session?.access_token) return retry.session.access_token;
+      }
+      return null;
+    } catch {
+      return null;
     }
-    return null;
-  } catch {
-    return null;
+  })();
+
+  try {
+    return await inFlightToken;
+  } finally {
+    // Cleared either way: a failed attempt must not pin every later caller to
+    // null, and a success is re-read from getSession() next time anyway.
+    inFlightToken = null;
   }
 }

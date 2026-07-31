@@ -1,5 +1,5 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
-import { getBackendAuthHeaders } from "@/lib/backend-auth";
+import { getBackendAuthHeaders, ensureBackendAuthToken } from "@/lib/backend-auth";
 
 // Optional access: under the Remotion webpack bundle (video export)
 // `import.meta.env` is undefined; the Vite app build is unaffected.
@@ -270,6 +270,39 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Quiz API ${res.status}: ${detail || res.statusText}`);
   }
   return (await res.json()) as T;
+}
+
+/** Thrown when a write could not be sent because no Supabase session — not
+ *  even an anonymous one — could be established. */
+export class QuizAuthRequiredError extends Error {
+  constructor(path: string) {
+    super(`Quiz API ${path}: no Supabase session available to authenticate the request`);
+    this.name = "QuizAuthRequiredError";
+  }
+}
+
+/**
+ * Request helper for endpoints that PERSIST user-owned rows.
+ *
+ * The backend attributes these writes to the verified JWT subject and rejects
+ * unverified callers, so a best-effort `getBackendAuthHeaders()` is not enough:
+ * it returns `{}` whenever the Supabase session has not landed yet, which is
+ * exactly the state a page is in for the first few hundred ms after mount.
+ *
+ * `ensureBackendAuthToken()` establishes a session — signing in anonymously if
+ * the visitor is a guest — and waits for it, so guest play is preserved while
+ * the tokenless window is closed. If no session can be established at all we
+ * throw rather than send a request that would be silently misattributed under
+ * the legacy fallback (or 401 under enforcement).
+ */
+async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await ensureBackendAuthToken();
+  if (!token) throw new QuizAuthRequiredError(path);
+  return request<T>(path, {
+    ...init,
+    // Spread last in `request`, so this wins over getBackendAuthHeaders().
+    headers: { ...(init?.headers || {}), Authorization: `Bearer ${token}` },
+  });
 }
 
 /** Thrown when the admin key is missing or rejected by the backend (403). */
@@ -638,14 +671,18 @@ export const quizApi = {
   questions: (quizSet: string, limit = 10) =>
     request<{ questions: QuizQuestion[] }>(`/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`),
   stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
+  /** Records an attempt. Attributed by the backend to the verified JWT
+   *  subject; `user_id` is ignored server-side and kept only so existing
+   *  callers still typecheck. */
   submitAnswer: (payload: {
+    /** @deprecated ignored by the backend — attribution comes from the JWT. */
     user_id?: string;
     question_id: number | string;
     selected_answer: string;
     time_taken_ms?: number;
     session_id?: number;
   }) =>
-    request<QuizAnswerResult>("/api/quiz/attempts", {
+    authedRequest<QuizAnswerResult>("/api/quiz/attempts", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -701,26 +738,31 @@ export const quizApi = {
   /** Achievements for a user (unlocked + locked). Pass `"anonymous"` for guest. */
   getAchievements: (userId: string) =>
     request<QuizAchievementsResponse>(`/api/quiz/achievements/${encodeURIComponent(userId)}`),
-  /** Fetch today's daily challenge state + questions for a user. */
-  getDailyChallenge: (userId: string, challengeDate?: string) =>
+  /** Fetch today's daily challenge state + questions.
+   *  `userId` is retained for call-site compatibility and is no longer sent:
+   *  the backend derives identity from the JWT (guests share "anonymous",
+   *  which is exactly what this used to pass for them). */
+  getDailyChallenge: (_userId: string, challengeDate?: string) =>
     request<DailyChallengeGetResponse>(
-      `/api/quiz/daily-challenge?user_id=${encodeURIComponent(userId)}${challengeDate ? `&challenge_date=${encodeURIComponent(challengeDate)}` : ""}`,
+      `/api/quiz/daily-challenge${challengeDate ? `?challenge_date=${encodeURIComponent(challengeDate)}` : ""}`,
     ),
   /** Submit an answer for a daily challenge question. */
   submitDailyChallengeAnswer: (payload: DailyChallengeSubmitPayload) =>
-    request<DailyChallengeSubmitResult>("/api/quiz/daily-challenge/submit", {
+    authedRequest<DailyChallengeSubmitResult>("/api/quiz/daily-challenge/submit", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   /** Start a quiz session for history tracking. Failures must not block play. */
   startSession: (payload: { mode?: string; category?: string; difficulty?: string; quiz_set_id?: string }) =>
-    request<{ ok: boolean; session_id?: number }>("/api/quiz/sessions", {
+    authedRequest<{ ok: boolean; session_id?: number }>("/api/quiz/sessions", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  /** Mark a quiz session finished; backend computes duration + accuracy. */
+  /** Mark a quiz session finished; backend computes duration + accuracy.
+   *  Must carry the same identity that startSession used, or the backend's
+   *  owner-scoped UPDATE matches nothing and the session never completes. */
   completeSession: (sessionId: number) =>
-    request<{ ok: boolean }>(`/api/quiz/sessions/${sessionId}/complete`, { method: "POST" }),
+    authedRequest<{ ok: boolean }>(`/api/quiz/sessions/${sessionId}/complete`, { method: "POST" }),
   /** Completed quiz sessions for the signed-in (or anonymous) user. Free = last 10, Pro = all. */
   getHistory: () => request<QuizHistoryResponse>("/api/quiz/history"),
   /** Authoritative backend Pro entitlement for the signed-in user (JWT-scoped). */
