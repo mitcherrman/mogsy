@@ -14,6 +14,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
+import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
+import { RouteBootShell, NeutralBootShell } from "@/components/startup/StartupShells";
 
 export default function Layout() {
   useTrackActivity();
@@ -25,18 +28,14 @@ export default function Layout() {
   // League of Legends section uses its own LoLdle-inspired theme and overrides
   // any sitewide Mogsy theme so the visual language stays cohesive across the
   // /lol, /combat-lab and /quiz surface area.
-  const isLolSection =
-    pathname === "/lol" ||
-    pathname.startsWith("/lol/") ||
-    pathname === "/combat-lab" ||
-    pathname.startsWith("/combat-lab/") ||
-    pathname === "/quiz" ||
-    pathname.startsWith("/quiz/");
+  const isLolSection = isLolSectionPath(pathname);
 
-  // Use useLayoutEffect so the LoL theme class is applied AFTER the sitewide
-  // theme provider's effect on every render — including theme cycles and
-  // post-refresh hydration — guaranteeing the LoL palette always wins.
-  useEffect(() => {
+  // Layout-timed so the class lands before the browser paints the new route:
+  // client-side navigation into /lol must not flash a frame of the general dark
+  // theme. The sitewide theme provider deliberately skips className mutations
+  // while the path is in the LoL section (see useSitewideTheme), so running
+  // earlier than its effect does not cost the LoL palette its precedence.
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (isLolSection) {
       root.className = root.className.replace(/theme-\S+/g, "").trim();
@@ -79,19 +78,29 @@ export default function Layout() {
   const showShellHubControl = isLolSection && pathname !== "/lol" && !pageOwnsHubControl;
 
   // After first paint, warm the chunks the user is most likely to visit next.
+  // In League-only mode /home, /play, /swipe and /shop are <Navigate> stubs that
+  // redirect to /lol, so warming their chunks downloads code nothing can render.
+  // /profile is not league-gated and stays reachable, so it stays warmed.
   useEffect(() => {
     if (loading || settingsLoading) return;
-    prefetchLikelyRoutes(["/home", "/play", "/swipe", "/profile", "/shop"]);
+    prefetchLikelyRoutes(
+      LEAGUE_ONLY_MODE
+        ? ["/profile"]
+        : ["/home", "/play", "/swipe", "/profile", "/shop"],
+    );
   }, [loading, settingsLoading]);
 
+  // Authority gate — unchanged policy: nothing inside the shell renders until
+  // auth and app settings have resolved. Only the *visual* output changed, from
+  // a full-screen branded loader to the destination route's own shell.
   if (loading || settingsLoading) {
-    return <RouteLoader />;
+    return <RouteBootShell pathname={pathname} />;
   }
 
   return (
     <div
       className="min-h-dvh relative animate-page-fade-in pb-bottom-nav"
-      style={{ background: "#0a0a1a" }}
+      style={{ background: baseBackgroundForPath(pathname) }}
     >
       {/* Stage: paints the app background only behind the centered column,
           with both vertical edges feathered into the body color. */}
@@ -142,7 +151,10 @@ export default function Layout() {
             </Link>
           </div>
         )}
-        <Suspense fallback={<RouteLoader />}>
+        {/* The shell — navbar, background, theme — is already mounted here, so a
+            resolving route chunk only needs its content area held open. A
+            full-screen loader would blank a page the visitor can already see. */}
+        <Suspense fallback={<div aria-hidden className="min-h-[50vh]" />}>
           <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
         </Suspense>
       </main>
@@ -167,36 +179,15 @@ export default function Layout() {
   );
 }
 
-/** Lightweight branded loader for in-app route transitions and auth/settings boot.
- *  Mirrors the static FCP shell in index.html so transitions feel continuous. */
+/**
+ * Full-page placeholder for standalone routes that mount outside the shell
+ * (auth, reset-password, admin viewers). It holds the viewport open in the app's
+ * base colour and nothing else — deliberately no logo and no pulsing mark, so a
+ * slow chunk never turns into a branded splash screen mid-navigation.
+ *
+ * Startup and entry→hub paths use the destination-shaped shells in
+ * components/startup/StartupShells.tsx instead.
+ */
 export function RouteLoader() {
-  return (
-    <div
-      className="min-h-dvh relative flex items-center justify-center"
-      style={{ background: "#0a0a1a" }}
-    >
-      {/* Feathered stage so the loader matches the app's soft column edges */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-xy"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[96rem]"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 80% at 50% 50%, hsl(var(--background) / 0.35), transparent 70%)",
-        }}
-      />
-      <img
-        src="/mogsy-logo-text.png"
-        alt=""
-        aria-hidden="true"
-        width={264}
-        height={176}
-        className="relative z-10 h-20 sm:h-24 object-contain opacity-70 animate-pulse"
-        decoding="async"
-      />
-    </div>
-  );
+  return <NeutralBootShell />;
 }

@@ -75,8 +75,8 @@
          consent-aware loader, and only when policy allows. -->
     <meta name="google-adsense-account" content="ca-pub-9823769047605421" />
 
-    <!-- Preload LCP image so browser discovers it immediately -->
-    <link rel="preload" as="image" href="/mogsy-logo-text.png" fetchpriority="high" imagesizes="112px" />
+    <!-- No logo preload. Startup paints the destination route's own shell, never a
+         branded splash — see src/lib/startup-shell.ts for the colour contract. -->
     <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2" crossorigin />
 
     <!-- Non-render-blocking font loading via JS injection -->
@@ -103,24 +103,77 @@
         });
       })();
     </script>
+    <style>
+      /* Static startup shell. It paints the destination route's base surface on
+         the very first frame and then sits BEHIND the app (z-index:-1) so it can
+         never cover mounted React content, even if its removal is delayed. */
+      #initial-shell {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: #0a0a1a;
+      }
+      /* Faint atmospheric wash mirroring `.theme-lol body` in src/index.css, so a
+         direct hit on /lol reads as the library surface rather than a dark void. */
+      html[data-startup-shell="lol"] #initial-shell {
+        background-color: #060c14;
+        background-image:
+          radial-gradient(60% 45% at 50% 0%, rgba(217, 174, 66, 0.10) 0%, transparent 60%),
+          radial-gradient(90% 60% at 50% 100%, rgba(69, 30, 30, 0.35) 0%, transparent 70%),
+          linear-gradient(180deg, #050d15 0%, #04090f 100%);
+      }
+      /* Entrance: centre-dominant dark frame with a hint of the gold title band. */
+      html[data-startup-shell="entry"] #initial-shell {
+        background-color: #04070f;
+        background-image:
+          radial-gradient(52% 34% at 50% 42%, rgba(201, 168, 76, 0.07) 0%, transparent 70%);
+      }
+    </style>
   </head>
 
   <body style="background:#0a0a1a">
     <script>
-      // Apply user accessibility/personalization classes before first paint
+      // Pre-paint bootstrap. Purely visual: it chooses a base colour and the
+      // route's theme class so the first frame the browser paints is already the
+      // right surface. It reads no user data and makes no security decisions.
+      // Colours mirror src/lib/startup-shell.ts (enforced by a contract test).
       (function() {
+        var d = document.documentElement;
         try {
-          var d = document.documentElement;
           if (localStorage.getItem('mogsy-reduce-motion') === '1') d.classList.add('reduce-motion');
           if (localStorage.getItem('mogsy-large-text') === '1') d.classList.add('large-text');
           if (localStorage.getItem('mogsy-high-contrast') === '1') d.classList.add('high-contrast');
         } catch (e) {}
+
+        try {
+          var p = window.location.pathname;
+          var isLol =
+            p === '/lol' || p.indexOf('/lol/') === 0 ||
+            p === '/combat-lab' || p.indexOf('/combat-lab/') === 0 ||
+            p === '/quiz' || p.indexOf('/quiz/') === 0;
+          var isEntry = p === '/' || p === '/dev/mogzy-entry-v2';
+
+          var variant = isLol ? 'lol' : (isEntry ? 'entry' : 'default');
+          var bg = isLol ? '#060c14' : (isEntry ? '#04070f' : '#0a0a1a');
+
+          // The League section owns its palette; applying it here means a direct
+          // hit on /lol never paints a frame in the general dark theme. Every
+          // other route is left alone so the sitewide theme provider still owns it.
+          if (isLol) {
+            d.classList.add('dark');
+            d.classList.add('theme-lol');
+          }
+
+          // Set on <html> rather than the shell element so the choice is made
+          // before #initial-shell has even been parsed.
+          d.setAttribute('data-startup-shell', variant);
+          document.body.style.background = bg;
+        } catch (e) {}
       })();
     </script>
-    <!-- Static shell painted immediately for fast FCP — lives OUTSIDE #root so React doesn't destroy it -->
-    <div id="initial-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a1a;position:fixed;inset:0;z-index:9999;transition:opacity .3s ease-out;">
-      <img src="/mogsy-logo-text.png" alt="" aria-hidden="true" width="264" height="176" style="height:7rem;object-fit:contain;opacity:0;transition:opacity .2s ease-out;" fetchpriority="high" decoding="async" onload="this.style.opacity=1" />
-    </div>
+    <!-- Startup shell — lives OUTSIDE #root so React's first commit doesn't
+         destroy it, and behind it so it cannot mask the mounted app. -->
+    <div id="initial-shell" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- AdSense script is loaded dynamically by AdBanner component with the configured client ID -->
