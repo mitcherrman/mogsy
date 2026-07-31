@@ -27,6 +27,10 @@ import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 
 const LOL_TAG = "League of Legends";
 
+/** Inert 1×1 GIF: the <picture> fallback that must never cost a request. */
+const TRANSPARENT_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 type HubDestination = {
   to: string;
   title: string;
@@ -273,20 +277,32 @@ export default function LolHub() {
 
       {/* ================= Academy Library — above-the-fold hub ================= */}
       <section className="relative w-full md:min-h-[calc(100dvh-var(--app-header-h))] md:flex md:flex-col overflow-hidden">
-        {/* Full-bleed library backgrounds (desktop / mobile) */}
-        <img
-          src={academyLibraryDesktop}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover md:block"
-          style={{ objectPosition: "center 72%" }}
-        />
-        <img
-          src={academyLibraryMobile}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:hidden"
-        />
+        {/* Full-bleed library background. One <picture> rather than two <img>
+            elements hidden by CSS: the browser resolves the media query itself
+            and fetches exactly one file, so phones never pull the desktop
+            painting and vice versa. Crops are preserved per breakpoint via
+            object-position. This is the hub's LCP visual, hence eager+high.
+
+            Both paintings are declared as <source>s and the <img> falls back to
+            an inert 1×1 pixel ON PURPOSE. React sets attributes on the <img>
+            while it is still detached from the <picture>, so a real file in
+            `src` starts downloading before the sources exist — which is exactly
+            the double-download this change is meant to remove. The two media
+            queries are exhaustive, so a real painting always wins selection. */}
+        <picture>
+          <source media="(min-width: 768px)" srcSet={academyLibraryDesktop} />
+          <source media="(max-width: 767px)" srcSet={academyLibraryMobile} />
+          <img
+            src={TRANSPARENT_PIXEL}
+            alt=""
+            aria-hidden
+            data-testid="academy-library-background"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:[object-position:center_72%]"
+          />
+        </picture>
         {/* Readability scrim — kept light so the painting stays visible */}
         <div
           className="pointer-events-none absolute inset-0"

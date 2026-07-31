@@ -196,6 +196,7 @@ const queryClient = new QueryClient({
 });
 
 import { RouteLoader } from "@/components/Layout";
+import { EntryShell, LibraryHubShell } from "@/components/startup/StartupShells";
 
 /**
  * Subtle in-Layout fallback used while a lazy route chunk resolves.
@@ -240,7 +241,7 @@ const App = () => (
                   path="/"
                   element={
                     LEAGUE_ONLY_MODE ? (
-                      <Suspense fallback={<RouteLoader />}><MogzyEntryV2 seo="root" /></Suspense>
+                      <Suspense fallback={<EntryShell />}><MogzyEntryV2 seo="root" /></Suspense>
                     ) : (
                       <Suspense fallback={<RouteLoader />}><Index /></Suspense>
                     )
@@ -251,7 +252,7 @@ const App = () => (
                 <Route path="/dev/legacy-entry" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
                 {/* Dev-only V2 entrance concept. Full-screen and layout-free like the
                     original, so it sits outside <Layout /> alongside the legacy route. */}
-                <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<RouteLoader />}><MogzyEntryV2 /></Suspense>} />
+                <Route path="/dev/mogzy-entry-v2" element={<Suspense fallback={<EntryShell />}><MogzyEntryV2 /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<RouteLoader />}><Auth /></Suspense>} />
                 <Route path="/auth/callback" element={<Suspense fallback={<RouteLoader />}><AuthCallback /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<RouteLoader />}><ResetPassword /></Suspense>} />
@@ -338,7 +339,10 @@ const App = () => (
                   <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
-                  <Route path="/lol" element={<Suspense fallback={<RouteFallback />}><LolHub /></Suspense>} />
+                  {/* The hub is the entry destination, so its chunk resolves on
+                      the critical path more often than any other. Hold the real
+                      library geometry open instead of an empty content area. */}
+                  <Route path="/lol" element={<Suspense fallback={<LibraryHubShell />}><LolHub /></Suspense>} />
                   <Route path="/league-swipe" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeHub /></Suspense>} />
                   <Route path="/league-swipe/stats" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeStats /></Suspense>} />
                   <Route path="/league-swipe/:gameSlug" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeGame /></Suspense>} />

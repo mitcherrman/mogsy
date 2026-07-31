@@ -2,16 +2,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { installChunkLoadRecovery } from "@/lib/chunk-recovery";
+import { retireStartupShell } from "@/lib/startup-shell-teardown";
 
 installChunkLoadRecovery();
 
-createRoot(document.getElementById("root")!).render(<App />);
+const container = document.getElementById("root")!;
+createRoot(container).render(<App />);
 
-// Fade out the static shell once React has painted
-requestAnimationFrame(() => {
-  const shell = document.getElementById("initial-shell");
-  if (shell) {
-    shell.style.opacity = "0";
-    setTimeout(() => shell.remove(), 350);
-  }
-});
+retireStartupShell(container);
