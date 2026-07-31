@@ -11,6 +11,7 @@
 // the module so the seam owns them without changing them.
 // ---------------------------------------------------------------------------
 
+import { useMemo } from "react";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
@@ -26,12 +27,16 @@ function projectQuestion(pub: PublicRoundView): QuestionView | null {
 }
 
 function QuizViewport({ publicRound, selection, permissions, onSelect }: ModuleViewportProps) {
-  const question = projectQuestion(publicRound);
+  const question = useMemo(() => projectQuestion(publicRound), [publicRound]);
   // Optional rich-visual source; null → the polished text fallback. No reveal
   // is passed, so the surface stays spoiler-safe exactly as before.
-  const scenarioSource = publicRound.question
-    ? scenarioSourceFromPublicQuestion(publicRound.question)
-    : null;
+  //
+  // Memoised on the QUESTION rather than recomputed per render: the arena
+  // rerenders once a second for the timer, and a fresh object here re-ran the
+  // scenario classifier on every one of those ticks.
+  const scenarioSource = useMemo(
+    () => (publicRound.question ? scenarioSourceFromPublicQuestion(publicRound.question) : null),
+    [publicRound.question]);
   if (!question) return null;
   return (
     <InteractiveScenarioSurface
