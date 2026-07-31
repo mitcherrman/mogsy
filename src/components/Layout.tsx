@@ -16,7 +16,7 @@ import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
-import { RouteBootShell, NeutralBootShell } from "@/components/startup/StartupShells";
+import { StartupSurface } from "@/components/startup/StartupShells";
 
 export default function Layout() {
   useTrackActivity();
@@ -91,10 +91,10 @@ export default function Layout() {
   }, [loading, settingsLoading]);
 
   // Authority gate — unchanged policy: nothing inside the shell renders until
-  // auth and app settings have resolved. Only the *visual* output changed, from
-  // a full-screen branded loader to the destination route's own shell.
+  // auth and app settings have resolved. Only the *visual* output changed, to
+  // the destination route's base colour and nothing else.
   if (loading || settingsLoading) {
-    return <RouteBootShell pathname={pathname} />;
+    return <StartupSurface pathname={pathname} />;
   }
 
   return (
@@ -185,9 +185,9 @@ export default function Layout() {
  * base colour and nothing else — deliberately no logo and no pulsing mark, so a
  * slow chunk never turns into a branded splash screen mid-navigation.
  *
- * Startup and entry→hub paths use the destination-shaped shells in
- * components/startup/StartupShells.tsx instead.
+ * Routes that know where they are heading pass their pathname to
+ * <StartupSurface> directly so the colour matches the destination.
  */
 export function RouteLoader() {
-  return <NeutralBootShell />;
+  return <StartupSurface />;
 }

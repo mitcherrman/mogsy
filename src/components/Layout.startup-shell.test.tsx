@@ -84,31 +84,42 @@ describe("the boot gate keeps its policy", () => {
 });
 
 describe("what the gate shows instead", () => {
-  it("shows no legacy wordmark on any startup path", () => {
+  it("shows no legacy wordmark and nothing animated on any startup path", () => {
     for (const path of ["/lol", "/lol/docs", "/settings"]) {
       state.authLoading = true;
       const { container } = renderAt(path);
       expect(container.innerHTML).not.toContain("mogsy-logo-text.png");
-      expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
+      expect(container.innerHTML).not.toMatch(/animate-|animation:/);
       cleanup();
     }
   });
 
-  it("shows the library shell — not a generic loader — on a direct /lol hit", () => {
+  it("paints the League base colour on a direct /lol hit", () => {
     state.authLoading = true;
     const { container } = renderAt("/lol");
-    const shell = container.querySelector("[data-startup-shell-surface]") as HTMLElement;
-    expect(shell).not.toBeNull();
-    expect(shell.style.background).toBe("rgb(6, 12, 20)"); // LOL_BASE_BG
+    const surface = container.querySelector("[data-startup-surface]") as HTMLElement;
+    expect(surface).not.toBeNull();
+    expect(surface.style.background).toBe("rgb(6, 12, 20)"); // LOL_BASE_BG
     expect(LOL_BASE_BG).toBe("#060c14");
-    expect(container.querySelectorAll("[data-shell-book]").length).toBeGreaterThan(0);
   });
 
-  it("exposes no user-specific content in the pre-auth hub shell", () => {
+  it("draws no hub geometry while the gate is closed", () => {
+    state.authLoading = true;
+    const { container } = renderAt("/lol");
+    const surface = container.querySelector("[data-startup-surface]") as HTMLElement;
+    // No book outlines, heading band, navbar bar or mascot silhouette — the
+    // visitor must not watch the hub assemble out of empty boxes.
+    expect(surface.childElementCount).toBe(0);
+    expect(container.querySelectorAll("[data-shell-book]")).toHaveLength(0);
+    expect(container.querySelectorAll("img, svg, header, nav")).toHaveLength(0);
+  });
+
+  it("exposes no user-specific content and no loading announcement", () => {
     state.authLoading = true;
     const { container } = renderAt("/lol");
     expect(container.querySelectorAll("a, button, input")).toHaveLength(0);
     expect((container.textContent ?? "").trim()).toBe("");
+    expect(container.querySelector("[role='status']")).toBeNull();
   });
 });
 
