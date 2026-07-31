@@ -22,8 +22,13 @@ const format = (totalSeconds: number): string => {
 export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerView; label?: string }) {
   const { remainingSeconds, durationSeconds, paused, urgent, modifierNotices } = timer;
   const expired = remainingSeconds <= 0;
+  // `relative` + a fixed minimum width: the digits are tabular and the label is
+  // constant, so this box's size is independent of the value it shows. Every
+  // transient line below is OVERLAID rather than stacked, because mounting one
+  // used to grow this section and shove the surrounding HUD down.
   return (
-    <section aria-label={label} data-testid="timer-display" className="text-center space-y-1">
+    <section aria-label={label} data-testid="timer-display"
+      className="relative min-w-[7.5rem] space-y-1 text-center">
       <div
         aria-live="off"
         aria-label={`Time remaining ${format(remainingSeconds)}`}
@@ -38,21 +43,23 @@ export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerVie
       <div className="text-[11px] text-muted-foreground tabular-nums">
         of {format(durationSeconds)} shared round
       </div>
-      {paused && (
-        <Badge variant="secondary" data-testid="timer-paused">
-          Paused
-        </Badge>
-      )}
-      {expired && !paused && (
-        <div role="status" className="text-xs text-muted-foreground">
-          Time's up — waiting for the round to resolve.
-        </div>
-      )}
-      {(modifierNotices ?? []).map((notice) => (
-        <div key={notice} className="text-xs text-amber-500" data-testid="timer-notice">
-          {notice}
-        </div>
-      ))}
+      <div className="pointer-events-none absolute inset-x-0 top-full space-y-1 pt-0.5">
+        {paused && (
+          <Badge variant="secondary" data-testid="timer-paused">
+            Paused
+          </Badge>
+        )}
+        {expired && !paused && (
+          <div role="status" className="text-xs text-muted-foreground">
+            Time's up — waiting for the round to resolve.
+          </div>
+        )}
+        {(modifierNotices ?? []).map((notice) => (
+          <div key={notice} className="text-xs text-amber-500" data-testid="timer-notice">
+            {notice}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

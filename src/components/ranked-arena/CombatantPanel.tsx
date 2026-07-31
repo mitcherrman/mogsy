@@ -97,34 +97,36 @@ export function ExperienceMeter({ combatant }: { combatant: CombatantView }) {
  */
 function RoundStatus({ combatant }: { combatant: CombatantView }) {
   const { hasSubmitted, abilityWindow, hasAbilitySelected, name } = combatant;
+  // Two reserved rows, and each badge holds a fixed icon slot.
+  //
+  // These chips swap between labels of very different widths ("Thinking…" →
+  // "Answer locked", "Choosing ability" → "Ability armed") and one of them
+  // gains an icon it did not previously have. In a plain wrap container that
+  // re-flowed the second chip onto a new line mid-round and changed this
+  // panel's height; the icon appearing also shifted the label sideways. The
+  // height is now constant for every combination and the icon occupies the
+  // same 12px whether or not it is drawn.
   return (
     <div
-      className="flex flex-wrap gap-1.5"
+      className="flex min-h-[3.25rem] flex-wrap content-start gap-1.5"
       role="status"
       aria-label={`${name} round status`}
       data-testid={`status-${combatant.playerId}`}
     >
       <Badge variant={hasSubmitted ? "default" : "secondary"} className="gap-1">
-        {hasSubmitted ? (
-          <Lock className="h-3 w-3" aria-hidden />
-        ) : (
-          <Hourglass className="h-3 w-3" aria-hidden />
-        )}
+        <span aria-hidden className="inline-flex h-3 w-3 shrink-0 items-center justify-center">
+          {hasSubmitted ? <Lock className="h-3 w-3" /> : <Hourglass className="h-3 w-3" />}
+        </span>
         {hasSubmitted ? "Answer locked" : "Thinking…"}
       </Badge>
       {abilityWindow !== null && (
         <Badge variant={abilityWindow === "locked" ? "default" : "secondary"} className="gap-1">
-          {abilityWindow === "locked" ? (
-            <>
-              <Lock className="h-3 w-3" aria-hidden /> Ability locked
-            </>
-          ) : hasAbilitySelected ? (
-            <>
-              <CheckCircle2 className="h-3 w-3" aria-hidden /> Ability armed
-            </>
-          ) : (
-            "Choosing ability"
-          )}
+          <span aria-hidden className="inline-flex h-3 w-3 shrink-0 items-center justify-center">
+            {abilityWindow === "locked" ? <Lock className="h-3 w-3" />
+              : hasAbilitySelected ? <CheckCircle2 className="h-3 w-3" /> : null}
+          </span>
+          {abilityWindow === "locked" ? "Ability locked"
+            : hasAbilitySelected ? "Ability armed" : "Choosing ability"}
         </Badge>
       )}
     </div>

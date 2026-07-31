@@ -135,11 +135,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     const subheading = reason === "forfeit"
       ? (won ? "Opponent forfeited." : "You forfeited.")
       : reason === "no_contest" ? "No contest — both players left." : undefined;
-    // Terminal frame + final reveal can exceed the game viewport, so it owns its
-    // own scroll rather than pushing the shell into one.
+    // Ordinary flow, like the live arena: the terminal frame and the final
+    // reveal are free to be taller than the viewport and the DOCUMENT scrolls
+    // them. This used to carry its own `lg:overflow-y-auto` game-viewport
+    // containment, which is exactly the nested scrollbar 1.5 removed.
     return (
-      <div className="ranked-shell flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
-        data-testid="ranked-match-over">
+      <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
         <MatchOverFrame result={result} player={combatants.player} opponent={combatants.opponent}
           subheading={subheading}
           primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
@@ -168,8 +169,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // includes the whole wait for the opponent.
   const abilityPermissions = projectAbilityPermissions(
     m.privatePlayer, m.roundLive, m.abilityBusy);
+  // Visibility is a CONTENT question ("does this player have anything to arm?"),
+  // deliberately NOT an availability question. Gating the tray's existence on
+  // `canSelectAbility` unmounted it every time the window closed — between
+  // rounds, and for the whole of a level-2 choice — which removed ~140px from
+  // the middle of the HUD and slid the status panel up under the cursor. The
+  // tray now stays mounted and renders its own disabled state (AbilityTray
+  // already surfaces `disabledReasons.ability` for exactly this).
   const showAbilityTray = !moduleOwnsSubmission && m.privatePlayer !== null
-    && abilityPermissions.canSelectAbility
     && abilityTrayIsUseful(abilities, m.selectedAbilityId);
 
   // Stable round header. `activeRound` briefly reports null between rounds; the
@@ -182,10 +189,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const inTransition = !timer && m.phase !== "progression" && !m.segmentState;
 
   const isProgression = m.phase === "progression";
-  // While the beat runs — and while a level-2 choice is owed — the question is
-  // kept MOUNTED but out of sight, so the scenario card's ambient loop and the
-  // answer grid's entrance never restart when it comes back.
-  const hideQuestion = m.revealHold || isProgression;
+  // The question surface stays MOUNTED and IN FLOW at all times — including
+  // during the reveal beat and a level-2 choice. It used to be `display:none`
+  // for those, which collapsed its box to zero and let everything below it jump
+  // several hundred pixels; the beat is expressed by withholding interaction
+  // (see `inputOpen`) and by the reveal appearing beneath, not by removing the
+  // question from the layout. Keeping it mounted also preserves the RA1 1.2
+  // guarantee that the scenario loop and answer entrance never restart.
 
   // A multi-challenge segment has its own transcript: the arena reveal panel
   // describes ONE challenge, which is the wrong shape for five. Neither is
@@ -205,10 +215,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   ) : null;
 
   return (
-    <div className="ranked-shell flex flex-col gap-3 lg:min-h-0 lg:flex-1"
+    <div className="ranked-shell flex flex-col gap-3"
       data-testid="ranked-match" data-reveal-hold={m.revealHold ? "true" : "false"}>
-      {/* Condensed top strip — mode · round · timer in one compact row. */}
-      <section className="ranked-panel flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+      {/* Condensed top strip — mode · round · timer in one compact row.
+          `min-h` reserves the tallest state this strip ever reaches, so the
+          transition pill appearing or the timer gaining a notice line cannot
+          push the arena below it. */}
+      <section className="ranked-panel flex min-h-[5.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
         <div className="flex items-baseline gap-3">
           <div>
             <div className="ranked-eyebrow">
@@ -243,7 +256,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
 
       {/* Mobile-only presence/playtest line (hidden in the strip on <sm). */}
       {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
-        <div className="flex shrink-0 flex-wrap gap-x-3 px-1 sm:hidden">
+        <div className="flex flex-wrap gap-x-3 px-1 sm:hidden">
           {m.publicRound.playtest?.isPlaceholder && (
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Playtest · Placeholder
@@ -253,11 +266,11 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         </div>
       )}
 
-      {/* Arena body: You ⚔ focus ⚔ Opponent. The duelist panels are HUD — they
-          never scroll, so HP and XP stay on screen for the whole round. The
-          centre column is the single intentional scroll region in the app
-          shell, and owns the level-up choice, the question, and the reveal. */}
-      <div className="grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
+      {/* Arena body: You ⚔ focus ⚔ Opponent. Ordinary flow — the centre column
+          is NOT a scroll container; the page scrolls. `items-start` keeps the
+          duelist panels at their natural height so a taller centre column can
+          never stretch them. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:items-start">
         <div className="lg:col-start-1 lg:row-start-1">
           <CombatantPanel combatant={combatants.player} />
         </div>
@@ -266,9 +279,16 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         </div>
 
         <div data-testid="ranked-focus-column"
-          className="col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:min-h-0 lg:overflow-y-auto">
+          className="relative col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          {/* The level-2 choice is OVERLAID on the question rather than
+              inserted above it. In flow it added ~192px to the middle of the
+              page the instant a round resolved, pushing the question, the
+              ability tray and the status panel down under the player's cursor.
+              The panel is opaque and sits in the same place the question does,
+              so it reads as the focal control without moving anything. */}
           {isProgression && (
-            <section data-testid="ranked-progression" className="shrink-0">
+            <section data-testid="ranked-progression"
+              className="absolute inset-x-0 top-0 z-20">
               <LevelUpPanel
                 event={{
                   kind: "level2-choice",
@@ -292,8 +312,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           )}
           {renderer && (question || moduleOwnsSubmission) && (
             <section data-testid="ranked-question"
-              // `hidden`, never unmounted — see `hideQuestion`.
-              className={`ranked-panel shrink-0 p-3 sm:p-4 ${hideQuestion ? "hidden" : ""}`}>
+              // Always mounted AND always in flow. During the reveal beat the
+              // surface is dimmed, never collapsed: `opacity` costs no layout,
+              // `display:none` cost several hundred pixels of jump.
+              data-input-open={inputOpen ? "true" : "false"}
+              className={`ranked-panel p-3 sm:p-4 transition-opacity duration-200 motion-reduce:transition-none ${
+                m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
               <renderer.Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the
                 // player was looking at until the next one is genuinely ready.
@@ -318,26 +342,27 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             // module — a mismatched input shape could submit a meaningless
             // answer into a rated match.
             <section data-testid="ranked-unsupported-module"
-              className="ranked-panel shrink-0 p-3 sm:p-4">
+              className="ranked-panel p-3 sm:p-4">
               <p className="text-sm text-muted-foreground">
                 This round uses a game mode your client does not support yet.
                 Please refresh to update.
               </p>
             </section>
           )}
-          {revealNode && <div className="shrink-0">{revealNode}</div>}
         </div>
       </div>
 
-      {/* Lower HUD: the OPTIONAL ability hotbar, and a status line. Pinned
-          below the scroll region so it can never be pushed off-screen.
-          There is no Lock In button — clicking an answer submits it — and
-          the tray is suppressed entirely when nothing is actionable or when
-          a module runs its own submission. */}
-      {!moduleOwnsSubmission && !isProgression && (
-          <div className="grid shrink-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
+      {/* Lower HUD: the OPTIONAL ability hotbar, and a status line.
+          There is no Lock In button — clicking an answer submits it.
+          The row is rendered for the whole match, INCLUDING a level-2 choice:
+          unmounting it there tore ~230px out of the middle of the page. The
+          two lg tracks are always declared, so the status panel keeps its width
+          whether or not the tray currently has anything actionable to show. */}
+      {!moduleOwnsSubmission && (
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start">
             {showAbilityTray && (
-              <section data-testid="ranked-abilities" className="ranked-panel p-3 sm:p-4">
+              <section data-testid="ranked-abilities"
+                className="ranked-panel p-3 sm:p-4 lg:col-start-1">
                 <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
                   permissions={abilityPermissions} onSelectAbility={m.selectAbility}
                   noAbilityLabel="Clear ability" />
@@ -347,35 +372,47 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               </section>
             )}
             <section data-testid="ranked-submission-status"
-              className={`ranked-panel p-3 sm:p-4 ${showAbilityTray ? "" : "lg:col-span-2"}`}>
+              className="ranked-panel p-3 sm:p-4 lg:col-start-2">
+              {/* Fixed label track + a flexible value track. The value used to
+                  be a `justify-between` flex item, so its box slid sideways by
+                  the width of the text every time the answer or ability
+                  changed. Now the value owns a track of its own and only its
+                  CONTENT changes. */}
               <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                <div className="flex justify-between gap-2">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
                   <dt className="text-muted-foreground">Answer</dt>
-                  <dd className="font-semibold" data-testid="status-answer">
+                  <dd className="truncate text-right font-semibold" data-testid="status-answer"
+                    title={selectedOption?.label ?? undefined}>
                     {selectedOption?.label ?? "—"}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-2">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
                   <dt className="text-muted-foreground">Ability</dt>
-                  <dd className="font-semibold" data-testid="status-ability">
+                  <dd className="truncate text-right font-semibold" data-testid="status-ability">
                     {m.selectedAbilityId ? abilityName(m.selectedAbilityId) : "No ability"}
                   </dd>
                 </div>
               </dl>
-              {m.actionError ? (
-                <p role="alert" data-testid="submission-status"
-                  className="mt-2 text-xs text-destructive">{m.actionError}</p>
-              ) : (
-                <p role="status" data-testid="submission-status"
-                  className="mt-2 text-xs text-muted-foreground">
-                  {m.submitting ? "Submitting…"
+              {/* One reserved line box: the three status strings (and an error)
+                  differ in length, and swapping them used to change this
+                  panel's height whenever one of them wrapped. */}
+              <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
+                className={`mt-2 line-clamp-2 min-h-[2.25rem] text-xs ${
+                  m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
+                {m.actionError ? m.actionError
+                  : m.submitting ? "Submitting…"
                     : m.phase === "locked" ? "Answer locked — waiting for opponent…"
                       : "Choose an answer to lock it in."}
-                </p>
-              )}
+              </p>
             </section>
           </div>
       )}
+
+      {/* The reveal lands at the very END of the page, below everything it
+          could otherwise displace. It used to sit inside the centre column,
+          where its arrival pushed the question, the ability tray and the
+          status panel down the screen mid-round. */}
+      {revealNode}
     </div>
   );
 }

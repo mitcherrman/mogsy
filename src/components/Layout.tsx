@@ -77,20 +77,6 @@ export default function Layout() {
   const pageOwnsHubControl = pathname === "/combat-lab";
   const showShellHubControl = isLolSection && pathname !== "/lol" && !pageOwnsHubControl;
 
-  // Ranked is a fixed GAME VIEWPORT from `lg` up, not a scrolling document:
-  // <main> is sized to exactly --app-viewport-h and the page fills it, so the
-  // round HUD, timer, HP and ability controls can never be pushed below the
-  // fold. The in-flow mobile hub control is a flex sibling, so it shrinks the
-  // arena rather than overflowing it.
-  //
-  // Below `lg` the model is deliberately NOT applied: at 390×844 the arena's
-  // current component sizes (223px duelist panels, a 230px ability tray, the
-  // scenario band's 200px floor) exceed the 732px budget on their own, so
-  // pinning the height would collapse the question column to zero. Until those
-  // are rescaled, small screens keep ordinary document scrolling — still
-  // exactly one scrollbar, and never a nested one.
-  const isRankedArena = pathname === "/quiz/ranked";
-
   // After first paint, warm the chunks the user is most likely to visit next.
   // In League-only mode /home, /play, /swipe and /shop are <Navigate> stubs that
   // redirect to /lol, so warming their chunks downloads code nothing can render.
@@ -149,24 +135,23 @@ export default function Layout() {
       {isLolSection && <HextechAmbience />}
       {/* Bottom-nav clearance lives once on the shell (.pb-bottom-nav above) so
           the footer clears the fixed bar too — never re-apply it per page. */}
+      {/* Every route, Ranked included, is an ordinary flow-height document: the
+          browser's own scrollbar is the ONLY vertical scrollbar in the app.
+          Ranked briefly had a pinned game viewport here (RA1 1.1); it produced a
+          second, nested scrollbar in practice, so the model is gone. The
+          --app-header-h offset above and --app-viewport-h stay — they are what
+          keep in-shell loading states from overflowing. */}
       <main
-        className={[
-          "relative z-20 w-full",
-          isFullBleed ? "" : "max-w-7xl mx-auto px-0 md:px-4 lg:px-8",
-          // `overflow-y-auto` rather than `hidden`: a live round is sized to fit
-          // exactly (so no bar appears), while the lobby — class select, bot
-          // playtest, match history — is free to be taller than the viewport and
-          // scrolls HERE. Either way exactly one vertical scrollbar exists, and
-          // the document itself never scrolls on this route at lg+.
-          isRankedArena
-            ? "flex flex-col lg:h-[var(--app-viewport-h)] lg:overflow-y-auto"
-            : "",
-        ].filter(Boolean).join(" ")}
+        className={
+          isFullBleed
+            ? "relative z-20 w-full"
+            : "relative z-20 w-full max-w-7xl mx-auto px-0 md:px-4 lg:px-8"
+        }
       >
         {showShellHubControl && (
           /* Mobile: back control in normal flow so it reserves space and never
              overlays cards. Desktop keeps the floating pill (see below). */
-          <div className="md:hidden shrink-0 px-4 pt-2">
+          <div className="md:hidden px-4 pt-2">
             <Link
               to="/lol"
               aria-label="Back to League hub"
@@ -177,18 +162,14 @@ export default function Layout() {
             </Link>
           </div>
         )}
-        {/* `contents` off the ranked route makes this wrapper invisible to
-            layout, so no other route's flow changes at all. */}
-        <div className={isRankedArena ? "flex flex-col lg:min-h-0 lg:flex-1" : "contents"}>
-          {/* The shell — navbar, background, theme — is already mounted here, so a
-              resolving route chunk only needs its content area held open. A
-              full-screen loader would blank a page the visitor can already see,
-              and `min-h-dvh` under the fixed header would overflow the document
-              by the header height for the duration of the load. */}
-          <Suspense fallback={<div aria-hidden className="min-h-[50vh]" />}>
-            <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
-          </Suspense>
-        </div>
+        {/* The shell — navbar, background, theme — is already mounted here, so a
+            resolving route chunk only needs its content area held open. A
+            full-screen loader would blank a page the visitor can already see,
+            and `min-h-dvh` under the fixed header would overflow the document
+            by the header height for the duration of the load. */}
+        <Suspense fallback={<div aria-hidden className="min-h-[50vh]" />}>
+          <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
+        </Suspense>
       </main>
       {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}

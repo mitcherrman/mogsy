@@ -603,6 +603,22 @@
   color: #7fd6ef;
 }
 
+/* ===== Answer-choice geometry lock (RA1 Phase 1.5) =====
+   Selecting an answer swaps the shared quiz button from the `outline` variant
+   (1px border) to `default` (no border). That is a 2px change to the control's
+   border box, so picking an answer made the whole grid shrink and nudged every
+   choice below it. Scoped to `[data-answers-state]`, the fieldset AnswerGrid
+   owns, so it can never reach a plain quiz page: every state now carries the
+   same 1px border box, and the ones that had no border get a transparent one.
+   Colour, fill and glow still change freely — only the geometry is pinned. */
+[data-answers-state] [data-quiz-choice] {
+  border-width: 1px;
+  border-style: solid;
+}
+[data-answers-state] [data-quiz-choice]:not([data-choice-state="idle"]) {
+  border-color: transparent;
+}
+
 /* Cinematic round title — gold, Cinzel where the theme font is present. */
 .ranked-title {
   font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;

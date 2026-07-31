@@ -280,16 +280,22 @@ describe("RA1 1.4 — the reveal beat", () => {
     advanceRound();
 
     await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
-    // During the beat the reveal is what is on screen and the question is not.
     expect(screen.getByTestId("reveal-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("ranked-question").className).toContain("hidden");
+    // The beat is expressed by withholding INPUT, not by removing the question
+    // from the layout. It used to be `display:none` here, which collapsed the
+    // surface's box and jumped everything below it several hundred pixels
+    // (RA1 1.5). The surface stays mounted, in flow, and merely dimmed.
+    const question = screen.getByTestId("ranked-question");
+    expect(question.className).not.toContain("hidden");
+    expect(question.getAttribute("data-input-open")).toBe("false");
+    expect(screen.getByTestId("answer-grid")).toBeDisabled();
     // Nothing to click to get past it.
     expect(screen.queryByRole("button", { name: /continue/i })).toBeNull();
 
     // It clears itself.
     await waitFor(() => expect(holdActive()).toBe(false),
       { timeout: REVEAL_HOLD_MS + 2000 });
-    expect(screen.getByTestId("ranked-question").className).not.toContain("hidden");
+    expect(screen.getByTestId("ranked-question").getAttribute("data-input-open")).toBe("true");
   });
 
   it("refuses an answer for the next round while the beat is running", async () => {

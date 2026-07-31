@@ -136,37 +136,40 @@ describe("the live arena's scroll ownership", () => {
     return view;
   }
 
-  it("declares exactly one internal vertical scroll region", async () => {
+  it("declares NO internal vertical scroll region", async () => {
     const { container } = await mountArena();
+    // RA1 1.1 gave the centre column its own scrollbar. In a real browser that
+    // read as a nested scrollbar next to the browser's own, so the model is
+    // gone: Ranked scrolls with the document like every other route.
     const scrollers = Array.from(container.querySelectorAll<HTMLElement>("*"))
-      .filter((el) => /overflow-y-auto|overflow-auto|overflow-y-scroll/.test(el.className || ""));
-    expect(scrollers).toHaveLength(1);
-    expect(scrollers[0]).toBe(screen.getByTestId("ranked-focus-column"));
+      .filter((el) => /overflow-y-auto|overflow-auto|overflow-y-scroll|overflow-y-hidden/
+        .test(el.className || ""));
+    expect(scrollers.map((el) => el.className)).toEqual([]);
   });
 
-  it("puts the question and the reveal inside that region, and the HUD outside it", async () => {
-    await mountArena();
-    const focus = screen.getByTestId("ranked-focus-column");
-    // Question/media content scrolls...
-    expect(focus.contains(screen.getByTestId("ranked-question"))).toBe(true);
-    // ...and everything the player must be able to see mid-round does not.
-    for (const hud of ["combatant-userA", "combatant-userB", "timer-display",
-      "ranked-abilities", "ranked-submission-status"]) {
-      const node = screen.queryByTestId(hud);
-      expect(node, `${hud} should be rendered`).not.toBeNull();
-      expect(focus.contains(node!), `${hud} must not live inside the scroll region`).toBe(false);
-    }
-  });
-
-  it("fills the shell's game viewport at lg without asking for a full dvh", async () => {
+  it("never pins its own height, so nothing inside it can be clipped", async () => {
     const { container } = await mountArena();
     const root = screen.getByTestId("ranked-match");
-    // Grows into the height the shell hands it...
-    expect(root.className).toContain("lg:flex-1");
-    expect(root.className).toContain("lg:min-h-0");
-    // ...and never re-derives the viewport itself.
-    const askingForFullViewport = Array.from(container.querySelectorAll<HTMLElement>("*"))
-      .filter((el) => /(^|\s)(min-h-dvh|h-dvh|min-h-screen|h-screen)(\s|$)/.test(el.className || ""));
-    expect(askingForFullViewport).toHaveLength(0);
+    // No flex-fill chain and no viewport-derived height anywhere in the arena.
+    expect(root.className).not.toMatch(/lg:flex-1|lg:min-h-0/);
+    const pinned = Array.from(container.querySelectorAll<HTMLElement>("*"))
+      .filter((el) => /(^|\s)(min-h-dvh|h-dvh|min-h-screen|h-screen)(\s|$)/.test(el.className || "")
+        || /app-viewport-h/.test(el.className || ""));
+    expect(pinned).toHaveLength(0);
+  });
+
+  it("orders the reveal after the HUD so its arrival displaces nothing", async () => {
+    await mountArena();
+    const root = screen.getByTestId("ranked-match");
+    const kids = Array.from(root.children);
+    const hudIndex = kids.findIndex((el) => el.querySelector('[data-testid="ranked-submission-status"]'));
+    expect(hudIndex).toBeGreaterThanOrEqual(0);
+    // The reveal slot is the LAST child, after the HUD row — anything that
+    // appears there can only extend the page downwards.
+    expect(hudIndex).toBe(kids.length - 1);
+    const focus = screen.getByTestId("ranked-focus-column");
+    for (const hud of ["ranked-abilities", "ranked-submission-status"]) {
+      expect(focus.contains(screen.getByTestId(hud))).toBe(false);
+    }
   });
 });

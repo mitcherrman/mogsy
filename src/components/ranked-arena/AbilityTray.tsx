@@ -106,7 +106,11 @@ export function AbilityTray({
                   {i + 1}
                 </span>
                 <span className="truncate text-sm font-bold">{ability.name}</span>
-                <span className="ml-auto flex shrink-0 items-center">
+                {/* Reserved marker slot. The "Armed" pill used to appear from
+                    nothing on selection, stealing width from the name beside it
+                    and re-truncating it mid-round. The slot is now always this
+                    wide, so arming an ability changes only what is drawn. */}
+                <span className="ml-auto flex w-[3.25rem] shrink-0 items-center justify-end">
                   {state === "selected" && !ability.locked && (
                     <span className="rounded bg-[#f0d78c] px-1 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#2a1f08]">
                       Armed

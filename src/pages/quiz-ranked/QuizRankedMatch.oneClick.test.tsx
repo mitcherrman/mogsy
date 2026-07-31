@@ -210,10 +210,16 @@ describe("R3 quiz abilities are optional and non-blocking", () => {
     expect(backend.abilityDrafts[0]).toEqual({ ability_id: null });
   });
 
-  it("hides the whole tray once the selection window is locked", async () => {
+  it("keeps the tray mounted but inert once the selection window is locked", async () => {
+    // RA1 1.5: the tray used to be UNMOUNTED here. The window locks at every
+    // round close, so the HUD lost ~140px on every round boundary and the
+    // status panel slid up under the player's cursor. It now holds its place
+    // and goes disabled instead — availability is a state, not a layout event.
     backend.ownSelectionPhase = "locked";
     await mount();
-    expect(screen.queryByTestId("ranked-abilities")).toBeNull();
+    expect(await screen.findByTestId("ranked-abilities")).toBeInTheDocument();
+    expect(screen.getByTestId("ability-tank.fortify")).toBeDisabled();
+    expect(screen.getByTestId("ability-none")).toBeDisabled();
   });
 
   it("hides the tray when every ability is out of charges", async () => {

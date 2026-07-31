@@ -134,15 +134,23 @@ export function projectAbilityPermissions(
 /**
  * Whether the ability tray should render at all.
  *
- * Hidden when there is nothing actionable: no private state, a module that owns
- * its own submission, no unlocked ability, or every unlocked ability out of
- * charges. A tray whose only live control is "No Ability" is not worth a row —
- * No Ability is already the default and needs no click.
+ * This is a question about the player's ROSTER, not about whether the window
+ * happens to be open right now. Hidden when there is genuinely nothing to show:
+ * no private state, a module that owns its own submission, no unlocked ability,
+ * or every unlocked ability spent for the match. A tray whose only live control
+ * is "No Ability" is not worth a row — No Ability is already the default.
+ *
+ * `locked` is deliberately NOT consulted (RA1 1.5). It flips to true at every
+ * round close, and keying visibility off it unmounted the tray on every round
+ * boundary and for the whole of a level-2 choice — tearing ~140px out of the
+ * middle of the HUD and sliding the status panel up under the player's cursor.
+ * A locked round now renders the tray in its own disabled state instead, which
+ * AbilityTray already supports (see `permissions.disabledReasons.ability`).
  */
 export function abilityTrayIsUseful(abilities: AbilityView[],
                                     selectedAbilityId: string | null): boolean {
   if (selectedAbilityId !== null) return true;  // must remain clearable
-  return abilities.some((a) => a.unlocked && !a.exhausted && !a.locked);
+  return abilities.some((a) => a.unlocked && !a.exhausted);
 }
 
 /** Neutral opponent-connection copy for the arena chrome. */

@@ -31,27 +31,23 @@ const CLASSES: { id: RankedClass; label: string; blurb: string }[] = [
 ];
 
 /**
- * `fill` turns the frame into a column that occupies the whole game viewport
- * the shell hands this route, so the live arena can pin its HUD and keep a
- * single internal scroll region. Lobby states stay in ordinary document flow
- * and may be taller than the viewport — the shell scrolls those.
+ * Ordinary document-flow frame. There is no pinned-height / internal-scroll
+ * variant any more: Ranked scrolls with the page like every other route, so the
+ * browser scrollbar is the only one on screen.
  */
-function Frame({ children, size = "default", fill = false }:
-{ children: React.ReactNode; size?: "default" | "wide"; fill?: boolean }) {
+function Frame({ children, size = "default" }:
+{ children: React.ReactNode; size?: "default" | "wide" }) {
   return (
-    <div className={[
-      "ranked-shell mx-auto w-full p-4",
-      size === "wide" ? "max-w-6xl" : "max-w-3xl",
-      fill ? "flex flex-col gap-4 lg:min-h-0 lg:flex-1" : "space-y-4",
-    ].join(" ")} data-testid="quiz-ranked">
-      <header className="flex shrink-0 items-end justify-between gap-3">
+    <div className={`ranked-shell mx-auto w-full space-y-4 p-4 ${
+      size === "wide" ? "max-w-6xl" : "max-w-3xl"}`} data-testid="quiz-ranked">
+      <header className="flex items-end justify-between gap-3">
         <div className="space-y-1">
           <div className="ranked-eyebrow">Competitive Mode</div>
           <h1 className="ranked-title text-2xl font-bold">Ranked Duel</h1>
         </div>
         <Link to="/quiz" className="text-sm text-muted-foreground underline">Back to Quiz</Link>
       </header>
-      {fill ? <div className="flex flex-col lg:min-h-0 lg:flex-1">{children}</div> : children}
+      {children}
     </div>
   );
 }
@@ -148,7 +144,7 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   // A launched / recovered / queued match reuses the exact live-match view.
   if (liveMatchId) {
     return (
-      <Frame size="wide" fill>
+      <Frame size="wide">
         <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId} />
       </Frame>
     );
