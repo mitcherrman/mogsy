@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Global platform policy — shared contract.
 //
-// Three admin-controlled global toggles stored as rows in the existing
+// Four admin-controlled global toggles stored as rows in the existing
 // `public.app_settings` key/value table (public SELECT, admin-only writes via
 // the has_role RLS policies). This module is pure: no React, no Supabase, so
 // the parsing and the fail-closed defaults are trivially unit-testable and can
@@ -18,6 +18,7 @@ export const POLICY_KEYS = {
   combatSimTokensRequiredForNonPro: "combat_sim_tokens_required_for_non_pro",
   tutorialAutoPopupEnabled: "tutorial_auto_popup_enabled",
   tutorialCompletionRequiredForNewUsers: "tutorial_completion_required_for_new_users",
+  globalNavbarVisible: "global_navbar_visible",
 } as const;
 
 export interface PlatformPolicy {
@@ -31,16 +32,33 @@ export interface PlatformPolicy {
     /** New users must complete the tutorial before continuing. */
     completionRequiredForNewUsers: boolean;
   };
+  navigation: {
+    /**
+     * The standard Mogzy navigation bar is displayed across public and
+     * authenticated pages.
+     *
+     * Phase 1 establishes storage, parsing, and the admin control only — no
+     * renderer reads this field yet, so the navbar is visible regardless of the
+     * value. Consumption belongs to Phase 2, once replacement navigation for
+     * Profile, Settings, notifications, and admin tools exists.
+     */
+    globalNavbarVisible: boolean;
+  };
 }
 
 /**
  * Fail-closed defaults, used whenever a row is missing, unreadable, or
  * malformed. All true — this reproduces current production behaviour exactly,
  * so an unreadable settings table never silently opens up the platform.
+ *
+ * For the navbar the same `true` default is fail-SAFE rather than fail-closed:
+ * an outage or a malformed row must never strand users without navigation.
+ * Both readings point the same way, so the rule stays "default true".
  */
 export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   combatSim: { tokensRequiredForNonPro: true },
   tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
+  navigation: { globalNavbarVisible: true },
 };
 
 export interface AppSettingRow {
@@ -66,6 +84,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
   const policy: PlatformPolicy = {
     combatSim: { ...DEFAULT_PLATFORM_POLICY.combatSim },
     tutorial: { ...DEFAULT_PLATFORM_POLICY.tutorial },
+    navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
   };
   if (!rows) return policy;
 
@@ -82,6 +101,10 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.tutorialCompletionRequiredForNewUsers:
         policy.tutorial.completionRequiredForNewUsers = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.tutorial.completionRequiredForNewUsers);
+        break;
+      case POLICY_KEYS.globalNavbarVisible:
+        policy.navigation.globalNavbarVisible = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.navigation.globalNavbarVisible);
         break;
     }
   }

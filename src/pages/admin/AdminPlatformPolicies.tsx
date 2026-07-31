@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Admin · Platform Policies — the three global access/tutorial switches.
+// Admin · Platform Policies — the global access/tutorial/navigation switches.
 //
 // Registered under AdminRoute in App.tsx and additionally wrapped in the shared
 // AdminAuthGate, exactly like /admin/directory. Neither of those is the real
@@ -8,8 +8,8 @@
 // non-admin who bypasses the client-side route still gets rejected by Postgres.
 //
 // No arbitrary key/value writes: the mutation helper only ever sends one of the
-// three keys declared in lib/platform-policy/policy.ts, with a `{enabled: bool}`
-// body it constructs itself. Nothing here is user-supplied.
+// keys declared in lib/platform-policy/policy.ts, with a `{enabled: bool}` body
+// it constructs itself. Nothing here is user-supplied.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
@@ -32,7 +32,8 @@ export const ADMIN_PLATFORM_POLICIES_PATH = "/admin/platform-policies";
 type PolicyField =
   | "combatSimTokens"
   | "tutorialAutoPopup"
-  | "tutorialCompletionRequired";
+  | "tutorialCompletionRequired"
+  | "globalNavbar";
 
 const CONTROLS: {
   field: PolicyField;
@@ -66,6 +67,15 @@ const CONTROLS: {
     offWarning:
       "New users can enter Leaguecraft without completing the tutorial. No completion history is erased — anyone who finishes it is still recorded — so turning this back on immediately uses each account's real completion state.",
   },
+  {
+    field: "globalNavbar",
+    settingKey: POLICY_KEYS.globalNavbarVisible,
+    label: "Show global navbar",
+    description:
+      "Display the standard Mogzy navigation bar across public and authenticated pages.",
+    offWarning:
+      "This control is prepared but is not yet connected to navbar visibility. Turning it off does not hide navigation today — the value is stored and will take effect in Phase 2, once replacement access to Profile, Settings, notifications, and admin tools exists.",
+  },
 ];
 
 function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
@@ -73,6 +83,7 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
     combatSimTokens: policy.combatSim.tokensRequiredForNonPro,
     tutorialAutoPopup: policy.tutorial.autoPopupEnabled,
     tutorialCompletionRequired: policy.tutorial.completionRequiredForNewUsers,
+    globalNavbar: policy.navigation.globalNavbarVisible,
   };
 }
 
