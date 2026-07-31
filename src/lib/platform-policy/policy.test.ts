@@ -13,30 +13,38 @@ describe("defaults reproduce current production behaviour", () => {
     expect(DEFAULT_PLATFORM_POLICY).toEqual({
       combatSim: { tokensRequiredForNonPro: true },
       tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
+      navigation: { globalNavbarVisible: true },
     });
+  });
+
+  it("defaults the navbar to visible, so navigation is never lost by default", () => {
+    expect(DEFAULT_PLATFORM_POLICY.navigation.globalNavbarVisible).toBe(true);
   });
 });
 
 describe("parsePlatformPolicy", () => {
-  it("reads all three settings", () => {
+  it("reads all four settings", () => {
     const policy = parsePlatformPolicy([
       { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
       { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
       { key: KEY.tutorialCompletionRequiredForNewUsers, value: { enabled: false } },
+      { key: KEY.globalNavbarVisible, value: { enabled: false } },
     ]);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
     expect(policy.tutorial.autoPopupEnabled).toBe(false);
     expect(policy.tutorial.completionRequiredForNewUsers).toBe(false);
+    expect(policy.navigation.globalNavbarVisible).toBe(false);
   });
 
   it("keeps the settings independent of one another", () => {
     const policy = parsePlatformPolicy([
       { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
     ]);
-    // Only the popup was changed; the other two keep their fail-closed defaults.
+    // Only the popup was changed; the others keep their fail-closed defaults.
     expect(policy.tutorial.autoPopupEnabled).toBe(false);
     expect(policy.tutorial.completionRequiredForNewUsers).toBe(true);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(true);
+    expect(policy.navigation.globalNavbarVisible).toBe(true);
   });
 
   it("ignores unrelated app_settings rows", () => {
@@ -67,6 +75,76 @@ describe("parsePlatformPolicy", () => {
       { key: KEY.combatSimTokensRequiredForNonPro, value },
     ]);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(true);
+  });
+});
+
+describe("global navbar visibility", () => {
+  it("maps to the app_settings key the migration seeds", () => {
+    expect(KEY.globalNavbarVisible).toBe("global_navbar_visible");
+  });
+
+  it("parses an explicit true", () => {
+    const policy = parsePlatformPolicy([
+      { key: KEY.globalNavbarVisible, value: { enabled: true } },
+    ]);
+    expect(policy.navigation.globalNavbarVisible).toBe(true);
+  });
+
+  it("parses an explicit false", () => {
+    const policy = parsePlatformPolicy([
+      { key: KEY.globalNavbarVisible, value: { enabled: false } },
+    ]);
+    expect(policy.navigation.globalNavbarVisible).toBe(false);
+  });
+
+  it("defaults to visible when the row is missing entirely", () => {
+    const policy = parsePlatformPolicy([
+      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
+    ]);
+    expect(policy.navigation.globalNavbarVisible).toBe(true);
+  });
+
+  it.each([
+    ["null rows", null],
+    ["undefined rows", undefined],
+    ["empty rows (unreadable / failed fetch)", []],
+  ])("defaults to visible on %s", (_label, rows) => {
+    expect(parsePlatformPolicy(rows as never).navigation.globalNavbarVisible).toBe(true);
+  });
+
+  it.each([
+    ["null value", null],
+    ["bare boolean", false],
+    ["string", "false"],
+    ["array", []],
+    ["missing enabled", { on: false }],
+    ["non-boolean enabled", { enabled: "false" }],
+    ["numeric enabled", { enabled: 0 }],
+  ])("defaults to visible on a malformed value: %s", (_label, value) => {
+    const policy = parsePlatformPolicy([{ key: KEY.globalNavbarVisible, value }]);
+    // An outage or a bad row must never strand users without navigation.
+    expect(policy.navigation.globalNavbarVisible).toBe(true);
+  });
+
+  it("turning the navbar off leaves every other policy field untouched", () => {
+    const policy = parsePlatformPolicy([
+      { key: KEY.globalNavbarVisible, value: { enabled: false } },
+    ]);
+    expect(policy.navigation.globalNavbarVisible).toBe(false);
+    expect(policy.combatSim).toEqual(DEFAULT_PLATFORM_POLICY.combatSim);
+    expect(policy.tutorial).toEqual(DEFAULT_PLATFORM_POLICY.tutorial);
+  });
+
+  it("a malformed navbar row does not weaken the other keys' parsing", () => {
+    const policy = parsePlatformPolicy([
+      { key: KEY.globalNavbarVisible, value: "nonsense" },
+      { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
+      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
+    ]);
+    expect(policy.navigation.globalNavbarVisible).toBe(true);
+    expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
+    expect(policy.tutorial.autoPopupEnabled).toBe(false);
+    expect(policy.tutorial.completionRequiredForNewUsers).toBe(true);
   });
 });
 
