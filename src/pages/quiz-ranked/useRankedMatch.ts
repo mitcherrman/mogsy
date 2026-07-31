@@ -28,6 +28,36 @@ const POLL_MS = 1500;
 const MAX_BACKOFF_MS = 8000;
 export const HEARTBEAT_MS = 10000;
 
+/**
+ * Reveal beat (RA1 Phase 1.4). THE single source of the hold duration — no
+ * scattered timeouts.
+ *
+ * This is a PRESENTATION hold and nothing else. The backend has already
+ * resolved round N and already opened round N+1 by the time this starts; the
+ * hold only delays when the client lets the player interact with N+1, so the
+ * damage/HP/XP/level-up that just landed has a moment to be read. It never
+ * delays a request, never gates progression, and never changes what the server
+ * is told or when.
+ */
+export const REVEAL_HOLD_MS = 1500;
+/** Longer when the settlement contains a level-up: there is strictly more to read. */
+export const REVEAL_HOLD_LEVEL_UP_MS = 2600;
+
+/**
+ * Explicit p1/p2 mapping derived from the SNAPSHOT being adapted, not from
+ * render state. The settlement adapter fails closed on a missing/duplicate id,
+ * so deriving this from a closure that may predate the first snapshot is what
+ * silently dropped reveals before. Returns null when the opponent is not in the
+ * payload yet, which is a real "not ready", not an error.
+ */
+function idMappingFromRound(
+  pub: PublicRoundView, viewerUserId: string,
+): { p1PlayerId: string; p2PlayerId: string } | null {
+  const opponent = pub.players.find((p) => p.playerId !== viewerUserId)?.playerId ?? null;
+  if (!opponent || !viewerUserId) return null;
+  return { p1PlayerId: viewerUserId, p2PlayerId: opponent };
+}
+
 export type MatchPhase =
   | "recovering" | "active" | "reviewing" | "locked" | "progression"
   | "match_over" | "recovering_error" | "fatal";
@@ -73,6 +103,13 @@ export interface MatchController {
   submitSegmentChallenge: (challengeIndex: number, itemId: string) => void;
   /** True while the round is open for an ability change. */
   roundLive: boolean;
+  /**
+   * Presentation-only hold: true while the just-resolved round is being
+   * introduced. The view keeps showing the previous question and withholds
+   * interactivity from the next one. Carries no authority — the server has
+   * already moved on.
+   */
+  revealHold: boolean;
 }
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string): MatchController {
@@ -94,8 +131,16 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [revealHold, setRevealHold] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
+  const revealTimerRef = useRef<number | undefined>(undefined);
+  /**
+   * Always-current `poll`. The polling loop re-arms itself from inside its own
+   * body, so calling the captured `poll` directly pinned the whole loop to the
+   * closure created on the very first render — see the comment on `poll`.
+   */
+  const pollRef = useRef<(() => Promise<void>) | null>(null);
   const timerRef = useRef<number | undefined>(undefined);
   const hbRef = useRef<number | undefined>(undefined);
   const activeRoundRef = useRef<number | null>(null);
@@ -144,25 +189,72 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     if (timerRef.current !== undefined) window.clearTimeout(timerRef.current);
     timerRef.current = undefined;
   };
-  const idMapping = useCallback(() => {
-    const opp = opponentUserId ?? "";
-    return { p1PlayerId: viewerUserId, p2PlayerId: opp };
-  }, [opponentUserId, viewerUserId]);
+  /**
+   * Start the presentation hold for a settlement that just landed. Pure
+   * presentation: it reads `leveledUp` off the authoritative settlement only to
+   * decide how LONG to hold, and holds nothing back from the server.
+   */
+  const beginRevealHold = useCallback((leveledUp: boolean) => {
+    if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
+    setRevealHold(true);
+    revealTimerRef.current = window.setTimeout(() => {
+      revealTimerRef.current = undefined;
+      setRevealHold(false);
+    }, leveledUp ? REVEAL_HOLD_LEVEL_UP_MS : REVEAL_HOLD_MS);
+  }, []);
 
-  const captureResolved = useCallback(async (round: number, signal: AbortSignal) => {
+  /**
+   * Fetch + adapt one resolved round.
+   *
+   * `ids` is passed IN, derived from the snapshot that triggered this capture,
+   * so the adapter can never be handed a mapping from a render that predates
+   * the opponent being known.
+   *
+   * The two failure modes are handled separately on purpose. A failed FETCH is
+   * an ordinary "not ready yet" and is retried by the next poll. A failed
+   * ADAPT is a data/programming defect: swallowing it as "not ready" is exactly
+   * what made reveals disappear silently, so it is logged, the round is marked
+   * consumed (no infinite refetch), and the segment transcript is still
+   * recovered from the same payload.
+   */
+  const captureResolved = useCallback(async (
+    round: number,
+    signal: AbortSignal,
+    ids: { p1PlayerId: string; p2PlayerId: string } | null,
+    opts: { hold?: boolean } = {},
+  ) => {
     if (resolvedRef.current === round) return;
+    if (!ids) return;  // opponent not in the snapshot yet — a real not-ready
+
+    let env: Awaited<ReturnType<typeof api.getResolvedRound>>;
     try {
-      const env = await api.getResolvedRound(matchId!, round, signal);
-      const settlement = adaptBackendSettlement(env.payload as unknown as ResolvedProjection, idMapping());
-      resolvedRef.current = round;
-      setLastResolved(settlement);
-      // A quiz round yields null here, which correctly clears a previous
-      // segment transcript so it cannot linger over the next round.
-      setLastSegmentSettlement(readSegmentSettlement(env.payload));
+      env = await api.getResolvedRound(matchId!, round, signal);
     } catch (e) {
-      if (!api.isAborted(e)) { /* resolved not ready yet; ignore */ }
+      if (!api.isAborted(e)) { /* resolved not ready yet; the next poll retries */ }
+      return;
     }
-  }, [matchId, idMapping]);
+    if (signal.aborted) return;
+
+    let settlement: ResolvedRoundView | null = null;
+    try {
+      settlement = adaptBackendSettlement(env.payload as unknown as ResolvedProjection, ids);
+    } catch (e) {
+      console.error(`[ranked] round ${round} settlement failed to adapt`, e);
+    }
+
+    resolvedRef.current = round;
+    if (settlement) setLastResolved(settlement);
+    // A quiz round yields null here, which correctly clears a previous
+    // segment transcript so it cannot linger over the next round.
+    const segment = readSegmentSettlement(env.payload);
+    setLastSegmentSettlement(segment);
+
+    if (opts.hold !== false && (settlement || segment)) {
+      const leveledUp = settlement !== null
+        && (settlement.players.p1.leveledUp || settlement.players.p2.leveledUp);
+      beginRevealHold(leveledUp);
+    }
+  }, [matchId, beginRevealHold]);
 
   const poll = useCallback(async () => {
     if (!matchId || stoppedRef.current) return;
@@ -176,7 +268,10 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       const active = pub.activeRound?.roundNumber ?? null;
       const previous = activeRoundRef.current;
       if (previous !== null && active !== null && active !== previous) {
-        await captureResolved(previous, controller.signal);
+        // Ids come from THIS snapshot, so the mapping always matches the match
+        // the settlement belongs to.
+        await captureResolved(previous, controller.signal,
+          idMappingFromRound(pub, viewerUserId));
         // A new round: drop the previous round's local echoes. The ability ref
         // is reset too, so the next snapshot's value is adopted even when the
         // new round's draft happens to equal the old one.
@@ -202,7 +297,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
           setResult(await api.getMatchResult(matchId, controller.signal));
         } catch { /* result read races match completion; retry next mount */ }
         const lastRound = pub.completedRounds;
-        if (lastRound > 0) await captureResolved(lastRound, controller.signal);
+        // No hold on the final round: MatchOverFrame owns that moment and there
+        // is no "next question" to withhold.
+        if (lastRound > 0) {
+          await captureResolved(lastRound, controller.signal,
+            idMappingFromRound(pub, viewerUserId), { hold: false });
+        }
         return;
       }
       if (active !== null) {
@@ -222,16 +322,28 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       inFlightRef.current = false;
       if (!stoppedRef.current) {
         clearTimer();
-        if (rerunRef.current) { rerunRef.current = false; timerRef.current = window.setTimeout(() => void poll(), 0); }
+        // Re-arm through `pollRef`, never through the captured `poll`. Calling
+        // `poll` here pinned every subsequent iteration to the closure that
+        // scheduled the first one, so the loop kept running with whatever state
+        // existed at mount.
+        const runNext = () => void pollRef.current?.();
+        if (rerunRef.current) { rerunRef.current = false; timerRef.current = window.setTimeout(runNext, 0); }
         else timerRef.current = window.setTimeout(
-          () => void poll(), Math.min(POLL_MS * 2 ** failuresRef.current, MAX_BACKOFF_MS));
+          runNext, Math.min(POLL_MS * 2 ** failuresRef.current, MAX_BACKOFF_MS));
       }
     }
-  }, [matchId, captureResolved]);
+  }, [matchId, captureResolved, viewerUserId]);
+
+  // Keep `pollRef` on the latest `poll`. Declared BEFORE the mount effect so it
+  // is populated by the time that effect kicks the loop off.
+  useEffect(() => { pollRef.current = poll; });
 
   const poke = useCallback(() => {
-    if (!stoppedRef.current) { clearTimer(); timerRef.current = window.setTimeout(() => void poll(), 0); }
-  }, [poll]);
+    if (!stoppedRef.current) {
+      clearTimer();
+      timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
+    }
+  }, []);
 
   // Resume + poll on mount; heartbeat on a separate cadence.
   useEffect(() => {
@@ -253,19 +365,28 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
         if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
         if (resume.latestResolved) {
           const raw = (resume.latestResolved as { payload: unknown }).payload;
+          // Ids from the RESUMED snapshot. This previously used a mapping built
+          // during the mount render, when `publicRound` was still null and the
+          // opponent id was therefore "" — which the adapter rejects, so the
+          // reveal was dropped on every single refresh.
+          const ids = idMappingFromRound(resume.public, viewerUserId);
           try {
-            setLastResolved(adaptBackendSettlement(raw as ResolvedProjection, idMapping()));
-          } catch { /* ignore */ }
+            if (ids) setLastResolved(adaptBackendSettlement(raw as ResolvedProjection, ids));
+          } catch (e) {
+            console.error("[ranked] resumed settlement failed to adapt", e);
+          }
           // Recovered separately so a transcript survives a refresh even if
           // the arena settlement adapter rejects an older payload shape.
           try {
             setLastSegmentSettlement(readSegmentSettlement(raw));
           } catch { /* a malformed reveal simply shows no transcript */ }
+          // Resume replays a reveal the player has usually already seen, and it
+          // must not hold interactivity hostage on reconnect.
         }
       } catch (e) {
         if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
       }
-      void poll();
+      void pollRef.current?.();
     })();
     hbRef.current = window.setInterval(() => {
       void api.sendPresence(matchId).catch(() => { /* one miss is not a disconnect */ });
@@ -274,10 +395,23 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       stoppedRef.current = true;
       clearTimer();
       if (hbRef.current !== undefined) window.clearInterval(hbRef.current);
+      if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = undefined;
       abortRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
+
+  // A finished match has no next question to withhold, so any hold in flight is
+  // released immediately and MatchOverFrame takes over.
+  useEffect(() => {
+    if (!matchOver) return;
+    if (revealTimerRef.current !== undefined) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = undefined;
+    }
+    setRevealHold(false);
+  }, [matchOver]);
 
   // The server's ability draft is the authority; adopt it whenever it moves.
   // Compared against a ref rather than used directly so a local echo survives
@@ -418,6 +552,6 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
     error, roundLive, answer, selectAbility, chooseLevelTwo,
-    segmentState, lastSegmentSettlement, submitSegmentChallenge,
+    segmentState, lastSegmentSettlement, submitSegmentChallenge, revealHold,
   };
 }

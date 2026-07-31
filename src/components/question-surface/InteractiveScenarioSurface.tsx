@@ -191,7 +191,14 @@ export function InteractiveScenarioSurface({
           reused unchanged). role="group" keeps existing accessible native-button
           interaction; strict radiogroup is deferred to avoid changing Quiz-owned
           QuizAnswerOptions (see convergence doc). */}
-      <div role="group" aria-label="Answer options">
+      {/* Keyed on the QUESTION, so the grid's staggered entrance plays exactly
+          once per question and never replays on an incidental rerender (a poll
+          snapshot, a timer tick). QuizAnswerOptions keys its options by index,
+          so without this the stagger would have run on unrelated remounts of
+          this surface and NOT on the one thing that should trigger it. The
+          scenario band deliberately sits outside this boundary: it keeps its own
+          crossfade and its ambient loop is never interrupted. */}
+      <div role="group" aria-label="Answer options" key={question.questionId}>
         <AnswerGrid
           options={question.options}
           selectedOptionId={selectedOptionId}

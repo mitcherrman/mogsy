@@ -37,7 +37,13 @@ export default function RequireRankedTutorial({
   const { loading: statusLoading, required, error } = useRankedTutorialStatus();
 
   if (authLoading || settingsLoading || statusLoading) {
-    return <div className="min-h-dvh bg-background" />;
+    // Sized to the shell's real content height, NOT `min-h-dvh`. This node
+    // renders inside <main>, below the fixed header, so a full dynamic-viewport
+    // box overflows the document by exactly the header (+ mobile bottom-nav)
+    // height — a scrollbar that flashes in and out on every entry to a guarded
+    // route, shifting the layout by its own width as it goes.
+    return <div data-testid="ranked-tutorial-guard-loading"
+      className="min-h-[var(--app-viewport-h)] bg-background" />;
   }
 
   // Global policy off ⇒ no forced onboarding for anyone.

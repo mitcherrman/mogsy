@@ -10,6 +10,15 @@
        Every sticky/offset consumer reads these instead of magic numbers. */
     --app-header-h: 3rem;
     --bottom-nav-clearance: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    /* THE authoritative "how much height does a page actually get" token.
+       Dynamic viewport height minus the fixed header and the mobile bottom-nav
+       clearance the app shell already reserves. Anything that wants to fill the
+       screen must use this — never `100dvh`/`min-h-dvh`, which double-counts the
+       shell's own offsets and overflows the document by exactly header +
+       bottom-nav (56px desktop, 112px mobile). Both inputs are re-declared in
+       the sm+ media query below; var() resolves at use time, so this follows
+       them automatically. */
+    --app-viewport-h: calc(100dvh - var(--app-header-h) - var(--bottom-nav-clearance));
 
     --background: 209 40% 96%;
     --foreground: 222 47% 11%;
@@ -516,7 +525,12 @@
 .ranked-shell::before {
   content: "";
   position: absolute;
-  inset: -0.5rem -0.25rem;
+  /* Vertical bleed is deliberately 0. This layer used to sit 0.5rem proud of
+     the shell top AND bottom, and that 8px of decorative overhang was real
+     scrollable overflow: on a page otherwise sized to fit the viewport exactly,
+     it was enough to raise a scrollbar all on its own. The horizontal bleed is
+     kept — the shell has no horizontal scroll container to feed. */
+  inset: 0 -0.25rem;
   pointer-events: none;
   z-index: 0;
   background:
