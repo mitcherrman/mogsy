@@ -104,30 +104,21 @@
       })();
     </script>
     <style>
-      /* Static startup shell. It paints the destination route's base surface on
-         the very first frame and then sits BEHIND the app (z-index:-1) so it can
-         never cover mounted React content, even if its removal is delayed. */
+      /* Static startup shell: a flat rectangle of the destination route's base
+         colour, and nothing else. It sits BEHIND the app (z-index:-1) so it can
+         never cover mounted React content, even if its removal is delayed.
+
+         Deliberately no gradient, texture or shape. Anything drawn here is a
+         layer the real page then has to replace, which the visitor reads as the
+         page being built in front of them. A flat colour has nothing to notice. */
       #initial-shell {
         position: fixed;
         inset: 0;
         z-index: -1;
         background: #0a0a1a;
       }
-      /* Faint atmospheric wash mirroring `.theme-lol body` in src/index.css, so a
-         direct hit on /lol reads as the library surface rather than a dark void. */
-      html[data-startup-shell="lol"] #initial-shell {
-        background-color: #060c14;
-        background-image:
-          radial-gradient(60% 45% at 50% 0%, rgba(217, 174, 66, 0.10) 0%, transparent 60%),
-          radial-gradient(90% 60% at 50% 100%, rgba(69, 30, 30, 0.35) 0%, transparent 70%),
-          linear-gradient(180deg, #050d15 0%, #04090f 100%);
-      }
-      /* Entrance: centre-dominant dark frame with a hint of the gold title band. */
-      html[data-startup-shell="entry"] #initial-shell {
-        background-color: #04070f;
-        background-image:
-          radial-gradient(52% 34% at 50% 42%, rgba(201, 168, 76, 0.07) 0%, transparent 70%);
-      }
+      html[data-startup-shell="lol"] #initial-shell { background: #060c14; }
+      html[data-startup-shell="entry"] #initial-shell { background: #04070f; }
     </style>
   </head>
 

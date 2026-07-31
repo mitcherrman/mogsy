@@ -36,24 +36,35 @@ describe("the legacy wordmark is gone from every startup path", () => {
   });
 });
 
-describe("the entrance route paints its own shell", () => {
-  it("falls back to the entrance shell, not a route loader", () => {
+describe("startup fallbacks are plain surfaces, not skeletons", () => {
+  it("gives the entrance its base colour and nothing else", () => {
     const root = appSource
       .split("\n")
       .find((l) => l.includes("<MogzyEntryV2 seo=\"root\" />"));
     expect(root).toBeDefined();
-    expect(root!).toContain("fallback={<EntryShell />}");
+    expect(root!).toContain('fallback={<StartupSurface pathname="/" />}');
     expect(root!).not.toContain("RouteLoader");
   });
-});
 
-describe("the hub route paints its own shell", () => {
-  it("falls back to the library shell", () => {
-    expect(routeLine("/lol")).toContain("fallback={<LibraryHubShell />}");
+  it("leaves the hub on the invisible in-shell fallback", () => {
+    // Layout is already mounted and already painting the League colour here, so
+    // the hub needs its height held and nothing drawn. Rendering the hub's own
+    // geometry made the visitor watch the page assemble.
+    expect(routeLine("/lol")).toContain("fallback={<RouteFallback />}");
+    expect(routeLine("/lol")).not.toContain("RouteLoader");
   });
 
-  it("does not fall back to a full-screen loader", () => {
-    expect(routeLine("/lol")).not.toContain("RouteLoader");
+  it("no longer ships any destination-shaped skeleton component", () => {
+    const shellSource = readFileSync(
+      resolve(__dirname, "components/startup/StartupShells.tsx"),
+      "utf8",
+    );
+    for (const gone of ["LibraryHubShell", "EntryShell", "NeutralBootShell", "RouteBootShell"]) {
+      expect(appSource).not.toContain(gone);
+      expect(layoutSource).not.toContain(gone);
+      expect(shellSource).not.toContain(gone);
+    }
+    expect(shellSource).not.toMatch(/data-shell-book|role="status"|animate-/);
   });
 });
 

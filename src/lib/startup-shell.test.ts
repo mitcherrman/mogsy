@@ -46,10 +46,25 @@ describe("no legacy branded splash", () => {
     expect(indexHtml).not.toContain("mogsy-logo-text.png");
   });
 
-  it("ships a startup shell that contains no image at all", () => {
-    const shell = indexHtml.match(/<div id="initial-shell"[^>]*>[\s\S]*?<\/div>/);
+  it("ships a startup shell element that is completely empty", () => {
+    const shell = indexHtml.match(/<div id="initial-shell"[^>]*>([\s\S]*?)<\/div>/);
     expect(shell).not.toBeNull();
-    expect(shell![0]).not.toContain("<img");
+    expect(shell![1].trim()).toBe("");
+  });
+
+  it("paints the shell as a flat colour, with no gradient or texture", () => {
+    // Anything drawn here is a layer the real page then has to replace, which
+    // the visitor reads as the page being assembled in front of them.
+    const style = indexHtml
+      .match(/<style>[\s\S]*?<\/style>/)![0]
+      .replace(/\/\*[\s\S]*?\*\//g, ""); // prose about gradients is not a gradient
+    const shellRules = style
+      .split("}")
+      .filter((r) => r.includes("#initial-shell"))
+      .join("}");
+    expect(shellRules).toContain("#initial-shell");
+    expect(shellRules).not.toMatch(/gradient|background-image|url\(/);
+    expect(shellRules).not.toMatch(/animation|transition|@keyframes/);
   });
 });
 
