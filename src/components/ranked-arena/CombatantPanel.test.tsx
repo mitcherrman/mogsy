@@ -89,7 +89,9 @@ describe("CombatantPanel", () => {
     );
     const status = screen.getByRole("status", { name: /alice round status/i });
     expect(within(status).getByText(/answer locked/i)).toBeInTheDocument();
-    expect(within(status).getByText(/ability locked/i)).toBeInTheDocument();
+    // Compact chip: visible label is "Locked", the full meaning stays on the
+    // accessible name.
+    expect(within(status).getByLabelText(/ability locked/i)).toBeInTheDocument();
     // Neutral only: no ability names/ids and no answer text anywhere.
     expect(status.textContent).not.toMatch(/fortify|brace|barrier|tank\./i);
   });
@@ -98,7 +100,8 @@ describe("CombatantPanel", () => {
     render(
       <CombatantPanel combatant={combatant({ hasAbilitySelected: true })} />,
     );
-    expect(screen.getByText(/ability armed/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/ability armed/i)).toBeInTheDocument();
+    expect(screen.getByText(/armed/i)).toBeInTheDocument();
   });
 
   it("hides the round status entirely when asked", () => {

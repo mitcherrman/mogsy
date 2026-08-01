@@ -235,12 +235,17 @@ describe("RA1 1.3 — settlement capture", () => {
 
     const reveal = await screen.findByTestId("reveal-panel", undefined, { timeout: 4000 });
     expect(reveal).toBeInTheDocument();
-    // Both titles resolve — the opponent card used to render a blank title when
-    // the adapter was handed an empty p2 id.
-    expect(screen.getByTestId("reveal-userA")).toHaveTextContent("You");
-    const opponentCard = screen.getByTestId("reveal-userB");
-    expect(opponentCard).toHaveTextContent("Opponent");
-    expect(opponentCard.textContent ?? "").not.toContain("userB");
+    // Both titles resolve — the opponent side used to render a blank title when
+    // the adapter was handed an empty p2 id. (Compact banner: the sides are
+    // summary chips; the full cards live behind the Details expansion.)
+    expect(screen.getByTestId("reveal-side-userA")).toHaveTextContent("You");
+    const opponentSide = screen.getByTestId("reveal-side-userB");
+    expect(opponentSide).toHaveTextContent("Opponent");
+    expect(opponentSide.textContent ?? "").not.toContain("userB");
+    // The full breakdown is opt-in and mounts the unchanged RevealPanel.
+    fireEvent.click(screen.getByTestId("reveal-details-toggle"));
+    expect(screen.getByTestId("reveal-panel-details")).toBeInTheDocument();
+    expect(screen.getByTestId("reveal-userB")).toHaveTextContent("Opponent");
   });
 
   it("restores the reveal on resume after a refresh", async () => {
@@ -251,7 +256,7 @@ describe("RA1 1.3 — settlement capture", () => {
 
     const reveal = await screen.findByTestId("reveal-panel", undefined, { timeout: 4000 });
     expect(reveal).toBeInTheDocument();
-    expect(screen.getByTestId("reveal-userB")).toHaveTextContent("Opponent");
+    expect(screen.getByTestId("reveal-side-userB")).toHaveTextContent("Opponent");
   });
 
   it("does not re-fetch a round whose settlement failed to adapt", async () => {

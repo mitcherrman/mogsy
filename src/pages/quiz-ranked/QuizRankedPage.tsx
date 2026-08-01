@@ -34,16 +34,24 @@ const CLASSES: { id: RankedClass; label: string; blurb: string }[] = [
  * Ordinary document-flow frame. There is no pinned-height / internal-scroll
  * variant any more: Ranked scrolls with the page like every other route, so the
  * browser scrollbar is the only one on screen.
+ *
+ * Phase 2 compact layout: the heading is ONE row (title · eyebrow · nav) —
+ * the stacked eyebrow/title block spent ~65px of every desktop viewport
+ * before the arena began. Hierarchy is preserved (h1 title, quiet eyebrow,
+ * essential Back link), only the vertical cost changed.
  */
 function Frame({ children, size = "default" }:
 { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
-    <div className={`ranked-shell mx-auto w-full space-y-4 p-4 ${
+    <div className={`ranked-shell mx-auto w-full space-y-3 px-4 py-3 ${
       size === "wide" ? "max-w-6xl" : "max-w-3xl"}`} data-testid="quiz-ranked">
-      <header className="flex items-end justify-between gap-3">
-        <div className="space-y-1">
-          <div className="ranked-eyebrow">Competitive Mode</div>
-          <h1 className="ranked-title text-2xl font-bold">Ranked Duel</h1>
+      {/* md:pl clears the shell's fixed "League Hub" pill (left-4, ~7rem wide),
+          which sits on this row now that the heading is one line. From 1440px
+          the centred frame's own left margin clears it naturally. */}
+      <header className="flex min-h-7 items-center justify-between gap-3 md:pl-28 min-[1440px]:pl-0">
+        <div className="flex items-baseline gap-2.5">
+          <h1 className="ranked-title text-lg font-bold leading-tight">Ranked Duel</h1>
+          <span className="ranked-eyebrow hidden sm:inline">Competitive Mode</span>
         </div>
         <Link to="/quiz" className="text-sm text-muted-foreground underline">Back to Quiz</Link>
       </header>

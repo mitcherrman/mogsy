@@ -177,18 +177,15 @@ describe("the live arena's status slots", () => {
     return view;
   }
 
-  it("gives the answer/ability values their own grid track", async () => {
+  it("does not render the redundant answer/ability status card", async () => {
     await mountArena();
-    await waitFor(() => expect(screen.getByTestId("status-answer")).toBeInTheDocument());
-    for (const id of ["status-answer", "status-ability"]) {
-      const value = screen.getByTestId(id);
-      // The value is a grid item in a fixed [auto | 1fr] pair, not a flex item
-      // in a `justify-between` row — that is what used to slide it sideways by
-      // the width of its own text on every selection.
-      expect(value.parentElement!.className).toContain("grid-cols-[auto_minmax(0,1fr)]");
-      expect(value.className).toContain("truncate");
-      expect(value.className).toContain("text-right");
-    }
+    await waitFor(() => expect(screen.getByTestId("submission-status")).toBeInTheDocument());
+    // Phase 2 compact layout: the side card duplicated the selected answer
+    // (visible in the grid) and the armed ability (visible in the tray) at a
+    // cost of ~94px + a 20rem track. Only the transient status line survives.
+    expect(screen.queryByTestId("status-answer")).toBeNull();
+    expect(screen.queryByTestId("status-ability")).toBeNull();
+    expect(screen.queryByTestId("ranked-submission-status")).toBeNull();
   });
 
   it("reserves a fixed line box for the transient submission status", async () => {

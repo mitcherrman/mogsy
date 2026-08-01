@@ -10,8 +10,9 @@ import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
+import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
-import { SegmentTranscript } from "@/components/ranked-arena/SegmentTranscript";
+import { SegmentResultBanner } from "@/components/ranked-arena/SegmentResultBanner";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
 import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
@@ -153,7 +154,6 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   }
 
   const opponentLabel = opponentPresenceLabel(m.presence);
-  const selectedOption = question?.options.find((o) => o.id === m.selectedOptionId) ?? null;
   // R3: the answer grid is open only while the round is unanswered. One click
   // submits, so there is no `reviewing` phase and no `canChangeAnswer` state.
   // The reveal beat withholds interactivity from the NEXT round while the last
@@ -197,12 +197,19 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // question from the layout. Keeping it mounted also preserves the RA1 1.2
   // guarantee that the scenario loop and answer entrance never restart.
 
-  // A multi-challenge segment has its own transcript: the arena reveal panel
+  // A multi-challenge segment has its own result shape: the arena reveal panel
   // describes ONE challenge, which is the wrong shape for five. Neither is
   // gated on the phase any more — a level-2 choice used to suppress the very
   // reveal that explained it.
+  //
+  // Phase 2 compact layout: both settlements render as FIXED-HEIGHT banners
+  // with the full breakdown behind a Details expansion. The full panels used
+  // to stack 200–500px under the next live round; now the active-round height
+  // budget never includes settlement detail. Each banner collapses itself
+  // whenever a NEW settlement arrives, so the full transcript can never mount
+  // beneath an active question on its own.
   const revealNode = m.lastSegmentSettlement ? (
-    <SegmentTranscript
+    <SegmentResultBanner
       reveal={m.lastSegmentSettlement.reveal}
       viewerUserId={viewerUserId}
       opponentUserId={m.opponentUserId}
@@ -210,7 +217,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       abilitiesByPlayerId={m.lastSegmentSettlement.abilitiesByPlayerId}
     />
   ) : m.lastResolved ? (
-    <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
+    <RevealBanner settlement={m.lastResolved} viewerSlot="p1"
       namesByPlayerId={revealNames(m.lastResolved)} />
   ) : null;
 
@@ -221,13 +228,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           `min-h` reserves the tallest state this strip ever reaches, so the
           transition pill appearing or the timer gaining a notice line cannot
           push the arena below it. */}
-      <section className="ranked-panel flex min-h-[5.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+      <section className="ranked-panel flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
         <div className="flex items-baseline gap-3">
           <div>
             <div className="ranked-eyebrow">
               Ranked Duel{m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}
             </div>
-            <h3 className="ranked-title text-lg font-bold leading-tight">{roundLabel}</h3>
+            <h3 className="ranked-title text-base font-bold leading-tight">{roundLabel}</h3>
           </div>
           {inTransition && (
             <span data-testid="ranked-round-transition"
@@ -288,7 +295,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               so it reads as the focal control without moving anything. */}
           {isProgression && (
             <section data-testid="ranked-progression"
-              className="absolute inset-x-0 top-0 z-20">
+              // Overlaid on the question so nothing below it moves — EXCEPT
+              // when the focus column has no surface at all (a phased segment
+              // between engine rounds): overlaying an empty column would hang
+              // the panel over whatever sits beneath, so it renders in flow
+              // there (the column was empty; nothing shifts).
+              className={renderer && (question || moduleOwnsSubmission)
+                ? "absolute inset-x-0 top-0 z-20" : ""}>
               <LevelUpPanel
                 event={{
                   kind: "level2-choice",
@@ -352,59 +365,38 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         </div>
       </div>
 
-      {/* Lower HUD: the OPTIONAL ability hotbar, and a status line.
+      {/* Lower HUD: the OPTIONAL ability hotbar plus ONE inline status line.
           There is no Lock In button — clicking an answer submits it.
           The row is rendered for the whole match, INCLUDING a level-2 choice:
-          unmounting it there tore ~230px out of the middle of the page. The
-          two lg tracks are always declared, so the status panel keeps its width
-          whether or not the tray currently has anything actionable to show. */}
+          unmounting it there tore ~230px out of the middle of the page.
+
+          Phase 2 compact layout: the old side-by-side status CARD duplicated
+          state already visible in the answer grid (selected answer) and the
+          tray (armed ability) and cost a 20rem track plus ~94px of height.
+          What survives is the one thing nothing else shows — the transient
+          submission status / error — as a reserved-height line under the
+          tray. */}
       {!moduleOwnsSubmission && (
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start">
+          <div className="flex flex-col gap-1.5">
             {showAbilityTray && (
               <section data-testid="ranked-abilities"
-                className="ranked-panel p-3 sm:p-4 lg:col-start-1">
+                className="ranked-panel px-3 py-2.5 sm:px-4">
                 <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
                   permissions={abilityPermissions} onSelectAbility={m.selectAbility}
                   noAbilityLabel="Clear ability" />
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Optional — you can change or clear this until the round ends.
-                </p>
               </section>
             )}
-            <section data-testid="ranked-submission-status"
-              className="ranked-panel p-3 sm:p-4 lg:col-start-2">
-              {/* Fixed label track + a flexible value track. The value used to
-                  be a `justify-between` flex item, so its box slid sideways by
-                  the width of the text every time the answer or ability
-                  changed. Now the value owns a track of its own and only its
-                  CONTENT changes. */}
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
-                  <dt className="text-muted-foreground">Answer</dt>
-                  <dd className="truncate text-right font-semibold" data-testid="status-answer"
-                    title={selectedOption?.label ?? undefined}>
-                    {selectedOption?.label ?? "—"}
-                  </dd>
-                </div>
-                <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
-                  <dt className="text-muted-foreground">Ability</dt>
-                  <dd className="truncate text-right font-semibold" data-testid="status-ability">
-                    {m.selectedAbilityId ? abilityName(m.selectedAbilityId) : "No ability"}
-                  </dd>
-                </div>
-              </dl>
-              {/* One reserved line box: the three status strings (and an error)
-                  differ in length, and swapping them used to change this
-                  panel's height whenever one of them wrapped. */}
-              <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
-                className={`mt-2 line-clamp-2 min-h-[2.25rem] text-xs ${
-                  m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
-                {m.actionError ? m.actionError
-                  : m.submitting ? "Submitting…"
-                    : m.phase === "locked" ? "Answer locked — waiting for opponent…"
-                      : "Choose an answer to lock it in."}
-              </p>
-            </section>
+            {/* One reserved line box: the three status strings (and an error)
+                differ in length, and swapping them used to change the HUD's
+                height whenever one of them wrapped. */}
+            <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
+              className={`line-clamp-2 min-h-[2.25rem] px-1 text-xs ${
+                m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
+              {m.actionError ? m.actionError
+                : m.submitting ? "Submitting…"
+                  : m.phase === "locked" ? "Answer locked — waiting for opponent…"
+                    : "Choose an answer to lock it in."}
+            </p>
           </div>
       )}
 

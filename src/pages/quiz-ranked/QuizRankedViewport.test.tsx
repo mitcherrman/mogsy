@@ -162,13 +162,13 @@ describe("the live arena's scroll ownership", () => {
     await mountArena();
     const root = screen.getByTestId("ranked-match");
     const kids = Array.from(root.children);
-    const hudIndex = kids.findIndex((el) => el.querySelector('[data-testid="ranked-submission-status"]'));
+    const hudIndex = kids.findIndex((el) => el.querySelector('[data-testid="submission-status"]'));
     expect(hudIndex).toBeGreaterThanOrEqual(0);
     // The reveal slot is the LAST child, after the HUD row — anything that
     // appears there can only extend the page downwards.
     expect(hudIndex).toBe(kids.length - 1);
     const focus = screen.getByTestId("ranked-focus-column");
-    for (const hud of ["ranked-abilities", "ranked-submission-status"]) {
+    for (const hud of ["ranked-abilities", "submission-status"]) {
       expect(focus.contains(screen.getByTestId(hud))).toBe(false);
     }
   });

@@ -6,7 +6,7 @@
  * capability, so registering a third module later changes nothing here.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/backend-auth", () => ({
@@ -135,11 +135,20 @@ describe("QuizRankedMatch — multi-challenge segment", () => {
     expect(screen.getByTestId("icd-item-Item 3")).toBeInTheDocument();
   });
 
-  it("renders the segment transcript after settlement", async () => {
+  it("renders a compact segment result after settlement — full transcript only on demand", async () => {
     backend.resolvedPayload = icdResolvedPayload();
     await mount();
-    const transcript = await screen.findByTestId("icd-transcript");
-    expect(transcript).toBeInTheDocument();
+    // Phase 2 compact layout: the live flow shows a fixed-height banner, and
+    // the verbose per-challenge transcript NEVER mounts beneath an active
+    // round on its own.
+    const banner = await screen.findByTestId("icd-result-banner");
+    expect(banner).toBeInTheDocument();
+    expect(screen.getByTestId("icd-banner-result")).toHaveTextContent("Win");
+    expect(screen.queryByTestId("icd-transcript")).toBeNull();
+    // The canonical detail is deferred, not dropped: Details expands the
+    // unchanged transcript.
+    fireEvent.click(screen.getByTestId("icd-details-toggle"));
+    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
     expect(screen.getByTestId("icd-transcript-result")).toHaveTextContent("Win");
   });
 

@@ -33,6 +33,9 @@ export interface RevealPanelProps {
   notices?: string[];
   /** Optional slot for mode-owned extras (combat log, coach copy, …). */
   children?: ReactNode;
+  /** Override when embedded (e.g. inside RevealBanner's Details expansion),
+   * so the compact banner keeps the canonical "reveal-panel" id. */
+  testId?: string;
 }
 
 const OUTCOME_COPY: Record<ResolvedCombatantView["outcome"], string> = {
@@ -155,6 +158,7 @@ export function RevealPanel({
   answersByPlayerId,
   notices,
   children,
+  testId = "reveal-panel",
 }: RevealPanelProps) {
   const opponentSlot: Slot = viewerSlot === "p1" ? "p2" : "p1";
   const viewer = settlement.players[viewerSlot];
@@ -167,7 +171,7 @@ export function RevealPanel({
     settlement.winner === null ? null : nameOf(settlement.players[settlement.winner]);
 
   return (
-    <section aria-label="Round result" data-testid="reveal-panel" className="space-y-3">
+    <section aria-label="Round result" data-testid={testId} className="space-y-3">
       <div
         role="status"
         className="text-sm font-semibold"

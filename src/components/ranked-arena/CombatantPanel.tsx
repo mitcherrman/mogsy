@@ -33,7 +33,7 @@ export function HealthMeter({ combatant }: { combatant: CombatantView }) {
           aria-valuenow={hp}
           aria-valuemin={0}
           aria-valuemax={maxHp!}
-          className="h-4 rounded-full bg-muted overflow-hidden border border-border"
+          className="h-3 rounded-full bg-muted overflow-hidden border border-border"
         >
           <div
             className={`h-full rounded-full transition-all duration-700 motion-reduce:transition-none ${
@@ -97,18 +97,18 @@ export function ExperienceMeter({ combatant }: { combatant: CombatantView }) {
  */
 function RoundStatus({ combatant }: { combatant: CombatantView }) {
   const { hasSubmitted, abilityWindow, hasAbilitySelected, name } = combatant;
-  // Two reserved rows, and each badge holds a fixed icon slot.
+  // ONE reserved row, and each badge holds a fixed icon slot.
   //
-  // These chips swap between labels of very different widths ("Thinking…" →
-  // "Answer locked", "Choosing ability" → "Ability armed") and one of them
-  // gains an icon it did not previously have. In a plain wrap container that
-  // re-flowed the second chip onto a new line mid-round and changed this
-  // panel's height; the icon appearing also shifted the label sideways. The
-  // height is now constant for every combination and the icon occupies the
-  // same 12px whether or not it is drawn.
+  // Phase 2 compact layout: the ability chip's labels are short enough
+  // ("Armed" / "Picking…" / "Locked") that both chips always fit one line in
+  // the 15rem rail, so the reserved height is a single row now instead of two.
+  // The answer chip keeps its full wording — "Answer locked" is load-bearing
+  // copy (tutorial + player comprehension); the ability chip is disambiguated
+  // by its aria-label rather than a longer visible label. The icon still
+  // occupies the same 12px whether or not it is drawn.
   return (
     <div
-      className="flex min-h-[3.25rem] flex-wrap content-start gap-1.5"
+      className="flex min-h-7 flex-wrap content-start gap-1.5"
       role="status"
       aria-label={`${name} round status`}
       data-testid={`status-${combatant.playerId}`}
@@ -120,13 +120,15 @@ function RoundStatus({ combatant }: { combatant: CombatantView }) {
         {hasSubmitted ? "Answer locked" : "Thinking…"}
       </Badge>
       {abilityWindow !== null && (
-        <Badge variant={abilityWindow === "locked" ? "default" : "secondary"} className="gap-1">
+        <Badge variant={abilityWindow === "locked" ? "default" : "secondary"} className="gap-1"
+          aria-label={abilityWindow === "locked" ? "Ability locked"
+            : hasAbilitySelected ? "Ability armed" : "Choosing ability"}>
           <span aria-hidden className="inline-flex h-3 w-3 shrink-0 items-center justify-center">
             {abilityWindow === "locked" ? <Lock className="h-3 w-3" />
               : hasAbilitySelected ? <CheckCircle2 className="h-3 w-3" /> : null}
           </span>
-          {abilityWindow === "locked" ? "Ability locked"
-            : hasAbilitySelected ? "Ability armed" : "Choosing ability"}
+          {abilityWindow === "locked" ? "Locked"
+            : hasAbilitySelected ? "Armed" : "Picking…"}
         </Badge>
       )}
     </div>
@@ -146,7 +148,7 @@ export function CombatantPanel({
     <section
       aria-label={`${name} panel`}
       data-testid={`combatant-${combatant.playerId}`}
-      className={`relative rounded-xl border-2 bg-card p-4 space-y-3 ring-1 ring-inset ring-white/5 ${
+      className={`relative rounded-xl border-2 bg-card p-3 space-y-2 ring-1 ring-inset ring-white/5 ${
         side === "player"
           ? "border-primary/60 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.55)]"
           : "border-destructive/50 shadow-[0_0_24px_-12px_hsl(var(--destructive)/0.45)]"

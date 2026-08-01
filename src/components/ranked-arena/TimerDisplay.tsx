@@ -28,19 +28,19 @@ export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerVie
   // used to grow this section and shove the surrounding HUD down.
   return (
     <section aria-label={label} data-testid="timer-display"
-      className="relative min-w-[7.5rem] space-y-1 text-center">
+      className="relative min-w-[6.5rem] space-y-0.5 text-center">
       <div
         aria-live="off"
         aria-label={`Time remaining ${format(remainingSeconds)}`}
         data-testid="timer-value"
         data-timer-state={paused ? "paused" : expired ? "zero" : urgent ? "urgent" : "running"}
-        className={`font-mono text-3xl font-bold tabular-nums ${
+        className={`font-mono text-2xl font-bold leading-tight tabular-nums ${
           expired || urgent ? "text-destructive" : "text-foreground"
         }`}
       >
         {format(remainingSeconds)}
       </div>
-      <div className="text-[11px] text-muted-foreground tabular-nums">
+      <div className="text-[10px] leading-tight text-muted-foreground tabular-nums">
         of {format(durationSeconds)} shared round
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-full space-y-1 pt-0.5">

@@ -89,7 +89,10 @@ export function AbilityTray({
               data-testid={`ability-${ability.id}`}
               data-ability-state={state}
               onClick={() => onSelectAbility(ability.id)}
-              className={`group relative flex min-h-[76px] flex-col rounded-lg border p-2.5 text-left transition-all motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-55 ${
+              // Full effect text stays available on hover/long-press; the
+              // always-visible card carries one clamped line (compact HUD).
+              title={ability.description}
+              className={`group relative flex min-h-[4.25rem] flex-col rounded-lg border p-2 text-left transition-all motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-55 ${
                 ability.selected
                   ? "border-[#f0d78c] bg-[#c9a84c]/15 shadow-[0_0_20px_-6px_rgba(201,168,76,0.7),inset_0_0_0_1px_rgba(240,215,140,0.4)]"
                   : "border-white/10 bg-white/[0.03] enabled:hover:border-[#7fd6ef]/45 enabled:hover:bg-white/[0.05]"
@@ -125,11 +128,11 @@ export function AbilityTray({
                 </span>
               </div>
 
-              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+              <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground">
                 {ability.description}
               </p>
 
-              <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
+              <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                 {charges ? (
                   <span className="flex items-center gap-1">
                     <ChargePips count={ability.remainingCharges ?? 0} />
@@ -159,7 +162,8 @@ export function AbilityTray({
           data-testid="ability-none"
           data-ability-state={selectedAbilityId === null ? "selected" : "available"}
           onClick={() => onSelectAbility(null)}
-          className={`group relative flex min-h-[76px] flex-col rounded-lg border border-dashed p-2.5 text-left transition-all motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-55 ${
+          title="Submit this round without arming an ability."
+          className={`group relative flex min-h-[4.25rem] flex-col rounded-lg border border-dashed p-2 text-left transition-all motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-55 ${
             selectedAbilityId === null
               ? "border-[#f0d78c] bg-[#c9a84c]/12 shadow-[inset_0_0_0_1px_rgba(240,215,140,0.35)]"
               : "border-white/15 bg-transparent enabled:hover:border-white/30"
@@ -176,7 +180,7 @@ export function AbilityTray({
               </span>
             )}
           </div>
-          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+          <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground">
             Submit this round without arming an ability.
           </p>
         </button>

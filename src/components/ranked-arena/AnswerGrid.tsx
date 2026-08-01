@@ -29,6 +29,8 @@ export interface AnswerGridProps {
    * pass this before the backend has revealed the round.
    */
   revealedCorrectOptionId?: string | null;
+  /** Compact surfaces opt into a 2-up desktop grid when labels allow it. */
+  wideTwoColumn?: boolean;
 }
 
 export function AnswerGrid({
@@ -37,6 +39,7 @@ export function AnswerGrid({
   permissions,
   onSelectOption,
   revealedCorrectOptionId = null,
+  wideTwoColumn = false,
 }: AnswerGridProps) {
   const selected = options.find((o) => o.id === selectedOptionId) ?? null;
   const revealed = options.find((o) => o.id === revealedCorrectOptionId) ?? null;
@@ -62,6 +65,7 @@ export function AnswerGrid({
         selectedAnswer={selected?.label ?? null}
         answerResult={revealed ? { correct_answer: revealed.label } : null}
         onSelect={handleSelect}
+        columns={wideTwoColumn ? "wide-2" : "auto"}
       />
     </fieldset>
   );

@@ -40,6 +40,13 @@ type QuizAnswerOptionsProps = {
   /** Non-null once the answer is judged; enables reveal styling + disables buttons. */
   answerResult: QuizAnswerRevealResult | null;
   onSelect: (label: string) => void;
+  /**
+   * Column strategy. "auto" (default) is the classic quiz behaviour and is
+   * unchanged. "wide-2" additionally goes 2-up from lg — for compact
+   * competitive surfaces whose callers have verified the labels are short
+   * enough to stay readable side by side.
+   */
+  columns?: "auto" | "wide-2";
 };
 
 export default function QuizAnswerOptions({
@@ -47,12 +54,17 @@ export default function QuizAnswerOptions({
   selectedAnswer,
   answerResult,
   onSelect,
+  columns = "auto",
 }: QuizAnswerOptionsProps) {
   const hasImages = choicesHaveImages(choices);
   return (
     <div
       data-quiz-answer-options
-      className={hasImages ? "grid grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)]:gap-2"}
+      data-columns={columns}
+      className={hasImages
+        ? "grid grid-cols-2 gap-2.5"
+        : `grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)]:gap-2${
+          columns === "wide-2" ? " lg:grid-cols-2" : ""}`}
     >
       {(choices || []).map((choice, idx) => {
         const label = getChoiceLabel(choice);

@@ -119,6 +119,13 @@ function HeroBand({
       : null;
   const aspectRatio = BAND_ASPECT[settings.mediaScale as "hero" | "band"];
   const reducedMotion: "never" | "user" = settings.motionLevel === "full" ? "never" : "user";
+  // Compact density (competitive/speed) trades band size for above-the-fold
+  // room: an active Ranked round must fit question + answers + HUD in a
+  // desktop viewport, so the cinematic band is capped hard while comfortable
+  // surfaces keep the tall presentation.
+  const compactBand = settings.density === "compact";
+  const bandMinHeight = compactBand ? "8rem" : "12.5rem";
+  const bandMaxHeight = compactBand ? "11rem" : "30rem";
 
   return (
     <MotionConfig reducedMotion={reducedMotion}>
@@ -130,7 +137,7 @@ function HeroBand({
         // illegibility); maxHeight caps it on ultra-wide columns. Between the two
         // the aspect ratio drives height, so the subject art gets more room and
         // reads larger without an over-tall panel.
-        style={{ containerType: "size", aspectRatio, minHeight: "12.5rem", maxHeight: "30rem" }}
+        style={{ containerType: "size", aspectRatio, minHeight: bandMinHeight, maxHeight: bandMaxHeight }}
       >
         <ScenarioCard question={scenarioSource!} revealActive={revealed} correctAnswer={correctAnswer} />
       </div>
@@ -158,6 +165,13 @@ export function InteractiveScenarioSurface({
       ? (question.options.find((o) => o.id === revealedCorrectOptionId)?.label ?? undefined)
       : undefined;
   const promptSize = settings.density === "compact" ? "text-base" : "text-lg";
+  // 2-up answers on desktop for compact surfaces, but only when every label is
+  // short enough to stay readable side by side; long-form answers keep the
+  // single column. Image choices already manage their own 2-up grid.
+  const wideTwoColumn =
+    settings.density === "compact"
+    && question.options.length >= 4
+    && question.options.every((o) => o.label.length <= 44);
 
   return (
     <section
@@ -205,6 +219,7 @@ export function InteractiveScenarioSurface({
           permissions={permissions}
           onSelectOption={onSelectOption}
           revealedCorrectOptionId={revealedCorrectOptionId}
+          wideTwoColumn={wideTwoColumn}
         />
       </div>
 
