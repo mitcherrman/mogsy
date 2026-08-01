@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck, ShieldAlert, MessageSquare, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
@@ -263,11 +264,11 @@ export default function UserNotificationBell() {
 
     let profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
     if (otherIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("public_profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", otherIds);
-      (profiles || []).forEach((p) => {
+      // get_league_profiles, not public_profiles: the view is security_invoker,
+      // so the requester/addressee rows resolved to nothing and every friend
+      // notification fell back to the "Someone" placeholder below.
+      const profiles = await fetchLeagueProfiles(otherIds);
+      profiles.forEach((p) => {
         if (p.id) profileMap.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
       });
     }

@@ -30,6 +30,7 @@ import { useFriends } from "@/hooks/useFriends";
 import { useBlocks } from "@/hooks/useBlocks";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { toast } from "sonner";
 
 function BlockedUsersList({
@@ -47,11 +48,14 @@ function BlockedUsersList({
 
   useEffect(() => {
     if (blockedIds.size === 0) return;
-    supabase
-      .from("public_profiles")
-      .select("id, display_name, avatar_url")
-      .in("id", Array.from(blockedIds))
-      .then(({ data }) => setProfiles(data || []));
+    // KNOWN GAP — this list still renders empty, and did before this change.
+    // public_profiles is security_invoker, so RLS resolved these rows to
+    // nothing; get_league_profiles filters out profiles blocked in EITHER
+    // direction, which is precisely this set. Moving it here anyway keeps all
+    // cross-user profile reads on one code path, so the eventual fix (a
+    // block-list-aware RPC) lands in one place. Blocking, unblocking and the
+    // blocked-id set itself are unaffected — only the names/avatars are absent.
+    fetchLeagueProfiles(Array.from(blockedIds)).then(setProfiles);
   }, [blockedIds]);
 
   return (

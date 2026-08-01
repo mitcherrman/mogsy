@@ -22,6 +22,7 @@ import { getThemeById } from "@/lib/profile-themes";
 import ThemeOverlay from "@/components/ThemeOverlay";
 import RecentMatchups from "@/components/RecentMatchups";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { fetchLeagueProfile } from "@/lib/league-profiles";
 import { BrainCircuit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { quizApi, resolveQuizAssetUrl } from "@/lib/quiz/api";
@@ -29,7 +30,10 @@ import LeaguePublicProfile from "@/components/profile/LeaguePublicProfile";
 
 interface ProfileData {
   id: string;
-  user_id: string | null;
+  // No `user_id`. The League read is get_league_profiles, whose contract
+  // deliberately omits it (migration 20260730150000), and nothing on this page
+  // needs it any more: own-profile detection compares profile ids, and quiz
+  // stats are requested only for the signed-in viewer.
   display_name: string | null;
   avatar_url: string | null;
   age: number | null;
@@ -78,23 +82,16 @@ const socialConfig: Record<string, { icon: React.ElementType; label: string }> =
 };
 
 /**
- * Columns a League-facing profile is allowed to read about ANOTHER user.
+ * What a League-facing profile may read about ANOTHER user is now fixed by the
+ * database, not by a column list here: `get_league_profiles(uuid[])` returns
+ * exactly the approved contract and a caller cannot widen it.
  *
  * The legacy Mogsy profile was a dating profile: `age`, `location`, `socials`,
  * `status_message`, `custom_theme` and `profile_photos` all still exist in
- * storage and are still editable by their owner, but they must never reach a
- * League surface — UI, query, metadata, JSON-LD or social preview.
- *
- * Deliberately a subset of BOTH the current `public_profiles` view and the
- * restricted view that replaces it, so this query is valid before and after
- * that migration and the two can be deployed in either order. `is_bot` is not
- * listed for exactly that reason: it is absent from the current view, so
- * selecting it here would break the page until the migration lands. Its only
- * consumer is the thin-profile `noindex` rule, which already evaluates the
- * same way without it.
+ * storage and are still editable by their owner, but they never reach a League
+ * surface — UI, query, metadata, JSON-LD or social preview. The former
+ * LEAGUE_PROFILE_COLUMNS constant is gone with the view read it belonged to.
  */
-const LEAGUE_PROFILE_COLUMNS =
-  "id, user_id, display_name, avatar_url, profile_frame, is_pro, is_anonymous, created_at";
 
 const frameClasses: Record<string, string> = {
   default: "",
@@ -249,7 +246,24 @@ export default function UserProfile() {
   const [bestCompeteTier, setBestCompeteTier] = useState<string>("unranked");
   const [tierConfig, setTierConfig] = useState<TierConfig[]>(DEFAULT_TIER_CONFIG);
   const [rankEnabled, setRankEnabled] = useState(true);
+  // The VIEWER's own public profile id, read from their own `profiles` row —
+  // which RLS permits. This is how own-profile detection works now: compare
+  // profile ids, never the viewed profile's user_id (which is no longer read).
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const { status: friendStatus, friendshipId, refresh: refreshFriend } = useFriendStatus(profileId);
+
+  useEffect(() => {
+    if (!user) {
+      setMyProfileId(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => setMyProfileId(data?.id ?? null));
+  }, [user]);
 
   useEffect(() => {
     if (!profileId) return;
@@ -277,13 +291,22 @@ export default function UserProfile() {
     setTierConfig(localTierConfig);
     setRankEnabled(localRankEnabled);
 
-    // Fetch profile. League surfaces read the restricted projection; the
-    // legacy Mogsy profile keeps its full read so nothing about it changes.
-    const { data: profileData } = await supabase
-      .from("public_profiles")
-      .select(LEAGUE_ONLY_MODE ? LEAGUE_PROFILE_COLUMNS : "*")
-      .eq("id", profileId)
-      .single();
+    // Fetch profile. League surfaces read the restricted RPC, which is the only
+    // path that can see another user's row at all (public_profiles is
+    // security_invoker, so RLS resolves it to zero rows and this page 404'd for
+    // everyone but yourself). The legacy Mogsy profile keeps its full view read
+    // so nothing about it changes.
+    let profileData: unknown = null;
+    if (LEAGUE_ONLY_MODE) {
+      profileData = await fetchLeagueProfile(profileId);
+    } else {
+      const { data } = await supabase
+        .from("public_profiles")
+        .select("*")
+        .eq("id", profileId)
+        .single();
+      profileData = data;
+    }
 
     if (!profileData) {
       setLoading(false);
@@ -490,10 +513,22 @@ export default function UserProfile() {
   const activeSocials = Object.entries(socials).filter(([, v]) => v && v.trim());
   const theme = getThemeById(profile?.custom_theme || "default");
 
+  // Own-profile detection: the viewer's own profile id vs the route's.
+  const isOwnProfile = !!myProfileId && myProfileId === profileId;
+
   // League identity: quiz rank pill in the hero. Same query key as
   // LeaguePublicProfile below, so react-query dedupes the fetch.
-  const targetUserId = LEAGUE_ONLY_MODE ? profile?.user_id ?? null : null;
-  const isOwnProfile = !!user && !!profile?.user_id && user.id === profile.user_id;
+  //
+  // Requested ONLY for your own profile, and sourced from the session rather
+  // than from the viewed profile row. /api/quiz/* resolves a verified caller to
+  // their OWN subject regardless of the id passed, and /user/:profileId is
+  // behind ProtectedRoute — so asking for someone else's stats returned the
+  // VIEWER's numbers, rendered as if they were the profile owner's. Passing
+  // null disables the query here and the three inside LeaguePublicProfile, so
+  // rank, category progress and achievements are hidden on other people's
+  // profiles and unchanged on your own. Restoring them cross-user needs a
+  // profile-id-keyed public-stats endpoint; deliberately not added here.
+  const targetUserId = LEAGUE_ONLY_MODE && isOwnProfile ? user?.id ?? null : null;
   const { data: quizProgress } = useQuery({
     queryKey: ["quiz-progress", targetUserId],
     queryFn: () => quizApi.getProgress(targetUserId!),

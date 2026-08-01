@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchLeagueProfiles } from "@/lib/league-profiles";
 
 export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "blocked";
 
@@ -79,15 +80,13 @@ export function useFriends() {
 
     let profileMap = new Map<string, FriendProfile>();
     if (otherIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("public_profiles")
-        .select("id, display_name, avatar_url, is_pro")
-        .in("id", otherIds);
-      if (profiles) {
-        profiles.forEach((p) => {
-          if (p.id) profileMap.set(p.id, p as FriendProfile);
-        });
-      }
+      // get_league_profiles, not public_profiles: the view is security_invoker,
+      // so every other user's row resolved to zero rows and each friend fell
+      // through to the "Unknown" placeholder below.
+      const profiles = await fetchLeagueProfiles(otherIds);
+      profiles.forEach((p) => {
+        if (p.id) profileMap.set(p.id, p);
+      });
     }
 
     const enriched = filteredRows.map((r) => {
