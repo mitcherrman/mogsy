@@ -3,6 +3,9 @@
  * MemoryRouter with the real route paths mounted (so :lpPage parsing is
  * exercised rather than stubbed), and a fetch router keyed on the endpoint.
  */
+// Test-only helper: exports render/fetch utilities rather than components, so
+// the fast-refresh component-export rule does not apply here.
+/* eslint-disable react-refresh/only-export-components */
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
