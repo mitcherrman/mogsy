@@ -66,6 +66,9 @@ describe("owner segment state parsing", () => {
     expect(state.phase).toBe("challenges");
     expect(state.challenges).toHaveLength(5);
     expect(state.challenges[0].left.itemId).toBe("Item 0");
+    // The transport layer carries asset_path VERBATIM (still repo-relative).
+    // It is NOT renderable as-is: the renderer must resolve it against the
+    // combat API origin via resolveQuizAssetUrl (see itemCostDuelModule).
     expect(state.challenges[0].right.assetPath).toBe("assets/items/1.png");
     expect(state.ownNextChallengeIndex).toBe(2);
     expect(state.ownSubmittedChoices).toEqual(["Item 0", "Item 2", null, null, null]);

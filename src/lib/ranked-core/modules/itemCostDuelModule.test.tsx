@@ -186,6 +186,129 @@ describe("Item Cost Duel — challenge phase", () => {
   });
 });
 
+describe("Item Cost Duel — item images", () => {
+  // The backend emits repo-relative asset paths; the renderer must resolve
+  // them against the combat API origin (same contract as resolveQuizAssetUrl).
+  const ASSET_ORIGIN =
+    ((import.meta.env.VITE_COMBAT_API_URL as string | undefined) ||
+      "http://127.0.0.1:8000").replace(/\/+$/, "");
+
+  /** Challenge-phase state whose first pair is the given two raw items. */
+  function stateWithPair(left: Record<string, unknown>, right: Record<string, unknown>) {
+    return parse(icdChallengeState(0, {
+      challenges: {
+        prompt: "Which item costs more?",
+        challenge_count: 5,
+        challenges: Array.from({ length: 5 }, (_, i) => (i === 0
+          ? { challenge_index: 0, left, right }
+          : {
+              challenge_index: i,
+              left: { item_id: `Item ${i * 2}`, name: `Item ${i * 2}`, item_type: "legendary", asset_path: `assets/items/${i * 2}.png` },
+              right: { item_id: `Item ${i * 2 + 1}`, name: `Item ${i * 2 + 1}`, item_type: "legendary", asset_path: `assets/items/${i * 2 + 1}.png` },
+            })),
+      },
+    })).segmentState;
+  }
+
+  const realPair = () => stateWithPair(
+    { item_id: "Blade of The Ruined King", name: "Blade of The Ruined King",
+      item_type: "legendary", asset_path: "assets/items/3153.png" },
+    { item_id: "Zeke's Convergence", name: "Zeke's Convergence",
+      item_type: "legendary", asset_path: "assets/items/3050.png" },
+  );
+
+  it("resolves a relative backend asset path against the combat API origin", () => {
+    renderModule(realPair());
+    const img = screen.getByAltText("Blade of The Ruined King item icon");
+    expect(img.getAttribute("src")).toBe(`${ASSET_ORIGIN}/assets/items/3153.png`);
+    // Never the raw relative path (which would 404 against the frontend origin).
+    expect(img.getAttribute("src")).not.toBe("assets/items/3153.png");
+  });
+
+  it("passes an absolute URL through unchanged", () => {
+    renderModule(stateWithPair(
+      { item_id: "Sunfire Aegis", name: "Sunfire Aegis", item_type: "legendary",
+        asset_path: "https://cdn.example.test/items/3068.png" },
+      { item_id: "Kindlegem", name: "Kindlegem", item_type: "component",
+        asset_path: "assets/items/3067.png" },
+    ));
+    expect(screen.getByAltText("Sunfire Aegis item icon").getAttribute("src"))
+      .toBe("https://cdn.example.test/items/3068.png");
+    expect(screen.getByAltText("Kindlegem item icon").getAttribute("src"))
+      .toBe(`${ASSET_ORIGIN}/assets/items/3067.png`);
+  });
+
+  it("renders an image in BOTH duel cards", () => {
+    renderModule(realPair());
+    const card = (id: string) => within(screen.getByTestId(id));
+    expect(card("icd-item-Blade of The Ruined King").getByTestId("icd-item-img")).toBeInTheDocument();
+    expect(card("icd-item-Zeke's Convergence").getByTestId("icd-item-img")).toBeInTheDocument();
+  });
+
+  it("keeps a fixed-size slot mounted in every state, so loading or failure cannot move the card", () => {
+    renderModule(realPair());
+    const slots = screen.getAllByTestId("icd-item-icon-slot");
+    expect(slots).toHaveLength(2);
+    for (const slot of slots) expect(slot.className).toMatch(/\bh-12\b.*\bw-12\b/);
+    // The img reserves its box before loading via explicit dimensions.
+    for (const img of screen.getAllByTestId("icd-item-img")) {
+      expect(img).toHaveAttribute("width", "48");
+      expect(img).toHaveAttribute("height", "48");
+    }
+    // A failed load keeps both slots mounted.
+    fireEvent.error(screen.getByAltText("Blade of The Ruined King item icon"));
+    expect(screen.getAllByTestId("icd-item-icon-slot")).toHaveLength(2);
+  });
+
+  it("replaces a failed image with the controlled fallback — never the native broken-image icon", () => {
+    renderModule(stateWithPair(
+      { item_id: "Removed Item", name: "Removed Item", item_type: "legendary",
+        asset_path: "assets/items/999999.png" },
+      { item_id: "Kindlegem", name: "Kindlegem", item_type: "component",
+        asset_path: "assets/items/3067.png" },
+    ));
+    fireEvent.error(screen.getByAltText("Removed Item item icon"));
+    const card = within(screen.getByTestId("icd-item-Removed Item"));
+    // The <img> is unmounted (no native broken-image glyph can remain) and the
+    // glyph takes its place inside the same slot, keeping the accessible name.
+    expect(card.queryByTestId("icd-item-img")).toBeNull();
+    expect(card.getByTestId("icd-item-fallback")).toBeInTheDocument();
+    expect(card.getByLabelText("Removed Item item icon")).toBeInTheDocument();
+    expect(card.getByTestId("icd-item-icon-slot")).toBeInTheDocument();
+    // The healthy card is untouched.
+    expect(within(screen.getByTestId("icd-item-Kindlegem")).getByTestId("icd-item-img")).toBeInTheDocument();
+  });
+
+  it("shows the fallback glyph for an empty or missing asset path", () => {
+    renderModule(stateWithPair(
+      { item_id: "Elixir of Iron", name: "Elixir of Iron", item_type: "consumable",
+        asset_path: "" },
+      { item_id: "Mystery Item", name: "Mystery Item", item_type: null,
+        asset_path: null },
+    ));
+    for (const name of ["Elixir of Iron", "Mystery Item"]) {
+      const card = within(screen.getByTestId(`icd-item-${name}`));
+      expect(card.queryByTestId("icd-item-img")).toBeNull();
+      expect(card.getByTestId("icd-item-fallback")).toBeInTheDocument();
+      expect(card.getByTestId("icd-item-icon-slot")).toBeInTheDocument();
+      expect(card.getByLabelText(`${name} item icon`)).toBeInTheDocument();
+    }
+  });
+
+  it("resolves starter and component items exactly like legendaries", () => {
+    renderModule(stateWithPair(
+      { item_id: "Doran's Blade", name: "Doran's Blade", item_type: "starter",
+        asset_path: "assets/items/1055.png" },
+      { item_id: "Kindlegem", name: "Kindlegem", item_type: "component",
+        asset_path: "assets/items/3067.png" },
+    ));
+    expect(screen.getByAltText("Doran's Blade item icon").getAttribute("src"))
+      .toBe(`${ASSET_ORIGIN}/assets/items/1055.png`);
+    expect(screen.getByAltText("Kindlegem item icon").getAttribute("src"))
+      .toBe(`${ASSET_ORIGIN}/assets/items/3067.png`);
+  });
+});
+
 describe("Item Cost Duel — accessibility basics", () => {
   it("uses real buttons, so every control is keyboard reachable", () => {
     renderModule(parse(icdChallengeState(0)).segmentState);

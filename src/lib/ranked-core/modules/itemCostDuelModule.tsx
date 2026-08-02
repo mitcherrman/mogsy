@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { abilityName } from "@/lib/ranked-core/abilityDisplay";
+import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type { QuestionView } from "@/lib/ranked-core/viewTypes";
 import type {
   PublicRoundView,
@@ -68,6 +69,61 @@ function Countdown({ deadline, skewMs, label }:
   );
 }
 
+/**
+ * Fixed 48×48 icon slot. The slot itself is ALWAYS rendered so a missing,
+ * still-loading, or failed image can never change the card's geometry. The
+ * backend sends a repo-relative `asset_path` (e.g. `assets/items/3153.png`)
+ * that only exists on the combat API origin, so it must go through
+ * `resolveQuizAssetUrl` — rendering it raw resolves against the frontend
+ * origin and 404s. Absolute URLs pass through the resolver unchanged.
+ */
+function ItemIcon({ assetPath, label }: {
+  assetPath: string | null;
+  label: string;
+}) {
+  const src = resolveQuizAssetUrl(assetPath);
+  const [errored, setErrored] = useState(false);
+  // A new item (new URL) gets a fresh attempt.
+  useEffect(() => { setErrored(false); }, [src]);
+  const showImage = Boolean(src) && !errored;
+  return (
+    <span
+      data-testid="icd-item-icon-slot"
+      className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40"
+    >
+      {showImage ? (
+        <img
+          src={src}
+          alt={`${label} item icon`}
+          width={48}
+          height={48}
+          className="h-full w-full object-contain"
+          loading="lazy"
+          data-testid="icd-item-img"
+          onError={() => {
+            if (import.meta.env.DEV) {
+              // Dev-only diagnostic; players only ever see the glyph below.
+              console.warn(`[icd] item icon failed to load: "${label}" → ${src}`);
+            }
+            setErrored(true);
+          }}
+        />
+      ) : (
+        /* Neutral item glyph — the item name is announced by the label on
+           this span, matching the alt text the image would have had. */
+        <span role="img" aria-label={`${label} item icon`} data-testid="icd-item-fallback">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"
+               className="text-muted-foreground" fill="none"
+               stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" />
+            <path d="M12 3v18M5 7l7 4 7-4" opacity="0.5" />
+          </svg>
+        </span>
+      )}
+    </span>
+  );
+}
+
 function ItemCard({ item, selected, disabled, onPick }: {
   item: SegmentItemView;
   selected: boolean;
@@ -86,10 +142,7 @@ function ItemCard({ item, selected, disabled, onPick }: {
         disabled:cursor-not-allowed disabled:opacity-60
         ${selected ? "border-primary ring-2 ring-primary" : "border-border"}`}
     >
-      {item.assetPath && (
-        <img src={item.assetPath} alt={`${label} item icon`} className="h-12 w-12"
-             loading="lazy" />
-      )}
+      <ItemIcon assetPath={item.assetPath} label={label} />
       <span className="text-sm font-medium">{label}</span>
       {item.itemType && (
         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
