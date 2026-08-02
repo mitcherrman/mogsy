@@ -441,6 +441,20 @@ export default function LeagueDocsProData() {
                     after that.
                   </p>
                 </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+                  >
+                    <Link to="/lol/docs/pro/rosters">Browse rosters</Link>
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Player and team roster history — who played where, and when. Roster identity
+                    data is separate from the year-by-year game import above.
+                  </p>
+                </div>
               </div>
             </section>
 

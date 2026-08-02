@@ -39,6 +39,37 @@ describe("sitemap builders", () => {
     }
   });
 
+  it("includes the three static roster directory routes", () => {
+    const paths = buildStaticEntries().map((e) => e.path);
+    for (const included of [
+      "/lol/docs/pro/rosters",
+      "/lol/docs/pro/players",
+      "/lol/docs/pro/teams",
+    ]) {
+      expect(paths).toContain(included);
+    }
+    expect(renderSitemap(buildStaticEntries())).toContain(
+      "<loc>https://mogzy.lol/lol/docs/pro/rosters</loc>",
+    );
+  });
+
+  it("does not enumerate individual player or team pages", () => {
+    // ~18k players and ~3.5k teams: dynamic roster URLs stay out of the static
+    // sitemap and are reached through the directory pages instead.
+    const dynamic = buildStaticEntries()
+      .map((e) => e.path)
+      .filter(
+        (p) =>
+          (p.startsWith("/lol/docs/pro/players/") || p.startsWith("/lol/docs/pro/teams/")),
+      );
+    expect(dynamic).toEqual([]);
+  });
+
+  it("keeps the paid /lol/pro product route out of the sitemap", () => {
+    const paths = buildStaticEntries().map((e) => e.path);
+    expect(paths.filter((p) => p === "/lol/pro" || p.startsWith("/lol/pro/"))).toEqual([]);
+  });
+
   it("champion entries slugify validated names and skip blanks", () => {
     const entries = championDocEntries(["Kai'Sa", "Dr. Mundo", "", "  "]);
     expect(entries.map((e) => e.path)).toEqual([

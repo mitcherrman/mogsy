@@ -13,6 +13,9 @@
 - [League Docs](/lol/docs): Champion reference — base stats, growth curves, and abilities, with patch/source provenance.
 - [Champion Index](/lol/docs/champions): Browse every documented champion.
 - [Pro Data](/lol/docs/pro): Pro-play picks, bans, and presence by year, with scope and data-quality notes.
+- [Pro Rosters](/lol/docs/pro/rosters): Esports roster history — canonical players, teams, aliases, and dated memberships from Leaguepedia, with per-record eligibility and source links.
+- [Pro Players](/lol/docs/pro/players): Directory of canonical pro player pages.
+- [Pro Teams](/lol/docs/pro/teams): Directory of canonical pro team pages.
 - [Tier List](/lol/tier-list): Curated champion tier list with methodology and FAQ.
 - [Blog](/blog): Articles and rankings.
 
