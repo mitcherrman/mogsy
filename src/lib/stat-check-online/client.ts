@@ -11,6 +11,10 @@
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
 import {
   readActiveRoom,
+  readInviteAccepted,
+  readInviteCreated,
+  readInviteInbox,
+  readInviteResolved,
   readMatchPrivate,
   readMatchPublic,
   readMatchResult,
@@ -20,6 +24,10 @@ import {
   readRoomJoined,
   readRoomView,
   type ActiveRoomView,
+  type InviteAccepted,
+  type InviteCreated,
+  type InviteInbox,
+  type InviteResolved,
   type MatchPrivateView,
   type MatchPublicView,
   type MatchResultView,
@@ -129,6 +137,40 @@ export const statCheckOnlineApi = {
     }),
   getActiveRoom: (signal?: AbortSignal): Promise<ActiveRoomView> =>
     request("/api/stat-check/active-room", readActiveRoom, { signal }),
+
+  /**
+   * Friend invites. The body carries `recipient_profile_id` — a
+   * `public.profiles.id`, never a Supabase auth id — and nothing else. The
+   * SENDER is derived server-side from the bearer token, as everywhere else in
+   * this client.
+   */
+  createInvite: (recipientProfileId: string, signal?: AbortSignal): Promise<InviteCreated> =>
+    request("/api/stat-check/invites", readInviteCreated, {
+      method: "POST",
+      body: { recipient_profile_id: recipientProfileId },
+      signal,
+    }),
+  listInvites: (signal?: AbortSignal): Promise<InviteInbox> =>
+    request("/api/stat-check/invites", readInviteInbox, { signal }),
+  /** The only call that returns a room code to the recipient. */
+  acceptInvite: (inviteToken: string, signal?: AbortSignal): Promise<InviteAccepted> =>
+    request(
+      `/api/stat-check/invites/${encodeURIComponent(inviteToken)}/accept`,
+      readInviteAccepted,
+      { method: "POST", signal },
+    ),
+  declineInvite: (inviteToken: string, signal?: AbortSignal): Promise<InviteResolved> =>
+    request(
+      `/api/stat-check/invites/${encodeURIComponent(inviteToken)}/decline`,
+      readInviteResolved,
+      { method: "POST", signal },
+    ),
+  cancelInvite: (inviteToken: string, signal?: AbortSignal): Promise<InviteResolved> =>
+    request(
+      `/api/stat-check/invites/${encodeURIComponent(inviteToken)}/cancel`,
+      readInviteResolved,
+      { method: "POST", signal },
+    ),
 
   submitItemChoice: (matchId: string, itemId: string, signal?: AbortSignal): Promise<unknown> =>
     request(`/api/stat-check/matches/${encodeURIComponent(matchId)}/item-choice`, (raw) => raw, {

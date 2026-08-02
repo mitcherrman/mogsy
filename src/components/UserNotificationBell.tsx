@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck, ShieldAlert, MessageSquare, Flag } from "lucide-react";
+import { Bell, Trophy, Star, Megaphone, Gift, Zap, AlertTriangle, Crown, Info, UserPlus, UserCheck, ShieldAlert, MessageSquare, Flag, Swords, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { useStatCheckInvites } from "@/hooks/useStatCheckInvites";
 
 /**
  * League-only mode: the navbar bell shows only LoL-product notifications.
@@ -97,6 +98,11 @@ export default function UserNotificationBell() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [friendNotifs, setFriendNotifs] = useState<FriendNotif[]>([]);
+  // Stat Check friend invites. Derived from live backend state and rendered
+  // as its own actionable section, exactly like the friend-request section
+  // above it — nothing is written to or read from user_notifications.
+  const { invites: statCheckInvites, accept: acceptInvite, decline: declineInvite, busyToken } =
+    useStatCheckInvites();
   const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
   const [readAdminIds, setReadAdminIds] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
@@ -322,7 +328,8 @@ export default function UserNotificationBell() {
   const unreadCount =
     notifications.filter(n => !readIds.has(n.id)).length +
     unreadFriendCount +
-    unreadAdminCount;
+    unreadAdminCount +
+    statCheckInvites.length;
 
   if (!user || !loaded) return null;
 
@@ -351,7 +358,7 @@ export default function UserNotificationBell() {
             )}
           </div>
 
-          {notifications.length === 0 && friendNotifs.length === 0 && adminNotifs.length === 0 ? (
+          {notifications.length === 0 && friendNotifs.length === 0 && adminNotifs.length === 0 && statCheckInvites.length === 0 ? (
             <p className="text-center text-muted-foreground text-xs py-6">No notifications yet</p>
           ) : (
             <>
@@ -393,6 +400,67 @@ export default function UserNotificationBell() {
                       )}
                     </div>
                   </button>
+                );
+              })}
+
+              {/*
+                * Stat Check invites — the one ACTIONABLE section in this
+                * dropdown. Accept navigates through the existing
+                * /quiz/stat-check/room/:inviteCode join route; the room code
+                * arrives only in the accept response, never in the listing.
+                */}
+              {statCheckInvites.map(invite => {
+                const busy = busyToken === invite.inviteToken;
+                return (
+                  <div
+                    key={invite.inviteToken}
+                    data-testid="sc-invite-notification"
+                    className="w-full px-3 py-2.5 border-b border-border last:border-0 bg-primary/5"
+                  >
+                    <div className="flex items-start gap-2">
+                      {invite.avatarUrl ? (
+                        <img src={invite.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <Swords className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground">
+                          {invite.displayName} invited you to Stat Check
+                        </p>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          {new Date(invite.createdAt).toLocaleString()}
+                        </p>
+                        <div className="flex gap-1.5 mt-1.5">
+                          <button
+                            data-testid="sc-invite-accept"
+                            disabled={busy}
+                            onClick={async () => {
+                              const joinPath = await acceptInvite(invite.inviteToken);
+                              if (!joinPath) {
+                                toast.error("That invite is no longer available");
+                                return;
+                              }
+                              setOpen(false);
+                              navigate(joinPath);
+                            }}
+                            className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                          >
+                            {busy ? "Joining…" : "Accept"}
+                          </button>
+                          <button
+                            data-testid="sc-invite-decline"
+                            aria-label="Decline invite"
+                            disabled={busy}
+                            onClick={() => void declineInvite(invite.inviteToken)}
+                            className="h-7 px-2 rounded-md text-muted-foreground text-[11px] disabled:opacity-50 hover:text-destructive transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
+                    </div>
+                  </div>
                 );
               })}
 

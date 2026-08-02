@@ -14,8 +14,13 @@
  *
  * Adding friends therefore has no entry point in this drawer yet. That is
  * deliberate and matches reality — the cross-user read policy is still gated
- * on operator review, and the intended entry points (a post-match "add friend"
- * and inviting a known friend to Stat Check) are later work.
+ * on operator review, and a post-match "add friend" is later work.
+ *
+ * Inviting a known friend to Stat Check now DOES have an entry point: the
+ * Friends tab passes `canInviteToStatCheck` to FriendActionMenu. Only that tab
+ * may — it is the only one whose rows are guaranteed `status === "accepted"`.
+ * The backend re-derives the sender from the JWT and re-checks friendship and
+ * blocks anyway, so this prop is an affordance, not the security boundary.
  */
 import { useState, useEffect } from "react";
 import { Users, Clock, X, Ban } from "lucide-react";
@@ -191,6 +196,11 @@ export default function FloatingFriendsButton() {
                           friendshipId={f.id}
                           onRemoveFriend={removeFriend}
                           onBlocked={refreshFriends}
+                          /* Safe here and only here: this tab renders
+                             `friends`, which useFriends already filters to
+                             status === "accepted". The Requests, Sent and
+                             Blocked tabs must never pass this. */
+                          canInviteToStatCheck
                         />
                       </div>
                     ))}

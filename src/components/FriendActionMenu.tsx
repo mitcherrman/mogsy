@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Flag, Ban, UserX } from "lucide-react";
+import { MoreHorizontal, Flag, Ban, UserX, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +17,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useBlocks, useReportUser } from "@/hooks/useBlocks";
+import { useNavigate } from "react-router-dom";
+import { statCheckOnlineApi, StatCheckApiError } from "@/lib/stat-check-online/client";
 
 interface FriendActionMenuProps {
   targetProfileId: string;
@@ -24,6 +26,16 @@ interface FriendActionMenuProps {
   friendshipId?: string;
   onRemoveFriend?: (friendshipId: string) => Promise<void>;
   onBlocked?: () => void;
+  /**
+   * Show "Invite to Stat Check". Callers must pass this ONLY for an accepted
+   * friend: this menu is also rendered for strangers on /user/:profileId, and
+   * `friendshipId` alone does not distinguish accepted from pending.
+   *
+   * This is a UI affordance, not a security control — the backend independently
+   * re-derives the sender from the JWT and requires an accepted friendship with
+   * no block in either direction, at both create and accept.
+   */
+  canInviteToStatCheck?: boolean;
 }
 
 const REPORT_REASONS = [
@@ -41,7 +53,9 @@ export default function FriendActionMenu({
   friendshipId,
   onRemoveFriend,
   onBlocked,
+  canInviteToStatCheck = false,
 }: FriendActionMenuProps) {
+  const navigate = useNavigate();
   const { blockUser } = useBlocks();
   const { reportUser } = useReportUser();
   const [showReport, setShowReport] = useState(false);
@@ -49,6 +63,7 @@ export default function FriendActionMenu({
   const [reportReason, setReportReason] = useState("inappropriate");
   const [reportDetails, setReportDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [inviting, setInviting] = useState(false);
 
   const handleReport = async () => {
     setSubmitting(true);
@@ -76,6 +91,39 @@ export default function FriendActionMenu({
     setSubmitting(false);
   };
 
+  /**
+   * Creates (or reuses) the sender's private room and sends the invitation in
+   * one call, then takes the inviter straight to their own lobby through the
+   * existing room route. The friend receives it in their notification bell.
+   */
+  const handleInvite = async () => {
+    setInviting(true);
+    try {
+      const invite = await statCheckOnlineApi.createInvite(targetProfileId);
+      toast.success(`Invited ${targetName} to Stat Check`);
+      navigate(invite.joinPath);
+    } catch (error) {
+      const code = error instanceof StatCheckApiError ? error.code : null;
+      const status = error instanceof StatCheckApiError ? error.status : 0;
+      toast.error(
+        status === 404
+          ? "Stat Check invites are not available yet"
+          : code === "SC_INVITE_NOT_FRIENDS"
+            ? "You can only invite accepted friends"
+            : code === "SC_INVITE_BLOCKED"
+              ? "This invite is not available"
+              : code === "SC_INVITE_LIMIT"
+                ? "You already have too many outstanding invites"
+                : code === "SC_INVITE_ROOM_BUSY"
+                  ? "Finish your current match first"
+                  : code === "ACCOUNT_REQUIRED" || code === "AUTH_REQUIRED"
+                    ? "Sign in with a full account to play private matches"
+                    : "Could not send the invite",
+      );
+    }
+    setInviting(false);
+  };
+
   const handleUnfriend = async () => {
     if (!friendshipId || !onRemoveFriend) return;
     try {
@@ -94,7 +142,17 @@ export default function FriendActionMenu({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuContent align="end" className="w-52">
+          {canInviteToStatCheck && (
+            <DropdownMenuItem
+              data-testid="invite-to-stat-check"
+              disabled={inviting}
+              onClick={handleInvite}
+            >
+              <Swords className="h-4 w-4 mr-2" />
+              {inviting ? "Sending invite..." : "Invite to Stat Check"}
+            </DropdownMenuItem>
+          )}
           {friendshipId && onRemoveFriend && (
             <DropdownMenuItem onClick={handleUnfriend} className="text-destructive focus:text-destructive">
               <UserX className="h-4 w-4 mr-2" /> Unfriend

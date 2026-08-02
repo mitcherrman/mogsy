@@ -227,6 +227,10 @@ function ProfileActions({ profileId, friendStatus, friendshipId, refreshFriend, 
         targetName="this user"
         friendshipId={friendshipId || undefined}
         onBlocked={refreshFriend}
+        /* This menu also renders for strangers and pending requests, so the
+           invite entry is gated on the resolved friend status rather than on
+           the mere presence of a friendship row. */
+        canInviteToStatCheck={friendStatus === "friends"}
       />
     </div>
   );

@@ -146,6 +146,134 @@ export function readRoomJoined(raw: unknown): RoomJoined {
   return { roomId: String(record.room_id), seat: record.seat, idempotent: record.idempotent === true };
 }
 
+// -------------------------------------------------------- friend invites
+
+/**
+ * Friend invites reuse the room schema version: they are a way INTO an
+ * existing private room, not a new subsystem.
+ *
+ * The privacy shape matters and these readers enforce it:
+ *   - An inbox entry names its sender by `sender_profile_id` (a
+ *     `public.profiles.id`) and carries NO room code. The display name is
+ *     resolved separately through the existing get_league_profiles RPC.
+ *   - `invite_code` appears only in the CREATE response (the sender's own
+ *     room) and in the ACCEPT response, after the server authorized the caller.
+ *   - `assertNoForbiddenKeys` already rejects a `user_id` anywhere in these
+ *     payloads, which is the contract-level guarantee that no Supabase auth id
+ *     can reach the client through this feature.
+ */
+
+export type InviteCreated = {
+  inviteToken: string;
+  roomId: string;
+  inviteCode: string;
+  expiresAt: string;
+  reused: boolean;
+  joinPath: string;
+};
+
+export function readInviteCreated(raw: unknown): InviteCreated {
+  const record = asObject(raw, "invite-created");
+  assertNoForbiddenKeys(record);
+  requireExactKeys(
+    record,
+    ["schema_version", "invite_token", "room_id", "invite_code", "expires_at", "reused", "join_path"],
+    [],
+    "invite-created",
+  );
+  if (record.schema_version !== ROOM_SCHEMA_VERSION) {
+    throw new StatCheckContractError(`invite-created: schema ${String(record.schema_version)}`);
+  }
+  return {
+    inviteToken: String(record.invite_token),
+    roomId: String(record.room_id),
+    inviteCode: String(record.invite_code),
+    expiresAt: String(record.expires_at),
+    reused: record.reused === true,
+    joinPath: String(record.join_path),
+  };
+}
+
+export type IncomingInvite = {
+  inviteToken: string;
+  senderProfileId: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type InviteInbox = { invites: IncomingInvite[]; serverTime: string };
+
+export function readInviteInbox(raw: unknown): InviteInbox {
+  const record = asObject(raw, "invite-inbox");
+  assertNoForbiddenKeys(record);
+  requireExactKeys(record, ["schema_version", "invites", "server_time"], [], "invite-inbox");
+  if (record.schema_version !== ROOM_SCHEMA_VERSION) {
+    throw new StatCheckContractError(`invite-inbox: schema ${String(record.schema_version)}`);
+  }
+  if (!Array.isArray(record.invites)) {
+    throw new StatCheckContractError("invite-inbox: invites not an array");
+  }
+  return {
+    invites: record.invites.map((entry, index) => {
+      const item = asObject(entry, `invite-inbox[${index}]`);
+      // An inbox entry carrying a room code would mean the server handed a
+      // joinable room to a not-yet-authorized recipient. Reject the payload.
+      requireExactKeys(
+        item,
+        ["invite_token", "sender_profile_id", "created_at", "expires_at"],
+        [],
+        `invite-inbox[${index}]`,
+      );
+      return {
+        inviteToken: String(item.invite_token),
+        senderProfileId: String(item.sender_profile_id),
+        createdAt: String(item.created_at),
+        expiresAt: String(item.expires_at),
+      };
+    }),
+    serverTime: String(record.server_time),
+  };
+}
+
+export type InviteAccepted = {
+  roomId: string;
+  inviteCode: string;
+  seat: "p1" | "p2";
+  joinPath: string;
+};
+
+export function readInviteAccepted(raw: unknown): InviteAccepted {
+  const record = asObject(raw, "invite-accepted");
+  assertNoForbiddenKeys(record);
+  requireExactKeys(
+    record,
+    ["schema_version", "room_id", "invite_code", "seat", "join_path"],
+    [],
+    "invite-accepted",
+  );
+  if (record.schema_version !== ROOM_SCHEMA_VERSION) {
+    throw new StatCheckContractError(`invite-accepted: schema ${String(record.schema_version)}`);
+  }
+  if (record.seat !== "p1" && record.seat !== "p2") {
+    throw new StatCheckContractError("invite-accepted: bad seat");
+  }
+  return {
+    roomId: String(record.room_id),
+    inviteCode: String(record.invite_code),
+    seat: record.seat,
+    joinPath: String(record.join_path),
+  };
+}
+
+export type InviteResolved = { inviteToken: string; status: string };
+
+export function readInviteResolved(raw: unknown): InviteResolved {
+  const record = asObject(raw, "invite-resolved");
+  assertNoForbiddenKeys(record);
+  requireExactKeys(record, ["schema_version", "invite_token", "status"], [], "invite-resolved");
+  return { inviteToken: String(record.invite_token), status: String(record.status) };
+}
+
 // --------------------------------------------------------------- matches
 
 export const MATCH_PUBLIC_SCHEMA_VERSION = "stat_check.match_public.v1";
