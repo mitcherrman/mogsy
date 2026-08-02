@@ -6,7 +6,15 @@ import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
-import { useStatCheckInvites } from "@/hooks/useStatCheckInvites";
+import { useStatCheckInvites, type StatCheckInvite } from "@/hooks/useStatCheckInvites";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 /**
  * League-only mode: the navbar bell shows only LoL-product notifications.
@@ -101,8 +109,23 @@ export default function UserNotificationBell() {
   // Stat Check friend invites. Derived from live backend state and rendered
   // as its own actionable section, exactly like the friend-request section
   // above it — nothing is written to or read from user_notifications.
-  const { invites: statCheckInvites, accept: acceptInvite, decline: declineInvite, busyToken } =
-    useStatCheckInvites();
+  const {
+    invites: statCheckInvites,
+    accept: acceptInvite,
+    acceptSwitch: acceptInviteSwitch,
+    decline: declineInvite,
+    refresh: refreshInvites,
+    busyToken,
+  } = useStatCheckInvites();
+  /**
+   * Room conflict awaiting the user's decision. `mode` decides the copy:
+   *   empty    - their own waiting room, nobody else in it
+   *   occupied - their own waiting room with a second player who would be evicted
+   *   blocked  - a live match, or someone else's room: no switch is offered
+   */
+  const [roomConflict, setRoomConflict] = useState<
+    { invite: StatCheckInvite; mode: "empty" | "occupied" | "blocked"; message: string } | null
+  >(null);
   const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
   const [readAdminIds, setReadAdminIds] = useState<Set<string>>(new Set());
   const [isAdmin, setIsAdmin] = useState(false);
@@ -323,6 +346,49 @@ export default function UserNotificationBell() {
     await supabase.from("user_notification_reads").insert(inserts);
   };
 
+  /** Route an accept/switch outcome to navigation, a dialog, or a toast. */
+  const handleAcceptOutcome = (
+    invite: StatCheckInvite,
+    outcome: Awaited<ReturnType<typeof acceptInvite>>,
+  ) => {
+    if (outcome.ok) {
+      setRoomConflict(null);
+      setOpen(false);
+      navigate(outcome.joinPath);
+      return;
+    }
+    if (outcome.code === "SC_ACTIVE_ROOM_EXISTS" || outcome.code === "SC_SWITCH_CONFIRM_REQUIRED") {
+      const details = outcome.details;
+      // An active match is never auto-closed, and a room the user does not own
+      // is not theirs to close. Both are dead ends, not confirmations.
+      if (details?.room_state === "active") {
+        setRoomConflict({
+          invite,
+          mode: "blocked",
+          message: "Finish or leave your current match before joining this invite.",
+        });
+      } else if (details?.can_close === false) {
+        setRoomConflict({ invite, mode: "blocked", message: outcome.message });
+      } else if (details?.other_player_present) {
+        setRoomConflict({ invite, mode: "occupied", message: outcome.message });
+      } else {
+        setRoomConflict({ invite, mode: "empty", message: outcome.message });
+      }
+      return;
+    }
+    if (outcome.code === "SC_SWITCH_ROOM_ACTIVE") {
+      setRoomConflict({
+        invite,
+        mode: "blocked",
+        message: "Finish or leave your current match before joining this invite.",
+      });
+      return;
+    }
+    // Everything else: show what the backend actually said, never a guess.
+    setRoomConflict(null);
+    toast.error(outcome.message || "Could not join that room");
+  };
+
   const unreadFriendCount = friendNotifs.filter(n => !readFriendIds.has(n.id)).length;
   const unreadAdminCount = adminNotifs.filter(n => !readAdminIds.has(n.id)).length;
   const unreadCount =
@@ -336,7 +402,13 @@ export default function UserNotificationBell() {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          // Opening the bell refetches now rather than showing whatever the
+          // 30s poll last saw.
+          if (next) void refreshInvites();
+        }}
         className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
       >
         <Bell className="h-4 w-4" />
@@ -435,13 +507,7 @@ export default function UserNotificationBell() {
                             data-testid="sc-invite-accept"
                             disabled={busy}
                             onClick={async () => {
-                              const joinPath = await acceptInvite(invite.inviteToken);
-                              if (!joinPath) {
-                                toast.error("That invite is no longer available");
-                                return;
-                              }
-                              setOpen(false);
-                              navigate(joinPath);
+                              handleAcceptOutcome(invite, await acceptInvite(invite.inviteToken));
                             }}
                             className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors"
                           >
@@ -554,6 +620,77 @@ export default function UserNotificationBell() {
           )}
         </div>
       )}
+
+      {/*
+        * Room-conflict confirmation. Closing a room is destructive — it can
+        * evict another player — so it is never silent and never a fallback
+        * inside the ordinary Accept. "Switch and Join" calls the single atomic
+        * backend endpoint; there is no client-side cancel-then-accept pair that
+        * could strand the user half-way.
+        */}
+      <Dialog
+        open={roomConflict !== null}
+        onOpenChange={(next) => {
+          if (!next) setRoomConflict(null);
+        }}
+      >
+        <DialogContent className="max-w-sm" data-testid="sc-room-conflict-dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {roomConflict?.mode === "blocked"
+                ? "You're already in a match"
+                : "Switch Stat Check rooms?"}
+            </DialogTitle>
+            <DialogDescription data-testid="sc-room-conflict-body">
+              {roomConflict?.mode === "blocked"
+                ? roomConflict.message
+                : roomConflict?.mode === "occupied"
+                  ? "Another player is already waiting in your current room. Switching will close that room for everyone."
+                  : "You already have a Stat Check room open. Leave it and join your friend's room?"}
+            </DialogDescription>
+          </DialogHeader>
+          {roomConflict?.mode === "blocked" ? (
+            <Button
+              data-testid="sc-conflict-dismiss"
+              onClick={() => setRoomConflict(null)}
+              className="w-full"
+            >
+              OK
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                data-testid="sc-conflict-keep"
+                onClick={() => setRoomConflict(null)}
+                className="flex-1"
+              >
+                {roomConflict?.mode === "occupied" ? "Keep Current Room" : "Keep My Room"}
+              </Button>
+              <Button
+                data-testid="sc-conflict-switch"
+                disabled={busyToken === roomConflict?.invite.inviteToken}
+                onClick={async () => {
+                  if (!roomConflict) return;
+                  const invite = roomConflict.invite;
+                  handleAcceptOutcome(
+                    invite,
+                    // The confirmation flag is only true when the user was
+                    // actually shown the eviction warning.
+                    await acceptInviteSwitch(
+                      invite.inviteToken,
+                      roomConflict.mode === "occupied",
+                    ),
+                  );
+                }}
+                className="flex-1"
+              >
+                {roomConflict?.mode === "occupied" ? "Close Room and Join" : "Switch and Join"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

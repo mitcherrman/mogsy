@@ -3,12 +3,14 @@ import {
   isAborted,
   statCheckOnlineApi,
   StatCheckApiError,
+  type StatCheckErrorDetails,
   type StatCheckOnlineApi,
 } from "@/lib/stat-check-online/client";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { useAuth } from "@/hooks/useAuth";
 
-/** Matches the friend-notification refresh cadence, not a lobby poll. */
+/** Fallback cadence. Every mutation refreshes immediately, so this only has to
+ *  catch invites that arrive while the user is idle. */
 const POLL_MS = 30_000;
 
 export type StatCheckInvite = {
@@ -21,18 +23,47 @@ export type StatCheckInvite = {
 };
 
 /**
+ * Outcome of an accept attempt. Failures are NOT collapsed to null: the caller
+ * needs the code to tell "this invite is dead" apart from "you are simply
+ * already in a room, want to switch?" — outcomes that look identical if all you
+ * get back is a falsy value. That collapse is what made a recoverable conflict
+ * read as "That invite is no longer available" in production.
+ */
+export type AcceptOutcome =
+  | { ok: true; joinPath: string }
+  | { ok: false; code: string | null; message: string; details: StatCheckErrorDetails | null };
+
+/** Codes meaning the invite is still good and must stay on screen. */
+const RECOVERABLE = new Set([
+  "SC_ACTIVE_ROOM_EXISTS",
+  "SC_SWITCH_CONFIRM_REQUIRED",
+  "SC_SWITCH_ROOM_ACTIVE",
+  "SC_SWITCH_NOT_ROOM_OWNER",
+  "SC_COMMUNITY_UNAVAILABLE",
+]);
+
+export const isRecoverableInviteError = (code: string | null): boolean =>
+  code !== null && RECOVERABLE.has(code);
+
+function toOutcome(error: unknown): AcceptOutcome {
+  if (error instanceof StatCheckApiError) {
+    return { ok: false, code: error.code, message: error.message, details: error.details };
+  }
+  return { ok: false, code: null, message: "Something went wrong.", details: null };
+}
+
+/**
  * Incoming Stat Check friend invites.
  *
- * Deliberately polled, like every other Stat Check surface — realtime delivery
- * is explicitly out of scope for this phase. The inbox payload names its sender
- * only by `sender_profile_id`; the display name and avatar come from the
- * existing `get_league_profiles` RPC, which already filters profiles blocked in
- * either direction. No Supabase auth id is involved on either side.
+ * Polled, not realtime — realtime delivery is explicitly out of scope. The
+ * inbox names its sender only by `sender_profile_id`; display names come from
+ * the existing `get_league_profiles` RPC, which already filters profiles
+ * blocked in either direction. No Supabase auth id is involved on either side.
  *
- * The feature flag lives on the backend: with
- * `STAT_CHECK_FRIEND_INVITES_ENABLED` unset every invite route returns 404, so
- * `disabled` latches on the first 404 and the hook goes quiet. That is what
- * keeps the UI hidden without a second flag to keep in sync.
+ * The feature flag lives on the backend: unset means every invite route 404s,
+ * so `disabled` latches and the hook goes quiet. A 403 (ACCOUNT_REQUIRED, i.e.
+ * an anonymous session) latches too — production logs showed anonymous visitors
+ * re-polling a guaranteed 403 every 30 s indefinitely.
  */
 export function useStatCheckInvites(api: StatCheckOnlineApi = statCheckOnlineApi) {
   const { user } = useAuth();
@@ -58,8 +89,7 @@ export function useStatCheckInvites(api: StatCheckOnlineApi = statCheckOnlineApi
           return {
             inviteToken: invite.inviteToken,
             senderProfileId: invite.senderProfileId,
-            // Same "Someone" fallback the friend notifications already use when
-            // a profile is not visible to this viewer.
+            // Same "Someone" fallback the friend notifications already use.
             displayName: profile?.display_name || "Someone",
             avatarUrl: profile?.avatar_url ?? null,
             createdAt: invite.createdAt,
@@ -69,16 +99,19 @@ export function useStatCheckInvites(api: StatCheckOnlineApi = statCheckOnlineApi
       );
     } catch (error) {
       if (disposedRef.current || isAborted(error)) return;
-      // 404 is the feature flag being off, not a transient failure — stop
-      // polling permanently for this session rather than retrying forever.
-      if (error instanceof StatCheckApiError && error.status === 404) {
+      // 404 = feature flag off. 403 = anonymous session, which can never
+      // succeed. Both are permanent for this session, so stop rather than
+      // hammering a guaranteed failure every 30 s.
+      if (
+        error instanceof StatCheckApiError &&
+        (error.status === 404 || error.status === 403)
+      ) {
         disabledRef.current = true;
         setDisabled(true);
         setInvites([]);
         return;
       }
-      // Any other failure (auth, network, backend) leaves the last good list in
-      // place and simply retries on the next tick.
+      // Anything else (network, 5xx) keeps the last good list and retries.
     } finally {
       inFlightRef.current = false;
     }
@@ -98,24 +131,49 @@ export function useStatCheckInvites(api: StatCheckOnlineApi = statCheckOnlineApi
     };
   }, [user, refresh]);
 
-  /** Resolves to the room's join path on success, null on any failure. */
-  const accept = useCallback(
-    async (inviteToken: string): Promise<string | null> => {
+  /**
+   * Shared tail for both accept paths. On success the invite is dropped locally
+   * and the inbox refetched. On a RECOVERABLE failure it is left alone —
+   * removing it before the backend has resolved it is exactly how a fixable
+   * conflict turns into a vanished invite the user can no longer act on.
+   */
+  const runAccept = useCallback(
+    async (
+      inviteToken: string,
+      call: () => Promise<{ joinPath: string }>,
+    ): Promise<AcceptOutcome> => {
       setBusyToken(inviteToken);
       try {
-        const accepted = await api.acceptInvite(inviteToken);
+        const accepted = await call();
         setInvites((current) => current.filter((i) => i.inviteToken !== inviteToken));
-        return accepted.joinPath;
-      } catch {
-        // The invite may have expired, been cancelled, or the room may have
-        // filled. Re-reading the inbox is the honest recovery.
         void refresh();
-        return null;
+        return { ok: true, joinPath: accepted.joinPath };
+      } catch (error) {
+        const outcome = toOutcome(error);
+        // A recoverable conflict is about the user's OWN room, not this invite,
+        // so refetching is pointless churn that could race the confirmation
+        // dialog. Anything else may genuinely be resolved server-side: resync.
+        if (!isRecoverableInviteError(outcome.code)) void refresh();
+        return outcome;
       } finally {
         setBusyToken(null);
       }
     },
-    [api, refresh],
+    [refresh],
+  );
+
+  const accept = useCallback(
+    (inviteToken: string) => runAccept(inviteToken, () => api.acceptInvite(inviteToken)),
+    [api, runAccept],
+  );
+
+  /** Close the caller's own waiting room and join, in one backend transaction. */
+  const acceptSwitch = useCallback(
+    (inviteToken: string, confirmCloseOccupiedRoom = false) =>
+      runAccept(inviteToken, () =>
+        api.acceptInviteWithSwitch(inviteToken, confirmCloseOccupiedRoom),
+      ),
+    [api, runAccept],
   );
 
   const decline = useCallback(
@@ -127,14 +185,14 @@ export function useStatCheckInvites(api: StatCheckOnlineApi = statCheckOnlineApi
         await api.declineInvite(inviteToken);
         return true;
       } catch {
-        void refresh();
         return false;
       } finally {
         setBusyToken(null);
+        void refresh();
       }
     },
     [api, refresh],
   );
 
-  return { invites, disabled, busyToken, accept, decline, refresh };
+  return { invites, disabled, busyToken, accept, acceptSwitch, decline, refresh };
 }

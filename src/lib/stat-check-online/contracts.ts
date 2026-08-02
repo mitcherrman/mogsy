@@ -240,6 +240,8 @@ export type InviteAccepted = {
   inviteCode: string;
   seat: "p1" | "p2";
   joinPath: string;
+  /** Present only on accept-switch: whether a room was actually closed. */
+  switched: boolean;
 };
 
 export function readInviteAccepted(raw: unknown): InviteAccepted {
@@ -248,7 +250,9 @@ export function readInviteAccepted(raw: unknown): InviteAccepted {
   requireExactKeys(
     record,
     ["schema_version", "room_id", "invite_code", "seat", "join_path"],
-    [],
+    // `switched` is optional so the plain /accept response, which does not
+    // carry it, keeps validating against this same reader.
+    ["switched"],
     "invite-accepted",
   );
   if (record.schema_version !== ROOM_SCHEMA_VERSION) {
@@ -262,6 +266,7 @@ export function readInviteAccepted(raw: unknown): InviteAccepted {
     inviteCode: String(record.invite_code),
     seat: record.seat,
     joinPath: String(record.join_path),
+    switched: record.switched === true,
   };
 }
 
