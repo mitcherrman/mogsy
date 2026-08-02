@@ -10,6 +10,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import ProRosterPlayerProfile from "./ProRosterPlayerProfile";
 import ProRosterLanding from "./ProRosterLanding";
 import {
@@ -147,9 +148,9 @@ describe("profile rendering keeps the two identities distinct", () => {
 });
 
 describe("search resolves the alias to its canonical page only", () => {
-  it("links an M1nG alias hit to /players/Flure, never to /players/M1ng", async () => {
+  it("lists the M1nG alias hit and the canonical M1ng as two separate links", async () => {
     installIdentityBackend();
-    const { container } = renderRoute({
+    renderRoute({
       element: <ProRosterLanding />,
       routePath: "/lol/docs/pro/rosters",
       initialPath: "/lol/docs/pro/rosters",
@@ -160,13 +161,21 @@ describe("search resolves the alias to its canonical page only", () => {
     fireEvent.change(input, { target: { value: "M1nG" } });
 
     const playersGroup = await screen.findByRole("region", { name: "Players" });
-    const link = await within(playersGroup).findByRole("link", { name: /Flure/ });
-    expect(link).toHaveAttribute("href", "/lol/docs/pro/players/Flure");
-    expect(link).toHaveTextContent("M1nG");
 
-    // No link anywhere in the result set points at the other player's page.
-    const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-    expect(hrefs).not.toContain("/lol/docs/pro/players/M1ng");
+    // The alias hit resolves to its owner, and says which alias matched.
+    const flure = await within(playersGroup).findByRole("link", { name: /Flure/ });
+    expect(flure).toHaveAttribute("href", "/lol/docs/pro/players/Flure");
+    expect(flure).toHaveTextContent("M1nG");
+
+    // The unrelated canonical player is offered in its own right — its own row,
+    // its own page, credited to no alias. Its PRESENCE is the point here:
+    // omitting it is exactly what let Flure stand in for it in production.
+    const m1ng = await within(playersGroup).findByRole("link", { name: /^M1ng/ });
+    expect(m1ng).toHaveAttribute("href", "/lol/docs/pro/players/M1ng");
+    expect(m1ng).not.toHaveTextContent(/matched via alias/i);
+
+    // Two rows, two destinations — never collapsed into one.
+    expect(flure.getAttribute("href")).not.toBe(m1ng.getAttribute("href"));
   });
 
   it("sends the search term with its original casing", async () => {
@@ -185,5 +194,43 @@ describe("search resolves the alias to its canonical page only", () => {
       expect(requestLog.some((u) => u.includes("q=M1nG"))).toBe(true);
     });
     expect(requestLog.some((u) => u.includes("q=m1ng"))).toBe(false);
+  });
+});
+
+describe("React Query caches the three spellings separately", () => {
+  it("keeps M1ng, M1nG and m1ng in separate cache entries", async () => {
+    installIdentityBackend();
+    // One cache shared across all three renders — if the query keys folded
+    // case, the later renders would read the first one's data instead of
+    // fetching, and M1nG would silently render as the Taiwanese player.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const at = (initialPath: string) =>
+      renderRoute({ element: <ProRosterPlayerProfile />, routePath: PLAYER_ROUTE, initialPath, client });
+
+    at("/lol/docs/pro/players/M1ng");
+    await screen.findByRole("heading", { name: "M1ng" });
+
+    at("/lol/docs/pro/players/M1nG");
+    await screen.findAllByText(/No player page named/);
+
+    at("/lol/docs/pro/players/m1ng");
+    await waitFor(() => {
+      expect(requestLog.some((u) => u.includes("/roster/players/m1ng?"))).toBe(true);
+    });
+
+    // Three identifiers, three distinct keys, exact casing preserved in each.
+    const keys = client
+      .getQueryCache()
+      .getAll()
+      .map((q) => q.queryKey)
+      .filter((k) => k[0] === "pro-roster" && k[1] === "player");
+    expect(keys).toContainEqual(["pro-roster", "player", "M1ng", "A"]);
+    expect(keys).toContainEqual(["pro-roster", "player", "M1nG", "A"]);
+    expect(keys).toContainEqual(["pro-roster", "player", "m1ng", "A"]);
+
+    // …and each one actually went to the network rather than reusing a sibling.
+    for (const id of ["M1ng", "M1nG", "m1ng"]) {
+      expect(requestLog.filter((u) => u.includes(`/roster/players/${id}?`))).toHaveLength(1);
+    }
   });
 });

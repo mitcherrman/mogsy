@@ -65,19 +65,24 @@ function LocationProbe() {
  * Render `element` at `initialPath` under `routePath`. Both are passed
  * verbatim, so a test can navigate to an encoded identifier and verify the
  * component decodes it back to the exact original string.
+ *
+ * A `client` may be supplied to share one cache across several renders — the
+ * only way to prove that two differently-cased identifiers do not read each
+ * other's cached data. Omit it and each render gets an isolated cache.
  */
 export function renderRoute({
   element,
   routePath,
   initialPath,
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  }),
 }: {
   element: ReactNode;
   routePath: string;
   initialPath: string;
+  client?: QueryClient;
 }) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initialPath]}>
