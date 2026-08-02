@@ -130,6 +130,21 @@ describe("Academy Broadcast centerpiece — composition", () => {
     expect(surface.querySelector("a")).toBeNull();
   });
 
+  it("frames the content with the selected book painting as decorative chrome", () => {
+    render(<AcademyBroadcastCenterpiece />);
+
+    const surface = screen.getByTestId("academy-broadcast-surface");
+    const book = screen.getByTestId("academy-broadcast-book") as HTMLImageElement;
+    // The painting is the owner-selected asset…
+    expect(book.getAttribute("src")).toBe("/images/lol-hub/academy-broadcast-book.png");
+    // …and is purely decorative: silent for screen readers, with every word
+    // of broadcast content remaining live HTML inside the surface.
+    expect(book).toHaveAttribute("alt", "");
+    expect(book).toHaveAttribute("aria-hidden");
+    expect(surface.contains(book)).toBe(true);
+    expect(surface.textContent).toContain("Transmission systems online");
+  });
+
   it("places the radio dock BELOW the broadcast surface in DOM order", () => {
     render(<AcademyBroadcastCenterpiece />);
 
@@ -163,11 +178,13 @@ describe("Academy Broadcast centerpiece — composition", () => {
     expect(baseElement.querySelector('[role="status"], [role="alert"]')).toBeNull();
   });
 
-  it("the mobile variant renders its own stacked surface and dock", () => {
+  it("the mobile variant renders its own stacked surface, book painting and dock", () => {
     render(<AcademyBroadcastCenterpiece variant="mobile" />);
 
     expect(screen.getByTestId("academy-broadcast-centerpiece-mobile")).toBeTruthy();
     expect(screen.getByTestId("academy-broadcast-surface-mobile")).toBeTruthy();
+    const book = screen.getByTestId("academy-broadcast-book-mobile");
+    expect(book).toHaveAttribute("alt", "");
     expect(screen.getByTestId("academy-radio-dock-mobile")).toBeTruthy();
   });
 });
