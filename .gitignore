@@ -39,3 +39,4 @@ e2e/.artifacts
 e2e/.report
 test-results
 playwright-report
+docs/audio-intake/

@@ -1,3 +1,4 @@
+import AcademyRadioController from "./components/audio/EntryMusicController";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -229,6 +230,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+              <AcademyRadioController />
               <Routes>
                 {/* Root entrance. In League-only mode the Academy entry screen IS
                     the homepage: it renders outside <Layout /> so no navbar or
