@@ -30,6 +30,13 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/lol/docs/champions", changefreq: "weekly", priority: "0.7" },
     { path: "/lol/docs/pro", changefreq: "weekly", priority: "0.7" },
     { path: "/lol/docs/pro/champions", changefreq: "weekly", priority: "0.6" },
+    // Roster wiki: the three static directory routes only. Individual player
+    // and team pages are deliberately NOT enumerated — there are ~18k players
+    // and ~3.5k teams, and this project has no incremental/split sitemap
+    // support. They stay crawlable through the directory pages instead.
+    { path: "/lol/docs/pro/rosters", changefreq: "weekly", priority: "0.7" },
+    { path: "/lol/docs/pro/players", changefreq: "weekly", priority: "0.6" },
+    { path: "/lol/docs/pro/teams", changefreq: "weekly", priority: "0.6" },
     { path: "/combat-lab", changefreq: "weekly", priority: "0.8" },
     { path: "/blog", changefreq: "daily", priority: "0.9" },
     { path: "/about", changefreq: "monthly", priority: "0.6" },

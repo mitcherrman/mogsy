@@ -75,6 +75,11 @@ const LeagueDocsProData = R.LeagueDocsProData.Component;
 const LeagueDocsProYear = R.LeagueDocsProYear.Component;
 const LeagueDocsProChampionIndex = R.LeagueDocsProChampionIndex.Component;
 const LeagueDocsProChampionDetail = R.LeagueDocsProChampionDetail.Component;
+const ProRosterLanding = R.ProRosterLanding.Component;
+const ProRosterPlayers = R.ProRosterPlayers.Component;
+const ProRosterPlayerProfile = R.ProRosterPlayerProfile.Component;
+const ProRosterTeams = R.ProRosterTeams.Component;
+const ProRosterTeamProfile = R.ProRosterTeamProfile.Component;
 const LolHistory = R.LolHistory.Component;
 const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPro = R.LolPro.Component;
@@ -357,6 +362,12 @@ const App = () => (
                   <Route path="/lol/docs/pro/years/:year" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProYear /></Suspense>} />
                   <Route path="/lol/docs/pro/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/pro/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionDetail /></Suspense>} />
+                  {/* Public roster wiki. Distinct from the paid /lol/pro product page below. */}
+                  <Route path="/lol/docs/pro/rosters" element={<Suspense fallback={<RouteFallback />}><ProRosterLanding /></Suspense>} />
+                  <Route path="/lol/docs/pro/players" element={<Suspense fallback={<RouteFallback />}><ProRosterPlayers /></Suspense>} />
+                  <Route path="/lol/docs/pro/players/:lpPage" element={<Suspense fallback={<RouteFallback />}><ProRosterPlayerProfile /></Suspense>} />
+                  <Route path="/lol/docs/pro/teams" element={<Suspense fallback={<RouteFallback />}><ProRosterTeams /></Suspense>} />
+                  <Route path="/lol/docs/pro/teams/:lpPage" element={<Suspense fallback={<RouteFallback />}><ProRosterTeamProfile /></Suspense>} />
                   <Route path="/lol/dev-changelog" element={<Suspense fallback={<RouteFallback />}><LolDevChangelog /></Suspense>} />
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />

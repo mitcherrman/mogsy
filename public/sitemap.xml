@@ -41,6 +41,21 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://mogzy.lol/lol/docs/pro/rosters</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mogzy.lol/lol/docs/pro/players</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://mogzy.lol/lol/docs/pro/teams</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://mogzy.lol/combat-lab</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
