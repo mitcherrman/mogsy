@@ -1,11 +1,10 @@
 /**
- * Academy Radio — hub broadcast console.
+ * Academy Radio — broadcast dock.
  *
  * Like the navbar player specs, these drive the REAL store rather than a mock:
- * the console and bar layouts are views over the shared transport, so what is
- * checked is that they report the truth, that they move the same state the
- * navbar player reads, and that rendering them never creates audio elements
- * or toasts.
+ * the dock is a view over the shared transport, so what is checked is that it
+ * reports the truth, that it moves the same state the navbar player reads,
+ * and that rendering it never creates audio elements or toasts.
  *
  * jsdom implements none of HTMLMediaElement's playback and Node 25's global
  * `localStorage` has no methods, so both are stubbed locally in this file only.
@@ -13,7 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import AcademyRadioHub from "./AcademyRadioHub";
+import AcademyRadioDock from "./AcademyRadioDock";
 import AcademyRadioControls from "./AcademyRadioControls";
 import {
   getRadioSnapshot,
@@ -115,26 +114,26 @@ afterEach(() => {
 
 /* -------------------------------------------------------------------------- */
 
-const playPause = (suffix = "hub") => screen.getByTestId(`academy-radio-playpause-${suffix}`);
-const mute = (suffix = "hub") => screen.getByTestId(`academy-radio-mute-${suffix}`);
-const next = (suffix = "hub") => screen.getByTestId(`academy-radio-next-${suffix}`);
-const volume = (suffix = "hub") =>
+const playPause = (suffix = "dock") => screen.getByTestId(`academy-radio-playpause-${suffix}`);
+const mute = (suffix = "dock") => screen.getByTestId(`academy-radio-mute-${suffix}`);
+const next = (suffix = "dock") => screen.getByTestId(`academy-radio-next-${suffix}`);
+const volume = (suffix = "dock") =>
   screen.getByTestId(`academy-radio-volume-${suffix}`) as HTMLInputElement;
 
-describe("Academy Radio hub console — what it shows", () => {
-  it("names the station, the current track and its state", () => {
-    render(<AcademyRadioHub />);
+describe("Academy Radio dock — what it shows", () => {
+  it("names the current track and its state", () => {
+    render(<AcademyRadioDock />);
 
     expect(screen.getByRole("group", { name: "Academy Radio" })).toBeTruthy();
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent("Tidecaller");
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent(/Ready/);
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent("Tidecaller");
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Ready/);
   });
 
   it("does not create an audio element, play anything, or toast merely by rendering", () => {
     const { baseElement } = render(
       <>
-        <AcademyRadioHub layout="console" />
-        <AcademyRadioHub layout="bar" />
+        <AcademyRadioDock variant="desktop" />
+        <AcademyRadioDock variant="mobile" />
       </>,
     );
 
@@ -144,32 +143,41 @@ describe("Academy Radio hub console — what it shows", () => {
   });
 
   it("reflects real playback state once play() resolves — never optimistically", async () => {
-    render(<AcademyRadioHub />);
+    render(<AcademyRadioDock />);
 
     expect(playPause()).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(playPause());
 
     await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
     expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent(/Playing/);
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Playing/);
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
 
   it("shows the blocked state without claiming playback when the browser refuses", async () => {
     play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
-    render(<AcademyRadioHub />);
+    render(<AcademyRadioDock />);
 
     fireEvent.click(playPause());
 
     await waitFor(() => expect(getRadioSnapshot().status).toBe("blocked"));
     expect(playPause()).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent(/Press play to start/);
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Press play to start/);
+  });
+
+  it("carries no native tooltips over the deck — accessible names only", () => {
+    render(<AcademyRadioDock />);
+
+    for (const control of [playPause(), mute(), next()]) {
+      expect(control).not.toHaveAttribute("title");
+      expect(control).toHaveAccessibleName();
+    }
   });
 });
 
-describe("Academy Radio hub console — transport behaviour", () => {
+describe("Academy Radio dock — transport behaviour", () => {
   it("Play is an explicit request to hear the radio: it also lifts a mute", async () => {
-    render(<AcademyRadioHub />);
+    render(<AcademyRadioDock />);
     toggleRadioMute();
     expect(getRadioSnapshot().muted).toBe(true);
 
@@ -183,7 +191,7 @@ describe("Academy Radio hub console — transport behaviour", () => {
   it("an explicit Pause blocks unrelated gesture auto-resume for the session", async () => {
     render(
       <>
-        <AcademyRadioHub />
+        <AcademyRadioDock />
         <button type="button">Open a book</button>
       </>,
     );
@@ -202,7 +210,7 @@ describe("Academy Radio hub console — transport behaviour", () => {
   });
 
   it("persists mute and volume choices under the canonical storage keys", () => {
-    render(<AcademyRadioHub />);
+    render(<AcademyRadioDock />);
 
     fireEvent.change(volume(), { target: { value: "0.42" } });
     fireEvent.click(mute());
@@ -213,8 +221,8 @@ describe("Academy Radio hub console — transport behaviour", () => {
     expect(screen.getByText("42%")).toBeTruthy();
   });
 
-  it("keeps Next disabled with one track and explains why accessibly", () => {
-    render(<AcademyRadioHub />);
+  it("keeps Next disabled with one track, subdued but explained accessibly", () => {
+    render(<AcademyRadioDock />);
 
     expect(next()).toBeDisabled();
     const describedBy = next().getAttribute("aria-describedby");
@@ -225,54 +233,54 @@ describe("Academy Radio hub console — transport behaviour", () => {
   });
 });
 
-describe("Academy Radio hub — one transport across every surface", () => {
-  it("the console, the bar and the navbar player all move together", async () => {
+describe("Academy Radio dock — one transport across every surface", () => {
+  it("the dock, its mobile variant and the navbar player all move together", async () => {
     render(
       <>
-        <AcademyRadioHub layout="console" />
-        <AcademyRadioHub layout="bar" />
+        <AcademyRadioDock variant="desktop" />
+        <AcademyRadioDock variant="mobile" />
         <AcademyRadioControls />
       </>,
     );
 
-    fireEvent.click(playPause("hub"));
+    fireEvent.click(playPause("dock"));
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     // Exactly one element serves all three surfaces.
     expect(audioCreations).toBe(1);
     expect(play).toHaveBeenCalledTimes(1);
-    expect(playPause("hub-bar")).toHaveAttribute("aria-pressed", "true");
+    expect(playPause("dock-mobile")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("academy-radio-playpause-desktop")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
 
-    fireEvent.click(mute("hub-bar"));
-    expect(mute("hub")).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(mute("dock-mobile"));
+    expect(mute("dock")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("academy-radio-mute-desktop")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
   });
 
-  it("a volume change on the bar is the console's volume too", () => {
+  it("a volume change on the mobile dock is the desktop dock's volume too", () => {
     render(
       <>
-        <AcademyRadioHub layout="console" />
-        <AcademyRadioHub layout="bar" />
+        <AcademyRadioDock variant="desktop" />
+        <AcademyRadioDock variant="mobile" />
       </>,
     );
 
-    fireEvent.change(volume("hub-bar"), { target: { value: "0.6" } });
+    fireEvent.change(volume("dock-mobile"), { target: { value: "0.6" } });
 
-    expect(Number(volume("hub").value)).toBeCloseTo(0.6, 5);
+    expect(Number(volume("dock").value)).toBeCloseTo(0.6, 5);
     expect(getRadioSnapshot().volume).toBeCloseTo(0.6, 5);
   });
 });
 
-describe("Academy Radio hub — accessibility", () => {
+describe("Academy Radio dock — accessibility", () => {
   it("exposes every control as a named, keyboard-reachable button", () => {
-    render(<AcademyRadioHub />);
+    render(<AcademyRadioDock />);
 
     for (const control of [playPause(), mute(), next()]) {
       expect(control.tagName).toBe("BUTTON");
@@ -283,7 +291,7 @@ describe("Academy Radio hub — accessibility", () => {
   });
 
   it("animates the spectrum only when motion is welcome", async () => {
-    const { container } = render(<AcademyRadioHub />);
+    const { container } = render(<AcademyRadioDock />);
     fireEvent.click(playPause());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
@@ -292,12 +300,12 @@ describe("Academy Radio hub — accessibility", () => {
 
   it("holds every indicator still under reduced motion, keeping the text state", async () => {
     mocks.reducedMotion = true;
-    const { container } = render(<AcademyRadioHub />);
+    const { container } = render(<AcademyRadioDock />);
     fireEvent.click(playPause());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
     expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent(/Playing/);
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Playing/);
   });
 });

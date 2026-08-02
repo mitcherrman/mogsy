@@ -22,7 +22,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { playUiSfx } from "@/lib/ui-sfx";
-import AcademyRadioHub from "@/components/audio/AcademyRadioHub";
+import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 
@@ -398,18 +398,24 @@ export default function LolHub() {
               {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
             </div>
 
-            {/* Central lane — the Academy Radio console sits at the top and
+            {/* Central lane — the Academy Broadcast centerpiece (magic-book
+                surface with the radio dock at its base) sits in the upper
+                lane, lowered enough to clear the heading and subtitle, and
                 Mogzy hovers above the painted stack of books below it. Both
                 are absolutely positioned inside the lane so neither affects
                 the book grid's layout height. The lane itself ignores the
                 pointer so book edges that lean into it stay clickable; only
-                the console takes events back. */}
+                the centerpiece takes events back. */}
             <div className="pointer-events-none relative h-full min-h-0">
-              <div className="absolute inset-x-0 top-0 z-10 flex justify-center">
-                <AcademyRadioHub
-                  layout="console"
-                  className="pointer-events-auto w-full max-w-[clamp(200px,17vw,300px)]"
-                />
+              <div className="absolute inset-x-0 top-[7%] z-10 flex justify-center">
+                {/* Fixed width + shrink-0: the tome centres over the narrow grid
+                    lane and may spill evenly into the cleared gaps beside the
+                    book columns. The width expression tracks the free zone the
+                    grid actually leaves: ~216px until the book inset starts
+                    easing at 1200px (see DESKTOP_BOOK_STACK_INSET), then one
+                    extra px per viewport px, capped before it can crowd the
+                    books at wide-and-short viewports. */}
+                <AcademyBroadcastCenterpiece className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0" />
               </div>
               <div
                 aria-hidden
@@ -459,10 +465,11 @@ export default function LolHub() {
             ))}
           </div>
 
-          {/* Mobile Academy Radio — the compact broadcast bar, after the six
-              destinations so primary navigation keeps the top of the list. */}
-          <div className="mt-3 md:hidden">
-            <AcademyRadioHub layout="bar" />
+          {/* Mobile Academy Broadcast — the stacked magic-book card with the
+              radio dock beneath it, after the six destinations so primary
+              navigation keeps the top of the list. */}
+          <div className="mt-4 md:hidden">
+            <AcademyBroadcastCenterpiece variant="mobile" />
           </div>
         </div>
       </section>

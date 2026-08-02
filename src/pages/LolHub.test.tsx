@@ -199,14 +199,34 @@ describe("LolHub — navigation structure", () => {
   });
 });
 
-describe("LolHub — Academy Radio", () => {
-  it("renders the prominent console (desktop lane) and the compact bar (mobile)", () => {
+describe("LolHub — Academy Broadcast centerpiece", () => {
+  it("renders the centerpiece in the desktop lane and as a mobile stack", () => {
     renderHub();
-    expect(screen.getByTestId("academy-radio-hub")).toBeTruthy();
-    expect(screen.getByTestId("academy-radio-hub-bar")).toBeTruthy();
-    // Both surfaces read the same store and name the real runtime track.
-    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent("Tidecaller");
-    expect(screen.getByTestId("academy-radio-hub-bar")).toHaveTextContent("Tidecaller");
+    expect(screen.getByTestId("academy-broadcast-centerpiece")).toBeTruthy();
+    expect(screen.getByTestId("academy-broadcast-centerpiece-mobile")).toBeTruthy();
+    // The tome shows the honest placeholder; both docks read the same store
+    // and name the real runtime track.
+    expect(screen.getByTestId("academy-broadcast-surface")).toHaveTextContent(
+      "Transmission systems online",
+    );
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent("Tidecaller");
+    expect(screen.getByTestId("academy-radio-dock-mobile")).toHaveTextContent("Tidecaller");
+  });
+
+  it("keeps the radio dock below the broadcast surface, on desktop and mobile", () => {
+    renderHub();
+    for (const [surfaceId, dockId] of [
+      ["academy-broadcast-surface", "academy-radio-dock"],
+      ["academy-broadcast-surface-mobile", "academy-radio-dock-mobile"],
+    ] as const) {
+      const surface = screen.getByTestId(surfaceId);
+      const dock = screen.getByTestId(dockId);
+      expect(
+        surface.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `${dockId} below ${surfaceId}`,
+      ).toBeTruthy();
+      expect(surface.contains(dock)).toBe(false);
+    }
   });
 
   it("mounting the hub never starts playback or creates an audio element", () => {
