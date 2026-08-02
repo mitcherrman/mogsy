@@ -166,7 +166,12 @@ describe("LolHub — navigation structure", () => {
 
   it("does not render the old hero mode selector", () => {
     const { container } = renderHub();
-    expect(container.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
+    // The Academy Radio surfaces legitimately use aria-pressed toggles; the
+    // guard is against mode-selector toggles anywhere OUTSIDE the radio.
+    const pressed = Array.from(container.querySelectorAll("button[aria-pressed]")).filter(
+      (b) => !b.closest('[data-testid^="academy-radio"]'),
+    );
+    expect(pressed).toHaveLength(0);
     expect(screen.queryByText("Train Your League Knowledge")).toBeNull();
   });
 
@@ -191,6 +196,33 @@ describe("LolHub — navigation structure", () => {
     renderHub();
     expect(mocks.trackFunnelEvent).toHaveBeenCalledWith("lol_landing_viewed");
     expect(screen.getByTestId("ad-lol_hub_mid")).toBeTruthy();
+  });
+});
+
+describe("LolHub — Academy Radio", () => {
+  it("renders the prominent console (desktop lane) and the compact bar (mobile)", () => {
+    renderHub();
+    expect(screen.getByTestId("academy-radio-hub")).toBeTruthy();
+    expect(screen.getByTestId("academy-radio-hub-bar")).toBeTruthy();
+    // Both surfaces read the same store and name the real runtime track.
+    expect(screen.getByTestId("academy-radio-hub")).toHaveTextContent("Tidecaller");
+    expect(screen.getByTestId("academy-radio-hub-bar")).toHaveTextContent("Tidecaller");
+  });
+
+  it("mounting the hub never starts playback or creates an audio element", () => {
+    const created: string[] = [];
+    const nativeCreate = document.createElement.bind(document);
+    const spy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation(((tag: string, options?: ElementCreationOptions) => {
+        created.push(tag);
+        return nativeCreate(tag, options);
+      }) as typeof document.createElement);
+
+    renderHub();
+
+    expect(created.filter((t) => t === "audio")).toHaveLength(0);
+    spy.mockRestore();
   });
 });
 
