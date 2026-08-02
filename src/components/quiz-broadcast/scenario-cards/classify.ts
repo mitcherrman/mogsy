@@ -70,7 +70,12 @@ export function classifySubject(question: QuizQuestion): ClassifiedSubject {
           iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
+      // "summoner_spell" is the canonical type emitted by the backend's
+      // quiz/asset_metadata.summoner_spell_subject_assets(). It renders through
+      // the same collectible treatment as an ability, so it joins this case
+      // rather than forking a second convention on the backend.
       case "spell":
+      case "summoner_spell":
       case "ability":
         return {
           kind: "spell",
