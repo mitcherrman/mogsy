@@ -10,6 +10,7 @@ import mogsyLogo from "@/assets/mogsy-logo-text.png";
 import lolIcon from "@/assets/lol-icon.png";
 import NavBanner from "./NavBanner";
 import UserNotificationBell from "./UserNotificationBell";
+import AcademyRadioControls from "./audio/AcademyRadioControls";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
@@ -182,6 +183,13 @@ export default function Navbar({ themeId }: { themeId?: string }) {
                 <span className="hidden md:inline text-xs">Admin</span>
               </Link>
             )}
+
+            {/* Academy Radio — desktop row, and a compact panel trigger at
+                mobile widths. Both drive the same shared transport; neither
+                owns an audio element. It lives in the always-visible top bar so
+                the bottom bar keeps its height and its route-only meaning. */}
+            <AcademyRadioControls variant="desktop" />
+            <AcademyRadioControls variant="mobile" />
 
             {/* Notification bell */}
             <UserNotificationBell />

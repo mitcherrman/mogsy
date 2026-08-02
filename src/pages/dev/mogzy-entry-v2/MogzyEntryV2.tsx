@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 
 import SEOHead from "@/components/SEOHead";
+import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
@@ -189,6 +190,11 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
 
     // 1. chime first, so it leads the visual transition
     playLaunchChime();
+    // 1b. this click is the gesture the autoplay policy wants, so it is also
+    //     where the entry music is allowed to start. Fire and forget: it never
+    //     throws or rejects, and nothing below is allowed to wait on it — a
+    //     blocked or missing track must leave the entrance exactly as it was.
+    void startEntryMusic();
     // 2-4. glow intensifies, emblems pull inward, veil closes (see variants)
     setEntering(true);
     // 5. hand off to the live League entry point
