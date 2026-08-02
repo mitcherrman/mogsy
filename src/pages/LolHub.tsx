@@ -22,6 +22,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { playUiSfx } from "@/lib/ui-sfx";
+import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 
@@ -217,7 +218,12 @@ export default function LolHub() {
 
   const DESKTOP_BOOK_STACK_Y_PX = -50;
 
-  const DESKTOP_BOOK_STACK_INSET_PX = 120;
+  // How far each book column is pulled back toward the center from its outer
+  // edge. At wide viewports this is the original 120px composition; below
+  // ~1440px it eases off to 0 so the inner book edges never lean into the
+  // central lane, where the Academy Radio console now lives — at 1280 the
+  // fixed 120px put book edges 34px into the lane, under the console.
+  const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
 
   const renderBook = (d: HubDestination, side: "left" | "right") => (
     // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
@@ -386,17 +392,39 @@ export default function LolHub() {
             <div
               className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
               style={{
-                transform: `translate(${DESKTOP_BOOK_STACK_INSET_PX}px, ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+                transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y_PX}px)`,
               }}
             >
               {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
             </div>
 
-            {/* Central lane — Mogzy hovers above the painted stack of books.
-                Absolutely positioned inside the lane so the float transform
-                never affects layout height. */}
-            <div className="relative h-full min-h-0" aria-hidden>
-              <div className="academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center">
+            {/* Central lane — the Academy Broadcast centerpiece (magic-book
+                surface with the radio dock at its base) sits in the upper
+                lane, lowered enough to clear the heading and subtitle, and
+                Mogzy hovers above the painted stack of books below it. Both
+                are absolutely positioned inside the lane so neither affects
+                the book grid's layout height. The lane itself ignores the
+                pointer so book edges that lean into it stay clickable; only
+                the centerpiece takes events back. */}
+            <div className="pointer-events-none relative h-full min-h-0">
+              {/* Fixed 12px drop from the lane top keeps the book tucked close
+                  under the subtitle at every height — the earlier 7% offset
+                  grew with the lane and pushed the dock into Mogzy's hat on
+                  tall viewports. */}
+              <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
+                {/* Fixed width + shrink-0: the tome centres over the narrow grid
+                    lane and may spill evenly into the cleared gaps beside the
+                    book columns. The width expression tracks the free zone the
+                    grid actually leaves: ~216px until the book inset starts
+                    easing at 1200px (see DESKTOP_BOOK_STACK_INSET), then one
+                    extra px per viewport px, capped before it can crowd the
+                    books at wide-and-short viewports. */}
+                <AcademyBroadcastCenterpiece className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0" />
+              </div>
+              <div
+                aria-hidden
+                className="academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center"
+              >
                 <div className="relative">
                   <div
                     className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
@@ -419,7 +447,7 @@ export default function LolHub() {
             <div
               className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
               style={{
-                transform: `translate(-${DESKTOP_BOOK_STACK_INSET_PX}px, ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+                transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y_PX}px)`,
               }}
             >
               {RIGHT_DESTINATIONS.map((d) => renderBook(d, "right"))}
@@ -439,6 +467,13 @@ export default function LolHub() {
                 onClick={() => onDestinationClick(d.to)}
               />
             ))}
+          </div>
+
+          {/* Mobile Academy Broadcast — the stacked magic-book card with the
+              radio dock beneath it, after the six destinations so primary
+              navigation keeps the top of the list. */}
+          <div className="mt-4 md:hidden">
+            <AcademyBroadcastCenterpiece variant="mobile" />
           </div>
         </div>
       </section>
