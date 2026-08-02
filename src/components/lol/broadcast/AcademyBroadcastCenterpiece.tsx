@@ -46,13 +46,13 @@ export default function AcademyBroadcastCenterpiece({
         energized={radio.isPlaying}
         variant={variant}
       />
-      {/* The dock is the tome's base plinth. On desktop it spans the tome's
-          full width — the inset page-stack edges above it keep the stepped
-          silhouette — because the lane can run as narrow as 200px and the
-          track title must stay readable. Mobile has room to inset it. */}
+      {/* The dock is the tome's control deck: a small breathing gap below the
+          painted base keeps them related but not fused. Desktop spans the
+          tome's full width because the lane can run as narrow as 200px and
+          the track title must stay readable. Mobile has room to inset it. */}
       <AcademyRadioDock
         variant={variant}
-        className={cn("mx-auto", variant === "desktop" ? "w-full" : "w-[92%]")}
+        className={cn("mx-auto mt-1.5", variant === "desktop" ? "w-full" : "w-[92%]")}
       />
     </div>
   );

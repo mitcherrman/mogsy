@@ -118,7 +118,10 @@ export default function AcademyRadioDock({
       aria-label="Academy Radio"
       data-testid={`academy-radio-${suffix}`}
       className={cn(
-        "relative rounded-b-lg border border-t-0 border-[#c9a84c]/40",
+        // Fully bordered and rounded: the deck now floats a small gap below
+        // the painted book rather than fusing into its base, so its top edge
+        // must close cleanly.
+        "relative rounded-lg border border-[#c9a84c]/40",
         "bg-gradient-to-b from-[#0c1830] to-[#050d1c] px-3 pb-2.5 pt-2",
         className,
       )}

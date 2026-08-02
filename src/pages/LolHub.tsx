@@ -407,7 +407,11 @@ export default function LolHub() {
                 pointer so book edges that lean into it stay clickable; only
                 the centerpiece takes events back. */}
             <div className="pointer-events-none relative h-full min-h-0">
-              <div className="absolute inset-x-0 top-[7%] z-10 flex justify-center">
+              {/* Fixed 12px drop from the lane top keeps the book tucked close
+                  under the subtitle at every height — the earlier 7% offset
+                  grew with the lane and pushed the dock into Mogzy's hat on
+                  tall viewports. */}
+              <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
                 {/* Fixed width + shrink-0: the tome centres over the narrow grid
                     lane and may spill evenly into the cleared gaps beside the
                     book columns. The width expression tracks the free zone the
