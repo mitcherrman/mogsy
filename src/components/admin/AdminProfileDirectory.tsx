@@ -75,7 +75,7 @@ export default function AdminProfileDirectory() {
         {filtered.map(p => (
           <button
             key={p.id}
-            onClick={() => navigate(`/profile/${p.id}`)}
+            onClick={() => navigate(`/user/${p.id}`)}
             className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-left"
           >
             <div className="shrink-0 w-10 h-10 rounded-full overflow-hidden">

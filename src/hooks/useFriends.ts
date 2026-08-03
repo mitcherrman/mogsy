@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
+import { subscribeFriendsChanged } from "@/lib/community/friends-refresh";
 
 export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "blocked";
 
@@ -11,6 +12,7 @@ interface FriendProfile {
   avatar_url: string | null;
   is_pro: boolean | null;
   is_bot?: boolean | null;
+  is_disabled?: boolean | null;
 }
 
 export interface FriendRow {
@@ -102,16 +104,26 @@ export function useFriends() {
       };
     });
 
-    setFriends(enriched.filter((r) => r.status === "accepted"));
+    // A soft-disabled bot persona is withheld from this ordinary user-facing
+    // list. The friendship ROW is untouched and reappears the moment the bot is
+    // re-enabled — this hides the entry, it does not unfriend anything. Only a
+    // profile we positively know is a disabled bot is dropped, so a genuinely
+    // missing profile still falls through to the "Unknown" placeholder below
+    // rather than silently vanishing.
+    const visible = enriched.filter(
+      (r) => !(r.profile.is_bot === true && r.profile.is_disabled === true),
+    );
+
+    setFriends(visible.filter((r) => r.status === "accepted"));
     setPendingRequests(
-      enriched.filter(
-        (r) => r.status === "pending" && r.addressee_id === myProfileId
+      visible.filter(
+        (r) => r.status === "pending" &&r.addressee_id === myProfileId
       )
     );
     // Outgoing: requests this user sent that the other side has not answered.
     setSentRequests(
-      enriched.filter(
-        (r) => r.status === "pending" && r.requester_id === myProfileId
+      visible.filter(
+        (r) => r.status === "pending" &&r.requester_id === myProfileId
       )
     );
     setLoading(false);
@@ -120,6 +132,11 @@ export function useFriends() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // An admin action can create a friendship from a surface far away from this
+  // hook. Subscribe to the explicit in-page signal so the drawer updates
+  // immediately rather than waiting on the friendships realtime subscription.
+  useEffect(() => subscribeFriendsChanged(() => void refresh()), [refresh]);
 
   const sendRequest = async (targetProfileId: string) => {
     if (!myProfileId) return;

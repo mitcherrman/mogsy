@@ -29,6 +29,13 @@ export interface LeagueProfile {
   is_bot: boolean | null;
   is_anonymous: boolean | null;
   created_at: string | null;
+  /**
+   * Bot-persona soft-disable (ADM2 Phase A). Always false for human profiles.
+   * Lets a caller withhold a retired demo bot from a user-facing list without
+   * the RPC dropping the ROW — dropping it would make the friends drawer fall
+   * through to its "Unknown" placeholder and render a ghost entry.
+   */
+  is_disabled: boolean | null;
 }
 
 /**
