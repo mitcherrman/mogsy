@@ -18,8 +18,8 @@ const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), toasts) }));
 
 const db = vi.hoisted(() => ({
-  insertError: null as any,
-  insertPayloads: [] as any[],
+  insertError: null as { message: string } | null,
+  insertPayloads: [] as Record<string, unknown>[],
 }));
 
 vi.mock("@/integrations/supabase/client", () => {

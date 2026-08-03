@@ -36,16 +36,18 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => authState }));
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), toasts) }));
 
+type Row = Record<string, unknown>;
+
 const db = vi.hoisted(() => ({
-  notifications: [] as any[],
-  reads: [] as any[],
-  roles: [] as any[],
-  profile: { id: "profile-1" } as any,
-  notifError: null as any,
-  readsError: null as any,
-  upsertError: null as any,
+  notifications: [] as Record<string, unknown>[],
+  reads: [] as { notification_id: string }[],
+  roles: [] as { role: string }[],
+  profile: { id: "profile-1" } as { id: string } | null,
+  notifError: null as { message: string } | null,
+  readsError: null as { message: string } | null,
+  upsertError: null as { message: string } | null,
   tablesTouched: [] as string[],
-  upsertCalls: [] as any[],
+  upsertCalls: [] as { table: string; rows: unknown; opts: unknown }[],
 }));
 
 vi.mock("@/integrations/supabase/client", () => {
@@ -83,7 +85,7 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
-const notif = (over: Partial<Record<string, unknown>> = {}) => ({
+const notif = (over: Row = {}): Row => ({
   id: "n1",
   title: "A notification",
   message: null,
