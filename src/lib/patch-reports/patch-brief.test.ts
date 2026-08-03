@@ -2,10 +2,12 @@
  * Patch Brief projection — the icon-only Buffs / Nerfs / Adjustments grouping
  * over a Patch Reports detail payload.
  *
- * Direction authority pinned here: the Patch Reports contract carries NO
- * Riot-authored or normalized direction metadata (audited: section/group/
- * property structure only), so grouping uses Mogzy's deterministic classifier
- * over structured numeric fields. These tests are that classifier's spec.
+ * Direction authority pinned here: cards carrying the backend editorial
+ * contract (editorial_direction + editorial_direction_source, authority order
+ * riot_section > riot_patch_highlights > mogzy_inferred > null) group by that
+ * contract; legacy payloads without the fields fall back to Mogzy's local
+ * deterministic classifier over structured numeric fields. The legacy-shaped
+ * fixtures below (no editorial fields) are that fallback's spec.
  */
 import { describe, expect, it } from "vitest";
 
@@ -320,6 +322,158 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     const [kaisa, ahri] = brief!.sections[0].entries;
     expect(kaisa.docsHref).toBe("/lol/docs/champions/kaisa");
     expect(ahri.docsHref).toBeUndefined();
+  });
+
+  it("prefers the backend editorial contract over local numeric inference", () => {
+    // The numbers say buff; Riot's reviewed highlights say nerf. Riot wins.
+    const d = detail([
+      card("Jayce", {
+        changes: [BUFF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_patch_highlights",
+        numeric_direction: "positive",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Jayce"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
+    expect(names(brief, "nerf")).toEqual(["Jayce"]);
+  });
+
+  it("resolves provenance precedence across an entity's cards: riot_section beats riot_patch_highlights beats mogzy_inferred", () => {
+    const d = detail([
+      card("Ahri", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "mogzy_inferred",
+      }),
+      card("Ahri", {
+        changes: [BUFF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_patch_highlights",
+      }),
+      card("Yone", {
+        changes: [BUFF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_patch_highlights",
+      }),
+      card("Yone", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_section",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri", "Yone"));
+    expect(names(brief, "buff")).toEqual(["Ahri"]); // highlights beat inference
+    expect(names(brief, "nerf")).toEqual(["Yone"]); // riot_section beats highlights
+  });
+
+  it("same-level conflicting claims resolve to Adjustments, never first-card-wins", () => {
+    const d = detail([
+      card("Corki", {
+        changes: [BUFF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_section",
+      }),
+      card("Corki", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_section",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Corki"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
+    expect(names(brief, "adjustment")).toEqual(["Corki"]);
+  });
+
+  it("an explicit null direction on every card omits the entity (authoritatively unclassified)", () => {
+    const d = detail([
+      card("Ryze"),
+      card("Ziggs", {
+        changes: [MECHANICAL], // would be an Adjustment under local fallback…
+        editorial_direction: null, // …but the backend says: no reliable home
+        editorial_direction_source: null,
+        numeric_direction: "non_numeric",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Ziggs"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(names(brief, "buff")).toEqual(["Ryze"]);
+  });
+
+  it("a null-direction card plus a classified card uses the classified claim", () => {
+    const d = detail([
+      card("Ahri", {
+        changes: [FIX],
+        editorial_direction: null,
+        editorial_direction_source: null,
+      }),
+      card("Ahri", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "mogzy_inferred",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri"));
+    expect(names(brief, "nerf")).toEqual(["Ahri"]);
+  });
+
+  it("patch 26.14 acceptance: reviewed Riot Patch Highlights grouping is reproduced exactly", () => {
+    // Change sets shaped like the audited misclassifications (mixed or diluted
+    // numerics); direction comes from the backend contract, provenance
+    // riot_patch_highlights — nothing here is hardcoded in Broadcast logic.
+    const highlights = (
+      name: string,
+      direction: "buff" | "nerf" | "adjustment",
+      changes: PatchReportChange[],
+    ) =>
+      card(name, {
+        changes,
+        editorial_direction: direction,
+        editorial_direction_source: "riot_patch_highlights",
+      });
+    const champions = [
+      highlights("Corki", "buff", [NERF, BUFF]),
+      highlights("Mordekaiser", "buff", [BUFF, MECHANICAL]),
+      highlights("Nami", "buff", [BUFF, NERF]),
+      highlights("Yunara", "buff", [BUFF]),
+      highlights("Garen", "nerf", [NERF]),
+      highlights("Jayce", "nerf", [NERF, BUFF]),
+      highlights("Locke", "nerf", [MECHANICAL, NERF]),
+      highlights("Senna", "nerf", [NERF]),
+      highlights("Seraphine", "nerf", [NERF]),
+      highlights("Azir", "adjustment", [BUFF, NERF]),
+    ];
+    const extras = [
+      // Item classified only by backend numeric fallback — never riot provenance.
+      item("Trinity Force", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "mogzy_inferred",
+      }),
+      // Fix-only champion: authoritatively unclassified → omitted.
+      card("Ziggs", {
+        changes: [FIX],
+        editorial_direction: null,
+        editorial_direction_source: null,
+      }),
+    ];
+    const allChampions = champions.map((c) => c.entity_name);
+    const brief = projectPatchBrief(
+      detail([...champions, ...extras]),
+      manifest(...allChampions, "Ziggs"),
+    );
+    expect(names(brief, "buff")).toEqual(["Corki", "Mordekaiser", "Nami", "Yunara"]);
+    expect(names(brief, "nerf")).toEqual([
+      "Garen",
+      "Jayce",
+      "Locke",
+      "Senna",
+      "Seraphine",
+      "Trinity Force",
+    ]);
+    expect(names(brief, "adjustment")).toEqual(["Azir"]);
+    const shown = brief!.sections.flatMap((s) => s.entries.map((e) => e.accessibleName));
+    expect(shown).not.toContain("Ziggs");
   });
 
   it("returns null (neutral fallback) when nothing qualifies", () => {

@@ -1,5 +1,7 @@
 import {
   resolvePatchReportAsset,
+  type PatchEditorialDirection,
+  type PatchEditorialSource,
   type PatchReportCard,
   type PatchReportChange,
   type PatchReportDetail,
@@ -17,15 +19,15 @@ import { championSlug } from "@/lib/league-docs/api";
  * within each section; grouping only sorts entities into the three buckets,
  * it never re-ranks them.
  *
- * DIRECTION AUTHORITY — audited 2026-08-02: neither Riot's patch notes nor
- * Mogzy's ingestion (knowledge_engine/patch_report/schema.py) carries any
- * buff/nerf/adjustment metadata; the only structure is section / group /
- * property names plus numeric before/after values. The words "buff"/"nerf"
- * exist solely in prose (context_text), which is not authoritative. So the
- * grouping below uses Mogzy's deterministic classifier over structured
- * fields: numeric movement per property, with an explicit lower-is-better
- * keyword list. If the upstream contract ever grows real direction metadata,
- * it should replace `classifyChange`/`classifyCardDirection` wholesale.
+ * DIRECTION AUTHORITY — the backend now serves a provenance-labeled
+ * editorial direction per card (`editorial_direction` +
+ * `editorial_direction_source`), resolved under the authority order
+ * riot_section > riot_patch_highlights > mogzy_inferred > none. When any of
+ * an entity's cards carry that contract, the brief uses it: the highest-
+ * precedence source wins across the entity's cards, same-level conflicts
+ * resolve to Adjustments, and an explicit null on every card (bugfix-only)
+ * omits the entity. The local numeric classifier below survives ONLY as a
+ * compatibility fallback for legacy payloads that predate the contract.
  *
  * The one product rule this module enforces at the data layer: an entity is
  * identified visibly by icon alone. Names survive only in `accessibleName`,
@@ -134,6 +136,43 @@ export function classifyCardDirection(
   return classifyChangeSet(card.changes);
 }
 
+/** Higher wins. Unknown future sources rank below every known one rather
+ * than being trusted or crashing. */
+const SOURCE_PRECEDENCE: Record<PatchEditorialSource, number> = {
+  riot_section: 3,
+  riot_patch_highlights: 2,
+  mogzy_inferred: 1,
+};
+
+type EditorialClaim = {
+  direction: PatchEditorialDirection;
+  source: PatchEditorialSource | null;
+};
+
+const isKnownDirection = (d: unknown): d is PatchEditorialDirection =>
+  d === "buff" || d === "nerf" || d === "adjustment";
+
+/**
+ * Resolve an entity's direction from its cards' backend editorial claims.
+ * Precondition: at least one card carried the contract (`hasContract`).
+ *
+ *  - no non-null claim on any card → null (authoritatively unclassified,
+ *    e.g. bugfix-only — omitted, mirroring the fallback's fix-only rule);
+ *  - claims present → only the highest-precedence source counts; unanimous
+ *    direction there wins, any same-level conflict is an Adjustment (the
+ *    deterministic rule the backend applies to its own conflicts).
+ */
+function resolveEditorialClaims(claims: EditorialClaim[]): PatchBriefDirection | null {
+  if (claims.length === 0) return null;
+  const rank = (c: EditorialClaim) =>
+    c.source ? (SOURCE_PRECEDENCE[c.source] ?? 0) : 0;
+  const top = Math.max(...claims.map(rank));
+  const winners = claims.filter((c) => rank(c) === top);
+  return winners.every((c) => c.direction === winners[0].direction)
+    ? winners[0].direction
+    : "adjustment";
+}
+
 const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = {
   buff: "Buffs",
   nerf: "Nerfs",
@@ -149,8 +188,10 @@ const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = 
  *  - only main "Champions" / "Items" sections (Summoner's Rift gameplay);
  *  - every qualifying changed champion and item, no caps;
  *  - one entry per entity: ALL of an entity's qualifying cards are collected
- *    first and its section comes from the aggregate change set (a buff card
- *    plus a nerf card is one Adjustments entry, never a Buffs one);
+ *    first and its section comes from the backend editorial contract when
+ *    present (highest-precedence source wins, same-level conflicts →
+ *    Adjustments), else from the aggregate change set (a buff card plus a
+ *    nerf card is one Adjustments entry, never a Buffs one);
  *  - entities keep the report order of their FIRST appearance;
  *  - an entity without a resolvable icon is omitted (after classification),
  *    never named;
@@ -171,6 +212,10 @@ export function projectPatchBrief(
     mogzyImagePath: string | null;
     officialImageUrl: string | null;
     changes: PatchReportChange[];
+    /** True once any card carried the backend editorial contract. */
+    hasContract: boolean;
+    /** Non-null backend claims from this entity's contract-bearing cards. */
+    claims: EditorialClaim[];
   };
   const aggregates = new Map<string, Aggregate>();
 
@@ -180,10 +225,17 @@ export function projectPatchBrief(
       (card.entity_type === "item" && card.section_title === "Items");
     if (!qualifying || card.changes.length === 0) continue;
 
+    const hasContract = card.editorial_direction !== undefined;
+    const claims: EditorialClaim[] = isKnownDirection(card.editorial_direction)
+      ? [{ direction: card.editorial_direction, source: card.editorial_direction_source ?? null }]
+      : [];
+
     const key = `${card.entity_type}:${card.entity_name}`;
     const existing = aggregates.get(key);
     if (existing) {
       existing.changes.push(...card.changes);
+      existing.hasContract ||= hasContract;
+      existing.claims.push(...claims);
       existing.entitySlug ??= card.entity_slug;
       existing.mogzyEntityRef ??= card.mogzy_entity_ref;
       existing.mogzyImagePath ??= card.mogzy_image_path;
@@ -197,6 +249,8 @@ export function projectPatchBrief(
         mogzyImagePath: card.mogzy_image_path,
         officialImageUrl: card.official_image_url,
         changes: [...card.changes],
+        hasContract,
+        claims,
       });
     }
   }
@@ -209,8 +263,12 @@ export function projectPatchBrief(
   };
 
   for (const entity of aggregates.values()) {
-    const direction = classifyChangeSet(entity.changes);
-    if (!direction) continue; // fixes only → omitted
+    // Backend authority when any card carries the contract; local numeric
+    // inference only for legacy payloads that predate it.
+    const direction = entity.hasContract
+      ? resolveEditorialClaims(entity.claims)
+      : classifyChangeSet(entity.changes);
+    if (!direction) continue; // unclassified (e.g. fixes only) → omitted
 
     const iconUrl =
       entity.entityType === "champion"
