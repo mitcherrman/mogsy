@@ -1,24 +1,25 @@
 /**
- * Patch Brief rendering on the Academy Broadcast book surface.
+ * Icon-only Patch Brief rendering on the Academy Broadcast book surface.
  *
- * The one product rule proven here, end to end (raw report text → projection
- * → rendered DOM, desktop AND mobile): every champion entry shows its icon
- * and NEVER its name in visible text, `title` attributes, or tooltips —
- * champion names survive only inside aria-labels and sr-only spans. Visible
- * assertions use a visibility-aware text walker, never textContent, so an
- * sr-only leak would fail the suite.
+ * The product rule proven here, end to end (raw report data soaked in entity
+ * names → projection → rendered DOM, desktop AND mobile): every entity shows
+ * its icon and NEVER its name in visible text, `title` attributes, or
+ * tooltips — names survive only inside aria-labels and sr-only spans.
+ * Visible assertions use a visibility-aware text walker, never textContent,
+ * so an sr-only leak would fail the suite.
  *
- * Also pinned: patch label, direction labels as text (not color-alone),
- * concise summaries, docs/full-report links, keyboard focus, the desktop
- * fourth-row breakpoint reduction, and that composing the brief centerpiece
- * still creates no audio element and no toast.
+ * Also pinned: the ONLY visible text is PATCH BRIEF, the patch label, the
+ * section headings, and Read full report — no summaries, numbers, arrows, or
+ * captions survive; empty sections are absent; the CTA targets the patch;
+ * and composing the brief centerpiece still creates no audio element and no
+ * toast.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import type { ChampionManifest } from "@/hooks/useChampionAssets";
-import type { PatchReportDetail } from "@/lib/patch-reports/api";
+import type { PatchReportCard, PatchReportDetail } from "@/lib/patch-reports/api";
 import { projectPatchBrief } from "@/lib/patch-reports/patch-brief";
 import AcademyBroadcastCenterpiece from "./AcademyBroadcastCenterpiece";
 import AcademyBroadcastSurface from "./AcademyBroadcastSurface";
@@ -27,10 +28,11 @@ import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "./broadcast-content"
 import { resetRadioForTests } from "@/lib/audio/academy-radio";
 
 /* -------------------------------------------------------------------------- */
-/* Fixture: raw report data deliberately soaked in champion names             */
+/* Fixture: raw report data deliberately soaked in entity names               */
 /* -------------------------------------------------------------------------- */
 
-const CHAMPIONS = ["Ryze", "Ahri", "Corki", "Kai'Sa"] as const;
+const CHAMPIONS = ["Ryze", "Ahri", "Corki", "Kai'Sa", "Nunu & Willump"] as const;
+const ITEMS = ["Immortal Path", "Long Sword"] as const;
 
 const baseChange = {
   ability_icon_url: null,
@@ -43,142 +45,93 @@ const baseChange = {
   proposal_status: null,
 };
 
+const numeric = (property: string, before: string, after: string) => ({
+  ...baseChange,
+  group_title: "Base Stats",
+  ability_slot: null,
+  property_name: property,
+  change_kind: "numeric" as const,
+  before_raw: before,
+  after_raw: after,
+});
+
+let cardId = 1;
+const card = (
+  name: string,
+  changes: PatchReportCard["changes"],
+  overrides: Partial<PatchReportCard> = {},
+): PatchReportCard => ({
+  id: cardId++,
+  entity_type: "champion",
+  entity_name: name,
+  entity_slug: null,
+  section_id: "champions",
+  section_title: "Champions",
+  official_image_url: null,
+  mogzy_image_path: null,
+  mogzy_entity_ref: name,
+  context_text: `${name} has been dominating pro play.`,
+  aggregate_status: "matches",
+  changes,
+  ...overrides,
+});
+
 const DETAIL: PatchReportDetail = {
-  patch_version: "25.14",
+  patch_version: "26.14",
   source_url: "https://example.com/notes",
   built_at: "2026-07-30T00:00:00Z",
   section_titles: ["Champions", "Items"],
   skipped_sections: [],
   cards: [
-    {
-      id: 1,
-      entity_type: "champion",
-      entity_name: "Ryze",
-      entity_slug: null,
-      section_id: "champions",
-      section_title: "Champions",
-      official_image_url: null,
-      mogzy_image_path: null,
-      mogzy_entity_ref: "Ryze",
-      context_text: "Ryze has been struggling in solo queue.",
-      aggregate_status: "matches",
+    // Buff, linked.
+    card("Ryze", [numeric("Base attack damage", "58", "61")]),
+    // Nerf, linked.
+    card("Ahri", [numeric("Q Cooldown", "8", "10")], {
       changes: [
         {
-          ...baseChange,
-          group_title: "Ryze Base Stats",
-          ability_slot: null,
-          property_name: "Base attack damage",
-          change_kind: "numeric",
-          before_raw: "58",
-          after_raw: "61",
-        },
-      ],
-    },
-    {
-      id: 2,
-      entity_type: "champion",
-      entity_name: "Ahri",
-      entity_slug: null,
-      section_id: "champions",
-      section_title: "Champions",
-      official_image_url: null,
-      mogzy_image_path: null,
-      mogzy_entity_ref: "Ahri",
-      context_text: null,
-      aggregate_status: "matches",
-      changes: [
-        {
-          ...baseChange,
+          ...numeric("Cooldown", "8", "10"),
           group_title: "Q - Orb of Deception",
           ability_slot: "Q",
-          property_name: "Cooldown",
-          change_kind: "numeric",
-          before_raw: "8",
-          after_raw: "10",
         },
       ],
-    },
-    {
-      id: 3,
-      entity_type: "champion",
-      entity_name: "Corki",
-      entity_slug: null,
-      section_id: "champions",
-      section_title: "Champions",
-      official_image_url: null,
-      mogzy_image_path: null,
-      // Not in Mogzy's catalog → icon renders WITHOUT a docs link.
+    }),
+    // Mixed directions → Adjustments.
+    card("Corki", [
+      numeric("Base health", "645", "620"),
+      numeric("Base armor", "28", "31"),
+    ]),
+    // Fixes only → omitted entirely.
+    card("Kai'Sa", [
+      {
+        ...baseChange,
+        group_title: "Bugfixes",
+        ability_slot: null,
+        property_name: "Bugfixes",
+        change_kind: "mechanical",
+        before_raw: null,
+        after_raw: null,
+        detail_text: "Fixed a bug where Kai'Sa's passive dealt no damage.",
+      },
+    ]),
+    // Buff, NOT in Mogzy's catalog → icon renders without a link.
+    card("Nunu & Willump", [numeric("W Move Speed", "30", "35")], {
       mogzy_entity_ref: null,
-      context_text: null,
-      aggregate_status: "matches",
-      changes: [
-        {
-          ...baseChange,
-          group_title: "Base Stats",
-          ability_slot: null,
-          property_name: "Base health",
-          change_kind: "numeric",
-          before_raw: "645",
-          after_raw: "620",
-        },
-        {
-          ...baseChange,
-          group_title: "Base Stats",
-          ability_slot: null,
-          property_name: "Base armor",
-          change_kind: "numeric",
-          before_raw: "28",
-          after_raw: "31",
-        },
-      ],
-    },
-    {
-      id: 4,
-      entity_type: "champion",
-      entity_name: "Kai'Sa",
-      entity_slug: null,
-      section_id: "champions",
-      section_title: "Champions",
-      official_image_url: null,
-      mogzy_image_path: null,
-      mogzy_entity_ref: "Kai'Sa",
-      context_text: null,
-      aggregate_status: "matches",
-      changes: [
-        {
-          ...baseChange,
-          group_title: "Bugfixes",
-          ability_slot: null,
-          property_name: "Bugfixes",
-          change_kind: "mechanical",
-          detail_text: "Fixed a bug where Kai'Sa's passive dealt no damage.",
-        },
-      ],
-    },
-    {
-      id: 5,
+    }),
+    // Item nerf.
+    card("Immortal Path", [numeric("Damage Increase While Above Threshold", "12", "10")], {
       entity_type: "item",
-      entity_name: "Long Sword",
-      entity_slug: null,
+      section_id: "items",
+      section_title: "Items",
+      official_image_url: "https://cdn.example/immortal-path.png",
+      context_text: "Immortal Path forgives too many mistakes.",
+    }),
+    // Item buff.
+    card("Long Sword", [numeric("Attack damage", "9", "10")], {
+      entity_type: "item",
       section_id: "items",
       section_title: "Items",
       official_image_url: "https://cdn.example/long-sword.png",
-      mogzy_image_path: null,
-      mogzy_entity_ref: "Long Sword",
-      context_text: null,
-      aggregate_status: "matches",
-      changes: [
-        {
-          ...baseChange,
-          group_title: "Long Sword",
-          ability_slot: null,
-          property_name: "Attack damage",
-          change_kind: "numeric",
-          before_raw: "10",
-          after_raw: "9",
-        },
-      ],
-    },
+    }),
   ],
 };
 
@@ -196,8 +149,8 @@ const MANIFEST: ChampionManifest = {
   ),
 };
 
-function briefFeed(): BroadcastFeed {
-  const brief = projectPatchBrief(DETAIL, MANIFEST);
+function feedFor(detail: PatchReportDetail): BroadcastFeed {
+  const brief = projectPatchBrief(detail, MANIFEST);
   if (!brief) throw new Error("fixture must project a brief");
   return { status: "ready", transmissions: [briefTransmission(brief)], index: 0 };
 }
@@ -205,23 +158,23 @@ function briefFeed(): BroadcastFeed {
 /**
  * Text a sighted user can actually read: every text node EXCEPT those inside
  * `.sr-only` (visually hidden) subtrees. aria-labels are attributes, so they
- * are excluded by construction. This is what textContent would wrongly count.
+ * are excluded by construction.
  */
 function visibleText(root: Element): string {
   let out = "";
   const walk = (node: Node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      out += node.textContent ?? "";
+      out += ` ${node.textContent ?? ""}`;
       return;
     }
     if (node instanceof Element && node.classList.contains("sr-only")) return;
     node.childNodes.forEach(walk);
   };
   walk(root);
-  return out;
+  return out.replace(/\s+/g, " ").trim();
 }
 
-const renderSurface = (variant: "desktop" | "mobile", feed: BroadcastFeed = briefFeed()) =>
+const renderSurface = (variant: "desktop" | "mobile", feed: BroadcastFeed = feedFor(DETAIL)) =>
   render(
     <MemoryRouter>
       <AcademyBroadcastSurface feed={feed} variant={variant} />
@@ -233,171 +186,141 @@ afterEach(() => cleanup());
 /* -------------------------------------------------------------------------- */
 
 describe.each(["desktop", "mobile"] as const)(
-  "Patch Brief on the book surface — %s variant",
+  "Icon-only Patch Brief — %s variant",
   (variant) => {
     const suffix = variant === "desktop" ? "" : "-mobile";
+    const surface = () => screen.getByTestId(`academy-broadcast-surface${suffix}`);
 
-    it("shows PATCH BRIEF, the patch label, and an icon for every champion entry", () => {
+    it("renders ONLY the approved text: PATCH BRIEF, patch label, headings, CTA", () => {
       renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const visible = visibleText(surface);
-      expect(visible).toContain("Patch Brief");
-      expect(visible).toContain("Patch 25.14");
+      let text = visibleText(surface());
+      for (const allowed of ["Patch Brief", "Patch 26.14", "Buffs", "Nerfs", "Adjustments", "Read full report"]) {
+        expect(text).toContain(allowed);
+        text = text.replaceAll(allowed, "");
+      }
+      // Nothing else is visible: no summaries, numbers, arrows, or captions.
+      expect(text.replace(/\s+/g, "")).toBe("");
+    });
 
-      const rows = surface.querySelectorAll('[data-testid="patch-brief-champion-row"]');
-      expect(rows).toHaveLength(4);
-      for (const row of rows) {
-        const img = row.querySelector("img");
-        expect(img).toBeTruthy();
-        expect(img!.getAttribute("alt")).toBe("");
+    it("groups every qualifying entity once: buffs, nerfs, adjustments grids", () => {
+      renderSurface(variant);
+      const s = surface();
+      const grid = (d: string) =>
+        s.querySelector(`[data-testid="patch-brief-section-${d}"]`)!;
+      // Buffs: Ryze, Nunu & Willump, Long Sword. Nerfs: Ahri, Immortal Path.
+      // Adjustments: Corki. Kai'Sa (fixes only) is nowhere.
+      expect(grid("buff").querySelectorAll("li")).toHaveLength(3);
+      expect(grid("nerf").querySelectorAll("li")).toHaveLength(2);
+      expect(grid("adjustment").querySelectorAll("li")).toHaveLength(1);
+      expect(s.querySelectorAll('[data-testid="patch-brief-champion-icon"]')).toHaveLength(4);
+      expect(s.querySelectorAll('[data-testid="patch-brief-item-icon"]')).toHaveLength(2);
+    });
+
+    it("every icon is name-silent: empty alt, no title, no tooltip, no visible name", () => {
+      renderSurface(variant);
+      const s = surface();
+      for (const img of s.querySelectorAll("img")) {
+        expect(img.getAttribute("alt")).toBe("");
+      }
+      expect(s.querySelectorAll("[title]")).toHaveLength(0);
+      expect(s.querySelectorAll('[role="tooltip"]')).toHaveLength(0);
+      const text = visibleText(s).toLowerCase();
+      for (const name of [...CHAMPIONS, ...ITEMS]) {
+        expect(text).not.toContain(name.toLowerCase());
       }
     });
 
-    it("NEVER shows a champion name in visible text, title attributes, or tooltips", () => {
-      renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const visible = visibleText(surface).toLowerCase();
-      for (const name of CHAMPIONS) {
-        expect(visible).not.toContain(name.toLowerCase());
-        expect(visible).not.toContain("kai"); // partials of raw text can't leak either
-      }
-      // No native title attribute anywhere on the surface — the only tooltip
-      // mechanism the book could accidentally grow.
-      expect(surface.querySelectorAll("[title]")).toHaveLength(0);
-    });
-
-    it("keeps the champion name available to screen readers on the docs link", () => {
+    it("catalogued champions link to League Docs with the name only in the aria-label", () => {
       renderSurface(variant);
       const link = screen.getByRole("link", { name: "Open Ryze in League Docs" });
       expect(link).toHaveAttribute("href", "/lol/docs/champions/ryze");
-      // The image inside contributes no duplicate accessible name.
       expect(link.querySelector("img")!.getAttribute("alt")).toBe("");
       link.focus();
       expect(document.activeElement).toBe(link);
     });
 
-    it("renders an uncatalogued champion's icon with sr-only identity and no link", () => {
+    it("uncatalogued champions and items render unlinked icons with sr-only identity", () => {
       renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      // Corki has no mogzy_entity_ref → no docs link may exist for it…
-      expect(
-        screen.queryByRole("link", { name: /Corki/ }),
-      ).toBeNull();
-      // …but its row still identifies itself invisibly, icon intact.
-      const srOnly = Array.from(surface.querySelectorAll(".sr-only")).map(
-        (el) => el.textContent,
+      const s = surface();
+      expect(screen.queryByRole("link", { name: /Nunu/ })).toBeNull();
+      expect(screen.queryByRole("link", { name: /Long Sword/ })).toBeNull();
+      const srOnly = [...s.querySelectorAll(".sr-only")].map((el) => el.textContent);
+      expect(srOnly).toContain("Nunu & Willump");
+      expect(srOnly).toContain("Long Sword");
+      expect(srOnly).toContain("Immortal Path");
+    });
+
+    it("Read full report targets the selected patch", () => {
+      renderSurface(variant);
+      expect(screen.getByRole("link", { name: "Read full report" })).toHaveAttribute(
+        "href",
+        "/lol/patch-reports?patch=26.14",
       );
-      expect(srOnly).toContain("Corki");
-      expect(visibleText(surface)).not.toContain("Corki");
     });
 
-    it("classifies with visible text labels: Buff, Nerf, Adjusted, Fix", () => {
+    it("splits sections ⌈n/2⌉ left / rest right, with the CTA closing the right page", () => {
       renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const visible = visibleText(surface);
-      expect(visible).toContain("Buff");
-      expect(visible).toContain("Nerf");
-      expect(visible).toContain("Adjusted");
-      expect(visible).toContain("Fix");
-    });
-
-    it("shows concise sanitized summaries built from structured fields", () => {
-      renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const visible = visibleText(surface);
-      expect(visible).toContain("Base attack damage 58 → 61");
-      expect(visible).toContain("Q cooldown 8 → 10");
-      // Kai'Sa's bugfix prose (with her name) is never rendered — label only.
-      expect(visible).toContain("Bugfixes");
-      expect(visible).not.toContain("passive dealt no damage");
-    });
-
-    it("renders a breakpoint-neutral descriptor that never claims a visible-row count", () => {
-      renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const visible = visibleText(surface);
-      // The total of eligible champion changes, nothing about rows on screen —
-      // desktop may hide the fourth row below the wide breakpoint.
-      expect(visible).toContain("Selected from 4 champion changes");
-      expect(visible).not.toMatch(/Showing\s+\d/i);
-    });
-
-    it("renders the one item change and links Read full report to the patch", () => {
-      renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const itemRows = surface.querySelectorAll('[data-testid="patch-brief-item-row"]');
-      expect(itemRows).toHaveLength(1);
-      expect(visibleText(surface)).toContain("Attack damage 10 → 9");
-
-      const report = screen.getByRole("link", { name: "Read full report" });
-      expect(report).toHaveAttribute("href", "/lol/patch-reports?patch=25.14");
-    });
-
-    it("keeps champion rows on the left page and the report action on the right page", () => {
-      renderSurface(variant);
-      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
-      const championList = surface.querySelector('[aria-label="Selected champion changes"]')!;
-      const report = screen.getByRole("link", { name: "Read full report" });
+      const s = surface();
+      const [leftPage, rightPage] = s.querySelectorAll(":scope > div:last-child > div");
+      // Three sections → Buffs and Nerfs share the headline page,
+      // Adjustments and the CTA take the right page.
+      expect(leftPage.querySelector('[data-testid="patch-brief-section-buff"]')).toBeTruthy();
+      expect(leftPage.querySelector('[data-testid="patch-brief-section-nerf"]')).toBeTruthy();
+      expect(leftPage.querySelector('[data-testid="patch-brief-section-adjustment"]')).toBeNull();
       expect(
-        championList.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING,
+        rightPage.querySelector('[data-testid="patch-brief-section-adjustment"]'),
+      ).toBeTruthy();
+      const cta = screen.getByRole("link", { name: "Read full report" });
+      expect(rightPage.contains(cta)).toBe(true);
+      expect(
+        rightPage
+          .querySelector('[data-testid="patch-brief-section-adjustment"]')!
+          .compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
   },
 );
 
-describe("Patch Brief — breakpoint reduction and fallback", () => {
-  it("desktop reduces to three rows on narrow lanes via the breakpoint class — never names", () => {
-    renderSurface("desktop");
-    const rows = screen
-      .getByTestId("academy-broadcast-surface")
-      .querySelectorAll('[data-testid="patch-brief-champion-row"]');
-    expect(rows[3].className).toContain("hidden");
-    expect(rows[3].className).toContain("min-[1360px]:flex");
-    for (const i of [0, 1, 2]) expect(rows[i].className).not.toContain("hidden");
-  });
+/* -------------------------------------------------------------------------- */
 
-  it("mobile keeps all four rows visible", () => {
-    renderSurface("mobile");
-    const rows = screen
-      .getByTestId("academy-broadcast-surface-mobile")
-      .querySelectorAll('[data-testid="patch-brief-champion-row"]');
-    for (const row of rows) expect(row.className).not.toContain("hidden");
-  });
-
-  it("a three-entry brief renders three rows with the same invariants intact", () => {
-    // Same fixture minus Kai'Sa: exactly the minimum three champions.
-    const threeDetail: PatchReportDetail = {
+describe("Icon-only Patch Brief — empty sections and fallback", () => {
+  it("an empty Adjustments section is absent (no heading, no grid)", () => {
+    const noAdjust: PatchReportDetail = {
       ...DETAIL,
-      cards: DETAIL.cards.filter((c) => c.entity_name !== "Kai'Sa"),
+      cards: DETAIL.cards.filter((c) => c.entity_name !== "Corki"),
     };
-    const brief = projectPatchBrief(threeDetail, MANIFEST);
-    if (!brief) throw new Error("fixture must project a brief");
-    renderSurface("desktop", {
-      status: "ready",
-      transmissions: [briefTransmission(brief)],
-      index: 0,
-    });
-
-    const surface = screen.getByTestId("academy-broadcast-surface");
-    const rows = surface.querySelectorAll('[data-testid="patch-brief-champion-row"]');
-    expect(rows).toHaveLength(3);
-    for (const row of rows) expect(row.className).not.toContain("hidden");
-
-    const visible = visibleText(surface);
-    expect(visible).toContain("Selected from 3 champion changes");
-    expect(visible).not.toMatch(/Showing\s+\d/i);
-    for (const name of ["Ryze", "Ahri", "Corki"]) {
-      expect(visible.toLowerCase()).not.toContain(name.toLowerCase());
-    }
-    expect(surface.querySelectorAll("[title]")).toHaveLength(0);
+    renderSurface("desktop", feedFor(noAdjust));
+    const s = screen.getByTestId("academy-broadcast-surface");
+    expect(s.querySelector('[data-testid="patch-brief-section-adjustment"]')).toBeNull();
+    expect(visibleText(s)).not.toContain("Adjustments");
   });
 
-  it("the neutral placeholder feed renders no brief rows and no links", () => {
+  it("an empty Buffs section is absent and the next section leads the left page", () => {
+    const nerfsOnly: PatchReportDetail = {
+      ...DETAIL,
+      cards: DETAIL.cards.filter((c) => ["Ahri", "Immortal Path"].includes(c.entity_name)),
+    };
+    renderSurface("desktop", feedFor(nerfsOnly));
+    const s = screen.getByTestId("academy-broadcast-surface");
+    expect(s.querySelector('[data-testid="patch-brief-section-buff"]')).toBeNull();
+    expect(visibleText(s)).not.toContain("Buffs");
+    expect(s.querySelector('[data-testid="patch-brief-section-nerf"]')).toBeTruthy();
+  });
+
+  it("no qualifying entities at all → the projection is null (neutral fallback path)", () => {
+    const fixesOnly: PatchReportDetail = {
+      ...DETAIL,
+      cards: DETAIL.cards.filter((c) => c.entity_name === "Kai'Sa"),
+    };
+    expect(projectPatchBrief(fixesOnly, MANIFEST)).toBeNull();
+  });
+
+  it("the neutral placeholder feed renders no brief markup and no links", () => {
     renderSurface("desktop", INITIAL_BROADCAST_FEED);
-    const surface = screen.getByTestId("academy-broadcast-surface");
-    expect(surface.querySelectorAll("[data-testid^='patch-brief-']")).toHaveLength(0);
-    expect(surface.querySelector("a")).toBeNull();
-    expect(surface).toHaveTextContent("Transmission systems online");
+    const s = screen.getByTestId("academy-broadcast-surface");
+    expect(s.querySelectorAll("[data-testid^='patch-brief-']")).toHaveLength(0);
+    expect(s.querySelector("a")).toBeNull();
+    expect(s).toHaveTextContent("Transmission systems online");
   });
 });
 
@@ -405,7 +328,7 @@ describe("Patch Brief — breakpoint reduction and fallback", () => {
 /* Centerpiece regression — composing the brief changes nothing about audio   */
 /* -------------------------------------------------------------------------- */
 
-describe("Patch Brief centerpiece — audio and dock regressions", () => {
+describe("Icon-only Patch Brief centerpiece — audio and dock regressions", () => {
   const nativeLocalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const nativeCreateElement = document.createElement.bind(document);
   let audioCreations = 0;
@@ -449,7 +372,7 @@ describe("Patch Brief centerpiece — audio and dock regressions", () => {
   it("creates no audio element and no toast, and keeps the dock below the book", () => {
     const { baseElement } = render(
       <MemoryRouter>
-        <AcademyBroadcastCenterpiece feed={briefFeed()} />
+        <AcademyBroadcastCenterpiece feed={feedFor(DETAIL)} />
       </MemoryRouter>,
     );
 

@@ -1,9 +1,11 @@
 /**
- * Patch Brief projection — the pure editorial selection over a Patch Reports
- * detail payload. Pinned here: deterministic output, editorial-order
- * champion-first selection with caps, gameplay-only filtering, numeric
- * preference, explicit direction classification, icon-gated omission, and the
- * champion-name scrub that keeps names out of every visible summary string.
+ * Patch Brief projection — the icon-only Buffs / Nerfs / Adjustments grouping
+ * over a Patch Reports detail payload.
+ *
+ * Direction authority pinned here: the Patch Reports contract carries NO
+ * Riot-authored or normalized direction metadata (audited: section/group/
+ * property structure only), so grouping uses Mogzy's deterministic classifier
+ * over structured numeric fields. These tests are that classifier's spec.
  */
 import { describe, expect, it } from "vitest";
 
@@ -14,14 +16,9 @@ import type {
   PatchReportDetail,
 } from "./api";
 import {
-  MAX_CHAMPION_ENTRIES,
-  classifyCard,
+  classifyCardDirection,
   classifyChange,
-  compactValue,
   projectPatchBrief,
-  representativeChange,
-  stripEntityName,
-  summarizeChange,
 } from "./patch-brief";
 
 /* -------------------------------------------------------------------------- */
@@ -46,6 +43,19 @@ const change = (overrides: Partial<PatchReportChange> = {}): PatchReportChange =
   ...overrides,
 });
 
+const BUFF = change(); // 58 → 61
+const NERF = change({ before_raw: "61", after_raw: "58" });
+const MECHANICAL = change({
+  change_kind: "mechanical",
+  property_name: "Passive",
+  detail_text: "Now scales with bonus mana.",
+});
+const FIX = change({
+  group_title: "Bugfixes",
+  property_name: "Bugfixes",
+  change_kind: "mechanical",
+});
+
 let nextCardId = 1;
 const card = (
   name: string,
@@ -62,11 +72,20 @@ const card = (
   mogzy_entity_ref: name,
   context_text: null,
   aggregate_status: "matches",
-  changes: [change()],
+  changes: [BUFF],
   ...overrides,
 });
 
-const detail = (cards: PatchReportCard[], version = "25.14"): PatchReportDetail => ({
+const item = (name: string, overrides: Partial<PatchReportCard> = {}): PatchReportCard =>
+  card(name, {
+    entity_type: "item",
+    section_id: "items",
+    section_title: "Items",
+    official_image_url: `https://cdn.example/${name.replace(/\s+/g, "-")}.png`,
+    ...overrides,
+  });
+
+const detail = (cards: PatchReportCard[], version = "26.14"): PatchReportDetail => ({
   patch_version: version,
   source_url: "https://example.com/notes",
   built_at: "2026-07-30T00:00:00Z",
@@ -75,150 +94,72 @@ const detail = (cards: PatchReportCard[], version = "25.14"): PatchReportDetail 
   cards,
 });
 
-const asset = (name: string) => ({
-  icon: `assets/champions/${name}/icon.png`,
-  splash: `assets/champions/${name}/splash.jpg`,
-  loading: `assets/champions/${name}/loading.jpg`,
-  cutout: `assets/champions/${name}/cutout.png`,
-});
-
 const manifest = (...names: string[]): ChampionManifest => ({
-  champions: Object.fromEntries(names.map((n) => [n, asset(n)])),
+  champions: Object.fromEntries(
+    names.map((n) => [
+      n,
+      {
+        icon: `assets/champions/${n}/icon.png`,
+        splash: `assets/champions/${n}/splash.jpg`,
+        loading: `assets/champions/${n}/loading.jpg`,
+        cutout: `assets/champions/${n}/cutout.png`,
+      },
+    ]),
+  ),
 });
 
-const FIVE = ["Ryze", "Ahri", "Corki", "Zed", "Kai'Sa"];
+const names = (brief: ReturnType<typeof projectPatchBrief>, direction: string) =>
+  brief!.sections.find((s) => s.direction === direction)?.entries.map((e) => e.accessibleName);
 
 /* -------------------------------------------------------------------------- */
-/* Direction classification                                                   */
+/* Deterministic fallback classification (no authoritative metadata exists)   */
 /* -------------------------------------------------------------------------- */
 
-describe("classifyChange — explicit, structured-field-only direction", () => {
-  it("higher damage is a buff; lower damage is a nerf", () => {
-    expect(classifyChange(change({ before_raw: "58", after_raw: "61" }))).toBe("buff");
-    expect(classifyChange(change({ before_raw: "61", after_raw: "58" }))).toBe("nerf");
+describe("classifyChange — deterministic, structured-field-only", () => {
+  it("numeric movement decides: up = buff, down = nerf for normal stats", () => {
+    expect(classifyChange(BUFF)).toBe("buff");
+    expect(classifyChange(NERF)).toBe("nerf");
   });
 
-  it("cooldown and cost invert: going up is a nerf, down is a buff", () => {
-    const cd = change({ property_name: "Cooldown", before_raw: "8", after_raw: "10" });
-    expect(classifyChange(cd)).toBe("nerf");
-    const cost = change({ property_name: "Mana cost", before_raw: "80", after_raw: "60" });
-    expect(classifyChange(cost)).toBe("buff");
-  });
-
-  it("unparseable or unchanged numbers and mechanical changes are adjustments", () => {
-    expect(classifyChange(change({ before_raw: null, after_raw: "5" }))).toBe("adjustment");
-    expect(classifyChange(change({ before_raw: "5", after_raw: "5" }))).toBe("adjustment");
+  it("cooldown/cost/recharge invert the direction", () => {
     expect(
-      classifyChange(change({ change_kind: "mechanical", detail_text: "Now scales." })),
-    ).toBe("adjustment");
+      classifyChange(change({ property_name: "Cooldown", before_raw: "8", after_raw: "10" })),
+    ).toBe("nerf");
+    expect(
+      classifyChange(change({ property_name: "Mana cost", before_raw: "80", after_raw: "60" })),
+    ).toBe("buff");
   });
 
-  it("bugfix labels classify as fix", () => {
-    expect(classifyChange(change({ group_title: "Bugfixes", change_kind: "mechanical" }))).toBe(
-      "fix",
+  it("mechanical, unparseable, or unchanged values are adjustments; bugfix labels are fixes", () => {
+    expect(classifyChange(MECHANICAL)).toBe("adjustment");
+    expect(classifyChange(change({ before_raw: null }))).toBe("adjustment");
+    expect(classifyChange(change({ after_raw: "58" }))).toBe("adjustment");
+    expect(classifyChange(FIX)).toBe("fix");
+  });
+});
+
+describe("classifyCardDirection — one section per entity", () => {
+  it("unanimous numeric direction wins; bugfix lines never dilute it", () => {
+    expect(classifyCardDirection(card("Ryze", { changes: [BUFF, BUFF] }))).toBe("buff");
+    expect(classifyCardDirection(card("Ryze", { changes: [NERF, FIX] }))).toBe("nerf");
+  });
+
+  it("mixed buff/nerf becomes an adjustment", () => {
+    expect(classifyCardDirection(card("Ryze", { changes: [BUFF, NERF] }))).toBe("adjustment");
+  });
+
+  it("decisive changes mixed with neutral mechanical work become an adjustment", () => {
+    expect(classifyCardDirection(card("Ryze", { changes: [BUFF, MECHANICAL] }))).toBe(
+      "adjustment",
     );
   });
-});
 
-describe("classifyCard — unanimous wins, mixed reads Adjusted, fixes don't dilute", () => {
-  it("all buffs → buff; buff + nerf → adjustment", () => {
-    expect(classifyCard(card("Ryze", { changes: [change(), change()] }))).toBe("buff");
-    expect(
-      classifyCard(
-        card("Ryze", {
-          changes: [change(), change({ before_raw: "61", after_raw: "58" })],
-        }),
-      ),
-    ).toBe("adjustment");
+  it("neutral mechanical reworks are adjustments", () => {
+    expect(classifyCardDirection(card("Ryze", { changes: [MECHANICAL] }))).toBe("adjustment");
   });
 
-  it("a buff plus a bugfix is still a buff; a card of only fixes is a fix", () => {
-    expect(
-      classifyCard(
-        card("Ryze", {
-          changes: [change(), change({ group_title: "Bugfixes", change_kind: "mechanical" })],
-        }),
-      ),
-    ).toBe("buff");
-    expect(
-      classifyCard(
-        card("Ryze", {
-          changes: [change({ group_title: "Bugfixes", change_kind: "mechanical" })],
-        }),
-      ),
-    ).toBe("fix");
-  });
-});
-
-/* -------------------------------------------------------------------------- */
-/* Summaries and sanitization                                                 */
-/* -------------------------------------------------------------------------- */
-
-describe("summaries — short, structured, and never naming the champion", () => {
-  it("numeric changes render as label before → after", () => {
-    const c = change({ ability_slot: "Q", group_title: "Q - Overload", property_name: "Cooldown", before_raw: "8", after_raw: "10" });
-    expect(summarizeChange(c, "Ryze")).toBe("Q cooldown 8 → 10");
-  });
-
-  it("slash-scaling values compact to first–last so numbers are never cut", () => {
-    expect(compactValue("60/70/80/90/100")).toBe("60–100");
-    expect(compactValue("8/7/6")).toBe("8–6");
-    expect(compactValue("58")).toBe("58");
-  });
-
-  it("overlong numeric lines degrade to a whole-word directional phrase", () => {
-    const c = change({
-      property_name: "Empowered bonus magic damage against monsters",
-      before_raw: "300",
-      after_raw: "360",
-    });
-    const summary = summarizeChange(c, "Ryze");
-    expect(summary.length).toBeLessThanOrEqual(41);
-    expect(summary).not.toMatch(/\d+\s*→/);
-    expect(summary).toContain("increased");
-  });
-
-  it("mechanical prose (detail_text) is never rendered — labels only", () => {
-    const c = change({
-      change_kind: "mechanical",
-      property_name: "Passive",
-      detail_text: "Ryze now gains bonus shield based on mana.",
-    });
-    expect(summarizeChange(c, "Ryze")).toBe("Passive updated");
-  });
-
-  it("a champion name embedded in source fields never survives into the summary", () => {
-    const c = change({
-      group_title: "Ryze Q - Overload",
-      property_name: "Ryze's Q damage",
-      ability_slot: null,
-      before_raw: "60",
-      after_raw: "70",
-    });
-    expect(summarizeChange(c, "Ryze").toLowerCase()).not.toContain("ryze");
-  });
-
-  it("stripEntityName removes full names, name words, and possessives", () => {
-    expect(stripEntityName("Nunu & Willump W speed", "Nunu & Willump")).toBe("W speed");
-    expect(stripEntityName("Kai'Sa’s passive", "Kai'Sa")).toBe("passive");
-  });
-});
-
-/* -------------------------------------------------------------------------- */
-/* Representative change                                                      */
-/* -------------------------------------------------------------------------- */
-
-describe("representativeChange — numeric preferred, report order breaks ties", () => {
-  it("skips leading mechanical changes when a parseable numeric change exists", () => {
-    const mech = change({ change_kind: "mechanical", property_name: "Passive" });
-    const num = change({ property_name: "Base armor", before_raw: "30", after_raw: "33" });
-    expect(representativeChange(card("Ryze", { changes: [mech, num] }))).toBe(num);
-  });
-
-  it("falls back to the first change when nothing numeric parses", () => {
-    const a = change({ change_kind: "mechanical", property_name: "Passive" });
-    const b = change({ change_kind: "mechanical", property_name: "Ultimate" });
-    expect(representativeChange(card("Ryze", { changes: [a, b] }))).toBe(a);
+  it("a fixes-only card has no reliable home and returns null", () => {
+    expect(classifyCardDirection(card("Ryze", { changes: [FIX, FIX] }))).toBeNull();
   });
 });
 
@@ -226,160 +167,171 @@ describe("representativeChange — numeric preferred, report order breaks ties",
 /* Projection                                                                 */
 /* -------------------------------------------------------------------------- */
 
-describe("projectPatchBrief — deterministic editorial selection", () => {
-  it("produces identical output for identical input (no randomness)", () => {
-    const d = detail(FIVE.map((n) => card(n)));
-    const m = manifest(...FIVE);
+describe("projectPatchBrief — icon-only grouped projection", () => {
+  it("is deterministic: identical input → identical output", () => {
+    const d = detail([card("Ryze"), card("Ahri", { changes: [NERF] }), item("Long Sword")]);
+    const m = manifest("Ryze", "Ahri");
     expect(projectPatchBrief(d, m)).toEqual(projectPatchBrief(d, m));
   });
 
-  it("caps champions at four, preserving report order, and reports honestly", () => {
-    const brief = projectPatchBrief(detail(FIVE.map((n) => card(n))), manifest(...FIVE));
-    expect(brief).not.toBeNull();
-    expect(brief!.changes).toHaveLength(MAX_CHAMPION_ENTRIES);
-    expect(brief!.changes.map((c) => c.accessibleName)).toEqual(FIVE.slice(0, 4));
-    expect(brief!.descriptor).toBe("Selected from 5 champion changes");
-    expect(brief!.patchLabel).toBe("Patch 25.14");
-    expect(brief!.fullReportHref).toBe("/lol/patch-reports?patch=25.14");
-  });
-
-  it("selects at most one entry per champion even with duplicate cards", () => {
-    const cards = [card("Ryze"), card("Ryze"), card("Ahri"), card("Corki"), card("Zed")];
-    const brief = projectPatchBrief(detail(cards), manifest("Ryze", "Ahri", "Corki", "Zed"));
-    expect(brief!.changes.map((c) => c.accessibleName)).toEqual([
-      "Ryze",
-      "Ahri",
-      "Corki",
-      "Zed",
+  it("groups champions AND items into Buffs/Nerfs/Adjustments, preserving report order", () => {
+    const d = detail([
+      card("Ryze"), // buff
+      card("Ahri", { changes: [NERF] }),
+      card("Corki", { changes: [BUFF, NERF] }), // mixed → adjustment
+      card("Zed"), // buff
+      item("Long Sword", { changes: [NERF] }),
+      item("Doran's Blade", { changes: [BUFF] }),
     ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Ahri", "Corki", "Zed"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Buffs", "Nerfs", "Adjustments"]);
+    expect(names(brief, "buff")).toEqual(["Ryze", "Zed", "Doran's Blade"]);
+    expect(names(brief, "nerf")).toEqual(["Ahri", "Long Sword"]);
+    expect(names(brief, "adjustment")).toEqual(["Corki"]);
+    expect(brief!.patchLabel).toBe("Patch 26.14");
+    expect(brief!.fullReportHref).toBe("/lol/patch-reports?patch=26.14");
   });
 
-  it("keeps only main-section gameplay changes: no ARAM/rune/system entries", () => {
-    const cards = [
+  it("has no entity caps: all ten champions of a big patch appear once each", () => {
+    const ten = ["A1", "B2", "C3", "D4", "E5", "F6", "G7", "H8", "I9", "J10"];
+    const brief = projectPatchBrief(detail(ten.map((n) => card(n))), manifest(...ten));
+    expect(names(brief, "buff")).toEqual(ten);
+    expect(brief!.sections).toHaveLength(1);
+  });
+
+  it("aggregates across cards: a champion with one buff card and one nerf card lands once in Adjustments, never Buffs", () => {
+    const d = detail([
+      card("Ryze"), // first card is a buff…
+      card("Ryze", { changes: [NERF] }), // …but a later card nerfs him
+      card("Ahri"),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Ahri"));
+    expect(names(brief, "adjustment")).toEqual(["Ryze"]);
+    expect(names(brief, "buff")).toEqual(["Ahri"]); // Ryze must not remain in Buffs
+    const allNames = brief!.sections.flatMap((s) => s.entries.map((e) => e.accessibleName));
+    expect(allNames.filter((n) => n === "Ryze")).toHaveLength(1);
+  });
+
+  it("aggregates across cards for items too: buff card + nerf card → once in Adjustments", () => {
+    const d = detail([item("Long Sword"), item("Long Sword", { changes: [NERF] })]);
+    const brief = projectPatchBrief(d, manifest());
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
+    expect(names(brief, "adjustment")).toEqual(["Long Sword"]);
+  });
+
+  it("multiple same-direction cards stay one entry in that direction", () => {
+    const buffs = projectPatchBrief(
+      detail([card("Ryze"), card("Ryze", { changes: [BUFF, BUFF] })]),
+      manifest("Ryze"),
+    );
+    expect(buffs!.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(names(buffs, "buff")).toEqual(["Ryze"]);
+
+    const nerfs = projectPatchBrief(
+      detail([
+        item("Long Sword", { changes: [NERF] }),
+        item("Long Sword", { changes: [NERF] }),
+      ]),
+      manifest(),
+    );
+    expect(nerfs!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
+    expect(names(nerfs, "nerf")).toEqual(["Long Sword"]);
+  });
+
+  it("a decisive card plus a neutral mechanical card aggregates to Adjustments", () => {
+    const d = detail([card("Ryze"), card("Ryze", { changes: [MECHANICAL] })]);
+    const brief = projectPatchBrief(d, manifest("Ryze"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
+    expect(names(brief, "adjustment")).toEqual(["Ryze"]);
+  });
+
+  it("entity order follows FIRST source appearance even when later cards complete the aggregate", () => {
+    const d = detail([
+      card("Ahri", { changes: [NERF] }),
+      card("Ryze", { changes: [NERF] }),
+      card("Ahri", { changes: [NERF] }), // extra Ahri card must not move her behind Ryze
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri", "Ryze"));
+    expect(names(brief, "nerf")).toEqual(["Ahri", "Ryze"]);
+  });
+
+  it("hides every empty section — adjustments, buffs, or nerfs alike", () => {
+    const onlyNerfs = projectPatchBrief(
+      detail([card("Ryze", { changes: [NERF] })]),
+      manifest("Ryze"),
+    );
+    expect(onlyNerfs!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
+
+    const noAdjustments = projectPatchBrief(
+      detail([card("Ryze"), card("Ahri", { changes: [NERF] })]),
+      manifest("Ryze", "Ahri"),
+    );
+    expect(noAdjustments!.sections.map((s) => s.title)).toEqual(["Buffs", "Nerfs"]);
+  });
+
+  it("omits fix-only entities instead of inventing a Fixes section", () => {
+    const brief = projectPatchBrief(
+      detail([card("Ryze"), card("Kai'Sa", { changes: [FIX] })]),
+      manifest("Ryze", "Kai'Sa"),
+    );
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(names(brief, "buff")).toEqual(["Ryze"]);
+  });
+
+  it("keeps only main-section gameplay entities: no ARAM/rune/system entries", () => {
+    const d = detail([
       card("Ryze"),
       card("Ahri", { section_title: "ARAM: Mayhem" }),
-      card("Corki"),
-      card("Zed"),
-      card("Kai'Sa"),
       card("Lethal Tempo", { entity_type: "rune", section_title: "Runes" }),
       card("Minions", { entity_type: "system", section_title: "Systems" }),
-    ];
-    const brief = projectPatchBrief(detail(cards), manifest(...FIVE, "Lethal Tempo", "Minions"));
-    expect(brief!.changes.map((c) => c.accessibleName)).toEqual([
-      "Ryze",
-      "Corki",
-      "Zed",
-      "Kai'Sa",
+      item("Long Sword", { section_title: "Arena" }),
     ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Ahri", "Lethal Tempo", "Minions"));
+    expect(names(brief, "buff")).toEqual(["Ryze"]);
+    expect(brief!.sections).toHaveLength(1);
   });
 
-  it("omits a champion whose icon cannot be resolved — never a visible-name fallback", () => {
-    const cards = FIVE.map((n) => card(n));
-    const m = manifest("Ryze", "Corki", "Zed", "Kai'Sa"); // no Ahri icon
-    const brief = projectPatchBrief(detail(cards), m);
-    expect(brief!.changes.map((c) => c.accessibleName)).toEqual([
-      "Ryze",
-      "Corki",
-      "Zed",
-      "Kai'Sa",
-    ]);
-    for (const entry of brief!.changes) {
-      expect(entry.iconUrl).toContain(`${entry.accessibleName}/icon.png`);
-      expect(entry.summary.toLowerCase()).not.toContain(entry.accessibleName.toLowerCase());
-    }
-  });
-
-  it("returns null (neutral fallback) below three eligible champions", () => {
-    expect(
-      projectPatchBrief(detail([card("Ryze"), card("Ahri")]), manifest("Ryze", "Ahri")),
-    ).toBeNull();
-    expect(projectPatchBrief(detail([]), manifest(...FIVE))).toBeNull();
-    // Icons unavailable entirely → same quiet outcome.
-    expect(projectPatchBrief(detail(FIVE.map((n) => card(n))), null)).toBeNull();
-  });
-
-  it("includes at most one item, first eligible, with the patch-report icon chain", () => {
-    const cards = [
-      ...FIVE.slice(0, 3).map((n) => card(n)),
-      card("Long Sword", {
-        entity_type: "item",
-        section_title: "Items",
-        mogzy_image_path: null,
-        official_image_url: "https://cdn.example/long-sword.png",
-      }),
-      card("Doran's Blade", {
-        entity_type: "item",
-        section_title: "Items",
-        official_image_url: "https://cdn.example/dorans.png",
-      }),
-    ];
-    const brief = projectPatchBrief(detail(cards), manifest(...FIVE));
-    expect(brief!.itemChange?.accessibleName).toBe("Long Sword");
-    expect(brief!.itemChange?.iconUrl).toBe("https://cdn.example/long-sword.png");
-    expect(brief!.itemChange?.docsHref).toBeUndefined();
-  });
-
-  it("skips items with no resolvable icon and tolerates their absence", () => {
-    const cards = [
-      ...FIVE.slice(0, 3).map((n) => card(n)),
-      card("Mystery Item", { entity_type: "item", section_title: "Items" }),
-    ];
-    const brief = projectPatchBrief(detail(cards), manifest(...FIVE));
-    expect(brief!.itemChange).toBeUndefined();
-    expect(brief!.descriptor).toBe("Selected from 3 champion changes");
-  });
-
-  it("descriptor names the eligible total and never claims a visible-row count", () => {
-    // Ten champion cards, four selected — the descriptor must carry the 10
-    // and stay silent about 4 (or 3, the narrow-desktop row count).
-    const names = [...FIVE, "Champ5", "Champ6", "Champ7", "Champ8", "Champ9"];
-    const brief = projectPatchBrief(detail(names.map((n) => card(n))), manifest(...names));
-    expect(brief!.changes).toHaveLength(4);
-    expect(brief!.descriptor).toBe("Selected from 10 champion changes");
-    expect(brief!.descriptor).not.toMatch(/showing/i);
-    expect(brief!.descriptor).not.toMatch(/\b(3|4) of\b/);
-
-    // Same wording shape at the three-entry minimum.
-    const three = projectPatchBrief(
-      detail(FIVE.slice(0, 3).map((n) => card(n))),
-      manifest(...FIVE),
-    );
-    expect(three!.changes).toHaveLength(3);
-    expect(three!.descriptor).toBe("Selected from 3 champion changes");
-    expect(three!.descriptor).not.toMatch(/showing/i);
-  });
-
-  it("links docs only for catalogued champions, via the League Docs slug", () => {
-    const cards = [
-      card("Kai'Sa"),
+  it("omits entities whose icon cannot be resolved — never a visible-name fallback", () => {
+    const d = detail([
       card("Ryze"),
-      card("Ahri", { mogzy_entity_ref: null }),
-    ];
-    const brief = projectPatchBrief(detail(cards), manifest("Kai'Sa", "Ryze", "Ahri"));
-    expect(brief!.changes[0].docsHref).toBe("/lol/docs/champions/kaisa");
-    expect(brief!.changes[1].docsHref).toBe("/lol/docs/champions/ryze");
-    expect(brief!.changes[2].docsHref).toBeUndefined();
+      card("Ahri"), // not in manifest → omitted
+      item("Mystery Item", { official_image_url: null }), // no icon chain → omitted
+      item("Long Sword"),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ryze"));
+    expect(names(brief, "buff")).toEqual(["Ryze", "Long Sword"]);
   });
 
-  it("tolerates incomplete source data without throwing or inventing content", () => {
-    const cards = [
-      card("Ryze", { changes: [] }), // no changes → skipped
-      card("Ahri", {
-        changes: [change({ before_raw: null, after_raw: null, change_kind: "mechanical", property_name: "" , group_title: ""})],
-      }),
-      card("Corki"),
-      card("Zed"),
-      card("Kai'Sa"),
-    ];
-    const brief = projectPatchBrief(detail(cards), manifest(...FIVE));
-    expect(brief!.changes.map((c) => c.accessibleName)).toEqual([
-      "Ahri",
-      "Corki",
-      "Zed",
-      "Kai'Sa",
+  it("items use the patch-report icon chain and never link (no item route exists)", () => {
+    const d = detail([
+      item("Immortal Path", { mogzy_image_path: "assets/items/immortal-path.png" }),
+      item("Long Sword"),
     ]);
-    const ahri = brief!.changes[0];
-    expect(ahri.summary).toBe("Gameplay update");
-    expect(ahri.direction).toBe("adjustment");
+    const brief = projectPatchBrief(d, null);
+    const entries = brief!.sections[0].entries;
+    expect(entries[0].iconUrl).toContain("assets/items/immortal-path.png");
+    expect(entries[1].iconUrl).toBe("https://cdn.example/Long-Sword.png");
+    expect(entries.every((e) => e.docsHref === undefined)).toBe(true);
+  });
+
+  it("links catalogued champions via the League Docs slug; uncatalogued get no link", () => {
+    const d = detail([card("Kai'Sa"), card("Ahri", { mogzy_entity_ref: null })]);
+    const brief = projectPatchBrief(d, manifest("Kai'Sa", "Ahri"));
+    const [kaisa, ahri] = brief!.sections[0].entries;
+    expect(kaisa.docsHref).toBe("/lol/docs/champions/kaisa");
+    expect(ahri.docsHref).toBeUndefined();
+  });
+
+  it("returns null (neutral fallback) when nothing qualifies", () => {
+    expect(projectPatchBrief(detail([]), manifest())).toBeNull();
+    // All icons unresolvable:
+    expect(projectPatchBrief(detail([card("Ryze")]), null)).toBeNull();
+    // Only fix-only and empty cards:
+    expect(
+      projectPatchBrief(
+        detail([card("Ryze", { changes: [FIX] }), card("Ahri", { changes: [] })]),
+        manifest("Ryze", "Ahri"),
+      ),
+    ).toBeNull();
   });
 });

@@ -66,7 +66,7 @@ export function briefTransmission(brief: PatchBrief): BroadcastTransmission {
     channel: "patch-brief",
     eyebrow: "Patch Brief",
     headline: brief.patchLabel,
-    summary: brief.descriptor,
+    // Icon-only editorial: the sections say everything, no summary copy.
     primaryAction: { label: "Read full report", to: brief.fullReportHref },
     brief,
   };

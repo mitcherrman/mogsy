@@ -139,11 +139,15 @@ describe("usePatchBriefFeed", () => {
     const t = result.current.transmissions[0];
     expect(t.eyebrow).toBe("Patch Brief");
     expect(t.headline).toBe("Patch 25.14");
+    // Icon-only editorial: the transmission carries no prose summary.
+    expect(t.summary).toBeUndefined();
     expect(t.primaryAction).toEqual({
       label: "Read full report",
       to: "/lol/patch-reports?patch=25.14",
     });
-    expect(t.brief?.changes).toHaveLength(4);
+    // All four fixture champions are buffs → one section, four icon entries.
+    expect(t.brief?.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(t.brief?.sections[0].entries).toHaveLength(4);
   });
 
   it("falls back to the neutral placeholder when the patch list fails", async () => {
