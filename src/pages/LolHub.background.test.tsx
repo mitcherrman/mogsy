@@ -27,6 +27,13 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   getChampionSplash: () => null,
   getChampionLoading: () => null,
 }));
+// Keep the broadcast on the neutral placeholder feed — no live patch fetches.
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
+  const { INITIAL_BROADCAST_FEED } = await vi.importActual<
+    typeof import("@/components/lol/broadcast/broadcast-content")
+  >("@/components/lol/broadcast/broadcast-content");
+  return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
+});
 vi.mock("@/components/ads/AdSlot", () => ({ default: () => null }));
 vi.mock("@/components/lol/LolWelcomeIntro", () => ({ default: () => null }));
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));

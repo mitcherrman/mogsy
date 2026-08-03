@@ -32,6 +32,14 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   getChampionSplash: () => null,
   getChampionLoading: () => null,
 }));
+// The Patch Brief provider fetches the live Patch Reports API; this file is
+// about hub navigation structure, so it stays on the neutral placeholder feed.
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
+  const { INITIAL_BROADCAST_FEED } = await vi.importActual<
+    typeof import("@/components/lol/broadcast/broadcast-content")
+  >("@/components/lol/broadcast/broadcast-content");
+  return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
+});
 vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));

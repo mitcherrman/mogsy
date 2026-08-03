@@ -2,6 +2,7 @@ import { useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
+import type { PatchBrief, PatchBriefChange } from "@/lib/patch-reports/patch-brief";
 import type { BroadcastFeed, BroadcastTransmission } from "./broadcast-content";
 
 /**
@@ -52,6 +53,7 @@ function feedView(feed: BroadcastFeed): {
   primaryAction?: BroadcastTransmission["primaryAction"];
   secondaryAction?: BroadcastTransmission["secondaryAction"];
   pager?: { count: number; index: number };
+  brief?: PatchBrief;
 } {
   if (feed.status === "loading") {
     return { eyebrow: "Academy Broadcast", headline: "Receiving transmission…" };
@@ -85,6 +87,7 @@ function feedView(feed: BroadcastFeed): {
     timestamp: t.timestamp,
     primaryAction: t.primaryAction,
     secondaryAction: t.secondaryAction,
+    brief: t.brief,
     pager:
       feed.transmissions.length > 1
         ? { count: feed.transmissions.length, index: feed.index }
@@ -181,12 +184,36 @@ export default function AcademyBroadcastSurface({
           <h2
             className={cn(
               "mt-1.5 max-w-full text-balance font-semibold leading-snug text-[#1d2b47]",
-              desktop ? "text-[10px] min-[1360px]:text-sm min-[1500px]:text-base" : "text-sm",
+              view.brief
+                ? desktop
+                  ? "text-[9px] min-[1360px]:text-[11px] min-[1500px]:text-[13px]"
+                  : "text-[13px]"
+                : desktop
+                  ? "text-[10px] min-[1360px]:text-sm min-[1500px]:text-base"
+                  : "text-sm",
             )}
             style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
           >
             {view.headline}
           </h2>
+          {view.brief && (
+            <ul
+              aria-label="Selected champion changes"
+              className="mt-1.5 flex w-full flex-col items-stretch gap-1"
+            >
+              {view.brief.changes.map((change, i) => (
+                <PatchBriefChangeRow
+                  key={change.entityId}
+                  change={change}
+                  desktop={desktop}
+                  // The narrowest desktop lanes fit three rows cleanly; the
+                  // fourth appears once the pages widen. Entries reduce —
+                  // names never substitute for icons.
+                  className={desktop && i === 3 ? "hidden min-[1360px]:flex" : undefined}
+                />
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Right page — the detail. Empty for feeds with nothing to add; a
@@ -195,6 +222,11 @@ export default function AcademyBroadcastSurface({
           className="absolute flex flex-col items-center justify-center text-center"
           style={{ left: "54%", width: "38%", top: "15%", bottom: "13%" }}
         >
+          {view.brief?.itemChange && (
+            <ul aria-label="Selected item change" className="mb-1.5 flex w-full flex-col items-stretch">
+              <PatchBriefChangeRow change={view.brief.itemChange} desktop={desktop} />
+            </ul>
+          )}
           {view.summary && (
             <p
               className={cn(
@@ -241,6 +273,83 @@ export default function AcademyBroadcastSurface({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Visible classification for a Patch Brief row. The label TEXT carries the
+ * meaning (direction is never color-alone); ink colors match the parchment.
+ */
+const DIRECTION_META: Record<
+  PatchBriefChange["direction"],
+  { label: string; className: string }
+> = {
+  buff: { label: "Buff", className: "text-[#1f6b33]" },
+  nerf: { label: "Nerf", className: "text-[#8f2c2c]" },
+  adjustment: { label: "Adjusted", className: "text-[#6b5418]" },
+  fix: { label: "Fix", className: "text-[#176d93]" },
+};
+
+/**
+ * One icon-led change row. THE product rule lives here: the icon is the only
+ * visible identity — the entity name appears solely as the link's aria-label
+ * (or an sr-only span when there is no docs route), never as visible text, a
+ * `title` attribute, or a tooltip. A failed icon shows nothing (empty alt),
+ * never a name.
+ */
+function PatchBriefChangeRow({
+  change,
+  desktop,
+  className,
+}: {
+  change: PatchBriefChange;
+  desktop: boolean;
+  className?: string;
+}) {
+  const direction = DIRECTION_META[change.direction];
+  const textSize = desktop ? "text-[8px] min-[1360px]:text-[9px] min-[1500px]:text-[10px]" : "text-[10px]";
+  const icon = (
+    <img
+      src={change.iconUrl}
+      alt=""
+      draggable={false}
+      loading="lazy"
+      decoding="async"
+      className={cn(
+        "shrink-0 rounded-[3px] border border-[#8a6d2a]/50 object-cover",
+        desktop ? "h-3.5 w-3.5 min-[1500px]:h-4 min-[1500px]:w-4" : "h-4 w-4",
+      )}
+    />
+  );
+  return (
+    <li
+      data-testid={`patch-brief-${change.entityType}-row`}
+      className={cn("flex min-w-0 items-center gap-1 text-left", className)}
+    >
+      {change.docsHref ? (
+        <Link
+          to={change.docsHref}
+          aria-label={`Open ${change.accessibleName} in League Docs`}
+          className="shrink-0 rounded-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#176d93]"
+        >
+          {icon}
+        </Link>
+      ) : (
+        <span className="shrink-0">
+          {icon}
+          <span className="sr-only">{change.accessibleName}</span>
+        </span>
+      )}
+      <span className={cn("shrink-0 font-bold uppercase tracking-wide", direction.className, textSize)}>
+        {direction.label}
+      </span>
+      <span aria-hidden className={cn("shrink-0 text-[#8a6d2a]", textSize)}>
+        ·
+      </span>
+      <span className={cn("min-w-0 flex-1 truncate text-[#3f4a63]", textSize)}>
+        {change.summary}
+      </span>
+    </li>
   );
 }
 
