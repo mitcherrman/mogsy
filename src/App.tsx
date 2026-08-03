@@ -139,6 +139,9 @@ const AdminArenaPage = lazy(() => import("./pages/admin/areas/AdminArenaPage"));
 // Admin Platform Policies — global Combat Sim token + tutorial switches.
 const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
 
+// ADM2 Phase A — master-admin user and bot directory.
+const AdminUserDirectory = lazy(() => import("./pages/admin/AdminUserDirectory"));
+
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
 const CombatBattleDetail = lazy(() => import("./pages/CombatBattleDetail"));
@@ -389,6 +392,7 @@ const App = () => (
                         cost a capability. Retire only with owner approval. */}
                     <Route path="legacy-dashboard" element={<Admin />} />
                     <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
+                    <Route path="users" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminUserDirectory /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="ranked" element={<Suspense fallback={<RouteFallback />}><AdminRankedPage /></Suspense>} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />

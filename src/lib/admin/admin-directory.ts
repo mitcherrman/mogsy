@@ -191,10 +191,23 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
     warning: "Publishing and settling write immutable live event state.",
   },
   {
+    id: "admin-users",
+    title: "Users",
+    description:
+      "Master-admin user directory: newest accounts first, search and filters, safe account metadata, and the Add to My Friends action.",
+    path: "/admin/users",
+    category: "Site Operations",
+    status: "Production",
+    environment: "all",
+    dangerLevel: "caution",
+    warning: "Add to My Friends writes a real accepted friendship on your own profile.",
+    requiredRole: "master_admin",
+  },
+  {
     id: "platform-policies",
     title: "Platform Policies",
     description:
-      "Global switches: the Combat Sim token requirement for non-Pro users, the automatic tutorial popup, and the required new-user tutorial.",
+      "Global switches: the Combat Sim token requirement for non-Pro users, the tutorial popup and requirement, the global navbar, and public bot labels.",
     path: "/admin/platform-policies",
     category: "Site Operations",
     status: "Production",
