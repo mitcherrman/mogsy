@@ -108,16 +108,32 @@ COMMENT ON COLUMN public.profiles.is_disabled IS
 -- own row via a direct PostgREST update.
 --
 -- This is the ONLY change to this function: one added line. Every other line is
--- reproduced verbatim from 20260514052932_09a8480f-0a62-428a-951f-b383fb177b7c.sql
--- (the most recent definition), which is also the rollback text.
+-- reproduced verbatim from 20260514052932_09a8480f-0a62-428a-951f-b383fb177b7c.sql,
+-- the most recent definition, which is also the rollback text.
+--
+-- CORRECTION (ADM3): an earlier draft of this section was copied from the March
+-- definition (20260312113949) instead, which silently reverted two later fixes:
+--
+--   * 20260514052932 added the `auth.uid() IS NOT NULL AND` guard so that
+--     service-role and SECURITY DEFINER server writes (which have no auth.uid())
+--     are NOT clamped. has_role() is SELECT EXISTS(...), so has_role(NULL,'admin')
+--     is false, not NULL -- without the guard the trigger reverts every
+--     service-role write. stripe-webhook updates profiles.is_pro with the
+--     service-role key, so Pro subscription sync would have failed silently.
+--   * 20260514051208 added active_boost_until to the protected list. Dropping it
+--     would let a non-admin set their own boost expiry via PostgREST.
+--
+-- Both are restored below. The live production body was re-confirmed to carry
+-- the guard and the active_boost_until line before this correction was written.
 CREATE OR REPLACE FUNCTION public.protect_profile_premium_fields()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $$
+AS $function$
 BEGIN
-  IF NOT has_role(auth.uid(), 'admin') THEN
+  -- Allow service-role / SECURITY DEFINER server writes (no auth.uid()) and admins
+  IF auth.uid() IS NOT NULL AND NOT has_role(auth.uid(), 'admin') THEN
     NEW.is_pro := OLD.is_pro;
     NEW.diamonds := OLD.diamonds;
     NEW.boost_credits := OLD.boost_credits;
@@ -129,10 +145,42 @@ BEGIN
     NEW.is_flagged_underage := OLD.is_flagged_underage;
     NEW.admin_notes := OLD.admin_notes;
     NEW.ads_enabled := OLD.ads_enabled;
+    NEW.active_boost_until := OLD.active_boost_until;
   END IF;
   RETURN NEW;
 END;
-$$;
+$function$;
+
+-- Static assertion, in-transaction. If this section is ever regressed again the
+-- whole migration aborts rather than shipping a silently weakened trigger.
+DO $assert_protect$
+DECLARE
+  _def text;
+BEGIN
+  SELECT pg_get_functiondef(p.oid) INTO _def
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'protect_profile_premium_fields';
+
+  IF _def IS NULL THEN
+    RAISE EXCEPTION 'ADM2 Phase A: protect_profile_premium_fields is missing after CREATE';
+  END IF;
+
+  -- 1. service-role writes must remain unclamped
+  IF _def NOT ILIKE '%auth.uid() IS NOT NULL AND%' THEN
+    RAISE EXCEPTION 'ADM2 Phase A: the service-role guard (auth.uid() IS NOT NULL AND ...) is missing -- service-role writes such as the stripe-webhook is_pro sync would be silently reverted';
+  END IF;
+
+  -- 2. active_boost_until must remain protected
+  IF _def NOT ILIKE '%NEW.active_boost_until := OLD.active_boost_until%' THEN
+    RAISE EXCEPTION 'ADM2 Phase A: active_boost_until protection is missing -- a non-admin could self-grant an unlimited boost';
+  END IF;
+
+  -- 3. the new column must be protected
+  IF _def NOT ILIKE '%NEW.is_disabled := OLD.is_disabled%' THEN
+    RAISE EXCEPTION 'ADM2 Phase A: is_disabled protection is missing -- a non-admin could soft-disable their own row';
+  END IF;
+END
+$assert_protect$;
 
 
 -- ---------------------------------------------------------------------------
