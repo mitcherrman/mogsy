@@ -46,6 +46,17 @@
 --     "permission denied for schema auth" rather than assert anything.
 --
 --
+-- auth.users FIXTURES
+-- ───────────────────
+-- The harness seeds five rows into auth.users before anything else, because
+-- public.user_roles.user_id has a live FK to auth.users while
+-- public.profiles.user_id does not. Without them the fixture block dies on a
+-- foreign key violation before the first assertion. They are password-less and
+-- unconfirmed, so they cannot be signed in to, they use the reserved .invalid
+-- TLD, and the closing ROLLBACK discards them with everything else. The full
+-- reasoning is at the fixture block itself.
+--
+--
 -- NO pg_temp HELPERS
 -- ──────────────────
 -- v1 called pg_temp.assert()/impersonate(). A temporary schema's ACL grants
@@ -78,8 +89,10 @@ BEGIN;
 
 DO $outer$
 DECLARE
-  -- Auth ids. No auth.users rows are needed: public.profiles.user_id has no FK
-  -- to auth.users (which is why the legacy bot path could insert a random uuid).
+  -- Auth ids. Reserved synthetic uuids. Real auth.users rows ARE required for
+  -- these -- see the auth.users fixture block below. public.profiles.user_id
+  -- has no FK to auth.users (which is why the legacy bot path could insert a
+  -- random uuid), but public.user_roles.user_id still does.
   master_uid  uuid := '00000000-0000-4000-8000-000000000001';
   admin_uid   uuid := '00000000-0000-4000-8000-000000000002';
   plain_uid   uuid := '00000000-0000-4000-8000-000000000003';
@@ -114,16 +127,11 @@ BEGIN
   -- =========================================================================
   EXECUTE 'RESET ROLE';
 
-  INSERT INTO public.profiles (user_id, display_name) VALUES (master_uid,  'Master')  RETURNING id INTO master_p;
-  INSERT INTO public.profiles (user_id, display_name) VALUES (admin_uid,   'Admin')   RETURNING id INTO admin_p;
-  INSERT INTO public.profiles (user_id, display_name) VALUES (plain_uid,   'Plain')   RETURNING id INTO plain_p;
-  INSERT INTO public.profiles (user_id, display_name) VALUES (other_uid,   'Other')   RETURNING id INTO other_p;
-  INSERT INTO public.profiles (user_id, display_name) VALUES (blocker_uid, 'Blocker') RETURNING id INTO blocker_p;
-
-  INSERT INTO public.user_roles (user_id, role) VALUES (master_uid, 'master_admin');
-  INSERT INTO public.user_roles (user_id, role) VALUES (admin_uid,  'admin');
-
-  -- Sanity: the harness is worthless if the migration was not applied.
+  -- Sanity: the harness is worthless if the migration was not applied. Checked
+  -- FIRST, before any fixture, because the profiles upsert below fires
+  -- protect_profile_premium_fields, which references NEW.is_disabled -- against
+  -- an unmigrated database that raises an opaque "record new has no field"
+  -- error instead of the plain statement of what is wrong.
   IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
                  WHERE ns.nspname = 'public' AND p.proname = 'admin_link_friendship') THEN
     RAISE EXCEPTION 'FAILED: PRE the Phase A migration is not applied to this database';
@@ -132,6 +140,78 @@ BEGIN
                  WHERE table_schema='public' AND table_name='profiles' AND column_name='is_disabled') THEN
     RAISE EXCEPTION 'FAILED: PRE profiles.is_disabled is missing';
   END IF;
+
+  -- -------------------------------------------------------------------------
+  -- auth.users fixtures — REQUIRED, and easy to think you can skip.
+  --
+  -- public.user_roles.user_id carries
+  --     REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL
+  -- from 20260221154528, and that constraint has never been altered since.
+  -- public.profiles.user_id does NOT: its FK was dropped outright in
+  -- 20260221160346, which is what lets the legacy bot path store a fabricated
+  -- uuid. That asymmetry is the trap. Without the rows below, the two
+  -- user_roles inserts fail with foreign_key_violation (SQLSTATE 23503) on
+  -- constraint user_roles_user_id_fkey before a single assertion runs, and
+  -- is_master_admin() could never return true for the master fixture -- so
+  -- every authorization result in this file would be meaningless.
+  --
+  -- These are NOT login-capable identities. encrypted_password and
+  -- email_confirmed_at are both left NULL, so neither a password nor an OTP
+  -- sign-in can succeed for them. The addresses sit under the reserved
+  -- .invalid TLD (RFC 2606), which can never resolve and can never collide
+  -- with a real account; the ids are reserved v4-shaped constants that the
+  -- pre-apply probe confirms are absent from auth.users.
+  --
+  -- Every value is deterministic. Nothing here is discarded by hand: the final
+  -- ROLLBACK removes these rows exactly as it removes every other fixture.
+  BEGIN
+    INSERT INTO auth.users (id, aud, role, email,
+                            raw_app_meta_data, raw_user_meta_data,
+                            created_at, updated_at)
+    VALUES
+      (master_uid,  'authenticated', 'authenticated', 'adm2-fixture-master@adm2-phase-a.invalid',  '{}'::jsonb, '{}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz, '2000-01-01T00:00:00Z'::timestamptz),
+      (admin_uid,   'authenticated', 'authenticated', 'adm2-fixture-admin@adm2-phase-a.invalid',   '{}'::jsonb, '{}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz, '2000-01-01T00:00:00Z'::timestamptz),
+      (plain_uid,   'authenticated', 'authenticated', 'adm2-fixture-plain@adm2-phase-a.invalid',   '{}'::jsonb, '{}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz, '2000-01-01T00:00:00Z'::timestamptz),
+      (other_uid,   'authenticated', 'authenticated', 'adm2-fixture-other@adm2-phase-a.invalid',   '{}'::jsonb, '{}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz, '2000-01-01T00:00:00Z'::timestamptz),
+      (blocker_uid, 'authenticated', 'authenticated', 'adm2-fixture-blocker@adm2-phase-a.invalid', '{}'::jsonb, '{}'::jsonb, '2000-01-01T00:00:00Z'::timestamptz, '2000-01-01T00:00:00Z'::timestamptz);
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE EXCEPTION 'FAILED: PRE the SQL Editor role cannot INSERT into auth.users, so the user_roles FK cannot be satisfied. Run as the project owner (postgres) in the Supabase SQL Editor; do NOT work around this by dropping user_roles_user_id_fkey.';
+    WHEN unique_violation THEN
+      RAISE EXCEPTION 'FAILED: PRE a reserved fixture id or email already exists in auth.users. Investigate before rerunning -- these ids must be absent.';
+  END;
+
+  -- absent_id is deliberately NOT given an auth.users row: B2 needs an id that
+  -- resolves to no profile at all.
+
+  -- auth.users carries an AFTER INSERT trigger, on_auth_user_created, which
+  -- calls handle_new_user() and auto-creates a public.profiles row for each new
+  -- id (display_name '' for a non-anonymous user). The upsert below therefore
+  -- names a row that already exists rather than colliding with the
+  -- profiles_user_id_key unique constraint. It is correct either way: it
+  -- inserts if the trigger is absent and renames if it is present.
+  INSERT INTO public.profiles (user_id, display_name) VALUES (master_uid,  'Master')
+    ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING id INTO master_p;
+  INSERT INTO public.profiles (user_id, display_name) VALUES (admin_uid,   'Admin')
+    ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING id INTO admin_p;
+  INSERT INTO public.profiles (user_id, display_name) VALUES (plain_uid,   'Plain')
+    ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING id INTO plain_p;
+  INSERT INTO public.profiles (user_id, display_name) VALUES (other_uid,   'Other')
+    ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING id INTO other_p;
+  INSERT INTO public.profiles (user_id, display_name) VALUES (blocker_uid, 'Blocker')
+    ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name RETURNING id INTO blocker_p;
+
+  -- Every id about to be written to user_roles must now be backed by auth.users.
+  -- Asserted rather than assumed, because a silent gap here would resurface as a
+  -- bare 23503 with no explanation of which fixture was missing.
+  SELECT count(*) INTO n FROM auth.users
+   WHERE id IN (master_uid, admin_uid, plain_uid, other_uid, blocker_uid);
+  IF n <> 5 THEN
+    RAISE EXCEPTION 'FAILED: PRE expected 5 auth.users fixture rows, found %', n;
+  END IF;
+
+  INSERT INTO public.user_roles (user_id, role) VALUES (master_uid, 'master_admin');
+  INSERT INTO public.user_roles (user_id, role) VALUES (admin_uid,  'admin');
 
   -- =========================================================================
   -- A. Authorization  — context: CLIENT
