@@ -312,6 +312,16 @@ describe.each(["desktop", "mobile"] as const)(
       expect(visible).not.toContain("passive dealt no damage");
     });
 
+    it("renders a breakpoint-neutral descriptor that never claims a visible-row count", () => {
+      renderSurface(variant);
+      const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
+      const visible = visibleText(surface);
+      // The total of eligible champion changes, nothing about rows on screen —
+      // desktop may hide the fourth row below the wide breakpoint.
+      expect(visible).toContain("Selected from 4 champion changes");
+      expect(visible).not.toMatch(/Showing\s+\d/i);
+    });
+
     it("renders the one item change and links Read full report to the patch", () => {
       renderSurface(variant);
       const surface = screen.getByTestId(`academy-broadcast-surface${suffix}`);
@@ -352,6 +362,34 @@ describe("Patch Brief — breakpoint reduction and fallback", () => {
       .getByTestId("academy-broadcast-surface-mobile")
       .querySelectorAll('[data-testid="patch-brief-champion-row"]');
     for (const row of rows) expect(row.className).not.toContain("hidden");
+  });
+
+  it("a three-entry brief renders three rows with the same invariants intact", () => {
+    // Same fixture minus Kai'Sa: exactly the minimum three champions.
+    const threeDetail: PatchReportDetail = {
+      ...DETAIL,
+      cards: DETAIL.cards.filter((c) => c.entity_name !== "Kai'Sa"),
+    };
+    const brief = projectPatchBrief(threeDetail, MANIFEST);
+    if (!brief) throw new Error("fixture must project a brief");
+    renderSurface("desktop", {
+      status: "ready",
+      transmissions: [briefTransmission(brief)],
+      index: 0,
+    });
+
+    const surface = screen.getByTestId("academy-broadcast-surface");
+    const rows = surface.querySelectorAll('[data-testid="patch-brief-champion-row"]');
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row.className).not.toContain("hidden");
+
+    const visible = visibleText(surface);
+    expect(visible).toContain("Selected from 3 champion changes");
+    expect(visible).not.toMatch(/Showing\s+\d/i);
+    for (const name of ["Ryze", "Ahri", "Corki"]) {
+      expect(visible.toLowerCase()).not.toContain(name.toLowerCase());
+    }
+    expect(surface.querySelectorAll("[title]")).toHaveLength(0);
   });
 
   it("the neutral placeholder feed renders no brief rows and no links", () => {

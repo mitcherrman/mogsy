@@ -46,7 +46,13 @@ export type PatchBrief = {
   changes: PatchBriefChange[];
   /** At most one item entry. */
   itemChange?: PatchBriefChange;
-  /** Honest selection descriptor ("Showing 4 of 12 champion changes"). */
+  /**
+   * Honest, breakpoint-neutral selection descriptor ("Selected from 12
+   * champion changes"). It names the eligible total but never a selected or
+   * visible row count — narrow layouts may hide a row, so any "Showing N"
+   * claim would go stale without viewport knowledge the projection must not
+   * have.
+   */
   descriptor: string;
   fullReportHref: string;
 };
@@ -293,10 +299,7 @@ export function projectPatchBrief(
   }
 
   const totalChampions = new Set(championCards.map((c) => c.entity_name)).size;
-  const descriptor =
-    changes.length < totalChampions
-      ? `Showing ${changes.length} of ${totalChampions} champion changes`
-      : "All champion changes this patch";
+  const descriptor = `Selected from ${totalChampions} champion changes`;
 
   return {
     patchVersion: detail.patch_version,

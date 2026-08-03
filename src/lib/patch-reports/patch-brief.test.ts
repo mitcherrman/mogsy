@@ -238,7 +238,7 @@ describe("projectPatchBrief — deterministic editorial selection", () => {
     expect(brief).not.toBeNull();
     expect(brief!.changes).toHaveLength(MAX_CHAMPION_ENTRIES);
     expect(brief!.changes.map((c) => c.accessibleName)).toEqual(FIVE.slice(0, 4));
-    expect(brief!.descriptor).toBe("Showing 4 of 5 champion changes");
+    expect(brief!.descriptor).toBe("Selected from 5 champion changes");
     expect(brief!.patchLabel).toBe("Patch 25.14");
     expect(brief!.fullReportHref).toBe("/lol/patch-reports?patch=25.14");
   });
@@ -326,7 +326,27 @@ describe("projectPatchBrief — deterministic editorial selection", () => {
     ];
     const brief = projectPatchBrief(detail(cards), manifest(...FIVE));
     expect(brief!.itemChange).toBeUndefined();
-    expect(brief!.descriptor).toBe("All champion changes this patch");
+    expect(brief!.descriptor).toBe("Selected from 3 champion changes");
+  });
+
+  it("descriptor names the eligible total and never claims a visible-row count", () => {
+    // Ten champion cards, four selected — the descriptor must carry the 10
+    // and stay silent about 4 (or 3, the narrow-desktop row count).
+    const names = [...FIVE, "Champ5", "Champ6", "Champ7", "Champ8", "Champ9"];
+    const brief = projectPatchBrief(detail(names.map((n) => card(n))), manifest(...names));
+    expect(brief!.changes).toHaveLength(4);
+    expect(brief!.descriptor).toBe("Selected from 10 champion changes");
+    expect(brief!.descriptor).not.toMatch(/showing/i);
+    expect(brief!.descriptor).not.toMatch(/\b(3|4) of\b/);
+
+    // Same wording shape at the three-entry minimum.
+    const three = projectPatchBrief(
+      detail(FIVE.slice(0, 3).map((n) => card(n))),
+      manifest(...FIVE),
+    );
+    expect(three!.changes).toHaveLength(3);
+    expect(three!.descriptor).toBe("Selected from 3 champion changes");
+    expect(three!.descriptor).not.toMatch(/showing/i);
   });
 
   it("links docs only for catalogued champions, via the League Docs slug", () => {
