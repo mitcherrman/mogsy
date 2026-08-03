@@ -43,16 +43,35 @@ export const STAT_CHECK_API_BASE =
 
 export type StatCheckApiErrorKind = "invalid_request" | "backend" | "invalid_response" | "network" | "aborted";
 
+/**
+ * Structured conflict payload some errors carry alongside their code.
+ * Deliberately identifier-free: it says what KIND of room is in the way, never
+ * which room, whose it is, or its code.
+ */
+export type StatCheckErrorDetails = {
+  room_state?: "open" | "active";
+  other_player_present?: boolean;
+  can_close?: boolean;
+};
+
 export class StatCheckApiError extends Error {
   kind: StatCheckApiErrorKind;
   status: number;
   code: string | null;
-  constructor(kind: StatCheckApiErrorKind, status: number, message: string, code: string | null = null) {
+  details: StatCheckErrorDetails | null;
+  constructor(
+    kind: StatCheckApiErrorKind,
+    status: number,
+    message: string,
+    code: string | null = null,
+    details: StatCheckErrorDetails | null = null,
+  ) {
     super(message);
     this.name = "StatCheckApiError";
     this.kind = kind;
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -98,12 +117,15 @@ async function request<T>(
     payload = null;
   }
   if (!response.ok) {
-    const detail = (payload as { detail?: { code?: string; message?: string } } | null)?.detail;
+    const detail = (payload as {
+      detail?: { code?: string; message?: string; details?: StatCheckErrorDetails };
+    } | null)?.detail;
     throw new StatCheckApiError(
       "backend",
       response.status,
       detail?.message ?? `HTTP ${response.status}`,
       detail?.code ?? null,
+      detail?.details ?? null,
     );
   }
   try {
@@ -158,6 +180,25 @@ export const statCheckOnlineApi = {
       `/api/stat-check/invites/${encodeURIComponent(inviteToken)}/accept`,
       readInviteAccepted,
       { method: "POST", signal },
+    ),
+  /**
+   * Close the caller's own waiting room and join the inviter's, atomically.
+   * The body carries only a confirmation flag — the room to close is derived
+   * server-side from the bearer token, never named by the client.
+   */
+  acceptInviteWithSwitch: (
+    inviteToken: string,
+    confirmCloseOccupiedRoom: boolean,
+    signal?: AbortSignal,
+  ): Promise<InviteAccepted> =>
+    request(
+      `/api/stat-check/invites/${encodeURIComponent(inviteToken)}/accept-switch`,
+      readInviteAccepted,
+      {
+        method: "POST",
+        body: { confirm_close_occupied_room: confirmCloseOccupiedRoom },
+        signal,
+      },
     ),
   declineInvite: (inviteToken: string, signal?: AbortSignal): Promise<InviteResolved> =>
     request(
