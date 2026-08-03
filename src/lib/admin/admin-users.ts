@@ -70,9 +70,13 @@ export function toDirectoryProfile(row: Record<string, unknown>): AdminDirectory
 // Filtering and sorting (pure)
 // ---------------------------------------------------------------------------
 
+// "real" leads because it is the default: production holds ~4,800 profiles of
+// which ~4,770 are anonymous guests, so an unfiltered view buries the ~11 real
+// accounts and 10 bot personas the admin actually came to look at. Every other
+// population stays one click away — nothing is hidden, only deprioritised.
 export const DIRECTORY_FILTERS = [
-  "all",
   "real",
+  "all",
   "anonymous",
   "bots",
   "disabled-bots",
@@ -81,9 +85,21 @@ export const DIRECTORY_FILTERS = [
 ] as const;
 export type DirectoryFilter = (typeof DIRECTORY_FILTERS)[number];
 
+/** Opening view. Presentation only — it narrows no authority and hides no row. */
+export const DEFAULT_DIRECTORY_FILTER: DirectoryFilter = "real";
+
+/**
+ * How many cards are rendered at once, and the "Show more" increment.
+ *
+ * The cap is a RENDER limit, not a fetch limit: `admin_list_profiles()` still
+ * returns every row and search/filter still run across all of them, so a match
+ * is never missed because it sits past the cap.
+ */
+export const DIRECTORY_PAGE_SIZE = 100;
+
 export const DIRECTORY_FILTER_LABELS: Record<DirectoryFilter, string> = {
-  all: "All",
   real: "Real users",
+  all: "All",
   anonymous: "Anonymous",
   bots: "Bots",
   "disabled-bots": "Disabled bots",
@@ -142,6 +158,24 @@ export function applyDirectoryView(
   query: string,
 ): AdminDirectoryProfile[] {
   return sortByNewest(list.filter((p) => matchesFilter(p, filter) && matchesSearch(p, query)));
+}
+
+/** The first `cap` rows. A cap <= 0 shows nothing; a cap past the end is harmless. */
+export function cappedSlice<T>(list: T[], cap: number): T[] {
+  return list.slice(0, Math.max(0, cap));
+}
+
+/**
+ * The directory's count line.
+ *
+ * `matched` is what the current filter and search select out of the full fetched
+ * set; `total` is everything fetched. When they differ the line says so, so a
+ * small number can never be misread as "this is all the platform has".
+ */
+export function formatDirectoryCount(shown: number, matched: number, total: number): string {
+  const num = (v: number) => v.toLocaleString("en-US");
+  const base = `Showing ${num(shown)} of ${num(matched)} profile${matched === 1 ? "" : "s"}`;
+  return matched === total ? base : `${base} (filtered from ${num(total)})`;
 }
 
 /** Canonical profile link. `/profile/:id` is NOT a route — `/user/:profileId` is. */

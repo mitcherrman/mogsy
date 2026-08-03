@@ -18,8 +18,12 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import {
+  DEFAULT_DIRECTORY_FILTER,
   DIRECTORY_FILTERS,
+  DIRECTORY_PAGE_SIZE,
   LINK_FRIENDSHIP_MESSAGES,
+  cappedSlice,
+  formatDirectoryCount,
   adminCreateBotProfile,
   adminLinkFriendship,
   adminUpdateBotProfile,
@@ -163,16 +167,40 @@ describe("filters", () => {
   const admin = profile({ id: "admin", roles: ["master_admin"] });
   const all = [real, anon, bot, offBot, pro, admin];
 
-  it("exposes every documented filter", () => {
+  it("exposes every documented filter, with the default first", () => {
     expect([...DIRECTORY_FILTERS]).toEqual([
-      "all",
       "real",
+      "all",
       "anonymous",
       "bots",
       "disabled-bots",
       "pro",
       "admins",
     ]);
+  });
+
+  it("defaults to real users", () => {
+    expect(DEFAULT_DIRECTORY_FILTER).toBe("real");
+    expect(DIRECTORY_FILTERS).toContain(DEFAULT_DIRECTORY_FILTER);
+  });
+
+  it("the default filter excludes both anonymous accounts and bots", () => {
+    expect(matchesFilter(profile({ isAnonymous: true }), DEFAULT_DIRECTORY_FILTER)).toBe(false);
+    expect(matchesFilter(profile({ isBot: true }), DEFAULT_DIRECTORY_FILTER)).toBe(false);
+    expect(
+      matchesFilter(profile({ isBot: true, isDisabled: true }), DEFAULT_DIRECTORY_FILTER),
+    ).toBe(false);
+    expect(matchesFilter(profile({}), DEFAULT_DIRECTORY_FILTER)).toBe(true);
+  });
+
+  it("every population remains reachable through an explicit filter", () => {
+    const anon = profile({ id: "a", isAnonymous: true });
+    const bot = profile({ id: "b", isBot: true });
+    const off = profile({ id: "c", isBot: true, isDisabled: true });
+    expect(matchesFilter(anon, "anonymous")).toBe(true);
+    expect(matchesFilter(bot, "bots")).toBe(true);
+    expect(matchesFilter(off, "disabled-bots")).toBe(true);
+    for (const p of [anon, bot, off]) expect(matchesFilter(p, "all")).toBe(true);
   });
 
   it("'all' keeps everything", () => {
@@ -266,6 +294,69 @@ describe("applyDirectoryView", () => {
       "bot",
     );
     expect(out.map((p) => p.id)).toEqual(["b2", "b1"]);
+  });
+});
+
+describe("cappedSlice", () => {
+  const list = [1, 2, 3, 4, 5];
+
+  it("returns the first `cap` entries in order", () => {
+    expect(cappedSlice(list, 3)).toEqual([1, 2, 3]);
+  });
+
+  it("is harmless when the cap exceeds the list", () => {
+    expect(cappedSlice(list, 99)).toEqual(list);
+  });
+
+  it("returns nothing for a zero or negative cap", () => {
+    expect(cappedSlice(list, 0)).toEqual([]);
+    expect(cappedSlice(list, -5)).toEqual([]);
+  });
+
+  it("does not mutate its input", () => {
+    cappedSlice(list, 2);
+    expect(list).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("caps AFTER sorting, so the newest rows are the ones kept", () => {
+    const sorted = sortByNewest([
+      profile({ id: "old", createdAt: "2026-01-01T00:00:00Z" }),
+      profile({ id: "new", createdAt: "2026-08-01T00:00:00Z" }),
+      profile({ id: "mid", createdAt: "2026-04-01T00:00:00Z" }),
+    ]);
+    expect(cappedSlice(sorted, 2).map((p) => p.id)).toEqual(["new", "mid"]);
+  });
+});
+
+describe("formatDirectoryCount", () => {
+  it("matches the requested wording when nothing is filtered out", () => {
+    expect(formatDirectoryCount(100, 4791, 4791)).toBe("Showing 100 of 4,791 profiles");
+  });
+
+  it("says so when a filter or search narrowed the set", () => {
+    expect(formatDirectoryCount(11, 11, 4791)).toBe(
+      "Showing 11 of 11 profiles (filtered from 4,791)",
+    );
+  });
+
+  it("reports the capped count, not the matched count, as `shown`", () => {
+    expect(formatDirectoryCount(100, 187, 4791)).toBe(
+      "Showing 100 of 187 profiles (filtered from 4,791)",
+    );
+  });
+
+  it("singularises one profile", () => {
+    expect(formatDirectoryCount(1, 1, 1)).toBe("Showing 1 of 1 profile");
+  });
+
+  it("handles an empty result", () => {
+    expect(formatDirectoryCount(0, 0, 4791)).toBe("Showing 0 of 0 profiles (filtered from 4,791)");
+  });
+});
+
+describe("DIRECTORY_PAGE_SIZE", () => {
+  it("is a sane positive render increment", () => {
+    expect(DIRECTORY_PAGE_SIZE).toBe(100);
   });
 });
 

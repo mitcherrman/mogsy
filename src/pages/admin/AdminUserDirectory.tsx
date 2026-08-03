@@ -24,22 +24,36 @@ import { BotStateToggle } from "@/components/admin/BotStateToggle";
 import { notifyFriendsChanged } from "@/lib/community/friends-refresh";
 import {
   ADMIN_USERS_PATH,
+  DEFAULT_DIRECTORY_FILTER,
   DIRECTORY_FILTERS,
   DIRECTORY_FILTER_LABELS,
+  DIRECTORY_PAGE_SIZE,
   applyDirectoryView,
+  cappedSlice,
   fetchAdminDirectory,
+  formatDirectoryCount,
   type AdminDirectoryProfile,
   type DirectoryFilter,
 } from "@/lib/admin/admin-users";
 
 export { ADMIN_USERS_PATH };
 
-export default function AdminUserDirectory() {
+interface AdminUserDirectoryProps {
+  /** Render cap and "Show more" increment. Overridable for tests. */
+  pageSize?: number;
+}
+
+export default function AdminUserDirectory({
+  pageSize = DIRECTORY_PAGE_SIZE,
+}: AdminUserDirectoryProps = {}) {
   const [profiles, setProfiles] = useState<AdminDirectoryProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<DirectoryFilter>("all");
+  const [filter, setFilter] = useState<DirectoryFilter>(DEFAULT_DIRECTORY_FILTER);
+  // How many matching cards are currently rendered. Reset by any change to the
+  // filter or the search, so a narrowed view never opens already scrolled.
+  const [cap, setCap] = useState(pageSize);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,10 +71,26 @@ export default function AdminUserDirectory() {
     void load();
   }, [load]);
 
-  const visible = useMemo(
+  // Filter and search run across the FULL fetched set and are sorted newest
+  // first; only then is the render cap applied. A match is therefore never
+  // missed because it happened to sort past the cap.
+  const matched = useMemo(
     () => applyDirectoryView(profiles, filter, query),
     [profiles, filter, query],
   );
+  const visible = useMemo(() => cappedSlice(matched, cap), [matched, cap]);
+  const remaining = matched.length - visible.length;
+
+  // Reset in the handlers rather than an effect: an effect would render one
+  // frame with the previous cap before correcting itself.
+  const changeFilter = (next: DirectoryFilter) => {
+    setFilter(next);
+    setCap(pageSize);
+  };
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    setCap(pageSize);
+  };
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6">
@@ -100,7 +130,7 @@ export default function AdminUserDirectory() {
               />
               <Input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => changeQuery(e.target.value)}
                 placeholder="Search by display name…"
                 aria-label="Search by display name"
                 data-testid="admin-users-search"
@@ -126,7 +156,7 @@ export default function AdminUserDirectory() {
                 type="button"
                 aria-pressed={filter === f}
                 data-testid={`admin-users-filter-${f}`}
-                onClick={() => setFilter(f)}
+                onClick={() => changeFilter(f)}
                 className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                   filter === f
                     ? "border-primary bg-primary text-primary-foreground"
@@ -157,7 +187,7 @@ export default function AdminUserDirectory() {
         ) : (
           <>
             <p className="mb-2 text-[11px] text-muted-foreground" data-testid="admin-users-count">
-              {visible.length} of {profiles.length} profiles
+              {formatDirectoryCount(visible.length, matched.length, profiles.length)}
             </p>
             <div className="grid grid-cols-1 gap-2">
               {visible.map((p) => (
@@ -181,6 +211,19 @@ export default function AdminUserDirectory() {
                 />
               ))}
             </div>
+            {remaining > 0 && (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-testid="admin-users-show-more"
+                  onClick={() => setCap((c) => c + pageSize)}
+                >
+                  Show {Math.min(pageSize, remaining).toLocaleString("en-US")} more
+                </Button>
+              </div>
+            )}
+
             {visible.length === 0 && (
               <p
                 className="py-8 text-center text-sm text-muted-foreground"
