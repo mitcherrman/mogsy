@@ -28,7 +28,8 @@ export interface BroadcastTransmission {
   /** Small label drawn above the headline (already display-cased by the data). */
   eyebrow: string;
   headline: string;
-  summary: string;
+  /** Optional prose. Icon-led transmissions (Patch Brief) carry none. */
+  summary?: string;
   /** Optional media region. Absent = the surface draws no media box at all. */
   artworkUrl?: string;
   primaryAction?: BroadcastAction;
@@ -36,9 +37,10 @@ export interface BroadcastTransmission {
   /** Preformatted display string; the surface never parses or invents dates. */
   timestamp?: string;
   /**
-   * Structured Patch Brief payload. When present the surface renders the
-   * icon-led change rows instead of plain summary text; headline/summary/
-   * actions above still describe the same transmission for every other use.
+   * Structured Patch Brief payload. When present the surface renders
+   * icon-only Buffs / Nerfs / Adjustments grids instead of prose; headline
+   * and actions above still describe the same transmission for every other
+   * use.
    */
   brief?: PatchBrief;
 }
