@@ -22,12 +22,12 @@ import { championSlug } from "@/lib/league-docs/api";
  * DIRECTION AUTHORITY — the backend now serves a provenance-labeled
  * editorial direction per card (`editorial_direction` +
  * `editorial_direction_source`), resolved under the authority order
- * riot_section > riot_patch_highlights > mogzy_inferred > none. When any of
- * an entity's cards carry that contract, the brief uses it: the highest-
- * precedence source wins across the entity's cards, same-level conflicts
- * resolve to Adjustments, and an explicit null on every card (bugfix-only)
- * omits the entity. The local numeric classifier below survives ONLY as a
- * compatibility fallback for legacy payloads that predate the contract.
+ * riot_section > riot_patch_highlights > mogzy_inferred > none. When an
+ * entity carries a non-null claim on any card, the brief uses it: the
+ * highest-precedence source wins across the entity's cards and same-level
+ * conflicts resolve to Adjustments. The local numeric classifier below
+ * survives as the fallback for every other case — payloads that predate the
+ * contract, and rows on an upgraded schema that have not been rebuilt yet.
  *
  * The one product rule this module enforces at the data layer: an entity is
  * identified visibly by icon alone. Names survive only in `accessibleName`,
@@ -154,13 +154,12 @@ const isKnownDirection = (d: unknown): d is PatchEditorialDirection =>
 
 /**
  * Resolve an entity's direction from its cards' backend editorial claims.
- * Precondition: at least one card carried the contract (`hasContract`).
+ * Precondition: `claims` is non-empty — an entity with no non-null claim is
+ * NOT resolved here, it falls back to the local classifier (see below).
  *
- *  - no non-null claim on any card → null (authoritatively unclassified,
- *    e.g. bugfix-only — omitted, mirroring the fallback's fix-only rule);
- *  - claims present → only the highest-precedence source counts; unanimous
- *    direction there wins, any same-level conflict is an Adjustment (the
- *    deterministic rule the backend applies to its own conflicts).
+ * Only the highest-precedence source counts; a unanimous direction there wins,
+ * and any same-level conflict is an Adjustment (the deterministic rule the
+ * backend applies to its own conflicts).
  */
 function resolveEditorialClaims(claims: EditorialClaim[]): PatchBriefDirection | null {
   if (claims.length === 0) return null;
@@ -188,10 +187,10 @@ const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = 
  *  - only main "Champions" / "Items" sections (Summoner's Rift gameplay);
  *  - every qualifying changed champion and item, no caps;
  *  - one entry per entity: ALL of an entity's qualifying cards are collected
- *    first and its section comes from the backend editorial contract when
- *    present (highest-precedence source wins, same-level conflicts →
- *    Adjustments), else from the aggregate change set (a buff card plus a
- *    nerf card is one Adjustments entry, never a Buffs one);
+ *    first and its section comes from the backend editorial contract when the
+ *    entity carries a non-null claim (highest-precedence source wins,
+ *    same-level conflicts → Adjustments), else from the aggregate change set
+ *    (a buff card plus a nerf card is one Adjustments entry, never a Buffs one);
  *  - entities keep the report order of their FIRST appearance;
  *  - an entity without a resolvable icon is omitted (after classification),
  *    never named;
@@ -212,8 +211,6 @@ export function projectPatchBrief(
     mogzyImagePath: string | null;
     officialImageUrl: string | null;
     changes: PatchReportChange[];
-    /** True once any card carried the backend editorial contract. */
-    hasContract: boolean;
     /** Non-null backend claims from this entity's contract-bearing cards. */
     claims: EditorialClaim[];
   };
@@ -225,7 +222,6 @@ export function projectPatchBrief(
       (card.entity_type === "item" && card.section_title === "Items");
     if (!qualifying || card.changes.length === 0) continue;
 
-    const hasContract = card.editorial_direction !== undefined;
     const claims: EditorialClaim[] = isKnownDirection(card.editorial_direction)
       ? [{ direction: card.editorial_direction, source: card.editorial_direction_source ?? null }]
       : [];
@@ -234,7 +230,6 @@ export function projectPatchBrief(
     const existing = aggregates.get(key);
     if (existing) {
       existing.changes.push(...card.changes);
-      existing.hasContract ||= hasContract;
       existing.claims.push(...claims);
       existing.entitySlug ??= card.entity_slug;
       existing.mogzyEntityRef ??= card.mogzy_entity_ref;
@@ -249,7 +244,6 @@ export function projectPatchBrief(
         mogzyImagePath: card.mogzy_image_path,
         officialImageUrl: card.official_image_url,
         changes: [...card.changes],
-        hasContract,
         claims,
       });
     }
@@ -263,11 +257,20 @@ export function projectPatchBrief(
   };
 
   for (const entity of aggregates.values()) {
-    // Backend authority when any card carries the contract; local numeric
-    // inference only for legacy payloads that predate it.
-    const direction = entity.hasContract
-      ? resolveEditorialClaims(entity.claims)
-      : classifyChangeSet(entity.changes);
+    // Backend authority whenever the entity actually carries a claim; the
+    // local classifier otherwise. The trigger is a NON-NULL claim, never the
+    // mere presence of the fields: a card can carry `editorial_direction:
+    // null` because it is authoritatively unclassified (bugfix-only) OR
+    // because its row predates a rebuild on an already-upgraded schema, and
+    // those are indistinguishable in the payload. Falling back is safe for
+    // both — the local classifier applies the same fix-only rule the backend
+    // does, so genuine bugfix-only entities are still omitted, while a
+    // half-migrated backend degrades to legacy grouping instead of silently
+    // emptying the brief.
+    const direction =
+      entity.claims.length > 0
+        ? resolveEditorialClaims(entity.claims)
+        : classifyChangeSet(entity.changes);
     if (!direction) continue; // unclassified (e.g. fixes only) → omitted
 
     const iconUrl =

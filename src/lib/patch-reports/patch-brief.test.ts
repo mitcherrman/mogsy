@@ -385,12 +385,12 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     expect(names(brief, "adjustment")).toEqual(["Corki"]);
   });
 
-  it("an explicit null direction on every card omits the entity (authoritatively unclassified)", () => {
+  it("a fix-only entity carrying an explicit null direction is still omitted", () => {
     const d = detail([
       card("Ryze"),
       card("Ziggs", {
-        changes: [MECHANICAL], // would be an Adjustment under local fallback…
-        editorial_direction: null, // …but the backend says: no reliable home
+        changes: [FIX],
+        editorial_direction: null,
         editorial_direction_source: null,
         numeric_direction: "non_numeric",
       }),
@@ -415,6 +415,83 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     ]);
     const brief = projectPatchBrief(d, manifest("Ahri"));
     expect(names(brief, "nerf")).toEqual(["Ahri"]);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* Rollout compatibility: the three payload states a live backend can  */
+  /* serve during a partial migration. State B is the dangerous one —    */
+  /* an upgraded schema whose rows have not been rebuilt yet serves the  */
+  /* fields as explicit nulls, which must NOT empty the brief.           */
+  /* ------------------------------------------------------------------ */
+
+  it("State A — legacy backend (fields absent) uses the local classifier", () => {
+    const d = detail([
+      card("Ryze", { changes: [BUFF] }),
+      card("Garen", { changes: [NERF] }),
+      card("Azir", { changes: [MECHANICAL] }),
+    ]);
+    // No editorial_* keys at all on any card.
+    for (const c of d.cards) {
+      expect("editorial_direction" in c).toBe(false);
+    }
+    const brief = projectPatchBrief(d, manifest("Ryze", "Garen", "Azir"));
+    expect(names(brief, "buff")).toEqual(["Ryze"]);
+    expect(names(brief, "nerf")).toEqual(["Garen"]);
+    expect(names(brief, "adjustment")).toEqual(["Azir"]);
+  });
+
+  it("State B — upgraded schema, unrebuilt rows (fields present but null) still classifies locally", () => {
+    const nulled = {
+      editorial_direction: null,
+      editorial_direction_source: null,
+      numeric_direction: null,
+    } satisfies Partial<PatchReportCard>;
+    const d = detail([
+      card("Ryze", { changes: [BUFF], ...nulled }),
+      card("Garen", { changes: [NERF], ...nulled }),
+      card("Azir", { changes: [MECHANICAL], ...nulled }),
+      item("Trinity Force", { changes: [NERF], ...nulled }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Garen", "Azir"));
+    // The whole point: nothing is silently dropped.
+    expect(names(brief, "buff")).toEqual(["Ryze"]);
+    expect(names(brief, "nerf")).toEqual(["Garen", "Trinity Force"]);
+    expect(names(brief, "adjustment")).toEqual(["Azir"]);
+  });
+
+  it("State B — a partially rebuilt entity prefers its populated card over the null one", () => {
+    const d = detail([
+      card("Ahri", {
+        changes: [BUFF],
+        editorial_direction: null,
+        editorial_direction_source: null,
+        numeric_direction: null,
+      }),
+      card("Ahri", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_patch_highlights",
+        numeric_direction: "negative",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri"));
+    expect(names(brief, "nerf")).toEqual(["Ahri"]);
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
+  });
+
+  it("State C — populated fields override what the local classifier would say", () => {
+    const d = detail([
+      // Numbers say buff; Riot's reviewed highlights say nerf. Backend wins.
+      card("Senna", {
+        changes: [BUFF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_patch_highlights",
+        numeric_direction: "positive",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Senna"));
+    expect(names(brief, "nerf")).toEqual(["Senna"]);
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
   });
 
   it("patch 26.14 acceptance: reviewed Riot Patch Highlights grouping is reproduced exactly", () => {
