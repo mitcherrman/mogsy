@@ -75,13 +75,26 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+/**
+ * Expiry is relative, not a fixed timestamp. The bell now hides invites whose
+ * `expiresAt` has passed, so a hard-coded date silently turned every one of
+ * these fixtures into an expired invite once that date went by — the suite
+ * would then fail on a calendar boundary rather than on a code change.
+ * `expiredInvite` exercises that filter deliberately instead.
+ */
 const invite = (token = "tok_a") => ({
   inviteToken: token,
   senderProfileId: "11111111-1111-4111-8111-111111111111",
   displayName: "Rivals",
   avatarUrl: null,
-  createdAt: "2026-08-02T12:00:00+00:00",
-  expiresAt: "2026-08-02T12:15:00+00:00",
+  createdAt: new Date(Date.now() - 60_000).toISOString(),
+  expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+});
+
+const expiredInvite = (token = "tok_expired") => ({
+  ...invite(token),
+  createdAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+  expiresAt: new Date(Date.now() - 60_000).toISOString(),
 });
 
 afterEach(() => {
