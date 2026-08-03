@@ -100,8 +100,9 @@ export function classifyChange(
 }
 
 /**
- * Section for a whole entity card, or null when the entity has no reliable
- * home (a card of nothing but bugfixes — those are omitted rather than
+ * Section for an entity's COMPLETE change set — every change from every
+ * qualifying card the entity has in the report — or null when the entity has
+ * no reliable home (nothing but bugfixes — those are omitted rather than
  * inventing a visible Fixes group).
  *
  *  - unanimous buff/nerf among decisive changes, with no neutral mechanical
@@ -111,10 +112,10 @@ export function classifyChange(
  *  - only neutral/mechanical changes → Adjustments;
  *  - only bugfixes → null (omitted).
  */
-export function classifyCardDirection(
-  card: PatchReportCard,
+export function classifyChangeSet(
+  changes: readonly PatchReportChange[],
 ): PatchBriefDirection | null {
-  const directions = card.changes.map(classifyChange);
+  const directions = changes.map(classifyChange);
   const decisive = directions.filter((d) => d === "buff" || d === "nerf");
   const nonFix = directions.filter((d) => d !== "fix");
   if (decisive.length > 0) {
@@ -126,8 +127,11 @@ export function classifyCardDirection(
   return null; // fixes only
 }
 
-function itemIconUrl(card: PatchReportCard): string | null {
-  return resolvePatchReportAsset(card.mogzy_image_path) || card.official_image_url || null;
+/** Single-card convenience over {@link classifyChangeSet}. */
+export function classifyCardDirection(
+  card: PatchReportCard,
+): PatchBriefDirection | null {
+  return classifyChangeSet(card.changes);
 }
 
 const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = {
@@ -144,20 +148,31 @@ const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = 
  * Selection policy (all deterministic):
  *  - only main "Champions" / "Items" sections (Summoner's Rift gameplay);
  *  - every qualifying changed champion and item, no caps;
- *  - one entry per entity (first card wins), report order preserved;
- *  - an entity without a resolvable icon is omitted, never named;
+ *  - one entry per entity: ALL of an entity's qualifying cards are collected
+ *    first and its section comes from the aggregate change set (a buff card
+ *    plus a nerf card is one Adjustments entry, never a Buffs one);
+ *  - entities keep the report order of their FIRST appearance;
+ *  - an entity without a resolvable icon is omitted (after classification),
+ *    never named;
  *  - fix-only entities are omitted (no visible Fixes section exists).
  */
 export function projectPatchBrief(
   detail: PatchReportDetail,
   manifest: ChampionManifest | null | undefined,
 ): PatchBrief | null {
-  const buckets: Record<PatchBriefDirection, PatchBriefEntry[]> = {
-    buff: [],
-    nerf: [],
-    adjustment: [],
+  // Pass 1 — aggregate: group every qualifying card by entity, in first-
+  // appearance order, pooling all changes. Identity/icon fields merge as
+  // first-non-null so a later card can fill a gap but never reorder.
+  type Aggregate = {
+    entityType: "champion" | "item";
+    entityName: string;
+    entitySlug: string | null;
+    mogzyEntityRef: string | null;
+    mogzyImagePath: string | null;
+    officialImageUrl: string | null;
+    changes: PatchReportChange[];
   };
-  const seen = new Set<string>();
+  const aggregates = new Map<string, Aggregate>();
 
   for (const card of detail.cards) {
     const qualifying =
@@ -166,27 +181,52 @@ export function projectPatchBrief(
     if (!qualifying || card.changes.length === 0) continue;
 
     const key = `${card.entity_type}:${card.entity_name}`;
-    if (seen.has(key)) continue;
+    const existing = aggregates.get(key);
+    if (existing) {
+      existing.changes.push(...card.changes);
+      existing.entitySlug ??= card.entity_slug;
+      existing.mogzyEntityRef ??= card.mogzy_entity_ref;
+      existing.mogzyImagePath ??= card.mogzy_image_path;
+      existing.officialImageUrl ??= card.official_image_url;
+    } else {
+      aggregates.set(key, {
+        entityType: card.entity_type,
+        entityName: card.entity_name,
+        entitySlug: card.entity_slug,
+        mogzyEntityRef: card.mogzy_entity_ref,
+        mogzyImagePath: card.mogzy_image_path,
+        officialImageUrl: card.official_image_url,
+        changes: [...card.changes],
+      });
+    }
+  }
 
-    const direction = classifyCardDirection(card);
+  // Pass 2 — classify each entity's whole change set, then resolve its icon.
+  const buckets: Record<PatchBriefDirection, PatchBriefEntry[]> = {
+    buff: [],
+    nerf: [],
+    adjustment: [],
+  };
+
+  for (const entity of aggregates.values()) {
+    const direction = classifyChangeSet(entity.changes);
     if (!direction) continue; // fixes only → omitted
 
     const iconUrl =
-      card.entity_type === "champion"
-        ? getChampionIcon(manifest, card.entity_name)
-        : itemIconUrl(card);
+      entity.entityType === "champion"
+        ? getChampionIcon(manifest, entity.entityName)
+        : resolvePatchReportAsset(entity.mogzyImagePath) || entity.officialImageUrl || null;
     if (!iconUrl) continue; // no icon → deterministic omission, never a visible name
 
-    seen.add(key);
     buckets[direction].push({
-      entityType: card.entity_type,
-      entityId: card.entity_slug ?? card.entity_name,
+      entityType: entity.entityType,
+      entityId: entity.entitySlug ?? entity.entityName,
       iconUrl,
-      accessibleName: card.entity_name,
+      accessibleName: entity.entityName,
       // Items have no product detail route today; only catalogued champions link.
       docsHref:
-        card.entity_type === "champion" && card.mogzy_entity_ref
-          ? `/lol/docs/champions/${championSlug(card.entity_name)}`
+        entity.entityType === "champion" && entity.mogzyEntityRef
+          ? `/lol/docs/champions/${championSlug(entity.entityName)}`
           : undefined,
     });
   }

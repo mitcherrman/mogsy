@@ -199,16 +199,60 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     expect(brief!.sections).toHaveLength(1);
   });
 
-  it("deduplicates by entity: duplicate cards yield one icon, first card wins", () => {
+  it("aggregates across cards: a champion with one buff card and one nerf card lands once in Adjustments, never Buffs", () => {
     const d = detail([
-      card("Ryze"),
-      card("Ryze", { changes: [NERF] }), // later duplicate ignored entirely
-      item("Long Sword"),
-      item("Long Sword", { changes: [NERF] }),
+      card("Ryze"), // first card is a buff…
+      card("Ryze", { changes: [NERF] }), // …but a later card nerfs him
+      card("Ahri"),
     ]);
+    const brief = projectPatchBrief(d, manifest("Ryze", "Ahri"));
+    expect(names(brief, "adjustment")).toEqual(["Ryze"]);
+    expect(names(brief, "buff")).toEqual(["Ahri"]); // Ryze must not remain in Buffs
+    const allNames = brief!.sections.flatMap((s) => s.entries.map((e) => e.accessibleName));
+    expect(allNames.filter((n) => n === "Ryze")).toHaveLength(1);
+  });
+
+  it("aggregates across cards for items too: buff card + nerf card → once in Adjustments", () => {
+    const d = detail([item("Long Sword"), item("Long Sword", { changes: [NERF] })]);
+    const brief = projectPatchBrief(d, manifest());
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
+    expect(names(brief, "adjustment")).toEqual(["Long Sword"]);
+  });
+
+  it("multiple same-direction cards stay one entry in that direction", () => {
+    const buffs = projectPatchBrief(
+      detail([card("Ryze"), card("Ryze", { changes: [BUFF, BUFF] })]),
+      manifest("Ryze"),
+    );
+    expect(buffs!.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(names(buffs, "buff")).toEqual(["Ryze"]);
+
+    const nerfs = projectPatchBrief(
+      detail([
+        item("Long Sword", { changes: [NERF] }),
+        item("Long Sword", { changes: [NERF] }),
+      ]),
+      manifest(),
+    );
+    expect(nerfs!.sections.map((s) => s.title)).toEqual(["Nerfs"]);
+    expect(names(nerfs, "nerf")).toEqual(["Long Sword"]);
+  });
+
+  it("a decisive card plus a neutral mechanical card aggregates to Adjustments", () => {
+    const d = detail([card("Ryze"), card("Ryze", { changes: [MECHANICAL] })]);
     const brief = projectPatchBrief(d, manifest("Ryze"));
-    expect(names(brief, "buff")).toEqual(["Ryze", "Long Sword"]);
-    expect(brief!.sections).toHaveLength(1);
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
+    expect(names(brief, "adjustment")).toEqual(["Ryze"]);
+  });
+
+  it("entity order follows FIRST source appearance even when later cards complete the aggregate", () => {
+    const d = detail([
+      card("Ahri", { changes: [NERF] }),
+      card("Ryze", { changes: [NERF] }),
+      card("Ahri", { changes: [NERF] }), // extra Ahri card must not move her behind Ryze
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri", "Ryze"));
+    expect(names(brief, "nerf")).toEqual(["Ahri", "Ryze"]);
   });
 
   it("hides every empty section — adjustments, buffs, or nerfs alike", () => {
