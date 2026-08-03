@@ -44,6 +44,14 @@ export type CombatCooldownSubject = {
   itemIcons: { name: string; icon: string | null; effect?: string }[];
   totalAbilityHaste?: number;
   /**
+   * Optional override for the card's type chip (RA3-MEDIA-P5). This is the only
+   * shipped card that draws a champion, an ability and an item row at once, so
+   * premise families beyond combat calculation reuse it — and would otherwise
+   * be labeled "Combat Calculation". A LABEL only: it selects no card and
+   * changes no layout. Undefined for every payload frozen before P5.
+   */
+  badge?: string;
+  /**
    * The full normalized premise entity set, when the payload carries one
    * (RA3-MEDIA-P4). The fields above describe what THIS card draws — one
    * champion, one item row, one ability; `entities` is everything the question

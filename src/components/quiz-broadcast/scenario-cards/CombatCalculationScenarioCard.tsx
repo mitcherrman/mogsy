@@ -61,7 +61,10 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
       // Artwork breathes: scrim only where the information stack begins.
       gradientClass="bg-[linear-gradient(to_top,rgba(3,2,2,0.95)_0%,rgba(3,2,2,0.82)_30%,rgba(3,2,2,0.4)_48%,transparent_64%)]"
     >
-      <ScenarioBadge>Combat Calculation</ScenarioBadge>
+      {/* Label only. Premise families that are not calculations (ability
+          identity) reuse this card because it is the one that draws a champion,
+          an ability and an item row together; the chip says which. */}
+      <ScenarioBadge>{subject.badge ?? "Combat Calculation"}</ScenarioBadge>
 
       {/* Premise entities, opposite the badge and outside the stack below, so
           the card's existing geometry is untouched. Renders nothing for

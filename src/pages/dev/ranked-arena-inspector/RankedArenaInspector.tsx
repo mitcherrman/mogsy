@@ -163,9 +163,42 @@ const transportSource = (q: QuestionView, presentation: Record<string, unknown>)
     presentation,
   });
 
+// RA3-MEDIA-P5. Copied VERBATIM from ranked_public.question_media for the
+// shipped `placeholder-rm-ability` card. Two absences are the point: there is
+// no slot anywhere (it is the ANSWER), and the ability icon is a route rather
+// than an assets/ path, because the file on disk is `Q_DariusCleave.png` and
+// its name would hand the answer over. Before this the same question carried a
+// bare `{type: "ability", name, champion}` subject with no icon, which
+// classified as a label-only spell and rendered the empty card.
 const ABILITY_SCENARIO = transportSource(ABILITY_Q, {
-  assets: { subject: { type: "ability", name: "Decimate", champion: "Darius" } },
-  presentation: { scenario_type: "ability", role: "context", timing: "question", spoiler: false },
+  assets: {
+    subject: {
+      type: "combat_cooldown", champion: "Darius",
+      champion_icon: "assets/champions/Darius/icon.png",
+      champion_splash: "assets/champions/Darius/splash/0_default.jpg",
+      item_icons: [],
+      ability_name: "Decimate",
+      ability_icon: "api/ranked/media/ability-icon/Darius/Decimate.png",
+      badge: "Champion Ability",
+    },
+    entities: {
+      champions: [
+        { type: "champion", id: "Darius", name: "Darius", role: "subject",
+          icon: "assets/champions/Darius/icon.png",
+          splash: "assets/champions/Darius/splash/0_default.jpg",
+          loading: "assets/champions/Darius/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [],
+      abilities: [
+        { type: "ability", id: "Darius:Decimate", name: "Decimate", champion: "Darius",
+          role: "subject", icon: "api/ranked/media/ability-icon/Darius/Decimate.png" },
+      ],
+      runes: [], summoner_spells: [],
+    },
+  },
+  presentation: {
+    scenario_type: "combat_calculation", role: "context", timing: "question", spoiler: false,
+  },
 });
 const RECIPE_SCENARIO = transportSource(RECIPE_Q, {
   assets: { subject: { type: "item", name: "Trinity Force", icon: "assets/items/3078.png" } },
@@ -434,7 +467,7 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
   { key: "surface-item", label: "Surface — item-rich",
     render: () => <Surface scenarioSource={ITEM_SCENARIO} /> },
-  { key: "surface-ability", label: "Surface — ability (icon-less → compact)",
+  { key: "surface-ability", label: "Surface — ability premise (champion + ability)",
     render: () => <Surface question={ABILITY_Q} scenarioSource={ABILITY_SCENARIO} /> },
   { key: "surface-recipe", label: "Surface — item-recipe (transport)",
     render: () => <Surface question={RECIPE_Q} scenarioSource={RECIPE_SCENARIO} /> },

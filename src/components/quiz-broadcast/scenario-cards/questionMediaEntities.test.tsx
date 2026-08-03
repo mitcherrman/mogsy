@@ -614,3 +614,217 @@ describe("CombatCalculationScenarioCard entity strip", () => {
     expect(withEntities).toBe(withoutEntities);
   });
 });
+
+// ============================================ RA3-MEDIA-P5 — ability entities
+
+/**
+ * "In which ability slot does Darius cast Decimate?" — VERBATIM output of
+ * `ranked_public.question_media` for the shipped `placeholder-rm-ability` card.
+ *
+ * Two things are unusual and both are deliberate on the backend:
+ *  - there is no `slot` and no `ability_slot`: the slot is the ANSWER;
+ *  - the ability icon is a route, not an `assets/` path, because the file on
+ *    disk is `Q_DariusCleave.png` and its name would give the answer away.
+ * The frontend's job is to render it and to add neither back.
+ */
+const DARIUS_ABILITY = {
+  "assets": {
+    "subject": {
+      "type": "combat_cooldown",
+      "champion": "Darius",
+      "champion_icon": "assets/champions/Darius/icon.png",
+      "item_icons": [],
+      "champion_splash": "assets/champions/Darius/splash/0_default.jpg",
+      "ability_name": "Decimate",
+      "ability_icon": "api/ranked/media/ability-icon/Darius/Decimate.png",
+      "badge": "Champion Ability"
+    },
+    "entities": {
+      "champions": [
+        {
+          "type": "champion",
+          "id": "Darius",
+          "name": "Darius",
+          "icon": "assets/champions/Darius/icon.png",
+          "splash": "assets/champions/Darius/splash/0_default.jpg",
+          "loading": "assets/champions/Darius/loading/0_default.jpg",
+          "default_skin": 0,
+          "role": "subject"
+        }
+      ],
+      "items": [],
+      "abilities": [
+        {
+          "type": "ability",
+          "id": "Darius:Decimate",
+          "name": "Decimate",
+          "champion": "Darius",
+          "icon": "api/ranked/media/ability-icon/Darius/Decimate.png",
+          "role": "subject"
+        }
+      ],
+      "runes": [],
+      "summoner_spells": []
+    }
+  },
+  "presentation": {
+    "role": "context",
+    "timing": "question",
+    "spoiler": false,
+    "scenario_type": "combat_calculation"
+  }
+} as const;
+
+/** The same question shape with items in the premise — Example 3 of the brief:
+ *  champion + ability + items must all survive together. */
+const ABILITY_WITH_ITEMS = {
+  assets: {
+    subject: {
+      type: "combat_cooldown",
+      champion: "Ahri",
+      champion_icon: "assets/champions/Ahri/icon.png",
+      champion_splash: "assets/champions/Ahri/splash/0_default.jpg",
+      ability_name: "Charm",
+      ability_icon: "api/ranked/media/ability-icon/Ahri/Charm.png",
+      item_icons: [{ name: "Void Staff", icon: "assets/items/3135.png" }],
+      badge: "Champion Ability",
+    },
+    entities: {
+      champions: [
+        { type: "champion", id: "Ahri", name: "Ahri", icon: "assets/champions/Ahri/icon.png", role: "subject" },
+      ],
+      items: [{ type: "item", id: 3135, name: "Void Staff", icon: "assets/items/3135.png", role: "subject" }],
+      abilities: [
+        {
+          type: "ability",
+          id: "Ahri:Charm",
+          name: "Charm",
+          champion: "Ahri",
+          icon: "api/ranked/media/ability-icon/Ahri/Charm.png",
+          role: "subject",
+        },
+      ],
+      runes: [],
+      summoner_spells: [],
+    },
+  },
+  presentation: { role: "context", timing: "question", spoiler: false, scenario_type: "combat_calculation" },
+} as const;
+
+/** The Ranked question this payload belongs to: slot-shaped options. */
+function slotQuestion(metadata: unknown, id = "ability1"): QuizQuestion {
+  return {
+    id,
+    category: "ability_identity",
+    question_text: "In which ability slot does Darius cast Decimate?",
+    format: "multiple_choice",
+    choices: ["Q", "W", "E", "R"],
+    metadata: metadata as QuizQuestion["metadata"],
+  };
+}
+
+describe("ability premise entities", () => {
+  it("reads the champion and the named ability off an ability-identity payload", () => {
+    const entities = getQuestionMediaEntities(slotQuestion(DARIUS_ABILITY))!;
+    expect(entities.champions.map((c) => c.name)).toEqual(["Darius"]);
+    expect(entities.abilities).toHaveLength(1);
+    const [decimate] = entities.abilities;
+    expect(decimate).toMatchObject({ id: "Darius:Decimate", name: "Decimate", champion: "Darius", role: "subject" });
+    expect(decimate.icon).toBe(`${API}/api/ranked/media/ability-icon/Darius/Decimate.png`);
+  });
+
+  it("leaves slot undefined when the backend withheld it, rather than inventing one", () => {
+    const [decimate] = getQuestionMediaEntities(slotQuestion(DARIUS_ABILITY))!.abilities;
+    expect(decimate.slot).toBeUndefined();
+    expect(getCombatCooldownSubject(slotQuestion(DARIUS_ABILITY))!.abilitySlot).toBeUndefined();
+  });
+
+  it("still reads slot for a damage payload that states one", () => {
+    expect(getQuestionMediaEntities(question(SYNDRA))!.abilities[0].slot).toBe("R");
+    expect(getCombatCooldownSubject(question(SYNDRA))!.abilitySlot).toBe("R");
+  });
+
+  it("flattens champion then ability for the icon strip", () => {
+    expect(flattenMediaEntityIcons(getQuestionMediaEntities(slotQuestion(DARIUS_ABILITY))).map((e) => [e.kind, e.name])).toEqual([
+      ["champion", "Darius"],
+      ["ability", "Decimate"],
+    ]);
+  });
+
+  it("carries champion, ability and items together without dropping any", () => {
+    const entities = getQuestionMediaEntities(slotQuestion(ABILITY_WITH_ITEMS))!;
+    expect(entities.champions.map((c) => c.name)).toEqual(["Ahri"]);
+    expect(entities.abilities.map((a) => a.name)).toEqual(["Charm"]);
+    expect(entities.items.map((i) => i.name)).toEqual(["Void Staff"]);
+  });
+
+  it("selects the multi-entity card so both the champion and the ability render", () => {
+    expect(selectScenario(slotQuestion(DARIUS_ABILITY), false, "Q").card).toBe("combat_calculation");
+  });
+
+  it("no longer falls through to the empty card the way a bare ability subject does", () => {
+    // The shape this replaced: an ability subject with no icon and no champion
+    // media classified as a label-only "spell" and rendered nothing.
+    const before = { assets: { subject: { type: "ability", name: "Decimate", champion: "Darius" } }, presentation: { scenario_type: "ability", timing: "question", role: "context", spoiler: false } };
+    expect(selectScenario(slotQuestion(before), false, "Q").card).toBe("empty");
+    expect(selectScenario(slotQuestion(DARIUS_ABILITY), false, "Q").card).toBe("combat_calculation");
+  });
+});
+
+describe("CombatCalculationScenarioCard with an ability premise", () => {
+  it("renders the champion and the ability icon for Darius / Decimate", () => {
+    renderCard(DARIUS_ABILITY);
+    expect(screen.getByText("Darius")).toBeInTheDocument();
+    expect(screen.getByText("Decimate")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Decimate" })).toHaveAttribute(
+      "src",
+      `${API}/api/ranked/media/ability-icon/Darius/Decimate.png`,
+    );
+    expect(stripIcons().map((n) => n.getAttribute("aria-label"))).toEqual([
+      "Darius (champion)",
+      "Decimate (ability)",
+    ]);
+  });
+
+  it("draws no slot badge and no slot subtitle when the slot is the answer", () => {
+    const { container } = renderCard(DARIUS_ABILITY);
+    // The generic "Ability" micro-label, never "Ability · Slot Q".
+    expect(screen.getByText("Ability")).toBeInTheDocument();
+    expect(screen.queryByText(/Slot [QWER]/)).not.toBeInTheDocument();
+    // Nothing anywhere in the rendered card names the answer.
+    for (const slot of ["Q", "W", "E", "R"]) {
+      expect(container.innerHTML.split(/[^A-Za-z0-9]+/)).not.toContain(slot);
+    }
+  });
+
+  it("labels the card by its premise family instead of Combat Calculation", () => {
+    renderCard(DARIUS_ABILITY);
+    expect(screen.getByText("Champion Ability")).toBeInTheDocument();
+    expect(screen.queryByText("Combat Calculation")).not.toBeInTheDocument();
+  });
+
+  it("keeps the shipped badge for every payload that carries none", () => {
+    for (const payload of [JINX, SYNDRA, ORNN, AFTER_PURCHASE, LEGACY_SUBJECT_ONLY]) {
+      const { unmount } = renderCard(payload);
+      expect(screen.getByText("Combat Calculation")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("renders the ability alongside items when the premise has both", () => {
+    renderCard(ABILITY_WITH_ITEMS);
+    expect(screen.getByText("Ahri")).toBeInTheDocument();
+    expect(screen.getByText("Charm")).toBeInTheDocument();
+    expect(screen.getByText("Void Staff")).toBeInTheDocument();
+    expect(stripIcons().map((n) => n.getAttribute("data-entity-kind"))).toEqual([
+      "champion",
+      "ability",
+      "item",
+    ]);
+  });
+
+  it("still draws the slot badge for a damage question that states its slot", () => {
+    renderCard(SYNDRA);
+    expect(screen.getByText("Ability · Slot R")).toBeInTheDocument();
+  });
+});

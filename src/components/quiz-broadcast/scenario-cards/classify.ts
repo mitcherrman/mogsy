@@ -309,8 +309,12 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
   const rawItems = Array.isArray(subject.item_icons) ? subject.item_icons : [];
   return {
     champion,
+    // Absent whenever the backend withheld the slot — an ability-identity
+    // question, where the slot IS the answer. The card then labels the ability
+    // without a slot badge; nothing here may guess one back.
     abilitySlot: subject.ability_slot as string | undefined,
     abilityName: subject.ability_name as string | undefined,
+    badge: typeof subject.badge === "string" && subject.badge ? subject.badge : undefined,
     level: (subject.level as number | undefined) ?? (meta.level as number | undefined),
     abilityRank: (subject.ability_rank as number | undefined) ?? (meta.ability_rank as number | undefined),
     championIcon: resolveQuizAssetUrl(subject.champion_icon as string | undefined),
