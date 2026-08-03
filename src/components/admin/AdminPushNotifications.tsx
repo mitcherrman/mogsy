@@ -69,25 +69,32 @@ const NOTIFICATION_TYPES = [
   { value: "lol_site_notice", label: "LoL Site Notice", icon: Bell, description: "Site notice for the LoL product" },
 ];
 
-const TARGET_TYPES = [
-  { value: "all", label: "All Users", icon: Globe },
-  { value: "league", label: "Specific Leagues", icon: Trophy },
-  { value: "category", label: "By Category", icon: Filter },
-  { value: "pro", label: "Pro Only", icon: Crown },
-];
+/**
+ * "All users" is the only delivery mode this product actually implements.
+ *
+ * The league / category / pro modes wrote `target_categories` and
+ * `target_league_ids`, but nothing ever read them: the RLS SELECT policy on
+ * user_notifications is `target_type = 'all' OR admin OR is_profile_owner(...)`,
+ * and the bell applies no cohort filter either. A row sent with any of those
+ * three modes is therefore readable by admins only — it reached zero of its
+ * intended recipients while the console reported "Notification sent!".
+ *
+ * Scheduling and recurrence were the same shape of untruth: `scheduled_at`,
+ * `is_sent`, `is_recurring` and `recurrence_rule` have no consumer anywhere in
+ * the codebase, and because the bell does not filter on `is_sent`, a
+ * "scheduled" notification was delivered immediately regardless of its date.
+ *
+ * Rather than leave controls that lie, this phase exposes only what works.
+ * The columns stay in the schema; re-introducing a mode means implementing its
+ * reader first.
+ */
+const TARGET_TYPE_ALL = "all";
 
 const PRIORITY_OPTIONS = [
   { value: "low", label: "Low", color: "text-muted-foreground" },
   { value: "normal", label: "Normal", color: "text-foreground" },
   { value: "high", label: "High", color: "text-orange-500" },
   { value: "urgent", label: "Urgent", color: "text-destructive" },
-];
-
-const RECURRENCE_OPTIONS = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "biweekly", label: "Every 2 Weeks" },
-  { value: "monthly", label: "Monthly" },
 ];
 
 const EMOJI_PRESETS = ["🔥", "🎉", "⚡", "🏆", "💎", "🚀", "⭐", "❤️", "👑", "🎯", "💪", "🎮", "📢", "🆕", "⚠️", "🎁"];
@@ -103,9 +110,6 @@ export default function AdminPushNotifications() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [type, setType] = useState("general");
-  const [targetType, setTargetType] = useState("all");
-  const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState("");
   const [attachLeagueId, setAttachLeagueId] = useState<string | null>(null);
   const [attachItemId, setAttachItemId] = useState<string | null>(null);
@@ -116,14 +120,6 @@ export default function AdminPushNotifications() {
   const [priority, setPriority] = useState("normal");
   const [emoji, setEmoji] = useState("");
 
-  // Scheduling
-  const [isScheduled, setIsScheduled] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceRule, setRecurrenceRule] = useState("weekly");
-  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
-
   // Item search
   const [itemSearch, setItemSearch] = useState("");
   const [itemSearchResults, setItemSearchResults] = useState<PresetItem[]>([]);
@@ -131,8 +127,6 @@ export default function AdminPushNotifications() {
   // History tab
   const [showHistory, setShowHistory] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<"all" | "sent" | "scheduled" | "recurring">("all");
-
-  const categories = [...new Set(leagues.map(l => l.category).filter(Boolean))] as string[];
 
   useEffect(() => { loadData(); }, []);
 
@@ -165,38 +159,29 @@ export default function AdminPushNotifications() {
     }
   };
 
-  const toggleLeague = (id: string) => setSelectedLeagueIds(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id]);
-  const toggleCategory = (cat: string) => setSelectedCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
-
   const resetForm = () => {
-    setTitle(""); setMessage(""); setType("general"); setTargetType("all");
-    setSelectedLeagueIds([]); setSelectedCategories([]); setImageUrl("");
+    setTitle(""); setMessage(""); setType("general"); setImageUrl("");
     setAttachLeagueId(null); setAttachItemId(null); setAttachProfileId(null);
     setAttachProfileName(""); setAttachProfileSearch(""); setActionUrl("");
-    setPriority("normal"); setEmoji(""); setIsScheduled(false);
-    setScheduledDate(""); setScheduledTime(""); setIsRecurring(false);
-    setRecurrenceRule("weekly"); setRecurrenceEndDate("");
+    setPriority("normal"); setEmoji("");
   };
 
   const sendNotification = async () => {
     if (!title.trim()) { toast.error("Title is required"); return; }
     if (!user) return;
-    if (isScheduled && (!scheduledDate || !scheduledTime)) { toast.error("Set date & time for scheduling"); return; }
 
     setSending(true);
     try {
-      let scheduledAt: string | null = null;
-      if (isScheduled) {
-        scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-      }
-
-      const payload: any = {
+      const payload = {
         title: title.trim(),
         message: message.trim() || null,
         type,
-        target_type: targetType,
-        target_league_ids: targetType === "league" ? selectedLeagueIds : [],
-        target_categories: targetType === "category" ? selectedCategories : [],
+        // Every send is a broadcast. The cohort columns are written empty rather
+        // than omitted so a row can never look like it carried targeting it did
+        // not actually have.
+        target_type: TARGET_TYPE_ALL,
+        target_league_ids: [],
+        target_categories: [],
         image_url: imageUrl.trim() || null,
         league_id: attachLeagueId,
         item_id: attachItemId,
@@ -205,29 +190,34 @@ export default function AdminPushNotifications() {
         action_url: actionUrl.trim() || null,
         priority,
         emoji: emoji || null,
-        scheduled_at: scheduledAt,
-        is_recurring: isRecurring,
-        recurrence_rule: isRecurring ? recurrenceRule : null,
-        recurrence_end_at: isRecurring && recurrenceEndDate ? new Date(`${recurrenceEndDate}T23:59:59`).toISOString() : null,
-        is_sent: !isScheduled,
-        metadata: targetType === "pro" ? { pro_only: true } : {},
+        // Delivery is immediate and one-shot. Recorded explicitly so the row
+        // agrees with what actually happened.
+        scheduled_at: null,
+        is_recurring: false,
+        recurrence_rule: null,
+        recurrence_end_at: null,
+        is_sent: true,
+        metadata: {},
       };
 
       const { error } = await supabase.from("user_notifications").insert(payload);
+      // Success is reported only once the insert has actually landed. On failure
+      // the form is left intact so the admin can retry without retyping.
       if (error) throw error;
 
-      toast.success(isScheduled ? "Notification scheduled!" : "Notification sent!");
+      toast.success("Notification sent!");
       resetForm();
       loadData();
     } catch (err: any) {
-      toast.error(err.message || "Failed to send");
+      toast.error(err?.message || "Failed to send");
     } finally {
       setSending(false);
     }
   };
 
   const deleteNotification = async (id: string) => {
-    await supabase.from("user_notifications").delete().eq("id", id);
+    const { error } = await supabase.from("user_notifications").delete().eq("id", id);
+    if (error) { toast.error(error.message || "Failed to delete"); return; }
     setSentNotifications(prev => prev.filter(n => n.id !== id));
     toast.success("Deleted");
   };
@@ -236,9 +226,6 @@ export default function AdminPushNotifications() {
     setTitle(n.title);
     setMessage(n.message || "");
     setType(n.type);
-    setTargetType(n.target_type);
-    setSelectedLeagueIds(n.target_league_ids || []);
-    setSelectedCategories(n.target_categories || []);
     setImageUrl(n.image_url || "");
     setAttachLeagueId(n.league_id);
     setAttachItemId(n.item_id);
@@ -320,14 +307,23 @@ export default function AdminPushNotifications() {
                     {n.priority !== "normal" && (
                       <Badge variant={n.priority === "urgent" ? "destructive" : "outline"} className="text-[10px]">{n.priority}</Badge>
                     )}
-                    {!n.is_sent && <Badge className="text-[10px] bg-amber-500/20 text-amber-600 border-amber-500/30">Scheduled</Badge>}
-                    {n.is_recurring && <Badge className="text-[10px] bg-blue-500/20 text-blue-600 border-blue-500/30">Recurring</Badge>}
+                    {!n.is_sent && <Badge className="text-[10px] bg-amber-500/20 text-amber-600 border-amber-500/30">Legacy: marked scheduled</Badge>}
+                    {n.is_recurring && <Badge className="text-[10px] bg-blue-500/20 text-blue-600 border-blue-500/30">Legacy: marked recurring</Badge>}
                   </div>
                   <p className="text-sm font-semibold text-foreground mt-1">{n.title}</p>
                   {n.message && <p className="text-xs text-muted-foreground">{n.message}</p>}
                   {n.image_url && <img src={n.image_url} alt="" className="h-12 w-12 rounded-lg object-cover mt-1" />}
-                  {n.scheduled_at && <p className="text-[10px] text-amber-600 mt-0.5">📅 {new Date(n.scheduled_at).toLocaleString()}</p>}
-                  {n.is_recurring && n.recurrence_rule && <p className="text-[10px] text-blue-600">🔁 {n.recurrence_rule}{n.recurrence_end_at ? ` until ${new Date(n.recurrence_end_at).toLocaleDateString()}` : ""}</p>}
+                  {/*
+                    * Historical rows only. Nothing ever consumed scheduled_at or
+                    * recurrence_rule, and the bell does not filter on is_sent, so
+                    * these were delivered the moment they were created. Shown so the
+                    * stored data is legible — not as evidence a scheduler exists.
+                    */}
+                  {n.scheduled_at && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">
+                      Was marked for {new Date(n.scheduled_at).toLocaleString()} — delivered immediately (no scheduler)
+                    </p>
+                  )}
                   <p className="text-[10px] text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -415,97 +411,17 @@ export default function AdminPushNotifications() {
 
           {/* Target Audience */}
           <Section label="Target Audience">
-            <div className="grid grid-cols-2 gap-2">
-              {TARGET_TYPES.map(t => {
-                const Icon = t.icon;
-                const active = targetType === t.value;
-                return (
-                  <button key={t.value} onClick={() => setTargetType(t.value)}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-medium transition-all ${
-                      active ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"
-                    }`}>
-                    <Icon className="h-4 w-4" />{t.label}
-                  </button>
-                );
-              })}
+            <div
+              data-testid="target-audience-all"
+              className="flex items-center gap-2 p-3 rounded-xl border border-primary bg-primary/10 text-primary text-xs font-medium"
+            >
+              <Globe className="h-4 w-4" />All Users
             </div>
-            {targetType === "league" && (
-              <div className="space-y-2 mt-2">
-                <Label className="text-[10px] text-muted-foreground">Select leagues:</Label>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                  {leagues.filter(l => l.type === "preset").map(l => (
-                    <button key={l.id} onClick={() => toggleLeague(l.id)}
-                      className={`text-[10px] px-2 py-1 rounded-full border transition-all ${
-                        selectedLeagueIds.includes(l.id) ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
-                      }`}>{l.name}</button>
-                  ))}
-                </div>
-                {selectedLeagueIds.length > 0 && <p className="text-[10px] text-primary">{selectedLeagueIds.length} selected</p>}
-              </div>
-            )}
-            {targetType === "category" && (
-              <div className="space-y-2 mt-2">
-                <Label className="text-[10px] text-muted-foreground">Select categories:</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {categories.map(cat => (
-                    <button key={cat} onClick={() => toggleCategory(cat)}
-                      className={`text-[10px] px-2 py-1 rounded-full border transition-all ${
-                        selectedCategories.includes(cat) ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
-                      }`}>{cat}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Section>
-
-          {/* Scheduling */}
-          <Section label="Scheduling">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">Schedule for later</span>
-                </div>
-                <Switch checked={isScheduled} onCheckedChange={setIsScheduled} />
-              </div>
-              {isScheduled && (
-                <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Date</Label>
-                      <Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="mt-1" />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Time</Label>
-                      <Input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} className="mt-1" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Repeat className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-medium text-foreground">Recurring</span>
-                    </div>
-                    <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-                  </div>
-                  {isRecurring && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        {RECURRENCE_OPTIONS.map(r => (
-                          <button key={r.value} onClick={() => setRecurrenceRule(r.value)}
-                            className={`text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all ${
-                              recurrenceRule === r.value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"
-                            }`}>{r.label}</button>
-                        ))}
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">End date (optional)</Label>
-                        <Input type="date" value={recurrenceEndDate} onChange={e => setRecurrenceEndDate(e.target.value)} className="mt-1" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Every notification is delivered to all signed-in users. League, category and
+              Pro-only targeting are not implemented — rows sent that way reached nobody, so
+              the controls were removed rather than left to report false delivery.
+            </p>
           </Section>
 
           {/* Attachments */}
@@ -590,18 +506,14 @@ export default function AdminPushNotifications() {
                 </div>
               </div>
             </div>
-            <p className="text-[9px] text-muted-foreground">
-              Target: {targetType === "all" ? "All users" : targetType === "pro" ? "Pro users" : targetType === "league" ? `${selectedLeagueIds.length} league(s)` : `${selectedCategories.length} category(ies)`}
-              {isScheduled && scheduledDate && ` • Scheduled: ${scheduledDate} ${scheduledTime}`}
-              {isRecurring && ` • ${recurrenceRule}`}
-            </p>
+            <p className="text-[9px] text-muted-foreground">Target: All users • Sent immediately</p>
           </div>
 
           {/* Send */}
           <div className="flex gap-2">
             <Button onClick={sendNotification} disabled={sending || !title.trim()} className="flex-1 gap-2">
-              {isScheduled ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              {sending ? "Sending..." : isScheduled ? "Schedule Notification" : "Send Now"}
+              <Send className="h-4 w-4" />
+              {sending ? "Sending..." : "Send Now"}
             </Button>
             <Button variant="outline" onClick={resetForm}>Clear</Button>
           </div>
