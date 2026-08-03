@@ -1,4 +1,5 @@
 import type { QuizQuestion } from "@/lib/quiz/api";
+import type { QuestionMediaEntities } from "./questionMediaEntities";
 
 /** Legacy subject classification kinds (classifySubject output). */
 export type SubjectKind = "champion" | "item" | "rune" | "spell" | "objective" | "none";
@@ -42,6 +43,15 @@ export type CombatCooldownSubject = {
   /** effect is optional per-item flavor text (e.g. "+15 Ability Haste") */
   itemIcons: { name: string; icon: string | null; effect?: string }[];
   totalAbilityHaste?: number;
+  /**
+   * The full normalized premise entity set, when the payload carries one
+   * (RA3-MEDIA-P4). The fields above describe what THIS card draws — one
+   * champion, one item row, one ability; `entities` is everything the question
+   * states, role-tagged, including the entities this card's shape cannot
+   * express (the target champion, the target's items). `null` for every payload
+   * frozen before that phase.
+   */
+  entities?: QuestionMediaEntities | null;
 };
 
 /** Parsed payload for item analysis questions. */

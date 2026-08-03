@@ -190,6 +190,70 @@ const SPOILER_SCENARIO = transportSource(CHAMP_Q, {
   presentation: { scenario_type: "champion_profile", role: "answer", timing: "reveal", spoiler: true },
 });
 
+// --- normalized premise media entities (RA3-MEDIA-P4) --------------------
+// A real accepted-bank question, with the payload copied VERBATIM from
+// ranked_public.question_media. The two cases below are meant to be compared:
+// the same question, with and without the entity collection, so the theme
+// redesign can see exactly which entities the payload now makes available
+// (both champions, the ability, both items) and which it never did.
+const DAMAGE_Q: QuestionView = {
+  questionId: "sq-damage", category: "post_mitigation_damage",
+  prompt: "Syndra has Sorcerer's Shoes and Void Staff. Syndra hits Ornn with Unleashed Power "
+    + "for 750 raw magic damage. Ornn has 120 magic resist. How much post-mitigation damage "
+    + "is dealt after penetration?",
+  options: [
+    { id: "0", index: 0, label: "610" }, { id: "1", index: 1, label: "469" },
+    { id: "2", index: 2, label: "455" }, { id: "3", index: 3, label: "539" },
+  ],
+};
+const DAMAGE_SUBJECT = {
+  type: "combat_cooldown", champion: "Syndra",
+  champion_icon: "assets/champions/Syndra/icon.png",
+  champion_splash: "assets/champions/Syndra/splash/0_default.jpg",
+  item_icons: [
+    { name: "Sorcerer's Shoes", icon: "assets/items/3020.png" },
+    { name: "Void Staff", icon: "assets/items/3135.png" },
+  ],
+  ability_slot: "R", ability_name: "Unleashed Power",
+  ability_icon: "assets/champions/Syndra/R_SyndraR.png",
+};
+const DAMAGE_FLAGS = {
+  scenario_type: "combat_calculation", role: "context", timing: "question", spoiler: false,
+};
+const ENTITIES_SCENARIO = transportSource(DAMAGE_Q, {
+  assets: {
+    subject: DAMAGE_SUBJECT,
+    entities: {
+      champions: [
+        { type: "champion", id: "Syndra", name: "Syndra", role: "attacker",
+          icon: "assets/champions/Syndra/icon.png",
+          splash: "assets/champions/Syndra/splash/0_default.jpg",
+          loading: "assets/champions/Syndra/loading/0_default.jpg", default_skin: 0 },
+        { type: "champion", id: "Ornn", name: "Ornn", role: "target",
+          icon: "assets/champions/Ornn/icon.png",
+          splash: "assets/champions/Ornn/splash/0_default.jpg",
+          loading: "assets/champions/Ornn/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [
+        { type: "item", id: 3020, name: "Sorcerer's Shoes", role: "attacker", icon: "assets/items/3020.png" },
+        { type: "item", id: 3135, name: "Void Staff", role: "attacker", icon: "assets/items/3135.png" },
+      ],
+      abilities: [
+        { type: "ability", id: "Syndra:R", name: "Unleashed Power", champion: "Syndra",
+          slot: "R", role: "attacker", icon: "assets/champions/Syndra/R_SyndraR.png" },
+      ],
+      runes: [], summoner_spells: [],
+    },
+  },
+  presentation: DAMAGE_FLAGS,
+});
+// The SAME question as it was frozen before RA3-MEDIA-P4: subject only. Must
+// render exactly as it always did, with no entity strip.
+const LEGACY_SUBJECT_SCENARIO = transportSource(DAMAGE_Q, {
+  assets: { subject: DAMAGE_SUBJECT },
+  presentation: DAMAGE_FLAGS,
+});
+
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
     <InteractiveScenarioSurface
@@ -376,6 +440,10 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={RECIPE_Q} scenarioSource={RECIPE_SCENARIO} /> },
   { key: "surface-comparison", label: "Surface — comparison (transport, falls back)",
     render: () => <Surface question={COMPARISON_Q} scenarioSource={COMPARISON_SCENARIO} /> },
+  { key: "surface-media-entities", label: "Surface — premise media entities (all)",
+    render: () => <Surface question={DAMAGE_Q} scenarioSource={ENTITIES_SCENARIO} /> },
+  { key: "surface-media-legacy", label: "Surface — same question, pre-entities payload",
+    render: () => <Surface question={DAMAGE_Q} scenarioSource={LEGACY_SUBJECT_SCENARIO} /> },
   { key: "surface-prereveal-spoiler", label: "Surface — pre-reveal spoiler-safe",
     render: () => <Surface question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO} /> },
   { key: "surface-postreveal-rich", label: "Surface — post-reveal rich subject",

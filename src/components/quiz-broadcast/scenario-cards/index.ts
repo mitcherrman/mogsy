@@ -5,6 +5,7 @@ export {
   ConditionChip,
   ScenarioBadge,
   ScenarioDivider,
+  ScenarioEntityStrip,
   ScenarioEntry,
   ScenarioHeroIcon,
   ScenarioSection,
@@ -37,3 +38,12 @@ export type {
   ScenarioType,
   SubjectKind,
 } from "./types";
+export { flattenMediaEntityIcons, getQuestionMediaEntities } from "./questionMediaEntities";
+export type {
+  AbilityMediaEntity,
+  ChampionMediaEntity,
+  CollectibleMediaEntity,
+  ItemMediaEntity,
+  MediaEntityRole,
+  QuestionMediaEntities,
+} from "./questionMediaEntities";

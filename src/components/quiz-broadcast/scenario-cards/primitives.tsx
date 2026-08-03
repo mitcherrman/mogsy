@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import type { ScenarioEntryData, ScenarioSectionData } from "./types";
+import { flattenMediaEntityIcons, type QuestionMediaEntities } from "./questionMediaEntities";
 
 /**
  * Scenario Card primitives — the shared building blocks every scenario type
@@ -113,6 +114,72 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
           className="relative h-[13cqmin] w-[13cqmin] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
         />
       </motion.div>
+    </div>
+  );
+}
+
+/**
+ * One entity icon slot, sized in ABSOLUTE units rather than the cqmin the rest
+ * of the card uses. That is deliberate. Everything inside a Scenario Card
+ * scales with `cqmin` — 1% of the container's SMALLER dimension — which is the
+ * band's height. Ranked's compact density caps that height at 11rem, so on a
+ * wide desktop column the whole card foreground collapses (the champion title
+ * renders at ~4.8px, an item row icon at ~6px). A strip whose only job is to
+ * prove which entities the payload carries cannot be legible-by-luck, so it
+ * opts out of that scaling.
+ *
+ * The slot NEVER collapses: a missing or broken image falls back to a monogram
+ * tile of the same size, so a failed request cannot reflow the strip.
+ */
+function EntityIconSlot({ icon, name, kind }: { icon: string; name: string; kind: string }) {
+  const [errored, setErrored] = useState(false);
+  // Champion portraits read as people, equipment reads as objects — the only
+  // visual distinction in the strip, and it carries no extra label.
+  const shape = kind === "champion" ? "rounded-full" : "rounded-md";
+  return (
+    <div
+      role="listitem"
+      title={name}
+      aria-label={`${name} (${kind.replace("_", " ")})`}
+      data-entity-kind={kind}
+      className={`relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden border border-[#d4b35a]/50 bg-black/55 shadow-[0_2px_8px_rgba(0,0,0,0.7)] ${shape}`}
+    >
+      {errored ? (
+        <span aria-hidden className="text-[11px] font-black uppercase leading-none text-[#e8c97a]/80">
+          {name.slice(0, 1)}
+        </span>
+      ) : (
+        <img src={icon} alt="" onError={() => setErrored(true)} className="h-full w-full object-cover" />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Compact premise-entity strip — every entity the question STATES, as icons.
+ *
+ * Pinned to the card's top-right, opposite the ScenarioBadge and outside the
+ * bottom information stack, so adding it cannot move the title, subject, chips,
+ * divider or sections by a pixel. It exists to make the payload's completeness
+ * visible (two champions, an ability, both sides' items) ahead of the theme
+ * redesign that will decide the real treatment — it is not that treatment.
+ *
+ * No labels are drawn over the artwork; every icon carries an aria-label and a
+ * title tooltip instead.
+ */
+export function ScenarioEntityStrip({ entities }: { entities?: QuestionMediaEntities | null }) {
+  const icons = flattenMediaEntityIcons(entities);
+  if (!icons.length) return null;
+  return (
+    <div
+      role="list"
+      aria-label="Scenario entities"
+      data-testid="scenario-entity-strip"
+      className="absolute right-[5%] top-[4%] z-10 flex max-w-[52%] flex-wrap justify-end gap-1"
+    >
+      {icons.map((entity) => (
+        <EntityIconSlot key={entity.key} icon={entity.icon} name={entity.name} kind={entity.kind} />
+      ))}
     </div>
   );
 }

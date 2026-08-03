@@ -14,6 +14,7 @@
 
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { getQuestionMediaEntities } from "./questionMediaEntities";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
@@ -325,6 +326,9 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
     }),
     totalAbilityHaste:
       typeof meta.total_ability_haste === "number" ? meta.total_ability_haste : undefined,
+    // Additive: null for every payload frozen before RA3-MEDIA-P4, so the
+    // fields above stay the sole input for legacy questions.
+    entities: getQuestionMediaEntities(question),
   };
 }
 
