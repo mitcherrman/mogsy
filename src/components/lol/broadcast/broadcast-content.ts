@@ -12,6 +12,8 @@
  * nothing more: no fake dates, stories, stats, or alerts.
  */
 
+import type { PatchBrief } from "@/lib/patch-reports/patch-brief";
+
 export interface BroadcastAction {
   label: string;
   /** Router path — broadcast actions always stay inside the app. */
@@ -33,6 +35,12 @@ export interface BroadcastTransmission {
   secondaryAction?: BroadcastAction;
   /** Preformatted display string; the surface never parses or invents dates. */
   timestamp?: string;
+  /**
+   * Structured Patch Brief payload. When present the surface renders the
+   * icon-led change rows instead of plain summary text; headline/summary/
+   * actions above still describe the same transmission for every other use.
+   */
+  brief?: PatchBrief;
 }
 
 /** Every state the surface knows how to draw. A future provider returns one. */

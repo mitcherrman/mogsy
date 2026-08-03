@@ -23,6 +23,7 @@ import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
+import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 
@@ -133,6 +134,8 @@ export default function LolHub() {
   const navigate = useNavigate();
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
+  // One Patch Brief feed serves the desktop and mobile centerpieces alike.
+  const broadcastFeed = usePatchBriefFeed();
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   // Pick the academy line ONCE per mount — lazy initializer, so no Math.random()
   // during render and the line never changes while the user stays on the hub.
@@ -419,7 +422,10 @@ export default function LolHub() {
                     easing at 1200px (see DESKTOP_BOOK_STACK_INSET), then one
                     extra px per viewport px, capped before it can crowd the
                     books at wide-and-short viewports. */}
-                <AcademyBroadcastCenterpiece className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0" />
+                <AcademyBroadcastCenterpiece
+                  feed={broadcastFeed}
+                  className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0"
+                />
               </div>
               <div
                 aria-hidden
@@ -473,7 +479,7 @@ export default function LolHub() {
               radio dock beneath it, after the six destinations so primary
               navigation keeps the top of the list. */}
           <div className="mt-4 md:hidden">
-            <AcademyBroadcastCenterpiece variant="mobile" />
+            <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
           </div>
         </div>
       </section>
