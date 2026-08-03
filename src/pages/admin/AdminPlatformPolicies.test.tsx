@@ -390,6 +390,10 @@ describe("Phase 1 boundary: the navbar policy is stored, not consumed", () => {
       .sort();
 
     expect(hits).toEqual([
+      // Test files are never consumers — they reference the key to assert on
+      // it. botLabels.test.ts checks that toggling the bot-label policy leaves
+      // its sibling values, including this one, undisturbed.
+      "lib/platform-policy/botLabels.test.ts",
       "lib/platform-policy/policy.test.ts",
       "lib/platform-policy/policy.ts",
       "pages/admin/AdminPlatformPolicies.test.tsx",

@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Global platform policy — shared contract.
 //
-// Four admin-controlled global toggles stored as rows in the existing
+// Five admin-controlled global toggles stored as rows in the existing
 // `public.app_settings` key/value table (public SELECT, admin-only writes via
 // the has_role RLS policies). This module is pure: no React, no Supabase, so
 // the parsing and the fail-closed defaults are trivially unit-testable and can
@@ -19,6 +19,7 @@ export const POLICY_KEYS = {
   tutorialAutoPopupEnabled: "tutorial_auto_popup_enabled",
   tutorialCompletionRequiredForNewUsers: "tutorial_completion_required_for_new_users",
   globalNavbarVisible: "global_navbar_visible",
+  showBotLabels: "show_bot_labels",
 } as const;
 
 export interface PlatformPolicy {
@@ -44,21 +45,42 @@ export interface PlatformPolicy {
      */
     globalNavbarVisible: boolean;
   };
+  community: {
+    /**
+     * Ordinary user-facing surfaces may display a visible "Bot" badge on bot
+     * personas.
+     *
+     * PRESENTATION ONLY. This flag must never influence authorization,
+     * `is_bot` filtering, analytics, SEO noindex behaviour, soft-disable
+     * behaviour, or (in Phase B) the Stat Check bot runtime. Master-admin
+     * surfaces always show the real bot state and ignore this value entirely.
+     * `profiles.is_bot` remains authoritative internally in both states.
+     */
+    showBotLabels: boolean;
+  };
 }
 
 /**
  * Fail-closed defaults, used whenever a row is missing, unreadable, or
- * malformed. All true — this reproduces current production behaviour exactly,
- * so an unreadable settings table never silently opens up the platform.
+ * malformed. Every default reproduces current production behaviour exactly, so
+ * an unreadable settings table never silently changes how the platform behaves.
  *
  * For the navbar the same `true` default is fail-SAFE rather than fail-closed:
  * an outage or a malformed row must never strand users without navigation.
  * Both readings point the same way, so the rule stays "default true".
+ *
+ * `showBotLabels` is the ONE key that defaults to FALSE, and that is what
+ * reproduces production. Do not "fix" it to true. There is no user-facing bot
+ * label anywhere in the app today — `is_bot` is read only for the /user/:id SEO
+ * noindex rule and for admin analytics filtering — so this toggle INTRODUCES
+ * the "on" path rather than suppressing an existing one. False therefore cannot
+ * be a regression, and a missing or malformed row correctly means "no badge".
  */
 export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   combatSim: { tokensRequiredForNonPro: true },
   tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
   navigation: { globalNavbarVisible: true },
+  community: { showBotLabels: false },
 };
 
 export interface AppSettingRow {
@@ -85,6 +107,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
     combatSim: { ...DEFAULT_PLATFORM_POLICY.combatSim },
     tutorial: { ...DEFAULT_PLATFORM_POLICY.tutorial },
     navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
+    community: { ...DEFAULT_PLATFORM_POLICY.community },
   };
   if (!rows) return policy;
 
@@ -105,6 +128,10 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.globalNavbarVisible:
         policy.navigation.globalNavbarVisible = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.navigation.globalNavbarVisible);
+        break;
+      case POLICY_KEYS.showBotLabels:
+        policy.community.showBotLabels = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.community.showBotLabels);
         break;
     }
   }

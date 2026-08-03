@@ -9,11 +9,15 @@ import {
 const KEY = POLICY_KEYS;
 
 describe("defaults reproduce current production behaviour", () => {
-  it("is all-on", () => {
+  it("is all-on, except bot labels", () => {
+    // showBotLabels is the one key defaulting FALSE, and that is what
+    // reproduces production: there is no user-facing bot label today, so the
+    // toggle introduces the "on" path rather than suppressing an existing one.
     expect(DEFAULT_PLATFORM_POLICY).toEqual({
       combatSim: { tokensRequiredForNonPro: true },
       tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
       navigation: { globalNavbarVisible: true },
+      community: { showBotLabels: false },
     });
   });
 
@@ -23,17 +27,19 @@ describe("defaults reproduce current production behaviour", () => {
 });
 
 describe("parsePlatformPolicy", () => {
-  it("reads all four settings", () => {
+  it("reads all five settings", () => {
     const policy = parsePlatformPolicy([
       { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
       { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
       { key: KEY.tutorialCompletionRequiredForNewUsers, value: { enabled: false } },
       { key: KEY.globalNavbarVisible, value: { enabled: false } },
+      { key: KEY.showBotLabels, value: { enabled: true } },
     ]);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
     expect(policy.tutorial.autoPopupEnabled).toBe(false);
     expect(policy.tutorial.completionRequiredForNewUsers).toBe(false);
     expect(policy.navigation.globalNavbarVisible).toBe(false);
+    expect(policy.community.showBotLabels).toBe(true);
   });
 
   it("keeps the settings independent of one another", () => {

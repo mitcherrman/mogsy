@@ -33,22 +33,29 @@ type PolicyField =
   | "combatSimTokens"
   | "tutorialAutoPopup"
   | "tutorialCompletionRequired"
-  | "globalNavbar";
+  | "globalNavbar"
+  | "showBotLabels";
 
 const CONTROLS: {
   field: PolicyField;
   settingKey: string;
   label: string;
   description: string;
-  /** Shown only when the switch is OFF — disabling is the material change. */
-  offWarning: string;
+  /**
+   * The state whose consequences need spelling out. For every policy that
+   * defaults ON, that is "off" — disabling is the material change. `showBotLabels`
+   * defaults OFF, so for it the material change is turning it ON.
+   */
+  warnWhen: "off" | "on";
+  warning: string;
 }[] = [
   {
     field: "combatSimTokens",
     settingKey: POLICY_KEYS.combatSimTokensRequiredForNonPro,
     label: "Combat Sim Token Requirement",
     description: "Require non-Pro users to use Combat Sim tokens.",
-    offWarning:
+    warnWhen: "off",
+    warning:
       "Non-Pro users get unlimited Combat Sim runs and are not charged tokens. Existing balances and history are preserved, and turning this back on resumes metering from each user's real balance. Pro is unaffected either way.",
   },
   {
@@ -56,7 +63,8 @@ const CONTROLS: {
     settingKey: POLICY_KEYS.tutorialAutoPopupEnabled,
     label: "Automatic Tutorial Popup",
     description: "Automatically show the tutorial when a new user enters Mogzy.",
-    offWarning:
+    warnWhen: "off",
+    warning:
       "New users see no tutorial popup. The tutorial still exists and stays available at /quiz/tutorial, and the requirement below is unaffected — if it is on, users are still sent into the tutorial, just without the popup.",
   },
   {
@@ -64,7 +72,8 @@ const CONTROLS: {
     settingKey: POLICY_KEYS.tutorialCompletionRequiredForNewUsers,
     label: "Required New-User Tutorial",
     description: "Require new users to complete the tutorial before continuing.",
-    offWarning:
+    warnWhen: "off",
+    warning:
       "New users can enter Leaguecraft without completing the tutorial. No completion history is erased — anyone who finishes it is still recorded — so turning this back on immediately uses each account's real completion state.",
   },
   {
@@ -73,8 +82,19 @@ const CONTROLS: {
     label: "Show global navbar",
     description:
       "Display the standard Mogzy navigation bar across public and authenticated pages.",
-    offWarning:
+    warnWhen: "off",
+    warning:
       "This control is prepared but is not yet connected to navbar visibility. Turning it off does not hide navigation today — the value is stored and will take effect in Phase 2, once replacement access to Profile, Settings, notifications, and admin tools exists.",
+  },
+  {
+    field: "showBotLabels",
+    settingKey: POLICY_KEYS.showBotLabels,
+    label: "Show bot labels",
+    description:
+      "Display a visible “Bot” badge on bot personas across ordinary user-facing surfaces. Off by default.",
+    warnWhen: "on",
+    warning:
+      "Bot personas are visibly labelled for every user. This is presentation only — it changes no permissions, no filtering, no analytics, no search-engine indexing, and no bot behaviour. Admin screens always show real bot status whichever way this is set.",
   },
 ];
 
@@ -84,6 +104,7 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
     tutorialAutoPopup: policy.tutorial.autoPopupEnabled,
     tutorialCompletionRequired: policy.tutorial.completionRequiredForNewUsers,
     globalNavbar: policy.navigation.globalNavbarVisible,
+    showBotLabels: policy.community.showBotLabels,
   };
 }
 
@@ -254,13 +275,13 @@ export default function AdminPlatformPolicies() {
                     </div>
                   </div>
 
-                  {!on && (
+                  {on === (control.warnWhen === "on") && (
                     <p
                       className="mt-3 flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
                       data-testid={`policy-warning-${control.field}`}
                     >
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span>{control.offWarning}</span>
+                      <span>{control.warning}</span>
                     </p>
                   )}
 
