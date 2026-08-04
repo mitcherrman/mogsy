@@ -19,6 +19,7 @@
     "video:prepare": "tsx scripts/prepare-quiz-video.ts",
     "video:render": "tsx scripts/render-quiz-video.ts",
     "video:graph1": "tsx scripts/render-graph1-video.ts",
+    "graph1:flourish": "tsx scripts/export-graph1-flourish.ts",
     "video:timestamps": "tsx scripts/render-quiz-video.ts --timestamps-only",
     "quiz:screenshots": "tsx scripts/quiz-screenshots/index.ts",
     "content-studio": "tsx scripts/content-studio/server.ts"
