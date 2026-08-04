@@ -228,7 +228,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           `min-h` reserves the tallest state this strip ever reaches, so the
           transition pill appearing or the timer gaining a notice line cannot
           push the arena below it. */}
-      <section className="ranked-panel flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+      <section className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
         <div className="flex items-baseline gap-3">
           <div>
             <div className="ranked-eyebrow">
@@ -329,7 +329,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               // surface is dimmed, never collapsed: `opacity` costs no layout,
               // `display:none` cost several hundred pixels of jump.
               data-input-open={inputOpen ? "true" : "false"}
-              className={`ranked-panel p-3 sm:p-4 transition-opacity duration-200 motion-reduce:transition-none ${
+              // `ranked-folio` is the RA4 academy skin for this exact box —
+              // colour only. The padding, the reserved scenario-band box and
+              // the answer grid inside are untouched, so nothing here moves.
+              className={`ranked-panel ranked-folio p-3 sm:p-4 transition-opacity duration-200 motion-reduce:transition-none ${
                 m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
               <renderer.Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the

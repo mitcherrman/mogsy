@@ -20,13 +20,17 @@
  * identity (no isRanked/isTutorial/isBot/isPlaceholder).
  */
 
+import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
+
 export interface CompactScenarioBandProps {
   /** Question category (already question-safe). Shown as the band label. */
   category: string | null;
 }
 
 export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
-  const label = (category ?? "").replace(/_/g, " ").trim() || "Ranked";
+  // Same formatter the cinematic header uses — the rule moved out of this file
+  // unchanged so both presentations of the category read identically.
+  const label = formatCategoryLabel(category, "Ranked");
   return (
     <div
       data-testid="scenario-compact"

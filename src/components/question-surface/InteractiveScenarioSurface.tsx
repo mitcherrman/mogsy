@@ -25,6 +25,7 @@ import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
 import { selectScenario } from "@/components/quiz-broadcast/scenario-cards/classify";
 import { CompactScenarioBand } from "./CompactScenarioBand";
+import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -193,8 +194,13 @@ export function InteractiveScenarioSurface({
       <header className="space-y-1">
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {question.category}
+          // `scenario-category` is a styling HOOK, not new behaviour: the label
+          // is the same backend category, formatted exactly the way the compact
+          // band already formats it (underscores → spaces; the uppercasing is
+          // the CSS that was always here). Presentation layers scope their own
+          // treatment to this class.
+          <span className="scenario-category text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {formatCategoryLabel(question.category)}
           </span>
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>

@@ -627,6 +627,314 @@
   text-shadow: 0 1px 0 rgba(2,6,16,0.8), 0 0 18px rgba(201,168,76,0.22);
 }
 
+/* ===== Mogzy Academy theme — Ranked Duel only (RA4 Slice A) =====
+   A LOCAL theme layer, not a global system. Every rule below is scoped to
+   `.ranked-academy`, which is applied by the /quiz/ranked page frame and
+   nowhere else — the shared question surface, the shared quiz answer grid and
+   the ranked-arena primitives are all reused UNCHANGED and simply look
+   different inside this one route. No other quiz mode, the Ranked Tutorial,
+   and the dev arena inspector are untouched.
+
+   Direction: a dark academy duel chamber (background image) with the question
+   presented as a parchment folio and the answers as carved navy tablets.
+   Everything except the two supplied PNGs is CSS. Static by construction, so
+   there is nothing for reduced-motion to disable beyond the state transitions
+   explicitly opted out below. */
+.ranked-academy {
+  --ranked-bg-deep: #07111f;
+  --ranked-bg-panel: #0b1727;
+  --ranked-gold: #b9934c;
+  --ranked-gold-bright: #d5b66f;
+  --ranked-vellum: #c6b48f;
+  --ranked-vellum-dark: #8f8063;
+  --ranked-blue: #2f8fca;
+  --ranked-red: #b8494f;
+  --ranked-text: #efe8d6;
+  --ranked-muted: #a9b3c1;
+  /* Ink used on the parchment folio — the warm counterpart to --ranked-text. */
+  --ranked-ink: #2c2417;
+  --ranked-ink-muted: rgba(58,46,26,0.74);
+}
+
+/* The academy hall. A FIXED layer rather than a tall background box: it cannot
+   add a single pixel of scrollable height, it cannot move or re-decode between
+   rounds, and it composites once. It lives inside <main> (z-20), so the fixed
+   navbar (z-50), the League Hub pill (z-55) and every floating control (z-40+)
+   still paint above it, and `.ranked-shell > *` already lifts the page's own
+   content to z-1 above it. */
+.ranked-academy::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--ranked-bg-deep);
+  background-image:
+    /* vignette / edge darkening, so the frame reads as a lit chamber */
+    radial-gradient(115% 85% at 50% 44%,
+      rgba(7,17,31,0) 0%, rgba(5,12,23,0.45) 58%, rgba(2,6,13,0.94) 100%),
+    /* navy wash — the atmosphere sits BEHIND the UI, never competes with it */
+    linear-gradient(180deg,
+      rgba(7,17,31,0.74) 0%, rgba(7,17,31,0.60) 45%, rgba(4,10,20,0.86) 100%),
+    url("/assets/ranked/ranked-academy-duel-bg.png");
+  background-size: cover, cover, cover;
+  background-position: center, center, center 40%;
+  background-repeat: no-repeat;
+}
+/* Belt and braces: the frame already carries `.ranked-shell`, which lifts its
+   children, but the theme class must stand on its own if it is ever reused. */
+.ranked-academy > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Round / timer header plate ------------------------------------------
+   The existing `.ranked-panel` box, re-tinted: deeper navy, a warmer brass
+   frame, and a brighter centre on the top hairline so the strip reads as a
+   carved lintel over the chamber. Structure, height and content unchanged. */
+.ranked-academy .ranked-header-plate {
+  border-color: rgba(185,147,76,0.52);
+  background-color: var(--ranked-bg-panel);
+  background-image: linear-gradient(180deg,
+    rgba(16,32,53,0.95) 0%, rgba(9,21,36,0.97) 60%, rgba(6,14,26,0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(213,182,111,0.18),
+    inset 0 0 0 1px rgba(185,147,76,0.12),
+    inset 0 -1px 0 rgba(185,147,76,0.28),
+    0 12px 30px -20px rgba(0,0,0,0.9);
+}
+/* Brass hairline with a lit centre — the header's only ornament. */
+.ranked-academy .ranked-header-plate::before {
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(185,147,76,0.35) 22%, rgba(240,215,140,0.95) 50%,
+    rgba(185,147,76,0.35) 78%, transparent 100%);
+  opacity: 1;
+}
+.ranked-academy .ranked-header-plate::after {
+  background: radial-gradient(70% 130% at 50% 0%,
+    rgba(213,182,111,0.10) 0%, transparent 62%);
+}
+.ranked-academy .ranked-header-plate [data-testid="timer-value"] {
+  color: var(--ranked-text);
+}
+.ranked-academy .ranked-header-plate [data-testid="timer-value"][data-timer-state="urgent"],
+.ranked-academy .ranked-header-plate [data-testid="timer-value"][data-timer-state="zero"] {
+  color: #e2757b;
+}
+.ranked-academy .ranked-header-plate .text-muted-foreground {
+  color: var(--ranked-muted);
+}
+
+/* ---- Question folio -------------------------------------------------------
+   The central question surface becomes a sheet of vellum in a brass frame. The
+   supplied texture is tiled UNDER a parchment gradient that carries most of the
+   tone, so the image can never darken the sheet enough to hurt the prompt, and
+   a missing texture still leaves a clean parchment surface. Geometry — the
+   `.ranked-panel p-3 sm:p-4` box, the scenario band's reserved aspect box, the
+   answer grid — is untouched. */
+.ranked-academy .ranked-folio {
+  border-color: rgba(185,147,76,0.6);
+  color: var(--ranked-ink);
+  background-color: var(--ranked-vellum);
+  background-image:
+    linear-gradient(178deg,
+      rgba(247,239,217,0.86) 0%, rgba(226,212,180,0.74) 46%, rgba(198,180,143,0.80) 100%),
+    url("/assets/ranked/ranked-vellum-texture.png");
+  /* The texture is stretched to the sheet rather than TILED. It carries a baked
+     vignette, so repeating it drew a grid of dark seams down the middle of the
+     folio (it read as a book gutter); stretched once, that same vignette lands
+     exactly on the folio's own edges and reads as an aged sheet. Stretching a
+     soft organic grain is imperceptible where tiling was not. */
+  background-size: cover, 100% 100%;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,248,226,0.4),
+    inset 0 3px 12px rgba(92,73,38,0.20),
+    inset 0 -16px 30px -20px rgba(92,73,38,0.42),
+    0 0 0 1px rgba(185,147,76,0.32),
+    0 20px 44px -26px rgba(0,0,0,0.85);
+}
+.ranked-academy .ranked-folio::before {
+  background: linear-gradient(90deg,
+    transparent, rgba(185,147,76,0.75), transparent);
+  opacity: 1;
+}
+/* Replaces the panel's cyan/gold corner glows with a soft top light and a
+   warm bottom shade, so the sheet reads as paper rather than glass. */
+.ranked-academy .ranked-folio::after {
+  background:
+    radial-gradient(80% 55% at 50% -6%, rgba(255,251,236,0.42) 0%, transparent 66%),
+    radial-gradient(95% 65% at 50% 108%, rgba(120,96,52,0.20) 0%, transparent 62%);
+}
+/* Ink defaults for text written straight onto the vellum. The carved tablets
+   below are dark surfaces and re-assert their own light text at a higher
+   specificity. */
+.ranked-academy .ranked-folio .text-muted-foreground { color: var(--ranked-ink-muted); }
+.ranked-academy .ranked-folio .text-destructive { color: #8d2f33; }
+.ranked-academy .ranked-folio .border-border { border-color: rgba(122,98,54,0.42); }
+.ranked-academy .ranked-folio .bg-muted\/40 { background-color: rgba(122,98,54,0.16); }
+
+/* The low-content scenario band is built from translucent blacks tuned for a
+   dark panel; over vellum it washed out to a muddy tan and its second line
+   nearly vanished. Opaque navy restores it to the same "plate mounted on the
+   sheet" reading the cinematic band already has. Colour only — the band keeps
+   its own height, ring, sheen and emblem. */
+.ranked-academy .ranked-folio [data-testid="scenario-compact"] {
+  border-color: rgba(185,147,76,0.45);
+  background-color: var(--ranked-bg-panel);
+  background-image: linear-gradient(90deg,
+    rgba(8,19,34,0.98) 0%, rgba(15,31,51,0.95) 50%, rgba(8,19,34,0.98) 100%);
+}
+.ranked-academy .ranked-folio [data-testid="scenario-compact"] .text-white\/45 {
+  color: rgba(233,220,190,0.62);
+}
+
+/* ---- Category heading -----------------------------------------------------
+   A small academy label: a brass lozenge, the (formatted, meaning-preserving)
+   category, then a hairline running out to the edge of the sheet. */
+.ranked-academy .ranked-folio .scenario-category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6d5626;
+  letter-spacing: 0.22em;
+}
+.ranked-academy .ranked-folio .scenario-category::before {
+  content: "";
+  flex: none;
+  width: 0.4rem;
+  height: 0.4rem;
+  transform: rotate(45deg);
+  border-radius: 1px;
+  background: linear-gradient(135deg, var(--ranked-gold-bright), var(--ranked-gold));
+}
+.ranked-academy .ranked-folio .scenario-category::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(185,147,76,0.55), rgba(185,147,76,0));
+}
+
+/* ---- Answer tablets -------------------------------------------------------
+   Carved navy stone on the vellum. Scoped to the fieldset AnswerGrid owns AND
+   to `.ranked-academy`, so a plain quiz page can never be reached. Geometry is
+   NOT touched here: the 1px border box is pinned by the RA1 1.5 rule above and
+   every state below changes only colour, fill and glow — no padding, no
+   border-width, no transform, no size. */
+.ranked-academy [data-answers-state] [data-quiz-choice] {
+  border-color: rgba(185,147,76,0.34);
+  background-color: #0e1c2f;
+  background-image: linear-gradient(180deg,
+    rgba(25,44,69,0.97) 0%, rgba(12,25,42,0.98) 62%, rgba(7,15,28,1) 100%);
+  color: var(--ranked-text);
+  box-shadow:
+    inset 0 1px 0 rgba(213,182,111,0.16),
+    inset 0 -10px 18px -14px rgba(0,0,0,0.9),
+    0 6px 16px -12px rgba(0,0,0,0.85);
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    background-color 160ms ease, color 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranked-academy [data-answers-state] [data-quiz-choice] { transition: none; }
+}
+.ranked-academy [data-answers-state] [data-quiz-choice] .text-muted-foreground {
+  color: rgba(213,182,111,0.78);
+}
+.ranked-academy [data-answers-state] [data-quiz-choice]:enabled:hover {
+  border-color: rgba(213,182,111,0.72);
+  background-color: #16304c;
+  box-shadow:
+    inset 0 1px 0 rgba(213,182,111,0.3),
+    0 0 20px -6px rgba(185,147,76,0.5);
+}
+/* Focus must stay obvious on stone. The shared Button already rings; the
+   outline is additive so the tablet is legible under either. */
+.ranked-academy [data-answers-state] [data-quiz-choice]:focus-visible {
+  outline: 2px solid var(--ranked-gold-bright);
+  outline-offset: 2px;
+}
+/* Selected — brass-lit, the only warm tablet. */
+.ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="selected"] {
+  border-color: rgba(213,182,111,0.88);
+  background-color: #2a2110;
+  background-image: linear-gradient(180deg,
+    rgba(64,50,24,0.98) 0%, rgba(36,28,14,0.98) 100%);
+  color: #f6e6bb;
+  box-shadow:
+    inset 0 1px 0 rgba(240,215,140,0.42),
+    inset 0 0 24px rgba(185,147,76,0.18),
+    0 0 24px -8px rgba(213,182,111,0.62);
+}
+/* Locked: the shared Button dims every disabled choice to 50%. On the light
+   vellum that washes the unchosen tablets almost into the sheet, so the dim is
+   eased to 0.62 — still unmistakably unavailable, still legible — and the one
+   the player actually committed to stays fully present: it is the answer they
+   are now waiting on. Opacity only; no box changes. */
+.ranked-academy [data-answers-state="locked"] [data-quiz-choice] {
+  opacity: 0.62;
+}
+.ranked-academy [data-answers-state="locked"] [data-quiz-choice][data-choice-state="selected"] {
+  opacity: 0.92;
+}
+/* Reveal. Ranked's own RevealBanner is the authority; these states exist for
+   any surface that does pass a revealed correct option through the grid. */
+.ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="correct"] {
+  border-color: rgba(47,143,202,0.85);
+  background-color: #0d2740;
+  background-image: linear-gradient(180deg,
+    rgba(20,63,97,0.98) 0%, rgba(10,33,53,0.98) 100%);
+  color: #dcefff;
+  box-shadow:
+    inset 0 1px 0 rgba(143,208,245,0.32),
+    0 0 24px -8px rgba(47,143,202,0.6);
+}
+.ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="correct"] svg {
+  color: #8fd0f5;
+}
+.ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="incorrect-selected"] {
+  border-color: rgba(184,73,79,0.85);
+  background-color: #331316;
+  background-image: linear-gradient(180deg,
+    rgba(78,29,33,0.98) 0%, rgba(40,15,18,0.98) 100%);
+  color: #f5dcde;
+  box-shadow:
+    inset 0 1px 0 rgba(226,117,123,0.28),
+    0 0 24px -10px rgba(184,73,79,0.6);
+}
+.ranked-academy [data-answers-state] [data-quiz-choice][data-choice-state="incorrect-selected"] svg {
+  color: #e2757b;
+}
+
+/* Item Cost Duel picks are the same carved tablet, so the format inherits the
+   theme without the module knowing anything about it. Its own logic, timing and
+   authority are untouched — this is colour only. */
+.ranked-academy .ranked-folio [data-testid^="icd-item-"] {
+  border-color: rgba(185,147,76,0.34);
+  background-color: #0e1c2f;
+  background-image: linear-gradient(180deg,
+    rgba(25,44,69,0.97) 0%, rgba(12,25,42,0.98) 62%, rgba(7,15,28,1) 100%);
+  color: var(--ranked-text);
+  box-shadow:
+    inset 0 1px 0 rgba(213,182,111,0.16),
+    0 6px 16px -12px rgba(0,0,0,0.85);
+}
+.ranked-academy .ranked-folio [data-testid^="icd-item-"] .text-muted-foreground {
+  color: rgba(213,182,111,0.78);
+}
+.ranked-academy .ranked-folio [data-testid^="icd-item-"]:enabled:hover {
+  border-color: rgba(213,182,111,0.72);
+  background-color: #16304c;
+}
+.ranked-academy .ranked-folio [data-testid^="icd-item-"][aria-pressed="true"] {
+  border-color: rgba(213,182,111,0.88);
+  background-color: #2a2110;
+  color: #f6e6bb;
+}
+.ranked-academy .ranked-folio [data-testid^="icd-item-"] .border-border {
+  border-color: rgba(213,182,111,0.28);
+}
+
 /* Custom animation preview keyframes */
 @keyframes fadeIn {
   from { opacity: 0; } to { opacity: 1; }
