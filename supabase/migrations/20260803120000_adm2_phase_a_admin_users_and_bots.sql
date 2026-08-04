@@ -69,13 +69,55 @@ CREATE POLICY "Admins can read the audit log"
   FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
-REVOKE ALL ON TABLE public.admin_audit_log FROM PUBLIC, anon;
+-- CORRECTION (ADM3): `authenticated` MUST be in the REVOKE list. This project's
+-- ALTER DEFAULT PRIVILEGES grants arwdDxtm at table level to new public tables
+-- for anon AND authenticated alike (documented in 20260730150000). Revoking from
+-- PUBLIC and anon only left `authenticated` holding INSERT, UPDATE, DELETE,
+-- TRUNCATE, REFERENCES and TRIGGER by inheritance -- confirmed live on the first
+-- production apply, where post-apply checks 30/31/32 all read true.
+--
+-- The absence of a write POLICY does not save us here: a table grant and an RLS
+-- policy are independent gates, and "no policy" only denies the command to roles
+-- that reach RLS at all. With the grant present, an authenticated client could
+-- have forged, rewritten or TRUNCATEd audit rows.
+--
+-- REVOKE ALL rather than an enumerated list, deliberately: the enumeration would
+-- have to track MAINTAIN (PostgreSQL 17) and anything a future major adds. ALL is
+-- complete by construction and version-independent. SELECT is then re-granted.
+REVOKE ALL ON TABLE public.admin_audit_log FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.admin_audit_log TO authenticated;
 
 COMMENT ON TABLE public.admin_audit_log IS
   'Append-only record of privileged admin actions. Written only by SECURITY '
   'DEFINER admin functions; readable by admins; never writable from a client. '
   'actor_user_id is retained for forensics and must never be surfaced to a browser.';
+
+-- Runtime assertion, in-transaction. The default-privileges trap is silent --
+-- RLS probes and policy counts all pass while the grant is still open -- so the
+-- grant state is asserted directly rather than inferred.
+DO $assert_audit_grants$
+DECLARE
+  _priv text;
+BEGIN
+  IF NOT has_table_privilege('authenticated', 'public.admin_audit_log', 'SELECT') THEN
+    RAISE EXCEPTION 'ADM2 Phase A: authenticated must retain SELECT on admin_audit_log';
+  END IF;
+
+  FOREACH _priv IN ARRAY ARRAY['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']
+  LOOP
+    IF has_table_privilege('authenticated', 'public.admin_audit_log', _priv) THEN
+      RAISE EXCEPTION 'ADM2 Phase A: authenticated still holds % on admin_audit_log -- the audit log would be forgeable', _priv;
+    END IF;
+    IF has_table_privilege('anon', 'public.admin_audit_log', _priv) THEN
+      RAISE EXCEPTION 'ADM2 Phase A: anon still holds % on admin_audit_log', _priv;
+    END IF;
+  END LOOP;
+
+  IF has_table_privilege('anon', 'public.admin_audit_log', 'SELECT') THEN
+    RAISE EXCEPTION 'ADM2 Phase A: anon must have no access to admin_audit_log';
+  END IF;
+END
+$assert_audit_grants$;
 
 
 -- ---------------------------------------------------------------------------
