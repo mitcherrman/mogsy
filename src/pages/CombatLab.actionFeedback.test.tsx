@@ -364,7 +364,9 @@ describe("Combat Lab defeated target", () => {
 
   it("keeps Reset available as the next action", async () => {
     await killTarget();
-    const reset = screen.getByRole("button", { name: /Reset/i });
+    // Exact name: the input-navigation toolbar has its own "Reset inputs"
+    // control; this contract is about the combat Reset in the arena.
+    const reset = screen.getByRole("button", { name: "Reset" });
     expect(reset).toBeTruthy();
     expect((reset as HTMLButtonElement).disabled).toBe(false);
   });

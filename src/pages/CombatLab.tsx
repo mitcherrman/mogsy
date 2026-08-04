@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AdSlot from "@/components/ads/AdSlot";
@@ -108,6 +108,14 @@ import {
 } from "@/lib/combat-lab/api";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import CombatLabToolbar from "@/components/combat-lab/CombatLabToolbar";
+import { useInputHistory } from "@/hooks/useInputHistory";
+import { useSectionNavigation, type SectionDef } from "@/hooks/useSectionNavigation";
+import {
+  deepEqual,
+  describeCombatLabChange,
+  type CombatLabInputSnapshot,
+} from "@/lib/combat-lab/inputHistory";
 
 const STORAGE_KEY = "combat-lab:last-config";
 const COMBO_TOKENS = ["AA", "Q", "W", "E", "R", "IGNITE", "FLASH", "HEAL", "BARRIER", "GHOST", "EXHAUST", "SMITE"];
@@ -1218,6 +1226,7 @@ export default function CombatLab() {
           <InteractiveSandbox
             config={config}
             update={update}
+            replaceConfig={setConfig}
             champions={champions}
             items={items}
             runes={runes}
@@ -1832,9 +1841,42 @@ const DEFAULT_TARGET_SETUP: TargetSetupState = {
   dummyDR: 0,
 };
 
+/* Canonical defaults for the sandbox-owned input slices. Reset and the
+   useState initializers share these single definitions so a "reset" state can
+   never drift from a "fresh" state. */
+const DEFAULT_ABILITY_RANKS = { Q: 5, W: 5, E: 5, R: 3 } as const;
+const DEFAULT_RANK_MODE = "sandbox" as const;
+const DEFAULT_HIJACK_TARGET = "Malphite";
+const DEFAULT_SUMMONER_PICKS: string[] = [];
+
+/** The complete user-authored simulator input state covered by undo/redo. */
+type CombatLabInputs = CombatLabInputSnapshot<SimulateRequest, TargetSetupState>;
+
+/**
+ * Logical input sections for Previous/Next navigation, identified by stable
+ * DOM ids on always-rendered wrappers (never text or positional selectors).
+ * Navigation order is the VISUAL order at time of use — the mobile layout
+ * reorders the versus columns with CSS `order` — see useSectionNavigation.
+ */
+const COMBAT_LAB_SECTIONS: SectionDef[] = [
+  { id: "combat-lab-section-attacker", label: "Attacker" },
+  { id: "combat-lab-section-combat", label: "Combat" },
+  { id: "combat-lab-section-defender", label: "Defender" },
+  { id: "combat-lab-section-stats", label: "Live Stats" },
+  { id: "combat-lab-section-timeline", label: "Timeline" },
+  { id: "combat-lab-section-results", label: "Results" },
+];
+
+/** Shared wrapper treatment for navigable sections: anchored under the fixed
+ *  app header, programmatically focusable without becoming a tab stop. */
+const SECTION_WRAPPER_CLASS =
+  "scroll-mt-[calc(var(--app-header-h)+16px)] rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary/50";
+
 type SandboxProps = {
   config: SimulateRequest;
   update: <K extends keyof SimulateRequest>(key: K, val: SimulateRequest[K]) => void;
+  /** Wholesale config replacement used by undo/redo/reset restores. */
+  replaceConfig: (next: SimulateRequest) => void;
   champions: Champion[];
   items: Item[];
   runes: Rune[];
@@ -1878,6 +1920,7 @@ function numericMap(src: Record<string, unknown> | undefined | null): Record<str
 function InteractiveSandbox({
   config,
   update,
+  replaceConfig,
   champions,
   items,
   runes,
@@ -1896,7 +1939,7 @@ function InteractiveSandbox({
   const [attackerStats, setAttackerStats] = useState<Record<string, number | string>>({});
   const [actions, setActions] = useState<CombatAction[]>([]);
   const [actionsLoading, setActionsLoading] = useState(false);
-  const [hijackTarget, setHijackTarget] = useState<string>("Malphite");
+  const [hijackTarget, setHijackTarget] = useState<string>(DEFAULT_HIJACK_TARGET);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRequest, setLastRequest] = useState<unknown>(null);
@@ -1944,12 +1987,9 @@ function InteractiveSandbox({
   const [selectedTimelineId, setSelectedTimelineId] = useState<number | null>(null);
   // Frontend ability rank controls (Q/W/E/R). Defaults: Q=5, W=5, E=5, R=3.
   // Sent as top-level fields AND mirrored into attacker_stats on every interactive request.
-  const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>({
-    Q: 5,
-    W: 5,
-    E: 5,
-    R: 3,
-  });
+  const [abilityRanks, setAbilityRanks] = useState<{ Q: number; W: number; E: number; R: number }>(
+    () => ({ ...DEFAULT_ABILITY_RANKS })
+  );
   // Rank mode: "sandbox" (no level restriction) or "real_match" (clamped by champion level).
   const [rankMode, setRankMode] = useState<"sandbox" | "real_match">(() => {
     if (typeof window === "undefined") return "sandbox";
@@ -2141,6 +2181,133 @@ function InteractiveSandbox({
       setDefenderSkin("default");
     }
   }, [targetSetup.targetChampionName, championManifest, defenderSkin]);
+  /* ───────── Input history (undo/redo/reset) + section navigation ─────────
+     The undoable boundary is EXACTLY the user-authored simulator inputs:
+     attacker config, ability ranks, rank mode, defender setup, summoner picks
+     and the Sylas hijack target. Combat runtime state, backend responses,
+     credits, previews, skins, dev/auto-reset preferences and section focus are
+     deliberately outside it — undo restores inputs, and the existing
+     auto-reset + build-preview flows recompute everything derived from them. */
+  const inputSnapshot = useMemo<CombatLabInputs>(
+    () => ({
+      config,
+      abilityRanks,
+      rankMode,
+      targetSetup,
+      summonerPicks,
+      hijackTarget,
+    }),
+    [config, abilityRanks, rankMode, targetSetup, summonerPicks, hijackTarget]
+  );
+
+  const inputDefaults = useMemo<CombatLabInputs>(
+    () => ({
+      config: defaultConfig,
+      abilityRanks: { ...DEFAULT_ABILITY_RANKS },
+      rankMode: DEFAULT_RANK_MODE,
+      targetSetup: DEFAULT_TARGET_SETUP,
+      summonerPicks: DEFAULT_SUMMONER_PICKS,
+      hijackTarget: DEFAULT_HIJACK_TARGET,
+    }),
+    []
+  );
+
+  const applyInputSnapshot = useCallback(
+    (s: CombatLabInputs) => {
+      replaceConfig(s.config);
+      setAbilityRanks(s.abilityRanks);
+      setRankMode(s.rankMode);
+      setTargetSetup(s.targetSetup);
+      setSummonerPicks(s.summonerPicks);
+      setHijackTarget(s.hijackTarget);
+    },
+    [replaceConfig]
+  );
+
+  const inputHistory = useInputHistory<CombatLabInputs>({
+    current: inputSnapshot,
+    restore: applyInputSnapshot,
+    classify: describeCombatLabChange,
+  });
+
+  // Action feedback for the toolbar's polite live region. The nonce retriggers
+  // the visible status even when the same message repeats.
+  const [announcement, setAnnouncement] = useState<{ text: string; nonce: number }>({
+    text: "",
+    nonce: 0,
+  });
+  const announce = useCallback(
+    (text: string) => setAnnouncement((a) => ({ text, nonce: a.nonce + 1 })),
+    []
+  );
+
+  const handleUndo = useCallback((): boolean => {
+    const label = inputHistory.undo();
+    if (label) announce(`Undid ${label}`);
+    return label !== null;
+  }, [inputHistory, announce]);
+
+  const handleRedo = useCallback((): boolean => {
+    const label = inputHistory.redo();
+    if (label) announce(`Redid ${label}`);
+    return label !== null;
+  }, [inputHistory, announce]);
+
+  const atInputDefaults = deepEqual(inputSnapshot, inputDefaults);
+
+  const handleResetInputs = useCallback(() => {
+    // One labelled transaction through the observer: undo right after reset
+    // restores the complete prior setup, and reset-after-undo clears redo.
+    inputHistory.applyLabelled(inputDefaults, "inputs reset");
+    announce("Inputs reset");
+  }, [inputHistory, inputDefaults, announce]);
+
+  const sectionNav = useSectionNavigation(COMBAT_LAB_SECTIONS);
+
+  const handlePrevSection = useCallback(() => {
+    const dest = sectionNav.goPrev();
+    if (dest) announce(`${dest.label} section`);
+  }, [sectionNav, announce]);
+
+  const handleNextSection = useCallback(() => {
+    const dest = sectionNav.goNext();
+    if (dest) announce(`${dest.label} section`);
+  }, [sectionNav, announce]);
+
+  /* Standard desktop undo/redo shortcuts, scoped to the Combat Lab lifecycle.
+     While focus is inside an editable control the browser's NATIVE undo owns
+     Cmd/Ctrl+Z — app history only takes over at the committed-edit boundary
+     (change events), so there is never a double undo. preventDefault fires
+     only when the app actually performed an undo/redo. */
+  const keyboardHandlersRef = useRef({ undo: handleUndo, redo: handleRedo });
+  keyboardHandlersRef.current = { undo: handleUndo, redo: handleRedo };
+  useEffect(() => {
+    const isEditableTarget = (t: EventTarget | null): boolean => {
+      if (!(t instanceof HTMLElement)) return false;
+      const tag = t.tagName;
+      return (
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable
+      );
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey) return;
+      if (!(e.metaKey || e.ctrlKey) || (e.metaKey && e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      const isUndo = key === "z" && !e.shiftKey;
+      const isRedo =
+        (key === "z" && e.shiftKey) ||
+        (key === "y" && e.ctrlKey && !e.metaKey && !e.shiftKey);
+      if (!isUndo && !isRedo) return;
+      if (isEditableTarget(e.target)) return;
+      const handled = isUndo
+        ? keyboardHandlersRef.current.undo()
+        : keyboardHandlersRef.current.redo();
+      if (handled) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // load actions
@@ -3009,6 +3176,26 @@ function InteractiveSandbox({
       {/* The daily credits indicator lives in the compact page header (see
           `onCreditsChange`) so it costs no vertical space above the grid. */}
 
+      {/* Input navigation: undo/redo/reset + previous/next section. Static
+          (non-floating) so it never obscures the simulator's primary actions. */}
+      <CombatLabToolbar
+        canUndo={inputHistory.canUndo}
+        canRedo={inputHistory.canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onResetInputs={handleResetInputs}
+        atDefaults={atInputDefaults}
+        sectionLabel={sectionNav.activeLabel}
+        sectionIndex={sectionNav.activeIndex}
+        sectionCount={sectionNav.count}
+        canPrev={sectionNav.canPrev}
+        canNext={sectionNav.canNext}
+        onPrev={handlePrevSection}
+        onNext={handleNextSection}
+        announcement={announcement.text}
+        announcementNonce={announcement.nonce}
+      />
+
       {/* Credit gate — shown when a Free user runs out. Clean upsell, no raw error. */}
       {creditsGate && (
         <Card className="border-[#c9a84c]/40 bg-[#c9a84c]/5">
@@ -3035,6 +3222,11 @@ function InteractiveSandbox({
       <div className="grid gap-3 lg:grid-cols-[29fr_42fr_29fr]">
         {/* ATTACKER COLUMN */}
         <CombatSidePanel
+          id="combat-lab-section-attacker"
+          tabIndex={-1}
+          role="region"
+          ariaLabel="Attacker section"
+          className={SECTION_WRAPPER_CLASS}
           visual={
             <ChampionVisual
               role="attacker"
@@ -3237,7 +3429,13 @@ function InteractiveSandbox({
         </CombatSidePanel>
 
         {/* CENTER COMBAT COLUMN */}
-        <div className="flex flex-col gap-3 lg:order-none order-last">
+        <div
+          id="combat-lab-section-combat"
+          tabIndex={-1}
+          role="region"
+          aria-label="Combat section"
+          className={`flex flex-col gap-3 lg:order-none order-last ${SECTION_WRAPPER_CLASS}`}
+        >
           <DefenderHPCard
             defenderName={defenderDisplayName}
             hp={defenderHP}
@@ -3350,7 +3548,7 @@ function InteractiveSandbox({
                   placeholder="Select champion to hijack…"
                   value={hijackTarget}
                   options={champions}
-                  onChange={(v) => setHijackTarget(v || "Malphite")}
+                  onChange={(v) => setHijackTarget(v || DEFAULT_HIJACK_TARGET)}
                   loading={metaLoading}
                   withIcons
                 />
@@ -3393,6 +3591,11 @@ function InteractiveSandbox({
 
         {/* DEFENDER COLUMN */}
         <CombatSidePanel
+          id="combat-lab-section-defender"
+          tabIndex={-1}
+          role="region"
+          ariaLabel="Defender section"
+          className={SECTION_WRAPPER_CLASS}
           visual={
             targetSetup.targetMode === "target_champion" ? (
               <ChampionVisual
@@ -3484,7 +3687,13 @@ function InteractiveSandbox({
 
       {/* SECONDARY ROW: champion profile + live stats */}
       {/* SECONDARY ROW: live stats (champion profiles now live inside each side's column) */}
-      <div className="grid gap-6 lg:grid-cols-1">
+      <div
+        id="combat-lab-section-stats"
+        tabIndex={-1}
+        role="region"
+        aria-label="Live Stats section"
+        className={`grid gap-6 lg:grid-cols-1 ${SECTION_WRAPPER_CLASS}`}
+      >
         <div>
           <LiveStatsPanel
             config={config}
@@ -3503,15 +3712,30 @@ function InteractiveSandbox({
 
       {/* BELOW: timeline + diagnostics */}
       <div className="space-y-6">
-        <CombatTimelinePanel
-          entries={combatTimeline as CombatTimelineEntryT[]}
-          selectedId={selectedTimelineId}
-          onSelect={setSelectedTimelineId}
-        />
-        <ComboSummaryPanel
-          entries={combatTimeline as CombatTimelineEntryT[]}
-          devMode={devMode}
-        />
+        <div
+          id="combat-lab-section-timeline"
+          tabIndex={-1}
+          role="region"
+          aria-label="Timeline section"
+          className={`space-y-6 ${SECTION_WRAPPER_CLASS}`}
+        >
+          <CombatTimelinePanel
+            entries={combatTimeline as CombatTimelineEntryT[]}
+            selectedId={selectedTimelineId}
+            onSelect={setSelectedTimelineId}
+          />
+          <ComboSummaryPanel
+            entries={combatTimeline as CombatTimelineEntryT[]}
+            devMode={devMode}
+          />
+        </div>
+        <div
+          id="combat-lab-section-results"
+          tabIndex={-1}
+          role="region"
+          aria-label="Results section"
+          className={`space-y-6 ${SECTION_WRAPPER_CLASS}`}
+        >
         <DamageBreakdownPanel events={events} />
         <MitigationBreakdownPanel events={events} />
         <TargetRuntimeSummary runtime={targetRuntime} />
@@ -3724,6 +3948,7 @@ function InteractiveSandbox({
         {devMode && state && (
           <FinalStatePanel state={state as Record<string, unknown>} />
         )}
+        </div>
       </div>
     </div>
   );
