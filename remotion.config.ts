@@ -10,8 +10,36 @@ import path from "node:path";
 import { Config } from "@remotion/cli/config";
 import { enableTailwind } from "@remotion/tailwind";
 
+/**
+ * Vite parity for root-absolute CSS urls: the app CSS references public-dir
+ * assets as url("/assets/…"). Vite leaves those untouched (served from
+ * public/), but webpack's css-loader tries to bundle them relative to the
+ * project root and fails the whole build. Remotion's dev/render server also
+ * serves public/ at the root, so the correct behavior is Vite's: skip them.
+ */
+type WebpackRule = {
+  oneOf?: WebpackRule[];
+  use?: Array<string | { loader?: string; options?: Record<string, unknown> }>;
+};
+
+function skipAbsoluteCssUrls(rules: WebpackRule[] | undefined): void {
+  for (const rule of rules ?? []) {
+    if (rule.oneOf) skipAbsoluteCssUrls(rule.oneOf);
+    for (const use of Array.isArray(rule.use) ? rule.use : []) {
+      if (typeof use === "object" && use.loader?.includes("css-loader") &&
+          !use.loader.includes("postcss")) {
+        use.options = {
+          ...use.options,
+          url: { filter: (url: string) => !url.startsWith("/") },
+        };
+      }
+    }
+  }
+}
+
 Config.overrideWebpackConfig((config) => {
   const withTailwind = enableTailwind(config);
+  skipAbsoluteCssUrls(withTailwind.module?.rules as WebpackRule[] | undefined);
   return {
     ...withTailwind,
     resolve: {
