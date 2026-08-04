@@ -59,7 +59,7 @@ describe("RaceRenderer (shared across configurations)", () => {
     const index = buildRaceIndex(ds);
     const frame = stateAt(index, index.eventCount, { topN: 10 });
     render(
-      <RaceRenderer frame={frame} entities={ds.entities} metricLabel="games" topN={10} />,
+      <RaceRenderer frame={frame} entities={ds.entities} metricLabel="games" topN={10} display={{ showWinOverlay: false, showSecondaryEntityLabel: false }} />,
     );
     const img = screen.getByAltText("Azir") as HTMLImageElement;
     expect(img.src).toContain("/assets/champions/Azir/icon.png");
@@ -71,7 +71,7 @@ describe("RaceRenderer (shared across configurations)", () => {
     const index = buildRaceIndex(ds);
     const frame = stateAt(index, index.eventCount, { topN: 10 });
     const { container } = render(
-      <RaceRenderer frame={frame} entities={ds.entities} metricLabel="games" topN={10} />,
+      <RaceRenderer frame={frame} entities={ds.entities} metricLabel="games" topN={10} display={{ showWinOverlay: false, showSecondaryEntityLabel: false }} />,
     );
     const rows = container.querySelectorAll("[data-entity-id]");
     expect(rows).toHaveLength(3); // all three, incl. unmatched + ambiguous
@@ -90,6 +90,7 @@ describe("RaceRenderer (shared across configurations)", () => {
         entities={ds.entities}
         metricLabel="games"
         topN={10}
+        display={{ showWinOverlay: false, showSecondaryEntityLabel: false }}
       />,
     );
     const azirBefore = container.querySelector('[data-entity-id="champion:Azir"]');
@@ -100,6 +101,7 @@ describe("RaceRenderer (shared across configurations)", () => {
         entities={ds.entities}
         metricLabel="games"
         topN={10}
+        display={{ showWinOverlay: false, showSecondaryEntityLabel: false }}
       />,
     );
     // same DOM node persists across rank movement (id-keyed)

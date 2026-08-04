@@ -6,7 +6,7 @@
 import { Button } from "@/components/ui/button";
 import { Pause, Play, RotateCcw } from "lucide-react";
 
-const SPEEDS = [0.5, 1, 2, 4];
+const SPEEDS = [0.5, 1, 2, 4, 8, 10];
 
 export interface RaceControlsProps {
   playing: boolean;

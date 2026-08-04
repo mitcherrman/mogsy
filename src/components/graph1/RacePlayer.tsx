@@ -24,8 +24,19 @@ import RaceRenderer from "./RaceRenderer";
 
 const TOP_N = 10;
 
+const LONG_DATE = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
 function formatDate(occurredAt: string): string {
   return occurredAt.slice(0, 10);
+}
+
+function formatLongDate(occurredAt: string): string {
+  return LONG_DATE.format(new Date(occurredAt));
 }
 
 export default function RacePlayer({
@@ -50,6 +61,12 @@ export default function RacePlayer({
   });
 
   const coverage = dataset.coverage;
+  const hints = dataset.definition.display ?? {
+    contextMode: "event-header" as const,
+    showSecondaryEntityLabel: false,
+  };
+  const winsAvailable = dataset.events.some((e) => e.winsDelta !== undefined);
+  const ctx = frame.currentContext;
 
   return (
     <section aria-label={dataset.definition.title} className="space-y-4">
@@ -60,14 +77,39 @@ export default function RacePlayer({
           {coverage.eligibleEventCount.toLocaleString()} games ·{" "}
           {coverage.firstEventAt.slice(0, 10)} → {coverage.lastEventAt.slice(0, 10)}
         </p>
-        <p className="text-sm font-semibold tabular-nums" aria-live="off">
-          <span className="text-2xl">{frame.year}</span>
-          <span className="ml-2 text-muted-foreground">
-            {formatDate(frame.occurredAt)} · game{" "}
-            {(frame.eventIndex + 1).toLocaleString()} of{" "}
-            {frame.eventCount.toLocaleString()}
-          </span>
-        </p>
+        {hints.contextMode === "event-header" ? (
+          <div
+            className="min-h-[3.5rem] text-sm font-semibold tabular-nums"
+            aria-live="off"
+            data-testid="event-header"
+          >
+            <p>
+              <span className="text-2xl">{frame.year}</span>
+              <span className="ml-2 text-muted-foreground">
+                {formatLongDate(frame.occurredAt)} · game{" "}
+                {(frame.eventIndex + 1).toLocaleString()} of{" "}
+                {frame.eventCount.toLocaleString()}
+              </span>
+            </p>
+            <p className="font-normal text-muted-foreground">
+              {ctx.tournament ?? ctx.league ?? ""}
+              {ctx.team && ctx.opponent && (
+                <span className="ml-2 font-medium text-foreground">
+                  {ctx.team} vs. {ctx.opponent}
+                </span>
+              )}
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm font-semibold tabular-nums" aria-live="off">
+            <span className="text-2xl">{frame.year}</span>
+            <span className="ml-2 text-muted-foreground">
+              {formatDate(frame.occurredAt)} · game{" "}
+              {(frame.eventIndex + 1).toLocaleString()} of{" "}
+              {frame.eventCount.toLocaleString()}
+            </span>
+          </p>
+        )}
       </header>
 
       <RaceRenderer
@@ -75,6 +117,10 @@ export default function RacePlayer({
         entities={dataset.entities}
         metricLabel={dataset.definition.metric.label}
         topN={TOP_N}
+        display={{
+          showWinOverlay: winsAvailable,
+          showSecondaryEntityLabel: hints.showSecondaryEntityLabel,
+        }}
       />
 
       <RaceControls

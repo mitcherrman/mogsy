@@ -42,23 +42,38 @@ export interface Graph1EntityPresentation {
   metadata?: Record<string, string | number | boolean | null>;
 }
 
+export interface Graph1EventContext {
+  gameId?: string;
+  matchId?: string;
+  gameNumber?: number;
+  playerId?: string;
+  rawPlayerName?: string;
+  championId?: string;
+  team?: string;
+  opponent?: string;
+  league?: string;
+  region?: string;
+  tournament?: string;
+  patch?: string | null;
+}
+
 export interface Graph1Event {
   sequence: number;
   occurredAt: string; // ISO-8601 Z, second resolution (verified UTC source)
   rankedEntityId: string;
   delta: number; // always 1 for cumulative-games races
-  context: {
-    gameId?: string;
-    matchId?: string;
-    gameNumber?: number;
-    playerId?: string;
-    rawPlayerName?: string;
-    championId?: string;
-    team?: string;
-    league?: string;
-    tournament?: string;
-    patch?: string | null;
-  };
+  /** 1 when the participant won this game (source `win`, participant
+   * perspective, validated 0/1 with zero nulls). Additive in schema v1;
+   * absent only in pre-1.1 payloads, treated as 0. */
+  winsDelta?: 0 | 1;
+  context: Graph1EventContext;
+}
+
+/** Narrow declarative renderer hints — the shared renderer never branches on
+ * dataset identity, only on these. */
+export interface Graph1DisplayHints {
+  contextMode: "event-header" | "latest-entity-context";
+  showSecondaryEntityLabel: boolean;
 }
 
 export interface Graph1Coverage {
@@ -90,6 +105,7 @@ export interface VisualizationDataset {
       accumulation: "sum";
     };
     scope: { id: "all-pro"; label: string };
+    display?: Graph1DisplayHints;
   };
   entities: Record<string, Graph1EntityPresentation>;
   events: Graph1Event[];

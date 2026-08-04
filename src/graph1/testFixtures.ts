@@ -1,8 +1,14 @@
 /** Synthetic VisualizationDataset factories for GRAPH1 tests (test-only). */
 import type {
   Graph1EntityPresentation,
+  Graph1EventContext,
   VisualizationDataset,
 } from "./contract";
+
+export type EventSpec =
+  | [string, string]
+  | [string, string, 0 | 1]
+  | [string, string, 0 | 1, Graph1EventContext];
 
 export function makeEntity(
   id: string,
@@ -20,23 +26,28 @@ export function makeEntity(
 
 /**
  * Build a dataset from a compact spec: each item is
- * [rankedEntityId, occurredAt] applied in order with delta 1.
+ * [rankedEntityId, occurredAt, winsDelta?, context?] applied in order with
+ * delta 1. winsDelta defaults to 1.
  */
 export function makeDataset(
-  spec: Array<[string, string]>,
+  spec: EventSpec[],
   entityOverrides: Record<string, Partial<Graph1EntityPresentation>> = {},
 ): VisualizationDataset {
   const entities: Record<string, Graph1EntityPresentation> = {};
   for (const [id] of spec) {
     if (!entities[id]) entities[id] = makeEntity(id, entityOverrides[id]);
   }
-  const events = spec.map(([rankedEntityId, occurredAt], sequence) => ({
-    sequence,
-    occurredAt,
-    rankedEntityId,
-    delta: 1,
-    context: { gameId: `G_${sequence}_1` },
-  }));
+  const events = spec.map((item, sequence) => {
+    const [rankedEntityId, occurredAt, winsDelta, context] = item;
+    return {
+      sequence,
+      occurredAt,
+      rankedEntityId,
+      delta: 1,
+      winsDelta: (winsDelta ?? 1) as 0 | 1,
+      context: context ?? { gameId: `G_${sequence}_1` },
+    };
+  });
   return {
     schemaVersion: 1,
     id: "test@all-pro",
