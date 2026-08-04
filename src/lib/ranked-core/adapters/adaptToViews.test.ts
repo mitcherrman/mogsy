@@ -186,10 +186,13 @@ describe("questionViewFromPublicQuestion", () => {
       options: ["Fortify", "Brace", "Barrier"],
       category: "abilities",
     });
+    // `media` is the RA6 option-media slot: explicitly null for a source that
+    // carries none, so every option is shaped identically whether or not the
+    // question has media (see adaptToViews.optionMedia.test.ts).
     expect(view.options).toEqual([
-      { id: "0", index: 0, label: "Fortify" },
-      { id: "1", index: 1, label: "Brace" },
-      { id: "2", index: 2, label: "Barrier" },
+      { id: "0", index: 0, label: "Fortify", media: null },
+      { id: "1", index: 1, label: "Brace", media: null },
+      { id: "2", index: 2, label: "Barrier", media: null },
     ]);
     expect(JSON.stringify(view)).not.toMatch(/correct/i);
   });

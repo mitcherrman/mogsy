@@ -22,7 +22,13 @@ import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
+import {
+  ABILITY_OPTION_QUESTION, CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
+  NUMERIC_QUESTION, RUNE_OPTION_QUESTION, SUMMONER_SPELL_OPTION_QUESTION,
+} from "@/lib/ranked-core/adapters/optionMediaFixtures";
+import type { BackendQuestionPayload } from "@/lib/ranked-core/adapters/optionMediaFixtures";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
@@ -336,6 +342,33 @@ const SELL_SWAP_SCENARIO = transportSource(SELL_SWAP_Q, {
   presentation: DAMAGE_FLAGS,
 });
 
+// --- canonical answer-option media (RA6) ---------------------------------
+// Payloads dumped VERBATIM from the backend (ranked_public.option_media via
+// QuestionRecord.public_view) and run through the SAME transport adapters the
+// live arena uses, so what renders here is what a real round would render —
+// including the premise band, which this phase does not touch.
+function optionMediaCase(payload: BackendQuestionPayload): {
+  question: QuestionView; scenarioSource: QuizQuestion | null;
+} {
+  const source = {
+    questionId: payload.question_id, prompt: payload.prompt,
+    options: payload.options, category: payload.category,
+    presentation: payload.presentation ?? null,
+    optionMedia: payload.option_media ?? null,
+  };
+  return {
+    question: questionViewFromPublicQuestion(source),
+    scenarioSource: scenarioSourceFromPublicQuestion(source),
+  };
+}
+
+const OM_ITEM = optionMediaCase(ITEM_OPTION_QUESTION);
+const OM_CHAMPION = optionMediaCase(CHAMPION_OPTION_QUESTION);
+const OM_ABILITY = optionMediaCase(ABILITY_OPTION_QUESTION);
+const OM_RUNE = optionMediaCase(RUNE_OPTION_QUESTION);
+const OM_SPELL = optionMediaCase(SUMMONER_SPELL_OPTION_QUESTION);
+const OM_NUMERIC = optionMediaCase(NUMERIC_QUESTION);
+
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
     <InteractiveScenarioSurface
@@ -528,6 +561,28 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={DAMAGE_Q} scenarioSource={LEGACY_SUBJECT_SCENARIO} /> },
   { key: "surface-media-statuses", label: "Surface — premise statuses (sell-swap)",
     render: () => <Surface question={SELL_SWAP_Q} scenarioSource={SELL_SWAP_SCENARIO} /> },
+  // --- RA6: canonical media on the ANSWER OPTIONS --------------------------
+  { key: "surface-option-media-item", label: "Options — item icons (recipe, premise + options)",
+    render: () => <Surface {...OM_ITEM} /> },
+  { key: "surface-option-media-champion", label: "Options — champion icons",
+    render: () => <Surface {...OM_CHAMPION} /> },
+  { key: "surface-option-media-ability", label: "Options — ability icons (slot-neutral)",
+    render: () => <Surface {...OM_ABILITY} /> },
+  { key: "surface-option-media-rune", label: "Options — rune icons",
+    render: () => <Surface {...OM_RUNE} /> },
+  { key: "surface-option-media-spell", label: "Options — summoner-spell icons",
+    render: () => <Surface {...OM_SPELL} /> },
+  { key: "surface-option-media-none", label: "Options — numeric control (text-only)",
+    render: () => <Surface {...OM_NUMERIC} /> },
+  { key: "surface-option-media-selected", label: "Options — selected (geometry must not move)",
+    render: () => <Surface {...OM_CHAMPION} selectedOptionId="2" /> },
+  // Deliberately the SAME `competitive` variant as the two states above, so
+  // the three are a like-for-like geometry comparison; `standard` would change
+  // the column strategy for a reason that has nothing to do with reveal.
+  { key: "surface-option-media-reveal", label: "Options — revealed (geometry must not move)",
+    render: () => <Surface {...OM_CHAMPION} selectedOptionId="0"
+      reveal={{ revealed: true, isCorrect: false, correctOptionId: "2" }} /> },
+
   { key: "surface-prereveal-spoiler", label: "Surface — pre-reveal spoiler-safe",
     render: () => <Surface question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO} /> },
   { key: "surface-postreveal-rich", label: "Surface — post-reveal rich subject",

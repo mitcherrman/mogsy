@@ -8,6 +8,7 @@
  * (idle | selected | correct | incorrect-selected), so an unanswered render
  * carries no correct-answer information in the DOM.
  */
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,49 @@ export function choicesHaveImages(choices: QuizChoice[]): boolean {
 /** Minimal reveal shape: only the field the choice grid reads. */
 export type QuizAnswerRevealResult = { correct_answer?: string | null };
 
+/**
+ * Canonical entity an option NAMES (RA6). Distinct from `QuizChoiceObject.
+ * image_path`, which is the classic PICTURE-CHOICE mode (large art above the
+ * label, 2-up grid). This is a small inline badge beside text that stays the
+ * answer, so the two never combine — the picture-choice branch wins.
+ */
+export type QuizOptionMedia = { type: string; name: string; icon: string };
+
+/** Fixed icon slot. Owns its own failure state so a dead image never escalates
+ * past this box. */
+function OptionMediaIcon({ media }: { media: QuizOptionMedia | null }) {
+  const [failed, setFailed] = useState(false);
+  const url = media && !failed ? resolveQuizAssetUrl(media.icon) : undefined;
+  return (
+    // The box is mounted for EVERY option of a question with media, resolved or
+    // not, and its size never depends on its contents: an option that fails to
+    // resolve, an image that 404s, and a loaded icon all occupy the same 1.75rem
+    // square. That is what keeps the four tablets identical and keeps a slow or
+    // broken image from reflowing the grid mid-round.
+    //
+    // aria-hidden + alt="": DECORATIVE. The adjacent label already names this
+    // exact entity, so announcing it here would read it twice; the button's
+    // accessible name is unchanged from the text-only grid.
+    <span
+      aria-hidden="true"
+      data-option-media
+      data-option-media-type={media?.type ?? "none"}
+      data-option-media-state={media ? (failed ? "error" : "ok") : "empty"}
+      className="mr-2 inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-black/25 ring-1 ring-white/10"
+    >
+      {url && (
+        <img
+          src={url}
+          alt=""
+          className="h-full w-full object-contain"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
+  );
+}
+
 type QuizAnswerOptionsProps = {
   choices: QuizChoice[];
   selectedAnswer: string | null;
@@ -47,6 +91,14 @@ type QuizAnswerOptionsProps = {
    * enough to stay readable side by side.
    */
   columns?: "auto" | "wide-2";
+  /**
+   * OPTIONAL canonical media for the choices (RA6), POSITIONAL and
+   * length-matched: entry i belongs to choice i. Omit for the classic
+   * text-only grid — every existing caller does, and their render is
+   * unchanged. Supplying it mounts a fixed icon slot on EVERY choice, so a
+   * null entry costs layout space rather than shrinking its tablet.
+   */
+  optionMedia?: (QuizOptionMedia | null)[];
 };
 
 export default function QuizAnswerOptions({
@@ -55,8 +107,17 @@ export default function QuizAnswerOptions({
   answerResult,
   onSelect,
   columns = "auto",
+  optionMedia,
 }: QuizAnswerOptionsProps) {
   const hasImages = choicesHaveImages(choices);
+  // Picture-choice mode already renders large per-choice art and manages its
+  // own 2-up grid; an inline badge on top of it would be two pictures for one
+  // answer. Length is re-checked here so a mismatched array degrades to the
+  // text-only grid instead of shifting icons onto the wrong tablets.
+  const media =
+    !hasImages && optionMedia && optionMedia.length === (choices || []).length
+      ? optionMedia
+      : null;
   return (
     <div
       data-quiz-answer-options
@@ -152,6 +213,7 @@ export default function QuizAnswerOptions({
                   <span className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
                     {String.fromCharCode(65 + idx)}.
                   </span>
+                  {media && <OptionMediaIcon media={media[idx] ?? null} />}
                   <span className="flex-1">{label}</span>
                   {answerResult && isCorrect && (
                     <CheckCircle2 className="h-4 w-4 text-primary-foreground ml-2 shrink-0" />

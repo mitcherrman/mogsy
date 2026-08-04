@@ -11,6 +11,7 @@ import {
   AbilityView,
   AnswerOptionView,
   CombatantView,
+  OptionMediaView,
   QuestionView,
 } from "../viewTypes";
 
@@ -224,19 +225,37 @@ export interface PublicQuestionSource {
   options: string[];
   category: string | null;
   presentation?: Record<string, unknown> | null;
+  /**
+   * OPTIONAL canonical media for the answer options (RA6), POSITIONAL: entry i
+   * describes `options[i]`. It is a sibling of `options` rather than part of
+   * `presentation` because it describes the choices, not the scenario. Absent
+   * on quantity/free-text questions and on rounds frozen before RA6.
+   */
+  optionMedia?: OptionMediaView[] | null;
 }
 
 /**
  * Project the public question (prompt + options only — the backend never
  * sends correctness pre-reveal, so this view cannot contain it).
+ *
+ * Option media is zipped onto the options by POSITION, and only when the array
+ * length matches exactly. A mismatch can only mislabel an option, so the whole
+ * set is dropped rather than applied off-by-one — the same all-or-nothing rule
+ * the backend resolver enforces, so no option is ever singled out.
  */
 export function questionViewFromPublicQuestion(
   question: PublicQuestionSource,
 ): QuestionView {
+  const media = question.optionMedia;
+  const aligned =
+    Array.isArray(media) && media.length === question.options.length
+      ? media
+      : null;
   const options: AnswerOptionView[] = question.options.map((label, index) => ({
     id: answerOptionId(index),
     index,
     label,
+    media: aligned ? (aligned[index] ?? null) : null,
   }));
   return {
     questionId: question.questionId,
