@@ -555,21 +555,24 @@ describe("CombatCalculationScenarioCard entity strip", () => {
 
   it("shows two champion icons, the ability icon and both items for Syndra", () => {
     renderCard(SYNDRA);
+    // Role reaches the label only when the premise has sides to tell apart.
+    // This payload predates RA5, so no entity carries a status.
     expect(stripIcons().map((n) => n.getAttribute("aria-label"))).toEqual([
-      "Syndra (champion)",
-      "Ornn (champion)",
-      "Unleashed Power (ability)",
-      "Sorcerer's Shoes (item)",
-      "Void Staff (item)",
+      "Syndra (champion, attacker)",
+      "Ornn (champion, target)",
+      "Unleashed Power (ability, attacker)",
+      "Sorcerer's Shoes (item, attacker)",
+      "Void Staff (item, attacker)",
     ]);
     expect(stripIcons().filter((n) => n.getAttribute("data-entity-kind") === "champion")).toHaveLength(2);
+    expect(stripIcons().every((n) => !n.hasAttribute("data-entity-status"))).toBe(true);
   });
 
   it("surfaces the target's purchased item that the card body cannot show", () => {
     renderCard(AFTER_PURCHASE);
     const labels = stripIcons().map((n) => n.getAttribute("aria-label"));
-    expect(labels).toContain("Chain Vest (item)");
-    expect(labels).toContain("Ahri (champion)");
+    expect(labels).toContain("Chain Vest (item, target)");
+    expect(labels).toContain("Ahri (champion, target)");
     // The card body's item section is still empty — nothing was relocated.
     expect(screen.queryByText("Loadout · Items")).not.toBeInTheDocument();
   });
@@ -826,5 +829,331 @@ describe("CombatCalculationScenarioCard with an ability premise", () => {
   it("still draws the slot badge for a damage question that states its slot", () => {
     renderCard(SYNDRA);
     expect(screen.getByText("Ability · Slot R")).toBeInTheDocument();
+  });
+});
+
+
+// =============================================================================
+// RA5 — premise entity statuses
+//
+// The backend now says what the premise states HAPPENED to each entity, so a
+// question that was TEXT-ONLY in production ("… sold Doran's Shield and bought
+// Abyssal Mask") renders its whole premise. These payloads are verbatim backend
+// output for real accepted-bank candidates, like the ones above.
+//
+// The fixtures ABOVE are deliberately left as they were captured: they are
+// genuine pre-RA5 payloads, which is exactly what every already-frozen round row
+// in production still contains, so they double as the backward-compat corpus.
+// =============================================================================
+
+/** Ornn started with Doran's Shield and still has Sunfire Aegis. Later, Ornn sold Doran's Shield and bought Abyssal Mask. How much flat health do Ornn's items provide now? */
+const ORNN_SELL_SWAP = {
+  "assets": {
+    "subject": {
+      "type": "combat_cooldown",
+      "champion": "Ornn",
+      "champion_icon": "assets/champions/Ornn/icon.png",
+      "item_icons": [
+        {
+          "name": "Sunfire Aegis",
+          "icon": "assets/items/3068.png"
+        },
+        {
+          "name": "Abyssal Mask",
+          "icon": "assets/items/8020.png"
+        }
+      ],
+      "champion_splash": "assets/champions/Ornn/splash/0_default.jpg"
+    },
+    "entities": {
+      "champions": [
+        {
+          "type": "champion",
+          "id": "Ornn",
+          "name": "Ornn",
+          "icon": "assets/champions/Ornn/icon.png",
+          "splash": "assets/champions/Ornn/splash/0_default.jpg",
+          "loading": "assets/champions/Ornn/loading/0_default.jpg",
+          "default_skin": 0,
+          "role": "subject"
+        }
+      ],
+      "items": [
+        {
+          "type": "item",
+          "id": 3068,
+          "name": "Sunfire Aegis",
+          "icon": "assets/items/3068.png",
+          "role": "subject",
+          "status": "retained"
+        },
+        {
+          "type": "item",
+          "id": 8020,
+          "name": "Abyssal Mask",
+          "icon": "assets/items/8020.png",
+          "role": "subject",
+          "status": "purchased"
+        },
+        {
+          "type": "item",
+          "id": 1054,
+          "name": "Doran's Shield",
+          "icon": "assets/items/1054.png",
+          "role": "subject",
+          "status": "sold"
+        }
+      ],
+      "abilities": [],
+      "runes": [],
+      "summoner_spells": []
+    }
+  },
+  "presentation": {
+    "role": "context",
+    "timing": "question",
+    "spoiler": false,
+    "scenario_type": "combat_calculation"
+  }
+};
+/** Darius started with Doran's Blade and one Health Potion. Darius later bought Phage and Kindlegem. How much gold has Darius spent in total? */
+const PURCHASE_HISTORY = {
+  "assets": {
+    "subject": {
+      "type": "combat_cooldown",
+      "champion": "Darius",
+      "champion_icon": "assets/champions/Darius/icon.png",
+      "item_icons": [
+        {
+          "name": "Doran's Blade",
+          "icon": "assets/items/1055.png"
+        },
+        {
+          "name": "Health Potion",
+          "icon": "assets/items/2003.png"
+        },
+        {
+          "name": "Phage",
+          "icon": "assets/items/3044.png"
+        },
+        {
+          "name": "Kindlegem",
+          "icon": "assets/items/3067.png"
+        }
+      ],
+      "champion_splash": "assets/champions/Darius/splash/0_default.jpg"
+    },
+    "entities": {
+      "champions": [
+        {
+          "type": "champion",
+          "id": "Darius",
+          "name": "Darius",
+          "icon": "assets/champions/Darius/icon.png",
+          "splash": "assets/champions/Darius/splash/0_default.jpg",
+          "loading": "assets/champions/Darius/loading/0_default.jpg",
+          "default_skin": 0,
+          "role": "subject"
+        }
+      ],
+      "items": [
+        {
+          "type": "item",
+          "id": 1055,
+          "name": "Doran's Blade",
+          "icon": "assets/items/1055.png",
+          "role": "subject",
+          "status": "starting"
+        },
+        {
+          "type": "item",
+          "id": 2003,
+          "name": "Health Potion",
+          "icon": "assets/items/2003.png",
+          "role": "subject",
+          "status": "starting"
+        },
+        {
+          "type": "item",
+          "id": 3044,
+          "name": "Phage",
+          "icon": "assets/items/3044.png",
+          "role": "subject",
+          "status": "purchased"
+        },
+        {
+          "type": "item",
+          "id": 3067,
+          "name": "Kindlegem",
+          "icon": "assets/items/3067.png",
+          "role": "subject",
+          "status": "purchased"
+        }
+      ],
+      "abilities": [],
+      "runes": [],
+      "summoner_spells": []
+    }
+  },
+  "presentation": {
+    "role": "context",
+    "timing": "question",
+    "spoiler": false,
+    "scenario_type": "combat_calculation"
+  }
+};
+
+describe("premise entity statuses", () => {
+  it("reads every status the backend emits, on the entity that carries it", () => {
+    const entities = getQuestionMediaEntities(question(ORNN_SELL_SWAP))!;
+    expect(entities.items.map((i) => [i.name, i.status])).toEqual([
+      ["Sunfire Aegis", "retained"],
+      ["Abyssal Mask", "purchased"],
+      ["Doran's Shield", "sold"],
+    ]);
+    expect(entities.items.every((i) => i.role === "subject")).toBe(true);
+  });
+
+  it("separates starting purchases from later ones", () => {
+    const entities = getQuestionMediaEntities(question(PURCHASE_HISTORY))!;
+    const statuses = entities.items.map((i) => i.status);
+    expect(statuses).toContain("starting");
+    expect(statuses).toContain("purchased");
+    // Declared premise order is preserved: everything started with comes first.
+    expect(statuses.indexOf("purchased")).toBeGreaterThan(statuses.lastIndexOf("starting"));
+  });
+
+  it("keeps a target's purchase attributed to the target, not the attacker", () => {
+    const entities = getQuestionMediaEntities(question(AFTER_PURCHASE))!;
+    const [chainVest] = entities.items;
+    expect(chainVest.name).toBe("Chain Vest");
+    expect(chainVest.role).toBe("target");
+    // AFTER_PURCHASE predates RA5; role alone still attributes it correctly.
+    expect(chainVest.status).toBeUndefined();
+  });
+
+  it("leaves status undefined on a payload frozen before RA5", () => {
+    for (const payload of [JINX, SYNDRA, ORNN, AFTER_PURCHASE]) {
+      const entities = getQuestionMediaEntities(question(payload))!;
+      for (const list of Object.values(entities)) {
+        expect(list.every((e) => e.status === undefined)).toBe(true);
+      }
+    }
+    expect(getQuestionMediaEntities(question(LEGACY_SUBJECT_ONLY))).toBeNull();
+  });
+
+  it("drops a status it does not recognise rather than guessing a neutral one", () => {
+    const entities = getQuestionMediaEntities(
+      question({
+        assets: {
+          entities: {
+            items: [
+              { name: "Made Up", role: "subject", status: "borrowed", icon: "assets/items/1029.png" },
+              { name: "Real", role: "subject", status: "sold", icon: "assets/items/1031.png" },
+            ],
+          },
+        },
+      }),
+    )!;
+    expect(entities.items.map((i) => i.status)).toEqual([undefined, "sold"]);
+  });
+
+  it("champions and abilities carry no status, because no premise field states one", () => {
+    const entities = getQuestionMediaEntities(question(ORNN_SELL_SWAP))!;
+    expect(entities.champions.every((c) => c.status === undefined)).toBe(true);
+    const damage = getQuestionMediaEntities(question(SYNDRA))!;
+    expect(damage.abilities.every((a) => a.status === undefined)).toBe(true);
+  });
+
+  it("carries status through the icon flattener in the backend's order", () => {
+    const flat = flattenMediaEntityIcons(getQuestionMediaEntities(question(ORNN_SELL_SWAP)));
+    expect(flat.map((e) => [e.kind, e.name, e.status])).toEqual([
+      ["champion", "Ornn", undefined],
+      ["item", "Sunfire Aegis", "retained"],
+      ["item", "Abyssal Mask", "purchased"],
+      ["item", "Doran's Shield", "sold"],
+    ]);
+  });
+});
+
+describe("CombatCalculationScenarioCard status treatment", () => {
+  it("renders the whole Ornn premise — a question that used to render nothing", () => {
+    renderCard(ORNN_SELL_SWAP);
+    expect(stripIcons().map((n) => n.getAttribute("aria-label"))).toEqual([
+      "Ornn (champion)",
+      "Sunfire Aegis (item, retained)",
+      "Abyssal Mask (item, purchased)",
+      "Doran's Shield (item, sold)",
+    ]);
+  });
+
+  it("puts the status on the element too, so a payload is inspectable", () => {
+    renderCard(ORNN_SELL_SWAP);
+    expect(stripIcons().map((n) => n.getAttribute("data-entity-status"))).toEqual([
+      null,
+      "retained",
+      "purchased",
+      "sold",
+    ]);
+  });
+
+  it("makes the sold item visibly sold — faded and struck through", () => {
+    renderCard(ORNN_SELL_SWAP);
+    const sold = stripIcons().find((n) => n.getAttribute("data-entity-status") === "sold")!;
+    expect(sold.className).toContain("opacity-40");
+    expect(within(sold).getByTestId("entity-sold-strike")).toBeInTheDocument();
+    // Only the sold one.
+    expect(screen.getAllByTestId("entity-sold-strike")).toHaveLength(1);
+  });
+
+  it("marks the purchased item without changing the slot's size", () => {
+    renderCard(ORNN_SELL_SWAP);
+    const bought = stripIcons().find((n) => n.getAttribute("data-entity-status") === "purchased")!;
+    expect(bought.className).toContain("ring-1");
+    for (const slot of stripIcons()) {
+      expect(slot.className).toContain("h-6 w-6");   // no status resizes a slot
+      expect(slot.textContent).toBe("");             // and none draws text
+    }
+  });
+
+  it("leaves a retained item neutral", () => {
+    renderCard(ORNN_SELL_SWAP);
+    const kept = stripIcons().find((n) => n.getAttribute("data-entity-status") === "retained")!;
+    expect(kept.className).not.toContain("opacity-40");
+    expect(kept.className).not.toContain("ring-1");
+    expect(within(kept).queryByTestId("entity-sold-strike")).not.toBeInTheDocument();
+  });
+
+  it("still falls back to a fixed-size monogram when a status icon fails to load", () => {
+    renderCard(ORNN_SELL_SWAP);
+    const sold = stripIcons().find((n) => n.getAttribute("data-entity-status") === "sold")!;
+    fireEvent.error(within(sold).getByRole("presentation"));
+    expect(sold.textContent).toBe("D");
+    expect(sold.className).toContain("h-6 w-6");
+    expect(sold.getAttribute("aria-label")).toBe("Doran's Shield (item, sold)");
+    expect(stripIcons()).toHaveLength(4);            // strip did not reflow
+  });
+
+  it("wraps a many-entity premise inside the strip's own box", () => {
+    renderCard(PURCHASE_HISTORY);
+    const strip = screen.getByTestId("scenario-entity-strip");
+    expect(strip.className).toContain("flex-wrap");
+    expect(strip.className).toContain("max-w-[52%]");
+    expect(strip.className).toContain("absolute");   // outside the layout flow
+    expect(stripIcons().length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("leaves the card body identical whether or not statuses are present", () => {
+    const withStatus = renderCard(ORNN_SELL_SWAP);
+    const body = withStatus.container.querySelector("[data-testid='scenario-entity-strip']")!;
+    body.remove();
+    const stripped = withStatus.container.innerHTML;
+    withStatus.unmount();
+
+    const withoutStatus = renderCard({
+      ...ORNN_SELL_SWAP,
+      assets: { subject: ORNN_SELL_SWAP.assets.subject },
+    });
+    expect(withoutStatus.container.innerHTML).toBe(stripped);
   });
 });

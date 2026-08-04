@@ -287,6 +287,55 @@ const LEGACY_SUBJECT_SCENARIO = transportSource(DAMAGE_Q, {
   presentation: DAMAGE_FLAGS,
 });
 
+// RA5 — a sell-swap, which rendered NOTHING at all before this phase. The
+// payload is verbatim `ranked_public.question_media` output for a real
+// accepted-bank candidate, so the temporary status treatment (faded + struck
+// sold, ringed purchase, neutral retained) is judged against what production
+// actually serves rather than against a hand-written shape.
+const SELL_SWAP_Q: QuestionView = {
+  questionId: "sq-sell-swap", category: "flat_inventory_stat",
+  prompt: "Ornn started with Doran's Shield and still has Sunfire Aegis. Later, Ornn sold "
+    + "Doran's Shield and bought Abyssal Mask. How much flat health do Ornn's items "
+    + "provide now?",
+  options: [
+    { id: "0", index: 0, label: "750" }, { id: "1", index: 1, label: "810" },
+    { id: "2", index: 2, label: "700" }, { id: "3", index: 3, label: "800" },
+  ],
+};
+const SELL_SWAP_SCENARIO = transportSource(SELL_SWAP_Q, {
+  assets: {
+    subject: {
+      type: "combat_cooldown", champion: "Ornn",
+      champion_icon: "assets/champions/Ornn/icon.png",
+      champion_splash: "assets/champions/Ornn/splash/0_default.jpg",
+      // The subject row asserts possession, so it is the CURRENT loadout. The
+      // sold item is in the strip above, tagged — not omitted, not in this row.
+      item_icons: [
+        { name: "Sunfire Aegis", icon: "assets/items/3068.png" },
+        { name: "Abyssal Mask", icon: "assets/items/8020.png" },
+      ],
+    },
+    entities: {
+      champions: [
+        { type: "champion", id: "Ornn", name: "Ornn", role: "subject",
+          icon: "assets/champions/Ornn/icon.png",
+          splash: "assets/champions/Ornn/splash/0_default.jpg",
+          loading: "assets/champions/Ornn/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [
+        { type: "item", id: 3068, name: "Sunfire Aegis", role: "subject",
+          status: "retained", icon: "assets/items/3068.png" },
+        { type: "item", id: 8020, name: "Abyssal Mask", role: "subject",
+          status: "purchased", icon: "assets/items/8020.png" },
+        { type: "item", id: 1054, name: "Doran's Shield", role: "subject",
+          status: "sold", icon: "assets/items/1054.png" },
+      ],
+      abilities: [], runes: [], summoner_spells: [],
+    },
+  },
+  presentation: DAMAGE_FLAGS,
+});
+
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
     <InteractiveScenarioSurface
@@ -477,6 +526,8 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={DAMAGE_Q} scenarioSource={ENTITIES_SCENARIO} /> },
   { key: "surface-media-legacy", label: "Surface — same question, pre-entities payload",
     render: () => <Surface question={DAMAGE_Q} scenarioSource={LEGACY_SUBJECT_SCENARIO} /> },
+  { key: "surface-media-statuses", label: "Surface — premise statuses (sell-swap)",
+    render: () => <Surface question={SELL_SWAP_Q} scenarioSource={SELL_SWAP_SCENARIO} /> },
   { key: "surface-prereveal-spoiler", label: "Surface — pre-reveal spoiler-safe",
     render: () => <Surface question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO} /> },
   { key: "surface-postreveal-rich", label: "Surface — post-reveal rich subject",

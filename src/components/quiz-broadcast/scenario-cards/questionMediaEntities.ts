@@ -18,6 +18,11 @@
  * Backward compatibility is the default: a payload with no `entities` key —
  * every payload frozen before this phase — returns `null`, and every existing
  * consumer reads `assets.subject` as before.
+ *
+ * RA5 adds `status` to item entities: what the premise says HAPPENED to the
+ * thing (bought, sold, kept). It arrives on the same entities, from the same
+ * declared premise fields, and is optional on every one of them — a payload
+ * frozen before RA5 simply has none, and reads exactly as it did.
  */
 
 import type { QuizQuestion } from "@/lib/quiz/api";
@@ -30,11 +35,23 @@ import { resolveQuizAssetUrl } from "@/lib/quiz/api";
  */
 export type MediaEntityRole = "subject" | "attacker" | "target" | "context";
 
+/**
+ * What the premise says HAPPENED to an entity. Like `role`, a premise fact and
+ * NOT a display instruction — a renderer decides whether "sold" means faded,
+ * struck through, moved to a timeline, or dropped entirely.
+ *
+ * Only items carry one today; champions and abilities have no scenario field
+ * stating a transaction. `undefined` means the premise stated none (or the
+ * payload predates RA5), which is different from stating "current".
+ */
+export type MediaEntityStatus = "starting" | "current" | "retained" | "purchased" | "sold";
+
 type BaseMediaEntity = {
   /** Canonical backend id (numeric for items, safe name for champions). */
   id?: string | number;
   name: string;
   role: MediaEntityRole;
+  status?: MediaEntityStatus;
   /** Resolved absolute URL, or null when the backend verified no such file. */
   icon: string | null;
 };
@@ -71,6 +88,14 @@ const ROLES: ReadonlySet<string> = new Set<MediaEntityRole>([
   "context",
 ]);
 
+const STATUSES: ReadonlySet<string> = new Set<MediaEntityStatus>([
+  "starting",
+  "current",
+  "retained",
+  "purchased",
+  "sold",
+]);
+
 function asRecords(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object");
@@ -89,15 +114,22 @@ function url(value: unknown): string | null {
  * competitive question is worse than no icon — so it is dropped rather than
  * rendered anonymously. An unknown role degrades to "context" (present, but
  * claiming nothing about whose it is) instead of discarding the entity.
+ *
+ * An unrecognised status is DROPPED rather than degraded, because there is no
+ * neutral status to degrade to: guessing "current" for a value this build does
+ * not understand would assert a transaction the premise may not have stated.
+ * Absent is the honest reading, and every treatment already handles it.
  */
 function base(raw: Record<string, unknown>): BaseMediaEntity | null {
   const name = str(raw.name);
   if (!name) return null;
   const role = str(raw.role);
+  const status = str(raw.status);
   return {
     ...(typeof raw.id === "string" || typeof raw.id === "number" ? { id: raw.id } : {}),
     name,
     role: role && ROLES.has(role) ? (role as MediaEntityRole) : "context",
+    ...(status && STATUSES.has(status) ? { status: status as MediaEntityStatus } : {}),
     icon: url(raw.icon),
   };
 }
@@ -153,7 +185,14 @@ export function getQuestionMediaEntities(question: QuizQuestion): QuestionMediaE
  */
 export function flattenMediaEntityIcons(
   entities: QuestionMediaEntities | null | undefined,
-): { key: string; kind: "champion" | "ability" | "item" | "rune" | "summoner_spell"; name: string; role: MediaEntityRole; icon: string }[] {
+): {
+  key: string;
+  kind: "champion" | "ability" | "item" | "rune" | "summoner_spell";
+  name: string;
+  role: MediaEntityRole;
+  status?: MediaEntityStatus;
+  icon: string;
+}[] {
   if (!entities) return [];
   const groups = [
     ["champion", entities.champions],
@@ -166,7 +205,14 @@ export function flattenMediaEntityIcons(
   for (const [kind, list] of groups) {
     list.forEach((entity, index) => {
       if (!entity.icon) return;
-      out.push({ key: `${kind}-${entity.id ?? entity.name}-${index}`, kind, name: entity.name, role: entity.role, icon: entity.icon });
+      out.push({
+        key: `${kind}-${entity.id ?? entity.name}-${index}`,
+        kind,
+        name: entity.name,
+        role: entity.role,
+        ...(entity.status ? { status: entity.status } : {}),
+        icon: entity.icon,
+      });
     });
   }
   return out;

@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import type { ScenarioEntryData, ScenarioSectionData } from "./types";
-import { flattenMediaEntityIcons, type QuestionMediaEntities } from "./questionMediaEntities";
+import {
+  flattenMediaEntityIcons,
+  type MediaEntityRole,
+  type MediaEntityStatus,
+  type QuestionMediaEntities,
+} from "./questionMediaEntities";
 
 /**
  * Scenario Card primitives — the shared building blocks every scenario type
@@ -131,18 +136,70 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
  * The slot NEVER collapses: a missing or broken image falls back to a monogram
  * tile of the same size, so a failed request cannot reflow the strip.
  */
-function EntityIconSlot({ icon, name, kind }: { icon: string; name: string; kind: string }) {
+/**
+ * TEMPORARY status treatment (RA5). The backend now states what happened to
+ * each premise entity; this makes the four distinctions VISIBLE so the real
+ * per-family treatment can be chosen from something concrete — faded, struck
+ * through, grouped, a timeline, a current-loadout strip. It is not that
+ * treatment, and deliberately does not look like a finished one.
+ *
+ * Every rule is inside the fixed 24px slot — a tint, a border, an overlay — so
+ * no status can change the strip's geometry. The word itself always reaches the
+ * user through the accessible label, never as drawn text, because a legible
+ * caption at this size would be a redesign.
+ */
+const STATUS_TREATMENT: Record<MediaEntityStatus, string> = {
+  // Gone: dimmed and struck through (the strike is drawn below).
+  sold: "opacity-40 grayscale",
+  // Acquired: a brighter rim, the only additive-feeling state.
+  purchased: "ring-1 ring-[#8fd0a0]/70",
+  // Survived a stated transaction — present, but not the new thing.
+  retained: "",
+  // Held with no transaction stated.
+  current: "",
+  // Held from the start.
+  starting: "opacity-80",
+};
+
+/** Human-readable tail for the accessible label, e.g. "…, sold". */
+function entityLabel(name: string, kind: string, role: MediaEntityRole, status?: MediaEntityStatus) {
+  const parts = [kind.replace("_", " ")];
+  // Role is only informative when the premise has sides to tell apart.
+  if (role === "attacker" || role === "target") parts.push(role);
+  if (status) parts.push(status);
+  return `${name} (${parts.join(", ")})`;
+}
+
+function EntityIconSlot({
+  icon,
+  name,
+  kind,
+  role,
+  status,
+}: {
+  icon: string;
+  name: string;
+  kind: string;
+  role: MediaEntityRole;
+  status?: MediaEntityStatus;
+}) {
   const [errored, setErrored] = useState(false);
   // Champion portraits read as people, equipment reads as objects — the only
   // visual distinction in the strip, and it carries no extra label.
   const shape = kind === "champion" ? "rounded-full" : "rounded-md";
+  const treatment = status ? STATUS_TREATMENT[status] : "";
+  // The other champion's entities get a cooler rim so a two-sided premise is
+  // readable without a second row.
+  const rim = role === "target" ? "border-[#7fb2d4]/70" : "border-[#d4b35a]/50";
   return (
     <div
       role="listitem"
-      title={name}
-      aria-label={`${name} (${kind.replace("_", " ")})`}
+      title={entityLabel(name, kind, role, status)}
+      aria-label={entityLabel(name, kind, role, status)}
       data-entity-kind={kind}
-      className={`relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden border border-[#d4b35a]/50 bg-black/55 shadow-[0_2px_8px_rgba(0,0,0,0.7)] ${shape}`}
+      data-entity-role={role}
+      {...(status ? { "data-entity-status": status } : {})}
+      className={`relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden border ${rim} bg-black/55 shadow-[0_2px_8px_rgba(0,0,0,0.7)] ${shape} ${treatment}`}
     >
       {errored ? (
         <span aria-hidden className="text-[11px] font-black uppercase leading-none text-[#e8c97a]/80">
@@ -150,6 +207,17 @@ function EntityIconSlot({ icon, name, kind }: { icon: string; name: string; kind
         </span>
       ) : (
         <img src={icon} alt="" onError={() => setErrored(true)} className="h-full w-full object-cover" />
+      )}
+      {status === "sold" && (
+        // Absolutely positioned inside the slot, so the strike cannot add a
+        // pixel of height or width whatever the icon does.
+        <span
+          aria-hidden
+          data-testid="entity-sold-strike"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          <span className="h-px w-[140%] rotate-45 bg-[#ff9b9b]/90" />
+        </span>
       )}
     </div>
   );
@@ -161,11 +229,18 @@ function EntityIconSlot({ icon, name, kind }: { icon: string; name: string; kind
  * Pinned to the card's top-right, opposite the ScenarioBadge and outside the
  * bottom information stack, so adding it cannot move the title, subject, chips,
  * divider or sections by a pixel. It exists to make the payload's completeness
- * visible (two champions, an ability, both sides' items) ahead of the theme
- * redesign that will decide the real treatment — it is not that treatment.
+ * visible (two champions, an ability, both sides' items, and since RA5 what the
+ * premise says HAPPENED to each) ahead of the theme redesign that will decide
+ * the real treatment — it is not that treatment.
  *
  * No labels are drawn over the artwork; every icon carries an aria-label and a
- * title tooltip instead.
+ * title tooltip instead, and its role/status are also on the element as
+ * `data-entity-*` so a payload can be inspected without reading pixels.
+ *
+ * The strip wraps (`flex-wrap`, capped at 52% of the card width) and every slot
+ * is a fixed 24px that never collapses, so an eight-entity premise reflows
+ * inside the strip's own box and cannot move the title, subject, chips or
+ * sections below it.
  */
 export function ScenarioEntityStrip({ entities }: { entities?: QuestionMediaEntities | null }) {
   const icons = flattenMediaEntityIcons(entities);
@@ -178,7 +253,14 @@ export function ScenarioEntityStrip({ entities }: { entities?: QuestionMediaEnti
       className="absolute right-[5%] top-[4%] z-10 flex max-w-[52%] flex-wrap justify-end gap-1"
     >
       {icons.map((entity) => (
-        <EntityIconSlot key={entity.key} icon={entity.icon} name={entity.name} kind={entity.kind} />
+        <EntityIconSlot
+          key={entity.key}
+          icon={entity.icon}
+          name={entity.name}
+          kind={entity.kind}
+          role={entity.role}
+          status={entity.status}
+        />
       ))}
     </div>
   );
