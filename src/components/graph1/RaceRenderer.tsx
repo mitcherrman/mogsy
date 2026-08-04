@@ -15,6 +15,8 @@
  * data, not absence); the brighter same-hue segment inset from the left is
  * cumulative wins. A legend states the encoding.
  */
+import type { ComponentType } from "react";
+
 import type { Graph1EntityPresentation } from "@/graph1/contract";
 import { entityColor } from "@/graph1/colors";
 import type { RaceFrameState, RaceRow } from "@/graph1/engine";
@@ -27,13 +29,31 @@ export interface RaceRendererDisplay {
   showSecondaryEntityLabel: boolean;
 }
 
-function Avatar({ entity }: { entity: Graph1EntityPresentation }) {
+/** Injectable <img> substitute. The Remotion composition passes remotion's
+ * <Img> (which delays frame capture until the asset is decoded, keeping
+ * renders deterministic); the live app keeps the lazy native element. */
+export type RaceRendererImageComponent = ComponentType<{
+  src: string;
+  alt: string;
+  className?: string;
+}>;
+
+const NativeLazyImg: RaceRendererImageComponent = ({ src, alt, className }) => (
+  <img src={src} alt={alt} loading="lazy" className={className} />
+);
+
+function Avatar({
+  entity,
+  imageComponent: ImageComponent,
+}: {
+  entity: Graph1EntityPresentation;
+  imageComponent: RaceRendererImageComponent;
+}) {
   if (entity.media.kind === "image") {
     return (
-      <img
+      <ImageComponent
         src={entity.media.src}
         alt={entity.displayName}
-        loading="lazy"
         className="h-9 w-9 shrink-0 rounded-md object-cover bg-muted"
       />
     );
@@ -71,11 +91,13 @@ function Row({
   entity,
   metricLabel,
   display,
+  imageComponent,
 }: {
   row: RaceRow;
   entity: Graph1EntityPresentation;
   metricLabel: string;
   display: RaceRendererDisplay;
+  imageComponent: RaceRendererImageComponent;
 }) {
   const color = entityColor(entity.id);
   const secondary =
@@ -99,7 +121,7 @@ function Row({
       <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted-foreground">
         {row.rank}
       </span>
-      <Avatar entity={entity} />
+      <Avatar entity={entity} imageComponent={imageComponent} />
       <div className="relative h-9 min-w-0 flex-1">
         {/* total-games bar: dim base color; remainder past the win segment
             reads as losses */}
@@ -159,6 +181,8 @@ export interface RaceRendererProps {
   metricLabel: string;
   topN: number;
   display: RaceRendererDisplay;
+  /** defaults to a lazy native <img>; Remotion passes its <Img> */
+  imageComponent?: RaceRendererImageComponent;
 }
 
 export default function RaceRenderer({
@@ -167,6 +191,7 @@ export default function RaceRenderer({
   metricLabel,
   topN,
   display,
+  imageComponent = NativeLazyImg,
 }: RaceRendererProps) {
   return (
     <div className="space-y-2">
@@ -186,6 +211,7 @@ export default function RaceRenderer({
               entity={entity}
               metricLabel={metricLabel}
               display={display}
+              imageComponent={imageComponent}
             />
           );
         })}
