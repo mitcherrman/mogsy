@@ -27,7 +27,7 @@ const ACCENTS = [
 ];
 
 /** deterministic accent from the stable entity id (never from rank) */
-export function accentClassFor(entityId: string): string {
+function accentClassFor(entityId: string): string {
   let h = 0;
   for (let i = 0; i < entityId.length; i++) {
     h = (h * 31 + entityId.charCodeAt(i)) | 0;
