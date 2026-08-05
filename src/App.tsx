@@ -144,6 +144,9 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
+// Dev-only League mechanics XP calculator (MECH1) — thin client over the
+// backend league_mechanics engine, not linked from any navigation.
+const MechanicsXpPage = lazy(() => import("./pages/dev/mechanics-xp/MechanicsXpPage"));
 
 // Dev-only entrance concept — visual iteration on the Mogzy entry screen.
 // Purely presentational, no app state, not linked from any navigation.
@@ -390,6 +393,7 @@ const App = () => (
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
+                  <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
